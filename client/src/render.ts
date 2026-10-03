@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ARENA_HALF, GOBLIN, PLAYER } from "@hearthgate/shared";
+import { ARENA_HALF, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
@@ -155,6 +155,15 @@ export class View {
   private camTarget = new THREE.Vector3();
   private camPos = new THREE.Vector3(0, 13, 9);
   private readonly camOffset = new THREE.Vector3(0, 13, 9);
+  // Hit-feedback nudge: added on top of the smoothed camera so it never disturbs the follow.
+  private nudgeDir = new THREE.Vector3();
+  private nudgeStart = -Infinity;
+  private nudgeStrength = 0;
+  private nudgeMs = 0;
+  private nudgeVec = new THREE.Vector3();
+  /** Nudges started so far; read by the e2e test through the debug handle. */
+  nudges = 0;
+  private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -262,8 +271,25 @@ export class View {
     const k = 1 - Math.exp(-dtMs / 120);
     this.camTarget.lerp(new THREE.Vector3(x, 0.8, z), k);
     this.camPos.lerp(new THREE.Vector3(x, 0, z).add(this.camOffset), k);
-    this.camera.position.copy(this.camPos);
-    this.camera.lookAt(this.camTarget);
+    const n = nudgeOffset(performance.now() - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
+    this.nudgeVec.copy(this.nudgeDir).multiplyScalar(n);
+    this.camera.position.copy(this.camPos).add(this.nudgeVec);
+    this.camera.lookAt(this.nudgeVec.add(this.camTarget));
+  }
+
+  /**
+   * Kick the camera along (dx, dz) on the ground plane. Moving the eye and the look target
+   * together slides the view without tilting it, which reads as impact, not as a lurch.
+   */
+  nudge(dx: number, dz: number, strengthM: number, durationMs: number) {
+    if (this.reducedMotion.matches) return;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) return;
+    this.nudgeDir.set(dx / len, 0, dz / len);
+    this.nudgeStart = performance.now();
+    this.nudgeStrength = strengthM;
+    this.nudgeMs = durationMs;
+    this.nudges++;
   }
 
   render() {

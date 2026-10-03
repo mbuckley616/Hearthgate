@@ -2,17 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
   ARENA_HALF,
   GOBLIN,
+  INPUT_LIMIT,
   PLAYER,
   TICK_MS,
+  TICK_RATE,
+  type InputBucket,
   applyInput,
   createEnemy,
+  createInputBucket,
   createPlayer,
   inCone,
   isValidInput,
   neutralInput,
   resolvePlayerAttacks,
   stepEnemy,
-  stepRespawns
+  stepRespawns,
+  takeInputToken
 } from "./sim";
 
 describe("applyInput", () => {
@@ -163,5 +168,57 @@ describe("isValidInput", () => {
     expect(isValidInput({ seq: 1, dx: 5, dy: 0, attack: false, dodge: false })).toBe(false);
     expect(isValidInput("nope")).toBe(false);
     expect(isValidInput(null)).toBe(false);
+  });
+});
+
+describe("input rate limit", () => {
+  function send(b: InputBucket, perSec: number, seconds: number, start = 0): { ok: boolean; at: number } {
+    const step = 1000 / perSec;
+    const count = Math.round(perSec * seconds);
+    for (let i = 1; i <= count; i++) {
+      const at = start + i * step;
+      if (!takeInputToken(b, at)) return { ok: false, at };
+    }
+    return { ok: true, at: start + count * step };
+  }
+
+  it("never trips an honest client at the tick rate, even with jitter", () => {
+    const b = createInputBucket(0);
+    let t = 0;
+    for (let i = 0; i < 20 * 60; i++) {
+      t += TICK_MS + (i % 2 === 0 ? 30 : -30); // 20-80 ms gaps, averaging one tick
+      expect(takeInputToken(b, t)).toBe(true);
+    }
+  });
+
+  it("absorbs a one-second stall followed by a burst of the backlog", () => {
+    const b = createInputBucket(0);
+    const warm = send(b, TICK_RATE, 5);
+    expect(warm.ok).toBe(true);
+    for (let i = 0; i < TICK_RATE; i++) expect(takeInputToken(b, warm.at + 1000)).toBe(true);
+    expect(send(b, TICK_RATE, 5, warm.at + 1000).ok).toBe(true);
+  });
+
+  it("drops a client that sustains more than INPUT_LIMIT.ratePerSec", () => {
+    const b = createInputBucket(0);
+    const flood = send(b, 60, 10);
+    expect(flood.ok).toBe(false);
+    // 60/s drains 35 tokens a second net, so the burst lasts well under a second.
+    expect(flood.at).toBeLessThan(1000);
+  });
+
+  it("drops a client just over the limit, but only after it is sustained", () => {
+    const b = createInputBucket(0);
+    const over = send(b, INPUT_LIMIT.ratePerSec + 5, 30);
+    expect(over.ok).toBe(false);
+    expect(over.at).toBeGreaterThan(3000);
+  });
+
+  it("is deterministic for identical arrival times", () => {
+    const a = createInputBucket(0);
+    const c = createInputBucket(0);
+    const times = [10, 12, 80, 81, 82, 300, 301, 302, 303, 900];
+    expect(times.map((t) => takeInputToken(a, t))).toEqual(times.map((t) => takeInputToken(c, t)));
+    expect(a).toEqual(c);
   });
 });

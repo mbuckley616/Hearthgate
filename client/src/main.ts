@@ -1,8 +1,9 @@
-import { GOBLIN, PLAYER, TICK_MS, type SimEvent } from "@hearthgate/shared";
+import { GOBLIN, HIT_FEEDBACK, PLAYER, TICK_MS, type SimEvent } from "@hearthgate/shared";
 import { Input } from "./input";
 import { Net } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
+import { Sound } from "./sound";
 
 /**
  * Phase 0: two (or more) browsers in one room, one goblin, one attack.
@@ -25,6 +26,7 @@ const view = new View(app);
 const hud = new Hud(document.getElementById("hud")!);
 const input = new Input();
 const net = new Net();
+const sound = new Sound();
 
 hud.setStatus(`Connecting to ${endpoint}`);
 
@@ -33,8 +35,30 @@ net.onEvents((events: SimEvent[]) => {
   for (const e of events) {
     const text = describeEvent(e);
     if (text) recentEvents.push({ text, until: performance.now() + 2500 });
+    hitFeedback(e);
   }
 });
+
+/**
+ * Presentation only: the server already decided the hit. Your own hits get the camera
+ * nudge and full volume; a friend's are quieter so you can still hear the fight.
+ */
+/** Hits you landed or took; the e2e test checks each one nudged the camera. */
+let hitCount = 0;
+function hitFeedback(e: SimEvent) {
+  if ((e.kind === "playerHit" && e.attackerId === net.sessionId) || (e.kind === "enemyHit" && e.targetId === net.sessionId)) hitCount++;
+  const me = net.me;
+  const gob = net.remotePose(net.enemy) ?? { x: me.x, z: me.z + 1 };
+  if (e.kind === "playerHit") {
+    const mine = e.attackerId === net.sessionId;
+    sound.hitDealt(mine ? 1 : HIT_FEEDBACK.othersVolume);
+    if (mine) view.nudge(gob.x - me.x, gob.z - me.z, HIT_FEEDBACK.dealtNudgeM, HIT_FEEDBACK.dealtNudgeMs);
+  } else if (e.kind === "enemyHit") {
+    const mine = e.targetId === net.sessionId;
+    sound.hitTaken(mine ? 1 : HIT_FEEDBACK.othersVolume);
+    if (mine) view.nudge(me.x - gob.x, me.z - gob.z, HIT_FEEDBACK.takenNudgeM, HIT_FEEDBACK.takenNudgeMs);
+  }
+}
 
 net
   .connect(endpoint, name)
@@ -136,7 +160,9 @@ function draw(dt: number) {
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     enemy: { hp: e.hp, phase: e.phase },
     rtt: net.rttMs,
-    tick: net.lastServerTick
+    tick: net.lastServerTick,
+    nudges: view.nudges,
+    myHits: hitCount
   };
 }
 

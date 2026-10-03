@@ -12,10 +12,10 @@ Gate: two people on different networks fight the goblin together and both say it
 - [ ] **(Michael)** Remote playtest with one friend on the hosted build (see README). Record ping, corrections count from the HUD, and the gate answers.
 - [ ] **(Fable)** Extrapolate remote players by up to one tick when a snapshot is late, so a stuttering connection does not freeze them.
 - [ ] **(Fable)** Clock sync: replace the "latest patch" offset with a min-RTT based estimate so interpolation delay stays constant under jitter.
-- [ ] Input rate limiting on the server: drop clients that send more than 25 inputs a second sustained.
+- [x] Input rate limiting on the server: drop clients that send more than 25 inputs a second sustained. (Session 3)
 - [ ] **(Fable)** Reconnect: `room.reconnect` with a grace period so a dropped tab rejoins the same player instead of spawning a new one.
-- [ ] Mobile sanity check: open the client on a phone over the LAN. It should render and show the HUD even though there is no touch input yet.
-- [ ] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive").
+- [x] Mobile sanity check: open the client on a phone over the LAN. It should render and show the HUD even though there is no touch input yet. (Session 4: emulated phones in `tests/mobile.e2e.ts`; the top HUD panels overlapped on portrait and are fixed)
+- [x] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive"). (Session 5)
 - [ ] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day.
 
 ## Phase 1: combat slice (next)

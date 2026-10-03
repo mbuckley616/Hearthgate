@@ -45,6 +45,20 @@ export const GOBLIN = {
   respawnMs: 2500
 } as const;
 
+/**
+ * Hit feedback, client-side presentation only (it never feeds back into the sim).
+ * Landing a hit nudges the camera a little toward the goblin; taking one shoves it
+ * harder, away. Short enough to read as impact rather than camera shake.
+ */
+export const HIT_FEEDBACK = {
+  dealtNudgeM: 0.12,
+  dealtNudgeMs: 110,
+  takenNudgeM: 0.32,
+  takenNudgeMs: 180,
+  /** Volume for hits that do not involve you, relative to your own (0..1). */
+  othersVolume: 0.35
+} as const;
+
 export const SPAWN_POINTS = [
   { x: -3, z: 3 },
   { x: 3, z: 3 },
@@ -55,6 +69,17 @@ export const SPAWN_POINTS = [
   { x: 0, z: 6 },
   { x: 0, z: -6 }
 ] as const;
+
+/**
+ * Server-side input flood limit, a token bucket per client. An honest client sends
+ * TICK_RATE (20) inputs a second; the refill sits above that so ordinary jitter never
+ * trips it, and the burst lets a client that stalled for a second dump its backlog.
+ * Only a sustained rate above `ratePerSec` drains the bucket and gets the client dropped.
+ */
+export const INPUT_LIMIT = {
+  ratePerSec: 25,
+  burst: 25
+} as const;
 
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
@@ -175,6 +200,28 @@ export function isValidInput(v: unknown): v is InputFrame {
     typeof f.attack === "boolean" &&
     typeof f.dodge === "boolean"
   );
+}
+
+export interface InputBucket {
+  tokens: number;
+  lastAt: number;
+}
+
+export function createInputBucket(now: number): InputBucket {
+  return { tokens: INPUT_LIMIT.burst, lastAt: now };
+}
+
+/**
+ * Counts one received input message against the bucket. Returns false once the client
+ * has sent more than INPUT_LIMIT allows; the caller decides what to do (the server drops them).
+ * `now` is the arrival time in ms, from whatever clock the caller owns.
+ */
+export function takeInputToken(b: InputBucket, now: number): boolean {
+  const elapsed = Math.max(0, now - b.lastAt);
+  b.lastAt = now;
+  b.tokens = Math.min(INPUT_LIMIT.burst, b.tokens + (elapsed / 1000) * INPUT_LIMIT.ratePerSec);
+  b.tokens -= 1;
+  return b.tokens >= 0;
 }
 
 export function clampToArena(o: { x: number; z: number }, radius: number): void {

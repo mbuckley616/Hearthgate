@@ -5,7 +5,8 @@
  * of them with inputs for a second, and checks that:
  *   1. both clients see two players;
  *   2. the driven player moved on the server and the other client saw it;
- *   3. the goblin left idle and started chasing.
+ *   3. the goblin left idle and started chasing;
+ *   4. a third client flooding inputs at 80 a second is dropped, and the others stay.
  *
  * Run: npm run test:net
  */
@@ -90,6 +91,23 @@ async function main() {
     console.log(
       `ok: 2 players synced, Alpha moved ${moved.toFixed(2)} m, Bravo sees x=${aOnB.x.toFixed(2)}, goblin is ${bState.enemy.phase}, server tick ${aState.tick}`
     );
+
+    // Flood: 80 inputs a second sustained must get Charlie dropped with CLOSE_INPUT_FLOOD.
+    const c = await client.joinById(a.roomId, { name: "Charlie" });
+    let closeCode = 0;
+    c.onLeave((code: number) => (closeCode = code));
+    let cseq = 0;
+    const flooder = setInterval(() => {
+      for (let i = 0; i < 4; i++) c.send("input", { seq: ++cseq, dx: 0, dy: 1, attack: false, dodge: false });
+    }, TICK_MS);
+    const floodStart = Date.now();
+    while (!closeCode && Date.now() - floodStart < 4000) await sleep(50);
+    clearInterval(flooder);
+    if (closeCode !== 4001) fail(`flooding client was not dropped (close code ${closeCode || "none"})`);
+    await sleep(200);
+    if (aState.players.size !== 2) fail(`expected 2 players after the drop, got ${aState.players.size}`);
+    if (!a.connection.isOpen || !b.connection.isOpen) fail("an honest client was dropped with the flooder");
+    console.log(`ok: flooder dropped after ${cseq} inputs in ${Date.now() - floodStart} ms, Alpha and Bravo still connected`);
 
     await a.leave();
     await b.leave();

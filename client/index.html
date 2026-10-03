@@ -145,6 +145,15 @@
         .hud-bar {
           width: 140px;
         }
+        /* Portrait phones: the two top panels share ~360 px, so drop the desktop min-width
+           and let the long net line wrap instead of sliding under the health bars. */
+        .hud-panel {
+          min-width: 0;
+          padding: 8px 10px;
+        }
+        .hud-top-right {
+          max-width: 36vw;
+        }
       }
       @media (prefers-reduced-motion: reduce) {
         .hud-fill {
