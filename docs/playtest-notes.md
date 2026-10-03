@@ -25,4 +25,20 @@ Decisions
 
 ## Sessions
 
-(none yet)
+## 2026-10-03: Michael, two tabs on one machine (local, no real network)
+
+Ping (HUD): host 13 ms, friend 15 ms
+Corrections (HUD, after 5 minutes): host 0, friend not recorded
+Session length: 5 min
+
+Gate questions
+1. Does your own movement feel instant? (yes / mostly / no, and what felt late) — Yes, pretty instant.
+2. Do hits land where they look like they land, for you and for the other player? — Yes!
+3. Did anything teleport, rubber-band, or freeze? When? — No, both looked fairly smooth.
+
+Other notes
+- Everything worked fairly well. Michael only wanted to confirm that multiple users can share a session; he is not concerned about testing with other people or machines yet.
+- This was local, so it does not meet the gate's "different networks" condition.
+
+Decisions
+- Gate call pending on the control room.
