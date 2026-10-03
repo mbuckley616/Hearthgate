@@ -5,13 +5,16 @@ import {
   TICK_MS,
   applyInput,
   createEnemy,
+  createInputBucket,
   createPlayer,
   isValidInput,
   neutralInput,
   resolvePlayerAttacks,
   stepEnemy,
   stepRespawns,
+  takeInputToken,
   type EnemySim,
+  type InputBucket,
   type InputFrame,
   type PlayerSim,
   type SimEvent
@@ -26,6 +29,9 @@ import { DungeonState, PlayerState } from "../schema/DungeonState.js";
 const MAX_QUEUED_INPUTS = 12;
 const MAX_INPUTS_PER_TICK = 2;
 
+/** Close code sent to a client dropped for flooding inputs (4000-4999 is the app range). */
+export const CLOSE_INPUT_FLOOD = 4001;
+
 interface JoinOptions {
   name?: string;
 }
@@ -39,6 +45,7 @@ export class DungeonRoom extends Room<DungeonState> {
     tick: 0
   };
   private queues = new Map<string, InputFrame[]>();
+  private buckets = new Map<string, InputBucket>();
   private nextSpawn = 0;
 
   onCreate() {
@@ -47,6 +54,15 @@ export class DungeonRoom extends Room<DungeonState> {
     this.patchRate = TICK_MS;
 
     this.onMessage("input", (client, frame: unknown) => {
+      // Counted before validation so a flood of garbage costs the sender as much as real inputs.
+      const bucket = this.buckets.get(client.sessionId);
+      if (!bucket) return;
+      if (!takeInputToken(bucket, performance.now())) {
+        this.buckets.delete(client.sessionId); // ignore whatever else arrives before the close lands
+        console.log(`[dungeon ${this.roomId}] dropping ${client.sessionId}: input flood`);
+        client.leave(CLOSE_INPUT_FLOOD);
+        return;
+      }
       if (!isValidInput(frame)) return;
       const q = this.queues.get(client.sessionId);
       if (!q) return;
@@ -69,6 +85,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const p = createPlayer(client.sessionId, spawn.x, spawn.z);
     this.sim.players.set(client.sessionId, p);
     this.queues.set(client.sessionId, []);
+    this.buckets.set(client.sessionId, createInputBucket(performance.now()));
 
     const ps = new PlayerState();
     ps.id = client.sessionId;
@@ -85,6 +102,7 @@ export class DungeonRoom extends Room<DungeonState> {
     console.log(`[dungeon ${this.roomId}] ${ps?.name ?? client.sessionId} left`);
     this.sim.players.delete(client.sessionId);
     this.queues.delete(client.sessionId);
+    this.buckets.delete(client.sessionId);
     this.state.players.delete(client.sessionId);
   }
 
