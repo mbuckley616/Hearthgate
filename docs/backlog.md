@@ -15,7 +15,7 @@ Gate: two people on different networks fight the goblin together and both say it
 - [x] Input rate limiting on the server: drop clients that send more than 25 inputs a second sustained. (Session 3)
 - [ ] **(Fable)** Reconnect: `room.reconnect` with a grace period so a dropped tab rejoins the same player instead of spawning a new one.
 - [x] Mobile sanity check: open the client on a phone over the LAN. It should render and show the HUD even though there is no touch input yet. (Session 4: emulated phones in `tests/mobile.e2e.ts`; the top HUD panels overlapped on portrait and are fixed)
-- [ ] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive").
+- [x] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive"). (Session 5)
 - [ ] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day.
 
 ## Phase 1: combat slice (next)

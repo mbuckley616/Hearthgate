@@ -9,6 +9,8 @@ export default defineConfig({
   testMatch: /.*\.e2e\.ts/,
   timeout: 60_000,
   retries: 0,
+  // Every test joins the same dungeon room (joinOrCreate), so parallel tests would see each other.
+  workers: 1,
   use: {
     baseURL: "http://localhost:5173",
     headless: true,

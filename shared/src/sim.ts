@@ -45,6 +45,20 @@ export const GOBLIN = {
   respawnMs: 2500
 } as const;
 
+/**
+ * Hit feedback, client-side presentation only (it never feeds back into the sim).
+ * Landing a hit nudges the camera a little toward the goblin; taking one shoves it
+ * harder, away. Short enough to read as impact rather than camera shake.
+ */
+export const HIT_FEEDBACK = {
+  dealtNudgeM: 0.12,
+  dealtNudgeMs: 110,
+  takenNudgeM: 0.32,
+  takenNudgeMs: 180,
+  /** Volume for hits that do not involve you, relative to your own (0..1). */
+  othersVolume: 0.35
+} as const;
+
 export const SPAWN_POINTS = [
   { x: -3, z: 3 },
   { x: 3, z: 3 },
