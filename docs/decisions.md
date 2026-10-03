@@ -11,6 +11,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-03: Phase 0 gate: call it passed?
+The two-tab local playtest answered yes, yes, no; the gate asks for different networks. The producer recommended B (one more playtest first).
+Michael: **A, passed, on to Phase 1**. (2026-10-03)
+
 ### 2026-10-03: Hosting for remote playtests
 A tunnel by hand (free, only while Michael is present) or a free-tier host deployed from main.
 Michael: free tier. Render (server) plus GitHub Pages (client), deployed on every push to main.

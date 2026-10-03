@@ -4,9 +4,9 @@ Ordered. Top item is next. Move finished items to the devlog, not to a "done" li
 
 Marks: **(Fable)** is a cross-cutting item for the Fable session (the builder skips it); **(Michael)** needs a human; **(design)** needs an answer in `decisions.md` first. Items with no mark are the builder's.
 
-## Phase 0: netcode spike (current)
+## Phase 0: netcode spike (passed 3 Oct 2026; open items carry over)
 
-Gate: two people on different networks fight the goblin together and both say it feels responsive.
+Gate: two people on different networks fight the goblin together and both say it feels responsive. Michael called it passed on the two-tab local playtest. The unchecked items below, including the Fable netcode ones, stay open as carry-over; the builder never takes the Phase 0 (Michael) ones.
 
 - [ ] **(Michael)** First local playtest: two tabs on one machine. Note anything that feels off in `playtest-notes.md`.
 - [ ] **(Michael)** Remote playtest with one friend on the hosted build (see README). Record ping, corrections count from the HUD, and the gate answers.
@@ -18,7 +18,7 @@ Gate: two people on different networks fight the goblin together and both say it
 - [x] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive"). (Session 5)
 - [ ] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day.
 
-## Phase 1: combat slice (next)
+## Phase 1: combat slice (current)
 
 Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is visible.
 

@@ -41,4 +41,4 @@ Other notes
 - This was local, so it does not meet the gate's "different networks" condition.
 
 Decisions
-- Gate call pending on the control room.
+- Gate: passed (2026-10-03). Michael called it on the control room: option A, on to Phase 1. The remaining Phase 0 backlog items (the Fable netcode items) stay open as carry-over.
