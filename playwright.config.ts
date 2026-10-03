@@ -11,7 +11,9 @@ export default defineConfig({
   retries: 0,
   use: {
     baseURL: "http://localhost:5173",
-    headless: true
+    headless: true,
+    // Lets a machine with a preinstalled Chromium (cloud sessions) skip `playwright install`.
+    launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}
   },
   webServer: [
     {
