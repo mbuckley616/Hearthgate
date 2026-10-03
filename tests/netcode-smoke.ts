@@ -10,6 +10,7 @@
  * Run: npm run test:net
  */
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
 import { TICK_MS } from "@hearthgate/shared";
 
@@ -39,8 +40,10 @@ function fail(msg: string): never {
 
 async function main() {
   // Run from the server directory so tsx picks up server/tsconfig.json (experimentalDecorators).
-  const server = spawn("npx", ["tsx", "src/index.ts"], {
-    cwd: new URL("../server/", import.meta.url).pathname,
+  // Launch node directly with the tsx loader rather than "npx tsx": on Windows npx is a .cmd
+  // shim that spawn() cannot exec without a shell, and a shell would orphan the server on kill.
+  const server = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
+    cwd: fileURLToPath(new URL("../server/", import.meta.url)),
     env: { ...process.env, PORT: String(PORT) },
     stdio: ["ignore", "pipe", "pipe"]
   });
