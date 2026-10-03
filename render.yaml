@@ -1,0 +1,34 @@
+# Render blueprint: the game server and the client, both free, both redeployed on
+# every push to main. Connect the repo once at https://dashboard.render.com
+# (New > Blueprint > mbuckley616/Hearthgate > Apply).
+#
+# The server sleeps after 15 idle minutes and takes about a minute to wake. If Render
+# has to rename the server (the name is taken), change VITE_SERVER_URL on the client
+# site to match: Dashboard > hearthgate-client > Environment.
+services:
+  - type: web
+    name: hearthgate
+    runtime: node
+    plan: free
+    region: ohio
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm run start:server
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+  - type: web
+    name: hearthgate-client
+    runtime: static
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: client/dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_SERVER_URL
+        value: wss://hearthgate.onrender.com

@@ -2,18 +2,21 @@
 
 Ordered. Top item is next. Move finished items to the devlog, not to a "done" list here.
 
+Marks: **(Fable)** is a cross-cutting item for the Fable session (the builder skips it); **(Michael)** needs a human; **(design)** needs an answer in `decisions.md` first. Items with no mark are the builder's.
+
 ## Phase 0: netcode spike (current)
 
 Gate: two people on different networks fight the goblin together and both say it feels responsive.
 
-- [ ] First local playtest: two tabs on one machine. Note anything that feels off in `playtest-notes.md`.
-- [ ] Remote playtest with one friend over a tunnel (see README). Record ping, corrections count from the HUD, and the gate answers.
-- [ ] Extrapolate remote players by up to one tick when a snapshot is late, so a stuttering connection does not freeze them.
-- [ ] Clock sync: replace the "latest patch" offset with a min-RTT based estimate so interpolation delay stays constant under jitter.
+- [ ] **(Michael)** First local playtest: two tabs on one machine. Note anything that feels off in `playtest-notes.md`.
+- [ ] **(Michael)** Remote playtest with one friend on the hosted build (see README). Record ping, corrections count from the HUD, and the gate answers.
+- [ ] **(Fable)** Extrapolate remote players by up to one tick when a snapshot is late, so a stuttering connection does not freeze them.
+- [ ] **(Fable)** Clock sync: replace the "latest patch" offset with a min-RTT based estimate so interpolation delay stays constant under jitter.
 - [ ] Input rate limiting on the server: drop clients that send more than 25 inputs a second sustained.
-- [ ] Reconnect: `room.reconnect` with a grace period so a dropped tab rejoins the same player instead of spawning a new one.
+- [ ] **(Fable)** Reconnect: `room.reconnect` with a grace period so a dropped tab rejoins the same player instead of spawning a new one.
 - [ ] Mobile sanity check: open the client on a phone over the LAN. It should render and show the HUD even though there is no touch input yet.
 - [ ] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive").
+- [ ] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day.
 
 ## Phase 1: combat slice (next)
 
@@ -28,6 +31,12 @@ Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is v
 - [ ] Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs.
 - [ ] One hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs.
 - [ ] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients).
+
+## Found in play (the critic)
+
+Confirmed bugs from headless play and the lag lab, one line each with the commit and the steps. The builder takes these before new work in the current phase.
+
+(none yet)
 
 ## Later phases
 

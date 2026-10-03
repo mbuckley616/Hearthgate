@@ -14,7 +14,9 @@ import { Hud } from "./hud";
  */
 
 const params = new URLSearchParams(location.search);
-const defaultEndpoint = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
+// A hosted client bakes its server in at build time (VITE_SERVER_URL); a dev client talks to the same host on 2567.
+const defaultEndpoint: string =
+  import.meta.env.VITE_SERVER_URL || `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
 const endpoint = params.get("server") ?? defaultEndpoint;
 const name = params.get("name") ?? pickName();
 
