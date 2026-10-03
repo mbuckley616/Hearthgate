@@ -1,0 +1,342 @@
+import * as THREE from "three";
+import { ARENA_HALF, GOBLIN, PLAYER } from "@hearthgate/shared";
+import type { Pose } from "./net";
+
+export interface PlayerVisual {
+  hp: number;
+  attacking: boolean; // committed to a swing
+  swingActive: boolean; // the frames right after the hit resolves (flash the arc)
+  dodging: boolean;
+  dead: boolean;
+}
+
+export interface EnemyVisual {
+  hp: number;
+  phase: string;
+  /** 0..1 while winding up, else 0. */
+  windup: number;
+  hitFlash: boolean;
+}
+
+const PALETTE = {
+  sky: 0xdfe9d6,
+  ground: 0x7fa86a,
+  groundDark: 0x6f965b,
+  edge: 0x5c6f4a,
+  goblin: 0x4f8a4f,
+  goblinDark: 0x2f5c2f,
+  telegraph: 0xd9534f,
+  swing: 0xfff1c2
+};
+
+class PlayerMesh {
+  group = new THREE.Group();
+  body: THREE.Mesh;
+  swing: THREE.Mesh;
+  tag: THREE.Sprite;
+  private baseColor: THREE.Color;
+
+  constructor(name: string, color: string) {
+    this.baseColor = new THREE.Color(color);
+    const mat = new THREE.MeshStandardMaterial({ color: this.baseColor, roughness: 0.8 });
+    this.body = new THREE.Mesh(new THREE.CapsuleGeometry(PLAYER.radius * 0.8, 0.9, 4, 10), mat);
+    this.body.position.y = 0.95;
+    this.body.castShadow = true;
+    this.group.add(this.body);
+
+    // A small block in front so the facing direction reads at a glance.
+    const nose = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.2, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9 })
+    );
+    nose.position.set(0, 1.25, PLAYER.radius * 0.95);
+    this.group.add(nose);
+
+    // Attack arc: a flat wedge shown for a few frames when the hit resolves.
+    const arc = new THREE.RingGeometry(0.4, PLAYER.attackRange, 18, 1, -PLAYER.attackArc / 2, PLAYER.attackArc);
+    this.swing = new THREE.Mesh(
+      arc,
+      new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+    );
+    this.swing.rotation.x = -Math.PI / 2;
+    // RingGeometry's theta starts on +x; rotate so the wedge is centred on local +z.
+    this.swing.rotation.z = -Math.PI / 2;
+    this.swing.position.y = 0.05;
+    this.swing.visible = false;
+    this.group.add(this.swing);
+
+    this.tag = makeTag(name, color);
+    this.tag.position.y = 2.25;
+    this.group.add(this.tag);
+  }
+
+  apply(pose: Pose, v: PlayerVisual) {
+    this.group.position.set(pose.x, 0, pose.z);
+    this.group.rotation.y = pose.facing;
+    const mat = this.body.material as THREE.MeshStandardMaterial;
+    if (v.dead) {
+      this.body.rotation.x = Math.PI / 2;
+      this.body.position.y = 0.4;
+      mat.color.copy(this.baseColor).multiplyScalar(0.45);
+    } else {
+      this.body.rotation.x = v.dodging ? 0.5 : 0;
+      this.body.position.y = v.dodging ? 0.8 : 0.95;
+      mat.color.copy(this.baseColor);
+      if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
+    }
+    this.swing.visible = v.swingActive && !v.dead;
+    this.tag.visible = !v.dead;
+  }
+}
+
+class GoblinMesh {
+  group = new THREE.Group();
+  body: THREE.Mesh;
+  telegraph: THREE.Mesh;
+  hpBar: THREE.Sprite;
+
+  constructor() {
+    this.body = new THREE.Mesh(
+      new THREE.ConeGeometry(GOBLIN.radius * 1.1, 1.5, 7),
+      new THREE.MeshStandardMaterial({ color: PALETTE.goblin, roughness: 0.85, flatShading: true })
+    );
+    this.body.position.y = 0.75;
+    this.body.castShadow = true;
+    this.group.add(this.body);
+
+    const eyes = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.12, 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xffe08a })
+    );
+    eyes.position.set(0, 0.95, GOBLIN.radius * 0.75);
+    this.group.add(eyes);
+
+    const wedge = new THREE.RingGeometry(0.3, GOBLIN.attackRange * 1.15, 20, 1, -GOBLIN.attackArc / 2, GOBLIN.attackArc);
+    this.telegraph = new THREE.Mesh(
+      wedge,
+      new THREE.MeshBasicMaterial({ color: PALETTE.telegraph, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+    );
+    this.telegraph.rotation.x = -Math.PI / 2;
+    this.telegraph.rotation.z = -Math.PI / 2;
+    this.telegraph.position.y = 0.04;
+    this.telegraph.visible = false;
+    this.group.add(this.telegraph);
+
+    this.hpBar = makeBar();
+    this.hpBar.position.y = 2.0;
+    this.group.add(this.hpBar);
+  }
+
+  apply(pose: Pose, v: EnemyVisual) {
+    this.group.position.set(pose.x, 0, pose.z);
+    this.group.rotation.y = pose.facing;
+    this.group.visible = v.phase !== "dead";
+    const mat = this.body.material as THREE.MeshStandardMaterial;
+    mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? 0x6aa66a : PALETTE.goblin);
+    this.telegraph.visible = v.phase === "windup";
+    if (v.phase === "windup") {
+      const s = 0.35 + 0.65 * v.windup;
+      this.telegraph.scale.set(s, s, 1);
+      (this.telegraph.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.45 * v.windup;
+      this.body.position.y = 0.75 + 0.25 * v.windup; // a rising crouch reads as "about to hit"
+    } else {
+      this.body.position.y = 0.75;
+    }
+    updateBar(this.hpBar, v.hp / GOBLIN.hp);
+  }
+}
+
+export class View {
+  scene = new THREE.Scene();
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  private players = new Map<string, PlayerMesh>();
+  private goblin = new GoblinMesh();
+  private camTarget = new THREE.Vector3();
+  private camPos = new THREE.Vector3(0, 13, 9);
+  private readonly camOffset = new THREE.Vector3(0, 13, 9);
+
+  constructor(container: HTMLElement) {
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(this.renderer.domElement);
+
+    this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    this.camera.position.copy(this.camPos);
+
+    this.scene.background = new THREE.Color(PALETTE.sky);
+    this.scene.fog = new THREE.Fog(PALETTE.sky, 30, 70);
+
+    const hemi = new THREE.HemisphereLight(0xfff4dc, 0x6b8a52, 0.9);
+    this.scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff0d0, 1.4);
+    sun.position.set(12, 20, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -ARENA_HALF - 2;
+    sun.shadow.camera.right = ARENA_HALF + 2;
+    sun.shadow.camera.top = ARENA_HALF + 2;
+    sun.shadow.camera.bottom = -ARENA_HALF - 2;
+    this.scene.add(sun);
+
+    this.buildArena();
+    this.scene.add(this.goblin.group);
+    this.resize();
+    window.addEventListener("resize", () => this.resize());
+  }
+
+  private buildArena() {
+    const size = ARENA_HALF * 2;
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshStandardMaterial({ color: PALETTE.ground, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+
+    // A wider meadow beyond the arena so the edge is not the end of the world.
+    const meadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(size * 4, size * 4),
+      new THREE.MeshStandardMaterial({ color: PALETTE.groundDark, roughness: 1 })
+    );
+    meadow.rotation.x = -Math.PI / 2;
+    meadow.position.y = -0.02;
+    this.scene.add(meadow);
+
+    const grid = new THREE.GridHelper(size, 20, PALETTE.edge, PALETTE.groundDark);
+    (grid.material as THREE.Material).transparent = true;
+    (grid.material as THREE.Material).opacity = 0.25;
+    grid.position.y = 0.01;
+    this.scene.add(grid);
+
+    // Low stone wall at the arena edge.
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x9a978c, roughness: 0.95, flatShading: true });
+    const wallGeo = new THREE.BoxGeometry(size + 1, 0.6, 0.5);
+    for (const [x, z, rot] of [
+      [0, -ARENA_HALF - 0.25, 0],
+      [0, ARENA_HALF + 0.25, 0],
+      [-ARENA_HALF - 0.25, 0, Math.PI / 2],
+      [ARENA_HALF + 0.25, 0, Math.PI / 2]
+    ] as const) {
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.position.set(x, 0.3, z);
+      wall.rotation.y = rot;
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      this.scene.add(wall);
+    }
+  }
+
+  ensurePlayer(id: string, name: string, color: string) {
+    const existing = this.players.get(id);
+    if (existing) return;
+    const m = new PlayerMesh(name, color);
+    this.players.set(id, m);
+    this.scene.add(m.group);
+  }
+
+  updatePlayer(id: string, pose: Pose, v: PlayerVisual) {
+    this.players.get(id)?.apply(pose, v);
+  }
+
+  removePlayer(id: string) {
+    const m = this.players.get(id);
+    if (!m) return;
+    this.scene.remove(m.group);
+    this.players.delete(id);
+  }
+
+  playerIds(): string[] {
+    return [...this.players.keys()];
+  }
+
+  updateEnemy(pose: Pose, v: EnemyVisual) {
+    this.goblin.apply(pose, v);
+  }
+
+  /** Follow the given point with a raised third-person camera. */
+  follow(x: number, z: number, dtMs: number) {
+    const k = 1 - Math.exp(-dtMs / 120);
+    this.camTarget.lerp(new THREE.Vector3(x, 0.8, z), k);
+    this.camPos.lerp(new THREE.Vector3(x, 0, z).add(this.camOffset), k);
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.camTarget);
+  }
+
+  render() {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+}
+
+function makeTag(name: string, color: string): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d")!;
+  ctx.font = "600 30px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(20, 24, 18, 0.55)";
+  const w = Math.min(240, ctx.measureText(name).width + 28);
+  roundRect(ctx, 128 - w / 2, 10, w, 44, 10);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.fillText(name, 128, 33);
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sprite.scale.set(2.4, 0.6, 1);
+  return sprite;
+}
+
+function makeBar(): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 16;
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sprite.scale.set(1.6, 0.2, 1);
+  sprite.userData.canvas = canvas;
+  sprite.userData.last = -1;
+  return sprite;
+}
+
+function updateBar(sprite: THREE.Sprite, fraction: number) {
+  const f = Math.max(0, Math.min(1, fraction));
+  if (Math.abs(sprite.userData.last - f) < 0.005) return;
+  sprite.userData.last = f;
+  const canvas = sprite.userData.canvas as HTMLCanvasElement;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(20, 24, 18, 0.6)";
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 6);
+  ctx.fill();
+  ctx.fillStyle = f > 0.35 ? "#8fc67a" : "#d96c6c";
+  roundRect(ctx, 2, 2, (canvas.width - 4) * f, canvas.height - 4, 5);
+  ctx.fill();
+  (sprite.material as THREE.SpriteMaterial).map!.needsUpdate = true;
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
