@@ -38,7 +38,7 @@ A browser co-op dungeon crawler with a host-owned village, portals into short ru
 
 ## Shipping
 
-Merging to `main` ships. Render redeploys both services from `render.yaml` on every push to `main`: the server at https://hearthgate.onrender.com (free plan, sleeps after 15 idle minutes, wakes in about a minute) and the client as a static site at https://hearthgate-client.onrender.com, built with the server URL baked in (`VITE_SERVER_URL`). The repo is private, so GitHub Pages is not used. Local dev is unchanged: `npm run dev`, and `?server=` still overrides.
+Merging to `main` ships. Render redeploys both services from `render.yaml` on every push to `main`: the server at https://hearthgate-8lrq.onrender.com (free plan, sleeps after 15 idle minutes, wakes in about a minute) and the client as a static site at https://hearthgate-client.onrender.com, built with the server URL baked in (`VITE_SERVER_URL`). The repo is private, so GitHub Pages is not used. Local dev is unchanged: `npm run dev`, and `?server=` still overrides.
 
 ## The team (cloud routines, each on its own branch with one quiet PR labelled `auto`)
 

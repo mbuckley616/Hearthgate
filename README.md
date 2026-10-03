@@ -52,7 +52,7 @@ Your friend opens `http://<your-lan-ip>:4173/?server=wss://something.trycloudfla
 
 ## Hosted build
 
-Merging to `main` ships. Render runs both halves from `render.yaml` on its free plan: the server at https://hearthgate.onrender.com, which sleeps after 15 idle minutes and wakes in about a minute on the first join, and the client as a static site at https://hearthgate-client.onrender.com with the server URL baked in at build time. The hosted build is what the Phase 0 remote playtest uses; a tunnel (above) still works for a one-off.
+Merging to `main` ships. Render runs both halves from `render.yaml` on its free plan: the server at https://hearthgate-8lrq.onrender.com, which sleeps after 15 idle minutes and wakes in about a minute on the first join, and the client as a static site at https://hearthgate-client.onrender.com with the server URL baked in at build time. The hosted build is what the Phase 0 remote playtest uses; a tunnel (above) still works for a one-off.
 
 ## Scripts
 

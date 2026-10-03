@@ -2,9 +2,9 @@
 # every push to main. Connect the repo once at https://dashboard.render.com
 # (New > Blueprint > mbuckley616/Hearthgate > Apply).
 #
-# The server sleeps after 15 idle minutes and takes about a minute to wake. If Render
-# has to rename the server (the name is taken), change VITE_SERVER_URL on the client
-# site to match: Dashboard > hearthgate-client > Environment.
+# The server sleeps after 15 idle minutes and takes about a minute to wake. Render gave
+# the server the host hearthgate-8lrq.onrender.com (plain "hearthgate" was taken), and the
+# client bakes that in; change VITE_SERVER_URL here if the service is ever recreated.
 services:
   - type: web
     name: hearthgate
@@ -31,4 +31,4 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: VITE_SERVER_URL
-        value: wss://hearthgate.onrender.com
+        value: wss://hearthgate-8lrq.onrender.com
