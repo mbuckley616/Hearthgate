@@ -69,10 +69,11 @@ Through the Slack connector (tools named `slack_*`; load them with ToolSearch).
 
 ## How the netcode works (so you do not break it)
 
-- Server ticks at `TICK_RATE` (20 Hz). Each tick it applies up to two queued inputs per player, resolves attacks, steps the goblin, syncs schema. `patchRate` equals the tick, so clients get one patch per tick.
+- Server ticks at `TICK_RATE` (20 Hz), locked to wall time: a self-scheduling timer runs every tick that is due (`DungeonRoom.pump`, catching up at most four), so simulation time is wall time and not 1% slow as a `setInterval` made it. Each tick it applies up to two queued inputs per player, resolves attacks, steps the goblin, syncs schema and broadcasts the patch itself (`broadcastPatch` at the end of `step`; Colyseus's own patch interval is off because it ran up to a tick behind). Clients get one patch per tick, stamped with the tick's time, leaving within a millisecond of it.
 - Client ticks input at 20 Hz: samples, predicts its own player with `applyInput`, stores the frame in `pending`, sends it.
 - On every patch the client **rewinds** its own player to the server's copy and **replays** all pending frames the server has not applied (`seq > lastSeq`). The difference between where it was drawn and where it now is goes into a decaying visual offset so corrections never pop. Big errors (over `SNAP_DISTANCE`) snap.
-- Other players and the goblin are **interpolated** 100 ms behind the estimated server time between received snapshots. No extrapolation yet (see backlog).
+- Other players and the goblin are **interpolated** 100 ms (`INTERP_DELAY_MS`) behind the client's server clock between received snapshots. No extrapolation yet (see backlog).
+- The **server clock** (`shared/src/clock.ts`, tuned by `CLOCK_SYNC`) is estimated from every stamped message, not from the latest patch: each patch carries its tick's time and each ping reply the server's simulation time including the part of the tick elapsed, so every arrival is a sample `serverTime - recvAt`. The largest sample in a 20 s window (the message with the shortest trip from the server, the path snapshots ride) is the target; the applied offset slews toward it at 10 ms/s and snaps only over 250 ms. So `serverNow()` is server time as it reaches the client on the least-delayed path, and the 100 ms is the whole budget a late snapshot has. Pings (every 250 ms for the first twelve, then once a second) also give the HUD its round trip.
 - The client's "now" for prediction is `predictedTime`, which is server time plus one tick per unconfirmed input. Do not mix it with `performance.now()`.
 
 ## When unsure

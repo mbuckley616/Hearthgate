@@ -18,7 +18,8 @@
     "test": "npm run test -w shared",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm test",
-    "test:net": "tsx tests/netcode-smoke.ts"
+    "test:net": "tsx tests/netcode-smoke.ts",
+    "test:clock": "tsx tests/clock-sync.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

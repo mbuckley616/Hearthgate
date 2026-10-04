@@ -160,6 +160,9 @@ function draw(dt: number) {
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     enemy: { hp: e.hp, phase: e.phase },
     rtt: net.rttMs,
+    minRtt: net.minRttMs,
+    clockOffset: net.clockOffset,
+    snaps: net.snaps,
     tick: net.lastServerTick,
     nudges: view.nudges,
     myHits: hitCount
