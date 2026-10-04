@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ARENA_HALF, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
+import { ARENA_HALF, DOWNS, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
@@ -7,6 +7,10 @@ export interface PlayerVisual {
   attacking: boolean; // committed to a swing
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
   dodging: boolean;
+  /** At zero health, crawling, waiting for a pickup. */
+  downed: boolean;
+  /** Pickup channel progress while downed, 0..1. */
+  pickup: number;
   dead: boolean;
 }
 
@@ -34,6 +38,8 @@ class PlayerMesh {
   body: THREE.Mesh;
   swing: THREE.Mesh;
   tag: THREE.Sprite;
+  /** Ground ring that grows while a teammate picks this player up. */
+  pickupRing: THREE.Mesh;
   private baseColor: THREE.Color;
 
   constructor(name: string, color: string) {
@@ -65,6 +71,15 @@ class PlayerMesh {
     this.swing.visible = false;
     this.group.add(this.swing);
 
+    this.pickupRing = new THREE.Mesh(
+      new THREE.RingGeometry(DOWNS.pickupRange * 0.85, DOWNS.pickupRange, 32),
+      new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    );
+    this.pickupRing.rotation.x = -Math.PI / 2;
+    this.pickupRing.position.y = 0.04;
+    this.pickupRing.visible = false;
+    this.group.add(this.pickupRing);
+
     this.tag = makeTag(name, color);
     this.tag.position.y = 2.25;
     this.group.add(this.tag);
@@ -74,10 +89,11 @@ class PlayerMesh {
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
     const mat = this.body.material as THREE.MeshStandardMaterial;
-    if (v.dead) {
+    if (v.dead || v.downed) {
+      // Lying down; the downed keep their colour (still in the fight), the dead go dark.
       this.body.rotation.x = Math.PI / 2;
       this.body.position.y = 0.4;
-      mat.color.copy(this.baseColor).multiplyScalar(0.45);
+      mat.color.copy(this.baseColor).multiplyScalar(v.dead ? 0.45 : 0.8);
     } else {
       this.body.rotation.x = v.dodging ? 0.5 : 0;
       this.body.position.y = v.dodging ? 0.8 : 0.95;
@@ -86,6 +102,9 @@ class PlayerMesh {
     }
     this.swing.visible = v.swingActive && !v.dead;
     this.tag.visible = !v.dead;
+    // Grows from the player outward as the pickup channel fills.
+    this.pickupRing.visible = v.downed && v.pickup > 0;
+    if (this.pickupRing.visible) this.pickupRing.scale.setScalar(0.15 + 0.85 * v.pickup);
   }
 }
 

@@ -23,13 +23,14 @@ Gate: two people on different networks fight the goblin together and both say it
 
 Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is visible.
 
-- [ ] Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps.
-- [ ] Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon.
-- [ ] Posture, parry window, block from The Old Gates, simplified for crowds.
+- [ ] **(design)** Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
+- [ ] **(design)** Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon. Builds on the gear lift above. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
+- [ ] **(design)** Posture, parry window, block from The Old Gates, simplified for crowds. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
 - [ ] State system: Soaked, Staggered, Marked, Burning, Rooted, Chilled, with combo payoffs that scale by distinct contributors.
 - [ ] Three ability slots per player; first ability per style: Cleave, Arrow rain, Magic missile.
-- [ ] Downs with a bleed-out timer, free pickup, Revive Draught consumable.
-- [ ] Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs.
+- [x] Downs with a bleed-out timer and free pickup. (Session 7: 30 s bleed-out, 1.2 m/s crawl, 1.5 s proximity pickup at 40 hp, dead until the room clears, wipe resets the fight)
+- [ ] **(design)** Revive Draught consumable: a Phase 1 stand-in counter, or wait for the Phase 3 item ledger (decisions.md, Pending, 2026-10-04).
+- [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
 - [ ] One hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs.
 - [ ] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients).
 

@@ -40,6 +40,8 @@ export interface RemotePlayer {
   name: string;
   color: string;
   hp: number;
+  downedUntil: number;
+  pickupMs: number;
   attackUntil: number;
   attackHitAt: number;
   dodgeUntil: number;
@@ -198,12 +200,14 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, attackUntil: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, attackUntil: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
       r.color = p.color;
       r.hp = p.hp;
+      r.downedUntil = p.downedUntil;
+      r.pickupMs = p.pickupMs;
       r.attackUntil = p.attackUntil;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
@@ -241,6 +245,9 @@ export class Net {
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
     me.respawnAt = p.respawnAt;
+    me.downedUntil = p.downedUntil;
+    me.pickupMs = p.pickupMs;
+    me.pickupBy = p.pickupBy;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

@@ -16,6 +16,7 @@ import {
   neutralInput,
   resolvePlayerAttacks,
   stepEnemy,
+  stepDowns,
   stepRespawns,
   takeInputToken
 } from "./sim";
@@ -141,7 +142,7 @@ describe("combat", () => {
     expect(p.hp).toBe(PLAYER.hp);
   });
 
-  it("the goblin's swing hurts a standing player and can kill them", () => {
+  it("the goblin's swing hurts a standing player and downs them; alone, that is a wipe", () => {
     const p = createPlayer("a", 0, 0);
     p.hp = GOBLIN.damage;
     const players = new Map([[p.id, p]]);
@@ -156,7 +157,8 @@ describe("combat", () => {
       events.push(...stepEnemy(e, players, t, TICK_MS));
     }
     expect(p.hp).toBe(0);
-    expect(events.map((x) => x.kind)).toContain("playerDied");
+    expect(events.map((x) => x.kind)).toContain("playerDowned");
+    expect(stepDowns([p], e, t, TICK_MS).map((x) => x.kind)).toEqual(["squadWiped"]);
     expect(stepRespawns([p], t + PLAYER.respawnMs).map((x) => x.kind)).toEqual(["playerRespawned"]);
     expect(p.hp).toBe(PLAYER.hp);
   });

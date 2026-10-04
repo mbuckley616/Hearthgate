@@ -13,7 +13,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { TICK_MS } from "@hearthgate/shared";
+import { DOWNS, TICK_MS } from "@hearthgate/shared";
 
 const PORT = 2599;
 
@@ -108,6 +108,42 @@ async function main() {
     if (aState.players.size !== 2) fail(`expected 2 players after the drop, got ${aState.players.size}`);
     if (!a.connection.isOpen || !b.connection.isOpen) fail("an honest client was dropped with the flooder");
     console.log(`ok: flooder dropped after ${cseq} inputs in ${Date.now() - floodStart} ms, Alpha and Bravo still connected`);
+
+    // Downs: Bravo stands in the goblin's reach until it downs them (seven swings, about
+    // nine seconds), then Alpha walks over and stands still next to them for the pickup.
+    let bseq = 0;
+    const walkTo = (room: any, nextSeq: () => number, tx: number, tz: number, stopAt: number) => {
+      const me = aState.players.get(room.sessionId);
+      const vx = tx - me.x;
+      const vz = tz - me.z;
+      const d = Math.hypot(vx, vz);
+      const k = d > stopAt ? 1 / d : 0;
+      room.send("input", { seq: nextSeq(), dx: vx * k, dy: vz * k, attack: false, dodge: false });
+    };
+    const downStart = Date.now();
+    const bravoWalker = setInterval(() => {
+      const e = aState.enemy;
+      walkTo(b, () => ++bseq, e.x, e.z, 1.2);
+    }, TICK_MS);
+    while (!(aState.players.get(b.sessionId).downedUntil > 0) && Date.now() - downStart < 25000) await sleep(50);
+    clearInterval(bravoWalker);
+    const bDown = aState.players.get(b.sessionId);
+    if (!(bDown.downedUntil > 0) || bDown.hp !== 0) fail(`Bravo was never downed (hp ${bDown.hp})`);
+    const downedIn = Date.now() - downStart;
+
+    const pickStart = Date.now();
+    const alphaWalker = setInterval(() => {
+      const bp = aState.players.get(b.sessionId);
+      walkTo(a, () => ++seq, bp.x, bp.z, DOWNS.pickupRange * 0.6);
+    }, TICK_MS);
+    while (aState.players.get(b.sessionId).hp === 0 && Date.now() - pickStart < 8000) await sleep(50);
+    clearInterval(alphaWalker);
+    await sleep(200);
+    const bUp = bState.players.get(b.sessionId);
+    if (bUp.hp !== DOWNS.pickupHp || bUp.downedUntil !== 0) {
+      fail(`Bravo was not picked up (hp ${bUp.hp}, downedUntil ${bUp.downedUntil})`);
+    }
+    console.log(`ok: Bravo downed after ${downedIn} ms, Alpha picked them up in ${Date.now() - pickStart} ms, Bravo at ${bUp.hp} hp`);
 
     await a.leave();
     await b.leave();

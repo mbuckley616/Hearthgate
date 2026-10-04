@@ -1,4 +1,14 @@
-import { GOBLIN, HIT_FEEDBACK, PLAYER, TICK_MS, type SimEvent } from "@hearthgate/shared";
+import {
+  DOWNS,
+  GOBLIN,
+  HIT_FEEDBACK,
+  PLAYER,
+  TICK_MS,
+  isDead,
+  isDowned,
+  type PlayerSim,
+  type SimEvent
+} from "@hearthgate/shared";
 import { Input } from "./input";
 import { Net } from "./net";
 import { View } from "./render";
@@ -100,7 +110,9 @@ function draw(dt: number) {
     attacking: now < me.attackUntil,
     swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
     dodging: now < me.dodgeUntil,
-    dead: me.hp <= 0
+    downed: isDowned(me),
+    pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
+    dead: isDead(me)
   });
   view.follow(myPose.x, myPose.z, dt);
 
@@ -117,7 +129,9 @@ function draw(dt: number) {
       attacking: drawT < r.attackUntil,
       swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
       dodging: drawT < r.dodgeUntil,
-      dead: r.hp <= 0
+      downed: r.hp <= 0 && r.downedUntil > 0,
+      pickup: r.downedUntil > 0 ? clamp01(r.pickupMs / DOWNS.pickupMs) : 0,
+      dead: r.hp <= 0 && r.downedUntil === 0
     });
   }
   for (const id of view.playerIds()) if (!live.has(id)) view.removePlayer(id);
@@ -141,7 +155,7 @@ function draw(dt: number) {
     myHp: me.hp,
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
-    respawnIn: me.hp <= 0 && me.respawnAt > 0 ? Math.max(0, me.respawnAt - now) : 0,
+    banner: downBanner(me, now),
     enemyHp: e.hp,
     enemyMaxHp: GOBLIN.hp,
     enemyPhase: e.phase,
@@ -177,11 +191,29 @@ function describeEvent(e: SimEvent): string {
       return e.killerId === net.sessionId ? "You felled the goblin" : `${nameOf(e.killerId)} felled the goblin`;
     case "enemyHit":
       return e.targetId === net.sessionId ? `The goblin hit you for ${e.damage}` : `The goblin hit ${nameOf(e.targetId)}`;
+    case "playerDowned":
+      return e.playerId === net.sessionId ? "You went down" : `${nameOf(e.playerId)} is down: get next to them`;
+    case "playerPickedUp":
+      if (e.byId === "") return e.playerId === net.sessionId ? "Room clear: back on your feet" : `${nameOf(e.playerId)} is back up`;
+      if (e.byId === net.sessionId) return `You picked up ${nameOf(e.playerId)}`;
+      return e.playerId === net.sessionId ? `${nameOf(e.byId)} picked you up` : `${nameOf(e.byId)} picked up ${nameOf(e.playerId)}`;
     case "playerDied":
-      return e.playerId === net.sessionId ? "You went down" : `${nameOf(e.playerId)} went down`;
+      return e.playerId === net.sessionId ? "You bled out" : `${nameOf(e.playerId)} bled out`;
+    case "squadWiped":
+      return "The squad is down. Regrouping";
     case "playerRespawned":
       return e.playerId === net.sessionId ? "Back on your feet" : `${nameOf(e.playerId)} is back`;
   }
+}
+
+function downBanner(me: PlayerSim, now: number): string {
+  if (isDowned(me)) {
+    if (me.pickupMs > 0) return `Being picked up ${Math.round((100 * me.pickupMs) / DOWNS.pickupMs)}%`;
+    return `Down. Bleeding out in ${Math.ceil(Math.max(0, me.downedUntil - now) / 1000)}. Crawl to a friend`;
+  }
+  if (!isDead(me)) return "";
+  if (me.respawnAt > 0) return `Back in ${Math.ceil(Math.max(0, me.respawnAt - now) / 1000)}`;
+  return "Out of this fight. Back when the goblin falls";
 }
 
 function nameOf(id: string): string {

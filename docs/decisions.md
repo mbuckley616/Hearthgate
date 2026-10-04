@@ -7,7 +7,16 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
-(none)
+### 2026-10-04: The builder cannot read The Old Gates (builder, Session 7)
+Four Phase 1 items lift code from The Old Gates (gear and weapons, weapon classes, posture/parry/block, the Charger/Pack Leader/Shieldbearer roster). The builder's cloud run is not allowed to clone `mbuckley616/the-old-gates` (the session's permission check refused it as outside the task), so those four are blocked. The builder took the next item (downs) meanwhile.
+A. Let the builder routine read The Old Gates: add the repo to the routine's sources (or allow the clone), then it lifts the modules as the design doc says. **Recommended**: the design doc's whole case for these items is reuse of tuned, proven numbers.
+B. Copy the relevant Old Gates modules into this repo under `docs/reference/old-gates/` (read-only reference, not built); the builder lifts from there.
+C. Re-author them from the design doc without The Old Gates; faster to unblock, loses the tuning.
+
+### 2026-10-04: Revive Draught before the item ledger exists (builder, Session 7)
+The downs item ends with "Revive Draught consumable". CLAUDE.md rule 3 says items move only through the item and trade service in a transaction, and that service arrives in Phase 3. Session 7 built downs, bleed-out and free pickup, and left the draught out.
+A. Phase 1 stand-in: every player starts each floor with one draught as a plain counter in the sim (not an item, nothing to trade or loot); the ledger replaces it in Phase 3. **Recommended**: the gate needs a party to clear a floor, and a revive for the dead is part of that loop.
+B. Defer the draught to Phase 3, when it can be a real item; Phase 1 has pickup only.
 
 ## Answered
 

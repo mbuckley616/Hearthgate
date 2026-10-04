@@ -32,6 +32,25 @@ export const PLAYER = {
   respawnMs: 3000
 } as const;
 
+/**
+ * Downs (design doc, "Downs, revives and wipes"). A player at zero health is downed, not
+ * dead: they crawl and cannot fight while a bleed-out timer runs. A standing teammate who
+ * stays next to them for `pickupMs` picks them up at no cost; walking off, swinging or
+ * dodging breaks the channel and it starts again. The pickup is proximity, not a button,
+ * so it works the same on keyboard, gamepad and a later touch layout. Bleeding out is
+ * dead for the fight: back when the room is clear (the goblin falls) or the squad wipes.
+ */
+export const DOWNS = {
+  /** 30 s to begin with, tuned in playtests (design doc). */
+  bleedOutMs: 30000,
+  crawlSpeed: 1.2, // m/s, a fifth of walking: you can drag yourself to a friend, not flee
+  /** Centre to centre, so about a metre of gap between two capsules. */
+  pickupRange: 2,
+  pickupMs: 1500,
+  /** Health a picked-up player stands with. */
+  pickupHp: 40
+} as const;
+
 export const GOBLIN = {
   hp: 60,
   radius: 0.5,
@@ -143,8 +162,14 @@ export interface PlayerSim {
   attackUntil: number;
   /** Time the current swing's hit resolves (0 when already resolved or not attacking). */
   attackHitAt: number;
-  /** When a dead player comes back (0 when alive). */
+  /** When a dead player comes back (0 when alive, or dead and waiting for the room to clear). */
   respawnAt: number;
+  /** Bleed-out deadline while downed (0 when standing or dead). */
+  downedUntil: number;
+  /** Pickup channel progress while downed, ms; back to 0 when nobody is next to them. */
+  pickupMs: number;
+  /** Who is picking this player up ("" when nobody). */
+  pickupBy: string;
   spawnX: number;
   spawnZ: number;
 }
@@ -168,7 +193,10 @@ export type SimEvent =
   | { kind: "playerHit"; attackerId: string; damage: number; enemyHp: number }
   | { kind: "enemyKilled"; killerId: string }
   | { kind: "enemyHit"; targetId: string; damage: number; targetHp: number }
+  | { kind: "playerDowned"; playerId: string }
+  | { kind: "playerPickedUp"; playerId: string; byId: string }
   | { kind: "playerDied"; playerId: string }
+  | { kind: "squadWiped" }
   | { kind: "playerRespawned"; playerId: string };
 
 export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
@@ -186,6 +214,9 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     attackUntil: 0,
     attackHitAt: 0,
     respawnAt: 0,
+    downedUntil: 0,
+    pickupMs: 0,
+    pickupBy: "",
     spawnX: x,
     spawnZ: z
   };
@@ -262,8 +293,19 @@ export function isAttacking(p: PlayerSim, now: number): boolean {
   return now < p.attackUntil;
 }
 
+/** Standing: has health, can move at full speed and fight. */
 export function isAlive(p: PlayerSim): boolean {
   return p.hp > 0;
+}
+
+/** At zero health with the bleed-out timer running. */
+export function isDowned(p: PlayerSim): boolean {
+  return p.hp <= 0 && p.downedUntil > 0;
+}
+
+/** Bled out, or wiped: out of the fight until the room clears or the squad respawns. */
+export function isDead(p: PlayerSim): boolean {
+  return p.hp <= 0 && p.downedUntil === 0;
 }
 
 /**
@@ -272,7 +314,8 @@ export function isAlive(p: PlayerSim): boolean {
  */
 export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: number): void {
   p.lastSeq = input.seq;
-  if (!isAlive(p)) return;
+  const downed = isDowned(p);
+  if (!isAlive(p) && !downed) return;
 
   const dt = dtMs / 1000;
   let dx = input.dx;
@@ -283,6 +326,17 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     dz /= len;
   }
   const moving = len > 0.001;
+
+  if (downed) {
+    // A crawl: slow movement, no swing, no dodge.
+    if (moving) {
+      p.x += dx * DOWNS.crawlSpeed * dt;
+      p.z += dz * DOWNS.crawlSpeed * dt;
+      p.facing = Math.atan2(dx, dz);
+    }
+    clampToArena(p, PLAYER.radius);
+    return;
+  }
 
   const attacking = isAttacking(p, now);
   const dodging = isDodging(p, now);
@@ -344,11 +398,12 @@ export function inCone(
 
 /** Resolve any player swings whose hit time has arrived. Server only. */
 export function resolvePlayerAttacks(
-  players: Iterable<PlayerSim>,
+  playerList: Iterable<PlayerSim>,
   enemy: EnemySim,
   now: number
 ): SimEvent[] {
   const events: SimEvent[] = [];
+  const players = [...playerList];
   for (const p of players) {
     if (p.attackHitAt === 0 || now < p.attackHitAt) continue;
     p.attackHitAt = 0;
@@ -362,7 +417,120 @@ export function resolvePlayerAttacks(
       enemy.phaseUntil = now + GOBLIN.respawnMs;
       enemy.targetId = "";
       events.push({ kind: "enemyKilled", killerId: p.id });
+      events.push(...recoverOnClear(players, now));
     }
+  }
+  return events;
+}
+
+/**
+ * The room is clear: the downed get up where they lie and the dead come back at their
+ * spawn after the usual respawn time, all for free (design doc).
+ */
+function recoverOnClear(players: readonly PlayerSim[], now: number): SimEvent[] {
+  const events: SimEvent[] = [];
+  for (const q of players) {
+    if (isDowned(q)) {
+      standUp(q, DOWNS.pickupHp);
+      events.push({ kind: "playerPickedUp", playerId: q.id, byId: "" });
+    } else if (isDead(q) && q.respawnAt === 0) {
+      q.respawnAt = now + PLAYER.respawnMs;
+    }
+  }
+  return events;
+}
+
+function standUp(p: PlayerSim, hp: number): void {
+  p.hp = hp;
+  p.downedUntil = 0;
+  p.pickupMs = 0;
+  p.pickupBy = "";
+}
+
+/** Zero health: down the player, cancel what they were doing. */
+export function downPlayer(p: PlayerSim, now: number): void {
+  p.hp = 0;
+  p.downedUntil = now + DOWNS.bleedOutMs;
+  p.pickupMs = 0;
+  p.pickupBy = "";
+  p.attackUntil = 0;
+  p.attackHitAt = 0;
+  p.dodgeUntil = 0;
+}
+
+/** A standing teammate close enough to pick `p` up, and not busy swinging or dodging. */
+function pickupHelper(p: PlayerSim, players: readonly PlayerSim[], now: number): PlayerSim | null {
+  // Keep the current helper while they qualify, so two friends do not trade the channel.
+  let best: PlayerSim | null = null;
+  let bestD = Infinity;
+  for (const q of players) {
+    if (q === p || !isAlive(q) || isAttacking(q, now) || isDodging(q, now)) continue;
+    const d = Math.hypot(q.x - p.x, q.z - p.z);
+    if (d > DOWNS.pickupRange) continue;
+    if (q.id === p.pickupBy) return q;
+    if (d < bestD) {
+      bestD = d;
+      best = q;
+    }
+  }
+  return best;
+}
+
+/**
+ * Advance downs by one tick: pickup channels, bleed-outs, and the wipe. Server only.
+ * Run after the enemy has stepped, so a player downed this tick is counted.
+ */
+export function stepDowns(
+  playerList: Iterable<PlayerSim>,
+  enemy: EnemySim,
+  now: number,
+  dtMs: number
+): SimEvent[] {
+  const events: SimEvent[] = [];
+  const players = [...playerList];
+  for (const p of players) {
+    if (!isDowned(p)) continue;
+    const helper = pickupHelper(p, players, now);
+    if (helper) {
+      if (helper.id !== p.pickupBy) p.pickupMs = 0;
+      p.pickupBy = helper.id;
+      p.pickupMs += dtMs;
+      if (p.pickupMs >= DOWNS.pickupMs) {
+        standUp(p, DOWNS.pickupHp);
+        events.push({ kind: "playerPickedUp", playerId: p.id, byId: helper.id });
+        continue;
+      }
+    } else {
+      p.pickupMs = 0;
+      p.pickupBy = "";
+    }
+    if (now >= p.downedUntil) {
+      p.downedUntil = 0;
+      p.pickupMs = 0;
+      p.pickupBy = "";
+      p.respawnAt = 0; // dead for the fight: waits for the room to clear or a wipe
+      events.push({ kind: "playerDied", playerId: p.id });
+    }
+  }
+
+  // Wipe: nobody standing. Everyone comes back at their spawn and the fight resets.
+  const wiped =
+    players.length > 0 && players.every((p) => !isAlive(p)) && players.some((p) => p.respawnAt === 0);
+  if (wiped) {
+    for (const p of players) {
+      p.downedUntil = 0;
+      p.pickupMs = 0;
+      p.pickupBy = "";
+      p.respawnAt = now + PLAYER.respawnMs;
+    }
+    enemy.x = ENEMY_SPAWN.x;
+    enemy.z = ENEMY_SPAWN.z;
+    enemy.facing = Math.PI;
+    enemy.hp = GOBLIN.hp;
+    enemy.phase = "idle";
+    enemy.phaseUntil = 0;
+    enemy.targetId = "";
+    events.push({ kind: "squadWiped" });
   }
   return events;
 }
@@ -446,10 +614,8 @@ export function stepEnemy(
           target.hp = Math.max(0, target.hp - GOBLIN.damage);
           events.push({ kind: "enemyHit", targetId: target.id, damage: GOBLIN.damage, targetHp: target.hp });
           if (target.hp === 0) {
-            target.respawnAt = now + PLAYER.respawnMs;
-            target.attackUntil = 0;
-            target.attackHitAt = 0;
-            events.push({ kind: "playerDied", playerId: target.id });
+            downPlayer(target, now);
+            events.push({ kind: "playerDowned", playerId: target.id });
           }
         }
       }
@@ -474,6 +640,9 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.x = p.spawnX;
     p.z = p.spawnZ;
     p.respawnAt = 0;
+    p.downedUntil = 0;
+    p.pickupMs = 0;
+    p.pickupBy = "";
     p.dodgeUntil = 0;
     p.attackUntil = 0;
     p.attackHitAt = 0;

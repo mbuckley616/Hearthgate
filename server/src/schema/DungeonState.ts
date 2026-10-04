@@ -21,6 +21,9 @@ export class PlayerState extends Schema {
   @type("number") attackUntil = 0;
   @type("number") attackHitAt = 0;
   @type("number") respawnAt = 0;
+  @type("number") downedUntil = 0;
+  @type("number") pickupMs = 0;
+  @type("string") pickupBy = "";
 }
 
 export class EnemyState extends Schema {

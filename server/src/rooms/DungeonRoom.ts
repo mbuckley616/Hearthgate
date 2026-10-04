@@ -10,6 +10,7 @@ import {
   isValidInput,
   neutralInput,
   resolvePlayerAttacks,
+  stepDowns,
   stepEnemy,
   stepRespawns,
   takeInputToken,
@@ -172,6 +173,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const events: SimEvent[] = [];
     events.push(...resolvePlayerAttacks(this.sim.players.values(), this.sim.enemy, now));
     events.push(...stepEnemy(this.sim.enemy, this.sim.players, now, TICK_MS));
+    events.push(...stepDowns(this.sim.players.values(), this.sim.enemy, now, TICK_MS));
     events.push(...stepRespawns(this.sim.players.values(), now));
 
     this.syncState();
@@ -211,6 +213,9 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.attackUntil = p.attackUntil;
   ps.attackHitAt = p.attackHitAt;
   ps.respawnAt = p.respawnAt;
+  ps.downedUntil = p.downedUntil;
+  ps.pickupMs = p.pickupMs;
+  ps.pickupBy = p.pickupBy;
 }
 
 function sanitizeName(name: unknown): string {

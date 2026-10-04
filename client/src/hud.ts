@@ -3,7 +3,8 @@ export interface HudData {
   myHp: number;
   myMaxHp: number;
   dead: boolean;
-  respawnIn: number;
+  /** Centre banner while downed or dead ("" when standing). */
+  banner: string;
   enemyHp: number;
   enemyMaxHp: number;
   enemyPhase: string;
@@ -79,8 +80,8 @@ export class Hud {
     this.party.textContent = `${d.players} in the party`;
     this.party.setAttribute("data-players", String(d.players));
     this.net.textContent = `${Math.round(d.rtt)} ms ping, ${d.pending} unconfirmed, ${d.corrections} corrections, room ${d.roomId.slice(0, 6)}`;
-    this.respawn.textContent = d.dead ? `Down. Back in ${Math.ceil(d.respawnIn / 1000)}` : "";
-    this.respawn.style.display = d.dead ? "block" : "none";
+    this.respawn.textContent = d.banner;
+    this.respawn.style.display = d.banner ? "block" : "none";
     const joined = d.events.join("\n");
     if (joined !== this.lastEvents) {
       this.lastEvents = joined;
