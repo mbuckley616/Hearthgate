@@ -28,6 +28,11 @@ import { DungeonState, PlayerState } from "../schema/DungeonState.js";
  */
 const MAX_QUEUED_INPUTS = 12;
 const MAX_INPUTS_PER_TICK = 2;
+/**
+ * Ticks the loop may run back to back to catch up with wall time. Past this the process
+ * stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not replayed.
+ */
+const MAX_CATCHUP_TICKS = 4;
 
 /** Close code sent to a client dropped for flooding inputs (4000-4999 is the app range). */
 export const CLOSE_INPUT_FLOOD = 4001;
@@ -47,11 +52,19 @@ export class DungeonRoom extends Room<DungeonState> {
   private queues = new Map<string, InputFrame[]>();
   private buckets = new Map<string, InputBucket>();
   private nextSpawn = 0;
+  /** Wall time of simulation time zero; tick n is due at epoch + n * TICK_MS. */
+  private epoch = 0;
+  /** Wall time of the last step, so simNow() can place a ping reply inside the tick. */
+  private lastStepAt = 0;
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   onCreate() {
     this.state = new DungeonState();
-    // Patches go out every tick so clients see fresh state as soon as it exists.
-    this.patchRate = TICK_MS;
+    // Patches go out at the end of each step (see step()), not on Colyseus's own patch
+    // interval: that interval runs out of phase with the simulation one and was measured
+    // sending each snapshot about 49 ms after the tick it carried. The client's clock
+    // trusts a snapshot stamped t to leave at server time t, so the automatic one stays off.
+    this.patchRate = 0;
 
     this.onMessage("input", (client, frame: unknown) => {
       // Counted before validation so a flood of garbage costs the sender as much as real inputs.
@@ -71,11 +84,17 @@ export class DungeonRoom extends Room<DungeonState> {
       if (q.length < MAX_QUEUED_INPUTS) q.push(frame);
     });
 
-    this.onMessage("ping", (client, sentAt: number) => {
-      client.send("pong", sentAt);
+    // Clock sync: the client times the round trip and reads its offset from the reply with the shortest trip back.
+    this.onMessage("ping", (client, sentAt: unknown) => {
+      if (typeof sentAt !== "number" || !Number.isFinite(sentAt)) return;
+      client.send("pong", { sentAt, serverTime: this.simNow() });
     });
 
-    this.setSimulationInterval(() => this.step(), TICK_MS);
+    // The tick is locked to wall time rather than run from setInterval: an interval of 50 ms
+    // fires every 50-and-a-bit ms, which made simulation time run about 1% slow, and the
+    // clients' clocks (which assume a second is a second) drifted against it.
+    this.epoch = performance.now();
+    this.pump();
     console.log(`[dungeon ${this.roomId}] created`);
   }
 
@@ -107,11 +126,37 @@ export class DungeonRoom extends Room<DungeonState> {
   }
 
   onDispose() {
+    if (this.timer !== null) clearTimeout(this.timer);
     console.log(`[dungeon ${this.roomId}] disposed`);
+  }
+
+  /** Run every tick that is due by wall time, then sleep until the next one. */
+  private pump() {
+    this.timer = null;
+    const now = performance.now();
+    let due = Math.floor((now - this.epoch) / TICK_MS);
+    if (due - this.sim.tick > MAX_CATCHUP_TICKS) {
+      this.epoch = now - (this.sim.tick + 1) * TICK_MS;
+      due = this.sim.tick + 1;
+    }
+    try {
+      while (this.sim.tick < due) this.step();
+    } catch (err) {
+      console.error(`[dungeon ${this.roomId}] step failed`, err);
+    }
+    const next = this.epoch + (this.sim.tick + 1) * TICK_MS;
+    this.timer = setTimeout(() => this.pump(), Math.max(1, next - performance.now()));
+  }
+
+  /** Simulation time now, including the part of the current tick already elapsed. */
+  private simNow(): number {
+    const sinceStep = this.lastStepAt === 0 ? 0 : Math.min(TICK_MS, performance.now() - this.lastStepAt);
+    return this.sim.tick * TICK_MS + sinceStep;
   }
 
   private step() {
     this.sim.tick++;
+    this.lastStepAt = performance.now();
     const now = this.sim.tick * TICK_MS;
 
     for (const [id, p] of this.sim.players) {
@@ -131,6 +176,7 @@ export class DungeonRoom extends Room<DungeonState> {
 
     this.syncState();
     if (events.length) this.broadcast("events", events);
+    this.broadcastPatch();
   }
 
   private syncState() {

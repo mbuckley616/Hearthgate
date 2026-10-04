@@ -81,6 +81,28 @@ export const INPUT_LIMIT = {
   burst: 25
 } as const;
 
+/**
+ * Client clock sync (see clock.ts). The client pings; the server echoes its simulation
+ * time, and every patch carries its tick's time too. The message with the shortest trip
+ * from server to client in the window is the one least delayed by queueing, so its offset
+ * is the floor the snapshots can be expected to reach, and remote players are drawn
+ * INTERP_DELAY behind that floor. The applied offset slews toward it at
+ * a bounded rate: a remote player drawn against a clock moving `slewMsPerS` runs at most
+ * 1% off speed, which nobody sees, where a jump would show as a skip or a stall.
+ */
+export const CLOCK_SYNC = {
+  /** How long a sample counts, ms. Every patch is a sample too, so the window holds hundreds. */
+  windowMs: 20000,
+  /** Ping cadence: quick at first so the window has a few samples within a second. */
+  pingFastMs: 250,
+  pingFastCount: 12,
+  pingMs: 1000,
+  /** Fastest the applied offset may move, in ms per second of client time. */
+  slewMsPerS: 10,
+  /** A target this far from the applied offset is taken at once (first sample, a tab that slept). */
+  snapMs: 250
+} as const;
+
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
 export const PLAYER_COLORS = [

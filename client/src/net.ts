@@ -1,22 +1,35 @@
 import { Client, Room } from "colyseus.js";
 import {
+  CLOCK_SYNC,
   TICK_MS,
+  addArrivalSample,
+  addClockSample,
   applyInput,
+  createClockSync,
   createPlayer,
+  minRtt,
+  serverTimeAt,
   type EnemyPhase,
   type InputFrame,
   type PlayerSim,
   type SimEvent
 } from "@hearthgate/shared";
 
-/** How far behind the newest server state remote players are drawn. */
-const INTERP_DELAY_MS = 100;
+/**
+ * How far behind the server clock remote players are drawn. The clock (see
+ * @hearthgate/shared clock.ts) tracks server time as it reaches us on the least-delayed
+ * path, so this is also the budget a late snapshot has before the remote player holds.
+ */
+export const INTERP_DELAY_MS = 100;
 const SNAPSHOT_KEEP = 24;
 /** Prediction error larger than this snaps instead of smoothing. */
-const SNAP_DISTANCE = 2.5;
+export const SNAP_DISTANCE = 2.5;
 
 export interface Snapshot {
+  /** Server time the snapshot describes. */
   t: number;
+  /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
+  at: number;
   x: number;
   z: number;
   facing: number;
@@ -56,6 +69,11 @@ export type EventListener = (events: SimEvent[]) => void;
  *    rewound and replayed whenever the server's copy arrives;
  *  - interpolation: everyone else is drawn ~100 ms in the past between two
  *    received snapshots so movement is smooth at 20 updates a second.
+ *
+ * The server clock behind interpolation comes from stamped messages: the server echoes
+ * its simulation time to pings and stamps every patch with its tick, the message with the
+ * shortest trip here in a window sets the offset, and the applied offset slews toward it at
+ * CLOCK_SYNC.slewMsPerS so remote players never skip or stall when a packet is late.
  */
 export class Net {
   room: Room | null = null;
@@ -77,11 +95,13 @@ export class Net {
   lastServerTick = 0;
   /** Count of reconciliations that moved us more than a few centimetres (debug HUD). */
   corrections = 0;
+  /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
+  snaps = 0;
 
-  private clockOffset = 0; // serverTime - performance.now()
-  private hasClock = false;
+  private clock = createClockSync();
+  private pingsSent = 0;
   private listeners: EventListener[] = [];
-  private pingTimer: number | null = null;
+  private pingTimer: ReturnType<typeof setTimeout> | null = null;
 
   async connect(endpoint: string, name: string): Promise<void> {
     const client = new Client(endpoint);
@@ -95,17 +115,37 @@ export class Net {
     room.onMessage("events", (events: SimEvent[]) => {
       for (const l of this.listeners) l(events);
     });
-    room.onMessage("pong", (sentAt: number) => {
-      const rtt = performance.now() - sentAt;
+    room.onMessage("pong", (m: { sentAt: number; serverTime: number }) => {
+      const now = performance.now();
+      const rtt = now - m.sentAt;
       this.rttMs = this.rttMs === 0 ? rtt : this.rttMs * 0.8 + rtt * 0.2;
+      addClockSample(this.clock, m.sentAt, now, m.serverTime);
     });
     room.onLeave(() => {
       this.connected = false;
     });
 
-    this.pingTimer = window.setInterval(() => {
-      if (this.room) this.room.send("ping", performance.now());
-    }, 1000);
+    this.ping();
+  }
+
+  /** Pings quickly at first so the clock has a few samples within a second, then once a second. */
+  private ping() {
+    if (!this.room || !this.connected) return;
+    this.room.send("ping", performance.now());
+    this.pingsSent++;
+    const wait = this.pingsSent < CLOCK_SYNC.pingFastCount ? CLOCK_SYNC.pingFastMs : CLOCK_SYNC.pingMs;
+    this.pingTimer = setTimeout(() => this.ping(), wait);
+  }
+
+  /** Lowest round trip in the clock window (debug handle). */
+  get minRttMs(): number {
+    const m = minRtt(this.clock);
+    return Number.isFinite(m) ? m : 0;
+  }
+
+  /** The clock offset in force: server time minus performance.now() (debug handle). */
+  get clockOffset(): number {
+    return this.clock.offset;
   }
 
   onEvents(listener: EventListener) {
@@ -122,9 +162,12 @@ export class Net {
     this.room.send("input", frame);
   }
 
-  /** Estimated current server time in ms, for drawing remote snapshots. */
+  /**
+   * Estimated server time in ms as its messages reach us, for drawing remote snapshots.
+   * Not for prediction: that uses predictedTime, which counts ticks from the last patch.
+   */
   serverNow(): number {
-    return performance.now() + this.clockOffset;
+    return serverTimeAt(this.clock, performance.now());
   }
 
   /** Where to draw our own player this frame (prediction plus decaying error offset). */
@@ -141,8 +184,10 @@ export class Net {
 
   private onState(state: any) {
     const serverTime = state.tick * TICK_MS;
+    const at = performance.now();
     this.lastServerTick = state.tick;
-    this.updateClock(serverTime);
+    // Every patch is a clock sample too: it left the server at the time it is stamped with.
+    addArrivalSample(this.clock, at, serverTime);
 
     const seen = new Set<string>();
     state.players.forEach((p: any, id: string) => {
@@ -162,7 +207,7 @@ export class Net {
       r.attackUntil = p.attackUntil;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
-      pushSnapshot(r.snaps, { t: serverTime, x: p.x, z: p.z, facing: p.facing });
+      pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
 
@@ -172,18 +217,7 @@ export class Net {
     this.enemy.phaseUntil = e.phaseUntil;
     this.enemy.targetId = e.targetId;
     this.enemy.hitFlashUntil = e.hitFlashUntil;
-    pushSnapshot(this.enemy.snaps, { t: serverTime, x: e.x, z: e.z, facing: e.facing });
-  }
-
-  private updateClock(serverTime: number) {
-    const offset = serverTime - performance.now();
-    if (!this.hasClock || Math.abs(offset - this.clockOffset) > 500) {
-      this.clockOffset = offset;
-      this.hasClock = true;
-    } else {
-      // Only ever let the clock drift toward the "earliest arrival" to stay just behind the server.
-      this.clockOffset = this.clockOffset * 0.95 + offset * 0.05;
-    }
+    pushSnapshot(this.enemy.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
   }
 
   /** Rewind to the server's copy of us and replay every input it has not applied yet. */
@@ -225,13 +259,15 @@ export class Net {
       this.visualErrX += errX;
       this.visualErrZ += errZ;
     } else {
+      this.snaps++;
       this.visualErrX = 0;
       this.visualErrZ = 0;
     }
   }
 
   dispose() {
-    if (this.pingTimer !== null) window.clearInterval(this.pingTimer);
+    if (this.pingTimer !== null) clearTimeout(this.pingTimer);
+    this.connected = false;
     this.room?.leave();
   }
 }
