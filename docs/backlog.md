@@ -32,7 +32,7 @@ Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is v
 - [ ] **(design)** Revive Draught consumable: a Phase 1 stand-in counter, or wait for the Phase 3 item ledger (decisions.md, Pending, 2026-10-04).
 - [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
 - [ ] One hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs.
-- [ ] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients).
+- [x] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients). (Session 9: `STRESS_BOTS`, default 4; 4 and 8 bots both hold 20 patches a second, 51 ms worst gap, every input applied, tick at wall time, on loopback)
 
 ## Found in play (the critic)
 

@@ -6,7 +6,12 @@
  *   1. both clients see two players;
  *   2. the driven player moved on the server and the other client saw it;
  *   3. the goblin left idle and started chasing;
- *   4. a third client flooding inputs at 80 a second is dropped, and the others stay.
+ *   4. a third client flooding inputs at 80 a second is dropped, and the others stay;
+ *   5. a downed player is picked up by a teammate standing next to them;
+ *   6. stress: STRESS_BOTS bots (default 4) in a fresh room walk, swing and dodge at the
+ *      client rate for STRESS_MS; every client sees every bot where the server has it,
+ *      every input is applied, nobody is dropped, patches keep coming at the tick rate
+ *      and the server tick keeps wall time.
  *
  * Run: npm run test:net
  */
@@ -16,6 +21,8 @@ import { Client } from "colyseus.js";
 import { DOWNS, TICK_MS } from "@hearthgate/shared";
 
 const PORT = 2599;
+const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
+const STRESS_MS = Number(process.env.STRESS_MS ?? 5000);
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -147,9 +154,81 @@ async function main() {
 
     await a.leave();
     await b.leave();
+    await sleep(300);
+
+    await stress(client);
   } finally {
     server.kill("SIGTERM");
   }
+}
+
+/** N scripted bots in one fresh room. Each walks a circle at its own phase, swings and dodges. */
+async function stress(client: Client) {
+  const first = await client.create("dungeon", { name: "Bot 1" });
+  const bots = [first];
+  for (let i = 1; i < STRESS_BOTS; i++) bots.push(await client.joinById(first.roomId, { name: `Bot ${i + 1}` }));
+
+  const states: any[] = bots.map(() => null);
+  const patchTimes: number[][] = bots.map(() => []);
+  const closed: number[] = bots.map(() => 0);
+  bots.forEach((r, i) => {
+    r.onStateChange((s: any) => {
+      states[i] = s;
+      patchTimes[i].push(performance.now());
+    });
+    r.onLeave((code: number) => (closed[i] = code));
+  });
+  await sleep(400);
+  for (let i = 0; i < bots.length; i++) {
+    if (states[i]?.players.size !== STRESS_BOTS) fail(`stress: bot ${i + 1} sees ${states[i]?.players.size} players, expected ${STRESS_BOTS}`);
+  }
+
+  const seqs = bots.map(() => 0);
+  const tickStart = states[0].tick;
+  const wallStart = performance.now();
+  for (const t of patchTimes) t.length = 0;
+  const driver = setInterval(() => {
+    bots.forEach((r, i) => {
+      const k = ++seqs[i];
+      const angle = (k / 20) * 1.5 + (i * 2 * Math.PI) / STRESS_BOTS;
+      r.send("input", { seq: k, dx: Math.cos(angle), dy: Math.sin(angle), attack: k % 15 === i, dodge: k % 40 === i });
+    });
+  }, TICK_MS);
+  await sleep(STRESS_MS);
+  clearInterval(driver);
+  const wallMs = performance.now() - wallStart;
+  const ticks = states[0].tick - tickStart;
+  const windowed = patchTimes.map((t) => t.slice());
+  await sleep(300);
+
+  closed.forEach((code, i) => code && fail(`stress: bot ${i + 1} was dropped (close code ${code})`));
+  let worstSpread = 0;
+  bots.forEach((r, i) => {
+    const truth = states[i].players.get(r.sessionId);
+    if (truth.lastSeq < seqs[i] - 3) fail(`stress: server applied seq ${truth.lastSeq} of ${seqs[i]} for bot ${i + 1}`);
+    for (let j = 0; j < bots.length; j++) {
+      const seen = states[j].players.get(r.sessionId);
+      worstSpread = Math.max(worstSpread, Math.hypot(seen.x - truth.x, seen.z - truth.z));
+    }
+  });
+  if (worstSpread > 0.5) fail(`stress: clients disagree on a bot's position by ${worstSpread.toFixed(2)} m`);
+
+  // Patches: one per tick to every client, with no long gaps.
+  const rates = windowed.map((t) => (t.length * 1000) / wallMs);
+  const gaps = windowed.map((t) => t.slice(1).reduce((m, x, k) => Math.max(m, x - t[k]), 0));
+  const minRate = Math.min(...rates);
+  const maxGap = Math.max(...gaps);
+  if (minRate < 0.9 * (1000 / TICK_MS)) fail(`stress: a client got only ${minRate.toFixed(1)} patches a second`);
+  if (maxGap > 4 * TICK_MS) fail(`stress: a client waited ${maxGap.toFixed(0)} ms between patches`);
+  const tickRate = (ticks * TICK_MS) / wallMs;
+  if (Math.abs(tickRate - 1) > 0.05) fail(`stress: the server tick ran at ${tickRate.toFixed(3)} of wall time`);
+
+  console.log(
+    `ok: stress ${STRESS_BOTS} bots for ${(wallMs / 1000).toFixed(1)} s: ${Math.min(...seqs)} inputs each, all applied, ` +
+      `clients agree within ${worstSpread.toFixed(3)} m, patches ${minRate.toFixed(1)}/s min, worst gap ${maxGap.toFixed(0)} ms, ` +
+      `server tick ${tickRate.toFixed(3)} of wall time`
+  );
+  for (const r of bots) await r.leave();
 }
 
 main()
