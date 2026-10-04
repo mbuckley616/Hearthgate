@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CLOCK_SYNC } from "./sim";
-import { addArrivalSample, addClockSample, createClockSync, minRtt, serverTimeAt, stepClock } from "./clock";
+import { CLOCK_SYNC, INTERP, TICK_MS } from "./sim";
+import { addArrivalSample, addClockSample, createClockSync, interpDelayAt, minRtt, remoteTimeAt, serverTimeAt, stepClock } from "./clock";
 
 /** Small seeded PRNG so the simulated network is the same on every run. */
 function mulberry32(seed: number) {
@@ -118,5 +118,126 @@ describe("clock sync", () => {
     // And it never moves faster than the slew limit over any second.
     for (let i = 60; i < settled.length; i++) expect(Math.abs(settled[i] - settled[i - 60])).toBeLessThanOrEqual(CLOCK_SYNC.slewMsPerS + 1e-6);
     expect(minReturn).toBeGreaterThanOrEqual(base - jitter);
+  });
+});
+
+describe("interpolation delay", () => {
+  /**
+   * Feed patches (server time = client arrival + 1000, each `late[k]` ms behind the best
+   * path) and run 60 Hz frames between them, as the client does. Returns the delay seen.
+   */
+  function play(c: ReturnType<typeof createClockSync>, late: number[], from = 10): { delays: number[]; end: number } {
+    const delays: number[] = [];
+    let frame = from;
+    for (let k = 0; k < late.length; k++) {
+      const at = from + k * TICK_MS + late[k];
+      while (frame < at) {
+        delays.push(interpDelayAt(c, frame));
+        frame += 1000 / 60;
+      }
+      addArrivalSample(c, at, from + k * TICK_MS + 1000);
+    }
+    return { delays, end: frame };
+  }
+
+  it("stays at the base on a link whose patches are never more than 50 ms late", () => {
+    const c = createClockSync();
+    const { delays } = play(c, Array.from({ length: 400 }, (_, i) => (i % 5) * 10));
+    // The longest wait for a patch was a tick plus 40 ms; the base covers a tick plus 50.
+    expect(c.late).toBeGreaterThan(20);
+    expect(c.late).toBeLessThanOrEqual(40);
+    expect(c.delayTarget).toBe(INTERP.baseMs);
+    for (const d of delays) expect(d).toBe(INTERP.baseMs);
+  });
+
+  it("follows the longest wait a frame saw, capped, and comes back down when it ages out", () => {
+    const c = createClockSync();
+    const punctual = Array.from({ length: 20 }, () => 0);
+    play(c, [...punctual, 80, ...punctual]); // one patch 80 ms late: a frame waited up to 130 ms
+    expect(c.late).toBeGreaterThan(80 - 17);
+    expect(c.late).toBeLessThanOrEqual(80);
+    expect(c.delayTarget).toBe(c.late + TICK_MS);
+    const { end } = play(c, [300, ...punctual], 10 + 42 * TICK_MS); // a 300 ms stall: capped
+    expect(c.delayTarget).toBe(INTERP.maxMs);
+    // Punctual patches from here on: once the stall has left the window the delay walks back
+    // to the base at the slew rate (35 s of frames: 20 s window plus 10 s of slew).
+    const { delays } = play(c, Array.from({ length: 700 }, () => 0), end);
+    expect(c.late).toBeLessThan(17);
+    expect(c.delayTarget).toBe(INTERP.baseMs);
+    expect(Math.max(...delays)).toBe(INTERP.maxMs);
+    expect(delays[delays.length - 1]).toBe(INTERP.baseMs);
+    for (let i = 60; i < delays.length; i++) expect(Math.abs(delays[i] - delays[i - 60])).toBeLessThanOrEqual(INTERP.slewMsPerS + 1e-6);
+  });
+
+  it("slews the delay at INTERP.slewMsPerS and never jumps, even when the offset snaps", () => {
+    const c = createClockSync();
+    play(c, [0, 0, 0, 300]); // a frame waited 350 ms: asks for the cap
+    expect(c.delayTarget).toBe(INTERP.maxMs);
+    const t0 = 10 + 3 * TICK_MS + 300;
+    const d0 = interpDelayAt(c, t0);
+    expect(interpDelayAt(c, t0 + 1000)).toBeCloseTo(d0 + INTERP.slewMsPerS, 6);
+    expect(interpDelayAt(c, t0 + 2000)).toBeCloseTo(d0 + 2 * INTERP.slewMsPerS, 6);
+    // A new regime 1 s ahead snaps the offset; the delay keeps walking.
+    addArrivalSample(c, t0 + 2050, t0 + 2050 + 2000);
+    expect(stepClock(c, t0 + 2050)).toBe(2000);
+    expect(c.delay).toBeCloseTo(d0 + 2 * INTERP.slewMsPerS + 0.5, 6);
+    // It arrives at the cap within ten seconds and stops there.
+    expect(interpDelayAt(c, t0 + 20000)).toBe(INTERP.maxMs);
+    expect(remoteTimeAt(c, t0 + 20000)).toBe(t0 + 20000 + 2000 - INTERP.maxMs);
+  });
+
+  it("does not read a stall of this client as lateness", () => {
+    const c = createClockSync();
+    play(c, Array.from({ length: 40 }, () => 0));
+    // The page freezes for 400 ms: eight patches arrive together before the next frame runs.
+    const t = 10 + 40 * TICK_MS;
+    for (let k = 0; k < 8; k++) addArrivalSample(c, t + 400, t + k * TICK_MS + 1000);
+    play(c, Array.from({ length: 40 }, () => 0), t + 8 * TICK_MS);
+    expect(c.late).toBeLessThan(17);
+    expect(c.delayTarget).toBe(INTERP.baseMs);
+  });
+
+  it("ends the holds a fixed 100 ms leaves on a 150 ms link with jitter and late packets", () => {
+    // Patches every tick through a link with 75 ms one way, +-25 ms jitter and 2% of
+    // packets 80 ms late. A 60 Hz viewer draws remotes at remoteTimeAt and holds when the
+    // cursor passes the newest snapshot it has. The same stream is scored with the fixed
+    // base delay for comparison.
+    const rng = mulberry32(11);
+    const c = createClockSync();
+    const serverAhead = 50000; // server sim time minus client time
+    const arrivals: { t: number; recvAt: number }[] = [];
+    for (let i = 0; i < 20 * 60; i++) {
+      const t = serverAhead + i * TICK_MS; // server time of the tick
+      const trip = 75 + (rng() * 2 - 1) * 25 + (rng() < 0.02 ? 80 : 0);
+      arrivals.push({ t, recvAt: i * TICK_MS + trip });
+    }
+    // TCP keeps order: a late packet delays the ones behind it.
+    for (let i = 1; i < arrivals.length; i++) arrivals[i].recvAt = Math.max(arrivals[i].recvAt, arrivals[i - 1].recvAt);
+    let newest = -Infinity;
+    let next = 0;
+    let frames = 0;
+    let heldAdaptive = 0;
+    let heldFixed = 0;
+    let maxDelay = 0;
+    const settleMs = CLOCK_SYNC.windowMs + 10000;
+    for (let now = 0; now < 60000; now += 1000 / 60) {
+      while (next < arrivals.length && arrivals[next].recvAt <= now) {
+        addArrivalSample(c, arrivals[next].recvAt, arrivals[next].t);
+        newest = arrivals[next].t;
+        next++;
+      }
+      const cursor = remoteTimeAt(c, now);
+      const fixedCursor = now + c.offset - INTERP.baseMs;
+      if (now < settleMs || newest === -Infinity) continue;
+      frames++;
+      if (cursor > newest) heldAdaptive++;
+      if (fixedCursor > newest) heldFixed++;
+      maxDelay = Math.max(maxDelay, c.delay);
+    }
+    expect(frames).toBeGreaterThan(1000);
+    expect(heldFixed / frames).toBeGreaterThan(0.005); // the problem Session 6 measured
+    expect(heldAdaptive).toBe(0);
+    expect(maxDelay).toBeLessThanOrEqual(INTERP.maxMs);
+    expect(maxDelay).toBeGreaterThan(INTERP.baseMs + 50);
   });
 });

@@ -89,7 +89,7 @@ function startLoops() {
 
 function draw(dt: number) {
   const now = net.predictedTime;
-  const serverNow = net.serverNow();
+  const remoteNow = net.remoteNow();
 
   // Me.
   view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
@@ -111,7 +111,7 @@ function draw(dt: number) {
     view.ensurePlayer(r.id, r.name, r.color);
     const pose = net.remotePose(r);
     if (!pose) continue;
-    const drawT = serverNow - 100;
+    const drawT = remoteNow;
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
@@ -126,7 +126,7 @@ function draw(dt: number) {
   const e = net.enemy;
   const ePose = net.remotePose(e);
   if (ePose) {
-    const drawT = serverNow - 100;
+    const drawT = remoteNow;
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / GOBLIN.windupMs) : 0;
     view.updateEnemy(ePose, { hp: e.hp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil });
   }
@@ -162,6 +162,8 @@ function draw(dt: number) {
     rtt: net.rttMs,
     minRtt: net.minRttMs,
     clockOffset: net.clockOffset,
+    interpDelay: net.interpDelayMs,
+    late: net.lateMs,
     snaps: net.snaps,
     tick: net.lastServerTick,
     nudges: view.nudges,
