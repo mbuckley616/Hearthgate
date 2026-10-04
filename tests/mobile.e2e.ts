@@ -8,7 +8,9 @@ import { devices, expect, test, type Page } from "@playwright/test";
 const PHONES = [
   { label: "Pixel 7 portrait", use: devices["Pixel 7"] },
   { label: "Pixel 7 landscape", use: devices["Pixel 7 landscape"] },
-  { label: "small Android portrait (360 x 640)", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 640 } } }
+  { label: "small Android portrait (360 x 640)", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 640 } } },
+  // Just over the 600 px breakpoint, so the controls hint shows next to the slots (critic, 2026-10-04).
+  { label: "small landscape (640 x 400)", use: { ...devices["Pixel 7"], viewport: { width: 640, height: 400 } } }
 ];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -68,6 +70,27 @@ for (const phone of PHONES) {
       expect(b.y + b.height).toBeLessThanOrEqual(vp.height);
     }
     expect(overlaps(boxes[0], boxes[1])).toBe(false);
+    // The Revive Draught count lives inside the top-left panel, so the checks above cover its place.
+    await expect(page.locator("#hud-draught")).toHaveText("Revive Draughts: 1");
+
+    // Ability slots: bottom-right, on screen, big enough to become touch buttons, clear of the top panels.
+    const slots = await box(page, "#hud .hud-slots");
+    expect(slots.x + slots.width).toBeLessThanOrEqual(vp.width);
+    expect(slots.y + slots.height).toBeLessThanOrEqual(vp.height);
+    expect(slots.y).toBeGreaterThan(vp.height / 2);
+    for (const b of boxes) expect(overlaps(b, slots)).toBe(false);
+    const slot = await box(page, "#hud .hud-slot[data-slot=\"1\"]");
+    expect(Math.min(slot.width, slot.height)).toBeGreaterThanOrEqual(48);
+    await expect(page.locator("#hud .hud-slot").first()).toContainText("Cleave");
+    // The controls hint (shown over 600 px wide) wraps rather than sliding under the slots.
+    const hint = page.locator("#hud .hud-controls");
+    if (await hint.isVisible()) {
+      const h = await box(page, "#hud .hud-controls");
+      expect(overlaps(h, slots)).toBe(false);
+      expect(h.x + h.width).toBeLessThanOrEqual(vp.width);
+      expect(h.y).toBeGreaterThanOrEqual(0);
+      for (const b of boxes) expect(overlaps(b, h)).toBe(false);
+    }
     await expect(page.locator("#hud-hp-text")).toHaveText(/\d+ \/ \d+/);
 
     // No sideways scroll or zoom-out on a phone.

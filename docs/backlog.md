@@ -23,23 +23,26 @@ Gate: two people on different networks fight the goblin together and both say it
 
 Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is visible.
 
-- [ ] Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps.
-- [ ] Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon.
-- [ ] Posture, parry window, block from The Old Gates, simplified for crowds.
-- [ ] State system: Soaked, Staggered, Marked, Burning, Rooted, Chilled, with combo payoffs that scale by distinct contributors.
-- [ ] Three ability slots per player; first ability per style: Cleave, Arrow rain, Magic missile.
-- [ ] Downs with a bleed-out timer, free pickup, Revive Draught consumable.
-- [ ] Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs.
-- [ ] One hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs.
-- [ ] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients).
+- [ ] **(design)** Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(design)** Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon. Builds on the gear lift above. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(design)** Posture, parry window, block from The Old Gates, simplified for crowds. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [x] State system: Soaked, Staggered, Marked, Burning, Rooted, Chilled, with combo payoffs that scale by distinct contributors. (Session 8: `shared/src/states.ts`; nothing applies a state in play until the abilities land. Left for the abilities and enemy items: carry out chain, spread, freeze and knockdown on other enemies and the AI, sync states to the client and draw them, and the per-state hit sounds)
+- [x] Three ability slots per player, and Cleave for Melee. (Session 10: keys 1 2 3, gamepad Y B RB; Cleave staggers and breaks a windup, 6 s cooldown)
+- [ ] Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff. Needs the weapon classes above.
+- [x] Downs with a bleed-out timer and free pickup. (Session 7: 30 s bleed-out, 1.2 m/s crawl, 1.5 s proximity pickup at 40 hp, dead until the room clears, wipe resets the fight)
+- [x] Revive Draught consumable as a Phase 1 stand-in counter (Michael chose A, 2026-10-04). (Session 13: one a player, E or LB on a dead teammate in reach, stands them up at 50 hp; refilled by a wipe until floors exist, then per floor)
+- [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(Fable)** Warrens groundwork (Michael chose A, 2026-10-04: Fable first, builder after): many enemies instead of one goblin, walls that block movement in the shared sim (prediction runs the same collision), the schema, the client's interpolation, and interest management.
+- [ ] One hand-built Goblin Warrens floor assembled from rooms, with stairs. Objective (Michael chose A, 2026-10-04): clear every room, then the stairs open. Builds on the groundwork above; the Revive Draught refill moves from the wipe to the floor start here.
+- [x] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients). (Session 9: `STRESS_BOTS`, default 4; 4 and 8 bots both hold 20 patches a second, 51 ms worst gap, every input applied, tick at wall time, on loopback)
 
 ## Found in play (the critic)
 
 Confirmed bugs from headless play and the lag lab, one line each with the commit and the steps. The builder takes these before new work in the current phase.
 
 - [ ] Movement speed falls with frame rate (f415a88): the client sends one input per `setInterval` callback and drops the ticks a busy main thread misses, so a 1.5 s hold covers 9.3 m at 60 fps, 5.7 m at 21 fps, 2.1 m at 10 fps. Steps: two tabs in one headless Chromium at 1280 x 720, hold A in one; same cause as `tests/two-players.e2e.ts` failing. Touches the client input loop and the server's per-tick input cap and flood limit, so likely **(Fable)**; see `proposals.md`.
-- [ ] Controls hint covers ability slots 1 and 2 between 601 and ~750 px wide (f415a88): 109 px overlap at 640 x 400 (phone landscape). Steps: open the client at 640 x 400; `docs/critic/2026-10-04-hint-over-slots-640px.png`.
-- [ ] Respawn and wipe teleports count as snaps and corrections (f415a88): `reconcile` counts the server's move to the spawn as a >2.5 m error, so the HUD corrections and `__hg.snaps` rise on every respawn. Steps: two pages, let the goblin down both, compare `__hg.snaps` before and after the respawn.
+- [x] Controls hint covers ability slots 1 and 2 between 601 and ~750 px wide (f415a88): 109 px overlap at 640 x 400 (phone landscape). Steps: open the client at 640 x 400; `docs/critic/2026-10-04-hint-over-slots-640px.png`. (Session 11: the hint wraps left of the slots; 640 x 400 case in `tests/mobile.e2e.ts`)
+- [x] Respawn and wipe teleports count as snaps and corrections (f415a88): `reconcile` counts the server's move to the spawn as a >2.5 m error, so the HUD corrections and `__hg.snaps` rise on every respawn. Steps: two pages, let the goblin down both, compare `__hg.snaps` before and after the respawn. (Session 12: dead to standing, and the first patch, are placements; `tests/reconcile-placement.ts` in `npm run test:net`)
 
 ## Later phases
 

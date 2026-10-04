@@ -3,7 +3,8 @@ export interface HudData {
   myHp: number;
   myMaxHp: number;
   dead: boolean;
-  respawnIn: number;
+  /** Centre banner while downed or dead ("" when standing). */
+  banner: string;
   enemyHp: number;
   enemyMaxHp: number;
   enemyPhase: string;
@@ -13,6 +14,11 @@ export interface HudData {
   corrections: number;
   roomId: string;
   events: string[];
+  /** Revive Draughts left, and the dead teammate one would reach now ("" when none). */
+  draughts: number;
+  reviveTarget: string;
+  /** One entry per ability slot: its name ("" when empty) and seconds until ready. */
+  slots: { name: string; readyIn: number }[];
 }
 
 /** Minimal DOM HUD. Lives in the corners; the centre of the screen stays clear. */
@@ -24,10 +30,12 @@ export class Hud {
   private hpText: HTMLElement;
   private enemyFill: HTMLElement;
   private enemyText: HTMLElement;
+  private draught: HTMLElement;
   private party: HTMLElement;
   private net: HTMLElement;
   private log: HTMLElement;
   private respawn: HTMLElement;
+  private slotEls: HTMLElement[];
   private lastEvents = "";
 
   constructor(root: HTMLElement) {
@@ -39,6 +47,7 @@ export class Hud {
         <div class="hud-bar"><div class="hud-fill hud-fill-player" id="hud-hp-fill"></div><span id="hud-hp-text"></span></div>
         <div class="hud-sub">Goblin</div>
         <div class="hud-bar"><div class="hud-fill hud-fill-enemy" id="hud-enemy-fill"></div><span id="hud-enemy-text"></span></div>
+        <div class="hud-sub hud-draught" id="hud-draught"></div>
       </div>
       <div class="hud-panel hud-top-right">
         <div id="hud-party"></div>
@@ -46,11 +55,16 @@ export class Hud {
       </div>
       <div class="hud-log" id="hud-log"></div>
       <div class="hud-respawn" id="hud-respawn"></div>
+      <div class="hud-bottom-right hud-slots" id="hud-slots">
+        ${[1, 2, 3].map((k) => `<div class="hud-slot" data-slot="${k}"><b>${k}</b><span class="hud-slot-name"></span><span class="hud-slot-cd"></span></div>`).join("")}
+      </div>
       <div class="hud-panel hud-bottom-left hud-controls">
         <span><b>WASD</b> move</span>
         <span><b>J</b> or <b>Space</b> attack</span>
         <span><b>Shift</b> dodge</span>
-        <span>Gamepad: stick, X, A</span>
+        <span><b>1 2 3</b> abilities</span>
+        <span><b>E</b> revive draught</span>
+        <span>Gamepad: stick, X, A; Y B RB; LB</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;
@@ -59,10 +73,12 @@ export class Hud {
     this.hpText = root.querySelector("#hud-hp-text")!;
     this.enemyFill = root.querySelector("#hud-enemy-fill")!;
     this.enemyText = root.querySelector("#hud-enemy-text")!;
+    this.draught = root.querySelector("#hud-draught")!;
     this.party = root.querySelector("#hud-party")!;
     this.net = root.querySelector("#hud-net")!;
     this.log = root.querySelector("#hud-log")!;
     this.respawn = root.querySelector("#hud-respawn")!;
+    this.slotEls = [...root.querySelectorAll<HTMLElement>(".hud-slot")];
   }
 
   setStatus(text: string) {
@@ -76,17 +92,31 @@ export class Hud {
     this.hpText.textContent = `${d.myHp} / ${d.myMaxHp}`;
     this.enemyFill.style.width = `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
     this.enemyText.textContent = d.enemyPhase === "dead" ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
+    this.draught.textContent =
+      d.draughts > 0 && d.reviveTarget
+        ? `E or LB: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
+        : `Revive Draughts: ${d.draughts}`;
+    this.draught.classList.toggle("is-ready", d.draughts > 0 && !!d.reviveTarget);
+    this.draught.setAttribute("data-draughts", String(d.draughts));
     this.party.textContent = `${d.players} in the party`;
     this.party.setAttribute("data-players", String(d.players));
     this.net.textContent = `${Math.round(d.rtt)} ms ping, ${d.pending} unconfirmed, ${d.corrections} corrections, room ${d.roomId.slice(0, 6)}`;
-    this.respawn.textContent = d.dead ? `Down. Back in ${Math.ceil(d.respawnIn / 1000)}` : "";
-    this.respawn.style.display = d.dead ? "block" : "none";
+    this.respawn.textContent = d.banner;
+    this.respawn.style.display = d.banner ? "block" : "none";
     const joined = d.events.join("\n");
     if (joined !== this.lastEvents) {
       this.lastEvents = joined;
       this.log.innerHTML = d.events.map((e) => `<div>${escapeHtml(e)}</div>`).join("");
     }
     this.root.classList.toggle("is-dead", d.dead);
+    d.slots.forEach((s, i) => {
+      const el = this.slotEls[i];
+      if (!el) return;
+      (el.children[1] as HTMLElement).textContent = s.name || "empty";
+      (el.children[2] as HTMLElement).textContent = s.name && s.readyIn > 0 ? String(Math.ceil(s.readyIn)) : "";
+      el.classList.toggle("is-empty", !s.name);
+      el.classList.toggle("is-cooling", !!s.name && s.readyIn > 0);
+    });
   }
 }
 

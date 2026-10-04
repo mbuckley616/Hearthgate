@@ -6,16 +6,27 @@
  *   1. both clients see two players;
  *   2. the driven player moved on the server and the other client saw it;
  *   3. the goblin left idle and started chasing;
- *   4. a third client flooding inputs at 80 a second is dropped, and the others stay.
+ *   4. a third client flooding inputs at 80 a second is dropped, and the others stay;
+ *   5. a downed player is picked up by a teammate standing next to them, and a Cleave
+ *      lands and its cooldown reaches the other client;
+ *   5b. inputs carrying the Revive Draught flag are accepted, and pressing it with no body
+ *      in reach spends nothing; both clients see the count (the revive itself needs a
+ *      30 s bleed-out, so it is proved in shared/src/draught.test.ts);
+ *   6. stress: STRESS_BOTS bots (default 4) in a fresh room walk, swing and dodge at the
+ *      client rate for STRESS_MS; every client sees every bot where the server has it,
+ *      every input is applied, nobody is dropped, patches keep coming at the tick rate
+ *      and the server tick keeps wall time.
  *
  * Run: npm run test:net
  */
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { TICK_MS } from "@hearthgate/shared";
+import { DOWNS, TICK_MS } from "@hearthgate/shared";
 
 const PORT = 2599;
+const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
+const STRESS_MS = Number(process.env.STRESS_MS ?? 5000);
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -109,11 +120,156 @@ async function main() {
     if (!a.connection.isOpen || !b.connection.isOpen) fail("an honest client was dropped with the flooder");
     console.log(`ok: flooder dropped after ${cseq} inputs in ${Date.now() - floodStart} ms, Alpha and Bravo still connected`);
 
+    // Downs: Bravo stands in the goblin's reach until it downs them (seven swings, about
+    // nine seconds), then Alpha walks over and stands still next to them for the pickup.
+    let bseq = 0;
+    const walkTo = (room: any, nextSeq: () => number, tx: number, tz: number, stopAt: number) => {
+      const me = aState.players.get(room.sessionId);
+      const vx = tx - me.x;
+      const vz = tz - me.z;
+      const d = Math.hypot(vx, vz);
+      const k = d > stopAt ? 1 / d : 0;
+      room.send("input", { seq: nextSeq(), dx: vx * k, dy: vz * k, attack: false, dodge: false });
+    };
+    const downStart = Date.now();
+    const bravoWalker = setInterval(() => {
+      const e = aState.enemy;
+      walkTo(b, () => ++bseq, e.x, e.z, 1.2);
+    }, TICK_MS);
+    while (!(aState.players.get(b.sessionId).downedUntil > 0) && Date.now() - downStart < 25000) await sleep(50);
+    clearInterval(bravoWalker);
+    const bDown = aState.players.get(b.sessionId);
+    if (!(bDown.downedUntil > 0) || bDown.hp !== 0) fail(`Bravo was never downed (hp ${bDown.hp})`);
+    const downedIn = Date.now() - downStart;
+
+    const pickStart = Date.now();
+    const alphaWalker = setInterval(() => {
+      const bp = aState.players.get(b.sessionId);
+      walkTo(a, () => ++seq, bp.x, bp.z, DOWNS.pickupRange * 0.6);
+    }, TICK_MS);
+    while (aState.players.get(b.sessionId).hp === 0 && Date.now() - pickStart < 8000) await sleep(50);
+    clearInterval(alphaWalker);
+    await sleep(200);
+    const bUp = bState.players.get(b.sessionId);
+    if (bUp.hp !== DOWNS.pickupHp || bUp.downedUntil !== 0) {
+      fail(`Bravo was not picked up (hp ${bUp.hp}, downedUntil ${bUp.downedUntil})`);
+    }
+    console.log(`ok: Bravo downed after ${downedIn} ms, Alpha picked them up in ${Date.now() - pickStart} ms, Bravo at ${bUp.hp} hp`);
+
+    // Cleave: Alpha walks up to the goblin and presses slot 1; the hit comes back as an event,
+    // and Bravo sees Alpha's slot go on cooldown.
+    const aEvents: any[] = [];
+    a.onMessage("events", (evs: any[]) => aEvents.push(...evs));
+    const cleaveStart = Date.now();
+    let cleaved = false;
+    const cleaver = setInterval(() => {
+      const me = aState.players.get(a.sessionId);
+      const e = aState.enemy;
+      const d = Math.hypot(e.x - me.x, e.z - me.z);
+      if (d > 2) return walkTo(a, () => ++seq, e.x, e.z, 1.5);
+      // Face the goblin with a tiny step, then press the slot.
+      const k = 0.01 / d;
+      a.send("input", { seq: ++seq, dx: (e.x - me.x) * k, dy: (e.z - me.z) * k, attack: false, dodge: false, ability: 1 });
+    }, TICK_MS);
+    while (!(cleaved = aEvents.some((x) => x.kind === "abilityHit" && x.attackerId === a.sessionId)) && Date.now() - cleaveStart < 8000) await sleep(50);
+    clearInterval(cleaver);
+    await sleep(200);
+    if (!cleaved) fail("Alpha's Cleave never landed");
+    const cd = bState.players.get(a.sessionId).readyAt[0];
+    if (!(cd > bState.tick * TICK_MS)) fail(`Bravo does not see Alpha's Cleave cooling down (readyAt ${cd})`);
+    console.log(`ok: Alpha's Cleave landed in ${Date.now() - cleaveStart} ms; Bravo sees it ready in ${((cd - bState.tick * TICK_MS) / 1000).toFixed(1)} s`);
+
+    // Draught: five presses with nobody dead. The frames must be applied, not rejected as
+    // invalid, and the count must stay at one on both clients.
+    for (let i = 0; i < 5; i++) {
+      a.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false, use: true });
+      await sleep(TICK_MS);
+    }
+    await sleep(300);
+    const aDraught = aState.players.get(a.sessionId);
+    if (aDraught.lastSeq !== seq) fail(`the server applied seq ${aDraught.lastSeq} of ${seq}: draught inputs rejected?`);
+    const counts = [aDraught.draughts, bState.players.get(a.sessionId).draughts, bState.players.get(b.sessionId).draughts];
+    if (counts.some((n) => n !== DOWNS.draughtsPerFloor)) fail(`draught counts ${counts.join(", ")}, expected ${DOWNS.draughtsPerFloor} each`);
+    if (aEvents.some((x) => x.kind === "playerRevived")) fail("a draught revived someone with nobody dead");
+    console.log(`ok: draught presses with no body in reach applied and spent nothing; both clients see ${DOWNS.draughtsPerFloor} each`);
+
     await a.leave();
     await b.leave();
+    await sleep(300);
+
+    await stress(client);
   } finally {
     server.kill("SIGTERM");
   }
+}
+
+/** N scripted bots in one fresh room. Each walks a circle at its own phase, swings and dodges. */
+async function stress(client: Client) {
+  const first = await client.create("dungeon", { name: "Bot 1" });
+  const bots = [first];
+  for (let i = 1; i < STRESS_BOTS; i++) bots.push(await client.joinById(first.roomId, { name: `Bot ${i + 1}` }));
+
+  const states: any[] = bots.map(() => null);
+  const patchTimes: number[][] = bots.map(() => []);
+  const closed: number[] = bots.map(() => 0);
+  bots.forEach((r, i) => {
+    r.onStateChange((s: any) => {
+      states[i] = s;
+      patchTimes[i].push(performance.now());
+    });
+    r.onLeave((code: number) => (closed[i] = code));
+  });
+  await sleep(400);
+  for (let i = 0; i < bots.length; i++) {
+    if (states[i]?.players.size !== STRESS_BOTS) fail(`stress: bot ${i + 1} sees ${states[i]?.players.size} players, expected ${STRESS_BOTS}`);
+  }
+
+  const seqs = bots.map(() => 0);
+  const tickStart = states[0].tick;
+  const wallStart = performance.now();
+  for (const t of patchTimes) t.length = 0;
+  const driver = setInterval(() => {
+    bots.forEach((r, i) => {
+      const k = ++seqs[i];
+      const angle = (k / 20) * 1.5 + (i * 2 * Math.PI) / STRESS_BOTS;
+      r.send("input", { seq: k, dx: Math.cos(angle), dy: Math.sin(angle), attack: k % 15 === i, dodge: k % 40 === i });
+    });
+  }, TICK_MS);
+  await sleep(STRESS_MS);
+  clearInterval(driver);
+  const wallMs = performance.now() - wallStart;
+  const ticks = states[0].tick - tickStart;
+  const windowed = patchTimes.map((t) => t.slice());
+  await sleep(300);
+
+  closed.forEach((code, i) => code && fail(`stress: bot ${i + 1} was dropped (close code ${code})`));
+  let worstSpread = 0;
+  bots.forEach((r, i) => {
+    const truth = states[i].players.get(r.sessionId);
+    if (truth.lastSeq < seqs[i] - 3) fail(`stress: server applied seq ${truth.lastSeq} of ${seqs[i]} for bot ${i + 1}`);
+    for (let j = 0; j < bots.length; j++) {
+      const seen = states[j].players.get(r.sessionId);
+      worstSpread = Math.max(worstSpread, Math.hypot(seen.x - truth.x, seen.z - truth.z));
+    }
+  });
+  if (worstSpread > 0.5) fail(`stress: clients disagree on a bot's position by ${worstSpread.toFixed(2)} m`);
+
+  // Patches: one per tick to every client, with no long gaps.
+  const rates = windowed.map((t) => (t.length * 1000) / wallMs);
+  const gaps = windowed.map((t) => t.slice(1).reduce((m, x, k) => Math.max(m, x - t[k]), 0));
+  const minRate = Math.min(...rates);
+  const maxGap = Math.max(...gaps);
+  if (minRate < 0.9 * (1000 / TICK_MS)) fail(`stress: a client got only ${minRate.toFixed(1)} patches a second`);
+  if (maxGap > 4 * TICK_MS) fail(`stress: a client waited ${maxGap.toFixed(0)} ms between patches`);
+  const tickRate = (ticks * TICK_MS) / wallMs;
+  if (Math.abs(tickRate - 1) > 0.05) fail(`stress: the server tick ran at ${tickRate.toFixed(3)} of wall time`);
+
+  console.log(
+    `ok: stress ${STRESS_BOTS} bots for ${(wallMs / 1000).toFixed(1)} s: ${Math.min(...seqs)} inputs each, all applied, ` +
+      `clients agree within ${worstSpread.toFixed(3)} m, patches ${minRate.toFixed(1)}/s min, worst gap ${maxGap.toFixed(0)} ms, ` +
+      `server tick ${tickRate.toFixed(3)} of wall time`
+  );
+  for (const r of bots) await r.leave();
 }
 
 main()

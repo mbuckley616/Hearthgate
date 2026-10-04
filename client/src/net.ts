@@ -8,6 +8,8 @@ import {
   createClockSync,
   createPlayer,
   interpDelayAt,
+  isAlive,
+  isDead,
   minRtt,
   remoteTimeAt,
   serverTimeAt,
@@ -36,7 +38,13 @@ export interface RemotePlayer {
   name: string;
   color: string;
   hp: number;
+  downedUntil: number;
+  pickupMs: number;
+  /** When a dead teammate comes back by themselves (0 while a draught is their only way back). */
+  respawnAt: number;
   attackUntil: number;
+  abilityUntil: number;
+  abilitySlot: number;
   attackHitAt: number;
   dodgeUntil: number;
   snaps: Snapshot[];
@@ -97,6 +105,8 @@ export class Net {
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
   snaps = 0;
 
+  /** False until the first patch places us; that placement is not a correction. */
+  private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
   private listeners: EventListener[] = [];
@@ -216,13 +226,18 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, attackUntil: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
       r.color = p.color;
       r.hp = p.hp;
+      r.downedUntil = p.downedUntil;
+      r.pickupMs = p.pickupMs;
+      r.respawnAt = p.respawnAt;
       r.attackUntil = p.attackUntil;
+      r.abilityUntil = p.abilityUntil;
+      r.abilitySlot = p.abilitySlot;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
       pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
@@ -245,6 +260,7 @@ export class Net {
 
     const beforeX = this.me.x;
     const beforeZ = this.me.z;
+    const wasDead = isDead(this.me);
 
     const me = this.me;
     me.x = p.x;
@@ -258,7 +274,15 @@ export class Net {
     me.dodgeDz = p.dodgeDz;
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
+    me.abilityUntil = p.abilityUntil;
+    me.abilityHitAt = p.abilityHitAt;
+    me.abilitySlot = p.abilitySlot;
+    me.readyAt = Array.from(p.readyAt as Iterable<number>);
     me.respawnAt = p.respawnAt;
+    me.downedUntil = p.downedUntil;
+    me.pickupMs = p.pickupMs;
+    me.pickupBy = p.pickupBy;
+    me.draughts = p.draughts;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;
@@ -267,6 +291,16 @@ export class Net {
       applyInput(me, f, t, TICK_MS);
     }
     this.predictedTime = t;
+
+    // Joining and respawning (dead to standing, after a bleed-out, a cleared room or a wipe)
+    // put us where the server chose: a placement, not a prediction error, so it neither
+    // smooths nor counts, or the HUD and the lag lab would read every respawn as a snap.
+    if (!this.placed || (wasDead && isAlive(me))) {
+      this.placed = true;
+      this.visualErrX = 0;
+      this.visualErrZ = 0;
+      return;
+    }
 
     // Fold the correction into a visual offset that decays, so small errors never pop.
     const errX = beforeX - me.x;
