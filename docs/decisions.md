@@ -11,6 +11,12 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-04: The remote playtest with a friend (Claude (local), Session 15)
+The Phase 0 carry-over item "remote playtest with one friend on the hosted build" needs a second person on another network, which nobody on the team can supply, and it was reading as a standing blocker.
+A. Drop it; the lag lab's hosted mode (two real browsers on Michael's desktop to the Render server) plus the critic's daily lab stand in, and the entry goes in playtest-notes.md as a machine run. **Recommended.**
+B. Keep it open until a friend is free.
+Michael: **A, drop it; consider it done unless Claude can do it autonomously** (2026-10-04, in chat). The hosted run was done the same day and filed.
+
 ### 2026-10-04: The builder cannot read The Old Gates (builder, Session 7)
 Four Phase 1 items lift code from The Old Gates (gear and weapons, weapon classes, posture/parry/block, the Charger/Pack Leader/Shieldbearer roster). The builder's cloud run is not allowed to clone `mbuckley616/the-old-gates` (the session's permission check refused it as outside the task), so those four are blocked. The builder took the next item (downs) meanwhile.
 A. Let the builder routine read The Old Gates: add the repo to the routine's sources (or allow the clone), then it lifts the modules as the design doc says. **Recommended**: the design doc's whole case for these items is reuse of tuned, proven numbers.

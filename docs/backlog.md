@@ -8,8 +8,8 @@ Marks: **(Fable)** is a cross-cutting item for the Fable session (the builder sk
 
 Gate: two people on different networks fight the goblin together and both say it feels responsive. Michael called it passed on the two-tab local playtest. The unchecked items below, including the Fable netcode ones, stay open as carry-over; the builder never takes the Phase 0 (Michael) ones.
 
-- [ ] **(Michael)** First local playtest: two tabs on one machine. Note anything that feels off in `playtest-notes.md`.
-- [ ] **(Michael)** Remote playtest with one friend on the hosted build (see README). Record ping, corrections count from the HUD, and the gate answers.
+- [x] **(Michael)** First local playtest: two tabs on one machine. Note anything that feels off in `playtest-notes.md`. (Filed 2026-10-03: yes, yes, no; the gate was called passed on it)
+- [x] **(Michael)** Remote playtest with one friend on the hosted build (see README). Record ping, corrections count from the HUD, and the gate answers. (Dropped by Michael 2026-10-04: no friend on another network available. Stand-in filed in `playtest-notes.md`: the lag lab's hosted mode from his desktop to Render, 5 min, 19 ms ping, 1 correction, 0 snaps, 0 holds)
 - [ ] **(Fable)** Extrapolate remote players by up to one tick when a snapshot is late, so a stuttering connection does not freeze them.
 - [x] **(Fable)** Clock sync: replace the "latest patch" offset with a min-RTT based estimate so interpolation delay stays constant under jitter. (Session 6: every stamped message is a sample, the shortest trip sets the clock, 10 ms/s slew; the server tick is now locked to wall time and patches leave at the step)
 - [ ] **(Fable)** Interpolation budget (Michael chose C 2026-10-04: adapt 100 ms plus measured jitter, cap 200 ms): keep `INTERP_DELAY_MS` at a fixed 100 ms, raise it, or adapt it to the measured jitter. Session 6 measured 1.3% held frames on a 150 ms link with 25 ms jitter; see `decisions.md`.
@@ -17,7 +17,7 @@ Gate: two people on different networks fight the goblin together and both say it
 - [ ] **(Fable)** Reconnect: `room.reconnect` with a grace period so a dropped tab rejoins the same player instead of spawning a new one.
 - [x] Mobile sanity check: open the client on a phone over the LAN. It should render and show the HUD even though there is no touch input yet. (Session 4: emulated phones in `tests/mobile.e2e.ts`; the top HUD panels overlapped on portrait and are fixed)
 - [x] Hit feedback: a short camera nudge and a sound on `playerHit` and `enemyHit` (readability is part of "feels responsive"). (Session 5)
-- [ ] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day.
+- [x] Lag lab: a latency, jitter and packet-loss shim for the bot harness in `tests/lab/`, reporting corrections and snaps per minute at 0, 50 and 150 ms. The critic owns it and runs it every day. (The critic, 2026-10-04, `npm run lab`; Session 15 added `--server` and `--client` so a desktop can run it against the hosted build over a real network)
 
 ## Phase 1: combat slice (current)
 

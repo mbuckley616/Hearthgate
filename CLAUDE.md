@@ -20,7 +20,7 @@ A browser co-op dungeon crawler with a host-owned village, portals into short ru
 - Small, reviewable changes. One feature or one bug per commit.
 - Before every commit: `npm run check` (typecheck plus shared unit tests). Before committing anything that touches `server/` or `client/src/net.ts`: also `npm run test:net`.
 - End a session by appending a devlog entry (date, what changed, what was learned, what is next) and updating the backlog. Never leave the backlog stale.
-- Playtests go in `docs/playtest-notes.md` with the date, who played, connection types, and the three gate questions answered.
+- Playtests go in `docs/playtest-notes.md` with the date, who played, connection types, and the three gate questions answered. When no second person on another network is available, the machine stand-in is the lag lab against the hosted build from a desktop: `npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com --seconds 300`, filed the same way with the numbers in place of feelings.
 
 ## Model split
 
