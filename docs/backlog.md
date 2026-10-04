@@ -27,7 +27,8 @@ Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is v
 - [ ] **(design)** Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon. Builds on the gear lift above. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
 - [ ] **(design)** Posture, parry window, block from The Old Gates, simplified for crowds. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
 - [x] State system: Soaked, Staggered, Marked, Burning, Rooted, Chilled, with combo payoffs that scale by distinct contributors. (Session 8: `shared/src/states.ts`; nothing applies a state in play until the abilities land. Left for the abilities and enemy items: carry out chain, spread, freeze and knockdown on other enemies and the AI, sync states to the client and draw them, and the per-state hit sounds)
-- [ ] Three ability slots per player; first ability per style: Cleave, Arrow rain, Magic missile.
+- [x] Three ability slots per player, and Cleave for Melee. (Session 10: keys 1 2 3, gamepad Y B RB; Cleave staggers and breaks a windup, 6 s cooldown)
+- [ ] Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff. Needs the weapon classes above.
 - [x] Downs with a bleed-out timer and free pickup. (Session 7: 30 s bleed-out, 1.2 m/s crawl, 1.5 s proximity pickup at 40 hp, dead until the room clears, wipe resets the fight)
 - [ ] **(design)** Revive Draught consumable: a Phase 1 stand-in counter, or wait for the Phase 3 item ledger (decisions.md, Pending, 2026-10-04).
 - [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).

@@ -1,4 +1,4 @@
-import { MapSchema, Schema, type } from "@colyseus/schema";
+import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 /**
  * The synced state. The server copies the plain simulation objects
@@ -20,6 +20,11 @@ export class PlayerState extends Schema {
   @type("number") dodgeDz = 0;
   @type("number") attackUntil = 0;
   @type("number") attackHitAt = 0;
+  @type("number") abilityUntil = 0;
+  @type("number") abilityHitAt = 0;
+  @type("number") abilitySlot = 0;
+  /** Per ability slot, when it is off cooldown. */
+  @type(["number"]) readyAt = new ArraySchema<number>(0, 0, 0);
   @type("number") respawnAt = 0;
   @type("number") downedUntil = 0;
   @type("number") pickupMs = 0;

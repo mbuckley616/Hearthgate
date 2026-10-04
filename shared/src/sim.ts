@@ -12,7 +12,7 @@
  * which matches Three.js `rotation.y`.
  */
 
-import { expireStates, hasState, resolveHit, type StateSet } from "./states";
+import { applyState, expireStates, hasState, resolveHit, type StateSet } from "./states";
 
 export const TICK_RATE = 20;
 export const TICK_MS = 1000 / TICK_RATE; // 50 ms
@@ -161,6 +161,33 @@ export const COMBO = {
   shatterBonus: 40
 } as const;
 
+/**
+ * Abilities (design doc, "Abilities"). Three slots a player; which ability sits in a slot
+ * comes from the weapon's style. Each is a committed move like the sword swing: a windup,
+ * then the hit resolves on the server, then a cooldown on that slot.
+ */
+export const ABILITIES = {
+  /** Melee, slot 1: a wide swing that staggers everything in front. */
+  cleave: {
+    windupMs: 250, // longer than the sword's 150: it is the big swing
+    durationMs: 600,
+    range: 2.8,
+    arc: Math.PI * 1.1, // 198 degrees: "everything in front"
+    damage: 14,
+    cooldownMs: 6000
+  }
+} as const;
+
+export type AbilityId = keyof typeof ABILITIES;
+
+/**
+ * Slots by weapon. Only the sword (Melee) exists until the weapon classes land, so slot 1
+ * is Cleave and slots 2 and 3 are empty; Arrow rain and Magic missile arrive with the bow
+ * and the staff.
+ */
+export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
+export const ABILITY_SLOTS = 3;
+
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
 export const PLAYER_COLORS = [
@@ -183,6 +210,8 @@ export interface InputFrame {
   dy: number;
   attack: boolean;
   dodge: boolean;
+  /** Ability slot pressed this tick, 1..ABILITY_SLOTS, or 0 / absent for none. */
+  ability?: number;
 }
 
 export interface PlayerSim {
@@ -201,6 +230,14 @@ export interface PlayerSim {
   attackUntil: number;
   /** Time the current swing's hit resolves (0 when already resolved or not attacking). */
   attackHitAt: number;
+  /** Time the current ability finishes (0 when none). */
+  abilityUntil: number;
+  /** Time the current ability's hit resolves (0 when resolved or none). */
+  abilityHitAt: number;
+  /** Slot of the current or last ability, 1..ABILITY_SLOTS (0 before the first). */
+  abilitySlot: number;
+  /** Per slot, when it is off cooldown. */
+  readyAt: number[];
   /** When a dead player comes back (0 when alive, or dead and waiting for the room to clear). */
   respawnAt: number;
   /** Bleed-out deadline while downed (0 when standing or dead). */
@@ -232,6 +269,7 @@ export interface EnemySim {
 
 export type SimEvent =
   | { kind: "playerHit"; attackerId: string; damage: number; enemyHp: number }
+  | { kind: "abilityHit"; attackerId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
   | { kind: "enemyKilled"; killerId: string }
   | { kind: "enemyHit"; targetId: string; damage: number; targetHp: number }
   | { kind: "playerDowned"; playerId: string }
@@ -254,6 +292,10 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     dodgeDz: 0,
     attackUntil: 0,
     attackHitAt: 0,
+    abilityUntil: 0,
+    abilityHitAt: 0,
+    abilitySlot: 0,
+    readyAt: [0, 0, 0],
     respawnAt: 0,
     downedUntil: 0,
     pickupMs: 0,
@@ -279,7 +321,7 @@ export function createEnemy(): EnemySim {
 
 /** An input that does nothing, used when a client sent nothing this tick. */
 export function neutralInput(seq: number): InputFrame {
-  return { seq, dx: 0, dy: 0, attack: false, dodge: false };
+  return { seq, dx: 0, dy: 0, attack: false, dodge: false, ability: 0 };
 }
 
 export function isValidInput(v: unknown): v is InputFrame {
@@ -293,7 +335,8 @@ export function isValidInput(v: unknown): v is InputFrame {
     Math.abs(f.dx) <= 1.0001 &&
     Math.abs(f.dy) <= 1.0001 &&
     typeof f.attack === "boolean" &&
-    typeof f.dodge === "boolean"
+    typeof f.dodge === "boolean" &&
+    (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS))
   );
 }
 
@@ -331,8 +374,14 @@ export function isDodging(p: PlayerSim, now: number): boolean {
   return now < p.dodgeUntil;
 }
 
+/** Committed to a sword swing or an ability: no walking, no new swing. */
 export function isAttacking(p: PlayerSim, now: number): boolean {
-  return now < p.attackUntil;
+  return now < p.attackUntil || now < p.abilityUntil;
+}
+
+/** The ability in a slot (1-based) for the weapon the player holds, or "" for an empty slot. */
+export function abilityInSlot(slot: number): AbilityId | "" {
+  return SWORD_SLOTS[slot - 1] ?? "";
 }
 
 /** Standing: has health, can move at full speed and fight. */
@@ -410,8 +459,16 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.facing = Math.atan2(dx, dz);
   }
 
-  // Start a swing. The hit itself resolves later in resolvePlayerAttacks.
-  if (input.attack && !attacking && !isDodging(p, now)) {
+  // Start an ability, or else a swing. Both hits resolve later in resolvePlayerAttacks.
+  const slot = input.ability ?? 0;
+  const ability = slot > 0 ? abilityInSlot(slot) : "";
+  if (ability && !attacking && !isDodging(p, now) && now >= p.readyAt[slot - 1]) {
+    const def = ABILITIES[ability];
+    p.abilityUntil = now + def.durationMs;
+    p.abilityHitAt = now + def.windupMs;
+    p.abilitySlot = slot;
+    p.readyAt[slot - 1] = now + def.cooldownMs;
+  } else if (input.attack && !attacking && !isDodging(p, now)) {
     p.attackUntil = now + PLAYER.attackDurationMs;
     p.attackHitAt = now + PLAYER.attackWindupMs;
   }
@@ -446,7 +503,39 @@ export function resolvePlayerAttacks(
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const players = [...playerList];
+  const kill = (p: PlayerSim) => {
+    if (enemy.hp === 0) {
+      enemy.phase = "dead";
+      enemy.states = {};
+      enemy.phaseUntil = now + GOBLIN.respawnMs;
+      enemy.targetId = "";
+      events.push({ kind: "enemyKilled", killerId: p.id });
+      events.push(...recoverOnClear(players, now));
+    }
+  };
   for (const p of players) {
+    if (p.abilityHitAt !== 0 && now >= p.abilityHitAt) {
+      p.abilityHitAt = 0;
+      const ability = abilityInSlot(p.abilitySlot);
+      if (ability === "cleave" && enemy.phase !== "dead") {
+        const def = ABILITIES.cleave;
+        if (inCone(p, enemy, def.range, def.arc, GOBLIN.radius)) {
+          // An area melee hit: it lands in full on the Rooted, then staggers. A stagger
+          // breaks a windup in progress, which is how Melee answers a telegraph.
+          const { damage } = resolveHit(enemy.states, { damage: def.damage, tags: ["melee", "area"], byId: p.id }, now);
+          applyState(enemy.states, "staggered", p.id, now);
+          enemy.hp = Math.max(0, enemy.hp - damage);
+          enemy.hitFlashUntil = now + 120;
+          const interrupted = enemy.phase === "windup" && enemy.hp > 0;
+          if (interrupted) {
+            enemy.phase = "recover";
+            enemy.phaseUntil = now + GOBLIN.recoverMs;
+          }
+          events.push({ kind: "abilityHit", attackerId: p.id, ability, damage, enemyHp: enemy.hp, interrupted });
+          kill(p);
+        }
+      }
+    }
     if (p.attackHitAt === 0 || now < p.attackHitAt) continue;
     p.attackHitAt = 0;
     if (enemy.phase === "dead") continue;
@@ -456,14 +545,7 @@ export function resolvePlayerAttacks(
     enemy.hp = Math.max(0, enemy.hp - damage);
     enemy.hitFlashUntil = now + 120;
     events.push({ kind: "playerHit", attackerId: p.id, damage, enemyHp: enemy.hp });
-    if (enemy.hp === 0) {
-      enemy.phase = "dead";
-      enemy.states = {};
-      enemy.phaseUntil = now + GOBLIN.respawnMs;
-      enemy.targetId = "";
-      events.push({ kind: "enemyKilled", killerId: p.id });
-      events.push(...recoverOnClear(players, now));
-    }
+    kill(p);
   }
   return events;
 }
@@ -500,6 +582,8 @@ export function downPlayer(p: PlayerSim, now: number): void {
   p.pickupBy = "";
   p.attackUntil = 0;
   p.attackHitAt = 0;
+  p.abilityUntil = 0;
+  p.abilityHitAt = 0;
   p.dodgeUntil = 0;
 }
 
@@ -693,6 +777,9 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.dodgeUntil = 0;
     p.attackUntil = 0;
     p.attackHitAt = 0;
+    p.abilityUntil = 0;
+    p.abilityHitAt = 0;
+    p.readyAt = [0, 0, 0];
     events.push({ kind: "playerRespawned", playerId: p.id });
   }
   return events;

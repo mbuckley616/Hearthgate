@@ -43,6 +43,8 @@ export interface RemotePlayer {
   downedUntil: number;
   pickupMs: number;
   attackUntil: number;
+  abilityUntil: number;
+  abilitySlot: number;
   attackHitAt: number;
   dodgeUntil: number;
   snaps: Snapshot[];
@@ -200,7 +202,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, attackUntil: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -209,6 +211,8 @@ export class Net {
       r.downedUntil = p.downedUntil;
       r.pickupMs = p.pickupMs;
       r.attackUntil = p.attackUntil;
+      r.abilityUntil = p.abilityUntil;
+      r.abilitySlot = p.abilitySlot;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
       pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
@@ -244,6 +248,10 @@ export class Net {
     me.dodgeDz = p.dodgeDz;
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
+    me.abilityUntil = p.abilityUntil;
+    me.abilityHitAt = p.abilityHitAt;
+    me.abilitySlot = p.abilitySlot;
+    me.readyAt = Array.from(p.readyAt as Iterable<number>);
     me.respawnAt = p.respawnAt;
     me.downedUntil = p.downedUntil;
     me.pickupMs = p.pickupMs;

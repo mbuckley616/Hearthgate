@@ -212,6 +212,10 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.dodgeDz = p.dodgeDz;
   ps.attackUntil = p.attackUntil;
   ps.attackHitAt = p.attackHitAt;
+  ps.abilityUntil = p.abilityUntil;
+  ps.abilityHitAt = p.abilityHitAt;
+  ps.abilitySlot = p.abilitySlot;
+  for (let i = 0; i < p.readyAt.length; i++) if (ps.readyAt[i] !== p.readyAt[i]) ps.readyAt[i] = p.readyAt[i];
   ps.respawnAt = p.respawnAt;
   ps.downedUntil = p.downedUntil;
   ps.pickupMs = p.pickupMs;

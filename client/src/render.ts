@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { ARENA_HALF, DOWNS, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
+import { ABILITIES, ARENA_HALF, DOWNS, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
   hp: number;
   attacking: boolean; // committed to a swing
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
+  cleaveActive: boolean; // the same for Cleave's wider arc
   dodging: boolean;
   /** At zero health, crawling, waiting for a pickup. */
   downed: boolean;
@@ -37,6 +38,7 @@ class PlayerMesh {
   group = new THREE.Group();
   body: THREE.Mesh;
   swing: THREE.Mesh;
+  cleave: THREE.Mesh;
   tag: THREE.Sprite;
   /** Ground ring that grows while a teammate picks this player up. */
   pickupRing: THREE.Mesh;
@@ -71,6 +73,17 @@ class PlayerMesh {
     this.swing.visible = false;
     this.group.add(this.swing);
 
+    const c = ABILITIES.cleave;
+    this.cleave = new THREE.Mesh(
+      new THREE.RingGeometry(0.4, c.range, 28, 1, -c.arc / 2, c.arc),
+      new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
+    );
+    this.cleave.rotation.x = -Math.PI / 2;
+    this.cleave.rotation.z = -Math.PI / 2;
+    this.cleave.position.y = 0.06;
+    this.cleave.visible = false;
+    this.group.add(this.cleave);
+
     this.pickupRing = new THREE.Mesh(
       new THREE.RingGeometry(DOWNS.pickupRange * 0.85, DOWNS.pickupRange, 32),
       new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
@@ -101,6 +114,7 @@ class PlayerMesh {
       if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
     }
     this.swing.visible = v.swingActive && !v.dead;
+    this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
     this.tag.visible = !v.dead;
     // Grows from the player outward as the pickup channel fills.
     this.pickupRing.visible = v.downed && v.pickup > 0;

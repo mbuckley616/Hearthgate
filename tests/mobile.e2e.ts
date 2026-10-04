@@ -68,6 +68,16 @@ for (const phone of PHONES) {
       expect(b.y + b.height).toBeLessThanOrEqual(vp.height);
     }
     expect(overlaps(boxes[0], boxes[1])).toBe(false);
+
+    // Ability slots: bottom-right, on screen, big enough to become touch buttons, clear of the top panels.
+    const slots = await box(page, "#hud .hud-slots");
+    expect(slots.x + slots.width).toBeLessThanOrEqual(vp.width);
+    expect(slots.y + slots.height).toBeLessThanOrEqual(vp.height);
+    expect(slots.y).toBeGreaterThan(vp.height / 2);
+    for (const b of boxes) expect(overlaps(b, slots)).toBe(false);
+    const slot = await box(page, "#hud .hud-slot[data-slot=\"1\"]");
+    expect(Math.min(slot.width, slot.height)).toBeGreaterThanOrEqual(48);
+    await expect(page.locator("#hud .hud-slot").first()).toContainText("Cleave");
     await expect(page.locator("#hud-hp-text")).toHaveText(/\d+ \/ \d+/);
 
     // No sideways scroll or zoom-out on a phone.

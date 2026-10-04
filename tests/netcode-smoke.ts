@@ -7,7 +7,8 @@
  *   2. the driven player moved on the server and the other client saw it;
  *   3. the goblin left idle and started chasing;
  *   4. a third client flooding inputs at 80 a second is dropped, and the others stay;
- *   5. a downed player is picked up by a teammate standing next to them;
+ *   5. a downed player is picked up by a teammate standing next to them, and a Cleave
+ *      lands and its cooldown reaches the other client;
  *   6. stress: STRESS_BOTS bots (default 4) in a fresh room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -151,6 +152,29 @@ async function main() {
       fail(`Bravo was not picked up (hp ${bUp.hp}, downedUntil ${bUp.downedUntil})`);
     }
     console.log(`ok: Bravo downed after ${downedIn} ms, Alpha picked them up in ${Date.now() - pickStart} ms, Bravo at ${bUp.hp} hp`);
+
+    // Cleave: Alpha walks up to the goblin and presses slot 1; the hit comes back as an event,
+    // and Bravo sees Alpha's slot go on cooldown.
+    const aEvents: any[] = [];
+    a.onMessage("events", (evs: any[]) => aEvents.push(...evs));
+    const cleaveStart = Date.now();
+    let cleaved = false;
+    const cleaver = setInterval(() => {
+      const me = aState.players.get(a.sessionId);
+      const e = aState.enemy;
+      const d = Math.hypot(e.x - me.x, e.z - me.z);
+      if (d > 2) return walkTo(a, () => ++seq, e.x, e.z, 1.5);
+      // Face the goblin with a tiny step, then press the slot.
+      const k = 0.01 / d;
+      a.send("input", { seq: ++seq, dx: (e.x - me.x) * k, dy: (e.z - me.z) * k, attack: false, dodge: false, ability: 1 });
+    }, TICK_MS);
+    while (!(cleaved = aEvents.some((x) => x.kind === "abilityHit" && x.attackerId === a.sessionId)) && Date.now() - cleaveStart < 8000) await sleep(50);
+    clearInterval(cleaver);
+    await sleep(200);
+    if (!cleaved) fail("Alpha's Cleave never landed");
+    const cd = bState.players.get(a.sessionId).readyAt[0];
+    if (!(cd > bState.tick * TICK_MS)) fail(`Bravo does not see Alpha's Cleave cooling down (readyAt ${cd})`);
+    console.log(`ok: Alpha's Cleave landed in ${Date.now() - cleaveStart} ms; Bravo sees it ready in ${((cd - bState.tick * TICK_MS) / 1000).toFixed(1)} s`);
 
     await a.leave();
     await b.leave();

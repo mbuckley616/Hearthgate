@@ -14,6 +14,8 @@ export interface HudData {
   corrections: number;
   roomId: string;
   events: string[];
+  /** One entry per ability slot: its name ("" when empty) and seconds until ready. */
+  slots: { name: string; readyIn: number }[];
 }
 
 /** Minimal DOM HUD. Lives in the corners; the centre of the screen stays clear. */
@@ -29,6 +31,7 @@ export class Hud {
   private net: HTMLElement;
   private log: HTMLElement;
   private respawn: HTMLElement;
+  private slotEls: HTMLElement[];
   private lastEvents = "";
 
   constructor(root: HTMLElement) {
@@ -47,11 +50,15 @@ export class Hud {
       </div>
       <div class="hud-log" id="hud-log"></div>
       <div class="hud-respawn" id="hud-respawn"></div>
+      <div class="hud-bottom-right hud-slots" id="hud-slots">
+        ${[1, 2, 3].map((k) => `<div class="hud-slot" data-slot="${k}"><b>${k}</b><span class="hud-slot-name"></span><span class="hud-slot-cd"></span></div>`).join("")}
+      </div>
       <div class="hud-panel hud-bottom-left hud-controls">
         <span><b>WASD</b> move</span>
         <span><b>J</b> or <b>Space</b> attack</span>
         <span><b>Shift</b> dodge</span>
-        <span>Gamepad: stick, X, A</span>
+        <span><b>1 2 3</b> abilities</span>
+        <span>Gamepad: stick, X, A; Y B RB</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;
@@ -64,6 +71,7 @@ export class Hud {
     this.net = root.querySelector("#hud-net")!;
     this.log = root.querySelector("#hud-log")!;
     this.respawn = root.querySelector("#hud-respawn")!;
+    this.slotEls = [...root.querySelectorAll<HTMLElement>(".hud-slot")];
   }
 
   setStatus(text: string) {
@@ -88,6 +96,14 @@ export class Hud {
       this.log.innerHTML = d.events.map((e) => `<div>${escapeHtml(e)}</div>`).join("");
     }
     this.root.classList.toggle("is-dead", d.dead);
+    d.slots.forEach((s, i) => {
+      const el = this.slotEls[i];
+      if (!el) return;
+      (el.children[1] as HTMLElement).textContent = s.name || "empty";
+      (el.children[2] as HTMLElement).textContent = s.name && s.readyIn > 0 ? String(Math.ceil(s.readyIn)) : "";
+      el.classList.toggle("is-empty", !s.name);
+      el.classList.toggle("is-cooling", !!s.name && s.readyIn > 0);
+    });
   }
 }
 
