@@ -7,6 +7,8 @@ import {
   applyInput,
   createClockSync,
   createPlayer,
+  isAlive,
+  isDead,
   minRtt,
   serverTimeAt,
   type EnemyPhase,
@@ -102,6 +104,8 @@ export class Net {
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
   snaps = 0;
 
+  /** False until the first patch places us; that placement is not a correction. */
+  private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
   private listeners: EventListener[] = [];
@@ -235,6 +239,7 @@ export class Net {
 
     const beforeX = this.me.x;
     const beforeZ = this.me.z;
+    const wasDead = isDead(this.me);
 
     const me = this.me;
     me.x = p.x;
@@ -264,6 +269,16 @@ export class Net {
       applyInput(me, f, t, TICK_MS);
     }
     this.predictedTime = t;
+
+    // Joining and respawning (dead to standing, after a bleed-out, a cleared room or a wipe)
+    // put us where the server chose: a placement, not a prediction error, so it neither
+    // smooths nor counts, or the HUD and the lag lab would read every respawn as a snap.
+    if (!this.placed || (wasDead && isAlive(me))) {
+      this.placed = true;
+      this.visualErrX = 0;
+      this.visualErrZ = 0;
+      return;
+    }
 
     // Fold the correction into a visual offset that decays, so small errors never pop.
     const errX = beforeX - me.x;

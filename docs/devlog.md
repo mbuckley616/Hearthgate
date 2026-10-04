@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-04: Session 12, respawns are placements, not snaps
+
+**What changed**
+
+- The critic's bug: `reconcile` counted the server moving us to our spawn as a prediction error over `SNAP_DISTANCE`, so every respawn and wipe raised the HUD's corrections and `__hg.snaps`, and the lag lab's snaps a minute with them. Now a patch that takes us from dead to standing (a bleed-out, a cleared room, a wipe) is a placement: the client takes the server's position, clears the visual offset and counts nothing. The first patch after joining is treated the same, since the client starts at the origin and the server puts us at a spawn (it counted one snap per join before). Real errors are unchanged: a 3.5 m error while standing still snaps and counts.
+- `tests/reconcile-placement.ts` feeds the real `Net` class fake patches (no server): joining, downed, dead, respawned 10 m away, then a real error. It fails on the old code (joining alone counted a snap) and passes now. `npm run test:net` runs it first.
+
+**Learned**
+
+- Pickup (downed to standing) is left counted on purpose: the player stays where they crawled, so any error there is a real one.
+- `Net` runs under tsx in Node without a browser, so client netcode can be checked headless by calling `onState` with plain objects; useful for later reconcile work.
+
+**Next**
+
+- The critic's first bug (movement speed falls with frame rate) is filed as likely **(Fable)** and waits for a card. The rest of Phase 1 waits on the four questions in `decisions.md`.
+
 ## 2026-10-04: Session 11, controls hint clear of the ability slots
 
 **What changed**
