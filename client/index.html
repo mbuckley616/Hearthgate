@@ -107,6 +107,9 @@
         gap: 14px;
         flex-wrap: wrap;
         min-width: 0;
+        /* Wrap before the ability slots: 14 px gutter, 184 px of slots, 14 px gutter, 14 px gap. */
+        box-sizing: border-box;
+        max-width: calc(100% - 226px);
         font-size: 13px;
         color: var(--ink-soft);
       }

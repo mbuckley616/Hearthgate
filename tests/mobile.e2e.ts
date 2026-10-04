@@ -8,7 +8,9 @@ import { devices, expect, test, type Page } from "@playwright/test";
 const PHONES = [
   { label: "Pixel 7 portrait", use: devices["Pixel 7"] },
   { label: "Pixel 7 landscape", use: devices["Pixel 7 landscape"] },
-  { label: "small Android portrait (360 x 640)", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 640 } } }
+  { label: "small Android portrait (360 x 640)", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 640 } } },
+  // Just over the 600 px breakpoint, so the controls hint shows next to the slots (critic, 2026-10-04).
+  { label: "small landscape (640 x 400)", use: { ...devices["Pixel 7"], viewport: { width: 640, height: 400 } } }
 ];
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -78,6 +80,15 @@ for (const phone of PHONES) {
     const slot = await box(page, "#hud .hud-slot[data-slot=\"1\"]");
     expect(Math.min(slot.width, slot.height)).toBeGreaterThanOrEqual(48);
     await expect(page.locator("#hud .hud-slot").first()).toContainText("Cleave");
+    // The controls hint (shown over 600 px wide) wraps rather than sliding under the slots.
+    const hint = page.locator("#hud .hud-controls");
+    if (await hint.isVisible()) {
+      const h = await box(page, "#hud .hud-controls");
+      expect(overlaps(h, slots)).toBe(false);
+      expect(h.x + h.width).toBeLessThanOrEqual(vp.width);
+      expect(h.y).toBeGreaterThanOrEqual(0);
+      for (const b of boxes) expect(overlaps(b, h)).toBe(false);
+    }
     await expect(page.locator("#hud-hp-text")).toHaveText(/\d+ \/ \d+/);
 
     // No sideways scroll or zoom-out on a phone.

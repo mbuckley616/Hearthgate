@@ -40,7 +40,7 @@ Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is v
 Confirmed bugs from headless play and the lag lab, one line each with the commit and the steps. The builder takes these before new work in the current phase.
 
 - [ ] Movement speed falls with frame rate (f415a88): the client sends one input per `setInterval` callback and drops the ticks a busy main thread misses, so a 1.5 s hold covers 9.3 m at 60 fps, 5.7 m at 21 fps, 2.1 m at 10 fps. Steps: two tabs in one headless Chromium at 1280 x 720, hold A in one; same cause as `tests/two-players.e2e.ts` failing. Touches the client input loop and the server's per-tick input cap and flood limit, so likely **(Fable)**; see `proposals.md`.
-- [ ] Controls hint covers ability slots 1 and 2 between 601 and ~750 px wide (f415a88): 109 px overlap at 640 x 400 (phone landscape). Steps: open the client at 640 x 400; `docs/critic/2026-10-04-hint-over-slots-640px.png`.
+- [x] Controls hint covers ability slots 1 and 2 between 601 and ~750 px wide (f415a88): 109 px overlap at 640 x 400 (phone landscape). Steps: open the client at 640 x 400; `docs/critic/2026-10-04-hint-over-slots-640px.png`. (Session 11: the hint wraps left of the slots; 640 x 400 case in `tests/mobile.e2e.ts`)
 - [ ] Respawn and wipe teleports count as snaps and corrections (f415a88): `reconcile` counts the server's move to the spawn as a >2.5 m error, so the HUD corrections and `__hg.snaps` rise on every respawn. Steps: two pages, let the goblin down both, compare `__hg.snaps` before and after the respawn.
 
 ## Later phases
