@@ -1,4 +1,18 @@
-import { GOBLIN, HIT_FEEDBACK, PLAYER, TICK_MS, type SimEvent } from "@hearthgate/shared";
+import {
+  ABILITIES,
+  DOWNS,
+  SWORD_SLOTS,
+  abilityInSlot,
+  type AbilityId,
+  GOBLIN,
+  HIT_FEEDBACK,
+  PLAYER,
+  TICK_MS,
+  isDead,
+  isDowned,
+  type PlayerSim,
+  type SimEvent
+} from "@hearthgate/shared";
 import { Input } from "./input";
 import { Net } from "./net";
 import { View } from "./render";
@@ -46,10 +60,10 @@ net.onEvents((events: SimEvent[]) => {
 /** Hits you landed or took; the e2e test checks each one nudged the camera. */
 let hitCount = 0;
 function hitFeedback(e: SimEvent) {
-  if ((e.kind === "playerHit" && e.attackerId === net.sessionId) || (e.kind === "enemyHit" && e.targetId === net.sessionId)) hitCount++;
+  if (((e.kind === "playerHit" || e.kind === "abilityHit") && e.attackerId === net.sessionId) || (e.kind === "enemyHit" && e.targetId === net.sessionId)) hitCount++;
   const me = net.me;
   const gob = net.remotePose(net.enemy) ?? { x: me.x, z: me.z + 1 };
-  if (e.kind === "playerHit") {
+  if (e.kind === "playerHit" || e.kind === "abilityHit") {
     const mine = e.attackerId === net.sessionId;
     sound.hitDealt(mine ? 1 : HIT_FEEDBACK.othersVolume);
     if (mine) view.nudge(gob.x - me.x, gob.z - me.z, HIT_FEEDBACK.dealtNudgeM, HIT_FEEDBACK.dealtNudgeMs);
@@ -99,8 +113,11 @@ function draw(dt: number) {
     hp: me.hp,
     attacking: now < me.attackUntil,
     swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
+    cleaveActive: cleaveFlash(me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
-    dead: me.hp <= 0
+    downed: isDowned(me),
+    pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
+    dead: isDead(me)
   });
   view.follow(myPose.x, myPose.z, dt);
 
@@ -116,8 +133,11 @@ function draw(dt: number) {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
       swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
+      cleaveActive: cleaveFlash(r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
-      dead: r.hp <= 0
+      downed: r.hp <= 0 && r.downedUntil > 0,
+      pickup: r.downedUntil > 0 ? clamp01(r.pickupMs / DOWNS.pickupMs) : 0,
+      dead: r.hp <= 0 && r.downedUntil === 0
     });
   }
   for (const id of view.playerIds()) if (!live.has(id)) view.removePlayer(id);
@@ -141,7 +161,7 @@ function draw(dt: number) {
     myHp: me.hp,
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
-    respawnIn: me.hp <= 0 && me.respawnAt > 0 ? Math.max(0, me.respawnAt - now) : 0,
+    banner: downBanner(me, now),
     enemyHp: e.hp,
     enemyMaxHp: GOBLIN.hp,
     enemyPhase: e.phase,
@@ -150,7 +170,11 @@ function draw(dt: number) {
     pending: net.pending.length,
     corrections: net.corrections,
     roomId: net.room?.roomId ?? "",
-    events: recentEvents.map((x) => x.text)
+    events: recentEvents.map((x) => x.text),
+    slots: SWORD_SLOTS.map((id, i) => ({
+      name: id ? ABILITY_NAMES[id] : "",
+      readyIn: Math.max(0, (me.readyAt[i] ?? 0) - now) / 1000
+    }))
   });
 
   // Debug handle for Playwright and the browser console.
@@ -171,17 +195,49 @@ function draw(dt: number) {
 
 function describeEvent(e: SimEvent): string {
   switch (e.kind) {
+    case "abilityHit": {
+      const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
+      return `${who} cleaved the goblin for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
+    }
     case "playerHit":
       return e.attackerId === net.sessionId ? `You hit the goblin for ${e.damage}` : `${nameOf(e.attackerId)} hit the goblin for ${e.damage}`;
     case "enemyKilled":
       return e.killerId === net.sessionId ? "You felled the goblin" : `${nameOf(e.killerId)} felled the goblin`;
     case "enemyHit":
       return e.targetId === net.sessionId ? `The goblin hit you for ${e.damage}` : `The goblin hit ${nameOf(e.targetId)}`;
+    case "playerDowned":
+      return e.playerId === net.sessionId ? "You went down" : `${nameOf(e.playerId)} is down: get next to them`;
+    case "playerPickedUp":
+      if (e.byId === "") return e.playerId === net.sessionId ? "Room clear: back on your feet" : `${nameOf(e.playerId)} is back up`;
+      if (e.byId === net.sessionId) return `You picked up ${nameOf(e.playerId)}`;
+      return e.playerId === net.sessionId ? `${nameOf(e.byId)} picked you up` : `${nameOf(e.byId)} picked up ${nameOf(e.playerId)}`;
     case "playerDied":
-      return e.playerId === net.sessionId ? "You went down" : `${nameOf(e.playerId)} went down`;
+      return e.playerId === net.sessionId ? "You bled out" : `${nameOf(e.playerId)} bled out`;
+    case "squadWiped":
+      return "The squad is down. Regrouping";
     case "playerRespawned":
       return e.playerId === net.sessionId ? "Back on your feet" : `${nameOf(e.playerId)} is back`;
   }
+}
+
+const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
+
+/** Cleave's arc shows from the moment its hit resolves until shortly after. */
+function cleaveFlash(slot: number, until: number, t: number): boolean {
+  if (abilityInSlot(slot) !== "cleave" || until === 0) return false;
+  const c = ABILITIES.cleave;
+  const hitAt = until - c.durationMs + c.windupMs;
+  return t >= hitAt && t < hitAt + 200;
+}
+
+function downBanner(me: PlayerSim, now: number): string {
+  if (isDowned(me)) {
+    if (me.pickupMs > 0) return `Being picked up ${Math.round((100 * me.pickupMs) / DOWNS.pickupMs)}%`;
+    return `Down. Bleeding out in ${Math.ceil(Math.max(0, me.downedUntil - now) / 1000)}. Crawl to a friend`;
+  }
+  if (!isDead(me)) return "";
+  if (me.respawnAt > 0) return `Back in ${Math.ceil(Math.max(0, me.respawnAt - now) / 1000)}`;
+  return "Out of this fight. Back when the goblin falls";
 }
 
 function nameOf(id: string): string {
