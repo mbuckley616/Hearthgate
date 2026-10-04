@@ -14,6 +14,7 @@ import {
   stepEncounter,
   takeInputToken,
   type Encounter,
+  useDraught,
   type EnemySim,
   type InputBucket,
   type InputFrame,
@@ -174,6 +175,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const now = this.sim.tick * TICK_MS;
     const level = this.sim.encounter.level;
 
+    const users: PlayerSim[] = [];
     for (const [id, p] of this.sim.players) {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
@@ -181,10 +183,14 @@ export class DungeonRoom extends Room<DungeonState> {
         applyInput(p, neutralInput(p.lastSeq), now, TICK_MS, level);
       } else {
         for (const f of frames) applyInput(p, f, now, TICK_MS, level);
+        if (frames.some((f) => f.use)) users.push(p);
       }
     }
 
-    const events: SimEvent[] = stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS);
+    const events: SimEvent[] = [];
+    // After everyone has moved this tick, so a draught reaches a body by where it lies now.
+    for (const p of users) events.push(...useDraught(p, this.sim.players.values()));
+    events.push(...stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS));
 
     this.syncState();
     if (events.length) this.broadcast("events", events);
@@ -224,6 +230,7 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.downedUntil = p.downedUntil;
   ps.pickupMs = p.pickupMs;
   ps.pickupBy = p.pickupBy;
+  ps.draughts = p.draughts;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */

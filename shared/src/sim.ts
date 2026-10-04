@@ -51,7 +51,18 @@ export const DOWNS = {
   pickupRange: 2,
   pickupMs: 1500,
   /** Health a picked-up player stands with. */
-  pickupHp: 40
+  pickupHp: 40,
+  /**
+   * Revive Draught, the Phase 1 stand-in (Michael, 2026-10-04: a plain counter, not an
+   * item; the Phase 3 ledger replaces it). A standing player uses theirs on a dead
+   * teammate's body; nothing else brings the dead back mid-fight. One each per floor.
+   * Until floors exist a wipe stands for the end of the run, so a wipe refills it.
+   */
+  draughtsPerFloor: 1,
+  /** Centre to centre, a little more than the pickup so one press next to the body is enough. */
+  draughtRange: 2.5,
+  /** More than a pickup: the draught is the scarce one. */
+  draughtHp: 50
 } as const;
 
 /** What an enemy kind is made of. The roster item adds kinds; the AI in stepEnemy reads these. */
@@ -240,6 +251,8 @@ export interface InputFrame {
   dodge: boolean;
   /** Ability slot pressed this tick, 1..ABILITY_SLOTS, or 0 / absent for none. */
   ability?: number;
+  /** Use a Revive Draught on the nearest dead teammate this tick; absent means no. */
+  use?: boolean;
 }
 
 export interface PlayerSim {
@@ -274,6 +287,8 @@ export interface PlayerSim {
   pickupMs: number;
   /** Who is picking this player up ("" when nobody). */
   pickupBy: string;
+  /** Revive Draughts left this floor (DOWNS.draughtsPerFloor to start). */
+  draughts: number;
   spawnX: number;
   spawnZ: number;
 }
@@ -319,6 +334,7 @@ export type SimEvent =
   | { kind: "roomReset" }
   | { kind: "playerDowned"; playerId: string }
   | { kind: "playerPickedUp"; playerId: string; byId: string }
+  | { kind: "playerRevived"; playerId: string; byId: string; draughtsLeft: number }
   | { kind: "playerDied"; playerId: string }
   | { kind: "squadWiped" }
   | { kind: "playerRespawned"; playerId: string };
@@ -345,6 +361,7 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     downedUntil: 0,
     pickupMs: 0,
     pickupBy: "",
+    draughts: DOWNS.draughtsPerFloor,
     spawnX: x,
     spawnZ: z
   };
@@ -406,7 +423,7 @@ export function resetEnemy(e: EnemySim): void {
 
 /** An input that does nothing, used when a client sent nothing this tick. */
 export function neutralInput(seq: number): InputFrame {
-  return { seq, dx: 0, dy: 0, attack: false, dodge: false, ability: 0 };
+  return { seq, dx: 0, dy: 0, attack: false, dodge: false, ability: 0, use: false };
 }
 
 export function isValidInput(v: unknown): v is InputFrame {
@@ -421,7 +438,8 @@ export function isValidInput(v: unknown): v is InputFrame {
     Math.abs(f.dy) <= 1.0001 &&
     typeof f.attack === "boolean" &&
     typeof f.dodge === "boolean" &&
-    (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS))
+    (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS)) &&
+    (f.use === undefined || typeof f.use === "boolean")
   );
 }
 
@@ -696,6 +714,31 @@ export function downPlayer(p: PlayerSim, now: number): void {
   p.dodgeUntil = 0;
 }
 
+/**
+ * `user` spends a Revive Draught on the nearest dead teammate within reach, who stands
+ * where they lie. Server only, and outside `applyInput` because it changes
+ * another player; the client does not predict it and sees the result in the next patch.
+ * The dead already on a respawn timer (room cleared, squad wiped) are coming back free and
+ * are not a target. Does nothing, and spends nothing, without a draught or a body in reach.
+ */
+export function useDraught(user: PlayerSim, playerList: Iterable<PlayerSim>): SimEvent[] {
+  if (!isAlive(user) || user.draughts <= 0) return [];
+  let target: PlayerSim | null = null;
+  let bestD = Infinity;
+  for (const q of playerList) {
+    if (q === user || !isDead(q) || q.respawnAt !== 0) continue;
+    const d = Math.hypot(q.x - user.x, q.z - user.z);
+    if (d <= DOWNS.draughtRange && d < bestD) {
+      bestD = d;
+      target = q;
+    }
+  }
+  if (!target) return [];
+  user.draughts--;
+  standUp(target, DOWNS.draughtHp);
+  return [{ kind: "playerRevived", playerId: target.id, byId: user.id, draughtsLeft: user.draughts }];
+}
+
 /** A standing teammate close enough to pick `p` up, and not busy swinging or dodging. */
 function pickupHelper(p: PlayerSim, players: readonly PlayerSim[], now: number): PlayerSim | null {
   // Keep the current helper while they qualify, so two friends do not trade the channel.
@@ -760,6 +803,7 @@ export function stepDowns(
       p.pickupMs = 0;
       p.pickupBy = "";
       p.respawnAt = now + PLAYER.respawnMs;
+      p.draughts = DOWNS.draughtsPerFloor;
     }
     for (const e of enemyList) resetEnemy(e);
     events.push({ kind: "squadWiped" });

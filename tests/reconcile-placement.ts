@@ -40,6 +40,7 @@ function patch(net: Net, p: { x: number; z: number; hp: number; downedUntil?: nu
     pickupBy: "",
     downedUntil: 0,
     respawnAt: 0,
+    draughts: 1,
     ...p
   };
   const state = {

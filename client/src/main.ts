@@ -193,6 +193,8 @@ function draw(dt: number) {
     rtt: net.rttMs,
     pending: net.pending.length,
     corrections: net.corrections,
+    draughts: me.draughts,
+    reviveTarget: reviveTarget(myPose),
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
     slots: SWORD_SLOTS.map((id, i) => ({
@@ -243,6 +245,11 @@ function describeEvent(e: SimEvent): string {
       if (e.byId === "") return e.playerId === net.sessionId ? "Room clear: back on your feet" : `${nameOf(e.playerId)} is back up`;
       if (e.byId === net.sessionId) return `You picked up ${nameOf(e.playerId)}`;
       return e.playerId === net.sessionId ? `${nameOf(e.byId)} picked you up` : `${nameOf(e.byId)} picked up ${nameOf(e.playerId)}`;
+    case "playerRevived": {
+      const by = e.byId === net.sessionId ? "You" : nameOf(e.byId);
+      if (e.playerId === net.sessionId) return `${by} brought you back with a draught`;
+      return `${by} brought ${nameOf(e.playerId)} back with a draught`;
+    }
     case "playerDied":
       return e.playerId === net.sessionId ? "You bled out" : `${nameOf(e.playerId)} bled out`;
     case "squadWiped":
@@ -284,7 +291,27 @@ function downBanner(me: PlayerSim, now: number): string {
   }
   if (!isDead(me)) return "";
   if (me.respawnAt > 0) return `Back in ${Math.ceil(Math.max(0, me.respawnAt - now) / 1000)}`;
-  return "Out of this fight. Back when the room is clear";
+  return "Out of this fight. A friend's draught, or the room clearing, brings you back";
+}
+
+/**
+ * The dead teammate a draught would reach from where we are drawn, for the HUD prompt only;
+ * the server picks the body. Ones on a respawn timer are not shown, as the server skips them.
+ */
+function reviveTarget(pose: { x: number; z: number }): string {
+  let best = "";
+  let bestD = Infinity;
+  for (const r of net.remotes.values()) {
+    if (r.hp > 0 || r.downedUntil > 0 || r.respawnAt > 0) continue;
+    const p = net.remotePose(r);
+    if (!p) continue;
+    const d = Math.hypot(p.x - pose.x, p.z - pose.z);
+    if (d <= DOWNS.draughtRange && d < bestD) {
+      bestD = d;
+      best = r.name;
+    }
+  }
+  return best;
 }
 
 function nameOf(id: string): string {

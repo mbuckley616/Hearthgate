@@ -70,6 +70,8 @@ for (const phone of PHONES) {
       expect(b.y + b.height).toBeLessThanOrEqual(vp.height);
     }
     expect(overlaps(boxes[0], boxes[1])).toBe(false);
+    // The Revive Draught count lives inside the top-left panel, so the checks above cover its place.
+    await expect(page.locator("#hud-draught")).toHaveText("Revive Draughts: 1");
 
     // Ability slots: bottom-right, on screen, big enough to become touch buttons, clear of the top panels.
     const slots = await box(page, "#hud .hud-slots");
