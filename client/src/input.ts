@@ -6,12 +6,15 @@ import type { InputFrame } from "@hearthgate/shared";
  * fires once. Movement is sampled live.
  *
  * Keyboard-only is a hard requirement (laptop with no mouse). A gamepad is
- * read if one is connected: left stick moves, X attacks, A dodges, and the
- * ability slots are Y, B and RB (keys 1, 2 and 3).
+ * read if one is connected: left stick moves, X attacks, A dodges, the
+ * ability slots are Y, B and RB (keys 1, 2 and 3), and LB (key E) uses a
+ * Revive Draught on a dead teammate in reach.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
 const PAD_SLOT_BUTTONS = [3, 1, 5];
+/** Gamepad button for the Revive Draught (standard mapping: LB). */
+const PAD_USE_BUTTON = 4;
 export class Input {
   private down = new Set<string>();
   private attackPressed = false;
@@ -20,6 +23,8 @@ export class Input {
   private padDodgeWasDown = false;
   private abilityPressed = 0;
   private padSlotWasDown = [false, false, false];
+  private usePressed = false;
+  private padUseWasDown = false;
   private seq = 0;
 
   constructor(target: Window = window) {
@@ -31,6 +36,7 @@ export class Input {
       if (isDodgeKey(code)) this.dodgePressed = true;
       const slot = slotKey(code);
       if (slot) this.abilityPressed = slot;
+      if (isUseKey(code)) this.usePressed = true;
       if (isGameKey(code)) e.preventDefault();
     });
     target.addEventListener("keyup", (e) => {
@@ -59,9 +65,11 @@ export class Input {
     let attack = this.attackPressed;
     let dodge = this.dodgePressed;
     let ability = this.abilityPressed;
+    let use = this.usePressed;
     this.attackPressed = false;
     this.dodgePressed = false;
     this.abilityPressed = 0;
+    this.usePressed = false;
 
     const pad = firstGamepad();
     if (pad) {
@@ -82,6 +90,9 @@ export class Input {
         if (down && !this.padSlotWasDown[i]) ability = i + 1;
         this.padSlotWasDown[i] = down;
       });
+      const padUse = pad.buttons[PAD_USE_BUTTON]?.pressed ?? false;
+      if (padUse && !this.padUseWasDown) use = true;
+      this.padUseWasDown = padUse;
     }
 
     const len = Math.hypot(dx, dy);
@@ -91,7 +102,7 @@ export class Input {
     }
 
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use };
   }
 }
 
@@ -107,6 +118,10 @@ function isDodgeKey(code: string): boolean {
   return code === "ShiftLeft" || code === "ShiftRight" || code === "KeyK";
 }
 
+function isUseKey(code: string): boolean {
+  return code === "KeyE";
+}
+
 /** Ability slot for a key: 1, 2, 3 on the number row or the numpad; 0 for anything else. */
 function slotKey(code: string): number {
   const m = /^(?:Digit|Numpad)([1-3])$/.exec(code);
@@ -116,6 +131,7 @@ function slotKey(code: string): number {
 function isGameKey(code: string): boolean {
   return (
     slotKey(code) > 0 ||
+    isUseKey(code) ||
     code.startsWith("Arrow") ||
     code === "Space" ||
     code === "KeyW" ||

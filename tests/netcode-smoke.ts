@@ -9,6 +9,9 @@
  *   4. a third client flooding inputs at 80 a second is dropped, and the others stay;
  *   5. a downed player is picked up by a teammate standing next to them, and a Cleave
  *      lands and its cooldown reaches the other client;
+ *   5b. inputs carrying the Revive Draught flag are accepted, and pressing it with no body
+ *      in reach spends nothing; both clients see the count (the revive itself needs a
+ *      30 s bleed-out, so it is proved in shared/src/draught.test.ts);
  *   6. stress: STRESS_BOTS bots (default 4) in a fresh room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -175,6 +178,20 @@ async function main() {
     const cd = bState.players.get(a.sessionId).readyAt[0];
     if (!(cd > bState.tick * TICK_MS)) fail(`Bravo does not see Alpha's Cleave cooling down (readyAt ${cd})`);
     console.log(`ok: Alpha's Cleave landed in ${Date.now() - cleaveStart} ms; Bravo sees it ready in ${((cd - bState.tick * TICK_MS) / 1000).toFixed(1)} s`);
+
+    // Draught: five presses with nobody dead. The frames must be applied, not rejected as
+    // invalid, and the count must stay at one on both clients.
+    for (let i = 0; i < 5; i++) {
+      a.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false, use: true });
+      await sleep(TICK_MS);
+    }
+    await sleep(300);
+    const aDraught = aState.players.get(a.sessionId);
+    if (aDraught.lastSeq !== seq) fail(`the server applied seq ${aDraught.lastSeq} of ${seq}: draught inputs rejected?`);
+    const counts = [aDraught.draughts, bState.players.get(a.sessionId).draughts, bState.players.get(b.sessionId).draughts];
+    if (counts.some((n) => n !== DOWNS.draughtsPerFloor)) fail(`draught counts ${counts.join(", ")}, expected ${DOWNS.draughtsPerFloor} each`);
+    if (aEvents.some((x) => x.kind === "playerRevived")) fail("a draught revived someone with nobody dead");
+    console.log(`ok: draught presses with no body in reach applied and spent nothing; both clients see ${DOWNS.draughtsPerFloor} each`);
 
     await a.leave();
     await b.leave();

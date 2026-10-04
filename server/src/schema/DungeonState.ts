@@ -29,6 +29,8 @@ export class PlayerState extends Schema {
   @type("number") downedUntil = 0;
   @type("number") pickupMs = 0;
   @type("string") pickupBy = "";
+  /** Revive Draughts left this floor (a Phase 1 stand-in counter, not an item). */
+  @type("number") draughts = 1;
 }
 
 export class EnemyState extends Schema {

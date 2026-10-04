@@ -14,6 +14,7 @@ import {
   stepEnemy,
   stepRespawns,
   takeInputToken,
+  useDraught,
   type EnemySim,
   type InputBucket,
   type InputFrame,
@@ -160,6 +161,7 @@ export class DungeonRoom extends Room<DungeonState> {
     this.lastStepAt = performance.now();
     const now = this.sim.tick * TICK_MS;
 
+    const users: PlayerSim[] = [];
     for (const [id, p] of this.sim.players) {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
@@ -167,10 +169,13 @@ export class DungeonRoom extends Room<DungeonState> {
         applyInput(p, neutralInput(p.lastSeq), now, TICK_MS);
       } else {
         for (const f of frames) applyInput(p, f, now, TICK_MS);
+        if (frames.some((f) => f.use)) users.push(p);
       }
     }
 
     const events: SimEvent[] = [];
+    // After everyone has moved this tick, so a draught reaches a body by where it lies now.
+    for (const p of users) events.push(...useDraught(p, this.sim.players.values()));
     events.push(...resolvePlayerAttacks(this.sim.players.values(), this.sim.enemy, now));
     events.push(...stepEnemy(this.sim.enemy, this.sim.players, now, TICK_MS));
     events.push(...stepDowns(this.sim.players.values(), this.sim.enemy, now, TICK_MS));
@@ -220,6 +225,7 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.downedUntil = p.downedUntil;
   ps.pickupMs = p.pickupMs;
   ps.pickupBy = p.pickupBy;
+  ps.draughts = p.draughts;
 }
 
 function sanitizeName(name: unknown): string {

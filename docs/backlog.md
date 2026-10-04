@@ -23,16 +23,17 @@ Gate: two people on different networks fight the goblin together and both say it
 
 Gate: a mixed-level party clears a Goblin Warrens floor and the combo bonus is visible.
 
-- [ ] **(design)** Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
-- [ ] **(design)** Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon. Builds on the gear lift above. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
-- [ ] **(design)** Posture, parry window, block from The Old Gates, simplified for crowds. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
+- [ ] **(design)** Lift the gear and weapon definitions from The Old Gates into `shared/src/gear.ts`, re-tuned for tier caps. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(design)** Weapon classes: sword (current), two-handed, bow with lock-on. Style = Melee / Ranged / Magic from the weapon. Builds on the gear lift above. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(design)** Posture, parry window, block from The Old Gates, simplified for crowds. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
 - [x] State system: Soaked, Staggered, Marked, Burning, Rooted, Chilled, with combo payoffs that scale by distinct contributors. (Session 8: `shared/src/states.ts`; nothing applies a state in play until the abilities land. Left for the abilities and enemy items: carry out chain, spread, freeze and knockdown on other enemies and the AI, sync states to the client and draw them, and the per-state hit sounds)
 - [x] Three ability slots per player, and Cleave for Melee. (Session 10: keys 1 2 3, gamepad Y B RB; Cleave staggers and breaks a windup, 6 s cooldown)
 - [ ] Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff. Needs the weapon classes above.
 - [x] Downs with a bleed-out timer and free pickup. (Session 7: 30 s bleed-out, 1.2 m/s crawl, 1.5 s proximity pickup at 40 hp, dead until the room clears, wipe resets the fight)
-- [ ] **(design)** Revive Draught consumable: a Phase 1 stand-in counter, or wait for the Phase 3 item ledger (decisions.md, Pending, 2026-10-04).
-- [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Blocked: the builder cannot read The Old Gates (decisions.md, Pending, 2026-10-04).
-- [ ] **(design)** One hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs. Two questions in decisions.md (Pending, 2026-10-04): split the many-enemies-and-walls groundwork out as a Fable item, and which objective.
+- [x] Revive Draught consumable as a Phase 1 stand-in counter (Michael chose A, 2026-10-04). (Session 13: one a player, E or LB on a dead teammate in reach, stands them up at 50 hp; refilled by a wipe until floors exist, then per floor)
+- [ ] **(design)** Enemy roster from The Old Gates: Charger, Pack Leader, Shieldbearer; goblin packs. Michael chose A (let the builder read it, 2026-10-04), but Session 13's clone was still refused by the run's permission check: the routine needs The Old Gates added to its sources.
+- [ ] **(Fable)** Warrens groundwork (Michael chose A, 2026-10-04: Fable first, builder after): many enemies instead of one goblin, walls that block movement in the shared sim (prediction runs the same collision), the schema, the client's interpolation, and interest management.
+- [ ] One hand-built Goblin Warrens floor assembled from rooms, with stairs. Objective (Michael chose A, 2026-10-04): clear every room, then the stairs open. Builds on the groundwork above; the Revive Draught refill moves from the wipe to the floor start here.
 - [x] Four-player stress test with the bot harness (`tests/netcode-smoke.ts` extended to N clients). (Session 9: `STRESS_BOTS`, default 4; 4 and 8 bots both hold 20 patches a second, 51 ms worst gap, every input applied, tick at wall time, on loopback)
 
 ## Found in play (the critic)
