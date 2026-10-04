@@ -6,14 +6,20 @@ import type { InputFrame } from "@hearthgate/shared";
  * fires once. Movement is sampled live.
  *
  * Keyboard-only is a hard requirement (laptop with no mouse). A gamepad is
- * read if one is connected: left stick moves, X attacks, A dodges.
+ * read if one is connected: left stick moves, X attacks, A dodges, and the
+ * ability slots are Y, B and RB (keys 1, 2 and 3).
  */
+
+/** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
+const PAD_SLOT_BUTTONS = [3, 1, 5];
 export class Input {
   private down = new Set<string>();
   private attackPressed = false;
   private dodgePressed = false;
   private padAttackWasDown = false;
   private padDodgeWasDown = false;
+  private abilityPressed = 0;
+  private padSlotWasDown = [false, false, false];
   private seq = 0;
 
   constructor(target: Window = window) {
@@ -23,6 +29,8 @@ export class Input {
       this.down.add(code);
       if (isAttackKey(code)) this.attackPressed = true;
       if (isDodgeKey(code)) this.dodgePressed = true;
+      const slot = slotKey(code);
+      if (slot) this.abilityPressed = slot;
       if (isGameKey(code)) e.preventDefault();
     });
     target.addEventListener("keyup", (e) => {
@@ -50,8 +58,10 @@ export class Input {
 
     let attack = this.attackPressed;
     let dodge = this.dodgePressed;
+    let ability = this.abilityPressed;
     this.attackPressed = false;
     this.dodgePressed = false;
+    this.abilityPressed = 0;
 
     const pad = firstGamepad();
     if (pad) {
@@ -67,6 +77,11 @@ export class Input {
       if (padDodge && !this.padDodgeWasDown) dodge = true;
       this.padAttackWasDown = padAttack;
       this.padDodgeWasDown = padDodge;
+      PAD_SLOT_BUTTONS.forEach((b, i) => {
+        const down = pad.buttons[b]?.pressed ?? false;
+        if (down && !this.padSlotWasDown[i]) ability = i + 1;
+        this.padSlotWasDown[i] = down;
+      });
     }
 
     const len = Math.hypot(dx, dy);
@@ -76,7 +91,7 @@ export class Input {
     }
 
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability };
   }
 }
 
@@ -92,8 +107,15 @@ function isDodgeKey(code: string): boolean {
   return code === "ShiftLeft" || code === "ShiftRight" || code === "KeyK";
 }
 
+/** Ability slot for a key: 1, 2, 3 on the number row or the numpad; 0 for anything else. */
+function slotKey(code: string): number {
+  const m = /^(?:Digit|Numpad)([1-3])$/.exec(code);
+  return m ? Number(m[1]) : 0;
+}
+
 function isGameKey(code: string): boolean {
   return (
+    slotKey(code) > 0 ||
     code.startsWith("Arrow") ||
     code === "Space" ||
     code === "KeyW" ||
