@@ -44,6 +44,8 @@ export interface RemotePlayer {
   hp: number;
   downedUntil: number;
   pickupMs: number;
+  /** When a dead teammate comes back by themselves (0 while a draught is their only way back). */
+  respawnAt: number;
   attackUntil: number;
   abilityUntil: number;
   abilitySlot: number;
@@ -206,7 +208,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -214,6 +216,7 @@ export class Net {
       r.hp = p.hp;
       r.downedUntil = p.downedUntil;
       r.pickupMs = p.pickupMs;
+      r.respawnAt = p.respawnAt;
       r.attackUntil = p.attackUntil;
       r.abilityUntil = p.abilityUntil;
       r.abilitySlot = p.abilitySlot;
@@ -261,6 +264,7 @@ export class Net {
     me.downedUntil = p.downedUntil;
     me.pickupMs = p.pickupMs;
     me.pickupBy = p.pickupBy;
+    me.draughts = p.draughts;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

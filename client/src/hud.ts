@@ -14,6 +14,9 @@ export interface HudData {
   corrections: number;
   roomId: string;
   events: string[];
+  /** Revive Draughts left, and the dead teammate one would reach now ("" when none). */
+  draughts: number;
+  reviveTarget: string;
   /** One entry per ability slot: its name ("" when empty) and seconds until ready. */
   slots: { name: string; readyIn: number }[];
 }
@@ -27,6 +30,7 @@ export class Hud {
   private hpText: HTMLElement;
   private enemyFill: HTMLElement;
   private enemyText: HTMLElement;
+  private draught: HTMLElement;
   private party: HTMLElement;
   private net: HTMLElement;
   private log: HTMLElement;
@@ -43,6 +47,7 @@ export class Hud {
         <div class="hud-bar"><div class="hud-fill hud-fill-player" id="hud-hp-fill"></div><span id="hud-hp-text"></span></div>
         <div class="hud-sub">Goblin</div>
         <div class="hud-bar"><div class="hud-fill hud-fill-enemy" id="hud-enemy-fill"></div><span id="hud-enemy-text"></span></div>
+        <div class="hud-sub hud-draught" id="hud-draught"></div>
       </div>
       <div class="hud-panel hud-top-right">
         <div id="hud-party"></div>
@@ -58,7 +63,8 @@ export class Hud {
         <span><b>J</b> or <b>Space</b> attack</span>
         <span><b>Shift</b> dodge</span>
         <span><b>1 2 3</b> abilities</span>
-        <span>Gamepad: stick, X, A; Y B RB</span>
+        <span><b>E</b> revive draught</span>
+        <span>Gamepad: stick, X, A; Y B RB; LB</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;
@@ -67,6 +73,7 @@ export class Hud {
     this.hpText = root.querySelector("#hud-hp-text")!;
     this.enemyFill = root.querySelector("#hud-enemy-fill")!;
     this.enemyText = root.querySelector("#hud-enemy-text")!;
+    this.draught = root.querySelector("#hud-draught")!;
     this.party = root.querySelector("#hud-party")!;
     this.net = root.querySelector("#hud-net")!;
     this.log = root.querySelector("#hud-log")!;
@@ -85,6 +92,12 @@ export class Hud {
     this.hpText.textContent = `${d.myHp} / ${d.myMaxHp}`;
     this.enemyFill.style.width = `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
     this.enemyText.textContent = d.enemyPhase === "dead" ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
+    this.draught.textContent =
+      d.draughts > 0 && d.reviveTarget
+        ? `E or LB: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
+        : `Revive Draughts: ${d.draughts}`;
+    this.draught.classList.toggle("is-ready", d.draughts > 0 && !!d.reviveTarget);
+    this.draught.setAttribute("data-draughts", String(d.draughts));
     this.party.textContent = `${d.players} in the party`;
     this.party.setAttribute("data-players", String(d.players));
     this.net.textContent = `${Math.round(d.rtt)} ms ping, ${d.pending} unconfirmed, ${d.corrections} corrections, room ${d.roomId.slice(0, 6)}`;
