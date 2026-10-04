@@ -12,6 +12,8 @@
  * which matches Three.js `rotation.y`.
  */
 
+import { expireStates, hasState, resolveHit, type StateSet } from "./states";
+
 export const TICK_RATE = 20;
 export const TICK_MS = 1000 / TICK_RATE; // 50 ms
 
@@ -122,6 +124,43 @@ export const CLOCK_SYNC = {
   snapMs: 250
 } as const;
 
+/**
+ * States and combos (design doc, "States and combos"; logic in states.ts). Every ability
+ * either applies a state or consumes one; the payoff grows with how many *different*
+ * players took part (appliers plus the finisher), never with their levels, so a tier-1
+ * setup feeding a tier-5 finish is worth more than the veteran alone.
+ * Durations are long enough for a second player to react to a first player's setup.
+ */
+export const STATES = {
+  soaked: { durationMs: 8000 },
+  staggered: { durationMs: 2500 },
+  marked: { durationMs: 8000 },
+  burning: { durationMs: 5000 },
+  rooted: { durationMs: 3000 },
+  chilled: { durationMs: 6000 }
+} as const;
+
+export const COMBO = {
+  /** Payoff multiplier gained per distinct contributor beyond the first. */
+  perContributor: 0.5,
+  /** Distinct contributors past this add nothing (eight players must not one-shot a boss). */
+  maxContributors: 4,
+  /** Marked: extra damage on every hit from anyone, as a fraction of the hit. */
+  markedBonus: 0.25,
+  /** Staggered, consumed by Backstab or Execute: a critical hit and a knockdown. */
+  staggerCritMult: 2,
+  knockdownMs: 1200,
+  /** Soaked, consumed by lightning: the bolt jumps to enemies this close, for this share of the hit. */
+  chainRadius: 4,
+  chainShare: 0.6,
+  /** Soaked, consumed by frost: frozen in place (rooted and chilled). */
+  freezeMs: 2000,
+  /** Burning, consumed by oil or wind: spreads to enemies this close. */
+  spreadRadius: 4,
+  /** Chilled, consumed by Shatter: flat bonus damage before the combo multiplier. */
+  shatterBonus: 40
+} as const;
+
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
 export const PLAYER_COLORS = [
@@ -187,6 +226,8 @@ export interface EnemySim {
   targetId: string;
   /** Time until which the enemy shows a hit flash. */
   hitFlashUntil: number;
+  /** Active states (states.ts); cleared when it dies. */
+  states: StateSet;
 }
 
 export type SimEvent =
@@ -231,7 +272,8 @@ export function createEnemy(): EnemySim {
     phase: "idle",
     phaseUntil: 0,
     targetId: "",
-    hitFlashUntil: 0
+    hitFlashUntil: 0,
+    states: {}
   };
 }
 
@@ -409,11 +451,14 @@ export function resolvePlayerAttacks(
     p.attackHitAt = 0;
     if (enemy.phase === "dead") continue;
     if (!inCone(p, enemy, PLAYER.attackRange, PLAYER.attackArc, GOBLIN.radius)) continue;
-    enemy.hp = Math.max(0, enemy.hp - PLAYER.attackDamage);
+    // The sword is a plain melee hit: it consumes nothing, but a Marked target takes more.
+    const { damage } = resolveHit(enemy.states, { damage: PLAYER.attackDamage, tags: ["melee"], byId: p.id }, now);
+    enemy.hp = Math.max(0, enemy.hp - damage);
     enemy.hitFlashUntil = now + 120;
-    events.push({ kind: "playerHit", attackerId: p.id, damage: PLAYER.attackDamage, enemyHp: enemy.hp });
+    events.push({ kind: "playerHit", attackerId: p.id, damage, enemyHp: enemy.hp });
     if (enemy.hp === 0) {
       enemy.phase = "dead";
+      enemy.states = {};
       enemy.phaseUntil = now + GOBLIN.respawnMs;
       enemy.targetId = "";
       events.push({ kind: "enemyKilled", killerId: p.id });
@@ -530,6 +575,7 @@ export function stepDowns(
     enemy.phase = "idle";
     enemy.phaseUntil = 0;
     enemy.targetId = "";
+    enemy.states = {};
     events.push({ kind: "squadWiped" });
   }
   return events;
@@ -558,6 +604,7 @@ export function stepEnemy(
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const dt = dtMs / 1000;
+  expireStates(enemy.states, now);
 
   if (enemy.phase === "dead") {
     if (now >= enemy.phaseUntil) {
@@ -598,7 +645,7 @@ export function stepEnemy(
       if (dist <= GOBLIN.attackRange) {
         enemy.phase = "windup";
         enemy.phaseUntil = now + GOBLIN.windupMs;
-      } else {
+      } else if (!hasState(enemy.states, "rooted", now)) {
         const step = Math.min(GOBLIN.speed * dt, dist - GOBLIN.attackRange * 0.9);
         enemy.x += (vx / dist) * step;
         enemy.z += (vz / dist) * step;
