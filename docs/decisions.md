@@ -18,6 +18,17 @@ The downs item ends with "Revive Draught consumable". CLAUDE.md rule 3 says item
 A. Phase 1 stand-in: every player starts each floor with one draught as a plain counter in the sim (not an item, nothing to trade or loot); the ledger replaces it in Phase 3. **Recommended**: the gate needs a party to clear a floor, and a revive for the dead is part of that loop.
 B. Defer the draught to Phase 3, when it can be a real item; Phase 1 has pickup only.
 
+### 2026-10-04: Goblin Warrens floor: who builds the groundwork (builder, Session 10)
+The floor item ("one hand-built Goblin Warrens floor assembled from rooms; a floor objective; stairs") needs many enemies instead of one goblin, walls that block movement in the shared sim (client prediction runs the same collision), and interest management for what each client is sent. CLAUDE.md puts the shared simulation's structure and anything touching server and client together with Fable.
+A. Split it: a **(Fable)** item first for many enemies and walls in the sim, the schema and the client's interpolation; then the builder builds the rooms, the objective and the stairs on top. **Recommended**: it is the kind of change the model split exists for.
+B. The builder does all of it in one item.
+
+### 2026-10-04: Goblin Warrens floor objective (builder, Session 10)
+The design doc leaves "a floor objective" open for the Warrens.
+A. Clear every room, then the stairs open. **Recommended**: simplest to read and to test, and every fight counts toward the gate's "clears a floor".
+B. Kill the warren chief (a Pack Leader) in the last room, then the stairs open; the other rooms are optional. Waits on the enemy roster.
+C. Reach the stairs; fights are in the way, not the goal.
+
 ## Answered
 
 ### 2026-10-04: Interpolation budget now that the clock holds still (Fable, Session 6)
