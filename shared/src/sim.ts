@@ -7,17 +7,18 @@
  * `applyInput` on its own player for prediction, then reconciles against the
  * server's copy.
  *
- * Units: metres and milliseconds. The arena is centred on the origin.
+ * Units: metres and milliseconds. The level is centred on the origin.
  * Facing is a yaw in radians where the forward vector is (sin f, cos f),
  * which matches Three.js `rotation.y`.
  */
 
 import { applyState, expireStates, hasState, resolveHit, type StateSet } from "./states";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, type Level } from "./level";
+
+export { ARENA_HALF };
 
 export const TICK_RATE = 20;
 export const TICK_MS = 1000 / TICK_RATE; // 50 ms
-
-export const ARENA_HALF = 20; // the arena is 40 x 40 m
 
 export const PLAYER = {
   hp: 100,
@@ -40,7 +41,7 @@ export const PLAYER = {
  * stays next to them for `pickupMs` picks them up at no cost; walking off, swinging or
  * dodging breaks the channel and it starts again. The pickup is proximity, not a button,
  * so it works the same on keyboard, gamepad and a later touch layout. Bleeding out is
- * dead for the fight: back when the room is clear (the goblin falls) or the squad wipes.
+ * dead for the fight: back when the room is clear (the last enemy falls) or the squad wipes.
  */
 export const DOWNS = {
   /** 30 s to begin with, tuned in playtests (design doc). */
@@ -53,22 +54,48 @@ export const DOWNS = {
   pickupHp: 40
 } as const;
 
-export const GOBLIN = {
+/** What an enemy kind is made of. The roster item adds kinds; the AI in stepEnemy reads these. */
+export interface EnemyDef {
+  hp: number;
+  radius: number;
+  speed: number;
+  aggroRange: number;
+  attackRange: number;
+  attackArc: number;
+  /** The telegraph: long enough to read and dodge. */
+  windupMs: number;
+  recoverMs: number;
+  damage: number;
+}
+
+export const GOBLIN: EnemyDef = {
   hp: 60,
   radius: 0.5,
   speed: 3.4,
   aggroRange: 14,
   attackRange: 1.8,
   attackArc: Math.PI * 0.8,
-  windupMs: 650, // the telegraph: long enough to read and dodge
+  windupMs: 650,
   recoverMs: 600,
-  damage: 15,
-  respawnMs: 2500
+  damage: 15
+};
+
+export const ENEMY_KINDS = { goblin: GOBLIN } as const satisfies Record<string, EnemyDef>;
+export type EnemyKind = keyof typeof ENEMY_KINDS;
+
+/**
+ * The room (one encounter until floors exist). Enemies stay dead once killed; when the
+ * last one falls the room is clear, the downed get up and the dead come back, and after
+ * `resetMs` the enemies return to their spawns for another go. Stairs replace the reset
+ * when the Warrens floor lands.
+ */
+export const ROOM = {
+  resetMs: 6000
 } as const;
 
 /**
  * Hit feedback, client-side presentation only (it never feeds back into the sim).
- * Landing a hit nudges the camera a little toward the goblin; taking one shoves it
+ * Landing a hit nudges the camera a little toward the enemy; taking one shoves it
  * harder, away. Short enough to read as impact rather than camera shake.
  */
 export const HIT_FEEDBACK = {
@@ -188,6 +215,7 @@ export type AbilityId = keyof typeof ABILITIES;
 export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
 export const ABILITY_SLOTS = 3;
 
+/** Where the first goblin stands in every level so far (the hit-feedback test walks to it). */
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
 export const PLAYER_COLORS = [
@@ -253,25 +281,42 @@ export interface PlayerSim {
 export type EnemyPhase = "idle" | "chase" | "windup" | "recover" | "dead";
 
 export interface EnemySim {
+  /** Stable within a room: the client keys its meshes and snapshot buffers by it. */
+  id: string;
+  kind: EnemyKind;
   x: number;
   z: number;
   facing: number;
   hp: number;
+  maxHp: number;
   phase: EnemyPhase;
-  /** When the current phase ends (windup, recover, dead). */
+  /** When the current phase ends (windup, recover). */
   phaseUntil: number;
   targetId: string;
   /** Time until which the enemy shows a hit flash. */
   hitFlashUntil: number;
   /** Active states (states.ts); cleared when it dies. */
   states: StateSet;
+  spawnX: number;
+  spawnZ: number;
+  spawnFacing: number;
+}
+
+/** The enemies of one room and when a cleared room resets. The server owns one per room. */
+export interface Encounter {
+  level: Level;
+  enemies: Map<string, EnemySim>;
+  /** When the cleared room's enemies return (0 while any is alive). */
+  resetAt: number;
 }
 
 export type SimEvent =
-  | { kind: "playerHit"; attackerId: string; damage: number; enemyHp: number }
-  | { kind: "abilityHit"; attackerId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
-  | { kind: "enemyKilled"; killerId: string }
-  | { kind: "enemyHit"; targetId: string; damage: number; targetHp: number }
+  | { kind: "playerHit"; attackerId: string; enemyId: string; damage: number; enemyHp: number }
+  | { kind: "abilityHit"; attackerId: string; enemyId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
+  | { kind: "enemyKilled"; killerId: string; enemyId: string }
+  | { kind: "enemyHit"; targetId: string; enemyId: string; damage: number; targetHp: number }
+  | { kind: "roomCleared"; byId: string }
+  | { kind: "roomReset" }
   | { kind: "playerDowned"; playerId: string }
   | { kind: "playerPickedUp"; playerId: string; byId: string }
   | { kind: "playerDied"; playerId: string }
@@ -305,18 +350,58 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
   };
 }
 
-export function createEnemy(): EnemySim {
+export function createEnemy(
+  id = "e1",
+  kind: EnemyKind = "goblin",
+  x: number = ENEMY_SPAWN.x,
+  z: number = ENEMY_SPAWN.z,
+  facing = Math.PI
+): EnemySim {
+  const def = ENEMY_KINDS[kind];
   return {
-    x: ENEMY_SPAWN.x,
-    z: ENEMY_SPAWN.z,
-    facing: Math.PI,
-    hp: GOBLIN.hp,
+    id,
+    kind,
+    x,
+    z,
+    facing,
+    hp: def.hp,
+    maxHp: def.hp,
     phase: "idle",
     phaseUntil: 0,
     targetId: "",
     hitFlashUntil: 0,
-    states: {}
+    states: {},
+    spawnX: x,
+    spawnZ: z,
+    spawnFacing: facing
   };
+}
+
+/** The level's enemies, keyed e1, e2, ... in the level's order. */
+export function createEnemies(level: Level): Map<string, EnemySim> {
+  const m = new Map<string, EnemySim>();
+  level.enemies.forEach((s, i) => {
+    const id = `e${i + 1}`;
+    m.set(id, createEnemy(id, s.kind, s.x, s.z, s.facing));
+  });
+  return m;
+}
+
+export function createEncounter(level: Level): Encounter {
+  return { level, enemies: createEnemies(level), resetAt: 0 };
+}
+
+/** Back at the spawn, full health, forgetting everything. */
+export function resetEnemy(e: EnemySim): void {
+  e.x = e.spawnX;
+  e.z = e.spawnZ;
+  e.facing = e.spawnFacing;
+  e.hp = e.maxHp;
+  e.phase = "idle";
+  e.phaseUntil = 0;
+  e.targetId = "";
+  e.hitFlashUntil = 0;
+  e.states = {};
 }
 
 /** An input that does nothing, used when a client sent nothing this tick. */
@@ -362,12 +447,9 @@ export function takeInputToken(b: InputBucket, now: number): boolean {
   return b.tokens >= 0;
 }
 
+/** Keep inside the bare arena (no walls). The levelled form is collideWalls in level.ts. */
 export function clampToArena(o: { x: number; z: number }, radius: number): void {
-  const lim = ARENA_HALF - radius;
-  if (o.x < -lim) o.x = -lim;
-  if (o.x > lim) o.x = lim;
-  if (o.z < -lim) o.z = -lim;
-  if (o.z > lim) o.z = lim;
+  collideWalls(o, radius, OPEN_FIELD);
 }
 
 export function isDodging(p: PlayerSim, now: number): boolean {
@@ -399,11 +481,16 @@ export function isDead(p: PlayerSim): boolean {
   return p.hp <= 0 && p.downedUntil === 0;
 }
 
+export function isEnemyAlive(e: EnemySim): boolean {
+  return e.phase !== "dead";
+}
+
 /**
- * Advance one player by one input over dtMs at simulation time `now`.
- * Mutates `p`. Identical on client (prediction) and server (truth).
+ * Advance one player by one input over dtMs at simulation time `now`, inside `level`.
+ * Mutates `p`. Identical on client (prediction) and server (truth): both must pass the
+ * room's level, or a wall the server knows about would be a snap for the client.
  */
-export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: number): void {
+export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: number, level: Level = OPEN_FIELD): void {
   p.lastSeq = input.seq;
   const downed = isDowned(p);
   if (!isAlive(p) && !downed) return;
@@ -425,7 +512,7 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
       p.z += dz * DOWNS.crawlSpeed * dt;
       p.facing = Math.atan2(dx, dz);
     }
-    clampToArena(p, PLAYER.radius);
+    collideWalls(p, PLAYER.radius, level);
     return;
   }
 
@@ -473,7 +560,7 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.attackHitAt = now + PLAYER.attackWindupMs;
   }
 
-  clampToArena(p, PLAYER.radius);
+  collideWalls(p, PLAYER.radius, level);
 }
 
 /** True when `target` is inside a cone in front of `from`. */
@@ -495,21 +582,45 @@ export function inCone(
   return cos >= Math.cos(arc / 2);
 }
 
-/** Resolve any player swings whose hit time has arrived. Server only. */
+/** Living enemies inside the cone, nearest first (soft auto-targeting, design doc). */
+export function enemiesInCone(from: PlayerSim, enemies: readonly EnemySim[], range: number, arc: number): EnemySim[] {
+  const hits: { e: EnemySim; d: number }[] = [];
+  for (const e of enemies) {
+    if (!isEnemyAlive(e)) continue;
+    if (!inCone(from, e, range, arc, ENEMY_KINDS[e.kind].radius)) continue;
+    hits.push({ e, d: Math.hypot(e.x - from.x, e.z - from.z) });
+  }
+  hits.sort((a, b) => a.d - b.d || (a.e.id < b.e.id ? -1 : 1));
+  return hits.map((h) => h.e);
+}
+
+/**
+ * Resolve any player swings and abilities whose hit time has arrived. Server only.
+ * The sword hits the nearest enemy in its cone; Cleave hits every enemy in its wider one.
+ * When the last enemy falls the room is clear: the downed get up and the dead come back.
+ */
 export function resolvePlayerAttacks(
   playerList: Iterable<PlayerSim>,
-  enemy: EnemySim,
+  enemyList: Iterable<EnemySim>,
   now: number
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const players = [...playerList];
-  const kill = (p: PlayerSim) => {
-    if (enemy.hp === 0) {
-      enemy.phase = "dead";
-      enemy.states = {};
-      enemy.phaseUntil = now + GOBLIN.respawnMs;
-      enemy.targetId = "";
-      events.push({ kind: "enemyKilled", killerId: p.id });
+  const enemies = [...enemyList];
+  const hit = (e: EnemySim, damage: number) => {
+    e.hp = Math.max(0, e.hp - damage);
+    e.hitFlashUntil = now + 120;
+  };
+  // After the hit event: a kill, and the clear if it was the last one standing.
+  const settle = (p: PlayerSim, e: EnemySim) => {
+    if (e.hp > 0) return;
+    e.phase = "dead";
+    e.states = {};
+    e.phaseUntil = 0;
+    e.targetId = "";
+    events.push({ kind: "enemyKilled", killerId: p.id, enemyId: e.id });
+    if (enemies.every((o) => !isEnemyAlive(o))) {
+      events.push({ kind: "roomCleared", byId: p.id });
       events.push(...recoverOnClear(players, now));
     }
   };
@@ -517,35 +628,33 @@ export function resolvePlayerAttacks(
     if (p.abilityHitAt !== 0 && now >= p.abilityHitAt) {
       p.abilityHitAt = 0;
       const ability = abilityInSlot(p.abilitySlot);
-      if (ability === "cleave" && enemy.phase !== "dead") {
+      if (ability === "cleave") {
         const def = ABILITIES.cleave;
-        if (inCone(p, enemy, def.range, def.arc, GOBLIN.radius)) {
+        for (const e of enemiesInCone(p, enemies, def.range, def.arc)) {
           // An area melee hit: it lands in full on the Rooted, then staggers. A stagger
           // breaks a windup in progress, which is how Melee answers a telegraph.
-          const { damage } = resolveHit(enemy.states, { damage: def.damage, tags: ["melee", "area"], byId: p.id }, now);
-          applyState(enemy.states, "staggered", p.id, now);
-          enemy.hp = Math.max(0, enemy.hp - damage);
-          enemy.hitFlashUntil = now + 120;
-          const interrupted = enemy.phase === "windup" && enemy.hp > 0;
+          const { damage } = resolveHit(e.states, { damage: def.damage, tags: ["melee", "area"], byId: p.id }, now);
+          applyState(e.states, "staggered", p.id, now);
+          hit(e, damage);
+          const interrupted = e.phase === "windup" && e.hp > 0;
           if (interrupted) {
-            enemy.phase = "recover";
-            enemy.phaseUntil = now + GOBLIN.recoverMs;
+            e.phase = "recover";
+            e.phaseUntil = now + ENEMY_KINDS[e.kind].recoverMs;
           }
-          events.push({ kind: "abilityHit", attackerId: p.id, ability, damage, enemyHp: enemy.hp, interrupted });
-          kill(p);
+          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted });
+          settle(p, e);
         }
       }
     }
     if (p.attackHitAt === 0 || now < p.attackHitAt) continue;
     p.attackHitAt = 0;
-    if (enemy.phase === "dead") continue;
-    if (!inCone(p, enemy, PLAYER.attackRange, PLAYER.attackArc, GOBLIN.radius)) continue;
+    const target = enemiesInCone(p, enemies, PLAYER.attackRange, PLAYER.attackArc)[0];
+    if (!target) continue;
     // The sword is a plain melee hit: it consumes nothing, but a Marked target takes more.
-    const { damage } = resolveHit(enemy.states, { damage: PLAYER.attackDamage, tags: ["melee"], byId: p.id }, now);
-    enemy.hp = Math.max(0, enemy.hp - damage);
-    enemy.hitFlashUntil = now + 120;
-    events.push({ kind: "playerHit", attackerId: p.id, damage, enemyHp: enemy.hp });
-    kill(p);
+    const { damage } = resolveHit(target.states, { damage: PLAYER.attackDamage, tags: ["melee"], byId: p.id }, now);
+    hit(target, damage);
+    events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp });
+    settle(p, target);
   }
   return events;
 }
@@ -607,11 +716,11 @@ function pickupHelper(p: PlayerSim, players: readonly PlayerSim[], now: number):
 
 /**
  * Advance downs by one tick: pickup channels, bleed-outs, and the wipe. Server only.
- * Run after the enemy has stepped, so a player downed this tick is counted.
+ * Run after the enemies have stepped, so a player downed this tick is counted.
  */
 export function stepDowns(
   playerList: Iterable<PlayerSim>,
-  enemy: EnemySim,
+  enemyList: Iterable<EnemySim>,
   now: number,
   dtMs: number
 ): SimEvent[] {
@@ -652,14 +761,7 @@ export function stepDowns(
       p.pickupBy = "";
       p.respawnAt = now + PLAYER.respawnMs;
     }
-    enemy.x = ENEMY_SPAWN.x;
-    enemy.z = ENEMY_SPAWN.z;
-    enemy.facing = Math.PI;
-    enemy.hp = GOBLIN.hp;
-    enemy.phase = "idle";
-    enemy.phaseUntil = 0;
-    enemy.targetId = "";
-    enemy.states = {};
+    for (const e of enemyList) resetEnemy(e);
     events.push({ kind: "squadWiped" });
   }
   return events;
@@ -679,40 +781,32 @@ function nearestAlivePlayer(enemy: EnemySim, players: Iterable<PlayerSim>): Play
   return best;
 }
 
-/** Advance the goblin by one tick. Server only. */
+/** Advance one enemy by one tick. Server only. A dead enemy stays dead until the room resets. */
 export function stepEnemy(
   enemy: EnemySim,
   players: Map<string, PlayerSim>,
   now: number,
-  dtMs: number
+  dtMs: number,
+  level: Level = OPEN_FIELD
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const dt = dtMs / 1000;
+  const def = ENEMY_KINDS[enemy.kind];
   expireStates(enemy.states, now);
 
-  if (enemy.phase === "dead") {
-    if (now >= enemy.phaseUntil) {
-      enemy.x = ENEMY_SPAWN.x;
-      enemy.z = ENEMY_SPAWN.z;
-      enemy.hp = GOBLIN.hp;
-      enemy.phase = "idle";
-      enemy.phaseUntil = 0;
-      enemy.targetId = "";
-    }
-    return events;
-  }
+  if (enemy.phase === "dead") return events;
 
   // Keep the current target while it is alive and in range, else re-acquire.
   let target = enemy.targetId ? players.get(enemy.targetId) ?? null : null;
   if (!target || !isAlive(target)) target = nearestAlivePlayer(enemy, players.values());
-  if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) > GOBLIN.aggroRange * 1.5) {
+  if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) > def.aggroRange * 1.5) {
     target = nearestAlivePlayer(enemy, players.values());
   }
   enemy.targetId = target ? target.id : "";
 
   switch (enemy.phase) {
     case "idle": {
-      if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) <= GOBLIN.aggroRange) {
+      if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) <= def.aggroRange) {
         enemy.phase = "chase";
       }
       break;
@@ -726,14 +820,15 @@ export function stepEnemy(
       const vz = target.z - enemy.z;
       const dist = Math.hypot(vx, vz);
       enemy.facing = Math.atan2(vx, vz);
-      if (dist <= GOBLIN.attackRange) {
+      if (dist <= def.attackRange) {
         enemy.phase = "windup";
-        enemy.phaseUntil = now + GOBLIN.windupMs;
+        enemy.phaseUntil = now + def.windupMs;
       } else if (!hasState(enemy.states, "rooted", now)) {
-        const step = Math.min(GOBLIN.speed * dt, dist - GOBLIN.attackRange * 0.9);
+        // Straight at the target; a wall in the way turns the step into a slide along it.
+        const step = Math.min(def.speed * dt, dist - def.attackRange * 0.9);
         enemy.x += (vx / dist) * step;
         enemy.z += (vz / dist) * step;
-        clampToArena(enemy, GOBLIN.radius);
+        collideWalls(enemy, def.radius, level);
       }
       break;
     }
@@ -741,9 +836,9 @@ export function stepEnemy(
       if (now < enemy.phaseUntil) break;
       // The swing lands. Facing was locked at windup start, so a dodge sideways escapes it.
       if (target && isAlive(target) && !isDodging(target, now)) {
-        if (inCone(enemy, target, GOBLIN.attackRange * 1.15, GOBLIN.attackArc, PLAYER.radius)) {
-          target.hp = Math.max(0, target.hp - GOBLIN.damage);
-          events.push({ kind: "enemyHit", targetId: target.id, damage: GOBLIN.damage, targetHp: target.hp });
+        if (inCone(enemy, target, def.attackRange * 1.15, def.attackArc, PLAYER.radius)) {
+          target.hp = Math.max(0, target.hp - def.damage);
+          events.push({ kind: "enemyHit", targetId: target.id, enemyId: enemy.id, damage: def.damage, targetHp: target.hp });
           if (target.hp === 0) {
             downPlayer(target, now);
             events.push({ kind: "playerDowned", playerId: target.id });
@@ -751,7 +846,7 @@ export function stepEnemy(
         }
       }
       enemy.phase = "recover";
-      enemy.phaseUntil = now + GOBLIN.recoverMs;
+      enemy.phaseUntil = now + def.recoverMs;
       break;
     }
     case "recover": {
@@ -759,6 +854,53 @@ export function stepEnemy(
       break;
     }
   }
+  return events;
+}
+
+/**
+ * Keep living enemies from standing inside each other: overlapping pairs are pushed apart,
+ * half each, then back out of the walls. Pairs in id order so the result does not depend on
+ * how the caller stored them.
+ */
+export function separateEnemies(enemyList: Iterable<EnemySim>, level: Level): void {
+  const live = [...enemyList].filter(isEnemyAlive).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (let i = 0; i < live.length; i++) {
+    for (let j = i + 1; j < live.length; j++) {
+      const a = live[i];
+      const b = live[j];
+      const minD = ENEMY_KINDS[a.kind].radius + ENEMY_KINDS[b.kind].radius;
+      let dx = b.x - a.x;
+      let dz = b.z - a.z;
+      let d = Math.hypot(dx, dz);
+      if (d >= minD) continue;
+      if (d < 1e-6) {
+        // Exactly on top of each other (a shared spawn): part them along x.
+        dx = 1;
+        dz = 0;
+        d = 1;
+      }
+      const push = (minD - d) / 2;
+      a.x -= (dx / d) * push;
+      a.z -= (dz / d) * push;
+      b.x += (dx / d) * push;
+      b.z += (dz / d) * push;
+    }
+  }
+  for (const e of live) collideWalls(e, ENEMY_KINDS[e.kind].radius, level);
+}
+
+/** Advance every enemy by one tick, then keep them apart. Server only. */
+export function stepEnemies(
+  enemyList: Iterable<EnemySim>,
+  players: Map<string, PlayerSim>,
+  now: number,
+  dtMs: number,
+  level: Level
+): SimEvent[] {
+  const events: SimEvent[] = [];
+  const enemies = [...enemyList];
+  for (const e of enemies) events.push(...stepEnemy(e, players, now, dtMs, level));
+  separateEnemies(enemies, level);
   return events;
 }
 
@@ -781,6 +923,27 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.abilityHitAt = 0;
     p.readyAt = [0, 0, 0];
     events.push({ kind: "playerRespawned", playerId: p.id });
+  }
+  return events;
+}
+
+/**
+ * One server tick of the fight, after the players' inputs have been applied: hits land,
+ * enemies move and swing, downs and respawns advance, and a cleared room resets after
+ * ROOM.resetMs. Server only.
+ */
+export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, now: number, dtMs: number): SimEvent[] {
+  const events: SimEvent[] = [];
+  events.push(...resolvePlayerAttacks(players.values(), enc.enemies.values(), now));
+  if (events.some((e) => e.kind === "roomCleared")) enc.resetAt = now + ROOM.resetMs;
+  events.push(...stepEnemies(enc.enemies.values(), players, now, dtMs, enc.level));
+  events.push(...stepDowns(players.values(), enc.enemies.values(), now, dtMs));
+  if (events.some((e) => e.kind === "squadWiped")) enc.resetAt = 0; // the wipe already reset the enemies
+  events.push(...stepRespawns(players.values(), now));
+  if (enc.resetAt !== 0 && now >= enc.resetAt) {
+    enc.resetAt = 0;
+    for (const e of enc.enemies.values()) resetEnemy(e);
+    events.push({ kind: "roomReset" });
   }
   return events;
 }

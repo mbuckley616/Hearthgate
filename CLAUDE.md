@@ -4,7 +4,7 @@ Read this first in every session. The design doc is `docs/design-doc.md`; the cu
 
 ## What this project is
 
-A browser co-op dungeon crawler with a host-owned village, portals into short runs, and region-based trading. Phase 0 (now) is only the netcode spike. Build phases in order; each has an exit gate in the design doc's Milestones section. Do not start the next phase's content before the current gate is met and recorded in `docs/playtest-notes.md`.
+A browser co-op dungeon crawler with a host-owned village, portals into short runs, and region-based trading. Phase 0 (the netcode spike) passed on 3 Oct 2026; Phase 1 (the combat slice) is current. Build phases in order; each has an exit gate in the design doc's Milestones section. Do not start the next phase's content before the current gate is met and recorded in `docs/playtest-notes.md`.
 
 ## Architecture rules (never bend these)
 
@@ -35,6 +35,7 @@ A browser co-op dungeon crawler with a host-owned village, portals into short ru
 - `docs/playtest-notes.md` — one entry per human playtest with the three gate questions verbatim. A phase ends only when its gate is recorded here.
 - `docs/critic.md`, `docs/proposals.md` — the critic's reports and its unapproved ideas; Michael promotes, nobody else.
 - `tests/lab/` — the lag lab: a latency, jitter and loss proxy around the bot harness. The critic owns it.
+- `docs/reference/old-gates/` — read-only copies of The Old Gates files the Phase 1 lift items draw on, with a README that maps them. Source material, never imported; the lift rewrites the mechanism to take state and a `now` argument.
 
 ## Shipping
 
@@ -69,10 +70,11 @@ Through the Slack connector (tools named `slack_*`; load them with ToolSearch).
 
 ## How the netcode works (so you do not break it)
 
-- Server ticks at `TICK_RATE` (20 Hz), locked to wall time: a self-scheduling timer runs every tick that is due (`DungeonRoom.pump`, catching up at most four), so simulation time is wall time and not 1% slow as a `setInterval` made it. Each tick it applies up to two queued inputs per player, resolves attacks, steps the goblin, syncs schema and broadcasts the patch itself (`broadcastPatch` at the end of `step`; Colyseus's own patch interval is off because it ran up to a tick behind). Clients get one patch per tick, stamped with the tick's time, leaving within a millisecond of it.
+- Server ticks at `TICK_RATE` (20 Hz), locked to wall time: a self-scheduling timer runs every tick that is due (`DungeonRoom.pump`, catching up at most four), so simulation time is wall time and not 1% slow as a `setInterval` made it. Each tick it applies up to two queued inputs per player, then `stepEncounter` resolves attacks, steps every enemy, keeps them apart, advances downs and respawns and resets a cleared room, then it syncs schema and broadcasts the patch itself (`broadcastPatch` at the end of `step`; Colyseus's own patch interval is off because it ran up to a tick behind). Clients get one patch per tick, stamped with the tick's time, leaving within a millisecond of it.
 - Client ticks input at 20 Hz: samples, predicts its own player with `applyInput`, stores the frame in `pending`, sends it.
 - On every patch the client **rewinds** its own player to the server's copy and **replays** all pending frames the server has not applied (`seq > lastSeq`). The difference between where it was drawn and where it now is goes into a decaying visual offset so corrections never pop. Big errors (over `SNAP_DISTANCE`) snap.
-- Other players and the goblin are **interpolated** 100 ms (`INTERP_DELAY_MS`) behind the client's server clock between received snapshots. No extrapolation yet (see backlog).
+- Other players and every enemy are **interpolated** 100 ms (`INTERP_DELAY_MS`) behind the client's server clock between received snapshots, one snapshot buffer per enemy. No extrapolation yet (see backlog).
+- The room runs a `Level` (`shared/src/level.ts`): walls as rectangles, enemy spawns, bounds. `applyInput` takes the level and `collideWalls` is the only collision; the client passes `net.level` (from the state's `levelId`) to its prediction and replay, so a wall is never a correction. Enemies are an `Encounter` of keyed `EnemySim`s, each with a `kind` from `ENEMY_KINDS`; the schema's `enemies` map and the client's `net.enemies` use the same ids.
 - The **server clock** (`shared/src/clock.ts`, tuned by `CLOCK_SYNC`) is estimated from every stamped message, not from the latest patch: each patch carries its tick's time and each ping reply the server's simulation time including the part of the tick elapsed, so every arrival is a sample `serverTime - recvAt`. The largest sample in a 20 s window (the message with the shortest trip from the server, the path snapshots ride) is the target; the applied offset slews toward it at 10 ms/s and snaps only over 250 ms. So `serverNow()` is server time as it reaches the client on the least-delayed path, and the 100 ms is the whole budget a late snapshot has. Pings (every 250 ms for the first twelve, then once a second) also give the HUD its round trip.
 - The client's "now" for prediction is `predictedTime`, which is server time plus one tick per unconfirmed input. Do not mix it with `performance.now()`.
 

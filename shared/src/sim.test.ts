@@ -111,13 +111,13 @@ describe("combat", () => {
     e.phase = "chase";
     p.facing = 0;
     applyInput(p, { seq: 1, dx: 0, dy: 0, attack: true, dodge: false }, 100, TICK_MS);
-    expect(resolvePlayerAttacks([p], e, 200)).toEqual([]); // windup not finished
-    const events = resolvePlayerAttacks([p], e, 100 + PLAYER.attackWindupMs);
+    expect(resolvePlayerAttacks([p], [e], 200)).toEqual([]); // windup not finished
+    const events = resolvePlayerAttacks([p], [e], 100 + PLAYER.attackWindupMs);
     expect(events[0]).toMatchObject({ kind: "playerHit", enemyHp: GOBLIN.hp - PLAYER.attackDamage });
     e.hp = PLAYER.attackDamage;
     applyInput(p, { seq: 2, dx: 0, dy: 0, attack: true, dodge: false }, 1000, TICK_MS);
-    const killed = resolvePlayerAttacks([p], e, 1000 + PLAYER.attackWindupMs);
-    expect(killed.map((x) => x.kind)).toEqual(["playerHit", "enemyKilled"]);
+    const killed = resolvePlayerAttacks([p], [e], 1000 + PLAYER.attackWindupMs);
+    expect(killed.map((x) => x.kind)).toEqual(["playerHit", "enemyKilled", "roomCleared"]);
     expect(e.phase).toBe("dead");
   });
 
@@ -158,7 +158,7 @@ describe("combat", () => {
     }
     expect(p.hp).toBe(0);
     expect(events.map((x) => x.kind)).toContain("playerDowned");
-    expect(stepDowns([p], e, t, TICK_MS).map((x) => x.kind)).toEqual(["squadWiped"]);
+    expect(stepDowns([p], [e], t, TICK_MS).map((x) => x.kind)).toEqual(["squadWiped"]);
     expect(stepRespawns([p], t + PLAYER.respawnMs).map((x) => x.kind)).toEqual(["playerRespawned"]);
     expect(p.hp).toBe(PLAYER.hp);
   });

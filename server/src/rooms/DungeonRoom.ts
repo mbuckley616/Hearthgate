@@ -1,26 +1,26 @@
 import { Client, Room } from "@colyseus/core";
 import {
+  DEFAULT_LEVEL_ID,
   PLAYER_COLORS,
   SPAWN_POINTS,
   TICK_MS,
   applyInput,
-  createEnemy,
+  createEncounter,
   createInputBucket,
   createPlayer,
   isValidInput,
+  levelById,
   neutralInput,
-  resolvePlayerAttacks,
-  stepDowns,
-  stepEnemy,
-  stepRespawns,
+  stepEncounter,
   takeInputToken,
+  type Encounter,
   type EnemySim,
   type InputBucket,
   type InputFrame,
   type PlayerSim,
   type SimEvent
 } from "@hearthgate/shared";
-import { DungeonState, PlayerState } from "../schema/DungeonState.js";
+import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js";
 
 /**
  * Inputs a client may bank while the server waits for the next tick.
@@ -40,6 +40,8 @@ export const CLOSE_INPUT_FLOOD = 4001;
 
 interface JoinOptions {
   name?: string;
+  /** A level id from shared LEVELS; tests pick the open field, play gets the default. */
+  level?: string;
 }
 
 export class DungeonRoom extends Room<DungeonState> {
@@ -47,7 +49,7 @@ export class DungeonRoom extends Room<DungeonState> {
 
   private sim = {
     players: new Map<string, PlayerSim>(),
-    enemy: createEnemy() as EnemySim,
+    encounter: null as unknown as Encounter,
     tick: 0
   };
   private queues = new Map<string, InputFrame[]>();
@@ -59,8 +61,19 @@ export class DungeonRoom extends Room<DungeonState> {
   private lastStepAt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  onCreate() {
+  onCreate(options: JoinOptions = {}) {
     this.state = new DungeonState();
+    const level = levelById(typeof options.level === "string" ? options.level : DEFAULT_LEVEL_ID);
+    this.sim.encounter = createEncounter(level);
+    this.state.levelId = level.id;
+    for (const e of this.sim.encounter.enemies.values()) {
+      const es = new EnemyState();
+      es.id = e.id;
+      es.kind = e.kind;
+      es.maxHp = e.maxHp;
+      copyEnemy(e, es);
+      this.state.enemies.set(e.id, es);
+    }
     // Patches go out at the end of each step (see step()), not on Colyseus's own patch
     // interval: that interval runs out of phase with the simulation one and was measured
     // sending each snapshot about 49 ms after the tick it carried. The client's clock
@@ -96,7 +109,7 @@ export class DungeonRoom extends Room<DungeonState> {
     // clients' clocks (which assume a second is a second) drifted against it.
     this.epoch = performance.now();
     this.pump();
-    console.log(`[dungeon ${this.roomId}] created`);
+    console.log(`[dungeon ${this.roomId}] created: ${level.name}, ${this.sim.encounter.enemies.size} enemies`);
   }
 
   onJoin(client: Client, options: JoinOptions = {}) {
@@ -159,22 +172,19 @@ export class DungeonRoom extends Room<DungeonState> {
     this.sim.tick++;
     this.lastStepAt = performance.now();
     const now = this.sim.tick * TICK_MS;
+    const level = this.sim.encounter.level;
 
     for (const [id, p] of this.sim.players) {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
       if (frames.length === 0) {
-        applyInput(p, neutralInput(p.lastSeq), now, TICK_MS);
+        applyInput(p, neutralInput(p.lastSeq), now, TICK_MS, level);
       } else {
-        for (const f of frames) applyInput(p, f, now, TICK_MS);
+        for (const f of frames) applyInput(p, f, now, TICK_MS, level);
       }
     }
 
-    const events: SimEvent[] = [];
-    events.push(...resolvePlayerAttacks(this.sim.players.values(), this.sim.enemy, now));
-    events.push(...stepEnemy(this.sim.enemy, this.sim.players, now, TICK_MS));
-    events.push(...stepDowns(this.sim.players.values(), this.sim.enemy, now, TICK_MS));
-    events.push(...stepRespawns(this.sim.players.values(), now));
+    const events: SimEvent[] = stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS);
 
     this.syncState();
     if (events.length) this.broadcast("events", events);
@@ -187,16 +197,10 @@ export class DungeonRoom extends Room<DungeonState> {
       const ps = this.state.players.get(id);
       if (ps) copyPlayer(p, ps);
     }
-    const e = this.sim.enemy;
-    const es = this.state.enemy;
-    es.x = e.x;
-    es.z = e.z;
-    es.facing = e.facing;
-    es.hp = e.hp;
-    es.phase = e.phase;
-    es.phaseUntil = e.phaseUntil;
-    es.targetId = e.targetId;
-    es.hitFlashUntil = e.hitFlashUntil;
+    for (const [id, e] of this.sim.encounter.enemies) {
+      const es = this.state.enemies.get(id);
+      if (es) copyEnemy(e, es);
+    }
   }
 }
 
@@ -220,6 +224,18 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.downedUntil = p.downedUntil;
   ps.pickupMs = p.pickupMs;
   ps.pickupBy = p.pickupBy;
+}
+
+/** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */
+function copyEnemy(e: EnemySim, es: EnemyState) {
+  es.x = e.x;
+  es.z = e.z;
+  es.facing = e.facing;
+  es.hp = e.hp;
+  es.phase = e.phase;
+  es.phaseUntil = e.phaseUntil;
+  es.targetId = e.targetId;
+  es.hitFlashUntil = e.hitFlashUntil;
 }
 
 function sanitizeName(name: unknown): string {

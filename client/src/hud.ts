@@ -5,9 +5,12 @@ export interface HudData {
   dead: boolean;
   /** Centre banner while downed or dead ("" when standing). */
   banner: string;
+  /** The nearest living enemy's bar; label such as "Goblin, 3 of 4 left" or "Room clear". */
+  enemyLabel: string;
   enemyHp: number;
   enemyMaxHp: number;
-  enemyPhase: string;
+  enemiesLeft: number;
+  enemiesTotal: number;
   players: number;
   rtt: number;
   pending: number;
@@ -25,6 +28,7 @@ export class Hud {
   private name: HTMLElement;
   private hpFill: HTMLElement;
   private hpText: HTMLElement;
+  private enemyLabel: HTMLElement;
   private enemyFill: HTMLElement;
   private enemyText: HTMLElement;
   private party: HTMLElement;
@@ -41,7 +45,7 @@ export class Hud {
       <div class="hud-panel hud-top-left">
         <div class="hud-name" id="hud-name"></div>
         <div class="hud-bar"><div class="hud-fill hud-fill-player" id="hud-hp-fill"></div><span id="hud-hp-text"></span></div>
-        <div class="hud-sub">Goblin</div>
+        <div class="hud-sub" id="hud-enemy-label">Goblin</div>
         <div class="hud-bar"><div class="hud-fill hud-fill-enemy" id="hud-enemy-fill"></div><span id="hud-enemy-text"></span></div>
       </div>
       <div class="hud-panel hud-top-right">
@@ -65,6 +69,7 @@ export class Hud {
     this.name = root.querySelector("#hud-name")!;
     this.hpFill = root.querySelector("#hud-hp-fill")!;
     this.hpText = root.querySelector("#hud-hp-text")!;
+    this.enemyLabel = root.querySelector("#hud-enemy-label")!;
     this.enemyFill = root.querySelector("#hud-enemy-fill")!;
     this.enemyText = root.querySelector("#hud-enemy-text")!;
     this.party = root.querySelector("#hud-party")!;
@@ -83,8 +88,11 @@ export class Hud {
     this.name.textContent = d.myName;
     this.hpFill.style.width = `${(100 * d.myHp) / d.myMaxHp}%`;
     this.hpText.textContent = `${d.myHp} / ${d.myMaxHp}`;
-    this.enemyFill.style.width = `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
-    this.enemyText.textContent = d.enemyPhase === "dead" ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
+    this.enemyLabel.textContent = d.enemyLabel;
+    this.enemyLabel.setAttribute("data-left", String(d.enemiesLeft));
+    const noEnemy = d.enemiesLeft === 0 || d.enemyMaxHp === 0;
+    this.enemyFill.style.width = noEnemy ? "0%" : `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
+    this.enemyText.textContent = noEnemy ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
     this.party.textContent = `${d.players} in the party`;
     this.party.setAttribute("data-players", String(d.players));
     this.net.textContent = `${Math.round(d.rtt)} ms ping, ${d.pending} unconfirmed, ${d.corrections} corrections, room ${d.roomId.slice(0, 6)}`;

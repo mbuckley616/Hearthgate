@@ -1,10 +1,11 @@
 import {
   ABILITIES,
   DOWNS,
+  ENEMY_KINDS,
   SWORD_SLOTS,
   abilityInSlot,
   type AbilityId,
-  GOBLIN,
+  type EnemyKind,
   HIT_FEEDBACK,
   PLAYER,
   TICK_MS,
@@ -20,12 +21,12 @@ import { Hud } from "./hud";
 import { Sound } from "./sound";
 
 /**
- * Phase 0: two (or more) browsers in one room, one goblin, one attack.
+ * Phase 1: a party in one room with walls and a handful of goblins.
  *
  * Loop shape:
  *  - a fixed 20 Hz tick samples input, predicts our own player, sends the frame;
  *  - requestAnimationFrame draws: our predicted player with error smoothing,
- *    everyone else interpolated 100 ms behind the server, the goblin likewise.
+ *    everyone else interpolated 100 ms behind the server, the enemies likewise.
  */
 
 const params = new URLSearchParams(location.search);
@@ -34,6 +35,8 @@ const defaultEndpoint: string =
   import.meta.env.VITE_SERVER_URL || `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:2567`;
 const endpoint = params.get("server") ?? defaultEndpoint;
 const name = params.get("name") ?? pickName();
+// ?level=field joins (or creates) a room on the Phase 0 open field; tests use it.
+const levelParam = params.get("level") ?? undefined;
 
 const app = document.getElementById("app")!;
 const view = new View(app);
@@ -62,20 +65,32 @@ let hitCount = 0;
 function hitFeedback(e: SimEvent) {
   if (((e.kind === "playerHit" || e.kind === "abilityHit") && e.attackerId === net.sessionId) || (e.kind === "enemyHit" && e.targetId === net.sessionId)) hitCount++;
   const me = net.me;
-  const gob = net.remotePose(net.enemy) ?? { x: me.x, z: me.z + 1 };
   if (e.kind === "playerHit" || e.kind === "abilityHit") {
     const mine = e.attackerId === net.sessionId;
     sound.hitDealt(mine ? 1 : HIT_FEEDBACK.othersVolume);
-    if (mine) view.nudge(gob.x - me.x, gob.z - me.z, HIT_FEEDBACK.dealtNudgeM, HIT_FEEDBACK.dealtNudgeMs);
+    if (mine) {
+      const gob = enemyPose(e.enemyId);
+      view.nudge(gob.x - me.x, gob.z - me.z, HIT_FEEDBACK.dealtNudgeM, HIT_FEEDBACK.dealtNudgeMs);
+    }
   } else if (e.kind === "enemyHit") {
     const mine = e.targetId === net.sessionId;
     sound.hitTaken(mine ? 1 : HIT_FEEDBACK.othersVolume);
-    if (mine) view.nudge(me.x - gob.x, me.z - gob.z, HIT_FEEDBACK.takenNudgeM, HIT_FEEDBACK.takenNudgeMs);
+    if (mine) {
+      const gob = enemyPose(e.enemyId);
+      view.nudge(me.x - gob.x, me.z - gob.z, HIT_FEEDBACK.takenNudgeM, HIT_FEEDBACK.takenNudgeMs);
+    }
   }
 }
 
+/** Where an enemy is drawn, or a spot just ahead of us if we have not seen it yet. */
+function enemyPose(id: string): { x: number; z: number } {
+  const v = net.enemies.get(id);
+  const pose = v ? net.remotePose(v) : null;
+  return pose ?? { x: net.me.x + Math.sin(net.me.facing), z: net.me.z + Math.cos(net.me.facing) };
+}
+
 net
-  .connect(endpoint, name)
+  .connect(endpoint, name, levelParam)
   .then(() => {
     hud.setStatus("");
     startLoops();
@@ -104,6 +119,7 @@ function startLoops() {
 function draw(dt: number) {
   const now = net.predictedTime;
   const serverNow = net.serverNow();
+  view.setLevel(net.level);
 
   // Me.
   view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
@@ -123,12 +139,12 @@ function draw(dt: number) {
 
   // Everyone else.
   const live = new Set<string>([net.sessionId]);
+  const drawT = serverNow - 100;
   for (const r of net.remotes.values()) {
     live.add(r.id);
     view.ensurePlayer(r.id, r.name, r.color);
     const pose = net.remotePose(r);
     if (!pose) continue;
-    const drawT = serverNow - 100;
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
@@ -142,29 +158,37 @@ function draw(dt: number) {
   }
   for (const id of view.playerIds()) if (!live.has(id)) view.removePlayer(id);
 
-  // The goblin.
-  const e = net.enemy;
-  const ePose = net.remotePose(e);
-  if (ePose) {
-    const drawT = serverNow - 100;
-    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / GOBLIN.windupMs) : 0;
-    view.updateEnemy(ePose, { hp: e.hp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil });
+  // The enemies.
+  const liveEnemies = new Set<string>();
+  for (const e of net.enemies.values()) {
+    liveEnemies.add(e.id);
+    view.ensureEnemy(e.id, e.kind);
+    const ePose = net.remotePose(e);
+    if (!ePose) continue;
+    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / ENEMY_KINDS[e.kind].windupMs) : 0;
+    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil });
   }
+  for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
   view.render();
 
-  // HUD.
+  // HUD: the nearest living enemy's bar, and how many are left.
   const t = performance.now();
   while (recentEvents.length && recentEvents[0].until < t) recentEvents.shift();
+  const nearest = net.nearestEnemy(myPose.x, myPose.z);
+  const left = net.enemiesAlive();
+  const total = net.enemies.size;
   hud.update({
     myName: net.myName || name,
     myHp: me.hp,
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
     banner: downBanner(me, now),
-    enemyHp: e.hp,
-    enemyMaxHp: GOBLIN.hp,
-    enemyPhase: e.phase,
+    enemyLabel: nearest ? `${kindName(nearest.view.kind)}, ${left} of ${total} left` : total > 0 ? "Room clear" : "No enemies",
+    enemyHp: nearest?.view.hp ?? 0,
+    enemyMaxHp: nearest?.view.maxHp ?? 0,
+    enemiesLeft: left,
+    enemiesTotal: total,
     players: 1 + net.remotes.size,
     rtt: net.rttMs,
     pending: net.pending.length,
@@ -182,7 +206,11 @@ function draw(dt: number) {
     sessionId: net.sessionId,
     me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
-    enemy: { hp: e.hp, phase: e.phase },
+    /** The nearest living enemy (what the HUD shows), kept for the older tests. */
+    enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
+    enemies: Object.fromEntries([...net.enemies.values()].map((e) => [e.id, { kind: e.kind, hp: e.hp, phase: e.phase, pose: net.remotePose(e) }])),
+    enemiesLeft: left,
+    level: net.level.id,
     rtt: net.rttMs,
     minRtt: net.minRttMs,
     clockOffset: net.clockOffset,
@@ -197,14 +225,18 @@ function describeEvent(e: SimEvent): string {
   switch (e.kind) {
     case "abilityHit": {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
-      return `${who} cleaved the goblin for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
+      return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
     case "playerHit":
-      return e.attackerId === net.sessionId ? `You hit the goblin for ${e.damage}` : `${nameOf(e.attackerId)} hit the goblin for ${e.damage}`;
+      return e.attackerId === net.sessionId ? `You hit ${enemyName(e.enemyId)} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${enemyName(e.enemyId)} for ${e.damage}`;
     case "enemyKilled":
-      return e.killerId === net.sessionId ? "You felled the goblin" : `${nameOf(e.killerId)} felled the goblin`;
+      return e.killerId === net.sessionId ? `You felled ${enemyName(e.enemyId)}` : `${nameOf(e.killerId)} felled ${enemyName(e.enemyId)}`;
     case "enemyHit":
-      return e.targetId === net.sessionId ? `The goblin hit you for ${e.damage}` : `The goblin hit ${nameOf(e.targetId)}`;
+      return e.targetId === net.sessionId ? `${capital(enemyName(e.enemyId))} hit you for ${e.damage}` : `${capital(enemyName(e.enemyId))} hit ${nameOf(e.targetId)}`;
+    case "roomCleared":
+      return "Room clear";
+    case "roomReset":
+      return "The goblins are back";
     case "playerDowned":
       return e.playerId === net.sessionId ? "You went down" : `${nameOf(e.playerId)} is down: get next to them`;
     case "playerPickedUp":
@@ -221,6 +253,21 @@ function describeEvent(e: SimEvent): string {
 }
 
 const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
+const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin" };
+
+function kindName(kind: EnemyKind): string {
+  return KIND_NAMES[kind] ?? kind;
+}
+
+/** "the goblin" (or "a goblin" when the id is unknown): lower case for the middle of a sentence. */
+function enemyName(id: string): string {
+  const v = net.enemies.get(id);
+  return v ? `the ${kindName(v.kind).toLowerCase()}` : "a goblin";
+}
+
+function capital(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /** Cleave's arc shows from the moment its hit resolves until shortly after. */
 function cleaveFlash(slot: number, until: number, t: number): boolean {
@@ -237,7 +284,7 @@ function downBanner(me: PlayerSim, now: number): string {
   }
   if (!isDead(me)) return "";
   if (me.respawnAt > 0) return `Back in ${Math.ceil(Math.max(0, me.respawnAt - now) / 1000)}`;
-  return "Out of this fight. Back when the goblin falls";
+  return "Out of this fight. Back when the room is clear";
 }
 
 function nameOf(id: string): string {

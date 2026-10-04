@@ -5,11 +5,14 @@
  * of them with inputs for a second, and checks that:
  *   1. both clients see two players;
  *   2. the driven player moved on the server and the other client saw it;
- *   3. the goblin left idle and started chasing;
+ *   3. the goblin left idle and started chasing (this room runs the Phase 0 open field, one goblin, so
+ *      the downs and Cleave steps below meet one enemy as they were written for);
  *   4. a third client flooding inputs at 80 a second is dropped, and the others stay;
  *   5. a downed player is picked up by a teammate standing next to them, and a Cleave
  *      lands and its cooldown reaches the other client;
- *   6. stress: STRESS_BOTS bots (default 4) in a fresh room walk, swing and dodge at the
+ *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
+ *      walking into one of its walls is stopped by the server where the shared sim says;
+ *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
  *      and the server tick keeps wall time.
@@ -47,6 +50,21 @@ function fail(msg: string): never {
   throw new Error(msg);
 }
 
+/** The living enemy nearest (x, z) in a client's state, or null when the room is clear. */
+function nearestEnemy(state: any, x: number, z: number): any {
+  let best: any = null;
+  let bestD = Infinity;
+  state.enemies.forEach((e: any) => {
+    if (e.phase === "dead") return;
+    const d = Math.hypot(e.x - x, e.z - z);
+    if (d < bestD) {
+      bestD = d;
+      best = e;
+    }
+  });
+  return best;
+}
+
 async function main() {
   // Run from the server directory so tsx picks up server/tsconfig.json (experimentalDecorators).
   // Launch node directly with the tsx loader rather than "npx tsx": on Windows npx is a .cmd
@@ -63,7 +81,7 @@ async function main() {
     await waitForHealth(`http://localhost:${PORT}/health`);
 
     const client = new Client(`ws://localhost:${PORT}`);
-    const a = await client.joinOrCreate("dungeon", { name: "Alpha" });
+    const a = await client.create("dungeon", { name: "Alpha", level: "field" });
     const b = await client.joinById(a.roomId, { name: "Bravo" });
 
     let aState: any = null;
@@ -75,6 +93,9 @@ async function main() {
     if (!aState || !bState) fail("no state received");
     if (aState.players.size !== 2 || bState.players.size !== 2) {
       fail(`expected 2 players on both clients, got ${aState.players.size} and ${bState.players.size}`);
+    }
+    if (aState.levelId !== "field" || bState.enemies.size !== 1) {
+      fail(`expected the open field with 1 enemy, got level ${aState.levelId} with ${bState.enemies.size} enemies`);
     }
 
     const startX = aState.players.get(a.sessionId).x;
@@ -94,10 +115,11 @@ async function main() {
     if (moved < 3) fail(`Alpha moved only ${moved.toFixed(2)} m on the server`);
     if (Math.abs(aOnB.x - aOnA.x) > 0.5) fail(`Bravo sees Alpha at x=${aOnB.x.toFixed(2)} but server says ${aOnA.x.toFixed(2)}`);
     if (aOnA.lastSeq < seq - 3) fail(`server applied seq ${aOnA.lastSeq} of ${seq}`);
-    if (bState.enemy.phase === "idle") fail("goblin never aggroed");
+    const nearGoblin = nearestEnemy(bState, aOnB.x, aOnB.z);
+    if (!nearGoblin || nearGoblin.phase === "idle") fail("the nearest goblin never aggroed");
 
     console.log(
-      `ok: 2 players synced, Alpha moved ${moved.toFixed(2)} m, Bravo sees x=${aOnB.x.toFixed(2)}, goblin is ${bState.enemy.phase}, server tick ${aState.tick}`
+      `ok: 2 players synced in ${aState.levelId} with ${bState.enemies.size} enemies, Alpha moved ${moved.toFixed(2)} m, Bravo sees x=${aOnB.x.toFixed(2)}, nearest goblin is ${nearGoblin.phase}, server tick ${aState.tick}`
     );
 
     // Flood: 80 inputs a second sustained must get Charlie dropped with CLOSE_INPUT_FLOOD.
@@ -130,8 +152,9 @@ async function main() {
     };
     const downStart = Date.now();
     const bravoWalker = setInterval(() => {
-      const e = aState.enemy;
-      walkTo(b, () => ++bseq, e.x, e.z, 1.2);
+      const me = aState.players.get(b.sessionId);
+      const e = nearestEnemy(aState, me.x, me.z);
+      if (e) walkTo(b, () => ++bseq, e.x, e.z, 1.2);
     }, TICK_MS);
     while (!(aState.players.get(b.sessionId).downedUntil > 0) && Date.now() - downStart < 25000) await sleep(50);
     clearInterval(bravoWalker);
@@ -161,7 +184,8 @@ async function main() {
     let cleaved = false;
     const cleaver = setInterval(() => {
       const me = aState.players.get(a.sessionId);
-      const e = aState.enemy;
+      const e = nearestEnemy(aState, me.x, me.z);
+      if (!e) return;
       const d = Math.hypot(e.x - me.x, e.z - me.z);
       if (d > 2) return walkTo(a, () => ++seq, e.x, e.z, 1.5);
       // Face the goblin with a tiny step, then press the slot.
@@ -180,13 +204,44 @@ async function main() {
     await b.leave();
     await sleep(300);
 
+    await yard(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
   }
 }
 
-/** N scripted bots in one fresh room. Each walks a circle at its own phase, swings and dodges. */
+/**
+ * The default level: four goblins and walls reach the client, and a wall stops a walker. Delta walks east
+ * from the first spawn (-3, 3) along z = 3 into the wall at x = 5.6..6.4 (shared level.ts YARD): the server
+ * must hold Delta at x = 5.1 (the wall's face less the player's radius) instead of letting them through.
+ */
+async function yard(client: Client) {
+  const d = await client.create("dungeon", { name: "Delta" });
+  let dState: any = null;
+  d.onStateChange((s: any) => (dState = s));
+  await sleep(400);
+  if (!dState) fail("yard: no state received");
+  if (dState.levelId !== "yard" || dState.enemies.size !== 4) fail(`yard: expected the yard with 4 enemies, got ${dState.levelId} with ${dState.enemies.size}`);
+  const kinds = new Set<string>();
+  dState.enemies.forEach((e: any) => kinds.add(e.kind));
+  if (kinds.size !== 1 || !kinds.has("goblin")) fail(`yard: expected goblins, got ${[...kinds].join(",")}`);
+  const start = dState.players.get(d.sessionId);
+  if (Math.abs(start.x + 3) > 0.01 || Math.abs(start.z - 3) > 0.01) fail(`yard: Delta spawned at ${start.x}, ${start.z}, not (-3, 3)`);
+  let seq = 0;
+  const walker = setInterval(() => d.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false }), TICK_MS);
+  await sleep(2500);
+  clearInterval(walker);
+  await sleep(200);
+  const me = dState.players.get(d.sessionId);
+  const face = 5.6 - 0.5;
+  if (Math.abs(me.x - face) > 0.1 || Math.abs(me.z - 3) > 0.1) fail(`yard: after 2.5 s walking east Delta is at ${me.x.toFixed(2)}, ${me.z.toFixed(2)}; the wall should hold them at x = ${face}`);
+  console.log(`ok: yard room has ${dState.enemies.size} goblins; the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
+  await d.leave();
+  await sleep(300);
+}
+
+/** N scripted bots in one fresh yard room. Each walks a circle at its own phase, swings and dodges. */
 async function stress(client: Client) {
   const first = await client.create("dungeon", { name: "Bot 1" });
   const bots = [first];

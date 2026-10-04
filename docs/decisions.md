@@ -17,6 +17,7 @@ A. Let the builder routine read The Old Gates: add the repo to the routine's sou
 B. Copy the relevant Old Gates modules into this repo under `docs/reference/old-gates/` (read-only reference, not built); the builder lifts from there.
 C. Re-author them from the design doc without The Old Gates; faster to unblock, loses the tuning.
 Michael: **A, let the builder read The Old Gates** (2026-10-04)
+Follow-up (Michael's local session, 2026-10-04): the builder's next run (Session 13) was refused the clone again, so B was applied as the fallback: the files the four items need are copied under `docs/reference/old-gates/` with a README mapping them (snapshot of The Old Gates at a129d39). A still stands as the preference; the copies can be dropped once the routine can read the repo.
 
 ### 2026-10-04: Revive Draught before the item ledger exists (builder, Session 7)
 The downs item ends with "Revive Draught consumable". CLAUDE.md rule 3 says items move only through the item and trade service in a transaction, and that service arrives in Phase 3. Session 7 built downs, bleed-out and free pickup, and left the draught out.
