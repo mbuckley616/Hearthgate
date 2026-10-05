@@ -171,8 +171,10 @@ function draw(dt: number) {
     view.ensureEnemy(e.id, e.kind);
     const ePose = net.remotePose(e);
     if (!ePose) continue;
-    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / ENEMY_KINDS[e.kind].windupMs) : 0;
-    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp });
+    const def = ENEMY_KINDS[e.kind];
+    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
+    const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
+    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, aim, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp });
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
@@ -259,6 +261,10 @@ function describeEvent(e: SimEvent): string {
     }
     case "playerStaggered":
       return e.playerId === net.sessionId ? "You are knocked off balance" : `${nameOf(e.playerId)} is off balance`;
+    case "playerKnocked":
+      return e.playerId === net.sessionId ? `${capital(enemyName(e.enemyId))} ran you down` : `${capital(enemyName(e.enemyId))} ran down ${nameOf(e.playerId)}`;
+    case "chargeWall":
+      return `${capital(enemyName(e.enemyId))} hit the wall: stunned`;
     case "postureBroken":
       return `${capital(enemyName(e.enemyId))} is off balance: hit it now`;
     case "roomCleared":
@@ -286,7 +292,7 @@ function describeEvent(e: SimEvent): string {
 }
 
 const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
-const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer" };
+const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger" };
 
 function kindName(kind: EnemyKind): string {
   return KIND_NAMES[kind] ?? kind;

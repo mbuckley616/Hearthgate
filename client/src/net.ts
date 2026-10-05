@@ -330,6 +330,9 @@ export class Net {
     me.blockSince = p.blockSince ?? 0;
     me.posture = p.posture ?? me.posture;
     me.staggerUntil = p.staggerUntil ?? 0;
+    me.knockUntil = p.knockUntil ?? 0;
+    me.knockDx = p.knockDx ?? 0;
+    me.knockDz = p.knockDz ?? 0;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

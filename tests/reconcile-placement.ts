@@ -3,12 +3,15 @@
  * patches and checks what it counts as corrections and snaps.
  *   1. the first patch, which places us at our spawn, is not a snap;
  *   2. a respawn (dead to standing at the spawn) is not a snap or a correction;
- *   3. a real prediction error over SNAP_DISTANCE still is.
+ *   3. a real prediction error over SNAP_DISTANCE still is;
+ *   4. a Charger's throw is replayed as a slide from the server's knock state: the patch that
+ *      brings it is a smoothed correction (the client could not know), never a snap, and the
+ *      next patch agrees with the replay.
  * The critic found respawns and wipes inflating the HUD counts and `__hg.snaps` (2026-10-04).
  *
  * Run: part of npm run test:net
  */
-import { PLAYER, TICK_MS } from "@hearthgate/shared";
+import { KNOCKBACK, PLAYER, TICK_MS } from "@hearthgate/shared";
 import { Net, SNAP_DISTANCE } from "../client/src/net.ts";
 
 function fail(msg: string): never {
@@ -19,7 +22,7 @@ function fail(msg: string): never {
 const ID = "me";
 let tick = 100;
 
-function patch(net: Net, p: { x: number; z: number; hp: number; downedUntil?: number; respawnAt?: number }) {
+function patch(net: Net, p: { x: number; z: number; hp: number; [field: string]: number }) {
   tick++;
   const player = {
     name: "Tester",
@@ -77,4 +80,18 @@ if (net.snaps !== before.snaps + 1 || net.corrections !== before.corrections + 1
   fail(`a ${SNAP_DISTANCE + 1} m error while standing counted ${net.snaps - before.snaps} snaps`);
 }
 
-console.log("ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps");
+// 4. Thrown north at tick T while two of our inputs are still unconfirmed.
+patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 10 });
+const beforeThrow = { snaps: net.snaps, corrections: net.corrections };
+net.pending = [11, 12].map((seq) => ({ seq, dx: 0, dy: 0, attack: false, dodge: false }));
+const thrownAt = (tick + 1) * TICK_MS;
+const knock = { knockUntil: thrownAt + KNOCKBACK.ms, knockDx: 0, knockDz: KNOCKBACK.speed };
+patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 10, ...knock });
+const slid = (2 * KNOCKBACK.speed * TICK_MS) / 1000;
+if (Math.abs(net.me.z - slid) > 1e-9) fail(`replaying two frames of a throw put us at z = ${net.me.z}, not ${slid}`);
+if (net.snaps !== beforeThrow.snaps) fail("a throw counted as a snap");
+const afterThrow = net.corrections;
+patch(net, { x: 0, z: slid, hp: PLAYER.hp, lastSeq: 12, ...knock });
+if (net.corrections !== afterThrow || net.snaps !== beforeThrow.snaps) fail("the patch after a throw disagreed with the replay");
+
+console.log("ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps; a throw replays as a slide");

@@ -28,6 +28,8 @@ export interface EnemyVisual {
   hitFlash: boolean;
   /** A shield kind's guard is raised. */
   guardUp: boolean;
+  /** 0..1 while a charger aims, else 0. */
+  aim: number;
 }
 
 const PALETTE = {
@@ -38,6 +40,7 @@ const PALETTE = {
   goblin: 0x4f8a4f,
   goblinDark: 0x2f5c2f,
   shieldbearer: 0x6f6a62,
+  charger: 0x8a5a3c,
   shield: 0xb08a4a,
   wall: 0x9a978c,
   telegraph: 0xd9534f,
@@ -152,18 +155,34 @@ class EnemyMesh {
   hpBar: THREE.Sprite;
   /** Shield kinds only: the raised shield, lowered (hidden) while the guard is broken. */
   shield: THREE.Mesh | null = null;
+  /** Charging kinds only: the lane on the ground while it aims. */
+  lane: THREE.Mesh | null = null;
   private color: number;
   private windupColor: number;
 
   constructor(kind: EnemyKind) {
     const def = ENEMY_KINDS[kind];
-    this.color = kind === "shieldbearer" ? PALETTE.shieldbearer : PALETTE.goblin;
+    this.color = kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : PALETTE.goblin;
     this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
     this.body = new THREE.Mesh(
       new THREE.ConeGeometry(def.radius * 1.1, kind === "shieldbearer" ? 1.8 : 1.5, 7),
       new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.85, flatShading: true })
     );
     this.body.position.y = 0.75;
+    if (def.charge) {
+      // The charge's lane, as long as its run and as wide as what it hits.
+      const len = def.charge.maxRange;
+      const lane = new THREE.PlaneGeometry((def.radius + PLAYER.radius) * 2, len);
+      lane.translate(0, len / 2, 0);
+      this.lane = new THREE.Mesh(
+        lane,
+        new THREE.MeshBasicMaterial({ color: PALETTE.telegraph, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+      );
+      this.lane.rotation.x = Math.PI / 2; // lie flat, pointing along local +z
+      this.lane.position.y = 0.03;
+      this.lane.visible = false;
+      this.group.add(this.lane);
+    }
     if (def.frontGuard !== undefined) {
       // A tall plank shield across the front: the side you must not hit.
       this.shield = new THREE.Mesh(
@@ -207,6 +226,10 @@ class EnemyMesh {
     const mat = this.body.material as THREE.MeshStandardMaterial;
     mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : this.color);
     if (this.shield) this.shield.visible = v.guardUp;
+    if (this.lane) {
+      this.lane.visible = v.phase === "aim";
+      if (this.lane.visible) (this.lane.material as THREE.MeshBasicMaterial).opacity = 0.2 + 0.5 * v.aim;
+    }
     this.telegraph.visible = v.phase === "windup";
     if (v.phase === "windup") {
       const s = 0.35 + 0.65 * v.windup;

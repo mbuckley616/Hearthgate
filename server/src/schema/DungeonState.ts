@@ -36,6 +36,10 @@ export class PlayerState extends Schema {
   @type("number") blockSince = 0;
   @type("number") posture = 100;
   @type("number") staggerUntil = 0;
+  /** A throw in progress: the client replays the slide like a dodge. */
+  @type("number") knockUntil = 0;
+  @type("number") knockDx = 0;
+  @type("number") knockDz = 0;
 }
 
 export class EnemyState extends Schema {

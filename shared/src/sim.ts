@@ -83,7 +83,40 @@ export interface EnemyDef {
    * their damage. Absent for kinds without a shield.
    */
   frontGuard?: number;
+  /** A rush at a target out of reach (the Charger); absent for kinds that only swing. */
+  charge?: ChargeDef;
 }
+
+/**
+ * A charge: from `minRange` to `maxRange` with a clear line, at most every `everyMs`, the
+ * enemy plants itself for `aimMs` (the tell: a lane on the ground), then runs straight down
+ * the lane at `speed` for up to `maxRange`. The first player it meets takes `damage` and is
+ * thrown back `KNOCKBACK` along the lane; a wall stops it dead and leaves it stunned.
+ */
+export interface ChargeDef {
+  minRange: number;
+  maxRange: number;
+  everyMs: number;
+  aimMs: number;
+  speed: number;
+  damage: number;
+  /** Recovery after hitting a wall, the punish for baiting it into one. */
+  wallStunMs: number;
+}
+
+/**
+ * Being thrown: the player slides at `speed` for `ms` and can do nothing else, like a dodge
+ * they did not choose. A slide and not a teleport, so the client predicts it from the
+ * server's state like a dodge and a throw is never a snap.
+ */
+export const KNOCKBACK = {
+  speed: 12, // m/s
+  /**
+   * The slide runs on the ticks after the blow (inputs are applied before hits resolve), so a
+   * 300 ms window is five ticks at 12 m/s: 3 m, The Old Gates' lair beast's throw.
+   */
+  ms: 300
+} as const;
 
 export const GOBLIN: EnemyDef = {
   hp: 60,
@@ -119,7 +152,27 @@ export const SHIELDBEARER: EnemyDef = {
   frontGuard: 0.35
 };
 
-export const ENEMY_KINDS = { goblin: GOBLIN, shieldbearer: SHIELDBEARER } as const satisfies Record<string, EnemyDef>;
+/**
+ * The Charger: designed in The Old Gates (rush plus knockback) and never built there; the
+ * charge is its lair beast's (every 7 s from 5 to 16 units at four times its speed, double
+ * damage, a three-unit throw), on a goblin-sized brute. Up close it swings like a goblin.
+ * The answer is to read the lane and step out of it (or dodge through), best of all with a
+ * wall behind you.
+ */
+export const CHARGER: EnemyDef = {
+  hp: 80,
+  radius: 0.6,
+  speed: 3.0,
+  aggroRange: 14,
+  attackRange: 1.9,
+  attackArc: Math.PI * 0.8,
+  windupMs: 700,
+  recoverMs: 700,
+  damage: 15,
+  charge: { minRange: 5, maxRange: 14, everyMs: 7000, aimMs: 900, speed: 12, damage: 30, wallStunMs: 2000 }
+};
+
+export const ENEMY_KINDS = { goblin: GOBLIN, shieldbearer: SHIELDBEARER, charger: CHARGER } as const satisfies Record<string, EnemyDef>;
 export type EnemyKind = keyof typeof ENEMY_KINDS;
 
 /**
@@ -407,11 +460,16 @@ export interface PlayerSim {
   postureHitAt: number;
   /** Staggered by an empty posture until this time (0 when not). */
   staggerUntil: number;
+  /** Thrown until this time (0 when not), sliding at (knockDx, knockDz) m/s. */
+  knockUntil: number;
+  knockDx: number;
+  knockDz: number;
   spawnX: number;
   spawnZ: number;
 }
 
-export type EnemyPhase = "idle" | "chase" | "windup" | "recover" | "dead";
+/** "aim" is a charge's tell (planted, the lane showing) and "charge" the run itself. */
+export type EnemyPhase = "idle" | "chase" | "windup" | "aim" | "charge" | "recover" | "dead";
 
 export interface EnemySim {
   /** Stable within a room: the client keys its meshes and snapshot buffers by it. */
@@ -437,6 +495,10 @@ export interface EnemySim {
   postureBrokenUntil: number;
   /** A shield kind's guard is up (always false for kinds without one). */
   guardUp: boolean;
+  /** A charging kind's next charge is allowed from this time. */
+  chargeReadyAt: number;
+  /** Metres left in the current charge. */
+  chargeLeft: number;
   spawnX: number;
   spawnZ: number;
   spawnFacing: number;
@@ -458,6 +520,8 @@ export type SimEvent =
   | { kind: "playerParried"; playerId: string; enemyId: string; postureBroken: boolean }
   | { kind: "playerStaggered"; playerId: string }
   | { kind: "postureBroken"; enemyId: string; byId: string }
+  | { kind: "playerKnocked"; playerId: string; enemyId: string }
+  | { kind: "chargeWall"; enemyId: string }
   | { kind: "roomCleared"; byId: string }
   | { kind: "roomReset" }
   | { kind: "playerDowned"; playerId: string }
@@ -496,6 +560,9 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     posture: POSTURE.player,
     postureHitAt: 0,
     staggerUntil: 0,
+    knockUntil: 0,
+    knockDx: 0,
+    knockDz: 0,
     spawnX: x,
     spawnZ: z
   };
@@ -527,6 +594,8 @@ export function createEnemy(
     postureHitAt: 0,
     postureBrokenUntil: 0,
     guardUp: def.frontGuard !== undefined,
+    chargeReadyAt: 0,
+    chargeLeft: 0,
     spawnX: x,
     spawnZ: z,
     spawnFacing: facing
@@ -562,6 +631,8 @@ export function resetEnemy(e: EnemySim): void {
   e.postureHitAt = 0;
   e.postureBrokenUntil = 0;
   e.guardUp = ENEMY_KINDS[e.kind].frontGuard !== undefined;
+  e.chargeReadyAt = 0;
+  e.chargeLeft = 0;
 }
 
 /** An input that does nothing, used when a client sent nothing this tick. */
@@ -737,6 +808,15 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     return;
   }
 
+  if (now < p.knockUntil) {
+    // Thrown: slide, nothing else. The guard drops; you were not holding it well enough.
+    p.guarding = false;
+    p.x += (p.knockDx * dtMs) / 1000;
+    p.z += (p.knockDz * dtMs) / 1000;
+    collideWalls(p, PLAYER.radius, level);
+    return;
+  }
+
   if (isPlayerStaggered(p, now)) {
     // Off balance: no move, swing, guard or dodge until it passes.
     p.guarding = false;
@@ -884,7 +964,7 @@ export function resolvePlayerAttacks(
           applyState(e.states, "staggered", p.id, now);
           hit(e, damage);
           const broke = drainEnemyPosture(e, shielded ? e.maxPosture : POSTURE.abilityDrain, p.id, now);
-          const interrupted = e.phase === "windup" && e.hp > 0;
+          const interrupted = (e.phase === "windup" || e.phase === "aim" || e.phase === "charge") && e.hp > 0;
           if (interrupted) {
             e.phase = "recover";
             e.phaseUntil = now + ENEMY_KINDS[e.kind].recoverMs;
@@ -960,6 +1040,7 @@ export function downPlayer(p: PlayerSim, now: number): void {
   p.dodgeUntil = 0;
   p.guarding = false;
   p.staggerUntil = 0;
+  p.knockUntil = 0;
   p.posture = POSTURE.player;
 }
 
@@ -1115,9 +1196,15 @@ export function stepEnemy(
       const vz = target.z - enemy.z;
       const dist = Math.hypot(vx, vz);
       enemy.facing = Math.atan2(vx, vz);
+      const c = def.charge;
       if (dist <= def.attackRange) {
         enemy.phase = "windup";
         enemy.phaseUntil = now + def.windupMs;
+      } else if (c && now >= enemy.chargeReadyAt && dist >= c.minRange && dist <= c.maxRange && lineClear(enemy, target, level)) {
+        // Plant and aim: the facing, and so the lane, is fixed from here.
+        enemy.phase = "aim";
+        enemy.phaseUntil = now + c.aimMs;
+        enemy.chargeReadyAt = now + c.everyMs;
       } else if (!hasState(enemy.states, "rooted", now)) {
         // Straight at the target; a wall in the way turns the step into a slide along it.
         const step = Math.min(def.speed * dt, dist - def.attackRange * 0.9);
@@ -1134,9 +1221,19 @@ export function stepEnemy(
       enemy.phaseUntil = now + def.recoverMs;
       if (target && isAlive(target) && !isDodging(target, now)) {
         if (inCone(enemy, target, def.attackRange * 1.15, def.attackArc, PLAYER.radius)) {
-          events.push(...strikePlayer(enemy, target, def, now));
+          events.push(...strikePlayer(enemy, target, def.damage, now));
         }
       }
+      break;
+    }
+    case "aim": {
+      if (now < enemy.phaseUntil) break;
+      enemy.phase = "charge";
+      enemy.chargeLeft = def.charge?.maxRange ?? 0;
+      break;
+    }
+    case "charge": {
+      events.push(...stepCharge(enemy, def, players, now, dtMs, level));
       break;
     }
     case "recover": {
@@ -1148,10 +1245,76 @@ export function stepEnemy(
 }
 
 /**
+ * One tick of a charge: run down the lane; the first standing player within reach of the
+ * run takes the blow (parried, blocked or taken, as any blow) and, unless parried, is thrown
+ * along the lane. A wall stops the run and stuns the charger. Server only.
+ */
+function stepCharge(enemy: EnemySim, def: EnemyDef, players: Map<string, PlayerSim>, now: number, dtMs: number, level: Level): SimEvent[] {
+  const c = def.charge!;
+  const fx = Math.sin(enemy.facing);
+  const fz = Math.cos(enemy.facing);
+  const step = Math.min(enemy.chargeLeft, (c.speed * dtMs) / 1000);
+  const fromX = enemy.x;
+  const fromZ = enemy.z;
+  // Who is in the swept path this tick, nearest along the lane first; ids break ties.
+  const reach = def.radius + PLAYER.radius;
+  let victim: PlayerSim | null = null;
+  let victimT = Infinity;
+  for (const p of [...players.values()].sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    if (!isAlive(p) || isDodging(p, now)) continue;
+    const t = (p.x - fromX) * fx + (p.z - fromZ) * fz;
+    if (t < -reach || t > step + reach) continue;
+    const side = Math.abs((p.x - fromX) * fz - (p.z - fromZ) * fx);
+    if (side > reach || t >= victimT) continue;
+    victim = p;
+    victimT = t;
+  }
+  const events: SimEvent[] = [];
+  if (victim) {
+    const struck = strikePlayer(enemy, victim, c.damage, now);
+    events.push(...struck);
+    if (isAlive(victim) && !struck.some((e) => e.kind === "playerParried")) {
+      victim.knockUntil = now + KNOCKBACK.ms;
+      victim.knockDx = fx * KNOCKBACK.speed;
+      victim.knockDz = fz * KNOCKBACK.speed;
+      victim.guarding = false;
+      victim.attackUntil = 0;
+      victim.attackHitAt = 0;
+      victim.abilityUntil = 0;
+      victim.abilityHitAt = 0;
+      events.push({ kind: "playerKnocked", playerId: victim.id, enemyId: enemy.id });
+    }
+    enemy.chargeLeft = 0;
+    if (enemy.phase === "charge") {
+      enemy.phase = "recover";
+      enemy.phaseUntil = now + def.recoverMs;
+    }
+    return events;
+  }
+  enemy.x += fx * step;
+  enemy.z += fz * step;
+  collideWalls(enemy, def.radius, level);
+  enemy.chargeLeft -= step;
+  const moved = Math.hypot(enemy.x - fromX, enemy.z - fromZ);
+  if (moved < step * 0.5) {
+    // Into a wall: stopped dead, and stunned for it.
+    enemy.chargeLeft = 0;
+    enemy.phase = "recover";
+    enemy.phaseUntil = now + c.wallStunMs;
+    applyState(enemy.states, "staggered", "", now);
+    events.push({ kind: "chargeWall", enemyId: enemy.id });
+  } else if (enemy.chargeLeft <= 0) {
+    enemy.phase = "recover";
+    enemy.phaseUntil = now + def.recoverMs;
+  }
+  return events;
+}
+
+/**
  * An enemy's blow lands on a player who did not dodge it: parried, blocked or taken
  * (The Old Gates' `executeStrike`). The guard only covers blows from the front half.
  */
-function strikePlayer(enemy: EnemySim, target: PlayerSim, def: EnemyDef, now: number): SimEvent[] {
+function strikePlayer(enemy: EnemySim, target: PlayerSim, blow: number, now: number): SimEvent[] {
   const guarded = target.guarding && inCone(target, enemy, Infinity, GUARD.arc, 0);
   if (guarded && now - target.blockSince <= GUARD.parryWindowMs) {
     const broke = drainEnemyPosture(enemy, enemy.maxPosture * POSTURE.parryFrac, target.id, now);
@@ -1162,7 +1325,7 @@ function strikePlayer(enemy: EnemySim, target: PlayerSim, def: EnemyDef, now: nu
     return [{ kind: "playerParried", playerId: target.id, enemyId: enemy.id, postureBroken: broke }];
   }
   const events: SimEvent[] = [];
-  const damage = guarded ? Math.max(1, Math.round(def.damage * (1 - WEAPON_TYPES[target.weapon.type].blockReduce))) : def.damage;
+  const damage = guarded ? Math.max(1, Math.round(blow * (1 - WEAPON_TYPES[target.weapon.type].blockReduce))) : blow;
   target.hp = Math.max(0, target.hp - damage);
   events.push({ kind: "enemyHit", targetId: target.id, enemyId: enemy.id, damage, targetHp: target.hp, blocked: guarded });
   if (target.hp === 0) {
@@ -1170,7 +1333,7 @@ function strikePlayer(enemy: EnemySim, target: PlayerSim, def: EnemyDef, now: nu
     events.push({ kind: "playerDowned", playerId: target.id });
     return events;
   }
-  if (drainPlayerPosture(target, def.damage * (guarded ? POSTURE.blockedMult : POSTURE.unblockedMult), now)) {
+  if (drainPlayerPosture(target, blow * (guarded ? POSTURE.blockedMult : POSTURE.unblockedMult), now)) {
     events.push({ kind: "playerStaggered", playerId: target.id });
   }
   return events;
@@ -1243,6 +1406,7 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.readyAt = [0, 0, 0];
     p.guarding = false;
     p.staggerUntil = 0;
+    p.knockUntil = 0;
     p.posture = POSTURE.player;
     events.push({ kind: "playerRespawned", playerId: p.id });
   }

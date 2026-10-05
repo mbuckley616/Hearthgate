@@ -238,6 +238,9 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   // Whole numbers: the regen's fractions would cost a patch every tick for nothing visible.
   ps.posture = Math.ceil(p.posture);
   ps.staggerUntil = p.staggerUntil;
+  ps.knockUntil = p.knockUntil;
+  ps.knockDx = p.knockDx;
+  ps.knockDz = p.knockDz;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */
