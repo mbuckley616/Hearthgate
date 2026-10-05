@@ -8,10 +8,12 @@ import {
   applyInput,
   createClockSync,
   createPlayer,
+  interpDelayAt,
   isAlive,
   isDead,
   levelById,
   minRtt,
+  remoteTimeAt,
   serverTimeAt,
   type EnemyKind,
   type EnemyPhase,
@@ -21,12 +23,6 @@ import {
   type SimEvent
 } from "@hearthgate/shared";
 
-/**
- * How far behind the server clock remote players are drawn. The clock (see
- * @hearthgate/shared clock.ts) tracks server time as it reaches us on the least-delayed
- * path, so this is also the budget a late snapshot has before the remote player holds.
- */
-export const INTERP_DELAY_MS = 100;
 const SNAPSHOT_KEEP = 24;
 /** Prediction error larger than this snaps instead of smoothing. */
 export const SNAP_DISTANCE = 2.5;
@@ -89,13 +85,16 @@ export type EventListener = (events: SimEvent[]) => void;
  * Owns the connection and the two halves of the netcode:
  *  - prediction: our own player runs the shared sim locally per tick and is
  *    rewound and replayed whenever the server's copy arrives;
- *  - interpolation: everyone else is drawn ~100 ms in the past between two
- *    received snapshots so movement is smooth at 20 updates a second.
+ *  - interpolation: everyone else is drawn 100 to 200 ms in the past (INTERP, adapted to
+ *    the jitter seen) between two received snapshots so movement is smooth at 20 updates
+ *    a second.
  *
  * The server clock behind interpolation comes from stamped messages: the server echoes
  * its simulation time to pings and stamps every patch with its tick, the message with the
  * shortest trip here in a window sets the offset, and the applied offset slews toward it at
- * CLOCK_SYNC.slewMsPerS so remote players never skip or stall when a packet is late.
+ * CLOCK_SYNC.slewMsPerS so remote players never skip or stall when a packet is late. The
+ * same window's longest wait for a patch sets the interpolation delay (see clock.ts), slewed
+ * the same way.
  *
  * Prediction runs inside the room's level (walls included), which the first patch names;
  * the server steps the same level, so a wall is never a correction.
@@ -182,6 +181,16 @@ export class Net {
     return this.clock.offset;
   }
 
+  /** How far behind serverNow() remote players and enemies are drawn right now, ms. */
+  get interpDelayMs(): number {
+    return interpDelayAt(this.clock, performance.now());
+  }
+
+  /** The worst recent lateness the frames saw (longest wait for a patch, less a tick), ms: what the delay above base covers. */
+  get lateMs(): number {
+    return this.clock.late;
+  }
+
   onEvents(listener: EventListener) {
     this.listeners.push(listener);
   }
@@ -212,8 +221,17 @@ export class Net {
     return { x: this.me.x + this.visualErrX, z: this.me.z + this.visualErrZ, facing: this.me.facing };
   }
 
+  /**
+   * The server time remote players and enemies are drawn at this frame: serverNow() less
+   * the interpolation delay. Use it for their timers (swings, windups) too, so what they do
+   * lines up with where they are.
+   */
+  remoteNow(): number {
+    return remoteTimeAt(this.clock, performance.now());
+  }
+
   remotePose(r: { snaps: Snapshot[] }): Pose | null {
-    return sampleSnapshots(r.snaps, this.serverNow() - INTERP_DELAY_MS);
+    return sampleSnapshots(r.snaps, this.remoteNow());
   }
 
   /** The living enemy drawn nearest to (x, z), for the HUD and hit feedback. */

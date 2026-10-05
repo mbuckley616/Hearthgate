@@ -275,7 +275,7 @@ export const INPUT_LIMIT = {
  * time, and every patch carries its tick's time too. The message with the shortest trip
  * from server to client in the window is the one least delayed by queueing, so its offset
  * is the floor the snapshots can be expected to reach, and remote players are drawn
- * INTERP_DELAY behind that floor. The applied offset slews toward it at
+ * an interpolation delay (INTERP) behind that floor. The applied offset slews toward it at
  * a bounded rate: a remote player drawn against a clock moving `slewMsPerS` runs at most
  * 1% off speed, which nobody sees, where a jump would show as a skip or a stall.
  */
@@ -290,6 +290,24 @@ export const CLOCK_SYNC = {
   slewMsPerS: 10,
   /** A target this far from the applied offset is taken at once (first sample, a tab that slept). */
   snapMs: 250
+} as const;
+
+/**
+ * How far behind the server clock remote players and the goblin are drawn (clock.ts keeps
+ * the estimate). The clock sits on the best delivery the link gives, so this delay is the
+ * whole budget a late snapshot has: one arriving more than `delay - TICK_MS` behind the best
+ * path holds the remote player still until the next. `baseMs` is the floor and the whole
+ * delay on a clean link: it absorbs 50 ms of lateness by itself. Above that the delay
+ * follows the longest wait for a patch the frames in the clock window saw, so a jittery link
+ * gets exactly the budget its worst recent packet needed and a clean one pays nothing, up
+ * to `maxMs`, past which the extrapolation item (backlog) is the answer. It slews like the
+ * clock, so it never jumps.
+ */
+export const INTERP = {
+  baseMs: 100,
+  maxMs: 200,
+  /** Fastest the delay may move, ms per second: a remote player runs at most 1% off speed while it does. */
+  slewMsPerS: 10
 } as const;
 
 /**
