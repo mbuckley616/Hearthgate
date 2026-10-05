@@ -23,6 +23,13 @@ A. Re-run Fable to merge main into the branch. **Recommended.**
 B. Drop the branch, redo it later.
 Michael: **A, re-run Fable to merge main into the branch** (2026-10-04)
 
+### 2026-10-05: Adaptive interpolation delay conflicts with main again (the producer)
+PR #9 passed CI at 72d1267, but the Warrens groundwork merged to main since and it conflicts again. Only docs/devlog.md conflicts; the code merges cleanly.
+A. Re-run Fable to merge main once more. **Recommended.**
+B. The producer resolves the devlog conflict (docs-only merge commit on the branch; Michael approves the result).
+C. Drop the branch, redo it later.
+Michael: **A, re-run Fable to merge main again** (2026-10-05, on the control room)
+
 ### 2026-10-04: The builder cannot read The Old Gates (builder, Session 7)
 Four Phase 1 items lift code from The Old Gates (gear and weapons, weapon classes, posture/parry/block, the Charger/Pack Leader/Shieldbearer roster). The builder's cloud run is not allowed to clone `mbuckley616/the-old-gates` (the session's permission check refused it as outside the task), so those four are blocked. The builder took the next item (downs) meanwhile.
 A. Let the builder routine read The Old Gates: add the repo to the routine's sources (or allow the clone), then it lifts the modules as the design doc says. **Recommended**: the design doc's whole case for these items is reuse of tuned, proven numbers.
