@@ -18,7 +18,11 @@
  *              and the mean distance left at that shift (m)
  *   rtt        Alpha's HUD round trip
  *
- * Run: npm run lab [-- --seconds 60 --only 150]. Writes tests/tmp/lab-result.json.
+ * Run: npm run lab [-- --seconds 60 --only 150 --level field]. Writes tests/tmp/lab-result.json.
+ *
+ * The level is pinned (`--level`, default `field`: the Phase 0 arena with one goblin, the ground the
+ * first runs measured) because the client's default level changes as the floor is built, and a
+ * hall where nothing wakes would lower the numbers for a reason that is not the network.
  *
  * A hosted build instead of a local one: `--server wss://host --client https://host` boots nothing
  * and puts no proxy in the way, so the two browsers reach the real server over the real network
@@ -63,6 +67,7 @@ const ONLY = argOf("--only") ?? "";
 const REMOTE_SERVER = argOf("--server") ?? "";
 const REMOTE_CLIENT = argOf("--client") ?? "";
 const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
+const LEVEL = argOf("--level") ?? "field";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -138,6 +143,7 @@ const corrections = async (page: Page) => {
 };
 
 interface Row {
+  level: string;
   condition: string;
   /** "local" or the hosted server's URL. */
   target: string;
@@ -170,7 +176,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
   const b = await ctxB.newPage();
   for (const [n, p] of [["Alpha", a], ["Bravo", b]] as const) p.on("pageerror", (e) => errors.push(`${n}: ${e.message}`));
   try {
-    const q = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}`;
+    const q = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}&level=${LEVEL}`;
     await a.goto(`${CLIENT_BASE}/?${q}&name=Alpha`);
     await b.goto(`${CLIENT_BASE}/?${q}&name=Bravo`);
     for (const p of [a, b]) await p.locator("#hud-party[data-players='2']").waitFor({ timeout: 20000 });
@@ -301,6 +307,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const verdict = snaps > 0 ? "snaps" : cpm > 30 || holds / minutes > 20 ? "rough" : "ok";
     return {
       condition: c.name,
+      level: LEVEL,
       target: REMOTE_SERVER || "local",
       latency: c.oneWayMs,
       jitter: c.jitterMs,
