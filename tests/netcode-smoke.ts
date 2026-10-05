@@ -27,7 +27,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS } from "@hearthgate/shared";
+import { DOWNS, TICK_MS, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -256,7 +256,8 @@ async function main() {
 }
 
 /**
- * The default level: four goblins and walls reach the client, and a wall stops a walker. Delta walks east
+ * The default level: its enemies (four goblins and a Shieldbearer with its shield up) and walls reach the
+ * client, and a wall stops a walker. Delta walks east
  * from the first spawn (-3, 3) along z = 3 into the wall at x = 5.6..6.4 (shared level.ts YARD): the server
  * must hold Delta at x = 5.1 (the wall's face less the player's radius) instead of letting them through.
  */
@@ -266,10 +267,18 @@ async function yard(client: Client) {
   d.onStateChange((s: any) => (dState = s));
   await sleep(400);
   if (!dState) fail("yard: no state received");
-  if (dState.levelId !== "yard" || dState.enemies.size !== 4) fail(`yard: expected the yard with 4 enemies, got ${dState.levelId} with ${dState.enemies.size}`);
-  const kinds = new Set<string>();
-  dState.enemies.forEach((e: any) => kinds.add(e.kind));
-  if (kinds.size !== 1 || !kinds.has("goblin")) fail(`yard: expected goblins, got ${[...kinds].join(",")}`);
+  const want = YARD.enemies.length;
+  if (dState.levelId !== "yard" || dState.enemies.size !== want) fail(`yard: expected the yard with ${want} enemies, got ${dState.levelId} with ${dState.enemies.size}`);
+  const kinds: string[] = [];
+  let shieldsUp = 0;
+  dState.enemies.forEach((e: any) => {
+    kinds.push(e.kind);
+    if (e.guardUp) shieldsUp++;
+  });
+  const expected = YARD.enemies.map((e) => e.kind);
+  if (kinds.sort().join(",") !== [...expected].sort().join(",")) fail(`yard: expected ${expected.join(",")}, got ${kinds.join(",")}`);
+  const shields = expected.filter((k) => k === "shieldbearer").length;
+  if (shieldsUp !== shields) fail(`yard: ${shieldsUp} shields up, expected ${shields}`);
   const start = dState.players.get(d.sessionId);
   if (Math.abs(start.x + 3) > 0.01 || Math.abs(start.z - 3) > 0.01) fail(`yard: Delta spawned at ${start.x}, ${start.z}, not (-3, 3)`);
   let seq = 0;
@@ -280,7 +289,7 @@ async function yard(client: Client) {
   const me = dState.players.get(d.sessionId);
   const face = 5.6 - 0.5;
   if (Math.abs(me.x - face) > 0.1 || Math.abs(me.z - 3) > 0.1) fail(`yard: after 2.5 s walking east Delta is at ${me.x.toFixed(2)}, ${me.z.toFixed(2)}; the wall should hold them at x = ${face}`);
-  console.log(`ok: yard room has ${dState.enemies.size} goblins; the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
+  console.log(`ok: yard room has ${kinds.join(", ")} (${shieldsUp} shield up); the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
   await d.leave();
   await sleep(300);
 }

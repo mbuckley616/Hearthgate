@@ -72,6 +72,7 @@ export interface EnemyView {
   posture: number;
   maxPosture: number;
   postureBrokenUntil: number;
+  guardUp: boolean;
   snaps: Snapshot[];
 }
 
@@ -275,7 +276,7 @@ export class Net {
       seenEnemies.add(id);
       let v = this.enemies.get(id);
       if (!v) {
-        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, snaps: [] };
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, snaps: [] };
         this.enemies.set(id, v);
       }
       v.kind = e.kind;
@@ -288,6 +289,7 @@ export class Net {
       v.posture = e.posture ?? 0;
       v.maxPosture = e.maxPosture ?? 0;
       v.postureBrokenUntil = e.postureBrokenUntil ?? 0;
+      v.guardUp = e.guardUp === true;
       pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
     });
     for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);

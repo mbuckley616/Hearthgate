@@ -172,7 +172,7 @@ function draw(dt: number) {
     const ePose = net.remotePose(e);
     if (!ePose) continue;
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / ENEMY_KINDS[e.kind].windupMs) : 0;
-    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil });
+    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp });
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
@@ -191,7 +191,7 @@ function draw(dt: number) {
     dead: me.hp <= 0,
     banner: downBanner(me, now),
     enemyLabel: nearest
-      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : ""}`
+      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : ""}`
       : total > 0
         ? "Room clear"
         : "No enemies",
@@ -243,8 +243,10 @@ function describeEvent(e: SimEvent): string {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
       return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
-    case "playerHit":
-      return e.attackerId === net.sessionId ? `You hit ${enemyName(e.enemyId)} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${enemyName(e.enemyId)} for ${e.damage}`;
+    case "playerHit": {
+      const what = e.shielded ? `${enemyName(e.enemyId)}'s shield` : enemyName(e.enemyId);
+      return e.attackerId === net.sessionId ? `You hit ${what} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${what} for ${e.damage}`;
+    }
     case "enemyKilled":
       return e.killerId === net.sessionId ? `You felled ${enemyName(e.enemyId)}` : `${nameOf(e.killerId)} felled ${enemyName(e.enemyId)}`;
     case "enemyHit": {
@@ -284,7 +286,7 @@ function describeEvent(e: SimEvent): string {
 }
 
 const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
-const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin" };
+const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer" };
 
 function kindName(kind: EnemyKind): string {
   return KIND_NAMES[kind] ?? kind;

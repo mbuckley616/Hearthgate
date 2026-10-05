@@ -78,6 +78,11 @@ export interface EnemyDef {
   windupMs: number;
   recoverMs: number;
   damage: number;
+  /**
+   * A raised shield: hits from its front half while the guard is up do this fraction of
+   * their damage. Absent for kinds without a shield.
+   */
+  frontGuard?: number;
 }
 
 export const GOBLIN: EnemyDef = {
@@ -92,7 +97,29 @@ export const GOBLIN: EnemyDef = {
   damage: 15
 };
 
-export const ENEMY_KINDS = { goblin: GOBLIN } as const satisfies Record<string, EnemyDef>;
+/**
+ * The Shieldbearer, lifted from The Old Gates (`56-dungeon-build.enemy-defs.excerpt.js`, v71):
+ * a humanoid behind a frontal shield. Hits on its front half do 35% while the guard is up.
+ * The answers are The Old Gates' two: a power attack on the front (Cleave) breaks the guard
+ * outright, or a flank, which in a party means one player holds its attention while another
+ * walks round. Any posture break drops the shield; it comes back up when the stagger ends.
+ * Its numbers are The Old Gates' against the goblin's, on Hearthgate's goblin: 48 hp to the
+ * goblin's 28, a little over half its speed, 1.3x its blow; slower to swing.
+ */
+export const SHIELDBEARER: EnemyDef = {
+  hp: 100,
+  radius: 0.55,
+  speed: 2.0,
+  aggroRange: 10,
+  attackRange: 1.9,
+  attackArc: Math.PI * 0.7,
+  windupMs: 800,
+  recoverMs: 700,
+  damage: 20,
+  frontGuard: 0.35
+};
+
+export const ENEMY_KINDS = { goblin: GOBLIN, shieldbearer: SHIELDBEARER } as const satisfies Record<string, EnemyDef>;
 export type EnemyKind = keyof typeof ENEMY_KINDS;
 
 /**
@@ -408,6 +435,8 @@ export interface EnemySim {
   postureHitAt: number;
   /** Posture broken: staggered until this time (0 when not). */
   postureBrokenUntil: number;
+  /** A shield kind's guard is up (always false for kinds without one). */
+  guardUp: boolean;
   spawnX: number;
   spawnZ: number;
   spawnFacing: number;
@@ -422,7 +451,7 @@ export interface Encounter {
 }
 
 export type SimEvent =
-  | { kind: "playerHit"; attackerId: string; enemyId: string; damage: number; enemyHp: number }
+  | { kind: "playerHit"; attackerId: string; enemyId: string; damage: number; enemyHp: number; shielded: boolean }
   | { kind: "abilityHit"; attackerId: string; enemyId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
   | { kind: "enemyKilled"; killerId: string; enemyId: string }
   | { kind: "enemyHit"; targetId: string; enemyId: string; damage: number; targetHp: number; blocked: boolean }
@@ -497,6 +526,7 @@ export function createEnemy(
     maxPosture: Math.round(def.hp * POSTURE.enemyFrac),
     postureHitAt: 0,
     postureBrokenUntil: 0,
+    guardUp: def.frontGuard !== undefined,
     spawnX: x,
     spawnZ: z,
     spawnFacing: facing
@@ -531,6 +561,7 @@ export function resetEnemy(e: EnemySim): void {
   e.posture = e.maxPosture;
   e.postureHitAt = 0;
   e.postureBrokenUntil = 0;
+  e.guardUp = ENEMY_KINDS[e.kind].frontGuard !== undefined;
 }
 
 /** An input that does nothing, used when a client sent nothing this tick. */
@@ -617,6 +648,7 @@ export function drainEnemyPosture(e: EnemySim, amount: number, byId: string, now
   e.posture = Math.max(0, e.posture - amount);
   if (e.posture > 0) return false;
   e.postureBrokenUntil = now + POSTURE.enemyBreakMs;
+  e.guardUp = false;
   applyState(e.states, "staggered", byId, now);
   e.phase = "recover";
   e.phaseUntil = Math.max(e.phaseUntil, now + POSTURE.enemyBreakMs);
@@ -844,10 +876,14 @@ export function resolvePlayerAttacks(
         for (const e of enemiesInCone(p, enemies, def.range, def.arc)) {
           // An area melee hit: it lands in full on the Rooted, then staggers. A stagger
           // breaks a windup in progress, which is how Melee answers a telegraph.
-          const { damage } = resolveHit(e.states, { damage: def.damage, tags: ["melee", "area"], byId: p.id }, now);
+          // Cleave is the power attack: on a raised shield it is cut like any blow, and it
+          // breaks the guard outright (The Old Gates' power-versus-shield rule).
+          const shielded = shieldCovers(e, p);
+          const base = shielded ? def.damage * (ENEMY_KINDS[e.kind].frontGuard ?? 1) : def.damage;
+          const { damage } = resolveHit(e.states, { damage: Math.round(base), tags: ["melee", "area"], byId: p.id }, now);
           applyState(e.states, "staggered", p.id, now);
           hit(e, damage);
-          const broke = drainEnemyPosture(e, POSTURE.abilityDrain, p.id, now);
+          const broke = drainEnemyPosture(e, shielded ? e.maxPosture : POSTURE.abilityDrain, p.id, now);
           const interrupted = e.phase === "windup" && e.hp > 0;
           if (interrupted) {
             e.phase = "recover";
@@ -869,15 +905,22 @@ export function resolvePlayerAttacks(
     // A weapon swing is a plain hit: it consumes nothing, but a Marked target takes more.
     const tags: HitTag[] = [stats.style];
     for (const target of targets.slice(0, stats.cleaveTargets)) {
-      const { damage } = resolveHit(target.states, { damage: stats.damage, tags, byId: p.id }, now);
+      const shielded = shieldCovers(target, p);
+      const base = shielded ? Math.round(stats.damage * (ENEMY_KINDS[target.kind].frontGuard ?? 1)) : stats.damage;
+      const { damage } = resolveHit(target.states, { damage: base, tags, byId: p.id }, now);
       hit(target, damage);
       const broke = drainEnemyPosture(target, POSTURE.weaponDrain * stats.postureMult, p.id, now);
-      events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp });
+      events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp, shielded });
       if (broke) events.push({ kind: "postureBroken", enemyId: target.id, byId: p.id });
       settle(p, target);
     }
   }
   return events;
+}
+
+/** A raised shield faces the attacker: they are in its front half. */
+export function shieldCovers(e: EnemySim, attacker: { x: number; z: number }): boolean {
+  return e.guardUp && inCone(e, attacker, Infinity, GUARD.arc, 0);
 }
 
 /**
@@ -1045,6 +1088,8 @@ export function stepEnemy(
   expireStates(enemy.states, now);
 
   if (enemy.phase === "dead") return events;
+  // A shield kind raises its guard again once the stagger that dropped it is over.
+  if (!enemy.guardUp && def.frontGuard !== undefined && !isEnemyStaggered(enemy, now)) enemy.guardUp = true;
 
   // Keep the current target while it is alive and in range, else re-acquire.
   let target = enemy.targetId ? players.get(enemy.targetId) ?? null : null;

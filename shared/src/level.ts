@@ -150,7 +150,9 @@ export const YARD: Level = {
     { kind: "goblin", x: 9, z: -9, facing: Math.PI },
     { kind: "goblin", x: 12, z: 8, facing: Math.PI },
     { kind: "goblin", x: -12, z: -10, facing: 0 },
-    { kind: "goblin", x: -10, z: 12, facing: 0 }
+    { kind: "goblin", x: -10, z: 12, facing: 0 },
+    // North of the start, out of aggro until someone walks up: the fight that needs two.
+    { kind: "shieldbearer", x: 0, z: 15, facing: Math.PI }
   ]
 };
 

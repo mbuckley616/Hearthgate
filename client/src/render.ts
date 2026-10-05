@@ -26,6 +26,8 @@ export interface EnemyVisual {
   /** 0..1 while winding up, else 0. */
   windup: number;
   hitFlash: boolean;
+  /** A shield kind's guard is raised. */
+  guardUp: boolean;
 }
 
 const PALETTE = {
@@ -35,6 +37,8 @@ const PALETTE = {
   edge: 0x5c6f4a,
   goblin: 0x4f8a4f,
   goblinDark: 0x2f5c2f,
+  shieldbearer: 0x6f6a62,
+  shield: 0xb08a4a,
   wall: 0x9a978c,
   telegraph: 0xd9534f,
   swing: 0xfff1c2,
@@ -146,14 +150,30 @@ class EnemyMesh {
   body: THREE.Mesh;
   telegraph: THREE.Mesh;
   hpBar: THREE.Sprite;
+  /** Shield kinds only: the raised shield, lowered (hidden) while the guard is broken. */
+  shield: THREE.Mesh | null = null;
+  private color: number;
+  private windupColor: number;
 
   constructor(kind: EnemyKind) {
     const def = ENEMY_KINDS[kind];
+    this.color = kind === "shieldbearer" ? PALETTE.shieldbearer : PALETTE.goblin;
+    this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
     this.body = new THREE.Mesh(
-      new THREE.ConeGeometry(def.radius * 1.1, 1.5, 7),
-      new THREE.MeshStandardMaterial({ color: PALETTE.goblin, roughness: 0.85, flatShading: true })
+      new THREE.ConeGeometry(def.radius * 1.1, kind === "shieldbearer" ? 1.8 : 1.5, 7),
+      new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.85, flatShading: true })
     );
     this.body.position.y = 0.75;
+    if (def.frontGuard !== undefined) {
+      // A tall plank shield across the front: the side you must not hit.
+      this.shield = new THREE.Mesh(
+        new THREE.BoxGeometry(1.1, 1.3, 0.12),
+        new THREE.MeshStandardMaterial({ color: PALETTE.shield, roughness: 0.7, flatShading: true })
+      );
+      this.shield.position.set(0, 0.85, def.radius + 0.12);
+      this.shield.castShadow = true;
+      this.group.add(this.shield);
+    }
     this.body.castShadow = true;
     this.group.add(this.body);
 
@@ -185,7 +205,8 @@ class EnemyMesh {
     this.group.rotation.y = pose.facing;
     this.group.visible = v.phase !== "dead";
     const mat = this.body.material as THREE.MeshStandardMaterial;
-    mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? 0x6aa66a : PALETTE.goblin);
+    mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : this.color);
+    if (this.shield) this.shield.visible = v.guardUp;
     this.telegraph.visible = v.phase === "windup";
     if (v.phase === "windup") {
       const s = 0.35 + 0.65 * v.windup;

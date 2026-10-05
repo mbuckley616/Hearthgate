@@ -53,6 +53,8 @@ export class EnemyState extends Schema {
   @type("number") posture = 30;
   @type("number") maxPosture = 30;
   @type("number") postureBrokenUntil = 0;
+  /** A Shieldbearer's shield is raised. */
+  @type("boolean") guardUp = false;
 }
 
 export class DungeonState extends Schema {
