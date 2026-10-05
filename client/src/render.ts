@@ -71,6 +71,9 @@ const PALETTE = {
 };
 
 const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
+/** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
+const RAIN_RINGS = 4;
+const RAIN_SHOW_MS = 400;
 
 class PlayerMesh {
   group = new THREE.Group();
@@ -350,6 +353,8 @@ export class View {
   /** Nudges started so far; read by the e2e test through the debug handle. */
   nudges = 0;
   private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /** Where Arrow rain lands: a few rings built once, each shown for RAIN_SHOW_MS after a volley. */
+  private rainRings: { mesh: THREE.Mesh; until: number }[] = [];
   /** The bow's target: a ring on the ground under it, bright for a lock, faint for the auto pick. */
   private lockRing: THREE.Mesh;
   private readonly lockMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
@@ -366,6 +371,17 @@ export class View {
     this.lockRing.position.y = 0.07;
     this.lockRing.visible = false;
     this.scene.add(this.lockRing);
+
+    const rainMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+    const rainGeo = new THREE.CircleGeometry(1, 32);
+    for (let i = 0; i < RAIN_RINGS; i++) {
+      const mesh = new THREE.Mesh(rainGeo, rainMat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = 0.06;
+      mesh.visible = false;
+      this.scene.add(mesh);
+      this.rainRings.push({ mesh, until: 0 });
+    }
 
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
     this.camera.position.copy(this.camPos);
@@ -463,6 +479,17 @@ export class View {
     }
   }
 
+  /** An Arrow rain landed: flash a disc of its radius at (x, z), reusing the oldest ring. */
+  showRain(x: number, z: number, radius: number) {
+    let slot = this.rainRings[0];
+    for (const r of this.rainRings) if (r.until < slot.until) slot = r;
+    slot.mesh.position.x = x;
+    slot.mesh.position.z = z;
+    slot.mesh.scale.setScalar(radius);
+    slot.mesh.visible = true;
+    slot.until = performance.now() + RAIN_SHOW_MS;
+  }
+
   /** The bow's target marker: under (x, z), solid for a lock and faint for the auto pick; null hides it. */
   setTargetMarker(at: Pose | null, locked: boolean) {
     this.lockRing.visible = at !== null;
@@ -550,6 +577,8 @@ export class View {
   }
 
   render() {
+    const t = performance.now();
+    for (const r of this.rainRings) if (r.mesh.visible && t >= r.until) r.mesh.visible = false;
     this.renderer.render(this.scene, this.camera);
   }
 

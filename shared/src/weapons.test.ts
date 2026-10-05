@@ -4,6 +4,7 @@ import {
   PLAYER,
   TICK_MS,
   WEAPON_CLASSES,
+  ABILITIES,
   LOCK_ON,
   abilityInSlot,
   applyInput,
@@ -11,6 +12,7 @@ import {
   dropStaleLocks,
   isValidInput,
   lockCandidates,
+  rainSpot,
   createEncounter,
   createEnemy,
   createPlayer,
@@ -159,25 +161,23 @@ describe("the weapon pick (Michael, A, 2026-10-05)", () => {
     expect(weaponFromPick("laser", 1)).not.toBe(STARTER_WEAPON);
   });
 
-  it("melee weapons carry Cleave in slot 1; the bow's slots are empty until Arrow rain", () => {
+  it("melee weapons carry Cleave in slot 1, the bow Arrow rain", () => {
     expect(slotsFor({ kind: "weapon", type: "sword", tier: 1 })).toEqual(["cleave", "", ""]);
     expect(slotsFor({ kind: "weapon", type: "warHammer", tier: 4 })).toEqual(["cleave", "", ""]);
-    expect(slotsFor({ kind: "weapon", type: "bow", tier: 1 })).toEqual(["", "", ""]);
-    expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 1)).toBe("");
+    expect(slotsFor({ kind: "weapon", type: "bow", tier: 1 })).toEqual(["arrowRain", "", ""]);
+    expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 1)).toBe("arrowRain");
+    expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 2)).toBe("");
   });
 
-  it("an archer pressing 1 starts nothing and spends no cooldown, the same on both sides", () => {
+  it("an archer pressing 2 starts nothing and spends no cooldown, the same on both sides", () => {
     const server = armed({ kind: "weapon", type: "bow", tier: 1 });
     const client = armed({ kind: "weapon", type: "bow", tier: 1 });
-    const frame = { seq: 1, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 };
+    const frame = { seq: 1, dx: 0, dy: 0, attack: false, dodge: false, ability: 2 };
     applyInput(server, frame, 100, TICK_MS);
     applyInput(client, frame, 100, TICK_MS);
     expect(server.abilityUntil).toBe(0);
     expect(server.readyAt).toEqual([0, 0, 0]);
     expect(client).toEqual(server);
-    const swordsman = armed({ kind: "weapon", type: "sword", tier: 1 });
-    applyInput(swordsman, frame, 100, TICK_MS);
-    expect(swordsman.abilityUntil).toBeGreaterThan(100);
   });
 });
 
@@ -252,5 +252,60 @@ describe("the bow's lock-on cycle", () => {
     applyInput(a, frame, 100, TICK_MS);
     applyInput(b, { ...frame, cycle: false }, 100, TICK_MS);
     expect(a).toEqual(b);
+  });
+});
+
+describe("Arrow rain", () => {
+  const rain = ABILITIES.arrowRain;
+  const cast = (p: PlayerSim, now: number) => applyInput(p, { seq: 1, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 }, now, TICK_MS);
+  const landAt = 100 + rain.windupMs;
+
+  it("falls on the lock and hits everyone under it, once each, then cools down", () => {
+    const p = armed({ kind: "weapon", type: "bow", tier: 1 });
+    // A pack of three behind the archer at about 8 m, one more 6 m off to the side.
+    const enemies = [goblinAt("g1", 0, -8), goblinAt("g2", 1.5, -8.5), goblinAt("g3", -1, -9.5), goblinAt("g4", 6, -8)];
+    p.lockId = "g1";
+    cast(p, 100);
+    expect(p.abilityHitAt).toBe(landAt);
+    expect(p.readyAt[0]).toBe(100 + rain.cooldownMs);
+    expect(resolvePlayerAttacks([p], enemies, landAt - TICK_MS, OPEN_FIELD)).toEqual([]);
+    const events = resolvePlayerAttacks([p], enemies, landAt, OPEN_FIELD);
+    expect(events[0]).toEqual({ kind: "arrowRain", playerId: "a", x: 0, z: -8, hits: 3 });
+    const hits = events.filter((e) => e.kind === "abilityHit").map((e) => (e.kind === "abilityHit" ? e.enemyId : ""));
+    expect(hits).toEqual(["g1", "g2", "g3"]);
+    expect(enemies[0].hp).toBe(GOBLIN.hp - rain.damage);
+    expect(enemies[3].hp).toBe(GOBLIN.hp);
+    expect(resolvePlayerAttacks([p], enemies, landAt + TICK_MS, OPEN_FIELD)).toEqual([]);
+  });
+
+  it("without a lock it takes the bow's auto target, and with nothing in sight it falls ahead and hits nobody", () => {
+    const p = armed({ kind: "weapon", type: "bow", tier: 1 });
+    const ahead = goblinAt("ahead", 0.5, 9);
+    cast(p, 100);
+    expect(resolvePlayerAttacks([p], [ahead], landAt, OPEN_FIELD)[0]).toMatchObject({ kind: "arrowRain", x: 0.5, z: 9, hits: 1 });
+    const q = armed({ kind: "weapon", type: "bow", tier: 1 });
+    const behind = goblinAt("behind", 0, -6);
+    cast(q, 100);
+    const events = resolvePlayerAttacks([q], [behind], landAt, OPEN_FIELD);
+    expect(events).toEqual([{ kind: "arrowRain", playerId: "a", x: 0, z: rain.aheadM, hits: 0 }]);
+    expect(behind.hp).toBe(GOBLIN.hp);
+  });
+
+  it("lands in full on a raised shield, since it comes from above", () => {
+    const p = armed({ kind: "weapon", type: "bow", tier: 1 });
+    const sb = createEnemy("sb", "shieldbearer", 0, 8);
+    sb.facing = Math.PI; // facing the archer, shield up
+    expect(sb.guardUp).toBe(true);
+    cast(p, 100);
+    resolvePlayerAttacks([p], [sb], landAt, OPEN_FIELD);
+    expect(sb.hp).toBe(sb.maxHp - rain.damage);
+  });
+
+  it("a lock behind a wall is not where it falls", () => {
+    const walled: Level = { ...OPEN_FIELD, walls: [{ x: 0, z: -4, hw: 1, hd: 0.3 }] };
+    const p = armed({ kind: "weapon", type: "bow", tier: 1 });
+    p.lockId = "hid";
+    const spot = rainSpot(p, [goblinAt("hid", 0, -6)], walled);
+    expect(spot).toEqual({ x: 0, z: rain.aheadM });
   });
 });

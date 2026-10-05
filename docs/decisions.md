@@ -7,6 +7,11 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-05: The staff for Magic missile (builder, Session 27)
+The backlog's "Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff" needs a staff, and The Old Gates has none: its eleven weapon types are melee and the bow, so there are no tuned numbers to lift. Arrow rain is built (Session 27). The design doc's Magic row is Magic missile (hits up to 5 enemies once each), Shatter and Ward.
+A. Add a Staff weapon type (Magic style, two-handed) to `gear.ts` on the bow's damage curve, pickable on the join screen; its swing is a short-range bolt at the soft auto-target, and slot 1 is Magic missile: up to 5 living enemies in sight within 10 m, nearest first, once each. First-guess numbers, tuned in the playtest. **Recommended**: it completes the three styles the combo system scales on, and the gate's combo bonus is easier to see with more than two styles in a party.
+B. Leave Magic for Phase 2 or later: Phase 1 ships with Melee and Ranged only, and this backlog item closes with Arrow rain.
+
 ### 2026-10-05: Does a wipe reset the whole Warrens floor? (the critic)
 In headless play a wipe in the pens (the third room) put all nine enemies back, the two cleared rooms included: Session 7's "wipe resets the fight" now covers the floor. The design doc makes a wipe the end of the run, so this may be the intent, but it is what the gate's "a party clears a floor" will feel first.
 A. Keep it: a wipe restarts the floor (the run ends; no change). **Recommended** until a human playtest says it is too harsh, since it matches the design doc.

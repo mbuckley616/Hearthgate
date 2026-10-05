@@ -361,6 +361,22 @@ export const ABILITIES = {
     arc: Math.PI * 1.1, // 198 degrees: "everything in front"
     damage: 14,
     cooldownMs: 6000
+  },
+  /**
+   * Ranged, slot 1 (design doc: "arrows fall on a marked area"): a volley loosed high that
+   * lands on every enemy within `radius` of the spot. The spot is the bow's lock, else the
+   * enemy the bow would shoot now, else `aheadM` in front; chosen when the volley lands, so
+   * it falls where the target is, not where it was. The windup is the draw and the flight:
+   * long enough for a goblin to step out of a ring it is watching.
+   */
+  arrowRain: {
+    windupMs: 650,
+    durationMs: 700,
+    range: 12,
+    radius: 3,
+    aheadM: 7,
+    damage: 16,
+    cooldownMs: 8000
   }
 } as const;
 
@@ -368,15 +384,16 @@ export type AbilityId = keyof typeof ABILITIES;
 
 /**
  * Slots by the weapon's style. Melee weapons (sword and two-handers alike) put Cleave in
- * slot 1; the bow's slots are empty until Arrow rain lands, and the staff (Magic) with Magic
- * missile.
+ * slot 1, the bow Arrow rain; the staff (Magic) comes with Magic missile.
  */
 export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
+export const BOW_SLOTS: readonly (AbilityId | "")[] = ["arrowRain", "", ""];
 const EMPTY_SLOTS: readonly (AbilityId | "")[] = ["", "", ""];
 
 /** The ability slots a weapon gives. */
 export function slotsFor(weapon: WeaponGear): readonly (AbilityId | "")[] {
-  return WEAPON_TYPES[weapon.type].style === "melee" ? SWORD_SLOTS : EMPTY_SLOTS;
+  const style = WEAPON_TYPES[weapon.type].style;
+  return style === "melee" ? SWORD_SLOTS : style === "ranged" ? BOW_SLOTS : EMPTY_SLOTS;
 }
 export const ABILITY_SLOTS = 3;
 
@@ -604,6 +621,8 @@ export interface Encounter {
 export type SimEvent =
   | { kind: "playerHit"; attackerId: string; enemyId: string; damage: number; enemyHp: number; shielded: boolean }
   | { kind: "abilityHit"; attackerId: string; enemyId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
+  /** An Arrow rain landed at (x, z): the client draws the ring whether or not it hit anyone. */
+  | { kind: "arrowRain"; playerId: string; x: number; z: number; hits: number }
   | { kind: "enemyKilled"; killerId: string; enemyId: string }
   | { kind: "enemyHit"; targetId: string; enemyId: string; damage: number; targetHp: number; blocked: boolean }
   | { kind: "playerParried"; playerId: string; enemyId: string; postureBroken: boolean }
@@ -1050,6 +1069,23 @@ export function dropStaleLocks(players: Iterable<PlayerSim>, enemies: Map<string
   }
 }
 
+/**
+ * Where an Arrow rain falls: on the bow's lock while it is in reach and in sight, else on the
+ * enemy a shot would take now, else `aheadM` in front (inside the level's bounds).
+ */
+export function rainSpot(p: PlayerSim, enemies: readonly EnemySim[], level: Level): { x: number; z: number } {
+  const def = ABILITIES.arrowRain;
+  const sees = (e: EnemySim) => isEnemyAlive(e) && Math.hypot(e.x - p.x, e.z - p.z) <= def.range + ENEMY_KINDS[e.kind].radius && lineClear(p, e, level);
+  const locked = p.lockId ? enemies.find((e) => e.id === p.lockId) : undefined;
+  if (locked && sees(locked)) return { x: locked.x, z: locked.z };
+  const bow = WEAPON_CLASSES.bow;
+  const auto = enemiesInCone(p, enemies, Math.min(bow.range, def.range), bow.arc).find((e) => lineClear(p, e, level));
+  if (auto) return { x: auto.x, z: auto.z };
+  const x = p.x + Math.sin(p.facing) * def.aheadM;
+  const z = p.z + Math.cos(p.facing) * def.aheadM;
+  return { x: Math.max(-level.halfW, Math.min(level.halfW, x)), z: Math.max(-level.halfD, Math.min(level.halfD, z)) };
+}
+
 /** Living enemies inside the cone, nearest first (soft auto-targeting, design doc). */
 export function enemiesInCone(from: PlayerSim, enemies: readonly EnemySim[], range: number, arc: number): EnemySim[] {
   const hits: { e: EnemySim; d: number }[] = [];
@@ -1119,6 +1155,19 @@ export function resolvePlayerAttacks(
           }
           events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted });
           if (broke) events.push({ kind: "postureBroken", enemyId: e.id, byId: p.id });
+          settle(p, e);
+        }
+      } else if (ability === "arrowRain") {
+        const def = ABILITIES.arrowRain;
+        const spot = rainSpot(p, enemies, level);
+        const under = enemies.filter((e) => isEnemyAlive(e) && Math.hypot(e.x - spot.x, e.z - spot.z) <= def.radius + ENEMY_KINDS[e.kind].radius);
+        under.sort((a, b) => (a.id < b.id ? -1 : 1));
+        events.push({ kind: "arrowRain", playerId: p.id, x: spot.x, z: spot.z, hits: under.length });
+        for (const e of under) {
+          // From above: a raised shield does not cover it, and it breaks nothing.
+          const { damage } = resolveHit(e.states, { damage: def.damage, tags: ["ranged", "area"], byId: p.id }, now);
+          hit(e, damage);
+          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted: false });
           settle(p, e);
         }
       }

@@ -272,8 +272,12 @@ function describeEvent(e: SimEvent): string {
   switch (e.kind) {
     case "abilityHit": {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
+      if (e.ability === "arrowRain") return `${e.attackerId === net.sessionId ? "Your" : `${who}'s`} arrows hit ${enemyName(e.enemyId)} for ${e.damage}`;
       return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
+    case "arrowRain":
+      view.showRain(e.x, e.z, ABILITIES.arrowRain.radius);
+      return e.hits === 0 && e.playerId === net.sessionId ? "Your arrows found nothing" : "";
     case "playerHit": {
       const what = e.shielded ? `${enemyName(e.enemyId)}'s shield` : enemyName(e.enemyId);
       return e.attackerId === net.sessionId ? `You hit ${what} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${what} for ${e.damage}`;
@@ -324,7 +328,7 @@ function describeEvent(e: SimEvent): string {
   }
 }
 
-const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
+const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave", arrowRain: "Arrow rain" };
 const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger", packLeader: "Pack Leader" };
 
 function kindName(kind: EnemyKind): string {

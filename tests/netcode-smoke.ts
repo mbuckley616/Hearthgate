@@ -338,6 +338,8 @@ async function lockOn(client: Client) {
   const h = await client.create("dungeon", { name: "Hotel", level: "field", weapon: "bow", tier: 1 });
   let hState: any = null;
   h.onStateChange((s: any) => (hState = s));
+  const hEvents: any[] = [];
+  h.onMessage("events", (evs: any[]) => hEvents.push(...evs));
   let hseq = 0;
   const press = async () => {
     h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, cycle: true });
@@ -356,9 +358,15 @@ async function lockOn(client: Client) {
   const gob = hState.enemies.get(goblinId);
   const d = Math.hypot(gob.x - near.x, gob.z - near.z);
   if (near.lockId !== goblinId) fail(`lock-on: ${d.toFixed(1)} m from the goblin Hotel's lock is "${near.lockId}", not ${goblinId}`);
+  // Arrow rain on the lock: it lands on the goblin wherever it has walked to.
+  h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 });
+  await sleep(1000);
+  const volley = hEvents.find((e) => e.kind === "arrowRain");
+  const rained = hEvents.find((e) => e.kind === "abilityHit" && e.ability === "arrowRain" && e.enemyId === goblinId);
+  if (!volley || !rained) fail(`arrow rain: ${volley ? `fell at (${volley.x.toFixed(1)}, ${volley.z.toFixed(1)}) and hit ${volley.hits}` : "never fell"}, expected it on the locked goblin`);
   const again = await press();
   if (again.lockId !== "") fail(`lock-on: a second press with one target left the lock on "${again.lockId}"`);
-  console.log(`ok: lock-on: nothing in range at 17 m, the goblin locked at ${d.toFixed(1)} m, back to auto on the next press`);
+  console.log(`ok: lock-on: nothing in range at 17 m, the goblin locked at ${d.toFixed(1)} m, Arrow rain on it for ${rained.damage}, back to auto on the next press`);
   await h.leave();
   await sleep(300);
 }
