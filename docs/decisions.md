@@ -9,6 +9,12 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-05: The staff for Magic missile (builder, Session 27)
+The backlog's "Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff" needs a staff, and The Old Gates has none: its eleven weapon types are melee and the bow, so there are no tuned numbers to lift. Arrow rain is built (Session 27). The design doc's Magic row is Magic missile (hits up to 5 enemies once each), Shatter and Ward.
+A. Add a Staff weapon type (Magic style, two-handed) to `gear.ts` on the bow's damage curve, pickable on the join screen; its swing is a short-range bolt at the soft auto-target, and slot 1 is Magic missile: up to 5 living enemies in sight within 10 m, nearest first, once each. First-guess numbers, tuned in the playtest. **Recommended**: it completes the three styles the combo system scales on, and the gate's combo bonus is easier to see with more than two styles in a party.
+B. Leave Magic for Phase 2 or later: Phase 1 ships with Melee and Ranged only, and this backlog item closes with Arrow rain.
+Michael: **B. Leave Magic for Phase 2 or later** — answered on the control room. (2026-10-05)
+
 ### 2026-10-05: A village greybox before the Phase 1 gate? (Claude (local))
 Michael asked why the game is still a simple top-down arena with pills when the design doc promises a town, a portal, buildings with NPCs, a third-person camera and character models. The answer: the town is Phase 2 and CLAUDE.md forbids starting a later phase early; the camera is off-spec (about 55 degrees and fixed, against the doc's 30 to 40 with auto-rotation) and was on no list; the style guide and first commission were meant to be ordered during Phase 1 and were on no list either.
 A. Keep the phase order; the town waits for the Phase 1 gate.
