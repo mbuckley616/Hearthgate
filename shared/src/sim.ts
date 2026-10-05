@@ -226,6 +226,25 @@ export type AbilityId = keyof typeof ABILITIES;
 export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
 export const ABILITY_SLOTS = 3;
 
+/**
+ * Gear tuning (design doc, "Layer 2: gear (tier-capped)"); the tables lifted from The Old
+ * Gates live in gear.ts. Nothing in combat reads these yet: the weapon classes item wires
+ * the weapon into the swing.
+ */
+export const GEAR = {
+  /**
+   * The Old Gates has ten materials, Hearthgate five portal tiers: a portal of tier T lets a
+   * weapon or armour perform up to material tier 2T (a tier-1 portal: Wooden and Bronze).
+   */
+  materialsPerPortalTier: 2,
+  /**
+   * The Old Gates' attack numbers times this give Hearthgate damage. 3 makes a Wooden Sword
+   * hit for 20, today's PLAYER.attackDamage, so wiring the weapon in changes nothing for the
+   * starter kit.
+   */
+  damageScale: 3
+} as const;
+
 /** Where the first goblin stands in every level so far (the hit-feedback test walks to it). */
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
