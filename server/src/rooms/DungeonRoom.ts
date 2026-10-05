@@ -58,7 +58,7 @@ export class DungeonRoom extends Room<DungeonState> {
   private nextSpawn = 0;
   /** Wall time of simulation time zero; tick n is due at epoch + n * TICK_MS. */
   private epoch = 0;
-  /** Wall time of the last step, so simNow() can place a ping reply inside the tick. */
+  /** Wall time the last step's patch left, so simNow() can place a ping reply inside the tick. */
   private lastStepAt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -171,7 +171,6 @@ export class DungeonRoom extends Room<DungeonState> {
 
   private step() {
     this.sim.tick++;
-    this.lastStepAt = performance.now();
     const now = this.sim.tick * TICK_MS;
     const level = this.sim.encounter.level;
 
@@ -195,6 +194,9 @@ export class DungeonRoom extends Room<DungeonState> {
     this.syncState();
     if (events.length) this.broadcast("events", events);
     this.broadcastPatch();
+    // Taken after the patch leaves, so a ping reply and a patch stamped the same server
+    // time left the server at the same wall time and the client's clock sees one path.
+    this.lastStepAt = performance.now();
   }
 
   private syncState() {

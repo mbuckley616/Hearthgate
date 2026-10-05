@@ -12,22 +12,25 @@
  *   vs floor       the clock against the best delivery seen in the run (the largest
  *                  stamp-minus-arrival over all snapshots): mean and max, ms. Above 0 the
  *                  clock is ahead of anything the network delivers and the budget shrinks.
+ *   delay          the interpolation delay the viewer chose (INTERP: 100 ms plus what the
+ *                  worst recent arrival needed, cap 200): mean and max over the run, ms
  *   margin         how far the interpolation cursor sits behind the newest snapshot
- *                  (ms; the design wants about INTERP_DELAY_MS, steady). Below 0 the
- *                  pose is held and the remote player freezes.
+ *                  (ms; the design wants about the delay, steady). Below 0 the pose is
+ *                  held and the remote player freezes.
  *   holds          frames with margin below 0, as a share, and hold episodes per minute
  *   corr, snaps    the driven player's own reconciliation corrections and snaps per minute
  *
  * Run: npm run test:clock [-- --seconds 20 --only 150]. Exits non-zero if the clock moves
- * faster than its slew limit, sits ahead of the delivery floor, or a remote player holds on
- * a clean or 50 ms link. Holds at 150 ms are reported, not judged: with +-25 ms jitter and
- * 80 ms spikes they are the fixed INTERP_DELAY_MS running out, which is a tuning question.
+ * faster than its slew limit, sits ahead of the delivery floor, a remote player holds on a
+ * clean or 50 ms link, the clean link pays more than the base delay, or the 150 ms link
+ * (+-25 ms jitter, 2% of packets 80 ms late) holds more than a third of what the fixed
+ * 100 ms delay did there (1.3 to 1.6% of frames, Sessions 6 and 7).
  */
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { CLOCK_SYNC, TICK_MS } from "@hearthgate/shared";
-import { INTERP_DELAY_MS, Net } from "../client/src/net";
+import { CLOCK_SYNC, INTERP, TICK_MS } from "@hearthgate/shared";
+import { Net } from "../client/src/net";
 
 const SERVER_PORT = 2598;
 const PROXY_PORT = 2597;
@@ -133,6 +136,9 @@ interface Stats {
   driftMsPerS: number;
   vsFloorMean: number;
   vsFloorMax: number;
+  delayMean: number;
+  delayMax: number;
+  lateMax: number;
   marginMean: number;
   marginSd: number;
   marginP5: number;
@@ -177,6 +183,8 @@ async function runScenario(lag: Lag): Promise<Stats> {
     const start = performance.now();
     const offsets: { t: number; offset: number }[] = [];
     const margins: number[] = [];
+    const delays: number[] = [];
+    let lateMax = 0;
     let floor = -Infinity;
     let firstTick: { t: number; tick: number } | null = null;
     let lastTick: { t: number; tick: number } | null = null;
@@ -201,9 +209,12 @@ async function runScenario(lag: Lag): Promise<Stats> {
       if (!r || r.snaps.length === 0) return;
       for (const sn of r.snaps) floor = Math.max(floor, sn.t - sn.at);
       const serverNow = b.serverNow();
+      const delay = b.interpDelayMs;
       const newest = r.snaps[r.snaps.length - 1].t;
-      const margin = newest - (serverNow - INTERP_DELAY_MS);
+      const margin = newest - (serverNow - delay);
       margins.push(margin);
+      delays.push(delay);
+      lateMax = Math.max(lateMax, b.lateMs);
       offsets.push({ t: now, offset: serverNow - now });
       const held = margin < 0;
       if (held && !wasHeld) holds++;
@@ -227,6 +238,9 @@ async function runScenario(lag: Lag): Promise<Stats> {
       driftMsPerS: drift,
       vsFloorMean: mean(vsFloor),
       vsFloorMax: Math.max(...vsFloor),
+      delayMean: mean(delays),
+      delayMax: Math.max(...delays),
+      lateMax,
       marginMean: mean(margins),
       marginSd: sd(margins),
       marginP5: percentile(margins, 0.05),
@@ -262,17 +276,20 @@ async function main() {
   const failures: string[] = [];
   try {
     await waitForHealth(`http://localhost:${SERVER_PORT}/health`);
-    console.log(`clock sync, ${SECONDS} s per run after a ${SETTLE_MS / 1000} s settle, interpolation delay ${INTERP_DELAY_MS} ms`);
-    console.log("rtt      | ping A  ping B | srv rate | offset sd   drift | vs floor mean  max | margin mean    sd    p5 | holds %  holds/min | corr/min snaps/min");
+    console.log(`clock sync, ${SECONDS} s per run after a ${SETTLE_MS / 1000} s settle, interpolation delay ${INTERP.baseMs} to ${INTERP.maxMs} ms by jitter`);
+    console.log("rtt      | ping A  ping B | srv rate | offset sd   drift | vs floor mean  max | late max | delay mean    max | margin mean    sd    p5 | holds %  holds/min | corr/min snaps/min");
     for (const lag of LAGS) {
       if (ONLY && !lag.name.startsWith(ONLY)) continue;
       const s = await runScenario(lag);
       console.log(
-        `${lag.name.padEnd(8)} |${fmt(s.rttA, 0)}${fmt(s.rttB, 0)} | ${s.serverRate.toFixed(4)}   |${fmt(s.offsetSd)}  ${fmt(s.driftMsPerS)} |${fmt(s.vsFloorMean)} ${fmt(s.vsFloorMax)}      |${fmt(s.marginMean)} ${fmt(s.marginSd)} ${fmt(s.marginP5)} |${fmt(100 * s.holdShare)}  ${fmt(s.holdsPerMin)} |${fmt(s.corrPerMin)} ${fmt(s.snapsPerMin)}`
+        `${lag.name.padEnd(8)} |${fmt(s.rttA, 0)}${fmt(s.rttB, 0)} | ${s.serverRate.toFixed(4)}   |${fmt(s.offsetSd)}  ${fmt(s.driftMsPerS)} |${fmt(s.vsFloorMean)} ${fmt(s.vsFloorMax)}      | ${fmt(s.lateMax)}  |${fmt(s.delayMean)} ${fmt(s.delayMax)} |${fmt(s.marginMean)} ${fmt(s.marginSd)} ${fmt(s.marginP5)} |${fmt(100 * s.holdShare)}  ${fmt(s.holdsPerMin)} |${fmt(s.corrPerMin)} ${fmt(s.snapsPerMin)}`
       );
       if (s.driftMsPerS > CLOCK_SYNC.slewMsPerS + 1) failures.push(`${lag.name}: clock moved ${s.driftMsPerS.toFixed(1)} ms/s (slew limit ${CLOCK_SYNC.slewMsPerS})`);
       if (s.vsFloorMax > 3) failures.push(`${lag.name}: clock sat ${s.vsFloorMax.toFixed(1)} ms ahead of the delivery floor (limit 3)`);
       if (lag.name !== "150 ms" && s.holdShare > 0.01) failures.push(`${lag.name}: remote player held on ${(100 * s.holdShare).toFixed(1)}% of frames (limit 1%)`);
+      if (lag.name === "150 ms" && s.holdShare > 0.004) failures.push(`${lag.name}: remote player held on ${(100 * s.holdShare).toFixed(1)}% of frames (limit 0.4%, a third of the fixed delay's)`);
+      if (lag.name === "0 ms" && s.delayMean > INTERP.baseMs + 1) failures.push(`${lag.name}: clean link paid ${s.delayMean.toFixed(1)} ms of delay (base ${INTERP.baseMs})`);
+      if (s.delayMax > INTERP.maxMs + 1e-6) failures.push(`${lag.name}: delay reached ${s.delayMax.toFixed(1)} ms (cap ${INTERP.maxMs})`);
     }
   } finally {
     server.kill("SIGTERM");

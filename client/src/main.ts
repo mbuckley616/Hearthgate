@@ -118,7 +118,7 @@ function startLoops() {
 
 function draw(dt: number) {
   const now = net.predictedTime;
-  const serverNow = net.serverNow();
+  const remoteNow = net.remoteNow();
   view.setLevel(net.level);
 
   // Me.
@@ -139,7 +139,7 @@ function draw(dt: number) {
 
   // Everyone else.
   const live = new Set<string>([net.sessionId]);
-  const drawT = serverNow - 100;
+  const drawT = remoteNow;
   for (const r of net.remotes.values()) {
     live.add(r.id);
     view.ensurePlayer(r.id, r.name, r.color);
@@ -216,6 +216,8 @@ function draw(dt: number) {
     rtt: net.rttMs,
     minRtt: net.minRttMs,
     clockOffset: net.clockOffset,
+    interpDelay: net.interpDelayMs,
+    late: net.lateMs,
     snaps: net.snaps,
     tick: net.lastServerTick,
     nudges: view.nudges,
