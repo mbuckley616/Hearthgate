@@ -1,40 +1,44 @@
 import { Client, Room } from "colyseus.js";
 import {
   CLOCK_SYNC,
+  ENEMY_KINDS,
   OPEN_FIELD,
+  PLAYER,
   TICK_MS,
   addArrivalSample,
   addClockSample,
   applyInput,
   createClockSync,
   createPlayer,
+  createPoseTrack,
   interpDelayAt,
   isAlive,
   isDead,
   levelById,
   minRtt,
+  pushPoseSnapshot,
   remoteTimeAt,
+  samplePoseTrack,
   serverTimeAt,
   type EnemyKind,
   type EnemyPhase,
   type InputFrame,
   type Level,
   type PlayerSim,
+  type Pose,
+  type PoseSnapshot,
+  type PoseTrack,
   type SimEvent
 } from "@hearthgate/shared";
 
-const SNAPSHOT_KEEP = 24;
+export type { Pose } from "@hearthgate/shared";
+
 /** Prediction error larger than this snaps instead of smoothing. */
 export const SNAP_DISTANCE = 2.5;
 
-export interface Snapshot {
-  /** Server time the snapshot describes. */
-  t: number;
+export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
   at: number;
-  x: number;
-  z: number;
-  facing: number;
 }
 
 export interface RemotePlayer {
@@ -53,7 +57,8 @@ export interface RemotePlayer {
   dodgeUntil: number;
   guarding: boolean;
   staggerUntil: number;
-  snaps: Snapshot[];
+  /** Snapshots and the easing state the pose is drawn from (interp.ts). */
+  track: PoseTrack<Snapshot>;
 }
 
 export interface EnemyView {
@@ -70,13 +75,7 @@ export interface EnemyView {
   postureBrokenUntil: number;
   guardUp: boolean;
   rallied: boolean;
-  snaps: Snapshot[];
-}
-
-export interface Pose {
-  x: number;
-  z: number;
-  facing: number;
+  track: PoseTrack<Snapshot>;
 }
 
 export type EventListener = (events: SimEvent[]) => void;
@@ -87,7 +86,10 @@ export type EventListener = (events: SimEvent[]) => void;
  *    rewound and replayed whenever the server's copy arrives;
  *  - interpolation: everyone else is drawn 100 to 200 ms in the past (INTERP, adapted to
  *    the jitter seen) between two received snapshots so movement is smooth at 20 updates
- *    a second.
+ *    a second. When a snapshot is later than even that delay allows, the pose is projected
+ *    along its last tick of motion by at most one tick and held there, kept out of the walls,
+ *    and the snapshot that ends the guess eases the drawn pose over to what it says instead
+ *    of popping (shared interp.ts; the server is untouched by any of this).
  *
  * The server clock behind interpolation comes from stamped messages: the server echoes
  * its simulation time to pings and stamps every patch with its tick, the message with the
@@ -230,8 +232,8 @@ export class Net {
     return remoteTimeAt(this.clock, performance.now());
   }
 
-  remotePose(r: { snaps: Snapshot[] }): Pose | null {
-    return sampleSnapshots(r.snaps, this.remoteNow());
+  remotePose(r: { track: PoseTrack<Snapshot> }): Pose | null {
+    return samplePoseTrack(r.track, this.remoteNow(), this.level);
   }
 
   /** The living enemy drawn nearest to (x, z), for the HUD and hit feedback. */
@@ -277,7 +279,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, track: createPoseTrack<Snapshot>(PLAYER.radius) };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -293,7 +295,7 @@ export class Net {
       r.dodgeUntil = p.dodgeUntil;
       r.guarding = p.guarding === true;
       r.staggerUntil = p.staggerUntil ?? 0;
-      pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
+      pushPoseSnapshot(r.track, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing }, this.level);
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
 
@@ -302,7 +304,7 @@ export class Net {
       seenEnemies.add(id);
       let v = this.enemies.get(id);
       if (!v) {
-        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, rallied: false, snaps: [] };
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, rallied: false, track: createPoseTrack<Snapshot>(ENEMY_KINDS[e.kind as EnemyKind]?.radius ?? PLAYER.radius) };
         this.enemies.set(id, v);
       }
       v.kind = e.kind;
@@ -317,7 +319,7 @@ export class Net {
       v.postureBrokenUntil = e.postureBrokenUntil ?? 0;
       v.guardUp = e.guardUp === true;
       v.rallied = e.rallied === true;
-      pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
+      pushPoseSnapshot(v.track, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing }, this.level);
     });
     for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);
   }
@@ -399,45 +401,4 @@ export class Net {
     this.connected = false;
     this.room?.leave();
   }
-}
-
-function pushSnapshot(buf: Snapshot[], s: Snapshot) {
-  const last = buf[buf.length - 1];
-  if (last && last.t === s.t) {
-    buf[buf.length - 1] = s;
-    return;
-  }
-  buf.push(s);
-  if (buf.length > SNAPSHOT_KEEP) buf.shift();
-}
-
-function lerpAngle(a: number, b: number, k: number): number {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return a + d * k;
-}
-
-/** Interpolate (or hold) a pose from a snapshot buffer at time t. */
-export function sampleSnapshots(snaps: Snapshot[], t: number): Pose | null {
-  if (snaps.length === 0) return null;
-  if (snaps.length === 1 || t <= snaps[0].t) {
-    const s = snaps[0];
-    return { x: s.x, z: s.z, facing: s.facing };
-  }
-  for (let i = 0; i < snaps.length - 1; i++) {
-    const a = snaps[i];
-    const b = snaps[i + 1];
-    if (t >= a.t && t <= b.t) {
-      const k = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
-      return {
-        x: a.x + (b.x - a.x) * k,
-        z: a.z + (b.z - a.z) * k,
-        facing: lerpAngle(a.facing, b.facing, k)
-      };
-    }
-  }
-  // Past the newest snapshot: hold it (no extrapolation in Phase 0; see backlog).
-  const s = snaps[snaps.length - 1];
-  return { x: s.x, z: s.z, facing: s.facing };
 }
