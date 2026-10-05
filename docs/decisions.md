@@ -7,7 +7,10 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
-(none)
+### 2026-10-05: Does a wipe reset the whole Warrens floor? (the critic)
+In headless play a wipe in the pens (the third room) put all nine enemies back, the two cleared rooms included: Session 7's "wipe resets the fight" now covers the floor. The design doc makes a wipe the end of the run, so this may be the intent, but it is what the gate's "a party clears a floor" will feel first.
+A. Keep it: a wipe restarts the floor (the run ends; no change). **Recommended** until a human playtest says it is too harsh, since it matches the design doc.
+B. A wipe resets only the room the party died in; cleared rooms stay clear.
 
 ## Answered
 
