@@ -40,6 +40,9 @@ export class PlayerState extends Schema {
   @type("number") knockUntil = 0;
   @type("number") knockDx = 0;
   @type("number") knockDz = 0;
+  /** The weapon picked at join (a WEAPON_TYPES id and material tier): the client predicts its swing with it. */
+  @type("string") weaponType = "sword";
+  @type("number") weaponTier = 1;
 }
 
 export class EnemyState extends Schema {

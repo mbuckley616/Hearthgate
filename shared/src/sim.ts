@@ -367,11 +367,17 @@ export const ABILITIES = {
 export type AbilityId = keyof typeof ABILITIES;
 
 /**
- * Slots by weapon. Only the sword (Melee) exists until the weapon classes land, so slot 1
- * is Cleave and slots 2 and 3 are empty; Arrow rain and Magic missile arrive with the bow
- * and the staff.
+ * Slots by the weapon's style. Melee weapons (sword and two-handers alike) put Cleave in
+ * slot 1; the bow's slots are empty until Arrow rain lands, and the staff (Magic) with Magic
+ * missile.
  */
 export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
+const EMPTY_SLOTS: readonly (AbilityId | "")[] = ["", "", ""];
+
+/** The ability slots a weapon gives. */
+export function slotsFor(weapon: WeaponGear): readonly (AbilityId | "")[] {
+  return WEAPON_TYPES[weapon.type].style === "melee" ? SWORD_SLOTS : EMPTY_SLOTS;
+}
 export const ABILITY_SLOTS = 3;
 
 /**
@@ -783,8 +789,8 @@ export function isAttacking(p: PlayerSim, now: number): boolean {
 }
 
 /** The ability in a slot (1-based) for the weapon the player holds, or "" for an empty slot. */
-export function abilityInSlot(slot: number): AbilityId | "" {
-  return SWORD_SLOTS[slot - 1] ?? "";
+export function abilityInSlot(weapon: WeaponGear, slot: number): AbilityId | "" {
+  return slotsFor(weapon)[slot - 1] ?? "";
 }
 
 /** Standing: has health, can move at full speed and fight. */
@@ -953,7 +959,7 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
 
   // Start an ability, or else a swing. Both hits resolve later in resolvePlayerAttacks.
   const slot = input.ability ?? 0;
-  const ability = slot > 0 ? abilityInSlot(slot) : "";
+  const ability = slot > 0 ? abilityInSlot(p.weapon, slot) : "";
   if (p.guarding) {
     // Lower the guard to swing.
   } else if (ability && !attacking && !isDodging(p, now) && now >= p.readyAt[slot - 1]) {
@@ -1038,7 +1044,7 @@ export function resolvePlayerAttacks(
   for (const p of players) {
     if (p.abilityHitAt !== 0 && now >= p.abilityHitAt) {
       p.abilityHitAt = 0;
-      const ability = abilityInSlot(p.abilitySlot);
+      const ability = abilityInSlot(p.weapon, p.abilitySlot);
       if (ability === "cleave") {
         const def = ABILITIES.cleave;
         for (const e of enemiesInCone(p, enemies, def.range, def.arc)) {

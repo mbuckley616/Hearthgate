@@ -1,9 +1,26 @@
 import * as THREE from "three";
-import { ABILITIES, ARENA_HALF, DOWNS, ENEMY_KINDS, PLAYER, STAIRS, nudgeOffset, type EnemyKind, type Level } from "@hearthgate/shared";
+import {
+  ABILITIES,
+  ARENA_HALF,
+  DOWNS,
+  ENEMY_KINDS,
+  PLAYER,
+  STAIRS,
+  WEAPON_CLASSES,
+  materialOf,
+  nudgeOffset,
+  weaponClassOf,
+  type EnemyKind,
+  type Level,
+  type WeaponClass,
+  type WeaponGear
+} from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
   hp: number;
+  /** What they hold: picks the held mesh, its material colour and the swing's arc. */
+  weapon: WeaponGear;
   attacking: boolean; // committed to a swing
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
   cleaveActive: boolean; // the same for Cleave's wider arc
@@ -52,10 +69,16 @@ const PALETTE = {
   guard: 0x9fb8d9
 };
 
+const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
+
 class PlayerMesh {
   group = new THREE.Group();
   body: THREE.Mesh;
-  swing: THREE.Mesh;
+  /** Per weapon class, built once: the swing's arc and the weapon in hand. Only the held class shows. */
+  swings: Record<WeaponClass, THREE.Mesh>;
+  held: Record<WeaponClass, THREE.Mesh>;
+  /** Shared by the three held meshes; tinted with the material. */
+  heldMat: THREE.MeshStandardMaterial;
   cleave: THREE.Mesh;
   guard: THREE.Mesh;
   tag: THREE.Sprite;
@@ -79,18 +102,38 @@ class PlayerMesh {
     nose.position.set(0, 1.25, PLAYER.radius * 0.95);
     this.group.add(nose);
 
-    // Attack arc: a flat wedge shown for a few frames when the hit resolves.
-    const arc = new THREE.RingGeometry(0.4, PLAYER.attackRange, 18, 1, -PLAYER.attackArc / 2, PLAYER.attackArc);
-    this.swing = new THREE.Mesh(
-      arc,
-      new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
-    );
-    this.swing.rotation.x = -Math.PI / 2;
-    // RingGeometry's theta starts on +x; rotate so the wedge is centred on local +z.
-    this.swing.rotation.z = -Math.PI / 2;
-    this.swing.position.y = 0.05;
-    this.swing.visible = false;
-    this.group.add(this.swing);
+    // Attack arcs: a flat wedge per class, shown for a few frames when the hit resolves.
+    const arcMat = new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+    const makeArc = (cls: WeaponClass) => {
+      const w = WEAPON_CLASSES[cls];
+      const arc = new THREE.Mesh(new THREE.RingGeometry(0.4, w.range, 18, 1, -w.arc / 2, w.arc), arcMat);
+      arc.rotation.x = -Math.PI / 2;
+      // RingGeometry's theta starts on +x; rotate so the wedge is centred on local +z.
+      arc.rotation.z = -Math.PI / 2;
+      arc.position.y = 0.05;
+      arc.visible = false;
+      this.group.add(arc);
+      return arc;
+    };
+    this.swings = { oneHand: makeArc("oneHand"), twoHand: makeArc("twoHand"), bow: makeArc("bow") };
+
+    // The weapon in hand, on the right side, so a party reads as mixed at a glance.
+    this.heldMat = new THREE.MeshStandardMaterial({ color: 0x9a7a52, roughness: 0.5, metalness: 0.3 });
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.85), this.heldMat);
+    blade.position.set(PLAYER.radius * 0.9, 0.95, 0.35);
+    const great = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 1.35), this.heldMat);
+    great.position.set(PLAYER.radius * 0.95, 1.05, 0.5);
+    great.rotation.x = -0.35;
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 16, Math.PI), this.heldMat);
+    bow.position.set(PLAYER.radius * 0.9, 1.0, 0.25);
+    bow.rotation.y = Math.PI / 2;
+    this.held = { oneHand: blade, twoHand: great, bow };
+    for (const cls of CLASSES) {
+      const m = this.held[cls];
+      m.castShadow = true;
+      m.visible = false;
+      this.group.add(m);
+    }
 
     const c = ABILITIES.cleave;
     this.cleave = new THREE.Mesh(
@@ -126,7 +169,25 @@ class PlayerMesh {
     this.group.add(this.tag);
   }
 
+  private heldType = "";
+  private heldTier = 0;
+  private heldClass: WeaponClass = "oneHand";
+
+  /** Show the held class's mesh in its material's colour; work only when the weapon changes. */
+  private setWeapon(w: WeaponGear) {
+    if (w.type === this.heldType && w.tier === this.heldTier) return;
+    this.heldType = w.type;
+    this.heldTier = w.tier;
+    this.heldClass = weaponClassOf(w);
+    for (const cls of CLASSES) this.held[cls].visible = cls === this.heldClass;
+    const material = materialOf(w.tier);
+    this.heldMat.color.setHex(material.color);
+    this.heldMat.emissive.setHex(material.glow ?? 0x000000);
+    this.heldMat.emissiveIntensity = material.glow === null ? 0 : 0.6;
+  }
+
   apply(pose: Pose, v: PlayerVisual) {
+    this.setWeapon(v.weapon);
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
     const mat = this.body.material as THREE.MeshStandardMaterial;
@@ -141,7 +202,8 @@ class PlayerMesh {
       mat.color.copy(this.baseColor);
       if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
     }
-    this.swing.visible = v.swingActive && !v.dead;
+    for (const cls of CLASSES) this.swings[cls].visible = cls === this.heldClass && v.swingActive && !v.dead;
+    this.held[this.heldClass].visible = !v.dead && !v.downed;
     this.guard.visible = v.guarding && !v.dead && !v.downed;
     this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
     this.tag.visible = !v.dead;

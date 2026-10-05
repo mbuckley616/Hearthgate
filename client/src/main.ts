@@ -2,8 +2,13 @@ import {
   ABILITIES,
   DOWNS,
   ENEMY_KINDS,
-  SWORD_SLOTS,
+  WEAPON_CLASSES,
   abilityInSlot,
+  slotsFor,
+  weaponClassOf,
+  gearName,
+  weaponFromPick,
+  type WeaponGear,
   type AbilityId,
   type EnemyKind,
   HIT_FEEDBACK,
@@ -18,6 +23,7 @@ import {
   type SimEvent
 } from "@hearthgate/shared";
 import { Input } from "./input";
+import { pickWeapon } from "./join";
 import { Net } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
@@ -40,6 +46,9 @@ const endpoint = params.get("server") ?? defaultEndpoint;
 const name = params.get("name") ?? pickName();
 // ?level=field joins (or creates) a room on the Phase 0 open field; tests use it.
 const levelParam = params.get("level") ?? undefined;
+// A scripted join (?name= or ?weapon=, as the tests and the lab use) skips the join screen;
+// ?weapon=claymore&tier=5 picks for it, and without them it holds the starter sword.
+const scriptedJoin = params.has("name") || params.has("weapon");
 
 const app = document.getElementById("app")!;
 const view = new View(app);
@@ -48,7 +57,7 @@ const input = new Input();
 const net = new Net();
 const sound = new Sound();
 
-hud.setStatus(`Connecting to ${endpoint}`);
+if (scriptedJoin) hud.setStatus(`Connecting to ${endpoint}`);
 
 const recentEvents: { text: string; until: number }[] = [];
 net.onEvents((events: SimEvent[]) => {
@@ -92,8 +101,11 @@ function enemyPose(id: string): { x: number; z: number } {
   return pose ?? { x: net.me.x + Math.sin(net.me.facing), z: net.me.z + Math.cos(net.me.facing) };
 }
 
-net
-  .connect(endpoint, name, levelParam)
+(scriptedJoin ? Promise.resolve(weaponFromPick(params.get("weapon") ?? "sword", params.get("tier") ?? 1)) : pickWeapon())
+  .then((weapon) => {
+    hud.setStatus(`Connecting to ${endpoint}`);
+    return net.connect(endpoint, name, levelParam, weapon);
+  })
   .then(() => {
     hud.setStatus("");
     startLoops();
@@ -132,8 +144,9 @@ function draw(dt: number) {
   view.updatePlayer(net.sessionId, myPose, {
     hp: me.hp,
     attacking: now < me.attackUntil,
-    swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
-    cleaveActive: cleaveFlash(me.abilitySlot, me.abilityUntil, now),
+    weapon: me.weapon,
+    swingActive: swingFlash(me.weapon, me.attackUntil, now),
+    cleaveActive: cleaveFlash(me.weapon, me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
     guarding: me.guarding,
     staggered: isPlayerStaggered(me, now),
@@ -154,8 +167,9 @@ function draw(dt: number) {
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
-      swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
-      cleaveActive: cleaveFlash(r.abilitySlot, r.abilityUntil, drawT),
+      weapon: r.weapon,
+      swingActive: swingFlash(r.weapon, r.attackUntil, drawT),
+      cleaveActive: cleaveFlash(r.weapon, r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
       guarding: r.guarding,
       staggered: drawT < r.staggerUntil,
@@ -190,6 +204,7 @@ function draw(dt: number) {
   const total = net.enemies.size;
   hud.update({
     myName: net.myName || name,
+    weapon: gearName(me.weapon),
     myHp: me.hp,
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
@@ -217,7 +232,7 @@ function draw(dt: number) {
     reviveTarget: reviveTarget(myPose),
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
-    slots: SWORD_SLOTS.map((id, i) => ({
+    slots: slotsFor(me.weapon).map((id, i) => ({
       name: id ? ABILITY_NAMES[id] : "",
       readyIn: Math.max(0, (me.readyAt[i] ?? 0) - now) / 1000
     }))
@@ -226,7 +241,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier } },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
@@ -318,9 +333,16 @@ function capital(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** The swing's arc shows from the moment its hit resolves until 150 ms before the swing ends. */
+function swingFlash(weapon: WeaponGear, until: number, t: number): boolean {
+  if (until === 0) return false;
+  const c = WEAPON_CLASSES[weaponClassOf(weapon)];
+  return t >= until - (c.durationMs - c.windupMs) && t < until - 150;
+}
+
 /** Cleave's arc shows from the moment its hit resolves until shortly after. */
-function cleaveFlash(slot: number, until: number, t: number): boolean {
-  if (abilityInSlot(slot) !== "cleave" || until === 0) return false;
+function cleaveFlash(weapon: WeaponGear, slot: number, until: number, t: number): boolean {
+  if (abilityInSlot(weapon, slot) !== "cleave" || until === 0) return false;
   const c = ABILITIES.cleave;
   const hitAt = until - c.durationMs + c.windupMs;
   return t >= hitAt && t < hitAt + 200;

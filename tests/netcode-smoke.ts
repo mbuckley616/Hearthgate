@@ -29,7 +29,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS, WARRENS, YARD } from "@hearthgate/shared";
+import { DOWNS, TICK_MS, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -250,6 +250,7 @@ async function main() {
     await b.leave();
     await sleep(300);
 
+    await weaponPick(client);
     await yard(client);
     await warrens(client);
     await stress(client);
@@ -294,6 +295,36 @@ async function yard(client: Client) {
   if (Math.abs(me.x - face) > 0.1 || Math.abs(me.z - 3) > 0.1) fail(`yard: after 2.5 s walking east Delta is at ${me.x.toFixed(2)}, ${me.z.toFixed(2)}; the wall should hold them at x = ${face}`);
   console.log(`ok: yard room has ${kinds.join(", ")} (${shieldsUp} shield up); the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
   await d.leave();
+  await sleep(300);
+}
+
+/**
+ * The join screen's pick (Michael, A, 2026-10-05): a weapon and tier sent as join options reach every client,
+ * the server swings with it, and a pick the server does not know is the starter sword at a real tier.
+ */
+async function weaponPick(client: Client) {
+  const f = await client.create("dungeon", { name: "Foxtrot", level: "field", weapon: "claymore", tier: 5 });
+  const g = await client.joinById(f.roomId, { name: "Golf", weapon: "laser", tier: 99 });
+  let fState: any = null;
+  let gState: any = null;
+  f.onStateChange((s: any) => (fState = s));
+  g.onStateChange((s: any) => (gState = s));
+  await sleep(400);
+  if (!fState || !gState) fail("weapon pick: no state received");
+  const fox = gState.players.get(f.sessionId);
+  const golf = fState.players.get(g.sessionId);
+  if (fox?.weaponType !== "claymore" || fox?.weaponTier !== 5) fail(`weapon pick: Golf sees Foxtrot with ${fox?.weaponType} ${fox?.weaponTier}, not claymore 5`);
+  if (golf?.weaponType !== "sword" || golf?.weaponTier !== 1) fail(`weapon pick: a bad pick became ${golf?.weaponType} ${golf?.weaponTier}, not sword 1`);
+  f.send("input", { seq: 1, dx: 0, dy: 0, attack: true, dodge: false });
+  await sleep(300);
+  const swung = fState.players.get(f.sessionId);
+  const two = WEAPON_CLASSES.twoHand;
+  if (swung.attackUntil - swung.attackHitAt !== two.durationMs - two.windupMs) {
+    fail(`weapon pick: Foxtrot's swing recovers in ${swung.attackUntil - swung.attackHitAt} ms, not the two-hander's ${two.durationMs - two.windupMs}`);
+  }
+  console.log("ok: weapon pick: a Claymore at tier 5 reaches both clients and swings two-handed; an unknown pick is a tier-1 sword");
+  await g.leave();
+  await f.leave();
   await sleep(300);
 }
 

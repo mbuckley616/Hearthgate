@@ -8,6 +8,7 @@ import {
   createEncounter,
   createInputBucket,
   createPlayer,
+  gearName,
   isValidInput,
   levelById,
   neutralInput,
@@ -19,7 +20,8 @@ import {
   type InputBucket,
   type InputFrame,
   type PlayerSim,
-  type SimEvent
+  type SimEvent,
+  weaponFromPick
 } from "@hearthgate/shared";
 import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js";
 
@@ -43,6 +45,9 @@ interface JoinOptions {
   name?: string;
   /** A level id from shared LEVELS; tests pick the open field, play gets the default. */
   level?: string;
+  /** The weapon picked on the join screen (a WEAPON_TYPES id) and its material tier; checked by weaponFromPick. */
+  weapon?: string;
+  tier?: number;
 }
 
 export class DungeonRoom extends Room<DungeonState> {
@@ -117,6 +122,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const slot = this.nextSpawn++ % SPAWN_POINTS.length;
     const spawn = SPAWN_POINTS[slot];
     const p = createPlayer(client.sessionId, spawn.x, spawn.z);
+    p.weapon = weaponFromPick(options.weapon, options.tier);
     this.sim.players.set(client.sessionId, p);
     this.queues.set(client.sessionId, []);
     this.buckets.set(client.sessionId, createInputBucket(performance.now()));
@@ -128,7 +134,7 @@ export class DungeonRoom extends Room<DungeonState> {
     copyPlayer(p, ps);
     this.state.players.set(client.sessionId, ps);
 
-    console.log(`[dungeon ${this.roomId}] ${ps.name} joined (${this.clients.length}/${this.maxClients})`);
+    console.log(`[dungeon ${this.roomId}] ${ps.name} joined with a ${gearName(p.weapon)} (${this.clients.length}/${this.maxClients})`);
   }
 
   onLeave(client: Client) {
@@ -247,6 +253,8 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.knockUntil = p.knockUntil;
   ps.knockDx = p.knockDx;
   ps.knockDz = p.knockDz;
+  ps.weaponType = p.weapon.type;
+  ps.weaponTier = p.weapon.tier;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */

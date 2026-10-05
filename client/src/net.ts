@@ -20,7 +20,9 @@ import {
   type InputFrame,
   type Level,
   type PlayerSim,
-  type SimEvent
+  type SimEvent,
+  type WeaponGear,
+  weaponFromPick
 } from "@hearthgate/shared";
 
 const SNAPSHOT_KEEP = 24;
@@ -53,6 +55,8 @@ export interface RemotePlayer {
   dodgeUntil: number;
   guarding: boolean;
   staggerUntil: number;
+  /** Their weapon (picked at join): the mesh and the swing timings come from it. */
+  weapon: WeaponGear;
   snaps: Snapshot[];
 }
 
@@ -136,12 +140,16 @@ export class Net {
   private listeners: EventListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async connect(endpoint: string, name: string, level?: string): Promise<void> {
+  /** Join with the weapon picked on the join screen; the server checks it and the first patch confirms it. */
+  async connect(endpoint: string, name: string, level?: string, weapon: WeaponGear = weaponFromPick("sword", 1)): Promise<void> {
     const client = new Client(endpoint);
-    const room = await client.joinOrCreate("dungeon", level ? { name, level } : { name });
+    const options: Record<string, unknown> = { name, weapon: weapon.type, tier: weapon.tier };
+    if (level) options.level = level;
+    const room = await client.joinOrCreate("dungeon", options);
     this.room = room;
     this.sessionId = room.sessionId;
     this.me = createPlayer(room.sessionId);
+    this.me.weapon = { ...weapon };
     this.connected = true;
 
     room.onStateChange((state: any) => this.onState(state));
@@ -277,7 +285,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, weapon: weaponFromPick(p.weaponType, p.weaponTier), snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -293,6 +301,7 @@ export class Net {
       r.dodgeUntil = p.dodgeUntil;
       r.guarding = p.guarding === true;
       r.staggerUntil = p.staggerUntil ?? 0;
+      syncWeapon(r.weapon, p);
       pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
@@ -360,6 +369,8 @@ export class Net {
     me.knockUntil = p.knockUntil ?? 0;
     me.knockDx = p.knockDx ?? 0;
     me.knockDz = p.knockDz ?? 0;
+    // The server's checked weapon, before the replay: a two-hander's swing times differ.
+    syncWeapon(me.weapon, p);
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;
@@ -440,4 +451,13 @@ export function sampleSnapshots(snaps: Snapshot[], t: number): Pose | null {
   // Past the newest snapshot: hold it (no extrapolation in Phase 0; see backlog).
   const s = snaps[snaps.length - 1];
   return { x: s.x, z: s.z, facing: s.facing };
+}
+
+/** Copy the schema's weapon into a sim weapon in place, checked like the server checks a pick. */
+function syncWeapon(w: WeaponGear, p: any) {
+  if (typeof p.weaponType !== "string") return;
+  if (w.type === p.weaponType && w.tier === p.weaponTier) return;
+  const checked = weaponFromPick(p.weaponType, p.weaponTier);
+  w.type = checked.type;
+  w.tier = checked.tier;
 }

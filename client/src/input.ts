@@ -148,7 +148,7 @@ function isGameKey(code: string): boolean {
   );
 }
 
-function firstGamepad(): Gamepad | null {
+export function firstGamepad(): Gamepad | null {
   if (typeof navigator === "undefined" || !navigator.getGamepads) return null;
   for (const g of navigator.getGamepads()) if (g) return g;
   return null;

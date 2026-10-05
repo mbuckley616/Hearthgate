@@ -4,17 +4,19 @@ import {
   PLAYER,
   TICK_MS,
   WEAPON_CLASSES,
+  abilityInSlot,
   applyInput,
   createEncounter,
   createEnemy,
   createPlayer,
   resolvePlayerAttacks,
+  slotsFor,
   stepEncounter,
   type EnemySim,
   type PlayerSim
 } from "./sim";
 import { OPEN_FIELD, type Level } from "./level";
-import { weaponClassOf, weaponStats, type WeaponGear } from "./gear";
+import { PICKABLE_WEAPONS, STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponFromPick, weaponStats, type WeaponGear } from "./gear";
 
 const swingAt = (p: PlayerSim, now: number) => applyInput(p, { seq: 1, dx: 0, dy: 0, attack: true, dodge: false }, now, TICK_MS);
 
@@ -126,5 +128,50 @@ describe("weapon classes", () => {
       applyInput(server, input, i * TICK_MS, TICK_MS);
     }
     expect(client).toEqual(server);
+  });
+});
+
+describe("the weapon pick (Michael, A, 2026-10-05)", () => {
+  it("takes any weapon type at any material tier", () => {
+    expect(PICKABLE_WEAPONS).toContain("claymore");
+    expect(PICKABLE_WEAPONS).toContain("bow");
+    expect(PICKABLE_WEAPONS.length).toBe(Object.keys(WEAPON_TYPES).length);
+    expect(weaponFromPick("claymore", 5)).toEqual({ kind: "weapon", type: "claymore", tier: 5 });
+    expect(weaponFromPick("bow", "3")).toEqual({ kind: "weapon", type: "bow", tier: 3 });
+  });
+
+  it("turns anything else into something real: the sword for an unknown type, a clamped tier", () => {
+    expect(weaponFromPick("laser", 2)).toEqual(STARTER_WEAPON);
+    expect(weaponFromPick(undefined, undefined)).toEqual(STARTER_WEAPON);
+    expect(weaponFromPick("toString", 1)).toEqual(STARTER_WEAPON);
+    expect(weaponFromPick({ type: "claymore" }, 1)).toEqual(STARTER_WEAPON);
+    expect(weaponFromPick("claymore", 99).tier).toBe(10);
+    expect(weaponFromPick("claymore", -4).tier).toBe(1);
+    expect(weaponFromPick("claymore", 2.7).tier).toBe(2);
+    expect(weaponFromPick("claymore", "x").tier).toBe(1);
+    expect(weaponFromPick("claymore", Infinity).tier).toBe(1);
+    // A fresh object each time: the caller may change it without touching the starter.
+    expect(weaponFromPick("laser", 1)).not.toBe(STARTER_WEAPON);
+  });
+
+  it("melee weapons carry Cleave in slot 1; the bow's slots are empty until Arrow rain", () => {
+    expect(slotsFor({ kind: "weapon", type: "sword", tier: 1 })).toEqual(["cleave", "", ""]);
+    expect(slotsFor({ kind: "weapon", type: "warHammer", tier: 4 })).toEqual(["cleave", "", ""]);
+    expect(slotsFor({ kind: "weapon", type: "bow", tier: 1 })).toEqual(["", "", ""]);
+    expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 1)).toBe("");
+  });
+
+  it("an archer pressing 1 starts nothing and spends no cooldown, the same on both sides", () => {
+    const server = armed({ kind: "weapon", type: "bow", tier: 1 });
+    const client = armed({ kind: "weapon", type: "bow", tier: 1 });
+    const frame = { seq: 1, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 };
+    applyInput(server, frame, 100, TICK_MS);
+    applyInput(client, frame, 100, TICK_MS);
+    expect(server.abilityUntil).toBe(0);
+    expect(server.readyAt).toEqual([0, 0, 0]);
+    expect(client).toEqual(server);
+    const swordsman = armed({ kind: "weapon", type: "sword", tier: 1 });
+    applyInput(swordsman, frame, 100, TICK_MS);
+    expect(swordsman.abilityUntil).toBeGreaterThan(100);
   });
 });
