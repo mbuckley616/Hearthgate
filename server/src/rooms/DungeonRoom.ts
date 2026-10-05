@@ -179,7 +179,9 @@ export class DungeonRoom extends Room<DungeonState> {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
       if (frames.length === 0) {
-        applyInput(p, neutralInput(p.lastSeq), now, TICK_MS, level);
+        // A late frame must not lower a held guard: raising it again would open a fresh
+        // parry window the player never timed.
+        applyInput(p, { ...neutralInput(p.lastSeq), block: p.guarding }, now, TICK_MS, level);
       } else {
         for (const f of frames) applyInput(p, f, now, TICK_MS, level);
         if (frames.some((f) => f.use)) users.push(p);
@@ -201,6 +203,10 @@ export class DungeonRoom extends Room<DungeonState> {
 
   private syncState() {
     this.state.tick = this.sim.tick;
+    const enc = this.sim.encounter;
+    this.state.stairsOpen = enc.stairsOpen;
+    this.state.descendMs = enc.descendMs;
+    this.state.floor = enc.floor;
     for (const [id, p] of this.sim.players) {
       const ps = this.state.players.get(id);
       if (ps) copyPlayer(p, ps);
@@ -233,6 +239,14 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.pickupMs = p.pickupMs;
   ps.pickupBy = p.pickupBy;
   ps.draughts = p.draughts;
+  ps.guarding = p.guarding;
+  ps.blockSince = p.blockSince;
+  // Whole numbers: the regen's fractions would cost a patch every tick for nothing visible.
+  ps.posture = Math.ceil(p.posture);
+  ps.staggerUntil = p.staggerUntil;
+  ps.knockUntil = p.knockUntil;
+  ps.knockDx = p.knockDx;
+  ps.knockDz = p.knockDz;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */
@@ -245,6 +259,11 @@ function copyEnemy(e: EnemySim, es: EnemyState) {
   es.phaseUntil = e.phaseUntil;
   es.targetId = e.targetId;
   es.hitFlashUntil = e.hitFlashUntil;
+  es.posture = Math.ceil(e.posture);
+  es.maxPosture = e.maxPosture;
+  es.postureBrokenUntil = e.postureBrokenUntil;
+  es.guardUp = e.guardUp;
+  es.rallied = e.rallied;
 }
 
 function sanitizeName(name: unknown): string {

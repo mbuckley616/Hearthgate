@@ -8,6 +8,9 @@ import {
   type EnemyKind,
   HIT_FEEDBACK,
   PLAYER,
+  POSTURE,
+  STAIRS,
+  isPlayerStaggered,
   TICK_MS,
   isDead,
   isDowned,
@@ -120,6 +123,7 @@ function draw(dt: number) {
   const now = net.predictedTime;
   const remoteNow = net.remoteNow();
   view.setLevel(net.level);
+  view.setStairs(net.stairsOpen, net.descendMs / STAIRS.holdMs);
 
   // Me.
   view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
@@ -131,6 +135,8 @@ function draw(dt: number) {
     swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
     cleaveActive: cleaveFlash(me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
+    guarding: me.guarding,
+    staggered: isPlayerStaggered(me, now),
     downed: isDowned(me),
     pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
     dead: isDead(me)
@@ -151,6 +157,8 @@ function draw(dt: number) {
       swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
       cleaveActive: cleaveFlash(r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
+      guarding: r.guarding,
+      staggered: drawT < r.staggerUntil,
       downed: r.hp <= 0 && r.downedUntil > 0,
       pickup: r.downedUntil > 0 ? clamp01(r.pickupMs / DOWNS.pickupMs) : 0,
       dead: r.hp <= 0 && r.downedUntil === 0
@@ -165,8 +173,10 @@ function draw(dt: number) {
     view.ensureEnemy(e.id, e.kind);
     const ePose = net.remotePose(e);
     if (!ePose) continue;
-    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / ENEMY_KINDS[e.kind].windupMs) : 0;
-    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, hitFlash: drawT < e.hitFlashUntil });
+    const def = ENEMY_KINDS[e.kind];
+    const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
+    const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
+    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, aim, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp, rallied: e.rallied });
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
@@ -184,7 +194,13 @@ function draw(dt: number) {
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
     banner: downBanner(me, now),
-    enemyLabel: nearest ? `${kindName(nearest.view.kind)}, ${left} of ${total} left` : total > 0 ? "Room clear" : "No enemies",
+    enemyLabel: nearest
+      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
+      : net.stairsOpen
+        ? `Stairs open: everyone onto them${net.descendMs > 0 ? ` (${Math.round((100 * net.descendMs) / STAIRS.holdMs)}%)` : ""}`
+        : total > 0
+          ? "Room clear"
+          : "No enemies",
     enemyHp: nearest?.view.hp ?? 0,
     enemyMaxHp: nearest?.view.maxHp ?? 0,
     enemiesLeft: left,
@@ -194,6 +210,10 @@ function draw(dt: number) {
     pending: net.pending.length,
     corrections: net.corrections,
     draughts: me.draughts,
+    posture: me.posture,
+    postureMax: POSTURE.player,
+    guarding: me.guarding,
+    staggered: isPlayerStaggered(me, now),
     reviveTarget: reviveTarget(myPose),
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
@@ -231,14 +251,34 @@ function describeEvent(e: SimEvent): string {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
       return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
-    case "playerHit":
-      return e.attackerId === net.sessionId ? `You hit ${enemyName(e.enemyId)} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${enemyName(e.enemyId)} for ${e.damage}`;
+    case "playerHit": {
+      const what = e.shielded ? `${enemyName(e.enemyId)}'s shield` : enemyName(e.enemyId);
+      return e.attackerId === net.sessionId ? `You hit ${what} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${what} for ${e.damage}`;
+    }
     case "enemyKilled":
       return e.killerId === net.sessionId ? `You felled ${enemyName(e.enemyId)}` : `${nameOf(e.killerId)} felled ${enemyName(e.enemyId)}`;
-    case "enemyHit":
-      return e.targetId === net.sessionId ? `${capital(enemyName(e.enemyId))} hit you for ${e.damage}` : `${capital(enemyName(e.enemyId))} hit ${nameOf(e.targetId)}`;
+    case "enemyHit": {
+      const verb = e.blocked ? "hit your guard" : "hit you";
+      return e.targetId === net.sessionId ? `${capital(enemyName(e.enemyId))} ${verb} for ${e.damage}` : `${capital(enemyName(e.enemyId))} hit ${nameOf(e.targetId)}`;
+    }
+    case "playerParried": {
+      const who = e.playerId === net.sessionId ? "You" : nameOf(e.playerId);
+      return `${who} parried ${enemyName(e.enemyId)}: ${e.postureBroken ? "its guard is broken" : "staggered"}`;
+    }
+    case "playerStaggered":
+      return e.playerId === net.sessionId ? "You are knocked off balance" : `${nameOf(e.playerId)} is off balance`;
+    case "playerKnocked":
+      return e.playerId === net.sessionId ? `${capital(enemyName(e.enemyId))} ran you down` : `${capital(enemyName(e.enemyId))} ran down ${nameOf(e.playerId)}`;
+    case "chargeWall":
+      return `${capital(enemyName(e.enemyId))} hit the wall: stunned`;
+    case "postureBroken":
+      return `${capital(enemyName(e.enemyId))} is off balance: hit it now`;
     case "roomCleared":
-      return "Room clear";
+      return e.room ? `${capital(e.room)}: clear` : "Room clear";
+    case "floorCleared":
+      return "Every room is clear: the stairs are open. Everyone onto them";
+    case "floorDescended":
+      return `Down the stairs: floor ${e.floor}`;
     case "roomReset":
       return "The goblins are back";
     case "playerDowned":
@@ -262,7 +302,7 @@ function describeEvent(e: SimEvent): string {
 }
 
 const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
-const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin" };
+const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger", packLeader: "Pack Leader" };
 
 function kindName(kind: EnemyKind): string {
   return KIND_NAMES[kind] ?? kind;

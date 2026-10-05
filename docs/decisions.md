@@ -7,7 +7,11 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
-(none)
+### 2026-10-05: How a player picks a weapon in Phase 1 (builder, Session 17)
+Session 17 put a weapon in every player's hand in the shared sim: one-handers swing as today, two-handers (Claymore, Great Axe, War Hammer, Great Club) wind up longer and hit up to 3, 2 or 1 enemies, the bow locks on to the nearest goblin it can see up to 12 m. Everyone still holds the Wooden Sword, because nothing lets a player choose, and the village loadout screen is Phase 2. The gate also asks for a mixed-level party, which in Phase 1 can only mean different gear tiers.
+A. A pick before joining: weapon type and material tier on the join screen (keys and gamepad, 48 px buttons), sent as a join option the server checks; `?weapon=claymore&tier=5` for tests. Stand-in for the Phase 2 loadout. **Recommended**: no new in-world objects, and it sets up the mixed-level party for the gate.
+B. A weapon rack in the level: walk up and press E (LB) to take the next weapon; tiers fixed per rack.
+C. A key that cycles weapons while out of combat (at the spawn or after a room clears).
 
 ## Answered
 

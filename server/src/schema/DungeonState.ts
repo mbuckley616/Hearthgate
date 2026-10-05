@@ -31,6 +31,15 @@ export class PlayerState extends Schema {
   @type("string") pickupBy = "";
   /** Revive Draughts left this floor (a Phase 1 stand-in counter, not an item). */
   @type("number") draughts = 1;
+  /** Block and posture: the client replays its guard from these (blockSince sets the parry window). */
+  @type("boolean") guarding = false;
+  @type("number") blockSince = 0;
+  @type("number") posture = 100;
+  @type("number") staggerUntil = 0;
+  /** A throw in progress: the client replays the slide like a dodge. */
+  @type("number") knockUntil = 0;
+  @type("number") knockDx = 0;
+  @type("number") knockDz = 0;
 }
 
 export class EnemyState extends Schema {
@@ -45,6 +54,13 @@ export class EnemyState extends Schema {
   @type("number") phaseUntil = 0;
   @type("string") targetId = "";
   @type("number") hitFlashUntil = 0;
+  @type("number") posture = 30;
+  @type("number") maxPosture = 30;
+  @type("number") postureBrokenUntil = 0;
+  /** A Shieldbearer's shield is raised. */
+  @type("boolean") guardUp = false;
+  /** Near a living Pack Leader: quicker and harder-hitting. */
+  @type("boolean") rallied = false;
 }
 
 export class DungeonState extends Schema {
@@ -53,6 +69,10 @@ export class DungeonState extends Schema {
   @type({ map: EnemyState }) enemies = new MapSchema<EnemyState>();
   /** Which level (shared/src/level.ts LEVELS) the room runs; the client builds its walls from it. */
   @type("string") levelId = "";
+  /** A level with stairs: open once every enemy is down; how long the party has stood on them; which floor. */
+  @type("boolean") stairsOpen = false;
+  @type("number") descendMs = 0;
+  @type("number") floor = 1;
   /** Server tick counter; simulation time = tick * TICK_MS. */
   @type("number") tick = 0;
 }
