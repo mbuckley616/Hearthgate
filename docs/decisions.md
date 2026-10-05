@@ -7,12 +7,14 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-05: Does a wipe reset the whole Warrens floor? (the critic)
 In headless play a wipe in the pens (the third room) put all nine enemies back, the two cleared rooms included: Session 7's "wipe resets the fight" now covers the floor. The design doc makes a wipe the end of the run, so this may be the intent, but it is what the gate's "a party clears a floor" will feel first.
 A. Keep it: a wipe restarts the floor (the run ends; no change). **Recommended** until a human playtest says it is too harsh, since it matches the design doc.
 B. A wipe resets only the room the party died in; cleared rooms stay clear.
+Michael: **A. Keep it: a wipe restarts the floor** — answered on the control room. (2026-10-05)
 
-## Answered
 
 ### 2026-10-05: How a player picks a weapon in Phase 1 (builder, Session 17)
 Session 17 put a weapon in every player's hand in the shared sim: one-handers swing as today, two-handers (Claymore, Great Axe, War Hammer, Great Club) wind up longer and hit up to 3, 2 or 1 enemies, the bow locks on to the nearest goblin it can see up to 12 m. Everyone still holds the Wooden Sword, because nothing lets a player choose, and the village loadout screen is Phase 2. The gate also asks for a mixed-level party, which in Phase 1 can only mean different gear tiers.
