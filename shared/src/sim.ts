@@ -13,7 +13,7 @@
  */
 
 import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
-import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, type Level } from "./level";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
 export { ARENA_HALF };
@@ -1277,13 +1277,25 @@ export function stepEnemy(
         enemy.phaseUntil = now + c.aimMs;
         enemy.chargeReadyAt = now + c.everyMs;
       } else if (!hasState(enemy.states, "rooted", now)) {
-        // Straight at the target; a wall in the way turns the step into a slide along it.
+        // Straight at the target when the way is clear, else through the doorways towards it
+        // (pressing straight into a wall left a chaser pinned in a corner, the critic's bug).
         // A leader with a rallied pack stops short and lets the pack go in.
         const stopAt = def.rally && enemy.leading ? def.rally.holdBack : def.attackRange * 0.9;
         const speed = def.speed * (enemy.rallied ? rallyOf(enemy).speedMult : 1);
-        const step = Math.max(0, Math.min(speed * dt, dist - stopAt));
-        enemy.x += (vx / dist) * step;
-        enemy.z += (vz / dist) * step;
+        const goal = steerToward(enemy, target, def.radius, level);
+        if (goal === target) {
+          const step = Math.max(0, Math.min(speed * dt, dist - stopAt));
+          enemy.x += (vx / dist) * step;
+          enemy.z += (vz / dist) * step;
+        } else {
+          const gx = goal.x - enemy.x;
+          const gz = goal.z - enemy.z;
+          const gd = Math.hypot(gx, gz);
+          const step = Math.min(speed * dt, gd);
+          enemy.x += (gx / gd) * step;
+          enemy.z += (gz / gd) * step;
+          enemy.facing = Math.atan2(gx, gz);
+        }
         collideWalls(enemy, def.radius, level);
       }
       break;
