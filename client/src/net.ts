@@ -51,6 +51,8 @@ export interface RemotePlayer {
   abilitySlot: number;
   attackHitAt: number;
   dodgeUntil: number;
+  guarding: boolean;
+  staggerUntil: number;
   snaps: Snapshot[];
 }
 
@@ -63,6 +65,11 @@ export interface EnemyView {
   phaseUntil: number;
   targetId: string;
   hitFlashUntil: number;
+  posture: number;
+  maxPosture: number;
+  postureBrokenUntil: number;
+  guardUp: boolean;
+  rallied: boolean;
   snaps: Snapshot[];
 }
 
@@ -113,6 +120,10 @@ export class Net {
   rttMs = 0;
   connected = false;
   lastServerTick = 0;
+  /** The floor's stairs: open, how long the party has stood on them (ms), which floor. */
+  stairsOpen = false;
+  descendMs = 0;
+  floor = 1;
   /** Count of reconciliations that moved us more than a few centimetres (debug HUD). */
   corrections = 0;
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
@@ -250,6 +261,9 @@ export class Net {
     const serverTime = state.tick * TICK_MS;
     const at = performance.now();
     this.lastServerTick = state.tick;
+    this.stairsOpen = state.stairsOpen === true;
+    this.descendMs = state.descendMs ?? 0;
+    this.floor = state.floor ?? 1;
     // Every patch is a clock sample too: it left the server at the time it is stamped with.
     addArrivalSample(this.clock, at, serverTime);
     if (typeof state.levelId === "string" && state.levelId !== this.level.id) this.level = levelById(state.levelId);
@@ -263,7 +277,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -277,6 +291,8 @@ export class Net {
       r.abilitySlot = p.abilitySlot;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
+      r.guarding = p.guarding === true;
+      r.staggerUntil = p.staggerUntil ?? 0;
       pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
@@ -286,7 +302,7 @@ export class Net {
       seenEnemies.add(id);
       let v = this.enemies.get(id);
       if (!v) {
-        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, snaps: [] };
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, rallied: false, snaps: [] };
         this.enemies.set(id, v);
       }
       v.kind = e.kind;
@@ -296,6 +312,11 @@ export class Net {
       v.phaseUntil = e.phaseUntil;
       v.targetId = e.targetId;
       v.hitFlashUntil = e.hitFlashUntil;
+      v.posture = e.posture ?? 0;
+      v.maxPosture = e.maxPosture ?? 0;
+      v.postureBrokenUntil = e.postureBrokenUntil ?? 0;
+      v.guardUp = e.guardUp === true;
+      v.rallied = e.rallied === true;
       pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
     });
     for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);
@@ -331,6 +352,14 @@ export class Net {
     me.pickupMs = p.pickupMs;
     me.pickupBy = p.pickupBy;
     me.draughts = p.draughts;
+    // The guard is predicted like a dodge: rewind to the server's and replay.
+    me.guarding = p.guarding === true;
+    me.blockSince = p.blockSince ?? 0;
+    me.posture = p.posture ?? me.posture;
+    me.staggerUntil = p.staggerUntil ?? 0;
+    me.knockUntil = p.knockUntil ?? 0;
+    me.knockDx = p.knockDx ?? 0;
+    me.knockDz = p.knockDz ?? 0;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

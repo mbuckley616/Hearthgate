@@ -13,8 +13,12 @@
  *   5b. inputs carrying the Revive Draught flag are accepted, and pressing it with no body
  *      in reach spends nothing; both clients see the count (the revive itself needs a
  *      30 s bleed-out, so it is proved in shared/src/draught.test.ts);
+ *   5c. a held block raises the guard, a three-tick gap in the inputs does not lower it or
+ *      re-open its parry window, the other client sees it, and letting go lowers it;
  *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
  *      walking into one of its walls is stopped by the server where the shared sim says;
+ *   6b. the Warrens: a room made with level "warrens" syncs its enemies, all asleep while the party
+ *      stands in the hall, the stairs shut and floor 1;
  *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -25,7 +29,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS } from "@hearthgate/shared";
+import { DOWNS, TICK_MS, WARRENS, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -217,11 +221,37 @@ async function main() {
     if (aEvents.some((x) => x.kind === "playerRevived")) fail("a draught revived someone with nobody dead");
     console.log(`ok: draught presses with no body in reach applied and spent nothing; both clients see ${DOWNS.draughtsPerFloor} each`);
 
+    // Guard: Alpha holds block, goes quiet for three ticks (a late connection), holds again.
+    // The server must keep the guard up through the gap with the window it opened first
+    // (a re-raise would hand out a parry nobody timed), and Bravo must see it.
+    const block = (on: boolean) => a.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false, block: on });
+    for (let i = 0; i < 6; i++) {
+      block(true);
+      await sleep(TICK_MS);
+    }
+    await sleep(150);
+    const raised = aState.players.get(a.sessionId).blockSince;
+    if (!aState.players.get(a.sessionId).guarding || !(raised > 0)) fail("the server did not raise Alpha's guard");
+    await sleep(TICK_MS * 3);
+    for (let i = 0; i < 6; i++) {
+      block(true);
+      await sleep(TICK_MS);
+    }
+    await sleep(150);
+    const held = aState.players.get(a.sessionId);
+    if (!held.guarding || held.blockSince !== raised) fail(`the guard dropped or re-opened across a quiet gap (blockSince ${raised} then ${held.blockSince}, guarding ${held.guarding})`);
+    if (!bState.players.get(a.sessionId).guarding) fail("Bravo does not see Alpha's guard");
+    block(false);
+    await sleep(250);
+    if (aState.players.get(a.sessionId).guarding) fail("Alpha's guard stayed up after letting go");
+    console.log(`ok: Alpha's guard held through a 3-tick gap with its first window (raised at ${raised}); Bravo saw it; it drops on release`);
+
     await a.leave();
     await b.leave();
     await sleep(300);
 
     await yard(client);
+    await warrens(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
@@ -229,20 +259,29 @@ async function main() {
 }
 
 /**
- * The default level: four goblins and walls reach the client, and a wall stops a walker. Delta walks east
+ * The default level: its enemies (four goblins and a Shieldbearer with its shield up) and walls reach the
+ * client, and a wall stops a walker. Delta walks east
  * from the first spawn (-3, 3) along z = 3 into the wall at x = 5.6..6.4 (shared level.ts YARD): the server
  * must hold Delta at x = 5.1 (the wall's face less the player's radius) instead of letting them through.
  */
 async function yard(client: Client) {
-  const d = await client.create("dungeon", { name: "Delta" });
+  const d = await client.create("dungeon", { name: "Delta", level: "yard" });
   let dState: any = null;
   d.onStateChange((s: any) => (dState = s));
   await sleep(400);
   if (!dState) fail("yard: no state received");
-  if (dState.levelId !== "yard" || dState.enemies.size !== 4) fail(`yard: expected the yard with 4 enemies, got ${dState.levelId} with ${dState.enemies.size}`);
-  const kinds = new Set<string>();
-  dState.enemies.forEach((e: any) => kinds.add(e.kind));
-  if (kinds.size !== 1 || !kinds.has("goblin")) fail(`yard: expected goblins, got ${[...kinds].join(",")}`);
+  const want = YARD.enemies.length;
+  if (dState.levelId !== "yard" || dState.enemies.size !== want) fail(`yard: expected the yard with ${want} enemies, got ${dState.levelId} with ${dState.enemies.size}`);
+  const kinds: string[] = [];
+  let shieldsUp = 0;
+  dState.enemies.forEach((e: any) => {
+    kinds.push(e.kind);
+    if (e.guardUp) shieldsUp++;
+  });
+  const expected = YARD.enemies.map((e) => e.kind);
+  if (kinds.sort().join(",") !== [...expected].sort().join(",")) fail(`yard: expected ${expected.join(",")}, got ${kinds.join(",")}`);
+  const shields = expected.filter((k) => k === "shieldbearer").length;
+  if (shieldsUp !== shields) fail(`yard: ${shieldsUp} shields up, expected ${shields}`);
   const start = dState.players.get(d.sessionId);
   if (Math.abs(start.x + 3) > 0.01 || Math.abs(start.z - 3) > 0.01) fail(`yard: Delta spawned at ${start.x}, ${start.z}, not (-3, 3)`);
   let seq = 0;
@@ -253,14 +292,35 @@ async function yard(client: Client) {
   const me = dState.players.get(d.sessionId);
   const face = 5.6 - 0.5;
   if (Math.abs(me.x - face) > 0.1 || Math.abs(me.z - 3) > 0.1) fail(`yard: after 2.5 s walking east Delta is at ${me.x.toFixed(2)}, ${me.z.toFixed(2)}; the wall should hold them at x = ${face}`);
-  console.log(`ok: yard room has ${dState.enemies.size} goblins; the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
+  console.log(`ok: yard room has ${kinds.join(", ")} (${shieldsUp} shield up); the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
   await d.leave();
+  await sleep(300);
+}
+
+/** The Warrens floor (`?level=warrens`): its enemies arrive asleep, the stairs shut, floor 1. */
+async function warrens(client: Client) {
+  const w = await client.create("dungeon", { name: "Echo", level: "warrens" });
+  let wState: any = null;
+  w.onStateChange((s: any) => (wState = s));
+  await sleep(600);
+  if (!wState) fail("warrens: no state received");
+  if (wState.levelId !== "warrens" || wState.enemies.size !== WARRENS.enemies.length) {
+    fail(`warrens: expected ${WARRENS.enemies.length} enemies in the warrens, got ${wState.levelId} with ${wState.enemies.size}`);
+  }
+  let awake = 0;
+  wState.enemies.forEach((e: any) => {
+    if (e.phase !== "idle") awake++;
+  });
+  if (awake !== 0) fail(`warrens: ${awake} enemies woke with the party still in the hall`);
+  if (wState.stairsOpen !== false || wState.floor !== 1) fail(`warrens: stairs ${wState.stairsOpen}, floor ${wState.floor}`);
+  console.log(`ok: warrens room has ${wState.enemies.size} enemies asleep in their rooms, stairs shut, floor ${wState.floor}`);
+  await w.leave();
   await sleep(300);
 }
 
 /** N scripted bots in one fresh yard room. Each walks a circle at its own phase, swings and dodges. */
 async function stress(client: Client) {
-  const first = await client.create("dungeon", { name: "Bot 1" });
+  const first = await client.create("dungeon", { name: "Bot 1", level: "yard" });
   const bots = [first];
   for (let i = 1; i < STRESS_BOTS; i++) bots.push(await client.joinById(first.roomId, { name: `Bot ${i + 1}` }));
 

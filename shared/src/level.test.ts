@@ -120,16 +120,21 @@ describe("walls", () => {
 describe("many enemies", () => {
   const players = (...ps: PlayerSim[]) => new Map(ps.map((p) => [p.id, p]));
 
-  it("every goblin in range chases; the far one stays idle", () => {
+  it("every goblin in range and in sight chases; the far one, and any behind a wall, stay idle", () => {
     const enc = createEncounter(PEN);
-    const p = createPlayer("a", 0, -7);
+    const p = createPlayer("a", -6, 4.5); // north of the wall's end, in plain sight of the pair
     const ps = players(p);
     let t = 0;
     for (let i = 0; i < 10; i++) stepEnemies(enc.enemies.values(), ps, (t += TICK_MS), TICK_MS, PEN);
     const [e1, e2, e3] = [...enc.enemies.values()];
     expect(e1.phase).toBe("chase");
     expect(e2.phase).toBe("chase");
-    expect(e3.phase).toBe("idle"); // (8, 8) to (0, -7) is 17 m, beyond the goblin's 14 m aggro
+    expect(e3.phase).toBe("idle"); // (8, 8) to (-6, 4.5) is 14.4 m, beyond the goblin's 14 m aggro
+    // The same pair with the wall between them and the player: they never wake.
+    const hidden = createEncounter(PEN);
+    const q = createPlayer("a", 0, -7);
+    for (let i = 0; i < 10; i++) stepEnemies(hidden.enemies.values(), players(q), (t += TICK_MS), TICK_MS, PEN);
+    expect([...hidden.enemies.values()].map((e) => e.phase)).toEqual(["idle", "idle", "idle"]);
   });
 
   it("goblins do not stand inside each other, and do not get pushed into a wall", () => {
@@ -157,6 +162,7 @@ describe("many enemies", () => {
     const ps = players(p);
     let t = 0;
     const e1 = enc.enemies.get("e1")!;
+    for (const e of enc.enemies.values()) e.phase = "chase"; // already awake: the wall hides the player
     for (let i = 0; i < 80; i++) stepEnemies(enc.enemies.values(), ps, (t += TICK_MS), TICK_MS, PEN);
     expect(e1.z).toBeGreaterThanOrEqual(3 + 0.4 + 0.5 - 1e-9); // never inside the wall
     expect(e1.x).toBeGreaterThan(1); // it moved toward the player's side instead of pinning on the wall
