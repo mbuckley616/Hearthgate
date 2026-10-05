@@ -21,6 +21,7 @@ import {
   type WeaponGear
 } from "@hearthgate/shared";
 import type { Pose } from "./net";
+import { enemyFigure, newWalkState, playerFigure, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
 
 export interface PlayerVisual {
   hp: number;
@@ -76,13 +77,19 @@ const PALETTE = {
 };
 
 const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
+const WHITE = new THREE.Color(0xffffff);
 /** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
 const RAIN_RINGS = 4;
 const RAIN_SHOW_MS = 400;
 
 class PlayerMesh {
   group = new THREE.Group();
-  body: THREE.Mesh;
+  /** The placeholder figure (figures.ts); the commissioned model replaces it. */
+  figure: Figure;
+  private walk: WalkState = newWalkState();
+  get walkAmount() {
+    return this.walk.amount;
+  }
   /** Per weapon class, built once: the swing's arc and the weapon in hand. Only the held class shows. */
   swings: Record<WeaponClass, THREE.Mesh>;
   held: Record<WeaponClass, THREE.Mesh>;
@@ -97,19 +104,8 @@ class PlayerMesh {
 
   constructor(name: string, color: string) {
     this.baseColor = new THREE.Color(color);
-    const mat = new THREE.MeshStandardMaterial({ color: this.baseColor, roughness: 0.8 });
-    this.body = new THREE.Mesh(new THREE.CapsuleGeometry(PLAYER.radius * 0.8, 0.9, 4, 10), mat);
-    this.body.position.y = 0.95;
-    this.body.castShadow = true;
-    this.group.add(this.body);
-
-    // A small block in front so the facing direction reads at a glance.
-    const nose = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.2, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9 })
-    );
-    nose.position.set(0, 1.25, PLAYER.radius * 0.95);
-    this.group.add(nose);
+    this.figure = playerFigure(this.baseColor);
+    this.group.add(this.figure.root);
 
     // Attack arcs: a flat wedge per class, shown for a few frames when the hit resolves.
     const arcMat = new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
@@ -126,22 +122,23 @@ class PlayerMesh {
     };
     this.swings = { oneHand: makeArc("oneHand"), twoHand: makeArc("twoHand"), bow: makeArc("bow") };
 
-    // The weapon in hand, on the right side, so a party reads as mixed at a glance.
+    // The weapon in the right hand, so a party reads as mixed at a glance and a swing lifts it.
+    // Oversized on purpose (design doc, Art: wide weapons that read at the camera's distance).
     this.heldMat = new THREE.MeshStandardMaterial({ color: 0x9a7a52, roughness: 0.5, metalness: 0.3 });
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.85), this.heldMat);
-    blade.position.set(PLAYER.radius * 0.9, 0.95, 0.35);
-    const great = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 1.35), this.heldMat);
-    great.position.set(PLAYER.radius * 0.95, 1.05, 0.5);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.95), this.heldMat);
+    blade.position.set(0, 0, 0.42);
+    const great = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 1.5), this.heldMat);
+    great.position.set(0, 0.1, 0.6);
     great.rotation.x = -0.35;
-    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 16, Math.PI), this.heldMat);
-    bow.position.set(PLAYER.radius * 0.9, 1.0, 0.25);
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 16, Math.PI), this.heldMat);
+    bow.position.set(0.04, 0.05, 0.12);
     bow.rotation.y = Math.PI / 2;
     this.held = { oneHand: blade, twoHand: great, bow };
     for (const cls of CLASSES) {
       const m = this.held[cls];
       m.castShadow = true;
       m.visible = false;
-      this.group.add(m);
+      this.figure.hand.add(m);
     }
 
     const c = ABILITIES.cleave;
@@ -199,17 +196,21 @@ class PlayerMesh {
     this.setWeapon(v.weapon);
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
-    const mat = this.body.material as THREE.MeshStandardMaterial;
-    if (v.dead || v.downed) {
-      // Lying down; the downed keep their colour (still in the fight), the dead go dark.
-      this.body.rotation.x = Math.PI / 2;
-      this.body.position.y = 0.4;
+    const f = this.figure;
+    const mat = f.skin;
+    const lying = v.dead || v.downed;
+    stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0);
+    if (lying) {
+      // Face down; the downed keep their colour (still in the fight), the dead go dark.
+      f.root.rotation.x = Math.PI / 2;
+      f.root.position.y = 0.2;
       mat.color.copy(this.baseColor).multiplyScalar(v.dead ? 0.45 : 0.8);
     } else {
-      this.body.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
-      this.body.position.y = v.dodging ? 0.8 : 0.95;
+      f.root.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
+      if (v.dodging) f.root.position.y = 0;
       mat.color.copy(this.baseColor);
-      if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
+      if (v.attacking) mat.color.lerp(WHITE, 0.25);
     }
     for (const cls of CLASSES) this.swings[cls].visible = cls === this.heldClass && v.swingActive && !v.dead;
     this.held[this.heldClass].visible = !v.dead && !v.downed;
@@ -222,10 +223,17 @@ class PlayerMesh {
   }
 }
 
-/** One enemy. Every kind is the goblin cone until the roster lands; the kind picks the def. */
+/** One enemy: its kind's placeholder figure (figures.ts) plus the telegraphs and bars. */
 class EnemyMesh {
   group = new THREE.Group();
-  body: THREE.Mesh;
+  figure: Figure;
+  private walk: WalkState = newWalkState();
+  get walkAmount() {
+    return this.walk.amount;
+  }
+  get kindName() {
+    return this.kind;
+  }
   telegraph: THREE.Mesh;
   hpBar: THREE.Sprite;
   /** Shield kinds only: the raised shield, lowered (hidden) while the guard is broken. */
@@ -237,17 +245,13 @@ class EnemyMesh {
   /** The war-paint red a rallied enemy takes on. */
   private ralliedColor: number;
 
-  constructor(kind: EnemyKind) {
+  constructor(private readonly kind: EnemyKind) {
     const def = ENEMY_KINDS[kind];
     this.color =
       kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : kind === "packLeader" ? PALETTE.packLeader : PALETTE.goblin;
     this.ralliedColor = new THREE.Color(this.color).lerp(new THREE.Color(PALETTE.banner), 0.35).getHex();
     this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
-    this.body = new THREE.Mesh(
-      new THREE.ConeGeometry(def.radius * 1.1, kind === "shieldbearer" ? 1.8 : 1.5, 7),
-      new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.85, flatShading: true })
-    );
-    this.body.position.y = 0.75;
+    this.figure = enemyFigure(kind, this.color);
     if (def.rally) {
       // A banner on a pole above the chief: the one to reach first.
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x5a4632 }));
@@ -284,15 +288,7 @@ class EnemyMesh {
       this.shield.castShadow = true;
       this.group.add(this.shield);
     }
-    this.body.castShadow = true;
-    this.group.add(this.body);
-
-    const eyes = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.12, 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xffe08a })
-    );
-    eyes.position.set(0, 0.95, def.radius * 0.75);
-    this.group.add(eyes);
+    this.group.add(this.figure.root);
 
     const wedge = new THREE.RingGeometry(0.3, def.attackRange * 1.15, 20, 1, -def.attackArc / 2, def.attackArc);
     this.telegraph = new THREE.Mesh(
@@ -306,7 +302,7 @@ class EnemyMesh {
     this.group.add(this.telegraph);
 
     this.hpBar = makeBar();
-    this.hpBar.position.y = 2.0;
+    this.hpBar.position.y = Math.max(2.0, this.figure.height + 0.35);
     this.group.add(this.hpBar);
   }
 
@@ -314,7 +310,8 @@ class EnemyMesh {
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
     this.group.visible = v.phase !== "dead";
-    const mat = this.body.material as THREE.MeshStandardMaterial;
+    const f = this.figure;
+    const mat = f.skin;
     mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : v.rallied ? this.ralliedColor : this.color);
     if (this.shield) this.shield.visible = v.guardUp;
     if (this.lane) {
@@ -326,9 +323,14 @@ class EnemyMesh {
       const s = 0.35 + 0.65 * v.windup;
       this.telegraph.scale.set(s, s, 1);
       (this.telegraph.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.45 * v.windup;
-      this.body.position.y = 0.75 + 0.25 * v.windup; // a rising crouch reads as "about to hit"
-    } else {
-      this.body.position.y = 0.75;
+    }
+    if (this.group.visible) {
+      stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+      // A windup rears back with the weapon arm raised: "about to hit" from across the room.
+      // The Charger's "arms" are its forelegs, so it only rears.
+      const windup = v.phase === "windup" ? v.windup : 0;
+      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup);
+      f.root.rotation.x = -0.3 * windup;
     }
     updateBar(this.hpBar, v.hp / v.maxHp);
   }
@@ -599,6 +601,28 @@ export class View {
       w.mesh.material = hides ? this.wallFadedMat : this.wallMat;
       w.mesh.castShadow = !hides;
     }
+  }
+
+  /**
+   * What each figure is made of, for the e2e checks through the debug handle: its part count,
+   * its height and footprint (a bounding box of the figure alone), and how far into a stride it is.
+   */
+  figureStats() {
+    const box = new THREE.Box3();
+    const size = new THREE.Vector3();
+    const stat = (f: Figure, walk: number) => {
+      box.setFromObject(f.root);
+      box.getSize(size);
+      let parts = 0;
+      f.root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) parts++;
+      });
+      return { parts, height: size.y, width: Math.max(size.x, size.z), stride: walk };
+    };
+    return {
+      players: Object.fromEntries([...this.players].map(([id, m]) => [id, stat(m.figure, m.walkAmount)])),
+      enemies: Object.fromEntries([...this.enemies].map(([id, m]) => [id, { kind: m.kindName, ...stat(m.figure, m.walkAmount) }]))
+    };
   }
 
   /** Walls faded this frame; read by the e2e checks through the debug handle. */

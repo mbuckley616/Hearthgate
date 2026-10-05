@@ -273,6 +273,7 @@ function draw(dt: number) {
     nudges: view.nudges,
     camYaw: view.yaw,
     fadedWalls: view.fadedWalls(),
+    figures: () => view.figureStats(),
     myHits: hitCount
   };
 }

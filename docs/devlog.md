@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-05: Session 30, placeholder figures instead of pills
+
+**What changed**
+
+- Every player and enemy is a low-poly figure of flat-shaded parts instead of a capsule or a cone, built once per entity in `client/src/figures.ts`, one function per kind behind `enemyFigure(kind)` and `playerFigure(colour)`, each returning a `Figure` (root, hip and shoulder pivots, the right hand, the flashing material, the height) so a commissioned model can replace a kind without touching `render.ts`.
+- Players: broad-shouldered wedge torso in the party colour, a head with a dark brow band on the front (the facing; the old nose block is gone), dark legs, arms. The held weapon now hangs from the right hand, a little oversized per the design doc's Art section, so a swing lifts it with the arm.
+- Goblins small and hunched (1.0 m, leaning 0.45 rad) with big ears, glowing eyes and a stubby club. The Shieldbearer the same family at 1.35x, more upright, with a helmet, behind its existing plank shield. The Pack Leader 1.45x and nearly upright with a red crest of spikes under its existing banner: the tallest outline in the room. The Charger a four-legged beast, long and low (wider than it is tall), with a hump, a low head and tusks.
+- Animation without a skeleton: `stepFigureWalk` advances a stride from how far the drawn pose moved (a full cycle per 1.3 m; a jump over 1.5 m is a placement, not a stride) and eases the swing in and out over about 100 ms; `poseFigure` swings legs and arms opposite, bobs the root, and raises the weapon arm for a swing. An enemy's windup rears it back with the arm raised (the Charger only rears), replacing the old rising cone. Dodge, stagger, downed and dead lean or lay the whole figure as they did the capsule; hit flash, windup and rally tints are unchanged. Name tags and party colours stay; the HP bar sits above the tallest figures.
+- Tests: `tests/figures.e2e.ts` reads a new `__hg.figures()`: each of the four kinds and the player has 7+ parts; goblin shorter than the player, Shieldbearer taller than the goblin, Pack Leader taller still, Charger wider than tall; standing stride under 0.05, over 0.5 while S is held, back under 0.05 after. `camera`, `join`, `mobile` e2e green with it (11 of 11, three runs). `npm run check` 173.
+- Follow-up to Session 29: `tests/camera.e2e.ts` walks at the goblin until it wakes instead of for a fixed 1.5 s, and steps west before waiting for the turn: 1 run in 6 had stopped short or left the goblin inside the deadband. 16 of 16 after.
+
+**Learned**
+
+- At the new camera the yard's 1.1 m walls read as big blocks; the figures are scaled to them (the player 1.84 m) rather than the other way round, so the levels' numbers did not move.
+
+**Next**
+
+- The combo item once Michael answers. Then Phase 1 holds only Fable work, the art-direction item and the gate playtest.
+
 ## 2026-10-05: Session 29, the camera to the design doc's spec
 
 **What changed**
