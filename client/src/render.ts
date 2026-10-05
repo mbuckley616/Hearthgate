@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ABILITIES, ARENA_HALF, DOWNS, GOBLIN, PLAYER, nudgeOffset } from "@hearthgate/shared";
+import { ABILITIES, ARENA_HALF, DOWNS, ENEMY_KINDS, PLAYER, nudgeOffset, type EnemyKind, type Level } from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
@@ -17,6 +17,7 @@ export interface PlayerVisual {
 
 export interface EnemyVisual {
   hp: number;
+  maxHp: number;
   phase: string;
   /** 0..1 while winding up, else 0. */
   windup: number;
@@ -30,6 +31,7 @@ const PALETTE = {
   edge: 0x5c6f4a,
   goblin: 0x4f8a4f,
   goblinDark: 0x2f5c2f,
+  wall: 0x9a978c,
   telegraph: 0xd9534f,
   swing: 0xfff1c2
 };
@@ -122,15 +124,17 @@ class PlayerMesh {
   }
 }
 
-class GoblinMesh {
+/** One enemy. Every kind is the goblin cone until the roster lands; the kind picks the def. */
+class EnemyMesh {
   group = new THREE.Group();
   body: THREE.Mesh;
   telegraph: THREE.Mesh;
   hpBar: THREE.Sprite;
 
-  constructor() {
+  constructor(kind: EnemyKind) {
+    const def = ENEMY_KINDS[kind];
     this.body = new THREE.Mesh(
-      new THREE.ConeGeometry(GOBLIN.radius * 1.1, 1.5, 7),
+      new THREE.ConeGeometry(def.radius * 1.1, 1.5, 7),
       new THREE.MeshStandardMaterial({ color: PALETTE.goblin, roughness: 0.85, flatShading: true })
     );
     this.body.position.y = 0.75;
@@ -141,10 +145,10 @@ class GoblinMesh {
       new THREE.BoxGeometry(0.5, 0.12, 0.1),
       new THREE.MeshBasicMaterial({ color: 0xffe08a })
     );
-    eyes.position.set(0, 0.95, GOBLIN.radius * 0.75);
+    eyes.position.set(0, 0.95, def.radius * 0.75);
     this.group.add(eyes);
 
-    const wedge = new THREE.RingGeometry(0.3, GOBLIN.attackRange * 1.15, 20, 1, -GOBLIN.attackArc / 2, GOBLIN.attackArc);
+    const wedge = new THREE.RingGeometry(0.3, def.attackRange * 1.15, 20, 1, -def.attackArc / 2, def.attackArc);
     this.telegraph = new THREE.Mesh(
       wedge,
       new THREE.MeshBasicMaterial({ color: PALETTE.telegraph, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
@@ -175,7 +179,7 @@ class GoblinMesh {
     } else {
       this.body.position.y = 0.75;
     }
-    updateBar(this.hpBar, v.hp / GOBLIN.hp);
+    updateBar(this.hpBar, v.hp / v.maxHp);
   }
 }
 
@@ -184,7 +188,11 @@ export class View {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   private players = new Map<string, PlayerMesh>();
-  private goblin = new GoblinMesh();
+  private enemies = new Map<string, EnemyMesh>();
+  /** The level's interior walls, rebuilt when the room names a different level. */
+  private walls = new THREE.Group();
+  private wallsFor = "";
+  private readonly wallMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true });
   private camTarget = new THREE.Vector3();
   private camPos = new THREE.Vector3(0, 13, 9);
   private readonly camOffset = new THREE.Vector3(0, 13, 9);
@@ -224,7 +232,7 @@ export class View {
     this.scene.add(sun);
 
     this.buildArena();
-    this.scene.add(this.goblin.group);
+    this.scene.add(this.walls);
     this.resize();
     window.addEventListener("resize", () => this.resize());
   }
@@ -255,7 +263,6 @@ export class View {
     this.scene.add(grid);
 
     // Low stone wall at the arena edge.
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x9a978c, roughness: 0.95, flatShading: true });
     const wallGeo = new THREE.BoxGeometry(size + 1, 0.6, 0.5);
     for (const [x, z, rot] of [
       [0, -ARENA_HALF - 0.25, 0],
@@ -263,12 +270,32 @@ export class View {
       [-ARENA_HALF - 0.25, 0, Math.PI / 2],
       [ARENA_HALF + 0.25, 0, Math.PI / 2]
     ] as const) {
-      const wall = new THREE.Mesh(wallGeo, wallMat);
+      const wall = new THREE.Mesh(wallGeo, this.wallMat);
       wall.position.set(x, 0.3, z);
       wall.rotation.y = rot;
       wall.castShadow = true;
       wall.receiveShadow = true;
       this.scene.add(wall);
+    }
+  }
+
+  /**
+   * Build the level's walls once. The sim's walls are rectangles on the ground; here a long
+   * one is a waist-high ruin and a squat one a pillar, so a wall the sim stops you at is
+   * always a wall you can see.
+   */
+  setLevel(level: Level) {
+    if (this.wallsFor === level.id) return;
+    this.wallsFor = level.id;
+    this.walls.clear();
+    for (const w of level.walls) {
+      const pillar = w.hw < 1 && w.hd < 1;
+      const h = pillar ? 1.8 : 1.1;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w.hw * 2, h, w.hd * 2), this.wallMat);
+      mesh.position.set(w.x, h / 2, w.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.walls.add(mesh);
     }
   }
 
@@ -295,8 +322,26 @@ export class View {
     return [...this.players.keys()];
   }
 
-  updateEnemy(pose: Pose, v: EnemyVisual) {
-    this.goblin.apply(pose, v);
+  ensureEnemy(id: string, kind: EnemyKind) {
+    if (this.enemies.has(id)) return;
+    const m = new EnemyMesh(kind);
+    this.enemies.set(id, m);
+    this.scene.add(m.group);
+  }
+
+  updateEnemy(id: string, pose: Pose, v: EnemyVisual) {
+    this.enemies.get(id)?.apply(pose, v);
+  }
+
+  removeEnemy(id: string) {
+    const m = this.enemies.get(id);
+    if (!m) return;
+    this.scene.remove(m.group);
+    this.enemies.delete(id);
+  }
+
+  enemyIds(): string[] {
+    return [...this.enemies.keys()];
   }
 
   /** Follow the given point with a raised third-person camera. */

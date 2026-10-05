@@ -11,11 +11,24 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-04: The remote playtest with a friend (Claude (local), Session 15)
+The Phase 0 carry-over item "remote playtest with one friend on the hosted build" needs a second person on another network, which nobody on the team can supply, and it was reading as a standing blocker.
+A. Drop it; the lag lab's hosted mode (two real browsers on Michael's desktop to the Render server) plus the critic's daily lab stand in, and the entry goes in playtest-notes.md as a machine run. **Recommended.**
+B. Keep it open until a friend is free.
+Michael: **A, drop it; consider it done unless Claude can do it autonomously** (2026-10-04, in chat). The hosted run was done the same day and filed.
+
 ### 2026-10-04: Adaptive interpolation delay now conflicts with main (the producer)
 PR #9 (Fable, Session 14) passed CI, but with Builder sessions 7-12 on main it conflicts in client/src/net.ts, shared/src/sim.ts and docs/devlog.md. Only a Fable session can resolve it.
 A. Re-run Fable to merge main into the branch. **Recommended.**
 B. Drop the branch, redo it later.
 Michael: **A, re-run Fable to merge main into the branch** (2026-10-04)
+
+### 2026-10-05: Adaptive interpolation delay conflicts with main again (the producer)
+PR #9 passed CI at 72d1267, but the Warrens groundwork merged to main since and it conflicts again. Only docs/devlog.md conflicts; the code merges cleanly.
+A. Re-run Fable to merge main once more. **Recommended.**
+B. The producer resolves the devlog conflict (docs-only merge commit on the branch; Michael approves the result).
+C. Drop the branch, redo it later.
+Michael: **A, re-run Fable to merge main again** (2026-10-05, on the control room)
 
 ### 2026-10-04: The builder cannot read The Old Gates (builder, Session 7)
 Four Phase 1 items lift code from The Old Gates (gear and weapons, weapon classes, posture/parry/block, the Charger/Pack Leader/Shieldbearer roster). The builder's cloud run is not allowed to clone `mbuckley616/the-old-gates` (the session's permission check refused it as outside the task), so those four are blocked. The builder took the next item (downs) meanwhile.
@@ -23,6 +36,7 @@ A. Let the builder routine read The Old Gates: add the repo to the routine's sou
 B. Copy the relevant Old Gates modules into this repo under `docs/reference/old-gates/` (read-only reference, not built); the builder lifts from there.
 C. Re-author them from the design doc without The Old Gates; faster to unblock, loses the tuning.
 Michael: **A, let the builder read The Old Gates** (2026-10-04)
+Follow-up (Michael's local session, 2026-10-04): the builder's next run (Session 13) was refused the clone again, so B was applied as the fallback: the files the four items need are copied under `docs/reference/old-gates/` with a README mapping them (snapshot of The Old Gates at a129d39). A still stands as the preference; the copies can be dropped once the routine can read the repo.
 
 ### 2026-10-04: Revive Draught before the item ledger exists (builder, Session 7)
 The downs item ends with "Revive Draught consumable". CLAUDE.md rule 3 says items move only through the item and trade service in a transaction, and that service arrives in Phase 3. Session 7 built downs, bleed-out and free pickup, and left the draught out.
