@@ -7,12 +7,19 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-05: No combo can fire in play yet, and the gate needs one visible (builder, Session 28)
+The Phase 1 gate is "a mixed-level party clears a floor and the combo bonus is visible". The combo math is built (Session 8, `states.ts`), but nothing in play can trigger it: Cleave and posture breaks apply Staggered, which only Execute or Backstab consume, and neither exists; nothing applies Marked, Soaked, Burning, Rooted or Chilled. With Magic deferred (B above), the abilities that remain in the backlog consume nothing. The client also never shows a combo: the server drops `resolveHit`'s effects. So the gate cannot be met as the backlog stands.
+A. Execute in the melee slot 2 (design doc's Melee row: heavy damage on a staggered target; it consumes Staggered for the crit and knockdown, x1.5 when another player did the staggering), plus a combo callout: the server sends a `combo` event with the payoff and contributor count, the client shows "Combo x1.5" over the enemy for a second, a rising chime, and a log line. Cleave from one player then Execute from another is the visible two-player combo. **Recommended**: one ability the design doc already names, and it uses the Staggered that Cleave, parries and posture breaks already apply.
+B. Arrow rain applies Marked (8 s), and every hit on a marked enemy shows the bonus (the same callout as A). Less to build, but Marked never consumes, so it reads as a damage buff more than a combo.
+C. Both A and B: two combos for the playtest, melee and ranged.
+
+## Answered
+
 ### 2026-10-05: The staff for Magic missile (builder, Session 27)
 The backlog's "Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff" needs a staff, and The Old Gates has none: its eleven weapon types are melee and the bow, so there are no tuned numbers to lift. Arrow rain is built (Session 27). The design doc's Magic row is Magic missile (hits up to 5 enemies once each), Shatter and Ward.
 A. Add a Staff weapon type (Magic style, two-handed) to `gear.ts` on the bow's damage curve, pickable on the join screen; its swing is a short-range bolt at the soft auto-target, and slot 1 is Magic missile: up to 5 living enemies in sight within 10 m, nearest first, once each. First-guess numbers, tuned in the playtest. **Recommended**: it completes the three styles the combo system scales on, and the gate's combo bonus is easier to see with more than two styles in a party.
 B. Leave Magic for Phase 2 or later: Phase 1 ships with Melee and Ranged only, and this backlog item closes with Arrow rain.
-
-## Answered
+Michael: **B. Leave Magic for Phase 2 or later** — answered on the control room. (2026-10-05)
 
 ### 2026-10-05: Does a wipe reset the whole Warrens floor? (the critic)
 In headless play a wipe in the pens (the third room) put all nine enemies back, the two cleared rooms included: Session 7's "wipe resets the fight" now covers the floor. The design doc makes a wipe the end of the run, so this may be the intent, but it is what the gate's "a party clears a floor" will feel first.
