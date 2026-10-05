@@ -9,6 +9,12 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-05: A village greybox before the Phase 1 gate? (Claude (local))
+Michael asked why the game is still a simple top-down arena with pills when the design doc promises a town, a portal, buildings with NPCs, a third-person camera and character models. The answer: the town is Phase 2 and CLAUDE.md forbids starting a later phase early; the camera is off-spec (about 55 degrees and fixed, against the doc's 30 to 40 with auto-rotation) and was on no list; the style guide and first commission were meant to be ordered during Phase 1 and were on no list either.
+A. Keep the phase order; the town waits for the Phase 1 gate.
+B. Build a rough, walkable town now (greybox buildings, placeholder NPCs, a portal into the Warrens) to judge the feel early; Phase 2 still owns the real village (merchants, portal board, resources, persistence).
+Michael: **B, as a (Fable) item**, plus the camera, placeholder figures and the art-direction item on the Phase 1 backlog (2026-10-05, in chat). This is an exception to CLAUDE.md's "do not start the next phase's content" for the greybox only; the Phase 1 gate is unchanged.
+
 ### 2026-10-05: Does a wipe reset the whole Warrens floor? (the critic)
 In headless play a wipe in the pens (the third room) put all nine enemies back, the two cleared rooms included: Session 7's "wipe resets the fight" now covers the floor. The design doc makes a wipe the end of the run, so this may be the intent, but it is what the gate's "a party clears a floor" will feel first.
 A. Keep it: a wipe restarts the floor (the run ends; no change). **Recommended** until a human playtest says it is too harsh, since it matches the design doc.
