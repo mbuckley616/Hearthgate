@@ -1,6 +1,7 @@
 import { Client, Room } from "colyseus.js";
 import {
   CLOCK_SYNC,
+  OPEN_FIELD,
   TICK_MS,
   addArrivalSample,
   addClockSample,
@@ -9,10 +10,13 @@ import {
   createPlayer,
   isAlive,
   isDead,
+  levelById,
   minRtt,
   serverTimeAt,
+  type EnemyKind,
   type EnemyPhase,
   type InputFrame,
+  type Level,
   type PlayerSim,
   type SimEvent
 } from "@hearthgate/shared";
@@ -55,7 +59,10 @@ export interface RemotePlayer {
 }
 
 export interface EnemyView {
+  id: string;
+  kind: EnemyKind;
   hp: number;
+  maxHp: number;
   phase: EnemyPhase;
   phaseUntil: number;
   targetId: string;
@@ -82,6 +89,9 @@ export type EventListener = (events: SimEvent[]) => void;
  * its simulation time to pings and stamps every patch with its tick, the message with the
  * shortest trip here in a window sets the offset, and the applied offset slews toward it at
  * CLOCK_SYNC.slewMsPerS so remote players never skip or stall when a packet is late.
+ *
+ * Prediction runs inside the room's level (walls included), which the first patch names;
+ * the server steps the same level, so a wall is never a correction.
  */
 export class Net {
   room: Room | null = null;
@@ -90,6 +100,8 @@ export class Net {
   me: PlayerSim = createPlayer("");
   myName = "";
   myColor = "#ffffff";
+  /** The room's level, from the server; the open field until the first patch. */
+  level: Level = OPEN_FIELD;
   /** Server-time of the latest input we predicted. Advances one tick per input. */
   predictedTime = 0;
   /** Smoothed visual offset that hides reconciliation corrections. */
@@ -97,7 +109,8 @@ export class Net {
   visualErrZ = 0;
   pending: InputFrame[] = [];
   remotes = new Map<string, RemotePlayer>();
-  enemy: EnemyView = { hp: 0, phase: "idle", phaseUntil: 0, targetId: "", hitFlashUntil: 0, snaps: [] };
+  /** Every enemy in the room, alive or dead, keyed by the simulation's id. */
+  enemies = new Map<string, EnemyView>();
   rttMs = 0;
   connected = false;
   lastServerTick = 0;
@@ -113,9 +126,9 @@ export class Net {
   private listeners: EventListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async connect(endpoint: string, name: string): Promise<void> {
+  async connect(endpoint: string, name: string, level?: string): Promise<void> {
     const client = new Client(endpoint);
-    const room = await client.joinOrCreate("dungeon", { name });
+    const room = await client.joinOrCreate("dungeon", level ? { name, level } : { name });
     this.room = room;
     this.sessionId = room.sessionId;
     this.me = createPlayer(room.sessionId);
@@ -166,7 +179,7 @@ export class Net {
   tick(frame: InputFrame) {
     if (!this.room || !this.connected) return;
     this.predictedTime += TICK_MS;
-    applyInput(this.me, frame, this.predictedTime, TICK_MS);
+    applyInput(this.me, frame, this.predictedTime, TICK_MS, this.level);
     this.pending.push(frame);
     if (this.pending.length > 64) this.pending.shift(); // never let a dead link grow unbounded
     this.room.send("input", frame);
@@ -192,12 +205,36 @@ export class Net {
     return sampleSnapshots(r.snaps, this.serverNow() - INTERP_DELAY_MS);
   }
 
+  /** The living enemy drawn nearest to (x, z), for the HUD and hit feedback. */
+  nearestEnemy(x: number, z: number): { view: EnemyView; pose: Pose } | null {
+    let best: { view: EnemyView; pose: Pose } | null = null;
+    let bestD = Infinity;
+    for (const view of this.enemies.values()) {
+      if (view.phase === "dead") continue;
+      const pose = this.remotePose(view);
+      if (!pose) continue;
+      const d = Math.hypot(pose.x - x, pose.z - z);
+      if (d < bestD) {
+        bestD = d;
+        best = { view, pose };
+      }
+    }
+    return best;
+  }
+
+  enemiesAlive(): number {
+    let n = 0;
+    for (const e of this.enemies.values()) if (e.phase !== "dead") n++;
+    return n;
+  }
+
   private onState(state: any) {
     const serverTime = state.tick * TICK_MS;
     const at = performance.now();
     this.lastServerTick = state.tick;
     // Every patch is a clock sample too: it left the server at the time it is stamped with.
     addArrivalSample(this.clock, at, serverTime);
+    if (typeof state.levelId === "string" && state.levelId !== this.level.id) this.level = levelById(state.levelId);
 
     const seen = new Set<string>();
     state.players.forEach((p: any, id: string) => {
@@ -226,13 +263,24 @@ export class Net {
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
 
-    const e = state.enemy;
-    this.enemy.hp = e.hp;
-    this.enemy.phase = e.phase;
-    this.enemy.phaseUntil = e.phaseUntil;
-    this.enemy.targetId = e.targetId;
-    this.enemy.hitFlashUntil = e.hitFlashUntil;
-    pushSnapshot(this.enemy.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
+    const seenEnemies = new Set<string>();
+    state.enemies?.forEach((e: any, id: string) => {
+      seenEnemies.add(id);
+      let v = this.enemies.get(id);
+      if (!v) {
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, snaps: [] };
+        this.enemies.set(id, v);
+      }
+      v.kind = e.kind;
+      v.hp = e.hp;
+      v.maxHp = e.maxHp;
+      v.phase = e.phase;
+      v.phaseUntil = e.phaseUntil;
+      v.targetId = e.targetId;
+      v.hitFlashUntil = e.hitFlashUntil;
+      pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
+    });
+    for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);
   }
 
   /** Rewind to the server's copy of us and replay every input it has not applied yet. */
@@ -270,7 +318,7 @@ export class Net {
     let t = serverTime;
     for (const f of this.pending) {
       t += TICK_MS;
-      applyInput(me, f, t, TICK_MS);
+      applyInput(me, f, t, TICK_MS, this.level);
     }
     this.predictedTime = t;
 

@@ -2,7 +2,7 @@
 
 A browser-based co-op fantasy game: a village you own, portals into short dungeon runs, and an economy that rewards visiting and trading with other players. Playable solo with hirelings, better with friends at any level.
 
-This repository is at **Phase 0: the netcode spike**. Two or more browsers join one room, fight one goblin with one attack, and the whole thing runs on an authoritative server with client-side prediction. Nothing else is built yet, on purpose: if this does not feel good, nothing after it matters.
+This repository is at **Phase 1: the combat slice**. Phase 0 (two or more browsers in one room, one goblin, an authoritative server with client-side prediction) passed on 3 Oct 2026. Now a party fights a handful of goblins in a yard with walls, with downs and pickups, three ability slots and Cleave; gear, weapon classes, posture and parry, the enemy roster and the first Goblin Warrens floor are the open work (see `docs/backlog.md`).
 
 The design doc lives in `docs/design-doc.md`. Session history is in `docs/devlog.md`, what to build next in `docs/backlog.md`.
 

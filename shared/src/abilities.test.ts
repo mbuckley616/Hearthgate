@@ -73,10 +73,10 @@ describe("ability slots", () => {
     e.phase = "windup";
     e.phaseUntil = 2000;
     applyInput(p, press(1, 1), 1000, TICK_MS);
-    expect(resolvePlayerAttacks([p], e, 1000 + ABILITIES.cleave.windupMs - TICK_MS)).toEqual([]);
-    const events = resolvePlayerAttacks([p], e, 1000 + ABILITIES.cleave.windupMs);
+    expect(resolvePlayerAttacks([p], [e], 1000 + ABILITIES.cleave.windupMs - TICK_MS)).toEqual([]);
+    const events = resolvePlayerAttacks([p], [e], 1000 + ABILITIES.cleave.windupMs);
     expect(events).toEqual([
-      { kind: "abilityHit", attackerId: "a", ability: "cleave", damage: ABILITIES.cleave.damage, enemyHp: GOBLIN.hp - ABILITIES.cleave.damage, interrupted: true }
+      { kind: "abilityHit", attackerId: "a", enemyId: "e1", ability: "cleave", damage: ABILITIES.cleave.damage, enemyHp: GOBLIN.hp - ABILITIES.cleave.damage, interrupted: true }
     ]);
     expect(hasState(e.states, "staggered", 1000 + ABILITIES.cleave.windupMs)).toBe(true);
     expect(e.phase).toBe("recover");
@@ -86,9 +86,9 @@ describe("ability slots", () => {
     const { p, e } = besideGoblin();
     p.facing = Math.PI / 2; // facing +x, the goblin is 90 degrees to the right (-z)
     p.attackHitAt = 100; // sword: 108 degree cone misses
-    expect(resolvePlayerAttacks([p], e, 100)).toEqual([]);
+    expect(resolvePlayerAttacks([p], [e], 100)).toEqual([]);
     applyInput(p, press(1, 1), 200, TICK_MS);
-    expect(resolvePlayerAttacks([p], e, 200 + ABILITIES.cleave.windupMs).map((x) => x.kind)).toEqual(["abilityHit"]);
+    expect(resolvePlayerAttacks([p], [e], 200 + ABILITIES.cleave.windupMs).map((x) => x.kind)).toEqual(["abilityHit"]);
   });
 
   it("prediction and server agree: the same frames give the same player", () => {

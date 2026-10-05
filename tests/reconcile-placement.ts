@@ -46,7 +46,8 @@ function patch(net: Net, p: { x: number; z: number; hp: number; downedUntil?: nu
   const state = {
     tick,
     players: new Map([[ID, player]]),
-    enemy: { hp: 60, phase: "idle", phaseUntil: 0, targetId: "", hitFlashUntil: 0, x: 0, z: 6, facing: 0 }
+    levelId: "field",
+    enemies: new Map([["e1", { id: "e1", kind: "goblin", hp: 60, maxHp: 60, phase: "idle", phaseUntil: 0, targetId: "", hitFlashUntil: 0, x: 0, z: 6, facing: 0 }]])
   };
   (net as any).onState(state);
 }

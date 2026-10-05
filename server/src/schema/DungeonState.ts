@@ -34,10 +34,13 @@ export class PlayerState extends Schema {
 }
 
 export class EnemyState extends Schema {
+  @type("string") id = "";
+  @type("string") kind = "goblin";
   @type("number") x = 0;
   @type("number") z = 0;
   @type("number") facing = 0;
   @type("number") hp = 60;
+  @type("number") maxHp = 60;
   @type("string") phase = "idle";
   @type("number") phaseUntil = 0;
   @type("string") targetId = "";
@@ -46,7 +49,10 @@ export class EnemyState extends Schema {
 
 export class DungeonState extends Schema {
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
-  @type(EnemyState) enemy = new EnemyState();
+  /** Keyed by the simulation's enemy id; the set is fixed for the life of the room. */
+  @type({ map: EnemyState }) enemies = new MapSchema<EnemyState>();
+  /** Which level (shared/src/level.ts LEVELS) the room runs; the client builds its walls from it. */
+  @type("string") levelId = "";
   /** Server tick counter; simulation time = tick * TICK_MS. */
   @type("number") tick = 0;
 }

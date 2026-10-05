@@ -33,7 +33,7 @@ function run(players: PlayerSim[], enemy = createEnemy(), from: number, ms: numb
   let t = from;
   for (let i = 0; i < ms / TICK_MS; i++) {
     t += TICK_MS;
-    events.push(...stepDowns(players, enemy, t, TICK_MS));
+    events.push(...stepDowns(players, [enemy], t, TICK_MS));
   }
   return { events, t };
 }
@@ -97,8 +97,8 @@ describe("downs", () => {
     enemy.hp = PLAYER.attackDamage;
     b.facing = Math.PI; // the goblin spawns at z = -9, behind b's default facing
     b.attackHitAt = 500;
-    const events = resolvePlayerAttacks([a, b, c], enemy, 500);
-    expect(events.map((x) => x.kind)).toEqual(["playerHit", "enemyKilled", "playerPickedUp"]);
+    const events = resolvePlayerAttacks([a, b, c], [enemy], 500);
+    expect(events.map((x) => x.kind)).toEqual(["playerHit", "enemyKilled", "roomCleared", "playerPickedUp"]);
     expect(a.hp).toBe(DOWNS.pickupHp);
     expect(c.respawnAt).toBe(500 + PLAYER.respawnMs);
     expect(stepRespawns([c], 500 + PLAYER.respawnMs)).toEqual([{ kind: "playerRespawned", playerId: "c" }]);

@@ -19,6 +19,11 @@
  *   rtt        Alpha's HUD round trip
  *
  * Run: npm run lab [-- --seconds 60 --only 150]. Writes tests/tmp/lab-result.json.
+ *
+ * A hosted build instead of a local one: `--server wss://host --client https://host` boots nothing
+ * and puts no proxy in the way, so the two browsers reach the real server over the real network
+ * (the machine stand-in for the "two people on different networks" playtest). One condition, named
+ * after the host; `lost_chunks` is 0 because no proxy counted them.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -54,6 +59,10 @@ const argOf = (k: string) => {
 };
 const SECONDS = Number(argOf("--seconds") ?? 60);
 const ONLY = argOf("--only") ?? "";
+/** A hosted build to measure: no local server and no proxy with --server, no Vite with --client. */
+const REMOTE_SERVER = argOf("--server") ?? "";
+const REMOTE_CLIENT = argOf("--client") ?? "";
+const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -71,18 +80,23 @@ async function waitFor(url: string, timeoutMs = 30000) {
   throw new Error(`nothing at ${url}`);
 }
 
-function boot(): ChildProcess[] {
-  const server = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
-    cwd: `${root}server`,
-    env: { ...process.env, PORT: String(SERVER_PORT) },
-    stdio: "ignore"
-  });
-  const vite = spawn("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host", "127.0.0.1"], {
-    cwd: `${root}client`,
-    stdio: "ignore",
-    detached: true
-  });
-  return [server, vite];
+function boot(): { server: ChildProcess | null; vite: ChildProcess | null } {
+  const server = REMOTE_SERVER
+    ? null
+    : spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
+        cwd: `${root}server`,
+        env: { ...process.env, PORT: String(SERVER_PORT) },
+        stdio: "ignore"
+      });
+  const vite = REMOTE_CLIENT
+    ? null
+    : spawn("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host", "127.0.0.1"], {
+        cwd: `${root}client`,
+        stdio: "ignore",
+        detached: true,
+        shell: process.platform === "win32"
+      });
+  return { server, vite };
 }
 
 async function launch(): Promise<Browser> {
@@ -125,6 +139,8 @@ const corrections = async (page: Page) => {
 
 interface Row {
   condition: string;
+  /** "local" or the hosted server's URL. */
+  target: string;
   latency: number;
   jitter: number;
   loss: number;
@@ -146,7 +162,7 @@ interface Row {
 }
 
 async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number): Promise<Row> {
-  const proxy = await startProxy(port, SERVER_PORT, c);
+  const proxy = REMOTE_SERVER ? null : await startProxy(port, SERVER_PORT, c);
   const errors: string[] = [];
   const ctxA = await ba.newContext({ viewport: LAB_VIEWPORT });
   const ctxB = await bb.newContext({ viewport: LAB_VIEWPORT });
@@ -154,9 +170,9 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
   const b = await ctxB.newPage();
   for (const [n, p] of [["Alpha", a], ["Bravo", b]] as const) p.on("pageerror", (e) => errors.push(`${n}: ${e.message}`));
   try {
-    const q = `server=ws://127.0.0.1:${port}`;
-    await a.goto(`http://127.0.0.1:${VITE_PORT}/?${q}&name=Alpha`);
-    await b.goto(`http://127.0.0.1:${VITE_PORT}/?${q}&name=Bravo`);
+    const q = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}`;
+    await a.goto(`${CLIENT_BASE}/?${q}&name=Alpha`);
+    await b.goto(`${CLIENT_BASE}/?${q}&name=Bravo`);
     for (const p of [a, b]) await p.locator("#hud-party[data-players='2']").waitFor({ timeout: 20000 });
     await sleep(SETTLE_MS);
     const alphaId: string = await a.evaluate(() => (window as any).__hg.sessionId);
@@ -285,6 +301,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const verdict = snaps > 0 ? "snaps" : cpm > 30 || holds / minutes > 20 ? "rough" : "ok";
     return {
       condition: c.name,
+      target: REMOTE_SERVER || "local",
       latency: c.oneWayMs,
       jitter: c.jitterMs,
       loss: c.loss,
@@ -300,14 +317,14 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       downs,
       fps_a: fps(trueTrack),
       fps_b: fps(seen),
-      lost_chunks: proxy.lost(),
+      lost_chunks: proxy ? proxy.lost() : 0,
       page_errors: errors,
       verdict
     };
   } finally {
     await ctxA.close();
     await ctxB.close();
-    await proxy.close();
+    await proxy?.close();
     await sleep(800); // let the empty room dispose so the next condition gets a fresh goblin
   }
 }
@@ -317,13 +334,20 @@ async function main() {
   let ba: Browser | null = null;
   let bb: Browser | null = null;
   try {
-    await waitFor(`http://127.0.0.1:${SERVER_PORT}/health`);
-    await waitFor(`http://127.0.0.1:${VITE_PORT}/`);
+    if (REMOTE_SERVER) {
+      // A free Render instance sleeps; its health URL wakes it and answers within about a minute.
+      const health = REMOTE_SERVER.replace(/^ws/, "http").replace(/\/$/, "") + "/health";
+      await waitFor(health, 90000);
+    } else await waitFor(`http://127.0.0.1:${SERVER_PORT}/health`);
+    await waitFor(`${CLIENT_BASE}/`);
     ba = await launch();
     bb = await launch();
     const rows: Row[] = [];
     let i = 0;
-    for (const c of CONDITIONS) {
+    const conditions: Condition[] = REMOTE_SERVER
+      ? [{ name: `remote ${new URL(REMOTE_SERVER).host}`, oneWayMs: 0, jitterMs: 0, loss: 0 }]
+      : CONDITIONS;
+    for (const c of conditions) {
       if (ONLY && !c.name.startsWith(ONLY)) continue;
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
@@ -336,11 +360,13 @@ async function main() {
   } finally {
     await ba?.close();
     await bb?.close();
-    procs[0].kill();
-    try {
-      process.kill(-procs[1].pid!, "SIGTERM");
-    } catch {
-      procs[1].kill();
+    procs.server?.kill();
+    if (procs.vite) {
+      try {
+        process.kill(-procs.vite.pid!, "SIGTERM");
+      } catch {
+        procs.vite.kill();
+      }
     }
   }
 }
