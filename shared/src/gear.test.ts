@@ -36,7 +36,7 @@ describe("gear", () => {
   });
 
   it("the starter sword hits for today's sword damage, so wiring it in changes nothing", () => {
-    expect(weaponStats(STARTER_WEAPON as Weapon, 1).damage).toBe(PLAYER.attackDamage);
+    expect(weaponStats(STARTER_WEAPON, 1).damage).toBe(PLAYER.attackDamage);
   });
 
   it("a portal of tier T lets gear perform up to material tier 2T", () => {

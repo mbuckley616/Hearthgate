@@ -144,8 +144,18 @@ export type Gear =
   | { kind: "weapon"; type: WeaponTypeId; tier: number; enchant?: WeaponEnchantId }
   | { kind: "armor"; type: ArmorTypeId; tier: number };
 
+export type WeaponGear = Extract<Gear, { kind: "weapon" }>;
+export type ArmorGear = Extract<Gear, { kind: "armor" }>;
+
 /** The starter weapon: hits for today's PLAYER.attackDamage (see GEAR.damageScale). */
-export const STARTER_WEAPON: Gear = { kind: "weapon", type: "sword", tier: 1 };
+export const STARTER_WEAPON: WeaponGear = { kind: "weapon", type: "sword", tier: 1 };
+
+/** Which swing a weapon uses (WEAPON_CLASSES in sim.ts). */
+export function weaponClassOf(g: WeaponGear): "oneHand" | "twoHand" | "bow" {
+  const t = WEAPON_TYPES[g.type];
+  if (t.style === "ranged") return "bow";
+  return t.twoHand ? "twoHand" : "oneHand";
+}
 
 function clampTier(tier: number): number {
   return Math.min(MAX_MATERIAL_TIER, Math.max(1, Math.floor(tier)));
@@ -190,7 +200,7 @@ export interface WeaponStats {
 }
 
 /** A weapon's numbers in a portal of `portalTier`. Pure: same gear and tier, same answer. */
-export function weaponStats(g: Extract<Gear, { kind: "weapon" }>, portalTier: number): WeaponStats {
+export function weaponStats(g: WeaponGear, portalTier: number): WeaponStats {
   const t = WEAPON_TYPES[g.type];
   const { tier, capped } = effectiveTier(g.tier, portalTier);
   const [lo, hi] = t.atkMult;
@@ -220,7 +230,7 @@ export interface ArmorStats {
 }
 
 /** An armour piece's numbers in a portal of `portalTier`. */
-export function armorStats(g: Extract<Gear, { kind: "armor" }>, portalTier: number): ArmorStats {
+export function armorStats(g: ArmorGear, portalTier: number): ArmorStats {
   const t = ARMOR_TYPES[g.type];
   const { tier, capped } = effectiveTier(g.tier, portalTier);
   return {

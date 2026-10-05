@@ -32,6 +32,8 @@ export interface Level {
   halfD: number;
   walls: readonly WallRect[];
   enemies: readonly EnemySpawn[];
+  /** Portal tier, 1 to 5: caps the gear used here (gear.ts). 1 when absent, as every level so far is. */
+  tier?: number;
 }
 
 /**

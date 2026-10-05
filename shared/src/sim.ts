@@ -12,8 +12,9 @@
  * which matches Three.js `rotation.y`.
  */
 
-import { applyState, expireStates, hasState, resolveHit, type StateSet } from "./states";
-import { ARENA_HALF, OPEN_FIELD, collideWalls, type Level } from "./level";
+import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, type Level } from "./level";
+import { STARTER_WEAPON, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
 export { ARENA_HALF };
 
@@ -245,6 +246,22 @@ export const GEAR = {
   damageScale: 3
 } as const;
 
+/**
+ * How each class of weapon swings (backlog, "Weapon classes"); its damage, cleave cap and
+ * style come from the weapon itself (gear.ts). One-handers keep the Phase 0 sword's swing.
+ * Two-handers wind up twice as long and reach further, and hit up to the weapon's
+ * `cleaveTargets` in their cone (The Old Gates' cleave cap). The bow locks on to the
+ * nearest enemy it can see in a narrow cone (design doc, "Targeting": a lock-on rather than
+ * free aim, so it needs no mouse); the hit lands when the draw finishes, no projectile to
+ * dodge yet. Numbers are first guesses for playtests.
+ */
+export const WEAPON_CLASSES = {
+  oneHand: { range: PLAYER.attackRange, arc: PLAYER.attackArc, windupMs: PLAYER.attackWindupMs, durationMs: PLAYER.attackDurationMs },
+  twoHand: { range: 2.9, arc: Math.PI * 0.75, windupMs: 300, durationMs: 750 },
+  bow: { range: 12, arc: Math.PI * 0.35, windupMs: 350, durationMs: 600 }
+} as const;
+export type WeaponClass = keyof typeof WEAPON_CLASSES;
+
 /** Where the first goblin stands in every level so far (the hit-feedback test walks to it). */
 export const ENEMY_SPAWN = { x: 9, z: -9 } as const;
 
@@ -308,6 +325,8 @@ export interface PlayerSim {
   pickupBy: string;
   /** Revive Draughts left this floor (DOWNS.draughtsPerFloor to start). */
   draughts: number;
+  /** What the player swings: its class sets the timing, its tier and the portal the damage. */
+  weapon: WeaponGear;
   spawnX: number;
   spawnZ: number;
 }
@@ -381,6 +400,7 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     pickupMs: 0,
     pickupBy: "",
     draughts: DOWNS.draughtsPerFloor,
+    weapon: { ...STARTER_WEAPON },
     spawnX: x,
     spawnZ: z
   };
@@ -593,8 +613,9 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.abilitySlot = slot;
     p.readyAt[slot - 1] = now + def.cooldownMs;
   } else if (input.attack && !attacking && !isDodging(p, now)) {
-    p.attackUntil = now + PLAYER.attackDurationMs;
-    p.attackHitAt = now + PLAYER.attackWindupMs;
+    const swing = WEAPON_CLASSES[weaponClassOf(p.weapon)];
+    p.attackUntil = now + swing.durationMs;
+    p.attackHitAt = now + swing.windupMs;
   }
 
   collideWalls(p, PLAYER.radius, level);
@@ -633,13 +654,16 @@ export function enemiesInCone(from: PlayerSim, enemies: readonly EnemySim[], ran
 
 /**
  * Resolve any player swings and abilities whose hit time has arrived. Server only.
- * The sword hits the nearest enemy in its cone; Cleave hits every enemy in its wider one.
+ * A weapon hits the nearest enemies in its class's cone, up to its cleave cap (one for a
+ * one-hander or a bow, which also needs a clear line); Cleave hits every enemy in its wider
+ * one. The level gives the walls and the portal tier that caps the weapon.
  * When the last enemy falls the room is clear: the downed get up and the dead come back.
  */
 export function resolvePlayerAttacks(
   playerList: Iterable<PlayerSim>,
   enemyList: Iterable<EnemySim>,
-  now: number
+  now: number,
+  level: Level = OPEN_FIELD
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const players = [...playerList];
@@ -685,13 +709,19 @@ export function resolvePlayerAttacks(
     }
     if (p.attackHitAt === 0 || now < p.attackHitAt) continue;
     p.attackHitAt = 0;
-    const target = enemiesInCone(p, enemies, PLAYER.attackRange, PLAYER.attackArc)[0];
-    if (!target) continue;
-    // The sword is a plain melee hit: it consumes nothing, but a Marked target takes more.
-    const { damage } = resolveHit(target.states, { damage: PLAYER.attackDamage, tags: ["melee"], byId: p.id }, now);
-    hit(target, damage);
-    events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp });
-    settle(p, target);
+    const cls = weaponClassOf(p.weapon);
+    const swing = WEAPON_CLASSES[cls];
+    const stats = weaponStats(p.weapon, level.tier ?? 1);
+    let targets = enemiesInCone(p, enemies, swing.range, swing.arc);
+    if (cls === "bow") targets = targets.filter((e) => lineClear(p, e, level));
+    // A weapon swing is a plain hit: it consumes nothing, but a Marked target takes more.
+    const tags: HitTag[] = [stats.style];
+    for (const target of targets.slice(0, stats.cleaveTargets)) {
+      const { damage } = resolveHit(target.states, { damage: stats.damage, tags, byId: p.id }, now);
+      hit(target, damage);
+      events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp });
+      settle(p, target);
+    }
   }
   return events;
 }
@@ -997,7 +1027,7 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
  */
 export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, now: number, dtMs: number): SimEvent[] {
   const events: SimEvent[] = [];
-  events.push(...resolvePlayerAttacks(players.values(), enc.enemies.values(), now));
+  events.push(...resolvePlayerAttacks(players.values(), enc.enemies.values(), now, enc.level));
   if (events.some((e) => e.kind === "roomCleared")) enc.resetAt = now + ROOM.resetMs;
   events.push(...stepEnemies(enc.enemies.values(), players, now, dtMs, enc.level));
   events.push(...stepDowns(players.values(), enc.enemies.values(), now, dtMs));
