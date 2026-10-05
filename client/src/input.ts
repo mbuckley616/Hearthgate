@@ -7,14 +7,17 @@ import type { InputFrame } from "@hearthgate/shared";
  *
  * Keyboard-only is a hard requirement (laptop with no mouse). A gamepad is
  * read if one is connected: left stick moves, X attacks, A dodges, the
- * ability slots are Y, B and RB (keys 1, 2 and 3), and LB (key E) uses a
- * Revive Draught on a dead teammate in reach.
+ * ability slots are Y, B and RB (keys 1, 2 and 3), LB (key E) uses a
+ * Revive Draught on a dead teammate in reach, and LT (keys L or Q) is block,
+ * held: raise it just before a blow lands to parry.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
 const PAD_SLOT_BUTTONS = [3, 1, 5];
 /** Gamepad button for the Revive Draught (standard mapping: LB). */
 const PAD_USE_BUTTON = 4;
+/** Gamepad button for block (standard mapping: LT, an analogue trigger read as pressed). */
+const PAD_BLOCK_BUTTON = 6;
 export class Input {
   private down = new Set<string>();
   private attackPressed = false;
@@ -66,6 +69,7 @@ export class Input {
     let dodge = this.dodgePressed;
     let ability = this.abilityPressed;
     let use = this.usePressed;
+    let block = this.down.has("KeyL") || this.down.has("KeyQ");
     this.attackPressed = false;
     this.dodgePressed = false;
     this.abilityPressed = 0;
@@ -93,6 +97,7 @@ export class Input {
       const padUse = pad.buttons[PAD_USE_BUTTON]?.pressed ?? false;
       if (padUse && !this.padUseWasDown) use = true;
       this.padUseWasDown = padUse;
+      if (pad.buttons[PAD_BLOCK_BUTTON]?.pressed) block = true;
     }
 
     const len = Math.hypot(dx, dy);
@@ -102,7 +107,7 @@ export class Input {
     }
 
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block };
   }
 }
 
@@ -132,6 +137,8 @@ function isGameKey(code: string): boolean {
   return (
     slotKey(code) > 0 ||
     isUseKey(code) ||
+    code === "KeyL" ||
+    code === "KeyQ" ||
     code.startsWith("Arrow") ||
     code === "Space" ||
     code === "KeyW" ||

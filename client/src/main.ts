@@ -8,6 +8,8 @@ import {
   type EnemyKind,
   HIT_FEEDBACK,
   PLAYER,
+  POSTURE,
+  isPlayerStaggered,
   TICK_MS,
   isDead,
   isDowned,
@@ -131,6 +133,8 @@ function draw(dt: number) {
     swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
     cleaveActive: cleaveFlash(me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
+    guarding: me.guarding,
+    staggered: isPlayerStaggered(me, now),
     downed: isDowned(me),
     pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
     dead: isDead(me)
@@ -151,6 +155,8 @@ function draw(dt: number) {
       swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
       cleaveActive: cleaveFlash(r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
+      guarding: r.guarding,
+      staggered: drawT < r.staggerUntil,
       downed: r.hp <= 0 && r.downedUntil > 0,
       pickup: r.downedUntil > 0 ? clamp01(r.pickupMs / DOWNS.pickupMs) : 0,
       dead: r.hp <= 0 && r.downedUntil === 0
@@ -184,7 +190,11 @@ function draw(dt: number) {
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
     banner: downBanner(me, now),
-    enemyLabel: nearest ? `${kindName(nearest.view.kind)}, ${left} of ${total} left` : total > 0 ? "Room clear" : "No enemies",
+    enemyLabel: nearest
+      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : ""}`
+      : total > 0
+        ? "Room clear"
+        : "No enemies",
     enemyHp: nearest?.view.hp ?? 0,
     enemyMaxHp: nearest?.view.maxHp ?? 0,
     enemiesLeft: left,
@@ -194,6 +204,10 @@ function draw(dt: number) {
     pending: net.pending.length,
     corrections: net.corrections,
     draughts: me.draughts,
+    posture: me.posture,
+    postureMax: POSTURE.player,
+    guarding: me.guarding,
+    staggered: isPlayerStaggered(me, now),
     reviveTarget: reviveTarget(myPose),
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
@@ -233,8 +247,18 @@ function describeEvent(e: SimEvent): string {
       return e.attackerId === net.sessionId ? `You hit ${enemyName(e.enemyId)} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${enemyName(e.enemyId)} for ${e.damage}`;
     case "enemyKilled":
       return e.killerId === net.sessionId ? `You felled ${enemyName(e.enemyId)}` : `${nameOf(e.killerId)} felled ${enemyName(e.enemyId)}`;
-    case "enemyHit":
-      return e.targetId === net.sessionId ? `${capital(enemyName(e.enemyId))} hit you for ${e.damage}` : `${capital(enemyName(e.enemyId))} hit ${nameOf(e.targetId)}`;
+    case "enemyHit": {
+      const verb = e.blocked ? "hit your guard" : "hit you";
+      return e.targetId === net.sessionId ? `${capital(enemyName(e.enemyId))} ${verb} for ${e.damage}` : `${capital(enemyName(e.enemyId))} hit ${nameOf(e.targetId)}`;
+    }
+    case "playerParried": {
+      const who = e.playerId === net.sessionId ? "You" : nameOf(e.playerId);
+      return `${who} parried ${enemyName(e.enemyId)}: ${e.postureBroken ? "its guard is broken" : "staggered"}`;
+    }
+    case "playerStaggered":
+      return e.playerId === net.sessionId ? "You are knocked off balance" : `${nameOf(e.playerId)} is off balance`;
+    case "postureBroken":
+      return `${capital(enemyName(e.enemyId))} is off balance: hit it now`;
     case "roomCleared":
       return "Room clear";
     case "roomReset":

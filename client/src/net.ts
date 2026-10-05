@@ -55,6 +55,8 @@ export interface RemotePlayer {
   abilitySlot: number;
   attackHitAt: number;
   dodgeUntil: number;
+  guarding: boolean;
+  staggerUntil: number;
   snaps: Snapshot[];
 }
 
@@ -67,6 +69,9 @@ export interface EnemyView {
   phaseUntil: number;
   targetId: string;
   hitFlashUntil: number;
+  posture: number;
+  maxPosture: number;
+  postureBrokenUntil: number;
   snaps: Snapshot[];
 }
 
@@ -245,7 +250,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, snaps: [] };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -259,6 +264,8 @@ export class Net {
       r.abilitySlot = p.abilitySlot;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
+      r.guarding = p.guarding === true;
+      r.staggerUntil = p.staggerUntil ?? 0;
       pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
@@ -268,7 +275,7 @@ export class Net {
       seenEnemies.add(id);
       let v = this.enemies.get(id);
       if (!v) {
-        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, snaps: [] };
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, snaps: [] };
         this.enemies.set(id, v);
       }
       v.kind = e.kind;
@@ -278,6 +285,9 @@ export class Net {
       v.phaseUntil = e.phaseUntil;
       v.targetId = e.targetId;
       v.hitFlashUntil = e.hitFlashUntil;
+      v.posture = e.posture ?? 0;
+      v.maxPosture = e.maxPosture ?? 0;
+      v.postureBrokenUntil = e.postureBrokenUntil ?? 0;
       pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
     });
     for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);
@@ -313,6 +323,11 @@ export class Net {
     me.pickupMs = p.pickupMs;
     me.pickupBy = p.pickupBy;
     me.draughts = p.draughts;
+    // The guard is predicted like a dodge: rewind to the server's and replay.
+    me.guarding = p.guarding === true;
+    me.blockSince = p.blockSince ?? 0;
+    me.posture = p.posture ?? me.posture;
+    me.staggerUntil = p.staggerUntil ?? 0;
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

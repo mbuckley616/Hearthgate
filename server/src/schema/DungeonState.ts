@@ -31,6 +31,11 @@ export class PlayerState extends Schema {
   @type("string") pickupBy = "";
   /** Revive Draughts left this floor (a Phase 1 stand-in counter, not an item). */
   @type("number") draughts = 1;
+  /** Block and posture: the client replays its guard from these (blockSince sets the parry window). */
+  @type("boolean") guarding = false;
+  @type("number") blockSince = 0;
+  @type("number") posture = 100;
+  @type("number") staggerUntil = 0;
 }
 
 export class EnemyState extends Schema {
@@ -45,6 +50,9 @@ export class EnemyState extends Schema {
   @type("number") phaseUntil = 0;
   @type("string") targetId = "";
   @type("number") hitFlashUntil = 0;
+  @type("number") posture = 30;
+  @type("number") maxPosture = 30;
+  @type("number") postureBrokenUntil = 0;
 }
 
 export class DungeonState extends Schema {

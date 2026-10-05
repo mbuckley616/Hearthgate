@@ -8,6 +8,10 @@ export interface PlayerVisual {
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
   cleaveActive: boolean; // the same for Cleave's wider arc
   dodging: boolean;
+  /** Block held: a guard plate in front. */
+  guarding: boolean;
+  /** Posture broken: rocked back. */
+  staggered: boolean;
   /** At zero health, crawling, waiting for a pickup. */
   downed: boolean;
   /** Pickup channel progress while downed, 0..1. */
@@ -33,7 +37,8 @@ const PALETTE = {
   goblinDark: 0x2f5c2f,
   wall: 0x9a978c,
   telegraph: 0xd9534f,
-  swing: 0xfff1c2
+  swing: 0xfff1c2,
+  guard: 0x9fb8d9
 };
 
 class PlayerMesh {
@@ -41,6 +46,7 @@ class PlayerMesh {
   body: THREE.Mesh;
   swing: THREE.Mesh;
   cleave: THREE.Mesh;
+  guard: THREE.Mesh;
   tag: THREE.Sprite;
   /** Ground ring that grows while a teammate picks this player up. */
   pickupRing: THREE.Mesh;
@@ -86,6 +92,15 @@ class PlayerMesh {
     this.cleave.visible = false;
     this.group.add(this.cleave);
 
+    // The raised guard: a broad plate across the front, so a block reads from across the room.
+    this.guard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.95, 0.85, 0.1),
+      new THREE.MeshStandardMaterial({ color: PALETTE.guard, roughness: 0.6, transparent: true, opacity: 0.85 })
+    );
+    this.guard.position.set(0, 1.0, PLAYER.radius + 0.18);
+    this.guard.visible = false;
+    this.group.add(this.guard);
+
     this.pickupRing = new THREE.Mesh(
       new THREE.RingGeometry(DOWNS.pickupRange * 0.85, DOWNS.pickupRange, 32),
       new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
@@ -110,12 +125,13 @@ class PlayerMesh {
       this.body.position.y = 0.4;
       mat.color.copy(this.baseColor).multiplyScalar(v.dead ? 0.45 : 0.8);
     } else {
-      this.body.rotation.x = v.dodging ? 0.5 : 0;
+      this.body.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
       this.body.position.y = v.dodging ? 0.8 : 0.95;
       mat.color.copy(this.baseColor);
       if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
     }
     this.swing.visible = v.swingActive && !v.dead;
+    this.guard.visible = v.guarding && !v.dead && !v.downed;
     this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
     this.tag.visible = !v.dead;
     // Grows from the player outward as the pickup channel fills.

@@ -13,6 +13,8 @@
  *   5b. inputs carrying the Revive Draught flag are accepted, and pressing it with no body
  *      in reach spends nothing; both clients see the count (the revive itself needs a
  *      30 s bleed-out, so it is proved in shared/src/draught.test.ts);
+ *   5c. a held block raises the guard, a three-tick gap in the inputs does not lower it or
+ *      re-open its parry window, the other client sees it, and letting go lowers it;
  *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
  *      walking into one of its walls is stopped by the server where the shared sim says;
  *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
@@ -216,6 +218,31 @@ async function main() {
     if (counts.some((n) => n !== DOWNS.draughtsPerFloor)) fail(`draught counts ${counts.join(", ")}, expected ${DOWNS.draughtsPerFloor} each`);
     if (aEvents.some((x) => x.kind === "playerRevived")) fail("a draught revived someone with nobody dead");
     console.log(`ok: draught presses with no body in reach applied and spent nothing; both clients see ${DOWNS.draughtsPerFloor} each`);
+
+    // Guard: Alpha holds block, goes quiet for three ticks (a late connection), holds again.
+    // The server must keep the guard up through the gap with the window it opened first
+    // (a re-raise would hand out a parry nobody timed), and Bravo must see it.
+    const block = (on: boolean) => a.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false, block: on });
+    for (let i = 0; i < 6; i++) {
+      block(true);
+      await sleep(TICK_MS);
+    }
+    await sleep(150);
+    const raised = aState.players.get(a.sessionId).blockSince;
+    if (!aState.players.get(a.sessionId).guarding || !(raised > 0)) fail("the server did not raise Alpha's guard");
+    await sleep(TICK_MS * 3);
+    for (let i = 0; i < 6; i++) {
+      block(true);
+      await sleep(TICK_MS);
+    }
+    await sleep(150);
+    const held = aState.players.get(a.sessionId);
+    if (!held.guarding || held.blockSince !== raised) fail(`the guard dropped or re-opened across a quiet gap (blockSince ${raised} then ${held.blockSince}, guarding ${held.guarding})`);
+    if (!bState.players.get(a.sessionId).guarding) fail("Bravo does not see Alpha's guard");
+    block(false);
+    await sleep(250);
+    if (aState.players.get(a.sessionId).guarding) fail("Alpha's guard stayed up after letting go");
+    console.log(`ok: Alpha's guard held through a 3-tick gap with its first window (raised at ${raised}); Bravo saw it; it drops on release`);
 
     await a.leave();
     await b.leave();
