@@ -30,6 +30,8 @@ export interface EnemyVisual {
   guardUp: boolean;
   /** 0..1 while a charger aims, else 0. */
   aim: number;
+  /** Near a living Pack Leader. */
+  rallied: boolean;
 }
 
 const PALETTE = {
@@ -41,6 +43,8 @@ const PALETTE = {
   goblinDark: 0x2f5c2f,
   shieldbearer: 0x6f6a62,
   charger: 0x8a5a3c,
+  packLeader: 0x3f7a3a,
+  banner: 0xc0392b,
   shield: 0xb08a4a,
   wall: 0x9a978c,
   telegraph: 0xd9534f,
@@ -159,16 +163,32 @@ class EnemyMesh {
   lane: THREE.Mesh | null = null;
   private color: number;
   private windupColor: number;
+  /** The war-paint red a rallied enemy takes on. */
+  private ralliedColor: number;
 
   constructor(kind: EnemyKind) {
     const def = ENEMY_KINDS[kind];
-    this.color = kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : PALETTE.goblin;
+    this.color =
+      kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : kind === "packLeader" ? PALETTE.packLeader : PALETTE.goblin;
+    this.ralliedColor = new THREE.Color(this.color).lerp(new THREE.Color(PALETTE.banner), 0.35).getHex();
     this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
     this.body = new THREE.Mesh(
       new THREE.ConeGeometry(def.radius * 1.1, kind === "shieldbearer" ? 1.8 : 1.5, 7),
       new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.85, flatShading: true })
     );
     this.body.position.y = 0.75;
+    if (def.rally) {
+      // A banner on a pole above the chief: the one to reach first.
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x5a4632 }));
+      pole.position.set(-0.35, 1.6, -0.2);
+      this.group.add(pole);
+      const flag = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.6, 0.4),
+        new THREE.MeshStandardMaterial({ color: PALETTE.banner, side: THREE.DoubleSide })
+      );
+      flag.position.set(-0.05, 2.15, -0.2);
+      this.group.add(flag);
+    }
     if (def.charge) {
       // The charge's lane, as long as its run and as wide as what it hits.
       const len = def.charge.maxRange;
@@ -224,7 +244,7 @@ class EnemyMesh {
     this.group.rotation.y = pose.facing;
     this.group.visible = v.phase !== "dead";
     const mat = this.body.material as THREE.MeshStandardMaterial;
-    mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : this.color);
+    mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : v.rallied ? this.ralliedColor : this.color);
     if (this.shield) this.shield.visible = v.guardUp;
     if (this.lane) {
       this.lane.visible = v.phase === "aim";

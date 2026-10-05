@@ -2,20 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   ABILITIES,
   CHARGER,
+  GOBLIN,
   GUARD,
+  PACK_LEADER,
   KNOCKBACK,
   PLAYER,
   POSTURE,
   SHIELDBEARER,
   TICK_MS,
   applyInput,
+  createEnemies,
   createEnemy,
   createPlayer,
   isEnemyStaggered,
   resetEnemy,
   resolvePlayerAttacks,
   shieldCovers,
+  stepEnemies,
   stepEnemy,
+  updateRallies,
   type EnemySim,
   type PlayerSim,
   type SimEvent
@@ -246,5 +251,71 @@ describe("the Charger", () => {
       applyInput(b, f, t, TICK_MS);
     }
     expect(a).toEqual(b);
+  });
+});
+
+describe("the Pack Leader", () => {
+  const r = PACK_LEADER.rally!;
+
+  it("rallies the other enemies within its reach, and only while it lives", () => {
+    const leader = createEnemy("e1", "packLeader", 0, 0);
+    const near = createEnemy("e2", "goblin", r.radius - 0.5, 0);
+    const far = createEnemy("e3", "goblin", r.radius + 0.5, 0);
+    const other = createEnemy("e4", "packLeader", -5, -5);
+    updateRallies([leader, near, far, other]);
+    expect([near.rallied, far.rallied, leader.rallied, other.rallied]).toEqual([true, false, false, false]);
+    expect(leader.leading).toBe(true);
+    leader.phase = "dead";
+    other.phase = "dead";
+    updateRallies([leader, near, far, other]);
+    expect(near.rallied).toBe(false);
+  });
+
+  it("a rallied goblin is quicker and hits harder", () => {
+    const run = (rallied: boolean) => {
+      const enemies = [createEnemy("e1", "goblin", 0, 0)];
+      if (rallied) enemies.push(createEnemy("e9", "packLeader", 0, -3));
+      enemies[0].phase = "chase";
+      const p = createPlayer("a", 0, 10);
+      const players = new Map([["a", p]]);
+      stepEnemies(enemies, players, 1000, TICK_MS, OPEN_FIELD);
+      const moved = enemies[0].z;
+      // Now in reach: let a swing land.
+      p.z = enemies[0].z + 1.2;
+      enemies[0].phase = "windup";
+      enemies[0].phaseUntil = 2000;
+      const events = stepEnemies(enemies, players, 2000, TICK_MS, OPEN_FIELD);
+      return { moved, hit: events.find((e) => e.kind === "enemyHit") };
+    };
+    const plain = run(false);
+    const rallied = run(true);
+    expect(rallied.moved).toBeCloseTo(plain.moved * r.speedMult, 9);
+    expect(plain.hit).toMatchObject({ damage: GOBLIN.damage });
+    expect(rallied.hit).toMatchObject({ damage: Math.round(GOBLIN.damage * r.damageMult) });
+  });
+
+  it("hangs back behind a rallied pack, and closes in once it is alone", () => {
+    const leader = createEnemy("e1", "packLeader", 0, 0, 0);
+    leader.phase = "chase";
+    const goblin = createEnemy("e2", "goblin", 0, 1);
+    goblin.hp = 0;
+    goblin.phase = "dead";
+    const p = createPlayer("a", 0, 5.2);
+    const players = new Map([["a", p]]);
+    stepEnemies([leader, goblin], players, 1000, TICK_MS, OPEN_FIELD);
+    expect(leader.z).toBeGreaterThan(0); // alone: comes on
+    const l2 = createEnemy("e1", "packLeader", 0, 0, 0);
+    l2.phase = "chase";
+    const pack = createEnemy("e2", "goblin", 2, 0);
+    pack.phase = "chase";
+    p.z = r.holdBack - 0.1;
+    stepEnemies([l2, pack], players, 1000, TICK_MS, OPEN_FIELD);
+    expect(l2.z).toBe(0); // inside its hold-back distance: stays put
+  });
+
+  it("the yard's leader starts with a goblin in reach", () => {
+    const enemies = createEnemies(YARD);
+    updateRallies([...enemies.values()]);
+    expect([...enemies.values()].filter((e) => e.rallied).map((e) => e.kind)).toEqual(["goblin"]);
   });
 });

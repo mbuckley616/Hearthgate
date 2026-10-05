@@ -257,6 +257,7 @@ function copyEnemy(e: EnemySim, es: EnemyState) {
   es.maxPosture = e.maxPosture;
   es.postureBrokenUntil = e.postureBrokenUntil;
   es.guardUp = e.guardUp;
+  es.rallied = e.rallied;
 }
 
 function sanitizeName(name: unknown): string {

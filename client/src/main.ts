@@ -174,7 +174,7 @@ function draw(dt: number) {
     const def = ENEMY_KINDS[e.kind];
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
     const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
-    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, aim, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp });
+    view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, aim, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp, rallied: e.rallied });
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
@@ -193,7 +193,7 @@ function draw(dt: number) {
     dead: me.hp <= 0,
     banner: downBanner(me, now),
     enemyLabel: nearest
-      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : ""}`
+      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
       : total > 0
         ? "Room clear"
         : "No enemies",
@@ -292,7 +292,7 @@ function describeEvent(e: SimEvent): string {
 }
 
 const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
-const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger" };
+const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger", packLeader: "Pack Leader" };
 
 function kindName(kind: EnemyKind): string {
   return KIND_NAMES[kind] ?? kind;

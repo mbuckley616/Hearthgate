@@ -85,6 +85,20 @@ export interface EnemyDef {
   frontGuard?: number;
   /** A rush at a target out of reach (the Charger); absent for kinds that only swing. */
   charge?: ChargeDef;
+  /** Rallies the enemies near it (the Pack Leader); absent for kinds that do not lead. */
+  rally?: RallyDef;
+}
+
+/**
+ * A rally: every other living enemy within `radius` of a living leader is rallied, moving
+ * `speedMult` faster and hitting `damageMult` harder. While any of them is rallied the leader
+ * hangs back `holdBack` metres from its target instead of closing to swing.
+ */
+export interface RallyDef {
+  radius: number;
+  speedMult: number;
+  damageMult: number;
+  holdBack: number;
 }
 
 /**
@@ -172,7 +186,31 @@ export const CHARGER: EnemyDef = {
   charge: { minRange: 5, maxRange: 14, everyMs: 7000, aimMs: 900, speed: 12, damage: 30, wallStunMs: 2000 }
 };
 
-export const ENEMY_KINDS = { goblin: GOBLIN, shieldbearer: SHIELDBEARER, charger: CHARGER } as const satisfies Record<string, EnemyDef>;
+/**
+ * The Pack Leader: designed in The Old Gates ("buffs nearby enemies") and never built there.
+ * A goblin chief with a banner: the goblins around it are quicker and hit a third harder, and
+ * it stays behind them. The answer is to reach it, through or round the pack (a Charger's
+ * lane, a bow, a flank), and the pack is ordinary goblins again the moment it falls.
+ */
+export const PACK_LEADER: EnemyDef = {
+  hp: 90,
+  radius: 0.55,
+  speed: 3.2,
+  aggroRange: 14,
+  attackRange: 1.8,
+  attackArc: Math.PI * 0.8,
+  windupMs: 650,
+  recoverMs: 600,
+  damage: 15,
+  rally: { radius: 7, speedMult: 1.25, damageMult: 1.35, holdBack: 5 }
+};
+
+export const ENEMY_KINDS = {
+  goblin: GOBLIN,
+  shieldbearer: SHIELDBEARER,
+  charger: CHARGER,
+  packLeader: PACK_LEADER
+} as const satisfies Record<string, EnemyDef>;
 export type EnemyKind = keyof typeof ENEMY_KINDS;
 
 /**
@@ -499,6 +537,10 @@ export interface EnemySim {
   chargeReadyAt: number;
   /** Metres left in the current charge. */
   chargeLeft: number;
+  /** Near a living Pack Leader this tick (set by stepEnemies before anyone moves). */
+  rallied: boolean;
+  /** A leader with at least one rallied enemy this tick. */
+  leading: boolean;
   spawnX: number;
   spawnZ: number;
   spawnFacing: number;
@@ -596,6 +638,8 @@ export function createEnemy(
     guardUp: def.frontGuard !== undefined,
     chargeReadyAt: 0,
     chargeLeft: 0,
+    rallied: false,
+    leading: false,
     spawnX: x,
     spawnZ: z,
     spawnFacing: facing
@@ -633,6 +677,8 @@ export function resetEnemy(e: EnemySim): void {
   e.guardUp = ENEMY_KINDS[e.kind].frontGuard !== undefined;
   e.chargeReadyAt = 0;
   e.chargeLeft = 0;
+  e.rallied = false;
+  e.leading = false;
 }
 
 /** An input that does nothing, used when a client sent nothing this tick. */
@@ -1207,7 +1253,10 @@ export function stepEnemy(
         enemy.chargeReadyAt = now + c.everyMs;
       } else if (!hasState(enemy.states, "rooted", now)) {
         // Straight at the target; a wall in the way turns the step into a slide along it.
-        const step = Math.min(def.speed * dt, dist - def.attackRange * 0.9);
+        // A leader with a rallied pack stops short and lets the pack go in.
+        const stopAt = def.rally && enemy.leading ? def.rally.holdBack : def.attackRange * 0.9;
+        const speed = def.speed * (enemy.rallied ? rallyOf(enemy).speedMult : 1);
+        const step = Math.max(0, Math.min(speed * dt, dist - stopAt));
         enemy.x += (vx / dist) * step;
         enemy.z += (vz / dist) * step;
         collideWalls(enemy, def.radius, level);
@@ -1221,7 +1270,8 @@ export function stepEnemy(
       enemy.phaseUntil = now + def.recoverMs;
       if (target && isAlive(target) && !isDodging(target, now)) {
         if (inCone(enemy, target, def.attackRange * 1.15, def.attackArc, PLAYER.radius)) {
-          events.push(...strikePlayer(enemy, target, def.damage, now));
+          const blow = enemy.rallied ? Math.round(def.damage * rallyOf(enemy).damageMult) : def.damage;
+          events.push(...strikePlayer(enemy, target, blow, now));
         }
       }
       break;
@@ -1381,9 +1431,36 @@ export function stepEnemies(
 ): SimEvent[] {
   const events: SimEvent[] = [];
   const enemies = [...enemyList];
+  updateRallies(enemies);
   for (const e of enemies) events.push(...stepEnemy(e, players, now, dtMs, level));
   separateEnemies(enemies, level);
   return events;
+}
+
+/**
+ * Who is rallied this tick, from where everyone stood at its start, so the order enemies
+ * step in cannot change it. Leaders do not rally each other.
+ */
+export function updateRallies(enemies: readonly EnemySim[]): void {
+  const leaders = enemies.filter((l) => isEnemyAlive(l) && ENEMY_KINDS[l.kind].rally);
+  for (const e of enemies) {
+    e.rallied = false;
+    e.leading = false;
+  }
+  for (const l of leaders) {
+    const r = ENEMY_KINDS[l.kind].rally!;
+    for (const e of enemies) {
+      if (e === l || !isEnemyAlive(e) || ENEMY_KINDS[e.kind].rally) continue;
+      if (Math.hypot(e.x - l.x, e.z - l.z) > r.radius) continue;
+      e.rallied = true;
+      l.leading = true;
+    }
+  }
+}
+
+/** The rally a rallied enemy is under. The Pack Leader is the only leader; a second kind would record which leader rallied it. */
+function rallyOf(_e: EnemySim): RallyDef {
+  return PACK_LEADER.rally!;
 }
 
 /** Bring dead players back at their spawn point once their timer is up. Server only. */

@@ -154,7 +154,9 @@ export const YARD: Level = {
     // North of the start, out of aggro until someone walks up: the fight that needs two.
     { kind: "shieldbearer", x: 0, z: 15, facing: Math.PI },
     // The far south-east corner, open ground in front: room to see its lane and step out of it.
-    { kind: "charger", x: 14, z: -15, facing: -Math.PI / 4 }
+    { kind: "charger", x: 14, z: -15, facing: -Math.PI / 4 },
+    // Behind the south-west goblin, close enough to rally it.
+    { kind: "packLeader", x: -15, z: -13, facing: Math.PI / 4 }
   ]
 };
 

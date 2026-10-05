@@ -59,6 +59,8 @@ export class EnemyState extends Schema {
   @type("number") postureBrokenUntil = 0;
   /** A Shieldbearer's shield is raised. */
   @type("boolean") guardUp = false;
+  /** Near a living Pack Leader: quicker and harder-hitting. */
+  @type("boolean") rallied = false;
 }
 
 export class DungeonState extends Schema {
