@@ -486,6 +486,8 @@ export interface InputFrame {
   use?: boolean;
   /** Block held this tick (held, not a press); absent means no. */
   block?: boolean;
+  /** Cycle the bow's lock-on to the next target this tick (a press); absent means no. */
+  cycle?: boolean;
 }
 
 export interface PlayerSim {
@@ -537,6 +539,8 @@ export interface PlayerSim {
   knockUntil: number;
   knockDx: number;
   knockDz: number;
+  /** The enemy the bow is locked on to ("" for soft auto-targeting). Set by cycleLock, server only. */
+  lockId: string;
   spawnX: number;
   spawnZ: number;
 }
@@ -650,6 +654,7 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     knockUntil: 0,
     knockDx: 0,
     knockDz: 0,
+    lockId: "",
     spawnX: x,
     spawnZ: z
   };
@@ -748,7 +753,8 @@ export function isValidInput(v: unknown): v is InputFrame {
     typeof f.dodge === "boolean" &&
     (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS)) &&
     (f.use === undefined || typeof f.use === "boolean") &&
-    (f.block === undefined || typeof f.block === "boolean")
+    (f.block === undefined || typeof f.block === "boolean") &&
+    (f.cycle === undefined || typeof f.cycle === "boolean")
   );
 }
 
@@ -996,6 +1002,54 @@ export function inCone(
   return cos >= Math.cos(arc / 2);
 }
 
+/**
+ * The bow's lock-on cycle (design doc, "Targeting": ranged weapons use a lock-on cycle
+ * rather than free aim, so no mouse is needed). The candidates are the living enemies in
+ * bow range with a clear line, in any direction, nearest first. A press moves the lock to
+ * the next one; past the last it goes back to soft auto-targeting (""), so the same key
+ * also lets go. A lock holds while its enemy lives and stays within `keepRangeMult` of the
+ * bow's range; a wall between them makes the shot fall back to the cone until it clears.
+ */
+export const LOCK_ON = {
+  keepRangeMult: 1.25
+} as const;
+
+/** Who a press of the cycle key can lock on to: in bow range, in sight, alive; nearest first, ids breaking ties. */
+export function lockCandidates(p: PlayerSim, enemies: Iterable<EnemySim>, level: Level): EnemySim[] {
+  const range = WEAPON_CLASSES.bow.range;
+  const found: { e: EnemySim; d: number }[] = [];
+  for (const e of enemies) {
+    if (!isEnemyAlive(e)) continue;
+    const d = Math.hypot(e.x - p.x, e.z - p.z);
+    if (d > range + ENEMY_KINDS[e.kind].radius || !lineClear(p, e, level)) continue;
+    found.push({ e, d });
+  }
+  found.sort((a, b) => a.d - b.d || (a.e.id < b.e.id ? -1 : 1));
+  return found.map((f) => f.e);
+}
+
+/** A press of the cycle key. Only a bow locks on; anything else clears the lock. Server only. */
+export function cycleLock(p: PlayerSim, enemies: Iterable<EnemySim>, level: Level): void {
+  if (weaponClassOf(p.weapon) !== "bow" || !isAlive(p)) {
+    p.lockId = "";
+    return;
+  }
+  const list = lockCandidates(p, enemies, level);
+  const at = list.findIndex((e) => e.id === p.lockId);
+  // From auto (or a lock no longer in the list) to the nearest; from the last back to auto.
+  p.lockId = at === -1 ? (list[0]?.id ?? "") : (list[at + 1]?.id ?? "");
+}
+
+/** Drop locks whose enemy died or got too far away, or whose holder fell. Server only, once a tick. */
+export function dropStaleLocks(players: Iterable<PlayerSim>, enemies: Map<string, EnemySim>): void {
+  const keep = WEAPON_CLASSES.bow.range * LOCK_ON.keepRangeMult;
+  for (const p of players) {
+    if (p.lockId === "") continue;
+    const e = enemies.get(p.lockId);
+    if (!e || !isEnemyAlive(e) || !isAlive(p) || weaponClassOf(p.weapon) !== "bow" || Math.hypot(e.x - p.x, e.z - p.z) > keep) p.lockId = "";
+  }
+}
+
 /** Living enemies inside the cone, nearest first (soft auto-targeting, design doc). */
 export function enemiesInCone(from: PlayerSim, enemies: readonly EnemySim[], range: number, arc: number): EnemySim[] {
   const hits: { e: EnemySim; d: number }[] = [];
@@ -1075,7 +1129,13 @@ export function resolvePlayerAttacks(
     const swing = WEAPON_CLASSES[cls];
     const stats = weaponStats(p.weapon, level.tier ?? 1);
     let targets = enemiesInCone(p, enemies, swing.range, swing.arc);
-    if (cls === "bow") targets = targets.filter((e) => lineClear(p, e, level));
+    if (cls === "bow") {
+      // A lock in range and in sight takes the shot wherever the archer faces; else the cone.
+      const locked = p.lockId ? enemies.find((e) => e.id === p.lockId) : undefined;
+      const range = swing.range + (locked ? ENEMY_KINDS[locked.kind].radius : 0);
+      if (locked && isEnemyAlive(locked) && Math.hypot(locked.x - p.x, locked.z - p.z) <= range && lineClear(p, locked, level)) targets = [locked];
+      else targets = targets.filter((e) => lineClear(p, e, level));
+    }
     // A weapon swing is a plain hit: it consumes nothing, but a Marked target takes more.
     const tags: HitTag[] = [stats.style];
     for (const target of targets.slice(0, stats.cleaveTargets)) {
@@ -1596,6 +1656,7 @@ export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, n
     enc.stairsOpen = false;
   }
   events.push(...stepStairs(enc, players, dtMs));
+  dropStaleLocks(players.values(), enc.enemies);
   events.push(...stepRespawns(players.values(), now));
   stepPosture(players.values(), enc.enemies.values(), now, dtMs);
   if (enc.resetAt !== 0 && now >= enc.resetAt) {

@@ -8,6 +8,7 @@ import {
   createEncounter,
   createInputBucket,
   createPlayer,
+  cycleLock,
   gearName,
   isValidInput,
   levelById,
@@ -181,6 +182,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const level = this.sim.encounter.level;
 
     const users: PlayerSim[] = [];
+    const cyclers: PlayerSim[] = [];
     for (const [id, p] of this.sim.players) {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
@@ -191,12 +193,15 @@ export class DungeonRoom extends Room<DungeonState> {
       } else {
         for (const f of frames) applyInput(p, f, now, TICK_MS, level);
         if (frames.some((f) => f.use)) users.push(p);
+        if (frames.some((f) => f.cycle)) cyclers.push(p);
       }
     }
 
     const events: SimEvent[] = [];
     // After everyone has moved this tick, so a draught reaches a body by where it lies now.
     for (const p of users) events.push(...useDraught(p, this.sim.players.values()));
+    // The same for the lock-on: the candidates are measured from where the archer stands now.
+    for (const p of cyclers) cycleLock(p, this.sim.encounter.enemies.values(), level);
     events.push(...stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS));
 
     this.syncState();
@@ -255,6 +260,7 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.knockDz = p.knockDz;
   ps.weaponType = p.weapon.type;
   ps.weaponTier = p.weapon.tier;
+  ps.lockId = p.lockId;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */

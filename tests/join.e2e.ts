@@ -59,3 +59,30 @@ test("a scripted join skips the screen and takes ?weapon= and ?tier=", async ({ 
   expect(w).toEqual({ type: "warHammer", tier: 3 });
   await expect(page.locator(".join")).toHaveCount(0);
 });
+
+test("an archer's Tab locks on to the goblin, and the HUD says so", async ({ page }) => {
+  await page.goto("/?name=Archer&weapon=bow&tier=1&level=field");
+  await weaponOf(page);
+  // The field's goblin is at (9, -9); walk toward it until it is in bow range (and it comes to us).
+  await page.keyboard.down("KeyD");
+  await page.keyboard.down("KeyW");
+  await page.waitForTimeout(1500);
+  await page.keyboard.up("KeyD");
+  await page.keyboard.up("KeyW");
+  // One press once the goblin is well inside bow range (12 m): each press moves the lock on, so a second
+  // press in flight would let go again.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = (window as any).__hg;
+          const g = Object.values(h.enemies)[0] as { pose: { x: number; z: number } | null };
+          return g?.pose ? Math.hypot(g.pose.x - h.me.x, g.pose.z - h.me.z) : 99;
+        }),
+      { timeout: 15_000 }
+    )
+    .toBeLessThan(10);
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => (window as any).__hg.me.lockId as string), { timeout: 5_000 }).not.toBe("");
+  await expect(page.locator("#hud-enemy-label")).toContainText("(locked)");
+});

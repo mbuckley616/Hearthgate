@@ -251,6 +251,7 @@ async function main() {
     await sleep(300);
 
     await weaponPick(client);
+    await lockOn(client);
     await yard(client);
     await warrens(client);
     await stress(client);
@@ -323,8 +324,42 @@ async function weaponPick(client: Client) {
     fail(`weapon pick: Foxtrot's swing recovers in ${swung.attackUntil - swung.attackHitAt} ms, not the two-hander's ${two.durationMs - two.windupMs}`);
   }
   console.log("ok: weapon pick: a Claymore at tier 5 reaches both clients and swings two-handed; an unknown pick is a tier-1 sword");
+
   await g.leave();
   await f.leave();
+  await sleep(300);
+}
+
+/**
+ * The bow's lock-on, alone in a fresh field: Hotel spawns at (-3, 3), 17 m from the goblin at (9, -9), so a
+ * press finds nothing; after walking a second toward it a press locks it, and the next goes back to auto.
+ */
+async function lockOn(client: Client) {
+  const h = await client.create("dungeon", { name: "Hotel", level: "field", weapon: "bow", tier: 1 });
+  let hState: any = null;
+  h.onStateChange((s: any) => (hState = s));
+  let hseq = 0;
+  const press = async () => {
+    h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, cycle: true });
+    await sleep(300);
+    return hState.players.get(h.sessionId);
+  };
+  await sleep(300);
+  const far = await press();
+  if (far.lockId !== "") fail(`lock-on: Hotel at (${far.x}, ${far.z}) locked "${far.lockId}" with nothing in range`);
+  for (let i = 0; i < 20; i++) {
+    h.send("input", { seq: ++hseq, dx: 0.707, dy: -0.707, attack: false, dodge: false });
+    await sleep(TICK_MS);
+  }
+  const goblinId = [...hState.enemies.keys()][0];
+  const near = await press();
+  const gob = hState.enemies.get(goblinId);
+  const d = Math.hypot(gob.x - near.x, gob.z - near.z);
+  if (near.lockId !== goblinId) fail(`lock-on: ${d.toFixed(1)} m from the goblin Hotel's lock is "${near.lockId}", not ${goblinId}`);
+  const again = await press();
+  if (again.lockId !== "") fail(`lock-on: a second press with one target left the lock on "${again.lockId}"`);
+  console.log(`ok: lock-on: nothing in range at 17 m, the goblin locked at ${d.toFixed(1)} m, back to auto on the next press`);
+  await h.leave();
   await sleep(300);
 }
 

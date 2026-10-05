@@ -66,7 +66,8 @@ const PALETTE = {
   wall: 0x9a978c,
   telegraph: 0xd9534f,
   swing: 0xfff1c2,
-  guard: 0x9fb8d9
+  guard: 0x9fb8d9,
+  lock: 0xffd54a
 };
 
 const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
@@ -349,6 +350,9 @@ export class View {
   /** Nudges started so far; read by the e2e test through the debug handle. */
   nudges = 0;
   private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /** The bow's target: a ring on the ground under it, bright for a lock, faint for the auto pick. */
+  private lockRing: THREE.Mesh;
+  private readonly lockMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -356,6 +360,12 @@ export class View {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
+
+    this.lockRing = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 28), this.lockMat);
+    this.lockRing.rotation.x = -Math.PI / 2;
+    this.lockRing.position.y = 0.07;
+    this.lockRing.visible = false;
+    this.scene.add(this.lockRing);
 
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
     this.camera.position.copy(this.camPos);
@@ -451,6 +461,15 @@ export class View {
       this.stairs.receiveShadow = true;
       this.walls.add(this.stairs);
     }
+  }
+
+  /** The bow's target marker: under (x, z), solid for a lock and faint for the auto pick; null hides it. */
+  setTargetMarker(at: Pose | null, locked: boolean) {
+    this.lockRing.visible = at !== null;
+    if (!at) return;
+    this.lockRing.position.x = at.x;
+    this.lockRing.position.z = at.z;
+    this.lockMat.opacity = locked ? 0.95 : 0.35;
   }
 
   /** Light the stairs while they are open, brighter as the party's hold fills. */

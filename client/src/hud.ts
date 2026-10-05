@@ -80,6 +80,7 @@ export class Hud {
         <span><b>1 2 3</b> abilities</span>
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
         <span><b>E</b> revive draught</span>
+        <span><b>Tab</b> bow lock-on</span>
         <span>Gamepad: stick, X, A; Y B RB; LB; LT block</span>
       </div>
     `;

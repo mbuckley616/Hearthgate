@@ -9,7 +9,8 @@ import type { InputFrame } from "@hearthgate/shared";
  * read if one is connected: left stick moves, X attacks, A dodges, the
  * ability slots are Y, B and RB (keys 1, 2 and 3), LB (key E) uses a
  * Revive Draught on a dead teammate in reach, and LT (keys L or Q) is block,
- * held: raise it just before a blow lands to parry.
+ * held: raise it just before a blow lands to parry. With a bow, RT (keys Tab or R)
+ * cycles the lock-on through the enemies in range, then back to auto.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
@@ -18,6 +19,8 @@ const PAD_SLOT_BUTTONS = [3, 1, 5];
 const PAD_USE_BUTTON = 4;
 /** Gamepad button for block (standard mapping: LT, an analogue trigger read as pressed). */
 const PAD_BLOCK_BUTTON = 6;
+/** Gamepad button for the bow's lock-on cycle (standard mapping: RT). */
+const PAD_CYCLE_BUTTON = 7;
 export class Input {
   private down = new Set<string>();
   private attackPressed = false;
@@ -28,6 +31,8 @@ export class Input {
   private padSlotWasDown = [false, false, false];
   private usePressed = false;
   private padUseWasDown = false;
+  private cyclePressed = false;
+  private padCycleWasDown = false;
   private seq = 0;
 
   constructor(target: Window = window) {
@@ -40,6 +45,7 @@ export class Input {
       const slot = slotKey(code);
       if (slot) this.abilityPressed = slot;
       if (isUseKey(code)) this.usePressed = true;
+      if (isCycleKey(code)) this.cyclePressed = true;
       if (isGameKey(code)) e.preventDefault();
     });
     target.addEventListener("keyup", (e) => {
@@ -74,6 +80,8 @@ export class Input {
     this.dodgePressed = false;
     this.abilityPressed = 0;
     this.usePressed = false;
+    let cycle = this.cyclePressed;
+    this.cyclePressed = false;
 
     const pad = firstGamepad();
     if (pad) {
@@ -98,6 +106,9 @@ export class Input {
       if (padUse && !this.padUseWasDown) use = true;
       this.padUseWasDown = padUse;
       if (pad.buttons[PAD_BLOCK_BUTTON]?.pressed) block = true;
+      const padCycle = pad.buttons[PAD_CYCLE_BUTTON]?.pressed ?? false;
+      if (padCycle && !this.padCycleWasDown) cycle = true;
+      this.padCycleWasDown = padCycle;
     }
 
     const len = Math.hypot(dx, dy);
@@ -107,7 +118,7 @@ export class Input {
     }
 
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle };
   }
 }
 
@@ -121,6 +132,11 @@ function isAttackKey(code: string): boolean {
 
 function isDodgeKey(code: string): boolean {
   return code === "ShiftLeft" || code === "ShiftRight" || code === "KeyK";
+}
+
+/** Tab is the usual target-cycle key; R for keyboards where Tab is awkward. */
+function isCycleKey(code: string): boolean {
+  return code === "Tab" || code === "KeyR";
 }
 
 function isUseKey(code: string): boolean {
@@ -139,6 +155,8 @@ function isGameKey(code: string): boolean {
     isUseKey(code) ||
     code === "KeyL" ||
     code === "KeyQ" ||
+    code === "Tab" ||
+    code === "KeyR" ||
     code.startsWith("Arrow") ||
     code === "Space" ||
     code === "KeyW" ||

@@ -4,8 +4,13 @@ import {
   PLAYER,
   TICK_MS,
   WEAPON_CLASSES,
+  LOCK_ON,
   abilityInSlot,
   applyInput,
+  cycleLock,
+  dropStaleLocks,
+  isValidInput,
+  lockCandidates,
   createEncounter,
   createEnemy,
   createPlayer,
@@ -173,5 +178,79 @@ describe("the weapon pick (Michael, A, 2026-10-05)", () => {
     const swordsman = armed({ kind: "weapon", type: "sword", tier: 1 });
     applyInput(swordsman, frame, 100, TICK_MS);
     expect(swordsman.abilityUntil).toBeGreaterThan(100);
+  });
+});
+
+describe("the bow's lock-on cycle", () => {
+  // The archer stands at the origin facing +z. A wall at z = -4 hides (0, -6); (0, 20) is out of range.
+  const walled: Level = { ...OPEN_FIELD, walls: [{ x: 0, z: -4, hw: 1, hd: 0.3 }] };
+  const pack = () => [goblinAt("ahead", 0, 3), goblinAt("back", -3, -3), goblinAt("side", 9, 0), goblinAt("walled", 0, -6), goblinAt("far", 0, 20)];
+  const bow = () => armed({ kind: "weapon", type: "bow", tier: 1 });
+
+  it("cycles nearest first through every enemy in range and sight, in any direction, then back to auto", () => {
+    const p = bow();
+    const enemies = pack();
+    expect(lockCandidates(p, enemies, walled).map((e) => e.id)).toEqual(["ahead", "back", "side"]);
+    const seen: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      cycleLock(p, enemies, walled);
+      seen.push(p.lockId);
+    }
+    expect(seen).toEqual(["ahead", "back", "side", "", "ahead"]);
+  });
+
+  it("only a bow locks on", () => {
+    const p = armed({ kind: "weapon", type: "claymore", tier: 1 });
+    p.lockId = "ahead";
+    cycleLock(p, pack(), walled);
+    expect(p.lockId).toBe("");
+  });
+
+  it("a locked shot goes to the lock wherever the archer faces", () => {
+    const p = bow();
+    const enemies = pack();
+    p.lockId = "back"; // behind and to the left; "ahead" is in the cone
+    swingAt(p, 0);
+    const events = resolvePlayerAttacks([p], enemies, WEAPON_CLASSES.bow.windupMs, walled);
+    expect(events.filter((e) => e.kind === "playerHit").map((e) => (e.kind === "playerHit" ? e.enemyId : ""))).toEqual(["back"]);
+    expect(enemies[0].hp).toBe(GOBLIN.hp);
+  });
+
+  it("a lock out of sight falls back to the cone without letting go", () => {
+    const p = bow();
+    const enemies = pack();
+    p.lockId = "walled";
+    swingAt(p, 0);
+    const events = resolvePlayerAttacks([p], enemies, WEAPON_CLASSES.bow.windupMs, walled);
+    expect(events.find((e) => e.kind === "playerHit")).toMatchObject({ enemyId: "ahead" });
+    expect(p.lockId).toBe("walled");
+  });
+
+  it("the lock lets go when its enemy dies or gets well out of range", () => {
+    const p = bow();
+    const enemies = pack();
+    const byId = new Map(enemies.map((e) => [e.id, e]));
+    p.lockId = "side";
+    dropStaleLocks([p], byId);
+    expect(p.lockId).toBe("side");
+    byId.get("side")!.x = WEAPON_CLASSES.bow.range * LOCK_ON.keepRangeMult + 1;
+    dropStaleLocks([p], byId);
+    expect(p.lockId).toBe("");
+    p.lockId = "ahead";
+    byId.get("ahead")!.hp = 0;
+    byId.get("ahead")!.phase = "dead";
+    dropStaleLocks([p], byId);
+    expect(p.lockId).toBe("");
+  });
+
+  it("a cycle press is a valid input and prediction ignores it", () => {
+    const frame = { seq: 1, dx: 0.5, dy: 0, attack: false, dodge: false, cycle: true };
+    expect(isValidInput(frame)).toBe(true);
+    expect(isValidInput({ ...frame, cycle: "yes" })).toBe(false);
+    const a = bow();
+    const b = bow();
+    applyInput(a, frame, 100, TICK_MS);
+    applyInput(b, { ...frame, cycle: false }, 100, TICK_MS);
+    expect(a).toEqual(b);
   });
 });

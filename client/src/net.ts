@@ -371,6 +371,8 @@ export class Net {
     me.knockDz = p.knockDz ?? 0;
     // The server's checked weapon, before the replay: a two-hander's swing times differ.
     syncWeapon(me.weapon, p);
+    // Server only (cycleLock): prediction never moves it, so it is copied, not replayed.
+    me.lockId = typeof p.lockId === "string" ? p.lockId : "";
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
     let t = serverTime;

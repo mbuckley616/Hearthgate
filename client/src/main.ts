@@ -7,6 +7,8 @@ import {
   slotsFor,
   weaponClassOf,
   gearName,
+  inCone,
+  lineClear,
   weaponFromPick,
   type WeaponGear,
   type AbilityId,
@@ -24,7 +26,7 @@ import {
 } from "@hearthgate/shared";
 import { Input } from "./input";
 import { pickWeapon } from "./join";
-import { Net } from "./net";
+import { Net, type Pose } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
 import { Sound } from "./sound";
@@ -180,6 +182,9 @@ function draw(dt: number) {
   }
   for (const id of view.playerIds()) if (!live.has(id)) view.removePlayer(id);
 
+  // The bow's target: the lock if there is one, else whoever a shot would go to now.
+  markBowTarget(myPose);
+
   // The enemies.
   const liveEnemies = new Set<string>();
   for (const e of net.enemies.values()) {
@@ -199,7 +204,10 @@ function draw(dt: number) {
   // HUD: the nearest living enemy's bar, and how many are left.
   const t = performance.now();
   while (recentEvents.length && recentEvents[0].until < t) recentEvents.shift();
-  const nearest = net.nearestEnemy(myPose.x, myPose.z);
+  // A bow's lock takes the enemy panel; otherwise it shows the nearest.
+  const lockedView = me.lockId ? net.enemies.get(me.lockId) : undefined;
+  const nearest = lockedView && lockedView.phase !== "dead" ? { view: lockedView } : net.nearestEnemy(myPose.x, myPose.z);
+  const isLocked = nearest !== null && nearest.view === lockedView;
   const left = net.enemiesAlive();
   const total = net.enemies.size;
   hud.update({
@@ -210,7 +218,7 @@ function draw(dt: number) {
     dead: me.hp <= 0,
     banner: downBanner(me, now),
     enemyLabel: nearest
-      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
+      ? `${kindName(nearest.view.kind)}${isLocked ? " (locked)" : ""}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
       : net.stairsOpen
         ? `Stairs open: everyone onto them${net.descendMs > 0 ? ` (${Math.round((100 * net.descendMs) / STAIRS.holdMs)}%)` : ""}`
         : total > 0
@@ -241,7 +249,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier } },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
@@ -331,6 +339,35 @@ function enemyName(id: string): string {
 
 function capital(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Where the archer's marker goes: on the locked enemy (solid), or for an unlocked bow on the
+ * nearest living enemy in its cone with a clear line (faint), which is the server's auto pick
+ * as near as the interpolated poses can tell. Presentation only; the server decides the shot.
+ */
+function markBowTarget(from: Pose) {
+  const me = net.me;
+  if (weaponClassOf(me.weapon) !== "bow" || isDead(me) || isDowned(me)) return view.setTargetMarker(null, false);
+  if (me.lockId) {
+    const v = net.enemies.get(me.lockId);
+    const pose = v && v.phase !== "dead" ? net.remotePose(v) : null;
+    if (pose) return view.setTargetMarker(pose, true);
+  }
+  const bow = WEAPON_CLASSES.bow;
+  let best: Pose | null = null;
+  let bestD = Infinity;
+  for (const v of net.enemies.values()) {
+    if (v.phase === "dead") continue;
+    const pose = net.remotePose(v);
+    if (!pose || !inCone(from, pose, bow.range, bow.arc, ENEMY_KINDS[v.kind].radius) || !lineClear(from, pose, net.level)) continue;
+    const d = Math.hypot(pose.x - from.x, pose.z - from.z);
+    if (d < bestD) {
+      bestD = d;
+      best = pose;
+    }
+  }
+  view.setTargetMarker(best, false);
 }
 
 /** The swing's arc shows from the moment its hit resolves until 150 ms before the swing ends. */
