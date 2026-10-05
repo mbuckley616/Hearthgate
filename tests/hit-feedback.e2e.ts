@@ -8,7 +8,7 @@ test("hits nudge the camera and play without errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
-  await page.goto("/?name=Feel");
+  await page.goto("/?name=Feel&level=yard"); // the yard's first goblin stands at (9, -9)
   await expect(page.locator("#hud-party")).toHaveAttribute("data-players", /[1-8]/, { timeout: 15_000 });
 
   // The goblin spawns at (9, -9): head right and up-screen until it aggroes.

@@ -69,6 +69,10 @@ export class DungeonState extends Schema {
   @type({ map: EnemyState }) enemies = new MapSchema<EnemyState>();
   /** Which level (shared/src/level.ts LEVELS) the room runs; the client builds its walls from it. */
   @type("string") levelId = "";
+  /** A level with stairs: open once every enemy is down; how long the party has stood on them; which floor. */
+  @type("boolean") stairsOpen = false;
+  @type("number") descendMs = 0;
+  @type("number") floor = 1;
   /** Server tick counter; simulation time = tick * TICK_MS. */
   @type("number") tick = 0;
 }

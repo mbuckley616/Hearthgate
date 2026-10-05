@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ABILITIES, ARENA_HALF, DOWNS, ENEMY_KINDS, PLAYER, nudgeOffset, type EnemyKind, type Level } from "@hearthgate/shared";
+import { ABILITIES, ARENA_HALF, DOWNS, ENEMY_KINDS, PLAYER, STAIRS, nudgeOffset, type EnemyKind, type Level } from "@hearthgate/shared";
 import type { Pose } from "./net";
 
 export interface PlayerVisual {
@@ -272,6 +272,8 @@ export class View {
   /** The level's interior walls, rebuilt when the room names a different level. */
   private walls = new THREE.Group();
   private wallsFor = "";
+  /** The level's stairs (null without): a dark dais, lit while open. */
+  private stairs: THREE.Mesh | null = null;
   private readonly wallMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true });
   private camTarget = new THREE.Vector3();
   private camPos = new THREE.Vector3(0, 13, 9);
@@ -377,6 +379,22 @@ export class View {
       mesh.receiveShadow = true;
       this.walls.add(mesh);
     }
+    this.stairs = null;
+    if (level.stairs) {
+      this.stairs = new THREE.Mesh(
+        new THREE.CylinderGeometry(STAIRS.radius, STAIRS.radius, 0.12, 24),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a44, emissive: 0x000000, roughness: 0.9 })
+      );
+      this.stairs.position.set(level.stairs.x, 0.06, level.stairs.z);
+      this.stairs.receiveShadow = true;
+      this.walls.add(this.stairs);
+    }
+  }
+
+  /** Light the stairs while they are open, brighter as the party's hold fills. */
+  setStairs(open: boolean, progress: number) {
+    if (!this.stairs) return;
+    (this.stairs.material as THREE.MeshStandardMaterial).emissive.setHex(open ? (progress > 0 ? 0xc9a646 : 0x7a6420) : 0x000000);
   }
 
   ensurePlayer(id: string, name: string, color: string) {

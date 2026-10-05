@@ -121,6 +121,10 @@ export class Net {
   rttMs = 0;
   connected = false;
   lastServerTick = 0;
+  /** The floor's stairs: open, how long the party has stood on them (ms), which floor. */
+  stairsOpen = false;
+  descendMs = 0;
+  floor = 1;
   /** Count of reconciliations that moved us more than a few centimetres (debug HUD). */
   corrections = 0;
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
@@ -239,6 +243,9 @@ export class Net {
     const serverTime = state.tick * TICK_MS;
     const at = performance.now();
     this.lastServerTick = state.tick;
+    this.stairsOpen = state.stairsOpen === true;
+    this.descendMs = state.descendMs ?? 0;
+    this.floor = state.floor ?? 1;
     // Every patch is a clock sample too: it left the server at the time it is stamped with.
     addArrivalSample(this.clock, at, serverTime);
     if (typeof state.levelId === "string" && state.levelId !== this.level.id) this.level = levelById(state.levelId);

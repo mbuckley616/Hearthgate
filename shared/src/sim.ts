@@ -13,7 +13,7 @@
  */
 
 import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
-import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, type Level } from "./level";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, type Level } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
 export { ARENA_HALF };
@@ -219,6 +219,17 @@ export type EnemyKind = keyof typeof ENEMY_KINDS;
  * `resetMs` the enemies return to their spawns for another go. Stairs replace the reset
  * when the Warrens floor lands.
  */
+/**
+ * The stairs (a level with `stairs`): open once every enemy on the floor is down; every
+ * standing player within `radius` for `holdMs` takes the party down. A proximity hold like
+ * the pickup, so it works the same on keyboard, gamepad and touch. Until a second floor
+ * exists, going down starts this one again: the enemies return and the draughts refill.
+ */
+export const STAIRS = {
+  radius: 2.5,
+  holdMs: 2000
+} as const;
+
 export const ROOM = {
   resetMs: 6000
 } as const;
@@ -541,6 +552,8 @@ export interface EnemySim {
   rallied: boolean;
   /** A leader with at least one rallied enemy this tick. */
   leading: boolean;
+  /** Index into the level's rooms of the room it spawned in (-1: the level has none). */
+  room: number;
   spawnX: number;
   spawnZ: number;
   spawnFacing: number;
@@ -552,6 +565,12 @@ export interface Encounter {
   enemies: Map<string, EnemySim>;
   /** When the cleared room's enemies return (0 while any is alive). */
   resetAt: number;
+  /** Every enemy is down and the level has stairs. */
+  stairsOpen: boolean;
+  /** How long every standing player has been on the open stairs. */
+  descendMs: number;
+  /** Which floor this is, from 1; going down the stairs adds one. */
+  floor: number;
 }
 
 export type SimEvent =
@@ -564,7 +583,9 @@ export type SimEvent =
   | { kind: "postureBroken"; enemyId: string; byId: string }
   | { kind: "playerKnocked"; playerId: string; enemyId: string }
   | { kind: "chargeWall"; enemyId: string }
-  | { kind: "roomCleared"; byId: string }
+  | { kind: "roomCleared"; byId: string; room: string }
+  | { kind: "floorCleared" }
+  | { kind: "floorDescended"; floor: number }
   | { kind: "roomReset" }
   | { kind: "playerDowned"; playerId: string }
   | { kind: "playerPickedUp"; playerId: string; byId: string }
@@ -640,6 +661,7 @@ export function createEnemy(
     chargeLeft: 0,
     rallied: false,
     leading: false,
+    room: -1,
     spawnX: x,
     spawnZ: z,
     spawnFacing: facing
@@ -651,13 +673,15 @@ export function createEnemies(level: Level): Map<string, EnemySim> {
   const m = new Map<string, EnemySim>();
   level.enemies.forEach((s, i) => {
     const id = `e${i + 1}`;
-    m.set(id, createEnemy(id, s.kind, s.x, s.z, s.facing));
+    const e = createEnemy(id, s.kind, s.x, s.z, s.facing);
+    e.room = roomAt(level, s.x, s.z);
+    m.set(id, e);
   });
   return m;
 }
 
 export function createEncounter(level: Level): Encounter {
-  return { level, enemies: createEnemies(level), resetAt: 0 };
+  return { level, enemies: createEnemies(level), resetAt: 0, stairsOpen: false, descendMs: 0, floor: 1 };
 }
 
 /** Back at the spawn, full health, forgetting everything. */
@@ -980,7 +1004,7 @@ export function resolvePlayerAttacks(
     e.hp = Math.max(0, e.hp - damage);
     e.hitFlashUntil = now + 120;
   };
-  // After the hit event: a kill, and the clear if it was the last one standing.
+  // After the hit event: a kill, and the clear if it was the last one standing in its room.
   const settle = (p: PlayerSim, e: EnemySim) => {
     if (e.hp > 0) return;
     e.phase = "dead";
@@ -988,8 +1012,8 @@ export function resolvePlayerAttacks(
     e.phaseUntil = 0;
     e.targetId = "";
     events.push({ kind: "enemyKilled", killerId: p.id, enemyId: e.id });
-    if (enemies.every((o) => !isEnemyAlive(o))) {
-      events.push({ kind: "roomCleared", byId: p.id });
+    if (enemies.every((o) => o.room !== e.room || !isEnemyAlive(o))) {
+      events.push({ kind: "roomCleared", byId: p.id, room: level.rooms?.[e.room]?.name ?? "" });
       events.push(...recoverOnClear(players, now));
     }
   };
@@ -1228,7 +1252,8 @@ export function stepEnemy(
 
   switch (enemy.phase) {
     case "idle": {
-      if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) <= def.aggroRange) {
+      // It has to see you: a room behind a wall sleeps until someone walks in.
+      if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) <= def.aggroRange && lineClear(enemy, target, level)) {
         enemy.phase = "chase";
       }
       break;
@@ -1463,6 +1488,26 @@ function rallyOf(_e: EnemySim): RallyDef {
   return PACK_LEADER.rally!;
 }
 
+/**
+ * The open stairs: when every standing player has stood on them for STAIRS.holdMs the party
+ * goes down. Until a second floor exists that starts this floor again: every enemy back at
+ * its post, the stairs shut, a draught each (DOWNS.draughtsPerFloor). Server only.
+ */
+export function stepStairs(enc: Encounter, players: Map<string, PlayerSim>, dtMs: number): SimEvent[] {
+  const stairs = enc.level.stairs;
+  if (!enc.stairsOpen || !stairs) return [];
+  const standing = [...players.values()].filter(isAlive);
+  const allOn = standing.length > 0 && standing.every((p) => Math.hypot(p.x - stairs.x, p.z - stairs.z) <= STAIRS.radius);
+  enc.descendMs = allOn ? enc.descendMs + dtMs : 0;
+  if (enc.descendMs < STAIRS.holdMs) return [];
+  enc.stairsOpen = false;
+  enc.descendMs = 0;
+  enc.floor++;
+  for (const e of enc.enemies.values()) resetEnemy(e);
+  for (const p of players.values()) p.draughts = DOWNS.draughtsPerFloor;
+  return [{ kind: "floorDescended", floor: enc.floor }];
+}
+
 /** Bring dead players back at their spawn point once their timer is up. Server only. */
 export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEvent[] {
   const events: SimEvent[] = [];
@@ -1498,10 +1543,23 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
 export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, now: number, dtMs: number): SimEvent[] {
   const events: SimEvent[] = [];
   events.push(...resolvePlayerAttacks(players.values(), enc.enemies.values(), now, enc.level));
-  if (events.some((e) => e.kind === "roomCleared")) enc.resetAt = now + ROOM.resetMs;
+  if (events.some((e) => e.kind === "enemyKilled") && [...enc.enemies.values()].every((e) => !isEnemyAlive(e))) {
+    // The floor is clear: the stairs open, or a level without them resets after a pause.
+    if (enc.level.stairs) {
+      enc.stairsOpen = true;
+      enc.descendMs = 0;
+      events.push({ kind: "floorCleared" });
+    } else {
+      enc.resetAt = now + ROOM.resetMs;
+    }
+  }
   events.push(...stepEnemies(enc.enemies.values(), players, now, dtMs, enc.level));
   events.push(...stepDowns(players.values(), enc.enemies.values(), now, dtMs));
-  if (events.some((e) => e.kind === "squadWiped")) enc.resetAt = 0; // the wipe already reset the enemies
+  if (events.some((e) => e.kind === "squadWiped")) {
+    enc.resetAt = 0; // the wipe already reset the enemies
+    enc.stairsOpen = false;
+  }
+  events.push(...stepStairs(enc, players, dtMs));
   events.push(...stepRespawns(players.values(), now));
   stepPosture(players.values(), enc.enemies.values(), now, dtMs);
   if (enc.resetAt !== 0 && now >= enc.resetAt) {

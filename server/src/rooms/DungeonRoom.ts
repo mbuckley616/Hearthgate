@@ -201,6 +201,10 @@ export class DungeonRoom extends Room<DungeonState> {
 
   private syncState() {
     this.state.tick = this.sim.tick;
+    const enc = this.sim.encounter;
+    this.state.stairsOpen = enc.stairsOpen;
+    this.state.descendMs = enc.descendMs;
+    this.state.floor = enc.floor;
     for (const [id, p] of this.sim.players) {
       const ps = this.state.players.get(id);
       if (ps) copyPlayer(p, ps);

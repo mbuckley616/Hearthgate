@@ -17,6 +17,8 @@
  *      re-open its parry window, the other client sees it, and letting go lowers it;
  *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
  *      walking into one of its walls is stopped by the server where the shared sim says;
+ *   6b. the Warrens: a room made with level "warrens" syncs its enemies, all asleep while the party
+ *      stands in the hall, the stairs shut and floor 1;
  *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -27,7 +29,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS, YARD } from "@hearthgate/shared";
+import { DOWNS, TICK_MS, WARRENS, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -249,6 +251,7 @@ async function main() {
     await sleep(300);
 
     await yard(client);
+    await warrens(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
@@ -262,7 +265,7 @@ async function main() {
  * must hold Delta at x = 5.1 (the wall's face less the player's radius) instead of letting them through.
  */
 async function yard(client: Client) {
-  const d = await client.create("dungeon", { name: "Delta" });
+  const d = await client.create("dungeon", { name: "Delta", level: "yard" });
   let dState: any = null;
   d.onStateChange((s: any) => (dState = s));
   await sleep(400);
@@ -294,9 +297,30 @@ async function yard(client: Client) {
   await sleep(300);
 }
 
+/** The Warrens floor (`?level=warrens`): its enemies arrive asleep, the stairs shut, floor 1. */
+async function warrens(client: Client) {
+  const w = await client.create("dungeon", { name: "Echo", level: "warrens" });
+  let wState: any = null;
+  w.onStateChange((s: any) => (wState = s));
+  await sleep(600);
+  if (!wState) fail("warrens: no state received");
+  if (wState.levelId !== "warrens" || wState.enemies.size !== WARRENS.enemies.length) {
+    fail(`warrens: expected ${WARRENS.enemies.length} enemies in the warrens, got ${wState.levelId} with ${wState.enemies.size}`);
+  }
+  let awake = 0;
+  wState.enemies.forEach((e: any) => {
+    if (e.phase !== "idle") awake++;
+  });
+  if (awake !== 0) fail(`warrens: ${awake} enemies woke with the party still in the hall`);
+  if (wState.stairsOpen !== false || wState.floor !== 1) fail(`warrens: stairs ${wState.stairsOpen}, floor ${wState.floor}`);
+  console.log(`ok: warrens room has ${wState.enemies.size} enemies asleep in their rooms, stairs shut, floor ${wState.floor}`);
+  await w.leave();
+  await sleep(300);
+}
+
 /** N scripted bots in one fresh yard room. Each walks a circle at its own phase, swings and dodges. */
 async function stress(client: Client) {
-  const first = await client.create("dungeon", { name: "Bot 1" });
+  const first = await client.create("dungeon", { name: "Bot 1", level: "yard" });
   const bots = [first];
   for (let i = 1; i < STRESS_BOTS; i++) bots.push(await client.joinById(first.roomId, { name: `Bot ${i + 1}` }));
 

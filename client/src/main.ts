@@ -9,6 +9,7 @@ import {
   HIT_FEEDBACK,
   PLAYER,
   POSTURE,
+  STAIRS,
   isPlayerStaggered,
   TICK_MS,
   isDead,
@@ -122,6 +123,7 @@ function draw(dt: number) {
   const now = net.predictedTime;
   const serverNow = net.serverNow();
   view.setLevel(net.level);
+  view.setStairs(net.stairsOpen, net.descendMs / STAIRS.holdMs);
 
   // Me.
   view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
@@ -194,9 +196,11 @@ function draw(dt: number) {
     banner: downBanner(me, now),
     enemyLabel: nearest
       ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
-      : total > 0
-        ? "Room clear"
-        : "No enemies",
+      : net.stairsOpen
+        ? `Stairs open: everyone onto them${net.descendMs > 0 ? ` (${Math.round((100 * net.descendMs) / STAIRS.holdMs)}%)` : ""}`
+        : total > 0
+          ? "Room clear"
+          : "No enemies",
     enemyHp: nearest?.view.hp ?? 0,
     enemyMaxHp: nearest?.view.maxHp ?? 0,
     enemiesLeft: left,
@@ -268,7 +272,11 @@ function describeEvent(e: SimEvent): string {
     case "postureBroken":
       return `${capital(enemyName(e.enemyId))} is off balance: hit it now`;
     case "roomCleared":
-      return "Room clear";
+      return e.room ? `${capital(e.room)}: clear` : "Room clear";
+    case "floorCleared":
+      return "Every room is clear: the stairs are open. Everyone onto them";
+    case "floorDescended":
+      return `Down the stairs: floor ${e.floor}`;
     case "roomReset":
       return "The goblins are back";
     case "playerDowned":
