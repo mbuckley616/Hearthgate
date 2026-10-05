@@ -88,7 +88,7 @@ describe("states", () => {
     p.attackHitAt = 100;
     const e = createEnemy();
     applyState(e.states, "marked", "b", 0);
-    const [hit] = resolvePlayerAttacks([p], e, 100);
+    const [hit] = resolvePlayerAttacks([p], [e], 100);
     expect(hit).toMatchObject({ kind: "playerHit", damage: Math.round(PLAYER.attackDamage * (1 + COMBO.markedBonus * comboMultiplier(2))) });
 
     const far = createPlayer("c", 0, -9);

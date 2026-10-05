@@ -28,7 +28,7 @@ function deadAndFriend(gap: number) {
 function bleedOut(downed: PlayerSim[]) {
   const enemy = createEnemy();
   const players = [...downed, createPlayer("far", 15, 15)];
-  for (let t = TICK_MS; t <= DOWNS.bleedOutMs; t += TICK_MS) stepDowns(players, enemy, t, TICK_MS);
+  for (let t = TICK_MS; t <= DOWNS.bleedOutMs; t += TICK_MS) stepDowns(players, [enemy], t, TICK_MS);
 }
 
 describe("revive draught (Phase 1 stand-in counter)", () => {
@@ -108,7 +108,7 @@ describe("revive draught (Phase 1 stand-in counter)", () => {
     expect(b.draughts).toBe(0);
     downPlayer(a, 0);
     downPlayer(b, 0);
-    const events = stepDowns(players, createEnemy(), 100, TICK_MS);
+    const events = stepDowns(players, [createEnemy()], 100, TICK_MS);
     expect(events).toContainEqual({ kind: "squadWiped" });
     expect(b.draughts).toBe(DOWNS.draughtsPerFloor);
     expect(a.respawnAt).toBe(100 + PLAYER.respawnMs);
