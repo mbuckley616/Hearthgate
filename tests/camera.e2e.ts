@@ -8,12 +8,21 @@ import { expect, test, type Page } from "@playwright/test";
 const hg = (page: Page) => page.evaluate(() => (window as any).__hg as { me: { x: number; z: number }; camYaw: number });
 
 async function wakeYardGoblin(page: Page) {
-  // The yard's first goblin stands at (9, -9): head right and up-screen until it wakes.
-  await page.keyboard.down("KeyD");
-  await page.keyboard.down("KeyW");
-  await page.waitForTimeout(1500);
-  await page.keyboard.up("KeyD");
-  await page.keyboard.up("KeyW");
+  // The yard's first goblin stands at (9, -9). Walk at it until something wakes: headless frames
+  // are slow, so a fixed walk sometimes stops short of its aggro range. Yaw is 0 until then, so
+  // the keys are world directions.
+  for (let i = 0; i < 40; i++) {
+    const s = await page.evaluate(() => {
+      const h = (window as any).__hg;
+      const awake = Object.values(h.enemies as Record<string, { phase: string }>).some((e) => e.phase !== "idle" && e.phase !== "dead");
+      return { awake, x: h.me.x as number, z: h.me.z as number };
+    });
+    if (s.awake) break;
+    const keys = [s.x < 8 ? "KeyD" : "KeyA", s.z > -8 ? "KeyW" : "KeyS"];
+    for (const k of keys) await page.keyboard.down(k);
+    await page.waitForTimeout(250);
+    for (const k of keys) await page.keyboard.up(k);
+  }
 }
 
 test("the camera turns toward the fight and S walks toward the eye", async ({ page }) => {
@@ -24,6 +33,11 @@ test("the camera turns toward the fight and S walks toward the eye", async ({ pa
   expect((await hg(page)).camYaw).toBe(0);
 
   await wakeYardGoblin(page);
+  // From some spawns the goblin ends up nearly straight up-screen, inside the deadband; stepping
+  // west puts it off to the side, so the camera has a turn to make.
+  await page.keyboard.down("KeyA");
+  await page.waitForTimeout(1200);
+  await page.keyboard.up("KeyA");
   await expect.poll(async () => Math.abs((await hg(page)).camYaw), { timeout: 10_000 }).toBeGreaterThan(0.15);
 
   const a = await hg(page);
