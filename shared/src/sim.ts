@@ -248,6 +248,35 @@ export const HIT_FEEDBACK = {
   othersVolume: 0.35
 } as const;
 
+/**
+ * The raised third-person camera (design doc, Combat: 30 to 40 degrees, auto-rotation toward the
+ * party's centre of fight). Draw-only: the client turns the move vector by the yaw before it goes
+ * in an InputFrame, so the server and replay only ever see world vectors.
+ */
+export const CAMERA = {
+  /** Elevation of the eye above the look target, degrees. */
+  pitchDeg: 35,
+  /** Eye to look target, metres. The old fixed camera sat 15.8 m away at 55 degrees. */
+  distanceM: 12,
+  /** Look target height above the ground (about the player's chest). */
+  targetY: 0.8,
+  /** Follow smoothing time constant for the look target. */
+  followMs: 120,
+  /** Awake enemies and living teammates this close to the player make up the fight. */
+  fightRadiusM: 14,
+  /** A fight centre closer than this to the player gives no direction: hold the yaw. */
+  minLeadM: 1.5,
+  /** The camera ignores this much of its error, so small shifts in the fight never turn it. */
+  deadbandDeg: 20,
+  /** Turning: eased with this time constant, never faster than maxTurnDegPerS. Slow on purpose:
+   * the move keys turn with the camera, so a fast swing would bend the player's path. */
+  turnMs: 1500,
+  maxTurnDegPerS: 40,
+  /** Height on the player the wall-fade ray aims at (mid-body), metres. At 35 degrees a 1.1 m wall
+   * would have to be within 0.3 m of the player's centre to cover it, so the 1.8 m pillars are what fade. */
+  fadeAimY: 0.9
+} as const;
+
 export const SPAWN_POINTS = [
   { x: -3, z: 3 },
   { x: 3, z: 3 },

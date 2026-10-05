@@ -2,17 +2,22 @@ import * as THREE from "three";
 import {
   ABILITIES,
   ARENA_HALF,
+  CAMERA,
   DOWNS,
   ENEMY_KINDS,
   PLAYER,
   STAIRS,
   WEAPON_CLASSES,
+  cameraOffset,
   materialOf,
   nudgeOffset,
+  slewYaw,
+  wallHides,
   weaponClassOf,
   type EnemyKind,
   type Level,
   type WeaponClass,
+  type WallRect,
   type WeaponGear
 } from "@hearthgate/shared";
 import type { Pose } from "./net";
@@ -341,9 +346,18 @@ export class View {
   /** The level's stairs (null without): a dark dais, lit while open. */
   private stairs: THREE.Mesh | null = null;
   private readonly wallMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true });
+  /** A wall between the eye and the player swaps to this, so the player is never lost behind it. */
+  private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
+  /** The walls the fade checks: their rectangle and height, beside the mesh. */
+  private wallMeshes: { mesh: THREE.Mesh; rect: WallRect; h: number }[] = [];
   private camTarget = new THREE.Vector3();
-  private camPos = new THREE.Vector3(0, 13, 9);
-  private readonly camOffset = new THREE.Vector3(0, 13, 9);
+  private camPos = new THREE.Vector3();
+  private readonly camOffset = { x: 0, y: 0, z: 0 };
+  private readonly fadeEye = { x: 0, y: 0, z: 0 };
+  private readonly fadeAim = { x: 0, y: 0, z: 0 };
+  private camStarted = false;
+  /** The camera's turn about the player (camera.ts): 0 is the old view from the south. Input reads it. */
+  yaw = 0;
   // Hit-feedback nudge: added on top of the smoothed camera so it never disturbs the follow.
   private nudgeDir = new THREE.Vector3();
   private nudgeStart = -Infinity;
@@ -384,7 +398,6 @@ export class View {
     }
 
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
-    this.camera.position.copy(this.camPos);
 
     this.scene.background = new THREE.Color(PALETTE.sky);
     this.scene.fog = new THREE.Fog(PALETTE.sky, 30, 70);
@@ -458,6 +471,7 @@ export class View {
     if (this.wallsFor === level.id) return;
     this.wallsFor = level.id;
     this.walls.clear();
+    this.wallMeshes = [];
     for (const w of level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
       const h = pillar ? 1.8 : 1.1;
@@ -466,6 +480,7 @@ export class View {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.walls.add(mesh);
+      this.wallMeshes.push({ mesh, rect: w, h });
     }
     this.stairs = null;
     if (level.stairs) {
@@ -550,15 +565,47 @@ export class View {
     return [...this.enemies.keys()];
   }
 
-  /** Follow the given point with a raised third-person camera. */
-  follow(x: number, z: number, dtMs: number) {
-    const k = 1 - Math.exp(-dtMs / 120);
-    this.camTarget.lerp(new THREE.Vector3(x, 0.8, z), k);
-    this.camPos.lerp(new THREE.Vector3(x, 0, z).add(this.camOffset), k);
+  /**
+   * Follow the given point with the raised third-person camera, turning slowly toward `fightYaw`
+   * (camera.ts; null holds still). Reduced motion keeps the camera from turning at all.
+   */
+  follow(x: number, z: number, dtMs: number, fightYaw: number | null) {
+    if (!this.reducedMotion.matches) this.yaw = slewYaw(this.yaw, fightYaw, dtMs);
+    const k = this.camStarted ? 1 - Math.exp(-dtMs / CAMERA.followMs) : 1;
+    this.camStarted = true;
+    this.camTarget.x += (x - this.camTarget.x) * k;
+    this.camTarget.y = CAMERA.targetY;
+    this.camTarget.z += (z - this.camTarget.z) * k;
+    // The eye hangs off the smoothed target at the current yaw, so a turn keeps its distance.
+    const o = cameraOffset(this.yaw, this.camOffset);
+    this.camPos.set(this.camTarget.x + o.x, this.camTarget.y + o.y, this.camTarget.z + o.z);
     const n = nudgeOffset(performance.now() - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
     this.nudgeVec.copy(this.nudgeDir).multiplyScalar(n);
     this.camera.position.copy(this.camPos).add(this.nudgeVec);
     this.camera.lookAt(this.nudgeVec.add(this.camTarget));
+    this.fadeWalls(x, z);
+  }
+
+  /** Fade the walls that stand between the eye and the player; restore the rest. */
+  private fadeWalls(x: number, z: number) {
+    this.fadeEye.x = this.camPos.x;
+    this.fadeEye.y = this.camPos.y;
+    this.fadeEye.z = this.camPos.z;
+    this.fadeAim.x = x;
+    this.fadeAim.y = CAMERA.fadeAimY;
+    this.fadeAim.z = z;
+    for (const w of this.wallMeshes) {
+      const hides = wallHides(this.fadeEye, this.fadeAim, w.rect, w.h);
+      w.mesh.material = hides ? this.wallFadedMat : this.wallMat;
+      w.mesh.castShadow = !hides;
+    }
+  }
+
+  /** Walls faded this frame; read by the e2e checks through the debug handle. */
+  fadedWalls(): number {
+    let n = 0;
+    for (const w of this.wallMeshes) if (w.mesh.material === this.wallFadedMat) n++;
+    return n;
   }
 
   /**

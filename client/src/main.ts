@@ -4,6 +4,7 @@ import {
   ENEMY_KINDS,
   WEAPON_CLASSES,
   abilityInSlot,
+  fightYaw,
   slotsFor,
   weaponClassOf,
   gearName,
@@ -120,7 +121,7 @@ function enemyPose(id: string): { x: number; z: number } {
 function startLoops() {
   // Fixed-rate input tick. setInterval drifts slightly but the server re-times inputs per tick anyway.
   window.setInterval(() => {
-    net.tick(input.sample());
+    net.tick(input.sample(view.yaw));
   }, TICK_MS);
 
   let last = performance.now();
@@ -134,6 +135,8 @@ function startLoops() {
 }
 
 function draw(dt: number) {
+  const fightMates: Pose[] = [];
+  const fightFoes: Pose[] = [];
   const now = net.predictedTime;
   const remoteNow = net.remoteNow();
   view.setLevel(net.level);
@@ -156,7 +159,6 @@ function draw(dt: number) {
     pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
     dead: isDead(me)
   });
-  view.follow(myPose.x, myPose.z, dt);
 
   // Everyone else.
   const live = new Set<string>([net.sessionId]);
@@ -166,6 +168,7 @@ function draw(dt: number) {
     view.ensurePlayer(r.id, r.name, r.color);
     const pose = net.remotePose(r);
     if (!pose) continue;
+    if (r.hp > 0) fightMates.push(pose);
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
@@ -192,12 +195,16 @@ function draw(dt: number) {
     view.ensureEnemy(e.id, e.kind);
     const ePose = net.remotePose(e);
     if (!ePose) continue;
+    if (e.phase !== "idle" && e.phase !== "dead") fightFoes.push(ePose);
     const def = ENEMY_KINDS[e.kind];
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
     const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
     view.updateEnemy(e.id, ePose, { hp: e.hp, maxHp: e.maxHp, phase: e.phase, windup, aim, hitFlash: drawT < e.hitFlashUntil, guardUp: e.guardUp, rallied: e.rallied });
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
+
+  // The camera turns toward the fight: the awake enemies and the living teammates near me.
+  view.follow(myPose.x, myPose.z, dt, fightYaw(myPose, fightFoes, fightMates));
 
   view.render();
 
@@ -264,6 +271,8 @@ function draw(dt: number) {
     snaps: net.snaps,
     tick: net.lastServerTick,
     nudges: view.nudges,
+    camYaw: view.yaw,
+    fadedWalls: view.fadedWalls(),
     myHits: hitCount
   };
 }

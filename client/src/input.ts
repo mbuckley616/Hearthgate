@@ -1,4 +1,4 @@
-import type { InputFrame } from "@hearthgate/shared";
+import { cameraRelativeMove, type InputFrame } from "@hearthgate/shared";
 
 /**
  * Samples keyboard and gamepad into one InputFrame per tick.
@@ -11,6 +11,10 @@ import type { InputFrame } from "@hearthgate/shared";
  * Revive Draught on a dead teammate in reach, and LT (keys L or Q) is block,
  * held: raise it just before a blow lands to parry. With a bow, RT (keys Tab or R)
  * cycles the lock-on through the enemies in range, then back to auto.
+ *
+ * Movement is camera-relative: W and the stick's up walk away from the camera whichever way
+ * it has turned. The turn happens here, so the frame carries a plain world vector and the
+ * server and the replay never need to know where the camera was.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
@@ -61,13 +65,13 @@ export class Input {
     return this.down.size > 0;
   }
 
-  sample(): InputFrame {
+  /** `yaw` is the camera's turn (View.yaw); 0 is the view from the south. */
+  sample(yaw = 0): InputFrame {
     let dx = 0;
     let dy = 0;
     if (this.down.has("KeyA") || this.down.has("ArrowLeft")) dx -= 1;
     if (this.down.has("KeyD") || this.down.has("ArrowRight")) dx += 1;
-    // Screen "up" is world -z (the camera looks down +z toward the player's front at facing 0),
-    // so W moves toward -z.
+    // Screen "up" (dy -1) is away from the camera: world -z at yaw 0.
     if (this.down.has("KeyW") || this.down.has("ArrowUp")) dy -= 1;
     if (this.down.has("KeyS") || this.down.has("ArrowDown")) dy += 1;
 
@@ -116,6 +120,7 @@ export class Input {
       dx /= len;
       dy /= len;
     }
+    if (yaw !== 0) ({ dx, dy } = cameraRelativeMove(dx, dy, yaw));
 
     this.seq++;
     return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle };

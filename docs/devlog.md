@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-05: Session 29, the camera to the design doc's spec
+
+**What changed**
+
+- Merged main (Fable's extrapolation, PR #17, and the local camera/art backlog) into `auto/build`. Three conflicts, all keep-both: `client/src/net.ts` (each remote player keeps its `weapon` from Session 25 and takes main's `PoseTrack`; the old `sampleSnapshots` and `pushSnapshot` go, `syncWeapon` stays), `decisions.md` (the staff and village answers side by side) and the devlog (both Session 25 entries kept).
+- The camera sits at 35 degrees and 12 m from the player instead of 55 degrees and 15.8 m, so it reads as third person, not top-down. It turns toward the fight: the centre of the awake enemies and living teammates within 14 m, the player included. The turn ignores the first 20 degrees of error, eases over 1.5 s and never exceeds 40 degrees a second; out of combat, or with the fight centred on the player, it holds still. All of it is pure in `shared/src/camera.ts`, tuned by `CAMERA` in `sim.ts`, and draw-only.
+- Movement is camera-relative: `Input.sample(yaw)` turns WASD and the left stick by the camera's yaw before the vector goes in the `InputFrame`, so the server and the replay still see plain world vectors and nothing in the simulation changed. At yaw 0 the frame is exactly what it was.
+- Walls between the eye and the player swap to a see-through material (and stop casting shadows) while they are in the way: the sight line to the player's middle is clipped to each wall's footprint and checked against its top where it leaves. At 35 degrees that is the 1.8 m pillars; a 1.1 m wall would have to stand within 0.3 m of the player's centre.
+- Reduced motion (`prefers-reduced-motion`) keeps the camera from turning, as the hit nudge already did; the nudge still rides on top of the follow.
+- Tests: 7 in `shared/src/camera.test.ts` (173 in all): 35 degrees and closer than before; yaw 0 moves as before; W away from the eye and D to the screen's right at any yaw; the fight pulls the camera, out of range or out of combat holds; the turn is capped per frame, takes the short way across the back and rests inside the deadband; which pillar hides the player at two yaws. `tests/camera.e2e.ts` (2 of 2): in the yard the camera turns once a goblin wakes and S then walks toward the eye within 35 degrees; with reduced motion the yaw stays 0. `join` and `mobile` e2e 7 of 7. `npm run test:net` green on the merged tree.
+
+**Learned**
+
+- `hit-feedback.e2e.ts` fails without this change too (no hit lands in 20 s headless): the same headless slowness as the critic's frame-rate item, not the camera.
+- A sight line falls from the eye to the player, so it is lowest where it leaves a wall's footprint, not where it enters; testing the entry point missed a pillar standing right behind the player.
+
+**Next**
+
+- Placeholder figures instead of pills, the next builder item. Then the combo item once Michael answers.
+
 ## 2026-10-05: Session 28, Magic deferred; no combo fires in play
 
 **What changed**
