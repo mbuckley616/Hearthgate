@@ -300,14 +300,31 @@ export const CLOCK_SYNC = {
  * delay on a clean link: it absorbs 50 ms of lateness by itself. Above that the delay
  * follows the longest wait for a patch the frames in the clock window saw, so a jittery link
  * gets exactly the budget its worst recent packet needed and a clean one pays nothing, up
- * to `maxMs`, past which the extrapolation item (backlog) is the answer. It slews like the
- * clock, so it never jumps.
+ * to `maxMs`. It slews like the clock, so it never jumps. What the delay does not cover (the
+ * first late patch after a quiet spell, a stall past the cap) the projection below does.
  */
 export const INTERP = {
   baseMs: 100,
   maxMs: 200,
   /** Fastest the delay may move, ms per second: a remote player runs at most 1% off speed while it does. */
-  slewMsPerS: 10
+  slewMsPerS: 10,
+  /**
+   * When the draw time passes the newest snapshot anyway, the pose is projected along its
+   * last tick of motion by at most this long, ms, and holds there; see interp.ts. One tick:
+   * what a late patch usually costs, and as far as a guess about where a player is going
+   * stays good.
+   */
+  extrapolateMaxMs: TICK_MS,
+  /**
+   * Motion faster than this between two snapshots, m/s, is a placement (a respawn, a wipe,
+   * the stairs), not travel, and is held rather than projected. The fastest real move in the
+   * sim is 12 m/s (a dodge, a charge, a throw).
+   */
+  extrapolateMaxMps: 20,
+  /** When the snapshot that ends a projection disagrees with it, the drawn pose eases over with this time constant, ms, instead of popping. */
+  easeMs: 100,
+  /** A disagreement over this, m, is a placement and pops, as the own player's corrections do over SNAP_DISTANCE. */
+  easeSnapM: 2.5
 } as const;
 
 /**

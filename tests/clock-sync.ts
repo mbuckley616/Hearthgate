@@ -15,21 +15,34 @@
  *   delay          the interpolation delay the viewer chose (INTERP: 100 ms plus what the
  *                  worst recent arrival needed, cap 200): mean and max over the run, ms
  *   margin         how far the interpolation cursor sits behind the newest snapshot
- *                  (ms; the design wants about the delay, steady). Below 0 the pose is
- *                  held and the remote player freezes.
- *   holds          frames with margin below 0, as a share, and hold episodes per minute
+ *                  (ms; the design wants about the delay, steady). Below 0 the newest
+ *                  snapshot is late for this frame.
+ *   late           frames with margin below 0, as a share: what a fixed pose would hold on
+ *   proj           frames projected past the newest snapshot (margin within one tick below
+ *                  0, INTERP.extrapolateMaxMs): the remote player keeps moving on a guess
+ *   held           frames past the projection cap, as a share: the remote player freezes;
+ *                  and hold episodes per minute
+ *   ahead          the furthest the drawn pose sat from the newest snapshot while
+ *                  projecting, m: one tick of travel at the speed of the tick before, 0.3 m
+ *                  walking, 0.6 when a server tick caught up two inputs
+ *   pop            the largest change between frames of the drawn pose's error against the
+ *                  true path (every snapshot, interpolated after the run), m: a projection
+ *                  the next snapshot disagreed with, or a hold ending, shows here if it is
+ *                  not eased; a server tick that catches up two inputs does not
  *   corr, snaps    the driven player's own reconciliation corrections and snaps per minute
  *
  * Run: npm run test:clock [-- --seconds 20 --only 150]. Exits non-zero if the clock moves
  * faster than its slew limit, sits ahead of the delivery floor, a remote player holds on a
- * clean or 50 ms link, the clean link pays more than the base delay, or the 150 ms link
- * (+-25 ms jitter, 2% of packets 80 ms late) holds more than a third of what the fixed
- * 100 ms delay did there (1.3 to 1.6% of frames, Sessions 6 and 7).
+ * clean or 50 ms link, the clean link pays more than the base delay, the 150 ms link
+ * (+-25 ms jitter, 2% of packets 80 ms late) holds past the projection more than a tenth of
+ * what the adaptive delay alone held (0.1 to 0.2% of frames, Sessions 14 and 23), a
+ * projection runs further than one tick at the fastest speed it will project (INTERP), or a
+ * pop is over a quarter of a tick of walking.
  */
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { CLOCK_SYNC, INTERP, TICK_MS } from "@hearthgate/shared";
+import { CLOCK_SYNC, INTERP, PLAYER, TICK_MS, projectPose, type PoseSnapshot } from "@hearthgate/shared";
 import { Net } from "../client/src/net";
 
 const SERVER_PORT = 2598;
@@ -142,8 +155,12 @@ interface Stats {
   marginMean: number;
   marginSd: number;
   marginP5: number;
-  holdShare: number;
+  lateShare: number;
+  projShare: number;
+  heldShare: number;
   holdsPerMin: number;
+  aheadMax: number;
+  popMax: number;
   corrPerMin: number;
   snapsPerMin: number;
   rttA: number;
@@ -190,6 +207,13 @@ async function runScenario(lag: Lag): Promise<Stats> {
     let lastTick: { t: number; tick: number } | null = null;
     let holds = 0;
     let wasHeld = false;
+    let late = 0;
+    let projected = 0;
+    let heldFrames = 0;
+    let aheadMax = 0;
+    // Every snapshot Bravo received of Alpha, and every pose it drew: the truth and the drawing, compared after the run.
+    const truth: PoseSnapshot[] = [];
+    const drawnFrames: { t: number; x: number; z: number }[] = [];
     let corrAtSettle = 0;
     let snapsAtSettle = 0;
     let settled = false;
@@ -206,17 +230,31 @@ async function runScenario(lag: Lag): Promise<Stats> {
       if (!firstTick) firstTick = { t: now, tick: b.lastServerTick };
       lastTick = { t: now, tick: b.lastServerTick };
       const r = b.remotes.get(a.sessionId);
-      if (!r || r.snaps.length === 0) return;
-      for (const sn of r.snaps) floor = Math.max(floor, sn.t - sn.at);
+      if (!r || r.track.snaps.length === 0) return;
+      for (const sn of r.track.snaps) floor = Math.max(floor, sn.t - sn.at);
       const serverNow = b.serverNow();
       const delay = b.interpDelayMs;
-      const newest = r.snaps[r.snaps.length - 1].t;
+      const newestSnap = r.track.snaps[r.track.snaps.length - 1];
+      const newest = newestSnap.t;
       const margin = newest - (serverNow - delay);
       margins.push(margin);
+      // What Bravo draws for Alpha this frame: interpolated, projected past a late snapshot, or held.
+      const drawn = b.remotePose(r);
+      if (drawn) {
+        if (margin < 0) {
+          late++;
+          if (margin >= -INTERP.extrapolateMaxMs) projected++;
+          else heldFrames++;
+          aheadMax = Math.max(aheadMax, Math.hypot(drawn.x - newestSnap.x, drawn.z - newestSnap.z));
+        }
+        drawnFrames.push({ t: serverNow - delay, x: drawn.x, z: drawn.z });
+      }
+      const lastTruth = truth.length ? truth[truth.length - 1].t : -Infinity;
+      for (const sn of r.track.snaps) if (sn.t > lastTruth) truth.push({ t: sn.t, x: sn.x, z: sn.z, facing: sn.facing });
       delays.push(delay);
       lateMax = Math.max(lateMax, b.lateMs);
       offsets.push({ t: now, offset: serverNow - now });
-      const held = margin < 0;
+      const held = margin < -INTERP.extrapolateMaxMs;
       if (held && !wasHeld) holds++;
       wasHeld = held;
     }, 16);
@@ -233,6 +271,19 @@ async function runScenario(lag: Lag): Promise<Stats> {
       if (j < offsets.length) drift = Math.max(drift, Math.abs(offsets[j].offset - offsets[i].offset) / ((offsets[j].t - offsets[i].t) / 1000));
     }
     const vsFloor = offsets.map((o) => o.offset - floor);
+    // Pop: how much the drawn pose's error against the true path changed from one frame to the next.
+    let popMax = 0;
+    let prevErr: { x: number; z: number } | null = null;
+    for (const f of drawnFrames) {
+      const tr = projectPose(truth, f.t, null, PLAYER.radius);
+      if (!tr || tr.aheadMs > 0) {
+        prevErr = null; // the truth past the last snapshot received is unknown
+        continue;
+      }
+      const err = { x: f.x - tr.pose.x, z: f.z - tr.pose.z };
+      if (prevErr) popMax = Math.max(popMax, Math.hypot(err.x - prevErr.x, err.z - prevErr.z));
+      prevErr = err;
+    }
     return {
       offsetSd: sd(offsets.map((o) => o.offset)),
       driftMsPerS: drift,
@@ -244,8 +295,12 @@ async function runScenario(lag: Lag): Promise<Stats> {
       marginMean: mean(margins),
       marginSd: sd(margins),
       marginP5: percentile(margins, 0.05),
-      holdShare: margins.filter((m) => m < 0).length / Math.max(1, margins.length),
+      lateShare: late / Math.max(1, margins.length),
+      projShare: projected / Math.max(1, margins.length),
+      heldShare: heldFrames / Math.max(1, margins.length),
       holdsPerMin: holds / minutes,
+      aheadMax,
+      popMax,
       corrPerMin: (a.corrections - corrAtSettle) / minutes,
       snapsPerMin: (a.snaps - snapsAtSettle) / minutes,
       rttA: a.rttMs,
@@ -276,18 +331,22 @@ async function main() {
   const failures: string[] = [];
   try {
     await waitForHealth(`http://localhost:${SERVER_PORT}/health`);
-    console.log(`clock sync, ${SECONDS} s per run after a ${SETTLE_MS / 1000} s settle, interpolation delay ${INTERP.baseMs} to ${INTERP.maxMs} ms by jitter`);
-    console.log("rtt      | ping A  ping B | srv rate | offset sd   drift | vs floor mean  max | late max | delay mean    max | margin mean    sd    p5 | holds %  holds/min | corr/min snaps/min");
+    console.log(`clock sync, ${SECONDS} s per run after a ${SETTLE_MS / 1000} s settle, interpolation delay ${INTERP.baseMs} to ${INTERP.maxMs} ms by jitter, projection up to ${INTERP.extrapolateMaxMs} ms past a late snapshot`);
+    console.log("rtt      | ping A  ping B | srv rate | offset sd   drift | vs floor mean  max | late max | delay mean    max | margin mean    sd    p5 | late %   proj %   held %  holds/min | ahead m   pop m | corr/min snaps/min");
     for (const lag of LAGS) {
       if (ONLY && !lag.name.startsWith(ONLY)) continue;
       const s = await runScenario(lag);
       console.log(
-        `${lag.name.padEnd(8)} |${fmt(s.rttA, 0)}${fmt(s.rttB, 0)} | ${s.serverRate.toFixed(4)}   |${fmt(s.offsetSd)}  ${fmt(s.driftMsPerS)} |${fmt(s.vsFloorMean)} ${fmt(s.vsFloorMax)}      | ${fmt(s.lateMax)}  |${fmt(s.delayMean)} ${fmt(s.delayMax)} |${fmt(s.marginMean)} ${fmt(s.marginSd)} ${fmt(s.marginP5)} |${fmt(100 * s.holdShare)}  ${fmt(s.holdsPerMin)} |${fmt(s.corrPerMin)} ${fmt(s.snapsPerMin)}`
+        `${lag.name.padEnd(8)} |${fmt(s.rttA, 0)}${fmt(s.rttB, 0)} | ${s.serverRate.toFixed(4)}   |${fmt(s.offsetSd)}  ${fmt(s.driftMsPerS)} |${fmt(s.vsFloorMean)} ${fmt(s.vsFloorMax)}      | ${fmt(s.lateMax)}  |${fmt(s.delayMean)} ${fmt(s.delayMax)} |${fmt(s.marginMean)} ${fmt(s.marginSd)} ${fmt(s.marginP5)} |${fmt(100 * s.lateShare, 2)} ${fmt(100 * s.projShare, 2)} ${fmt(100 * s.heldShare, 2)}  ${fmt(s.holdsPerMin)} |${fmt(s.aheadMax, 3)} ${fmt(s.popMax, 3)} |${fmt(s.corrPerMin)} ${fmt(s.snapsPerMin)}`
       );
       if (s.driftMsPerS > CLOCK_SYNC.slewMsPerS + 1) failures.push(`${lag.name}: clock moved ${s.driftMsPerS.toFixed(1)} ms/s (slew limit ${CLOCK_SYNC.slewMsPerS})`);
       if (s.vsFloorMax > 3) failures.push(`${lag.name}: clock sat ${s.vsFloorMax.toFixed(1)} ms ahead of the delivery floor (limit 3)`);
-      if (lag.name !== "150 ms" && s.holdShare > 0.01) failures.push(`${lag.name}: remote player held on ${(100 * s.holdShare).toFixed(1)}% of frames (limit 1%)`);
-      if (lag.name === "150 ms" && s.holdShare > 0.004) failures.push(`${lag.name}: remote player held on ${(100 * s.holdShare).toFixed(1)}% of frames (limit 0.4%, a third of the fixed delay's)`);
+      if (lag.name !== "150 ms" && s.heldShare > 0.01) failures.push(`${lag.name}: remote player held on ${(100 * s.heldShare).toFixed(2)}% of frames (limit 1%)`);
+      if (lag.name === "150 ms" && s.heldShare > 0.0002) failures.push(`${lag.name}: remote player held past the projection on ${(100 * s.heldShare).toFixed(2)}% of frames (limit 0.02%, a tenth of the adaptive delay's holds)`);
+      const tickOfTravel = (PLAYER.speed * INTERP.extrapolateMaxMs) / 1000;
+      const aheadLimit = (INTERP.extrapolateMaxMps * INTERP.extrapolateMaxMs) / 1000;
+      if (s.aheadMax > aheadLimit + 0.01) failures.push(`${lag.name}: a projection ran ${s.aheadMax.toFixed(3)} m past the newest snapshot (limit one tick at ${INTERP.extrapolateMaxMps} m/s, ${aheadLimit.toFixed(2)} m)`);
+      if (s.popMax > tickOfTravel / 4) failures.push(`${lag.name}: the drawn remote player popped ${s.popMax.toFixed(3)} m in one frame (limit ${(tickOfTravel / 4).toFixed(3)} m)`);
       if (lag.name === "0 ms" && s.delayMean > INTERP.baseMs + 1) failures.push(`${lag.name}: clean link paid ${s.delayMean.toFixed(1)} ms of delay (base ${INTERP.baseMs})`);
       if (s.delayMax > INTERP.maxMs + 1e-6) failures.push(`${lag.name}: delay reached ${s.delayMax.toFixed(1)} ms (cap ${INTERP.maxMs})`);
     }

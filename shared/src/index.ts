@@ -4,3 +4,4 @@ export * from "./clock";
 export * from "./states";
 export * from "./level";
 export * from "./gear";
+export * from "./interp";
