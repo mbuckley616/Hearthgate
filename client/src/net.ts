@@ -5,6 +5,7 @@ import {
   OPEN_FIELD,
   PLAYER,
   TICK_MS,
+  VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
   applyInput,
@@ -32,6 +33,14 @@ import {
   type WeaponGear,
   weaponFromPick
 } from "@hearthgate/shared";
+
+/** What a room sends when the party moves to another: a seat reserved there, and the level it runs. */
+interface Handoff {
+  reservation: Parameters<Client["consumeSeatReservation"]>[0];
+  level: string;
+}
+
+export type HandoffListener = (level: string) => void;
 
 export type { Pose } from "@hearthgate/shared";
 
@@ -104,6 +113,12 @@ export type EventListener = (events: SimEvent[]) => void;
  *
  * Prediction runs inside the room's level (walls included), which the first patch names;
  * the server steps the same level, so a wall is never a correction.
+ *
+ * Rooms: the client joins the village first (`?level=` asks for a dungeon floor by id instead,
+ * as the tests and the lab do). When the party takes the portal or the stairs the server sends
+ * a `handoff` with a seat in the next room: everything tied to this room (the clock, the
+ * pending inputs, the remotes, the enemies, the placement) is dropped and the seat consumed,
+ * so the new room's first patch places us as a join does.
  */
 export class Net {
   room: Room | null = null;
@@ -126,35 +141,113 @@ export class Net {
   rttMs = 0;
   connected = false;
   lastServerTick = 0;
-  /** The floor's stairs: open, how long the party has stood on them (ms), which floor. */
+  /** The floor's stairs: open, and how long the party has stood on them (ms). */
   stairsOpen = false;
   descendMs = 0;
-  floor = 1;
   /** Count of reconciliations that moved us more than a few centimetres (debug HUD). */
   corrections = 0;
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
   snaps = 0;
+
+  /** How long the party has held the village's portal (ms). */
+  portalMs = 0;
+  /** Rooms this client has been handed to so far (debug HUD and the tests). */
+  handoffs = 0;
 
   /** False until the first patch places us; that placement is not a correction. */
   private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
   private listeners: EventListener[] = [];
+  private handoffListeners: HandoffListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
+  private client: Client | null = null;
+  private weapon: WeaponGear = weaponFromPick("sword", 1);
 
-  /** Join with the weapon picked on the join screen; the server checks it and the first patch confirms it. */
+  /**
+   * Join with the weapon picked on the join screen; the server checks it and the first patch
+   * confirms it. Without a level, or with the village's id, this is the village room; with a
+   * level id it is a dungeon room on that floor.
+   */
   async connect(endpoint: string, name: string, level?: string, weapon: WeaponGear = weaponFromPick("sword", 1)): Promise<void> {
-    const client = new Client(endpoint);
+    this.client = new Client(endpoint);
+    this.weapon = { ...weapon };
     const options: Record<string, unknown> = { name, weapon: weapon.type, tier: weapon.tier };
-    if (level) options.level = level;
-    const room = await client.joinOrCreate("dungeon", options);
+    const village = !level || level === VILLAGE_LEVEL_ID;
+    if (!village) options.level = level;
+    this.level = levelById(village ? VILLAGE_LEVEL_ID : level!);
+    const room = await this.client.joinOrCreate(village ? "village" : "dungeon", options);
+    this.attach(room);
+  }
+
+  /** The name of the room we are in ("village" or "dungeon"), "" between rooms. */
+  get roomName(): string {
+    return this.room?.name ?? "";
+  }
+
+  /** Called with the next room's level id when a hand-off starts; the first patch there ends it. */
+  onHandoff(listener: HandoffListener) {
+    this.handoffListeners.push(listener);
+  }
+
+  /**
+   * The server moved the party: leave this room, forget everything that was its (the clock
+   * most of all: each room counts ticks from its own zero), take the seat and start over in
+   * the new level. Inputs sent meanwhile go nowhere; the new room's first patch places us.
+   */
+  private async handoff(m: Handoff) {
+    const old = this.room;
+    this.room = null;
+    this.connected = false;
+    this.handoffs++;
+    this.reset(levelById(m.level));
+    for (const l of this.handoffListeners) l(m.level);
+    if (old) {
+      old.removeAllListeners();
+      try {
+        await old.leave(true);
+      } catch {
+        // Already gone; the seat is still ours.
+      }
+    }
+    if (!this.client) return;
+    try {
+      this.attach(await this.client.consumeSeatReservation(m.reservation));
+    } catch (err) {
+      console.error("hand-off failed", err);
+    }
+  }
+
+  /** Drop every piece of state that belonged to the room we are leaving. */
+  private reset(level: Level) {
+    if (this.pingTimer !== null) clearTimeout(this.pingTimer);
+    this.pingTimer = null;
+    this.level = level;
+    this.predictedTime = 0;
+    this.visualErrX = 0;
+    this.visualErrZ = 0;
+    this.pending = [];
+    this.remotes.clear();
+    this.enemies.clear();
+    this.rttMs = 0;
+    this.lastServerTick = 0;
+    this.stairsOpen = false;
+    this.descendMs = 0;
+    this.portalMs = 0;
+    this.placed = false;
+    this.clock = createClockSync();
+    this.pingsSent = 0;
+  }
+
+  private attach(room: Room) {
     this.room = room;
     this.sessionId = room.sessionId;
     this.me = createPlayer(room.sessionId);
-    this.me.weapon = { ...weapon };
+    this.me.weapon = { ...this.weapon };
     this.connected = true;
 
     room.onStateChange((state: any) => this.onState(state));
+    room.onMessage("handoff", (m: Handoff) => void this.handoff(m));
     room.onMessage("events", (events: SimEvent[]) => {
       for (const l of this.listeners) l(events);
     });
@@ -165,7 +258,7 @@ export class Net {
       addClockSample(this.clock, m.sentAt, now, m.serverTime);
     });
     room.onLeave(() => {
-      this.connected = false;
+      if (this.room === room) this.connected = false;
     });
 
     this.ping();
@@ -273,7 +366,7 @@ export class Net {
     this.lastServerTick = state.tick;
     this.stairsOpen = state.stairsOpen === true;
     this.descendMs = state.descendMs ?? 0;
-    this.floor = state.floor ?? 1;
+    this.portalMs = state.portalMs ?? 0;
     // Every patch is a clock sample too: it left the server at the time it is stamped with.
     addArrivalSample(this.clock, at, serverTime);
     if (typeof state.levelId === "string" && state.levelId !== this.level.id) this.level = levelById(state.levelId);

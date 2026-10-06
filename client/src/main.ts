@@ -15,9 +15,13 @@ import {
   type AbilityId,
   type EnemyKind,
   HIT_FEEDBACK,
+  NPC,
   PLAYER,
+  PORTAL,
   POSTURE,
   STAIRS,
+  levelById,
+  type Npc,
   isPlayerStaggered,
   TICK_MS,
   isDead,
@@ -33,7 +37,8 @@ import { Hud } from "./hud";
 import { Sound } from "./sound";
 
 /**
- * Phase 1: a party in one room with walls and a handful of goblins.
+ * Phase 1: the party starts in the village (the greybox town), takes the portal into the
+ * Warrens, and the stairs bring it home; the server moves everyone between the two rooms.
  *
  * Loop shape:
  *  - a fixed 20 Hz tick samples input, predicts our own player, sends the frame;
@@ -55,20 +60,35 @@ const scriptedJoin = params.has("name") || params.has("weapon");
 
 const app = document.getElementById("app")!;
 const view = new View(app);
-const hud = new Hud(document.getElementById("hud")!);
 const input = new Input();
 const net = new Net();
 const sound = new Sound();
+// The villager prompt is a button too (a tap, for the touch layout to come): the same press as E.
+const hud = new Hud(document.getElementById("hud")!, () => input.pressUse());
 
 if (scriptedJoin) hud.setStatus(`Connecting to ${endpoint}`);
 
 const recentEvents: { text: string; until: number }[] = [];
+/** What a villager last said to us, shown in the top-left panel for a while. */
+let speech: { who: string; line: string; until: number } | null = null;
+/** Between rooms: the status line stays up until the new room's first patch. */
+let handingOff = false;
 net.onEvents((events: SimEvent[]) => {
   for (const e of events) {
     const text = describeEvent(e);
     if (text) recentEvents.push({ text, until: performance.now() + 2500 });
+    if (e.kind === "npcTalk" && e.playerId === net.sessionId) {
+      const npc = net.level.npcs?.find((n) => n.id === e.npcId);
+      if (npc) speech = { who: npc.name, line: npc.line, until: performance.now() + 8000 };
+    }
     hitFeedback(e);
   }
+});
+net.onHandoff((level) => {
+  handingOff = true;
+  recentEvents.length = 0;
+  speech = null;
+  hud.setStatus(level === "village" ? "Up the stairs: back to the village" : `Through the portal: ${levelById(level).name}`);
 });
 
 /**
@@ -141,6 +161,11 @@ function draw(dt: number) {
   const remoteNow = net.remoteNow();
   view.setLevel(net.level);
   view.setStairs(net.stairsOpen, net.descendMs / STAIRS.holdMs);
+  view.setPortal(net.portalMs / PORTAL.holdMs);
+  if (handingOff && net.lastServerTick > 0) {
+    handingOff = false;
+    hud.setStatus("");
+  }
 
   // Me.
   view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
@@ -211,6 +236,9 @@ function draw(dt: number) {
   // HUD: the nearest living enemy's bar, and how many are left.
   const t = performance.now();
   while (recentEvents.length && recentEvents[0].until < t) recentEvents.shift();
+  if (speech && speech.until < t) speech = null;
+  const village = net.level.portal !== undefined;
+  const talkTo = villagerInReach(myPose);
   // A bow's lock takes the enemy panel; otherwise it shows the nearest.
   const lockedView = me.lockId ? net.enemies.get(me.lockId) : undefined;
   const nearest = lockedView && lockedView.phase !== "dead" ? { view: lockedView } : net.nearestEnemy(myPose.x, myPose.z);
@@ -224,7 +252,11 @@ function draw(dt: number) {
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
     banner: downBanner(me, now),
-    enemyLabel: nearest
+    enemyLabel: village
+      ? net.portalMs > 0
+        ? `Portal: everyone on it (${Math.round((100 * net.portalMs) / PORTAL.holdMs)}%)`
+        : `${net.level.name} village. Nothing here can hurt you`
+      : nearest
       ? `${kindName(nearest.view.kind)}${isLocked ? " (locked)" : ""}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
       : net.stairsOpen
         ? `Stairs open: everyone onto them${net.descendMs > 0 ? ` (${Math.round((100 * net.descendMs) / STAIRS.holdMs)}%)` : ""}`
@@ -245,6 +277,9 @@ function draw(dt: number) {
     guarding: me.guarding,
     staggered: isPlayerStaggered(me, now),
     reviveTarget: reviveTarget(myPose),
+    village,
+    talkTo: talkTo?.name ?? "",
+    speech: speech ? { who: speech.who, line: speech.line } : null,
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
     slots: slotsFor(me.weapon).map((id, i) => ({
@@ -263,6 +298,11 @@ function draw(dt: number) {
     enemies: Object.fromEntries([...net.enemies.values()].map((e) => [e.id, { kind: e.kind, hp: e.hp, phase: e.phase, pose: net.remotePose(e) }])),
     enemiesLeft: left,
     level: net.level.id,
+    room: net.roomName,
+    handoffs: net.handoffs,
+    portalMs: net.portalMs,
+    talkTo: talkTo?.id ?? "",
+    speech: speech ? speech.line : "",
     rtt: net.rttMs,
     minRtt: net.minRttMs,
     clockOffset: net.clockOffset,
@@ -314,8 +354,12 @@ function describeEvent(e: SimEvent): string {
       return e.room ? `${capital(e.room)}: clear` : "Room clear";
     case "floorCleared":
       return "Every room is clear: the stairs are open. Everyone onto them";
-    case "floorDescended":
-      return `Down the stairs: floor ${e.floor}`;
+    case "stairsTaken":
+      return "Everyone on the stairs: up and out";
+    case "portalTaken":
+      return "Everyone on the portal: through it";
+    case "npcTalk":
+      return e.playerId === net.sessionId ? "" : `${nameOf(e.playerId)} talks to ${net.level.npcs?.find((n) => n.id === e.npcId)?.name ?? "a villager"}`;
     case "roomReset":
       return "The goblins are back";
     case "playerDowned":
@@ -382,6 +426,25 @@ function markBowTarget(from: Pose) {
     }
   }
   view.setTargetMarker(best, false);
+}
+
+/**
+ * The villager a use press would talk to from where we are drawn, for the prompt only; the
+ * server picks (talkToNpc) from where it has us, by the same range.
+ */
+function villagerInReach(pose: { x: number; z: number }): Npc | null {
+  const me = net.me;
+  if (!net.level.npcs || isDead(me) || isDowned(me)) return null;
+  let best: Npc | null = null;
+  let bestD = Infinity;
+  for (const n of net.level.npcs) {
+    const d = Math.hypot(n.x - pose.x, n.z - pose.z);
+    if (d <= NPC.talkRange && d < bestD) {
+      bestD = d;
+      best = n;
+    }
+  }
+  return best;
 }
 
 /** The swing's arc shows from the moment its hit resolves until 150 ms before the swing ends. */

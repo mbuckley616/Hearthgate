@@ -6,6 +6,7 @@ import {
   DOWNS,
   ENEMY_KINDS,
   PLAYER,
+  PORTAL,
   STAIRS,
   WEAPON_CLASSES,
   cameraOffset,
@@ -70,6 +71,12 @@ const PALETTE = {
   banner: 0xc0392b,
   shield: 0xb08a4a,
   wall: 0x9a978c,
+  roof: 0x6b5244,
+  sign: "#f3efe4",
+  villager: 0xa88a62,
+  villagerTag: "#f1d9a8",
+  portal: 0x3b6fa6,
+  portalLit: 0x7fb8ff,
   telegraph: 0xd9534f,
   swing: 0xfff1c2,
   guard: 0x9fb8d9,
@@ -342,11 +349,14 @@ export class View {
   renderer: THREE.WebGLRenderer;
   private players = new Map<string, PlayerMesh>();
   private enemies = new Map<string, EnemyMesh>();
-  /** The level's interior walls, rebuilt when the room names a different level. */
+  /** Everything that is the level's (ground, walls, buildings, villagers, the dais), rebuilt when the room names a different level. */
   private walls = new THREE.Group();
   private wallsFor = "";
   /** The level's stairs (null without): a dark dais, lit while open. */
   private stairs: THREE.Mesh | null = null;
+  /** The village's portal (null without): a blue dais, brighter as the party's hold fills. */
+  private portal: THREE.Mesh | null = null;
+  private sun: THREE.DirectionalLight;
   private readonly wallMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true });
   /** A wall between the eye and the player swaps to this, so the player is never lost behind it. */
   private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
@@ -410,79 +420,109 @@ export class View {
     sun.position.set(12, 20, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -ARENA_HALF - 2;
-    sun.shadow.camera.right = ARENA_HALF + 2;
-    sun.shadow.camera.top = ARENA_HALF + 2;
-    sun.shadow.camera.bottom = -ARENA_HALF - 2;
     this.scene.add(sun);
+    this.sun = sun;
 
-    this.buildArena();
+    this.buildMeadow();
     this.scene.add(this.walls);
     this.resize();
     window.addEventListener("resize", () => this.resize());
   }
 
-  private buildArena() {
-    const size = ARENA_HALF * 2;
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(size, size),
-      new THREE.MeshStandardMaterial({ color: PALETTE.ground, roughness: 1 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-
-    // A wider meadow beyond the arena so the edge is not the end of the world.
+  private buildMeadow() {
+    // A wide meadow beyond any level so the edge is not the end of the world.
+    const size = ARENA_HALF * 8;
     const meadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(size * 4, size * 4),
+      new THREE.PlaneGeometry(size, size),
       new THREE.MeshStandardMaterial({ color: PALETTE.groundDark, roughness: 1 })
     );
     meadow.rotation.x = -Math.PI / 2;
     meadow.position.y = -0.02;
     this.scene.add(meadow);
+  }
 
-    const grid = new THREE.GridHelper(size, 20, PALETTE.edge, PALETTE.groundDark);
+  /** The level's ground, its grid and the low stone wall at its edge, sized to its bounds. */
+  private buildGround(level: Level) {
+    const w = level.halfW * 2;
+    const d = level.halfD * 2;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: PALETTE.ground, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    this.walls.add(ground);
+
+    const grid = new THREE.GridHelper(Math.max(w, d), Math.max(w, d) / 2, PALETTE.edge, PALETTE.groundDark);
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.25;
     grid.position.y = 0.01;
-    this.scene.add(grid);
+    this.walls.add(grid);
 
-    // Low stone wall at the arena edge.
-    const wallGeo = new THREE.BoxGeometry(size + 1, 0.6, 0.5);
-    for (const [x, z, rot] of [
-      [0, -ARENA_HALF - 0.25, 0],
-      [0, ARENA_HALF + 0.25, 0],
-      [-ARENA_HALF - 0.25, 0, Math.PI / 2],
-      [ARENA_HALF + 0.25, 0, Math.PI / 2]
+    for (const [x, z, len, rot] of [
+      [0, -level.halfD - 0.25, w + 1, 0],
+      [0, level.halfD + 0.25, w + 1, 0],
+      [-level.halfW - 0.25, 0, d + 1, Math.PI / 2],
+      [level.halfW + 0.25, 0, d + 1, Math.PI / 2]
     ] as const) {
-      const wall = new THREE.Mesh(wallGeo, this.wallMat);
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(len, 0.6, 0.5), this.wallMat);
       wall.position.set(x, 0.3, z);
       wall.rotation.y = rot;
       wall.castShadow = true;
       wall.receiveShadow = true;
-      this.scene.add(wall);
+      this.walls.add(wall);
     }
+    const s = this.sun.shadow.camera;
+    s.left = -level.halfW - 2;
+    s.right = level.halfW + 2;
+    s.top = level.halfD + 2;
+    s.bottom = -level.halfD - 2;
+    s.updateProjectionMatrix();
   }
 
   /**
-   * Build the level's walls once. The sim's walls are rectangles on the ground; here a long
-   * one is a waist-high ruin and a squat one a pillar, so a wall the sim stops you at is
-   * always a wall you can see.
+   * Build the level once. The sim's walls are rectangles on the ground; here a long one is a
+   * waist-high ruin and a squat one a pillar unless the level says how tall (a building's
+   * walls), so a wall the sim stops you at is always a wall you can see. The village's
+   * buildings get a roof and a sign over the door, its villagers a figure and a name, and the
+   * portal a dais; the stairs are a dais too.
    */
   setLevel(level: Level) {
     if (this.wallsFor === level.id) return;
     this.wallsFor = level.id;
     this.walls.clear();
     this.wallMeshes = [];
+    this.buildGround(level);
     for (const w of level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
-      const h = pillar ? 1.8 : 1.1;
+      const h = w.h ?? (pillar ? 1.8 : 1.1);
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w.hw * 2, h, w.hd * 2), this.wallMat);
       mesh.position.set(w.x, h / 2, w.z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.walls.add(mesh);
       this.wallMeshes.push({ mesh, rect: w, h });
+    }
+    const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9, flatShading: true });
+    for (const b of level.buildings ?? []) {
+      // The roof sits on the tallest wall of the building's footprint, a little proud of it.
+      let h = 0;
+      for (const w of level.walls) if (w.h && Math.abs(w.x - b.x) <= b.hw + 0.5 && Math.abs(w.z - b.z) <= b.hd + 0.5) h = Math.max(h, w.h);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(b.hw * 2 + 0.6, 0.3, b.hd * 2 + 0.6), roofMat);
+      roof.position.set(b.x, h + 0.15, b.z);
+      roof.castShadow = true;
+      roof.receiveShadow = true;
+      this.walls.add(roof);
+      const sign = makeTag(b.name, PALETTE.sign);
+      sign.scale.set(3.2, 0.8, 1);
+      sign.position.set(b.door.x + Math.sin(b.door.facing) * 0.4, h - 0.5, b.door.z + Math.cos(b.door.facing) * 0.4);
+      this.walls.add(sign);
+    }
+    for (const n of level.npcs ?? []) {
+      const figure = playerFigure(new THREE.Color(PALETTE.villager));
+      figure.root.position.set(n.x, 0, n.z);
+      figure.root.rotation.y = n.facing;
+      this.walls.add(figure.root);
+      const tag = makeTag(n.name, PALETTE.villagerTag);
+      tag.position.set(n.x, 2.25, n.z);
+      this.walls.add(tag);
     }
     this.stairs = null;
     if (level.stairs) {
@@ -493,6 +533,22 @@ export class View {
       this.stairs.position.set(level.stairs.x, 0.06, level.stairs.z);
       this.stairs.receiveShadow = true;
       this.walls.add(this.stairs);
+    }
+    this.portal = null;
+    if (level.portal) {
+      this.portal = new THREE.Mesh(
+        new THREE.CylinderGeometry(PORTAL.radius, PORTAL.radius, 0.12, 24),
+        new THREE.MeshStandardMaterial({ color: PALETTE.portal, emissive: PALETTE.portal, emissiveIntensity: 0.25, roughness: 0.6 })
+      );
+      this.portal.position.set(level.portal.x, 0.06, level.portal.z);
+      this.portal.receiveShadow = true;
+      this.walls.add(this.portal);
+      // A ring of stones round it, so the dais reads as a place from across the square.
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(PORTAL.radius + 0.3, 0.18, 6, 24), this.wallMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(level.portal.x, 0.1, level.portal.z);
+      ring.castShadow = true;
+      this.walls.add(ring);
     }
   }
 
@@ -520,6 +576,14 @@ export class View {
   setStairs(open: boolean, progress: number) {
     if (!this.stairs) return;
     (this.stairs.material as THREE.MeshStandardMaterial).emissive.setHex(open ? (progress > 0 ? 0xc9a646 : 0x7a6420) : 0x000000);
+  }
+
+  /** The portal glows a little always and brightens as the party's hold fills (0..1). */
+  setPortal(progress: number) {
+    if (!this.portal) return;
+    const m = this.portal.material as THREE.MeshStandardMaterial;
+    m.emissive.setHex(progress > 0 ? PALETTE.portalLit : PALETTE.portal);
+    m.emissiveIntensity = 0.25 + 0.75 * progress;
   }
 
   ensurePlayer(id: string, name: string, color: string) {

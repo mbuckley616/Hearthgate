@@ -100,13 +100,12 @@ describe("the Goblin Warrens", () => {
     expect(enc.resetAt).toBe(0); // the stairs replace the timed reset
   });
 
-  it("everyone standing on the open stairs for two seconds takes the party down: the floor starts again with fresh draughts", () => {
+  it("everyone standing on the open stairs for two seconds takes the party up, once: the floor is left as it is", () => {
     const enc = createEncounter(WARRENS);
     const a = createPlayer("a", 0, 0);
     const b = createPlayer("b", 0, 0);
     const players = new Map([["a", a], ["b", b]]);
     kill(enc, [...enc.enemies.keys()], a, players);
-    a.draughts = 0;
     const s = WARRENS.stairs!;
     a.x = s.x + 1;
     a.z = s.z;
@@ -114,16 +113,19 @@ describe("the Goblin Warrens", () => {
     b.z = s.z;
     let events: SimEvent[] = [];
     for (let i = 0; i < 60; i++) events.push(...stepEncounter(enc, players, (clock += TICK_MS), TICK_MS));
-    expect(events.some((e) => e.kind === "floorDescended")).toBe(false);
+    expect(events.some((e) => e.kind === "stairsTaken")).toBe(false);
     expect(enc.descendMs).toBe(0);
     b.x = s.x - 1;
     events = [];
     for (let t = 0; t < STAIRS.holdMs; t += TICK_MS) events.push(...stepEncounter(enc, players, (clock += TICK_MS), TICK_MS));
-    expect(events).toContainEqual({ kind: "floorDescended", floor: 2 });
-    expect(enc.floor).toBe(2);
-    expect(enc.stairsOpen).toBe(false);
-    expect([...enc.enemies.values()].every(isEnemyAlive)).toBe(true);
-    expect(a.draughts).toBe(DOWNS.draughtsPerFloor);
+    expect(events.filter((e) => e.kind === "stairsTaken")).toHaveLength(1);
+    expect(enc.departed).toBe(true);
+    // The hand-off is the server's: the floor stays as the party left it, and the stairs do not fire again.
+    expect(enc.stairsOpen).toBe(true);
+    expect([...enc.enemies.values()].every(isEnemyAlive)).toBe(false);
+    events = [];
+    for (let t = 0; t < STAIRS.holdMs * 2; t += TICK_MS) events.push(...stepEncounter(enc, players, (clock += TICK_MS), TICK_MS));
+    expect(events.some((e) => e.kind === "stairsTaken")).toBe(false);
   });
 
   it("the dead do not hold the party off the stairs", () => {
@@ -138,7 +140,7 @@ describe("the Goblin Warrens", () => {
     a.z = 0;
     const events: SimEvent[] = [];
     for (let t = 0; t < STAIRS.holdMs; t += TICK_MS) events.push(...stepEncounter(enc, players, (clock += TICK_MS), TICK_MS));
-    expect(events.some((e) => e.kind === "floorDescended")).toBe(true);
+    expect(events.some((e) => e.kind === "stairsTaken")).toBe(true);
   });
 
   it("a level without stairs still resets on a timer", () => {

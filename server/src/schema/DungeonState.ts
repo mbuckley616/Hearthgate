@@ -1,9 +1,9 @@
 import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 /**
- * The synced state. The server copies the plain simulation objects
- * (shared/src/sim.ts) into these each tick; Colyseus diffs and sends them.
- * Clients never write to this; they only send InputFrames.
+ * The synced state of a village or a dungeon room (both step the same simulation). The
+ * server copies the plain simulation objects (shared/src/sim.ts) into these each tick;
+ * Colyseus diffs and sends them. Clients never write to this; they only send InputFrames.
  */
 export class PlayerState extends Schema {
   @type("string") id = "";
@@ -74,10 +74,11 @@ export class DungeonState extends Schema {
   @type({ map: EnemyState }) enemies = new MapSchema<EnemyState>();
   /** Which level (shared/src/level.ts LEVELS) the room runs; the client builds its walls from it. */
   @type("string") levelId = "";
-  /** A level with stairs: open once every enemy is down; how long the party has stood on them; which floor. */
+  /** A level with stairs: open once every enemy is down, and how long the party has stood on them. */
   @type("boolean") stairsOpen = false;
   @type("number") descendMs = 0;
-  @type("number") floor = 1;
+  /** A level with a portal: how long the party has stood on it. */
+  @type("number") portalMs = 0;
   /** Server tick counter; simulation time = tick * TICK_MS. */
   @type("number") tick = 0;
 }

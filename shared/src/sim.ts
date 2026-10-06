@@ -13,7 +13,7 @@
  */
 
 import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
-import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level } from "./level";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level, type Npc } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
 export { ARENA_HALF };
@@ -221,13 +221,29 @@ export type EnemyKind = keyof typeof ENEMY_KINDS;
  */
 /**
  * The stairs (a level with `stairs`): open once every enemy on the floor is down; every
- * standing player within `radius` for `holdMs` takes the party down. A proximity hold like
- * the pickup, so it works the same on keyboard, gamepad and touch. Until a second floor
- * exists, going down starts this one again: the enemies return and the draughts refill.
+ * standing player on them for `holdMs` takes the party up. The hold is proximity, like
+ * the pickup, so it works the same on keyboard, gamepad and touch. The stairs lead back to
+ * the village (the dungeon room hands the party to a village room, see stepStairs); a
+ * level without them resets after ROOM.resetMs instead.
  */
 export const STAIRS = {
   radius: 2.5,
   holdMs: 2000
+} as const;
+
+/**
+ * The village's portal (level.ts Portal): the same hold as the stairs, so one rule covers
+ * both moves between rooms. The village room hands the party to a fresh dungeon room on the
+ * portal's level.
+ */
+export const PORTAL = {
+  radius: 2.5,
+  holdMs: 2000
+} as const;
+
+/** Villagers: how close a player must stand to talk to one (centre to centre). */
+export const NPC = {
+  talkRange: 2.5
 } as const;
 
 export const ROOM = {
@@ -660,8 +676,13 @@ export interface Encounter {
   stairsOpen: boolean;
   /** How long every standing player has been on the open stairs. */
   descendMs: number;
-  /** Which floor this is, from 1; going down the stairs adds one. */
-  floor: number;
+  /** How long every standing player has been on the level's portal. */
+  portalMs: number;
+  /**
+   * The party has taken the stairs or the portal: the room is handing them to another and
+   * neither fires again. The server clears it if the hand-off fails.
+   */
+  departed: boolean;
 }
 
 export type SimEvent =
@@ -678,7 +699,12 @@ export type SimEvent =
   | { kind: "chargeWall"; enemyId: string }
   | { kind: "roomCleared"; byId: string; room: string }
   | { kind: "floorCleared" }
-  | { kind: "floorDescended"; floor: number }
+  /** Every standing player held the open stairs: the server hands the party back to the village. */
+  | { kind: "stairsTaken" }
+  /** Every standing player held the portal: the server hands the party to a dungeon room on level `to`. */
+  | { kind: "portalTaken"; to: string }
+  /** A player pressed use next to a villager; the line is the level's (level.ts Npc). */
+  | { kind: "npcTalk"; playerId: string; npcId: string }
   | { kind: "roomReset" }
   | { kind: "playerDowned"; playerId: string }
   | { kind: "playerPickedUp"; playerId: string; byId: string }
@@ -775,7 +801,7 @@ export function createEnemies(level: Level): Map<string, EnemySim> {
 }
 
 export function createEncounter(level: Level): Encounter {
-  return { level, enemies: createEnemies(level), resetAt: 0, stairsOpen: false, descendMs: 0, floor: 1 };
+  return { level, enemies: createEnemies(level), resetAt: 0, stairsOpen: false, descendMs: 0, portalMs: 0, departed: false };
 }
 
 /** Back at the spawn, full health, forgetting everything. */
@@ -1681,22 +1707,54 @@ function rallyOf(_e: EnemySim): RallyDef {
 
 /**
  * The open stairs: when every standing player has stood on them for STAIRS.holdMs the party
- * goes down. Until a second floor exists that starts this floor again: every enemy back at
- * its post, the stairs shut, a draught each (DOWNS.draughtsPerFloor). Server only.
+ * has taken them. The sim only says so (`stairsTaken`, once: `departed` latches); the server
+ * hands the party to the village room, the floor is left behind and its room disposes.
  */
 export function stepStairs(enc: Encounter, players: Map<string, PlayerSim>, dtMs: number): SimEvent[] {
   const stairs = enc.level.stairs;
-  if (!enc.stairsOpen || !stairs) return [];
-  const standing = [...players.values()].filter(isAlive);
-  const allOn = standing.length > 0 && standing.every((p) => Math.hypot(p.x - stairs.x, p.z - stairs.z) <= STAIRS.radius);
-  enc.descendMs = allOn ? enc.descendMs + dtMs : 0;
+  if (!enc.stairsOpen || !stairs || enc.departed) return [];
+  enc.descendMs = holdOn(stairs, STAIRS.radius, enc.descendMs, players, dtMs);
   if (enc.descendMs < STAIRS.holdMs) return [];
-  enc.stairsOpen = false;
-  enc.descendMs = 0;
-  enc.floor++;
-  for (const e of enc.enemies.values()) resetEnemy(e);
-  for (const p of players.values()) p.draughts = DOWNS.draughtsPerFloor;
-  return [{ kind: "floorDescended", floor: enc.floor }];
+  enc.departed = true;
+  return [{ kind: "stairsTaken" }];
+}
+
+/**
+ * The village's portal: every standing player on it for PORTAL.holdMs and the party has gone
+ * through (`portalTaken`, once). The server hands them to a dungeon room on the portal's level.
+ */
+export function stepPortal(enc: Encounter, players: Map<string, PlayerSim>, dtMs: number): SimEvent[] {
+  const portal = enc.level.portal;
+  if (!portal || enc.departed) return [];
+  enc.portalMs = holdOn(portal, PORTAL.radius, enc.portalMs, players, dtMs);
+  if (enc.portalMs < PORTAL.holdMs) return [];
+  enc.departed = true;
+  return [{ kind: "portalTaken", to: portal.to }];
+}
+
+/** The hold so far plus this tick while every standing player is within `radius` of the spot; 0 the moment one is not. */
+function holdOn(spot: { x: number; z: number }, radius: number, heldMs: number, players: Map<string, PlayerSim>, dtMs: number): number {
+  const standing = [...players.values()].filter(isAlive);
+  const allOn = standing.length > 0 && standing.every((p) => Math.hypot(p.x - spot.x, p.z - spot.z) <= radius);
+  return allOn ? heldMs + dtMs : 0;
+}
+
+/**
+ * The villager a standing player at `p` is talking to when they press use: the nearest within
+ * NPC.talkRange, or null. Server only; the client shows the line from the level's data.
+ */
+export function talkToNpc(p: PlayerSim, level: Level): Npc | null {
+  if (!isAlive(p) || !level.npcs) return null;
+  let best: Npc | null = null;
+  let bestD = Infinity;
+  for (const n of level.npcs) {
+    const d = Math.hypot(n.x - p.x, n.z - p.z);
+    if (d <= NPC.talkRange && d < bestD) {
+      bestD = d;
+      best = n;
+    }
+  }
+  return best;
 }
 
 /** Bring dead players back at their spawn point once their timer is up. Server only. */
@@ -1751,6 +1809,7 @@ export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, n
     enc.stairsOpen = false;
   }
   events.push(...stepStairs(enc, players, dtMs));
+  events.push(...stepPortal(enc, players, dtMs));
   dropStaleLocks(players.values(), enc.enemies);
   events.push(...stepRespawns(players.values(), now));
   stepPosture(players.values(), enc.enemies.values(), now, dtMs);
