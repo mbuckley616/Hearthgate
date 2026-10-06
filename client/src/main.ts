@@ -314,8 +314,12 @@ function describeEvent(e: SimEvent): string {
       return e.room ? `${capital(e.room)}: clear` : "Room clear";
     case "floorCleared":
       return "Every room is clear: the stairs are open. Everyone onto them";
-    case "floorDescended":
-      return `Down the stairs: floor ${e.floor}`;
+    case "stairsTaken":
+      return "Up the stairs: back to the village";
+    case "portalTaken":
+      return "Through the portal";
+    case "npcTalk":
+      return "";
     case "roomReset":
       return "The goblins are back";
     case "playerDowned":

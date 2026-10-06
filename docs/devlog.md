@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-06: Session 31, the village room and the hand-off between rooms
+
+**What changed**
+
+- The server has two room types, as the design doc's Rooms paragraph says: a `village` room the client joins first and a `dungeon` room a run. Both are a `SimRoom` (`server/src/rooms/SimRoom.ts`): one `Level`, the 20 Hz tick locked to wall time, two queued inputs a player a tick, the patch at the end of each step, the clock pings. `DungeonRoom` and `VillageRoom` only name their level and act on the tick's events, so nothing in the netcode's shape moved.
+- The village is a `Level` (`VILLAGE` in `shared/src/level.ts`): four greybox buildings (Portal Shrine north, General Store west, Storehouse east, Tavern south) whose walls are ordinary `WallRect`s made by `buildingWalls` (four faces at 3.2 m, a 2.4 m doorway in the face the door is on), so a building stops a player exactly as a ruin does and the client's prediction already runs it. A villager (`Npc`) stands by each door with one line; a portal on the ground before the shrine leads to the Warrens. No enemies. `WallRect.h` is a drawing height the collision ignores.
+- The hand-off. The party moves as the stairs already did: every standing player on the portal (`PORTAL`, 2.5 m, 2 s) or the open stairs (`STAIRS`, unchanged) for the hold. The sim says so once (`portalTaken`, `stairsTaken`; `Encounter.departed` latches) and the server does the rest in `SimRoom.handOffParty`: it locks the room, makes a fresh dungeon room on the portal's level (or finds an open village, or makes one), reserves a seat per client under their own name, weapon and tier, and sends each a `handoff` message with the reservation and the level id. The client leaves and consumes the seat (`colyseus.js` `consumeSeatReservation`); the old room disposes when empty. A refused reservation clears the latch so the portal or the stairs fire again.
+- The stairs no longer restart the floor: `floorDescended` and the floor counter are gone, with the enemy reset and the draught refill that rode on them (a fresh run is a fresh dungeon room). `use` (E, LB) is one key: a dead teammate in reach takes the draught, else a villager in reach talks (`talkToNpc`, 2.5 m) and the server broadcasts `npcTalk`; the line itself is level data, never sent.
+- `CELLAR`: the smallest floor, one goblin and the stairs, for the tests. `LEVELS` now holds five.
+- Tests. `shared/src/village.test.ts` (10, 183 in all): a building's five walls and its doorway on each face, a player through the door and stopped beside it; the village's spawns, villagers and portal clear of its walls and the spawns off the portal; every door reachable from the square and every back wall closed; talk in reach and not out of it or downed; the portal fires once when everyone holds it, resets when one steps off, ignores the dead, and works again after the server clears the latch. The Warrens stairs tests say "taken, once" instead of "restart the floor". `npm run test:net` grew two steps: two bots in a village room (no enemies, four villagers), one talks to the keeper in 1.5 s, both hold the portal and are handed seats in one fresh Warrens room 3.3 s after setting off, there together with the bow Juno picked; then in a cellar Kit kills the goblin in 2.7 s, both hold the open stairs and are handed to a village together, 2.9 s. The server log shows each left room disposing. The old eight steps and the stress run (20.0 patches a second, 54 ms worst gap) are unchanged.
+- Client: only what the typecheck needed (the floor counter and its log line); the join, the hand-off, the town's look and the villager prompt are the next session.
+
+**Learned**
+
+- Colyseus's matchmaker does the hand-off's hard part on the server: `createRoom` plus `joinById` per client gives every member a seat in the same new room before any of them moves, and a locked room is skipped by `joinOrCreate`, so a party on its way out cannot be joined. The clients never see a room id they did not get from the server.
+- One hold rule for both moves keeps the sim to one new function (`holdOn`) and means the portal needs nothing the stairs did not already have on keyboard, gamepad and a later touch layout.
+
+**Next**
+
+- Session 32: the client joins the village by default and follows a `handoff` (tear down the level, the remotes and the clock, consume the seat, build the new level), draws the buildings with roofs and signs, the villagers and the portal, shows the 48 px talk button and the line, and the e2e test walks a real browser through the portal. Then CLAUDE.md's netcode section, the lab numbers and the backlog.
+
 ## 2026-10-05: Session 30, placeholder figures instead of pills
 
 **What changed**

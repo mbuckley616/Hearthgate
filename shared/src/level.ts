@@ -15,6 +15,41 @@ export interface WallRect {
   /** Half width (along x) and half depth (along z), metres. */
   hw: number;
   hd: number;
+  /** Height to draw it at, metres. Presentation only: collision is on the ground. Absent, the client picks one from the footprint. */
+  h?: number;
+}
+
+/**
+ * A greybox building: a blocked-out shape with one door. Its walls are ordinary WallRects
+ * (buildingWalls), so a building stops a player exactly as a ruin does; the roof and the sign
+ * over the door are the client's.
+ */
+export interface Building {
+  name: string;
+  x: number;
+  z: number;
+  hw: number;
+  hd: number;
+  /** The door's middle, on one of the four faces, and the way out of it (a yaw: forward is (sin f, cos f)). */
+  door: { x: number; z: number; facing: number };
+}
+
+/** A placeholder villager: stands still, says one line when a player next to them presses use (E, LB). */
+export interface Npc {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  facing: number;
+  line: string;
+}
+
+/** A portal on the ground: when every standing player has stood on it for PORTAL.holdMs the party goes to `to`. */
+export interface Portal {
+  x: number;
+  z: number;
+  /** The LEVELS id of the floor it opens on. */
+  to: string;
 }
 
 export interface EnemySpawn {
@@ -51,6 +86,49 @@ export interface Level {
    * Absent: enemies only walk straight (the field and the yard have no closed rooms).
    */
   waypoints?: readonly { x: number; z: number }[];
+  /** The village's buildings, villagers and portal (absent on a dungeon floor). */
+  buildings?: readonly Building[];
+  npcs?: readonly Npc[];
+  portal?: Portal;
+}
+
+/** A doorway's width and a building wall's half thickness, metres. */
+const DOOR_HALF_W = 1.2;
+const BUILDING_WALL_HT = 0.2;
+
+/**
+ * The walls of a greybox building: four faces of a box, the one with the door in two pieces
+ * either side of a DOOR_HALF_W * 2 gap. The door sits on whichever face it is nearest.
+ */
+export function buildingWalls(b: Building, h: number): WallRect[] {
+  const walls: WallRect[] = [];
+  const x0 = b.x - b.hw;
+  const x1 = b.x + b.hw;
+  const z0 = b.z - b.hd;
+  const z1 = b.z + b.hd;
+  const dx = b.door.x - b.x;
+  const dz = b.door.z - b.z;
+  // Nearer a north or south face (along x) than an east or west one (along z)?
+  const doorAlongX = Math.abs(Math.abs(dz) - b.hd) <= Math.abs(Math.abs(dx) - b.hw);
+  const alongX = (z: number, door: boolean) => {
+    if (!door) return walls.push({ x: b.x, z, hw: b.hw, hd: BUILDING_WALL_HT, h });
+    const l = b.door.x - DOOR_HALF_W;
+    const r = b.door.x + DOOR_HALF_W;
+    walls.push({ x: (x0 + l) / 2, z, hw: (l - x0) / 2, hd: BUILDING_WALL_HT, h });
+    walls.push({ x: (r + x1) / 2, z, hw: (x1 - r) / 2, hd: BUILDING_WALL_HT, h });
+  };
+  const alongZ = (x: number, door: boolean) => {
+    if (!door) return walls.push({ x, z: b.z, hw: BUILDING_WALL_HT, hd: b.hd, h });
+    const l = b.door.z - DOOR_HALF_W;
+    const r = b.door.z + DOOR_HALF_W;
+    walls.push({ x, z: (z0 + l) / 2, hw: BUILDING_WALL_HT, hd: (l - z0) / 2, h });
+    walls.push({ x, z: (r + z1) / 2, hw: BUILDING_WALL_HT, hd: (z1 - r) / 2, h });
+  };
+  alongX(z0, doorAlongX && dz < 0);
+  alongX(z1, doorAlongX && dz > 0);
+  alongZ(x0, !doorAlongX && dx < 0);
+  alongZ(x1, !doorAlongX && dx > 0);
+  return walls;
 }
 
 export interface RoomRect {
@@ -323,10 +401,67 @@ export const WARRENS: Level = {
   ]
 };
 
-export const LEVELS: Record<string, Level> = { field: OPEN_FIELD, yard: YARD, warrens: WARRENS };
+/**
+ * The smallest floor: one goblin and the stairs, no walls. For the tests (a party can clear it in
+ * seconds and prove the stairs hand them back to the village) and for a two-minute run.
+ */
+export const CELLAR: Level = {
+  id: "cellar",
+  name: "The cellar",
+  halfW: 10,
+  halfD: 10,
+  walls: [],
+  stairs: { x: 0, z: 0 },
+  enemies: [{ kind: "goblin", x: 7, z: -7, facing: Math.PI }]
+};
 
-/** The level a dungeon room runs: the Warrens floor the Phase 1 gate asks a party to clear. `?level=yard` keeps the old yard. */
+/** The height the village's building walls are drawn at; a doorway is 2.4 m wide. */
+export const BUILDING_WALL_H = 3.2;
+
+/**
+ * The village greybox (Michael, B, 2026-10-05: a rough, walkable town to judge the feel early;
+ * Phase 2 owns the real village). The square at the origin, where the party spawns; the Portal
+ * Shrine north of it with the portal on the ground before its door; the General Store west, the
+ * Storehouse east, the Tavern south, each a blocked-out box with one door and a villager beside
+ * it. No enemies: nothing here can hurt you (design doc, Hub and village).
+ */
+export const VILLAGE_BUILDINGS: readonly Building[] = [
+  { name: "Portal Shrine", x: 0, z: 16, hw: 4, hd: 3, door: { x: 0, z: 13, facing: Math.PI } },
+  { name: "General Store", x: -15, z: 1, hw: 3, hd: 4, door: { x: -12, z: 1, facing: Math.PI / 2 } },
+  { name: "Storehouse", x: 15, z: 1, hw: 3, hd: 4, door: { x: 12, z: 1, facing: -Math.PI / 2 } },
+  { name: "Tavern", x: 0, z: -15, hw: 5, hd: 3, door: { x: 0, z: -12, facing: 0 } }
+];
+
+export const VILLAGE: Level = {
+  id: "village",
+  name: "Hearthgate",
+  halfW: 24,
+  halfD: 24,
+  walls: VILLAGE_BUILDINGS.flatMap((b) => buildingWalls(b, BUILDING_WALL_H)),
+  enemies: [],
+  buildings: VILLAGE_BUILDINGS,
+  npcs: [
+    {
+      id: "keeper",
+      name: "Keeper Wren",
+      x: 2.6,
+      z: 11.4,
+      facing: Math.PI,
+      line: "The shrine's portal opens on the Goblin Warrens. Stand on it together and hold; the stairs at the bottom bring you home."
+    },
+    { id: "storekeeper", name: "Aldous", x: -10.6, z: 3.2, facing: Math.PI / 2, line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
+    { id: "warden", name: "Marta", x: 10.6, z: -1.2, facing: -Math.PI / 2, line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
+    { id: "innkeeper", name: "Old Fenn", x: 2.4, z: -10.4, facing: 0, line: "No ale, no beds, no hirelings yet. Warm yourself by the fire a while." }
+  ],
+  portal: { x: 0, z: 9.5, to: "warrens" }
+};
+
+export const LEVELS: Record<string, Level> = { field: OPEN_FIELD, yard: YARD, warrens: WARRENS, cellar: CELLAR, village: VILLAGE };
+
+/** The level a dungeon room runs when none is asked for: the Warrens floor the Phase 1 gate asks a party to clear. `?level=yard` keeps the old yard. */
 export const DEFAULT_LEVEL_ID = "warrens";
+/** The room the client joins first: the village, whose portal leads to the Warrens. */
+export const VILLAGE_LEVEL_ID = "village";
 
 export function levelById(id: string): Level {
   return LEVELS[id] ?? OPEN_FIELD;
