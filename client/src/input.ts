@@ -60,6 +60,11 @@ export class Input {
     });
   }
 
+  /** The HUD's talk button (a tap or a click): the same use press as E or LB. */
+  pressUse() {
+    this.usePressed = true;
+  }
+
   /** True while the player is holding a movement key. Used by the HUD hint. */
   get anyKeyDown(): boolean {
     return this.down.size > 0;

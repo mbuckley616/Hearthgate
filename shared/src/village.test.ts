@@ -79,7 +79,7 @@ describe("the village", () => {
       const npc = VILLAGE.npcs!.find((n) => Math.hypot(n.x - b.door.x, n.z - b.door.z) < 4);
       expect(npc, `a villager by the ${b.name}'s door`).toBeDefined();
     }
-    expect(VILLAGE.portal).toEqual({ x: 0, z: 9.5, to: "warrens" });
+    expect(VILLAGE.portal).toEqual({ x: 0, z: -9.5, to: "warrens" });
     expect(LEVELS[VILLAGE.portal!.to].stairs).toBeDefined();
     for (const w of VILLAGE.walls) expect(w.h).toBe(BUILDING_WALL_H);
   });
@@ -131,9 +131,9 @@ describe("the village", () => {
     const b = createPlayer("b", SPAWN_POINTS[1].x, SPAWN_POINTS[1].z);
     const players = new Map([["a", a], ["b", b]]);
     const portal = VILLAGE.portal!;
-    // Straight at the portal from the first spawn: 7.2 m, 22 ticks at 6 m/s stop 0.6 m short of its centre.
+    // Straight at the portal from the first spawn at 6 m/s (0.3 m a tick), stopping about 0.6 m short of its centre.
     const d = Math.hypot(portal.x - a.x, portal.z - a.z);
-    let t = walk(a, (portal.x - a.x) / d, (portal.z - a.z) / d, 0, 22);
+    let t = walk(a, (portal.x - a.x) / d, (portal.z - a.z) / d, 0, Math.floor((d - 0.6) / 0.3));
     expect(Math.hypot(a.x - portal.x, a.z - portal.z)).toBeLessThan(1);
     let events: SimEvent[] = [];
     for (let i = 0; i < 60; i++) events.push(...stepEncounter(enc, players, (t += TICK_MS), TICK_MS));

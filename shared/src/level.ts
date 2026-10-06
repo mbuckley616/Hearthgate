@@ -420,16 +420,18 @@ export const BUILDING_WALL_H = 3.2;
 
 /**
  * The village greybox (Michael, B, 2026-10-05: a rough, walkable town to judge the feel early;
- * Phase 2 owns the real village). The square at the origin, where the party spawns; the Portal
- * Shrine north of it with the portal on the ground before its door; the General Store west, the
- * Storehouse east, the Tavern south, each a blocked-out box with one door and a villager beside
- * it. No enemies: nothing here can hurt you (design doc, Hub and village).
+ * Phase 2 owns the real village). The square at the origin, where the party spawns. The camera
+ * looks toward -z, so the Portal Shrine stands straight ahead at -z with the portal on the
+ * ground before its door, the General Store to the left (-x) and the Storehouse to the right
+ * (+x), and the Tavern off the back-left corner, where a building behind the party covers the
+ * least of the view. Each is a blocked-out box with one door and a villager beside it. No
+ * enemies: nothing here can hurt you (design doc, Hub and village).
  */
 export const VILLAGE_BUILDINGS: readonly Building[] = [
-  { name: "Portal Shrine", x: 0, z: 16, hw: 4, hd: 3, door: { x: 0, z: 13, facing: Math.PI } },
-  { name: "General Store", x: -15, z: 1, hw: 3, hd: 4, door: { x: -12, z: 1, facing: Math.PI / 2 } },
-  { name: "Storehouse", x: 15, z: 1, hw: 3, hd: 4, door: { x: 12, z: 1, facing: -Math.PI / 2 } },
-  { name: "Tavern", x: 0, z: -15, hw: 5, hd: 3, door: { x: 0, z: -12, facing: 0 } }
+  { name: "Portal Shrine", x: 0, z: -16, hw: 4, hd: 3, door: { x: 0, z: -13, facing: 0 } },
+  { name: "General Store", x: -15, z: -3, hw: 3, hd: 4, door: { x: -12, z: -3, facing: Math.PI / 2 } },
+  { name: "Storehouse", x: 15, z: -3, hw: 3, hd: 4, door: { x: 12, z: -3, facing: -Math.PI / 2 } },
+  { name: "Tavern", x: -12, z: 11, hw: 5, hd: 3, door: { x: -12, z: 8, facing: Math.PI } }
 ];
 
 export const VILLAGE: Level = {
@@ -445,15 +447,15 @@ export const VILLAGE: Level = {
       id: "keeper",
       name: "Keeper Wren",
       x: 2.6,
-      z: 11.4,
-      facing: Math.PI,
+      z: -11.4,
+      facing: 0,
       line: "The shrine's portal opens on the Goblin Warrens. Stand on it together and hold; the stairs at the bottom bring you home."
     },
-    { id: "storekeeper", name: "Aldous", x: -10.6, z: 3.2, facing: Math.PI / 2, line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
-    { id: "warden", name: "Marta", x: 10.6, z: -1.2, facing: -Math.PI / 2, line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
-    { id: "innkeeper", name: "Old Fenn", x: 2.4, z: -10.4, facing: 0, line: "No ale, no beds, no hirelings yet. Warm yourself by the fire a while." }
+    { id: "storekeeper", name: "Aldous", x: -10.6, z: -0.8, facing: Math.PI / 2, line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
+    { id: "warden", name: "Marta", x: 10.6, z: -5.2, facing: -Math.PI / 2, line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
+    { id: "innkeeper", name: "Old Fenn", x: -9.6, z: 6.4, facing: Math.PI, line: "No ale, no beds, no hirelings yet. Warm yourself by the fire a while." }
   ],
-  portal: { x: 0, z: 9.5, to: "warrens" }
+  portal: { x: 0, z: -9.5, to: "warrens" }
 };
 
 export const LEVELS: Record<string, Level> = { field: OPEN_FIELD, yard: YARD, warrens: WARRENS, cellar: CELLAR, village: VILLAGE };

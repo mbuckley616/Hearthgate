@@ -131,6 +131,36 @@
         color: var(--ink);
         font-weight: 600;
       }
+      /* The villager prompt: a real button, at least 48 px, so a touch layout can use it as it is. */
+      .hud-talk {
+        display: none;
+        pointer-events: auto;
+        margin-top: 8px;
+        min-height: 48px;
+        min-width: 48px;
+        width: 100%;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 241, 194, 0.6);
+        background: rgba(232, 178, 74, 0.3);
+        color: var(--ink);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .hud-speech {
+        display: none;
+        margin-top: 8px;
+        /* Narrow enough on a portrait phone to stay clear of the top-right panel (36vw). */
+        max-width: min(260px, 44vw);
+        font-size: 14px;
+        color: var(--ink);
+      }
+      /* The enemy line never widens the panel past its bar: a long one wraps. */
+      #hud-enemy-label {
+        max-width: 180px;
+      }
       .hud-bar {
         position: relative;
         height: 14px;
@@ -279,8 +309,10 @@
         .hud-controls {
           display: none;
         }
-        .hud-bar {
+        .hud-bar,
+        #hud-enemy-label {
           width: 140px;
+          max-width: 140px;
         }
         /* Portrait phones: the two top panels share ~360 px, so drop the desktop min-width
            and let the long net line wrap instead of sliding under the health bars. */
