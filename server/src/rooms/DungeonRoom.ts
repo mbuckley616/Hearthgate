@@ -8,6 +8,8 @@ import {
   createEncounter,
   createInputBucket,
   createPlayer,
+  cycleLock,
+  gearName,
   isValidInput,
   levelById,
   neutralInput,
@@ -19,7 +21,8 @@ import {
   type InputBucket,
   type InputFrame,
   type PlayerSim,
-  type SimEvent
+  type SimEvent,
+  weaponFromPick
 } from "@hearthgate/shared";
 import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js";
 
@@ -43,6 +46,9 @@ interface JoinOptions {
   name?: string;
   /** A level id from shared LEVELS; tests pick the open field, play gets the default. */
   level?: string;
+  /** The weapon picked on the join screen (a WEAPON_TYPES id) and its material tier; checked by weaponFromPick. */
+  weapon?: string;
+  tier?: number;
 }
 
 export class DungeonRoom extends Room<DungeonState> {
@@ -117,6 +123,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const slot = this.nextSpawn++ % SPAWN_POINTS.length;
     const spawn = SPAWN_POINTS[slot];
     const p = createPlayer(client.sessionId, spawn.x, spawn.z);
+    p.weapon = weaponFromPick(options.weapon, options.tier);
     this.sim.players.set(client.sessionId, p);
     this.queues.set(client.sessionId, []);
     this.buckets.set(client.sessionId, createInputBucket(performance.now()));
@@ -128,7 +135,7 @@ export class DungeonRoom extends Room<DungeonState> {
     copyPlayer(p, ps);
     this.state.players.set(client.sessionId, ps);
 
-    console.log(`[dungeon ${this.roomId}] ${ps.name} joined (${this.clients.length}/${this.maxClients})`);
+    console.log(`[dungeon ${this.roomId}] ${ps.name} joined with a ${gearName(p.weapon)} (${this.clients.length}/${this.maxClients})`);
   }
 
   onLeave(client: Client) {
@@ -175,6 +182,7 @@ export class DungeonRoom extends Room<DungeonState> {
     const level = this.sim.encounter.level;
 
     const users: PlayerSim[] = [];
+    const cyclers: PlayerSim[] = [];
     for (const [id, p] of this.sim.players) {
       const q = this.queues.get(id) ?? [];
       const frames = q.splice(0, MAX_INPUTS_PER_TICK);
@@ -185,12 +193,15 @@ export class DungeonRoom extends Room<DungeonState> {
       } else {
         for (const f of frames) applyInput(p, f, now, TICK_MS, level);
         if (frames.some((f) => f.use)) users.push(p);
+        if (frames.some((f) => f.cycle)) cyclers.push(p);
       }
     }
 
     const events: SimEvent[] = [];
     // After everyone has moved this tick, so a draught reaches a body by where it lies now.
     for (const p of users) events.push(...useDraught(p, this.sim.players.values()));
+    // The same for the lock-on: the candidates are measured from where the archer stands now.
+    for (const p of cyclers) cycleLock(p, this.sim.encounter.enemies.values(), level);
     events.push(...stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS));
 
     this.syncState();
@@ -247,6 +258,9 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.knockUntil = p.knockUntil;
   ps.knockDx = p.knockDx;
   ps.knockDz = p.knockDz;
+  ps.weaponType = p.weapon.type;
+  ps.weaponTier = p.weapon.tier;
+  ps.lockId = p.lockId;
 }
 
 /** Only the fields that change; @colyseus/schema skips a write of the same value, but it still costs a compare. */

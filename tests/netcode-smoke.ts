@@ -29,7 +29,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS, WARRENS, YARD } from "@hearthgate/shared";
+import { DOWNS, TICK_MS, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -250,6 +250,8 @@ async function main() {
     await b.leave();
     await sleep(300);
 
+    await weaponPick(client);
+    await lockOn(client);
     await yard(client);
     await warrens(client);
     await stress(client);
@@ -294,6 +296,78 @@ async function yard(client: Client) {
   if (Math.abs(me.x - face) > 0.1 || Math.abs(me.z - 3) > 0.1) fail(`yard: after 2.5 s walking east Delta is at ${me.x.toFixed(2)}, ${me.z.toFixed(2)}; the wall should hold them at x = ${face}`);
   console.log(`ok: yard room has ${kinds.join(", ")} (${shieldsUp} shield up); the wall held Delta at x=${me.x.toFixed(2)} after ${seq} inputs east`);
   await d.leave();
+  await sleep(300);
+}
+
+/**
+ * The join screen's pick (Michael, A, 2026-10-05): a weapon and tier sent as join options reach every client,
+ * the server swings with it, and a pick the server does not know is the starter sword at a real tier.
+ */
+async function weaponPick(client: Client) {
+  const f = await client.create("dungeon", { name: "Foxtrot", level: "field", weapon: "claymore", tier: 5 });
+  const g = await client.joinById(f.roomId, { name: "Golf", weapon: "laser", tier: 99 });
+  let fState: any = null;
+  let gState: any = null;
+  f.onStateChange((s: any) => (fState = s));
+  g.onStateChange((s: any) => (gState = s));
+  await sleep(400);
+  if (!fState || !gState) fail("weapon pick: no state received");
+  const fox = gState.players.get(f.sessionId);
+  const golf = fState.players.get(g.sessionId);
+  if (fox?.weaponType !== "claymore" || fox?.weaponTier !== 5) fail(`weapon pick: Golf sees Foxtrot with ${fox?.weaponType} ${fox?.weaponTier}, not claymore 5`);
+  if (golf?.weaponType !== "sword" || golf?.weaponTier !== 1) fail(`weapon pick: a bad pick became ${golf?.weaponType} ${golf?.weaponTier}, not sword 1`);
+  f.send("input", { seq: 1, dx: 0, dy: 0, attack: true, dodge: false });
+  await sleep(300);
+  const swung = fState.players.get(f.sessionId);
+  const two = WEAPON_CLASSES.twoHand;
+  if (swung.attackUntil - swung.attackHitAt !== two.durationMs - two.windupMs) {
+    fail(`weapon pick: Foxtrot's swing recovers in ${swung.attackUntil - swung.attackHitAt} ms, not the two-hander's ${two.durationMs - two.windupMs}`);
+  }
+  console.log("ok: weapon pick: a Claymore at tier 5 reaches both clients and swings two-handed; an unknown pick is a tier-1 sword");
+
+  await g.leave();
+  await f.leave();
+  await sleep(300);
+}
+
+/**
+ * The bow's lock-on, alone in a fresh field: Hotel spawns at (-3, 3), 17 m from the goblin at (9, -9), so a
+ * press finds nothing; after walking a second toward it a press locks it, and the next goes back to auto.
+ */
+async function lockOn(client: Client) {
+  const h = await client.create("dungeon", { name: "Hotel", level: "field", weapon: "bow", tier: 1 });
+  let hState: any = null;
+  h.onStateChange((s: any) => (hState = s));
+  const hEvents: any[] = [];
+  h.onMessage("events", (evs: any[]) => hEvents.push(...evs));
+  let hseq = 0;
+  const press = async () => {
+    h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, cycle: true });
+    await sleep(300);
+    return hState.players.get(h.sessionId);
+  };
+  await sleep(300);
+  const far = await press();
+  if (far.lockId !== "") fail(`lock-on: Hotel at (${far.x}, ${far.z}) locked "${far.lockId}" with nothing in range`);
+  for (let i = 0; i < 20; i++) {
+    h.send("input", { seq: ++hseq, dx: 0.707, dy: -0.707, attack: false, dodge: false });
+    await sleep(TICK_MS);
+  }
+  const goblinId = [...hState.enemies.keys()][0];
+  const near = await press();
+  const gob = hState.enemies.get(goblinId);
+  const d = Math.hypot(gob.x - near.x, gob.z - near.z);
+  if (near.lockId !== goblinId) fail(`lock-on: ${d.toFixed(1)} m from the goblin Hotel's lock is "${near.lockId}", not ${goblinId}`);
+  // Arrow rain on the lock: it lands on the goblin wherever it has walked to.
+  h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 });
+  await sleep(1000);
+  const volley = hEvents.find((e) => e.kind === "arrowRain");
+  const rained = hEvents.find((e) => e.kind === "abilityHit" && e.ability === "arrowRain" && e.enemyId === goblinId);
+  if (!volley || !rained) fail(`arrow rain: ${volley ? `fell at (${volley.x.toFixed(1)}, ${volley.z.toFixed(1)}) and hit ${volley.hits}` : "never fell"}, expected it on the locked goblin`);
+  const again = await press();
+  if (again.lockId !== "") fail(`lock-on: a second press with one target left the lock on "${again.lockId}"`);
+  console.log(`ok: lock-on: nothing in range at 17 m, the goblin locked at ${d.toFixed(1)} m, Arrow rain on it for ${rained.damage}, back to auto on the next press`);
+  await h.leave();
   await sleep(300);
 }
 

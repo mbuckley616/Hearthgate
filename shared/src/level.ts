@@ -45,6 +45,12 @@ export interface Level {
    * by standing on them; without, a cleared level resets after ROOM.resetMs.
    */
   stairs?: { x: number; z: number };
+  /**
+   * Points a chasing enemy can route through when it cannot walk straight at its target:
+   * one each side of every doorway, far enough out that the way to them clears the jambs.
+   * Absent: enemies only walk straight (the field and the yard have no closed rooms).
+   */
+  waypoints?: readonly { x: number; z: number }[];
 }
 
 export interface RoomRect {
@@ -116,6 +122,78 @@ export function lineClear(a: { x: number; z: number }, b: { x: number; z: number
     if (segmentHitsRect(a, b, w)) return false;
   }
   return true;
+}
+
+/**
+ * True when a circle of `radius` can slide from a to b without touching a wall: the centre
+ * line and the two lines `radius` to either side are all clear. A slightly thinner body is
+ * tested so a circle resting against a wall's face, as collideWalls leaves it, is not blocked.
+ */
+export function pathClear(a: { x: number; z: number }, b: { x: number; z: number }, radius: number, level: Level): boolean {
+  if (!lineClear(a, b, level)) return false;
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-9 || radius <= 0) return true;
+  const r = radius * 0.9;
+  const ox = (-dz / d) * r;
+  const oz = (dx / d) * r;
+  return (
+    lineClear({ x: a.x + ox, z: a.z + oz }, { x: b.x + ox, z: b.z + oz }, level) &&
+    lineClear({ x: a.x - ox, z: a.z - oz }, { x: b.x - ox, z: b.z - oz }, level)
+  );
+}
+
+/**
+ * Where a body of `radius` at `from` should head next to reach `to`: `to` itself when the
+ * way is clear, else the first waypoint on the shortest route through the level's waypoints
+ * (Dijkstra over a handful of points, ties to the lower index, so server runs agree). With
+ * no route, `to`, and the body slides along whatever is in the way as before.
+ */
+export function steerToward(
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  radius: number,
+  level: Level
+): { x: number; z: number } {
+  const wps = level.waypoints;
+  if (!wps || wps.length === 0 || pathClear(from, to, radius, level)) return to;
+  // Waypoints already reached are skipped, so arriving at a doorway hands on to the next leg.
+  const nodes = wps.filter((w) => Math.hypot(w.x - from.x, w.z - from.z) > 0.25);
+  const n = nodes.length;
+  const dist = new Array<number>(n).fill(Infinity);
+  const first = new Array<number>(n).fill(-1);
+  const done = new Array<boolean>(n).fill(false);
+  for (let i = 0; i < n; i++) {
+    if (pathClear(from, nodes[i], radius, level)) {
+      dist[i] = Math.hypot(nodes[i].x - from.x, nodes[i].z - from.z);
+      first[i] = i;
+    }
+  }
+  let best = Infinity;
+  let bestFirst = -1;
+  for (;;) {
+    let u = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0 || dist[u] >= best) break;
+    done[u] = true;
+    if (pathClear(nodes[u], to, radius, level)) {
+      const total = dist[u] + Math.hypot(to.x - nodes[u].x, to.z - nodes[u].z);
+      if (total < best) {
+        best = total;
+        bestFirst = first[u];
+      }
+    }
+    for (let v = 0; v < n; v++) {
+      if (done[v]) continue;
+      const alt = dist[u] + Math.hypot(nodes[v].x - nodes[u].x, nodes[v].z - nodes[u].z);
+      if (alt < dist[v] && pathClear(nodes[u], nodes[v], radius, level)) {
+        dist[v] = alt;
+        first[v] = first[u];
+      }
+    }
+  }
+  return bestFirst >= 0 ? nodes[bestFirst] : to;
 }
 
 function segmentHitsRect(a: { x: number; z: number }, b: { x: number; z: number }, w: WallRect): boolean {
@@ -223,6 +301,15 @@ export const WARRENS: Level = {
     { name: "the pens", x: 0, z: -14, hw: 20, hd: 6 }
   ],
   stairs: { x: 0, z: 0 },
+  // Each doorway's two sides, 1.8 m out from the wall's middle.
+  waypoints: [
+    { x: -10, z: 9.8 }, // the guard room's door to the hall
+    { x: -10, z: 6.2 },
+    { x: 10, z: -6.2 }, // the pens' door to the hall
+    { x: 10, z: -9.8 },
+    { x: -1.8, z: 14.5 }, // the door between the guard room and the den
+    { x: 1.8, z: 14.5 }
+  ],
   enemies: [
     { kind: "goblin", x: -14, z: 13, facing: Math.PI },
     { kind: "goblin", x: -5, z: 17, facing: Math.PI },

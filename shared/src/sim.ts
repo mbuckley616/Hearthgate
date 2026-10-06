@@ -13,7 +13,7 @@
  */
 
 import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
-import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, type Level } from "./level";
+import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
 export { ARENA_HALF };
@@ -248,6 +248,35 @@ export const HIT_FEEDBACK = {
   othersVolume: 0.35
 } as const;
 
+/**
+ * The raised third-person camera (design doc, Combat: 30 to 40 degrees, auto-rotation toward the
+ * party's centre of fight). Draw-only: the client turns the move vector by the yaw before it goes
+ * in an InputFrame, so the server and replay only ever see world vectors.
+ */
+export const CAMERA = {
+  /** Elevation of the eye above the look target, degrees. */
+  pitchDeg: 35,
+  /** Eye to look target, metres. The old fixed camera sat 15.8 m away at 55 degrees. */
+  distanceM: 12,
+  /** Look target height above the ground (about the player's chest). */
+  targetY: 0.8,
+  /** Follow smoothing time constant for the look target. */
+  followMs: 120,
+  /** Awake enemies and living teammates this close to the player make up the fight. */
+  fightRadiusM: 14,
+  /** A fight centre closer than this to the player gives no direction: hold the yaw. */
+  minLeadM: 1.5,
+  /** The camera ignores this much of its error, so small shifts in the fight never turn it. */
+  deadbandDeg: 20,
+  /** Turning: eased with this time constant, never faster than maxTurnDegPerS. Slow on purpose:
+   * the move keys turn with the camera, so a fast swing would bend the player's path. */
+  turnMs: 1500,
+  maxTurnDegPerS: 40,
+  /** Height on the player the wall-fade ray aims at (mid-body), metres. At 35 degrees a 1.1 m wall
+   * would have to be within 0.3 m of the player's centre to cover it, so the 1.8 m pillars are what fade. */
+  fadeAimY: 0.9
+} as const;
+
 export const SPAWN_POINTS = [
   { x: -3, z: 3 },
   { x: 3, z: 3 },
@@ -378,17 +407,40 @@ export const ABILITIES = {
     arc: Math.PI * 1.1, // 198 degrees: "everything in front"
     damage: 14,
     cooldownMs: 6000
+  },
+  /**
+   * Ranged, slot 1 (design doc: "arrows fall on a marked area"): a volley loosed high that
+   * lands on every enemy within `radius` of the spot. The spot is the bow's lock, else the
+   * enemy the bow would shoot now, else `aheadM` in front; chosen when the volley lands, so
+   * it falls where the target is, not where it was. The windup is the draw and the flight:
+   * long enough for a goblin to step out of a ring it is watching.
+   */
+  arrowRain: {
+    windupMs: 650,
+    durationMs: 700,
+    range: 12,
+    radius: 3,
+    aheadM: 7,
+    damage: 16,
+    cooldownMs: 8000
   }
 } as const;
 
 export type AbilityId = keyof typeof ABILITIES;
 
 /**
- * Slots by weapon. Only the sword (Melee) exists until the weapon classes land, so slot 1
- * is Cleave and slots 2 and 3 are empty; Arrow rain and Magic missile arrive with the bow
- * and the staff.
+ * Slots by the weapon's style. Melee weapons (sword and two-handers alike) put Cleave in
+ * slot 1, the bow Arrow rain; the staff (Magic) comes with Magic missile.
  */
 export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
+export const BOW_SLOTS: readonly (AbilityId | "")[] = ["arrowRain", "", ""];
+const EMPTY_SLOTS: readonly (AbilityId | "")[] = ["", "", ""];
+
+/** The ability slots a weapon gives. */
+export function slotsFor(weapon: WeaponGear): readonly (AbilityId | "")[] {
+  const style = WEAPON_TYPES[weapon.type].style;
+  return style === "melee" ? SWORD_SLOTS : style === "ranged" ? BOW_SLOTS : EMPTY_SLOTS;
+}
 export const ABILITY_SLOTS = 3;
 
 /**
@@ -497,6 +549,8 @@ export interface InputFrame {
   use?: boolean;
   /** Block held this tick (held, not a press); absent means no. */
   block?: boolean;
+  /** Cycle the bow's lock-on to the next target this tick (a press); absent means no. */
+  cycle?: boolean;
 }
 
 export interface PlayerSim {
@@ -548,6 +602,8 @@ export interface PlayerSim {
   knockUntil: number;
   knockDx: number;
   knockDz: number;
+  /** The enemy the bow is locked on to ("" for soft auto-targeting). Set by cycleLock, server only. */
+  lockId: string;
   spawnX: number;
   spawnZ: number;
 }
@@ -611,6 +667,8 @@ export interface Encounter {
 export type SimEvent =
   | { kind: "playerHit"; attackerId: string; enemyId: string; damage: number; enemyHp: number; shielded: boolean }
   | { kind: "abilityHit"; attackerId: string; enemyId: string; ability: AbilityId; damage: number; enemyHp: number; interrupted: boolean }
+  /** An Arrow rain landed at (x, z): the client draws the ring whether or not it hit anyone. */
+  | { kind: "arrowRain"; playerId: string; x: number; z: number; hits: number }
   | { kind: "enemyKilled"; killerId: string; enemyId: string }
   | { kind: "enemyHit"; targetId: string; enemyId: string; damage: number; targetHp: number; blocked: boolean }
   | { kind: "playerParried"; playerId: string; enemyId: string; postureBroken: boolean }
@@ -661,6 +719,7 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     knockUntil: 0,
     knockDx: 0,
     knockDz: 0,
+    lockId: "",
     spawnX: x,
     spawnZ: z
   };
@@ -759,7 +818,8 @@ export function isValidInput(v: unknown): v is InputFrame {
     typeof f.dodge === "boolean" &&
     (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS)) &&
     (f.use === undefined || typeof f.use === "boolean") &&
-    (f.block === undefined || typeof f.block === "boolean")
+    (f.block === undefined || typeof f.block === "boolean") &&
+    (f.cycle === undefined || typeof f.cycle === "boolean")
   );
 }
 
@@ -800,8 +860,8 @@ export function isAttacking(p: PlayerSim, now: number): boolean {
 }
 
 /** The ability in a slot (1-based) for the weapon the player holds, or "" for an empty slot. */
-export function abilityInSlot(slot: number): AbilityId | "" {
-  return SWORD_SLOTS[slot - 1] ?? "";
+export function abilityInSlot(weapon: WeaponGear, slot: number): AbilityId | "" {
+  return slotsFor(weapon)[slot - 1] ?? "";
 }
 
 /** Standing: has health, can move at full speed and fight. */
@@ -970,7 +1030,7 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
 
   // Start an ability, or else a swing. Both hits resolve later in resolvePlayerAttacks.
   const slot = input.ability ?? 0;
-  const ability = slot > 0 ? abilityInSlot(slot) : "";
+  const ability = slot > 0 ? abilityInSlot(p.weapon, slot) : "";
   if (p.guarding) {
     // Lower the guard to swing.
   } else if (ability && !attacking && !isDodging(p, now) && now >= p.readyAt[slot - 1]) {
@@ -1005,6 +1065,71 @@ export function inCone(
   const fz = Math.cos(from.facing);
   const cos = (vx * fx + vz * fz) / dist;
   return cos >= Math.cos(arc / 2);
+}
+
+/**
+ * The bow's lock-on cycle (design doc, "Targeting": ranged weapons use a lock-on cycle
+ * rather than free aim, so no mouse is needed). The candidates are the living enemies in
+ * bow range with a clear line, in any direction, nearest first. A press moves the lock to
+ * the next one; past the last it goes back to soft auto-targeting (""), so the same key
+ * also lets go. A lock holds while its enemy lives and stays within `keepRangeMult` of the
+ * bow's range; a wall between them makes the shot fall back to the cone until it clears.
+ */
+export const LOCK_ON = {
+  keepRangeMult: 1.25
+} as const;
+
+/** Who a press of the cycle key can lock on to: in bow range, in sight, alive; nearest first, ids breaking ties. */
+export function lockCandidates(p: PlayerSim, enemies: Iterable<EnemySim>, level: Level): EnemySim[] {
+  const range = WEAPON_CLASSES.bow.range;
+  const found: { e: EnemySim; d: number }[] = [];
+  for (const e of enemies) {
+    if (!isEnemyAlive(e)) continue;
+    const d = Math.hypot(e.x - p.x, e.z - p.z);
+    if (d > range + ENEMY_KINDS[e.kind].radius || !lineClear(p, e, level)) continue;
+    found.push({ e, d });
+  }
+  found.sort((a, b) => a.d - b.d || (a.e.id < b.e.id ? -1 : 1));
+  return found.map((f) => f.e);
+}
+
+/** A press of the cycle key. Only a bow locks on; anything else clears the lock. Server only. */
+export function cycleLock(p: PlayerSim, enemies: Iterable<EnemySim>, level: Level): void {
+  if (weaponClassOf(p.weapon) !== "bow" || !isAlive(p)) {
+    p.lockId = "";
+    return;
+  }
+  const list = lockCandidates(p, enemies, level);
+  const at = list.findIndex((e) => e.id === p.lockId);
+  // From auto (or a lock no longer in the list) to the nearest; from the last back to auto.
+  p.lockId = at === -1 ? (list[0]?.id ?? "") : (list[at + 1]?.id ?? "");
+}
+
+/** Drop locks whose enemy died or got too far away, or whose holder fell. Server only, once a tick. */
+export function dropStaleLocks(players: Iterable<PlayerSim>, enemies: Map<string, EnemySim>): void {
+  const keep = WEAPON_CLASSES.bow.range * LOCK_ON.keepRangeMult;
+  for (const p of players) {
+    if (p.lockId === "") continue;
+    const e = enemies.get(p.lockId);
+    if (!e || !isEnemyAlive(e) || !isAlive(p) || weaponClassOf(p.weapon) !== "bow" || Math.hypot(e.x - p.x, e.z - p.z) > keep) p.lockId = "";
+  }
+}
+
+/**
+ * Where an Arrow rain falls: on the bow's lock while it is in reach and in sight, else on the
+ * enemy a shot would take now, else `aheadM` in front (inside the level's bounds).
+ */
+export function rainSpot(p: PlayerSim, enemies: readonly EnemySim[], level: Level): { x: number; z: number } {
+  const def = ABILITIES.arrowRain;
+  const sees = (e: EnemySim) => isEnemyAlive(e) && Math.hypot(e.x - p.x, e.z - p.z) <= def.range + ENEMY_KINDS[e.kind].radius && lineClear(p, e, level);
+  const locked = p.lockId ? enemies.find((e) => e.id === p.lockId) : undefined;
+  if (locked && sees(locked)) return { x: locked.x, z: locked.z };
+  const bow = WEAPON_CLASSES.bow;
+  const auto = enemiesInCone(p, enemies, Math.min(bow.range, def.range), bow.arc).find((e) => lineClear(p, e, level));
+  if (auto) return { x: auto.x, z: auto.z };
+  const x = p.x + Math.sin(p.facing) * def.aheadM;
+  const z = p.z + Math.cos(p.facing) * def.aheadM;
+  return { x: Math.max(-level.halfW, Math.min(level.halfW, x)), z: Math.max(-level.halfD, Math.min(level.halfD, z)) };
 }
 
 /** Living enemies inside the cone, nearest first (soft auto-targeting, design doc). */
@@ -1055,7 +1180,7 @@ export function resolvePlayerAttacks(
   for (const p of players) {
     if (p.abilityHitAt !== 0 && now >= p.abilityHitAt) {
       p.abilityHitAt = 0;
-      const ability = abilityInSlot(p.abilitySlot);
+      const ability = abilityInSlot(p.weapon, p.abilitySlot);
       if (ability === "cleave") {
         const def = ABILITIES.cleave;
         for (const e of enemiesInCone(p, enemies, def.range, def.arc)) {
@@ -1078,6 +1203,19 @@ export function resolvePlayerAttacks(
           if (broke) events.push({ kind: "postureBroken", enemyId: e.id, byId: p.id });
           settle(p, e);
         }
+      } else if (ability === "arrowRain") {
+        const def = ABILITIES.arrowRain;
+        const spot = rainSpot(p, enemies, level);
+        const under = enemies.filter((e) => isEnemyAlive(e) && Math.hypot(e.x - spot.x, e.z - spot.z) <= def.radius + ENEMY_KINDS[e.kind].radius);
+        under.sort((a, b) => (a.id < b.id ? -1 : 1));
+        events.push({ kind: "arrowRain", playerId: p.id, x: spot.x, z: spot.z, hits: under.length });
+        for (const e of under) {
+          // From above: a raised shield does not cover it, and it breaks nothing.
+          const { damage } = resolveHit(e.states, { damage: def.damage, tags: ["ranged", "area"], byId: p.id }, now);
+          hit(e, damage);
+          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted: false });
+          settle(p, e);
+        }
       }
     }
     if (p.attackHitAt === 0 || now < p.attackHitAt) continue;
@@ -1086,7 +1224,13 @@ export function resolvePlayerAttacks(
     const swing = WEAPON_CLASSES[cls];
     const stats = weaponStats(p.weapon, level.tier ?? 1);
     let targets = enemiesInCone(p, enemies, swing.range, swing.arc);
-    if (cls === "bow") targets = targets.filter((e) => lineClear(p, e, level));
+    if (cls === "bow") {
+      // A lock in range and in sight takes the shot wherever the archer faces; else the cone.
+      const locked = p.lockId ? enemies.find((e) => e.id === p.lockId) : undefined;
+      const range = swing.range + (locked ? ENEMY_KINDS[locked.kind].radius : 0);
+      if (locked && isEnemyAlive(locked) && Math.hypot(locked.x - p.x, locked.z - p.z) <= range && lineClear(p, locked, level)) targets = [locked];
+      else targets = targets.filter((e) => lineClear(p, e, level));
+    }
     // A weapon swing is a plain hit: it consumes nothing, but a Marked target takes more.
     const tags: HitTag[] = [stats.style];
     for (const target of targets.slice(0, stats.cleaveTargets)) {
@@ -1312,13 +1456,25 @@ export function stepEnemy(
         enemy.phaseUntil = now + c.aimMs;
         enemy.chargeReadyAt = now + c.everyMs;
       } else if (!hasState(enemy.states, "rooted", now)) {
-        // Straight at the target; a wall in the way turns the step into a slide along it.
+        // Straight at the target when the way is clear, else through the doorways towards it
+        // (pressing straight into a wall left a chaser pinned in a corner, the critic's bug).
         // A leader with a rallied pack stops short and lets the pack go in.
         const stopAt = def.rally && enemy.leading ? def.rally.holdBack : def.attackRange * 0.9;
         const speed = def.speed * (enemy.rallied ? rallyOf(enemy).speedMult : 1);
-        const step = Math.max(0, Math.min(speed * dt, dist - stopAt));
-        enemy.x += (vx / dist) * step;
-        enemy.z += (vz / dist) * step;
+        const goal = steerToward(enemy, target, def.radius, level);
+        if (goal === target) {
+          const step = Math.max(0, Math.min(speed * dt, dist - stopAt));
+          enemy.x += (vx / dist) * step;
+          enemy.z += (vz / dist) * step;
+        } else {
+          const gx = goal.x - enemy.x;
+          const gz = goal.z - enemy.z;
+          const gd = Math.hypot(gx, gz);
+          const step = Math.min(speed * dt, gd);
+          enemy.x += (gx / gd) * step;
+          enemy.z += (gz / gd) * step;
+          enemy.facing = Math.atan2(gx, gz);
+        }
         collideWalls(enemy, def.radius, level);
       }
       break;
@@ -1595,6 +1751,7 @@ export function stepEncounter(enc: Encounter, players: Map<string, PlayerSim>, n
     enc.stairsOpen = false;
   }
   events.push(...stepStairs(enc, players, dtMs));
+  dropStaleLocks(players.values(), enc.enemies);
   events.push(...stepRespawns(players.values(), now));
   stepPosture(players.values(), enc.enemies.values(), now, dtMs);
   if (enc.resetAt !== 0 && now >= enc.resetAt) {
