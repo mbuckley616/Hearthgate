@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { nudgeOffset } from "./feedback";
+import { clearedBarText, nudgeOffset } from "./feedback";
+import { CELLAR, OPEN_FIELD, WARRENS, YARD } from "./level";
 import { HIT_FEEDBACK } from "./sim";
 
 describe("hit feedback nudge", () => {
@@ -28,5 +29,14 @@ describe("hit feedback nudge", () => {
     // Stays a nudge, not a shake: under half a metre and a fifth of a second.
     expect(HIT_FEEDBACK.takenNudgeM).toBeLessThan(0.5);
     expect(HIT_FEEDBACK.takenNudgeMs).toBeLessThanOrEqual(200);
+  });
+});
+
+describe("the enemy bar once no enemy lives", () => {
+  it("promises a return only where the level resets", () => {
+    expect(clearedBarText(OPEN_FIELD)).toBe("returning soon");
+    expect(clearedBarText(YARD)).toBe("returning soon");
+    expect(clearedBarText(WARRENS)).toBe("floor clear");
+    expect(clearedBarText(CELLAR)).toBe("floor clear");
   });
 });

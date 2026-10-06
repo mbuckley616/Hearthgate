@@ -161,9 +161,9 @@ describe("the weapon pick (Michael, A, 2026-10-05)", () => {
     expect(weaponFromPick("laser", 1)).not.toBe(STARTER_WEAPON);
   });
 
-  it("melee weapons carry Cleave in slot 1, the bow Arrow rain", () => {
-    expect(slotsFor({ kind: "weapon", type: "sword", tier: 1 })).toEqual(["cleave", "", ""]);
-    expect(slotsFor({ kind: "weapon", type: "warHammer", tier: 4 })).toEqual(["cleave", "", ""]);
+  it("melee weapons carry Cleave in slot 1 and Execute in slot 2, the bow Arrow rain", () => {
+    expect(slotsFor({ kind: "weapon", type: "sword", tier: 1 })).toEqual(["cleave", "execute", ""]);
+    expect(slotsFor({ kind: "weapon", type: "warHammer", tier: 4 })).toEqual(["cleave", "execute", ""]);
     expect(slotsFor({ kind: "weapon", type: "bow", tier: 1 })).toEqual(["arrowRain", "", ""]);
     expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 1)).toBe("arrowRain");
     expect(abilityInSlot({ kind: "weapon", type: "bow", tier: 1 }, 2)).toBe("");

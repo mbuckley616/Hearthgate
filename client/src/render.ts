@@ -88,6 +88,10 @@ const WHITE = new THREE.Color(0xffffff);
 /** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
 const RAIN_RINGS = 4;
 const RAIN_SHOW_MS = 400;
+/** A combo callout ("Combo x1.5") hangs over the enemy this long, rising CALLOUT_RISE_M. */
+const CALLOUT_MS = 1000;
+const CALLOUT_RISE_M = 0.7;
+const CALLOUTS = 3;
 
 class PlayerMesh {
   group = new THREE.Group();
@@ -381,6 +385,11 @@ export class View {
   private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   /** Where Arrow rain lands: a few rings built once, each shown for RAIN_SHOW_MS after a volley. */
   private rainRings: { mesh: THREE.Mesh; until: number }[] = [];
+  /** Combo callouts: a few text sprites built once, redrawn only when one is shown. */
+  private callouts: { sprite: THREE.Sprite; canvas: HTMLCanvasElement; start: number; y: number; text: string }[] = [];
+  /** Callouts shown so far, and the last text; read by the e2e test through the debug handle. */
+  calloutCount = 0;
+  lastCallout = "";
   /** The bow's target: a ring on the ground under it, bright for a lock, faint for the auto pick. */
   private lockRing: THREE.Mesh;
   private readonly lockMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
@@ -407,6 +416,18 @@ export class View {
       mesh.visible = false;
       this.scene.add(mesh);
       this.rainRings.push({ mesh, until: 0 });
+    }
+
+    for (let i = 0; i < CALLOUTS; i++) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 64;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false, transparent: true }));
+      sprite.scale.set(2.6, 0.65, 1);
+      sprite.visible = false;
+      sprite.renderOrder = 10;
+      this.scene.add(sprite);
+      this.callouts.push({ sprite, canvas, start: -Infinity, y: 0, text: "" });
     }
 
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
@@ -563,6 +584,32 @@ export class View {
     slot.until = performance.now() + RAIN_SHOW_MS;
   }
 
+  /** A combo landed: "Combo x1.5" over (x, z) at height y, rising and fading, reusing the oldest slot. */
+  showCallout(text: string, x: number, z: number, y: number) {
+    let slot = this.callouts[0];
+    for (const c of this.callouts) if (c.start < slot.start) slot = c;
+    if (slot.text !== text) {
+      slot.text = text;
+      const ctx = slot.canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, slot.canvas.width, slot.canvas.height);
+      ctx.font = "800 38px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = "rgba(30, 18, 6, 0.9)";
+      ctx.strokeText(text, 128, 34);
+      ctx.fillStyle = "#ffd25a";
+      ctx.fillText(text, 128, 34);
+      (slot.sprite.material as THREE.SpriteMaterial).map!.needsUpdate = true;
+    }
+    slot.sprite.position.set(x, y, z);
+    slot.y = y;
+    slot.start = performance.now();
+    slot.sprite.visible = true;
+    this.calloutCount++;
+    this.lastCallout = text;
+  }
+
   /** The bow's target marker: under (x, z), solid for a lock and faint for the auto pick; null hides it. */
   setTargetMarker(at: Pose | null, locked: boolean) {
     this.lockRing.visible = at !== null;
@@ -714,6 +761,17 @@ export class View {
   render() {
     const t = performance.now();
     for (const r of this.rainRings) if (r.mesh.visible && t >= r.until) r.mesh.visible = false;
+    for (const c of this.callouts) {
+      if (!c.sprite.visible) continue;
+      const u = (t - c.start) / CALLOUT_MS;
+      if (u >= 1) {
+        c.sprite.visible = false;
+        continue;
+      }
+      c.sprite.position.y = c.y + CALLOUT_RISE_M * u;
+      // Full for the first half so it reads, then fades.
+      (c.sprite.material as THREE.SpriteMaterial).opacity = u < 0.5 ? 1 : 2 * (1 - u);
+    }
     this.renderer.render(this.scene, this.camera);
   }
 

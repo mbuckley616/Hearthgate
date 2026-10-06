@@ -260,6 +260,7 @@ async function main() {
     await warrens(client);
     await village(client);
     await stairsBack(client);
+    await combo(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
@@ -395,6 +396,53 @@ async function warrens(client: Client) {
   if (wState.stairsOpen !== false) fail(`warrens: stairs ${wState.stairsOpen}`);
   console.log(`ok: warrens room has ${wState.enemies.size} enemies asleep in their rooms, stairs shut`);
   await w.leave();
+  await sleep(300);
+}
+
+/**
+ * The two-player combo (Michael, A, 2026-10-05): in a cellar Mira cleaves the goblin (Staggered), then Nell's
+ * Execute consumes it. Both clients must get a "combo" event, x1.5 from two players, for the callout.
+ */
+async function combo(client: Client) {
+  const m = await client.create("dungeon", { name: "Mira", level: "cellar" });
+  const n = await client.joinById(m.roomId, { name: "Nell" });
+  let mState: any = null;
+  m.onStateChange((s: any) => (mState = s));
+  const mEvents: any[] = [];
+  const nEvents: any[] = [];
+  m.onMessage("events", (evs: any[]) => mEvents.push(...evs));
+  n.onMessage("events", (evs: any[]) => nEvents.push(...evs));
+  await sleep(400);
+  if (!mState || mState.enemies.size !== 1) fail(`combo: cellar has ${mState?.enemies.size} enemies`);
+  let mseq = 0;
+  let nseq = 0;
+  // Each steps up to the goblin and faces it; Mira presses Cleave, Nell Execute once Cleave has landed.
+  const press = (room: any, nextSeq: () => number, slot: number) => {
+    const me = mState.players.get(room.sessionId);
+    const e = nearestEnemy(mState, me.x, me.z);
+    if (!e) return;
+    const d = Math.hypot(e.x - me.x, e.z - me.z);
+    if (d > 1.9) return stepToward(room, mState, nextSeq, e.x, e.z, 1.4);
+    const f = 0.01 / d;
+    room.send("input", { seq: nextSeq(), dx: (e.x - me.x) * f, dy: (e.z - me.z) * f, attack: false, dodge: false, ability: slot });
+  };
+  const start = Date.now();
+  const cleaved = () => mEvents.some((x) => x.kind === "abilityHit" && x.ability === "cleave" && x.attackerId === m.sessionId);
+  const bots = setInterval(() => {
+    press(m, () => ++mseq, cleaved() ? 0 : 1);
+    press(n, () => ++nseq, cleaved() ? 2 : 0);
+  }, TICK_MS);
+  const isCombo = (x: any) => x.kind === "combo" && x.attackerId === n.sessionId;
+  while (!(mEvents.some(isCombo) && nEvents.some(isCombo)) && Date.now() - start < 15000) await sleep(50);
+  clearInterval(bots);
+  const seen = [mEvents.find(isCombo), nEvents.find(isCombo)];
+  if (seen.some((x) => !x)) fail(`combo: Mira saw ${JSON.stringify(seen[0])}, Nell ${JSON.stringify(seen[1])}; events ${JSON.stringify(mEvents.map((x) => x.kind))}`);
+  const c = seen[0];
+  if (c.payoff !== "crit" || c.contributors !== 2 || c.mult !== 1.5) fail(`combo: expected a two-player crit x1.5, got ${JSON.stringify(c)}`);
+  const exec = mEvents.find((x) => x.kind === "abilityHit" && x.ability === "execute");
+  console.log(`ok: combo: Mira's Cleave then Nell's Execute, Combo x${c.mult} from ${c.contributors} players for ${exec?.damage} on both clients ${Date.now() - start} ms after setting off`);
+  await m.leave();
+  await n.leave();
   await sleep(300);
 }
 

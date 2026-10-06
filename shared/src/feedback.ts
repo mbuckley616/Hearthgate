@@ -19,3 +19,12 @@ function peakOf(f: (u: number) => number): number {
   for (let i = 1; i < 1000; i++) best = Math.max(best, f(i / 1000));
   return best;
 }
+
+/**
+ * What the enemy bar says once no enemy lives. A level without stairs puts its enemies back
+ * after `ROOM.resetMs`; one with stairs keeps them dead until the party leaves, so it must not
+ * promise a return (critic, 2026-10-06).
+ */
+export function clearedBarText(level: { stairs?: { x: number; z: number } }): string {
+  return level.stairs ? "floor clear" : "returning soon";
+}

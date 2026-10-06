@@ -27,7 +27,8 @@ import {
   isDead,
   isDowned,
   type PlayerSim,
-  type SimEvent
+  type SimEvent,
+  clearedBarText
 } from "@hearthgate/shared";
 import { Input } from "./input";
 import { pickWeapon } from "./join";
@@ -82,6 +83,7 @@ net.onEvents((events: SimEvent[]) => {
       if (npc) speech = { who: npc.name, line: npc.line, until: performance.now() + 8000 };
     }
     hitFeedback(e);
+    if (e.kind === "combo") comboCallout(e);
   }
 });
 net.onHandoff((level) => {
@@ -118,6 +120,20 @@ function hitFeedback(e: SimEvent) {
 }
 
 /** Where an enemy is drawn, or a spot just ahead of us if we have not seen it yet. */
+/** The combo callout over the enemy and its chime; the server already applied the payoff. */
+function comboCallout(e: Extract<SimEvent, { kind: "combo" }>) {
+  const at = enemyPose(e.enemyId);
+  const v = net.enemies.get(e.enemyId);
+  const height = v ? ENEMY_KINDS[v.kind].radius * 2 + 1.9 : 2.4;
+  view.showCallout(comboText(e), at.x, at.z, height);
+  const mine = e.attackerId === net.sessionId;
+  sound.combo(Math.max(2, e.contributors), mine ? 1 : HIT_FEEDBACK.othersVolume);
+}
+
+function comboText(e: Extract<SimEvent, { kind: "combo" }>): string {
+  return e.mult > 1 ? `Combo x${e.mult}` : e.payoff === "crit" ? "Critical" : capital(e.payoff);
+}
+
 function enemyPose(id: string): { x: number; z: number } {
   const v = net.enemies.get(id);
   const pose = v ? net.remotePose(v) : null;
@@ -267,6 +283,7 @@ function draw(dt: number) {
     enemyMaxHp: nearest?.view.maxHp ?? 0,
     enemiesLeft: left,
     enemiesTotal: total,
+    clearedText: clearedBarText(net.level),
     players: 1 + net.remotes.size,
     rtt: net.rttMs,
     pending: net.pending.length,
@@ -314,7 +331,9 @@ function draw(dt: number) {
     camYaw: view.yaw,
     fadedWalls: view.fadedWalls(),
     figures: () => view.figureStats(),
-    myHits: hitCount
+    myHits: hitCount,
+    callouts: view.calloutCount,
+    lastCallout: view.lastCallout
   };
 }
 
@@ -322,6 +341,7 @@ function describeEvent(e: SimEvent): string {
   switch (e.kind) {
     case "abilityHit": {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
+      if (e.ability === "execute") return `${who} ${e.attackerId === net.sessionId ? "execute" : "executes"} ${enemyName(e.enemyId)} for ${e.damage}`;
       if (e.ability === "arrowRain") return `${e.attackerId === net.sessionId ? "Your" : `${who}'s`} arrows hit ${enemyName(e.enemyId)} for ${e.damage}`;
       return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
@@ -348,6 +368,11 @@ function describeEvent(e: SimEvent): string {
       return e.playerId === net.sessionId ? `${capital(enemyName(e.enemyId))} ran you down` : `${capital(enemyName(e.enemyId))} ran down ${nameOf(e.playerId)}`;
     case "chargeWall":
       return `${capital(enemyName(e.enemyId))} hit the wall: stunned`;
+    case "combo": {
+      const from = e.contributors > 1 ? ` from ${e.contributors} players` : "";
+      const what = e.payoff === "crit" ? `${enemyName(e.enemyId)} knocked down` : `${e.payoff} on ${enemyName(e.enemyId)}`;
+      return `${comboText(e)}${from}: ${what}`;
+    }
     case "postureBroken":
       return `${capital(enemyName(e.enemyId))} is off balance: hit it now`;
     case "roomCleared":
@@ -382,7 +407,7 @@ function describeEvent(e: SimEvent): string {
   }
 }
 
-const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave", arrowRain: "Arrow rain" };
+const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave", execute: "Execute", arrowRain: "Arrow rain" };
 const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger", packLeader: "Pack Leader" };
 
 function kindName(kind: EnemyKind): string {

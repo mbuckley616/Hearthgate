@@ -13,6 +13,8 @@ export interface HudData {
   enemyMaxHp: number;
   enemiesLeft: number;
   enemiesTotal: number;
+  /** The bar's text once no enemy lives (`clearedBarText`). */
+  clearedText: string;
   players: number;
   rtt: number;
   pending: number;
@@ -133,7 +135,7 @@ export class Hud {
     this.enemyLabel.setAttribute("data-left", String(d.enemiesLeft));
     const noEnemy = d.enemiesLeft === 0 || d.enemyMaxHp === 0;
     this.enemyFill.style.width = noEnemy ? "0%" : `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
-    this.enemyText.textContent = noEnemy ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
+    this.enemyText.textContent = noEnemy ? d.clearedText : `${d.enemyHp} / ${d.enemyMaxHp}`;
     this.draught.textContent =
       d.draughts > 0 && d.reviveTarget
         ? `E or LB: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
