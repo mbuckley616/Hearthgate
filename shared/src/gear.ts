@@ -150,6 +150,24 @@ export type ArmorGear = Extract<Gear, { kind: "armor" }>;
 /** The starter weapon: hits for today's PLAYER.attackDamage (see GEAR.damageScale). */
 export const STARTER_WEAPON: WeaponGear = { kind: "weapon", type: "sword", tier: 1 };
 
+/**
+ * What a player may pick before joining (Michael, A, 2026-10-05): every weapon type at any
+ * material tier, a stand-in for the Phase 2 loadout. The portal's cap still decides what
+ * the tier is worth, so a Cosmic Claymore in a tier-1 portal hits like a Bronze one's best.
+ */
+export const PICKABLE_WEAPONS = Object.keys(WEAPON_TYPES) as readonly WeaponTypeId[];
+
+/**
+ * The weapon a join asks for, checked: an unknown type is the starter sword, a tier is
+ * clamped to the materials that exist. Join options come from the client, so anything
+ * may arrive here; the server never trusts more than a type name and a number.
+ */
+export function weaponFromPick(type: unknown, tier: unknown): WeaponGear {
+  if (typeof type !== "string" || !Object.prototype.hasOwnProperty.call(WEAPON_TYPES, type)) return { ...STARTER_WEAPON };
+  const t = typeof tier === "number" ? tier : typeof tier === "string" ? Number(tier) : NaN;
+  return { kind: "weapon", type: type as WeaponTypeId, tier: Number.isFinite(t) ? clampTier(t) : 1 };
+}
+
 /** Which swing a weapon uses (WEAPON_CLASSES in sim.ts). */
 export function weaponClassOf(g: WeaponGear): "oneHand" | "twoHand" | "bow" {
   const t = WEAPON_TYPES[g.type];

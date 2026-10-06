@@ -2,8 +2,16 @@ import {
   ABILITIES,
   DOWNS,
   ENEMY_KINDS,
-  SWORD_SLOTS,
+  WEAPON_CLASSES,
   abilityInSlot,
+  fightYaw,
+  slotsFor,
+  weaponClassOf,
+  gearName,
+  inCone,
+  lineClear,
+  weaponFromPick,
+  type WeaponGear,
   type AbilityId,
   type EnemyKind,
   HIT_FEEDBACK,
@@ -18,7 +26,8 @@ import {
   type SimEvent
 } from "@hearthgate/shared";
 import { Input } from "./input";
-import { Net } from "./net";
+import { pickWeapon } from "./join";
+import { Net, type Pose } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
 import { Sound } from "./sound";
@@ -40,6 +49,9 @@ const endpoint = params.get("server") ?? defaultEndpoint;
 const name = params.get("name") ?? pickName();
 // ?level=field joins (or creates) a room on the Phase 0 open field; tests use it.
 const levelParam = params.get("level") ?? undefined;
+// A scripted join (?name= or ?weapon=, as the tests and the lab use) skips the join screen;
+// ?weapon=claymore&tier=5 picks for it, and without them it holds the starter sword.
+const scriptedJoin = params.has("name") || params.has("weapon");
 
 const app = document.getElementById("app")!;
 const view = new View(app);
@@ -48,7 +60,7 @@ const input = new Input();
 const net = new Net();
 const sound = new Sound();
 
-hud.setStatus(`Connecting to ${endpoint}`);
+if (scriptedJoin) hud.setStatus(`Connecting to ${endpoint}`);
 
 const recentEvents: { text: string; until: number }[] = [];
 net.onEvents((events: SimEvent[]) => {
@@ -92,8 +104,11 @@ function enemyPose(id: string): { x: number; z: number } {
   return pose ?? { x: net.me.x + Math.sin(net.me.facing), z: net.me.z + Math.cos(net.me.facing) };
 }
 
-net
-  .connect(endpoint, name, levelParam)
+(scriptedJoin ? Promise.resolve(weaponFromPick(params.get("weapon") ?? "sword", params.get("tier") ?? 1)) : pickWeapon())
+  .then((weapon) => {
+    hud.setStatus(`Connecting to ${endpoint}`);
+    return net.connect(endpoint, name, levelParam, weapon);
+  })
   .then(() => {
     hud.setStatus("");
     startLoops();
@@ -106,7 +121,7 @@ net
 function startLoops() {
   // Fixed-rate input tick. setInterval drifts slightly but the server re-times inputs per tick anyway.
   window.setInterval(() => {
-    net.tick(input.sample());
+    net.tick(input.sample(view.yaw));
   }, TICK_MS);
 
   let last = performance.now();
@@ -120,6 +135,8 @@ function startLoops() {
 }
 
 function draw(dt: number) {
+  const fightMates: Pose[] = [];
+  const fightFoes: Pose[] = [];
   const now = net.predictedTime;
   const remoteNow = net.remoteNow();
   view.setLevel(net.level);
@@ -132,8 +149,9 @@ function draw(dt: number) {
   view.updatePlayer(net.sessionId, myPose, {
     hp: me.hp,
     attacking: now < me.attackUntil,
-    swingActive: me.attackUntil > 0 && now >= me.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && now < me.attackUntil - 150,
-    cleaveActive: cleaveFlash(me.abilitySlot, me.abilityUntil, now),
+    weapon: me.weapon,
+    swingActive: swingFlash(me.weapon, me.attackUntil, now),
+    cleaveActive: cleaveFlash(me.weapon, me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
     guarding: me.guarding,
     staggered: isPlayerStaggered(me, now),
@@ -141,7 +159,6 @@ function draw(dt: number) {
     pickup: isDowned(me) ? clamp01(me.pickupMs / DOWNS.pickupMs) : 0,
     dead: isDead(me)
   });
-  view.follow(myPose.x, myPose.z, dt);
 
   // Everyone else.
   const live = new Set<string>([net.sessionId]);
@@ -151,11 +168,13 @@ function draw(dt: number) {
     view.ensurePlayer(r.id, r.name, r.color);
     const pose = net.remotePose(r);
     if (!pose) continue;
+    if (r.hp > 0) fightMates.push(pose);
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
-      swingActive: r.attackUntil > 0 && drawT >= r.attackUntil - (PLAYER.attackDurationMs - PLAYER.attackWindupMs) && drawT < r.attackUntil - 150,
-      cleaveActive: cleaveFlash(r.abilitySlot, r.abilityUntil, drawT),
+      weapon: r.weapon,
+      swingActive: swingFlash(r.weapon, r.attackUntil, drawT),
+      cleaveActive: cleaveFlash(r.weapon, r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
       guarding: r.guarding,
       staggered: drawT < r.staggerUntil,
@@ -166,6 +185,9 @@ function draw(dt: number) {
   }
   for (const id of view.playerIds()) if (!live.has(id)) view.removePlayer(id);
 
+  // The bow's target: the lock if there is one, else whoever a shot would go to now.
+  markBowTarget(myPose);
+
   // The enemies.
   const liveEnemies = new Set<string>();
   for (const e of net.enemies.values()) {
@@ -173,6 +195,7 @@ function draw(dt: number) {
     view.ensureEnemy(e.id, e.kind);
     const ePose = net.remotePose(e);
     if (!ePose) continue;
+    if (e.phase !== "idle" && e.phase !== "dead") fightFoes.push(ePose);
     const def = ENEMY_KINDS[e.kind];
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
     const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
@@ -180,22 +203,29 @@ function draw(dt: number) {
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
+  // The camera turns toward the fight: the awake enemies and the living teammates near me.
+  view.follow(myPose.x, myPose.z, dt, fightYaw(myPose, fightFoes, fightMates));
+
   view.render();
 
   // HUD: the nearest living enemy's bar, and how many are left.
   const t = performance.now();
   while (recentEvents.length && recentEvents[0].until < t) recentEvents.shift();
-  const nearest = net.nearestEnemy(myPose.x, myPose.z);
+  // A bow's lock takes the enemy panel; otherwise it shows the nearest.
+  const lockedView = me.lockId ? net.enemies.get(me.lockId) : undefined;
+  const nearest = lockedView && lockedView.phase !== "dead" ? { view: lockedView } : net.nearestEnemy(myPose.x, myPose.z);
+  const isLocked = nearest !== null && nearest.view === lockedView;
   const left = net.enemiesAlive();
   const total = net.enemies.size;
   hud.update({
     myName: net.myName || name,
+    weapon: gearName(me.weapon),
     myHp: me.hp,
     myMaxHp: PLAYER.hp,
     dead: me.hp <= 0,
     banner: downBanner(me, now),
     enemyLabel: nearest
-      ? `${kindName(nearest.view.kind)}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
+      ? `${kindName(nearest.view.kind)}${isLocked ? " (locked)" : ""}, ${left} of ${total} left${drawT < nearest.view.postureBrokenUntil ? ", off balance" : nearest.view.guardUp ? ", shield up" : nearest.view.rallied ? ", rallied" : ""}`
       : net.stairsOpen
         ? `Stairs open: everyone onto them${net.descendMs > 0 ? ` (${Math.round((100 * net.descendMs) / STAIRS.holdMs)}%)` : ""}`
         : total > 0
@@ -217,7 +247,7 @@ function draw(dt: number) {
     reviveTarget: reviveTarget(myPose),
     roomId: net.room?.roomId ?? "",
     events: recentEvents.map((x) => x.text),
-    slots: SWORD_SLOTS.map((id, i) => ({
+    slots: slotsFor(me.weapon).map((id, i) => ({
       name: id ? ABILITY_NAMES[id] : "",
       readyIn: Math.max(0, (me.readyAt[i] ?? 0) - now) / 1000
     }))
@@ -226,7 +256,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
@@ -241,6 +271,9 @@ function draw(dt: number) {
     snaps: net.snaps,
     tick: net.lastServerTick,
     nudges: view.nudges,
+    camYaw: view.yaw,
+    fadedWalls: view.fadedWalls(),
+    figures: () => view.figureStats(),
     myHits: hitCount
   };
 }
@@ -249,8 +282,12 @@ function describeEvent(e: SimEvent): string {
   switch (e.kind) {
     case "abilityHit": {
       const who = e.attackerId === net.sessionId ? "You" : nameOf(e.attackerId);
+      if (e.ability === "arrowRain") return `${e.attackerId === net.sessionId ? "Your" : `${who}'s`} arrows hit ${enemyName(e.enemyId)} for ${e.damage}`;
       return `${who} cleaved ${enemyName(e.enemyId)} for ${e.damage}: staggered${e.interrupted ? ", swing broken" : ""}`;
     }
+    case "arrowRain":
+      view.showRain(e.x, e.z, ABILITIES.arrowRain.radius);
+      return e.hits === 0 && e.playerId === net.sessionId ? "Your arrows found nothing" : "";
     case "playerHit": {
       const what = e.shielded ? `${enemyName(e.enemyId)}'s shield` : enemyName(e.enemyId);
       return e.attackerId === net.sessionId ? `You hit ${what} for ${e.damage}` : `${nameOf(e.attackerId)} hit ${what} for ${e.damage}`;
@@ -301,7 +338,7 @@ function describeEvent(e: SimEvent): string {
   }
 }
 
-const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave" };
+const ABILITY_NAMES: Record<AbilityId, string> = { cleave: "Cleave", arrowRain: "Arrow rain" };
 const KIND_NAMES: Record<EnemyKind, string> = { goblin: "Goblin", shieldbearer: "Shieldbearer", charger: "Charger", packLeader: "Pack Leader" };
 
 function kindName(kind: EnemyKind): string {
@@ -318,9 +355,45 @@ function capital(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Where the archer's marker goes: on the locked enemy (solid), or for an unlocked bow on the
+ * nearest living enemy in its cone with a clear line (faint), which is the server's auto pick
+ * as near as the interpolated poses can tell. Presentation only; the server decides the shot.
+ */
+function markBowTarget(from: Pose) {
+  const me = net.me;
+  if (weaponClassOf(me.weapon) !== "bow" || isDead(me) || isDowned(me)) return view.setTargetMarker(null, false);
+  if (me.lockId) {
+    const v = net.enemies.get(me.lockId);
+    const pose = v && v.phase !== "dead" ? net.remotePose(v) : null;
+    if (pose) return view.setTargetMarker(pose, true);
+  }
+  const bow = WEAPON_CLASSES.bow;
+  let best: Pose | null = null;
+  let bestD = Infinity;
+  for (const v of net.enemies.values()) {
+    if (v.phase === "dead") continue;
+    const pose = net.remotePose(v);
+    if (!pose || !inCone(from, pose, bow.range, bow.arc, ENEMY_KINDS[v.kind].radius) || !lineClear(from, pose, net.level)) continue;
+    const d = Math.hypot(pose.x - from.x, pose.z - from.z);
+    if (d < bestD) {
+      bestD = d;
+      best = pose;
+    }
+  }
+  view.setTargetMarker(best, false);
+}
+
+/** The swing's arc shows from the moment its hit resolves until 150 ms before the swing ends. */
+function swingFlash(weapon: WeaponGear, until: number, t: number): boolean {
+  if (until === 0) return false;
+  const c = WEAPON_CLASSES[weaponClassOf(weapon)];
+  return t >= until - (c.durationMs - c.windupMs) && t < until - 150;
+}
+
 /** Cleave's arc shows from the moment its hit resolves until shortly after. */
-function cleaveFlash(slot: number, until: number, t: number): boolean {
-  if (abilityInSlot(slot) !== "cleave" || until === 0) return false;
+function cleaveFlash(weapon: WeaponGear, slot: number, until: number, t: number): boolean {
+  if (abilityInSlot(weapon, slot) !== "cleave" || until === 0) return false;
   const c = ABILITIES.cleave;
   const hitAt = until - c.durationMs + c.windupMs;
   return t >= hitAt && t < hitAt + 200;

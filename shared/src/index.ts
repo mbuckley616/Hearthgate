@@ -5,3 +5,4 @@ export * from "./states";
 export * from "./level";
 export * from "./gear";
 export * from "./interp";
+export * from "./camera";

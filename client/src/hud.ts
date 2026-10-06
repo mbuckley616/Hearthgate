@@ -1,5 +1,7 @@
 export interface HudData {
   myName: string;
+  /** "Iron Claymore": what you picked on the join screen. */
+  weapon: string;
   myHp: number;
   myMaxHp: number;
   dead: boolean;
@@ -40,6 +42,7 @@ export class Hud {
   private enemyFill: HTMLElement;
   private enemyText: HTMLElement;
   private draught: HTMLElement;
+  private weaponEl: HTMLElement;
   private posture: HTMLElement;
   private party: HTMLElement;
   private net: HTMLElement;
@@ -54,6 +57,7 @@ export class Hud {
       <div class="hud-status" id="hud-status"></div>
       <div class="hud-panel hud-top-left">
         <div class="hud-name" id="hud-name"></div>
+        <div class="hud-sub hud-weapon" id="hud-weapon"></div>
         <div class="hud-bar"><div class="hud-fill hud-fill-player" id="hud-hp-fill"></div><span id="hud-hp-text"></span></div>
         <div class="hud-sub hud-posture" id="hud-posture"></div>
         <div class="hud-sub" id="hud-enemy-label">Goblin</div>
@@ -76,6 +80,7 @@ export class Hud {
         <span><b>1 2 3</b> abilities</span>
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
         <span><b>E</b> revive draught</span>
+        <span><b>Tab</b> bow lock-on</span>
         <span>Gamepad: stick, X, A; Y B RB; LB; LT block</span>
       </div>
     `;
@@ -87,6 +92,7 @@ export class Hud {
     this.enemyFill = root.querySelector("#hud-enemy-fill")!;
     this.enemyText = root.querySelector("#hud-enemy-text")!;
     this.draught = root.querySelector("#hud-draught")!;
+    this.weaponEl = root.querySelector("#hud-weapon")!;
     this.posture = root.querySelector("#hud-posture")!;
     this.party = root.querySelector("#hud-party")!;
     this.net = root.querySelector("#hud-net")!;
@@ -102,6 +108,7 @@ export class Hud {
 
   update(d: HudData) {
     this.name.textContent = d.myName;
+    if (this.weaponEl.textContent !== d.weapon) this.weaponEl.textContent = d.weapon;
     this.hpFill.style.width = `${(100 * d.myHp) / d.myMaxHp}%`;
     this.hpText.textContent = `${d.myHp} / ${d.myMaxHp}`;
     this.enemyLabel.textContent = d.enemyLabel;

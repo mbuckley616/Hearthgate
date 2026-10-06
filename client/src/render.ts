@@ -1,9 +1,32 @@
 import * as THREE from "three";
-import { ABILITIES, ARENA_HALF, DOWNS, ENEMY_KINDS, PLAYER, STAIRS, nudgeOffset, type EnemyKind, type Level } from "@hearthgate/shared";
+import {
+  ABILITIES,
+  ARENA_HALF,
+  CAMERA,
+  DOWNS,
+  ENEMY_KINDS,
+  PLAYER,
+  STAIRS,
+  WEAPON_CLASSES,
+  cameraOffset,
+  materialOf,
+  nudgeOffset,
+  slewYaw,
+  wallHides,
+  weaponClassOf,
+  type EnemyKind,
+  type Level,
+  type WeaponClass,
+  type WallRect,
+  type WeaponGear
+} from "@hearthgate/shared";
 import type { Pose } from "./net";
+import { enemyFigure, newWalkState, playerFigure, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
 
 export interface PlayerVisual {
   hp: number;
+  /** What they hold: picks the held mesh, its material colour and the swing's arc. */
+  weapon: WeaponGear;
   attacking: boolean; // committed to a swing
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
   cleaveActive: boolean; // the same for Cleave's wider arc
@@ -49,13 +72,29 @@ const PALETTE = {
   wall: 0x9a978c,
   telegraph: 0xd9534f,
   swing: 0xfff1c2,
-  guard: 0x9fb8d9
+  guard: 0x9fb8d9,
+  lock: 0xffd54a
 };
+
+const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
+const WHITE = new THREE.Color(0xffffff);
+/** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
+const RAIN_RINGS = 4;
+const RAIN_SHOW_MS = 400;
 
 class PlayerMesh {
   group = new THREE.Group();
-  body: THREE.Mesh;
-  swing: THREE.Mesh;
+  /** The placeholder figure (figures.ts); the commissioned model replaces it. */
+  figure: Figure;
+  private walk: WalkState = newWalkState();
+  get walkAmount() {
+    return this.walk.amount;
+  }
+  /** Per weapon class, built once: the swing's arc and the weapon in hand. Only the held class shows. */
+  swings: Record<WeaponClass, THREE.Mesh>;
+  held: Record<WeaponClass, THREE.Mesh>;
+  /** Shared by the three held meshes; tinted with the material. */
+  heldMat: THREE.MeshStandardMaterial;
   cleave: THREE.Mesh;
   guard: THREE.Mesh;
   tag: THREE.Sprite;
@@ -65,32 +104,42 @@ class PlayerMesh {
 
   constructor(name: string, color: string) {
     this.baseColor = new THREE.Color(color);
-    const mat = new THREE.MeshStandardMaterial({ color: this.baseColor, roughness: 0.8 });
-    this.body = new THREE.Mesh(new THREE.CapsuleGeometry(PLAYER.radius * 0.8, 0.9, 4, 10), mat);
-    this.body.position.y = 0.95;
-    this.body.castShadow = true;
-    this.group.add(this.body);
+    this.figure = playerFigure(this.baseColor);
+    this.group.add(this.figure.root);
 
-    // A small block in front so the facing direction reads at a glance.
-    const nose = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.2, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9 })
-    );
-    nose.position.set(0, 1.25, PLAYER.radius * 0.95);
-    this.group.add(nose);
+    // Attack arcs: a flat wedge per class, shown for a few frames when the hit resolves.
+    const arcMat = new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+    const makeArc = (cls: WeaponClass) => {
+      const w = WEAPON_CLASSES[cls];
+      const arc = new THREE.Mesh(new THREE.RingGeometry(0.4, w.range, 18, 1, -w.arc / 2, w.arc), arcMat);
+      arc.rotation.x = -Math.PI / 2;
+      // RingGeometry's theta starts on +x; rotate so the wedge is centred on local +z.
+      arc.rotation.z = -Math.PI / 2;
+      arc.position.y = 0.05;
+      arc.visible = false;
+      this.group.add(arc);
+      return arc;
+    };
+    this.swings = { oneHand: makeArc("oneHand"), twoHand: makeArc("twoHand"), bow: makeArc("bow") };
 
-    // Attack arc: a flat wedge shown for a few frames when the hit resolves.
-    const arc = new THREE.RingGeometry(0.4, PLAYER.attackRange, 18, 1, -PLAYER.attackArc / 2, PLAYER.attackArc);
-    this.swing = new THREE.Mesh(
-      arc,
-      new THREE.MeshBasicMaterial({ color: PALETTE.swing, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
-    );
-    this.swing.rotation.x = -Math.PI / 2;
-    // RingGeometry's theta starts on +x; rotate so the wedge is centred on local +z.
-    this.swing.rotation.z = -Math.PI / 2;
-    this.swing.position.y = 0.05;
-    this.swing.visible = false;
-    this.group.add(this.swing);
+    // The weapon in the right hand, so a party reads as mixed at a glance and a swing lifts it.
+    // Oversized on purpose (design doc, Art: wide weapons that read at the camera's distance).
+    this.heldMat = new THREE.MeshStandardMaterial({ color: 0x9a7a52, roughness: 0.5, metalness: 0.3 });
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.95), this.heldMat);
+    blade.position.set(0, 0, 0.42);
+    const great = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 1.5), this.heldMat);
+    great.position.set(0, 0.1, 0.6);
+    great.rotation.x = -0.35;
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 16, Math.PI), this.heldMat);
+    bow.position.set(0.04, 0.05, 0.12);
+    bow.rotation.y = Math.PI / 2;
+    this.held = { oneHand: blade, twoHand: great, bow };
+    for (const cls of CLASSES) {
+      const m = this.held[cls];
+      m.castShadow = true;
+      m.visible = false;
+      this.figure.hand.add(m);
+    }
 
     const c = ABILITIES.cleave;
     this.cleave = new THREE.Mesh(
@@ -126,22 +175,45 @@ class PlayerMesh {
     this.group.add(this.tag);
   }
 
+  private heldType = "";
+  private heldTier = 0;
+  private heldClass: WeaponClass = "oneHand";
+
+  /** Show the held class's mesh in its material's colour; work only when the weapon changes. */
+  private setWeapon(w: WeaponGear) {
+    if (w.type === this.heldType && w.tier === this.heldTier) return;
+    this.heldType = w.type;
+    this.heldTier = w.tier;
+    this.heldClass = weaponClassOf(w);
+    for (const cls of CLASSES) this.held[cls].visible = cls === this.heldClass;
+    const material = materialOf(w.tier);
+    this.heldMat.color.setHex(material.color);
+    this.heldMat.emissive.setHex(material.glow ?? 0x000000);
+    this.heldMat.emissiveIntensity = material.glow === null ? 0 : 0.6;
+  }
+
   apply(pose: Pose, v: PlayerVisual) {
+    this.setWeapon(v.weapon);
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
-    const mat = this.body.material as THREE.MeshStandardMaterial;
-    if (v.dead || v.downed) {
-      // Lying down; the downed keep their colour (still in the fight), the dead go dark.
-      this.body.rotation.x = Math.PI / 2;
-      this.body.position.y = 0.4;
+    const f = this.figure;
+    const mat = f.skin;
+    const lying = v.dead || v.downed;
+    stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0);
+    if (lying) {
+      // Face down; the downed keep their colour (still in the fight), the dead go dark.
+      f.root.rotation.x = Math.PI / 2;
+      f.root.position.y = 0.2;
       mat.color.copy(this.baseColor).multiplyScalar(v.dead ? 0.45 : 0.8);
     } else {
-      this.body.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
-      this.body.position.y = v.dodging ? 0.8 : 0.95;
+      f.root.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
+      if (v.dodging) f.root.position.y = 0;
       mat.color.copy(this.baseColor);
-      if (v.attacking) mat.color.lerp(new THREE.Color(0xffffff), 0.25);
+      if (v.attacking) mat.color.lerp(WHITE, 0.25);
     }
-    this.swing.visible = v.swingActive && !v.dead;
+    for (const cls of CLASSES) this.swings[cls].visible = cls === this.heldClass && v.swingActive && !v.dead;
+    this.held[this.heldClass].visible = !v.dead && !v.downed;
     this.guard.visible = v.guarding && !v.dead && !v.downed;
     this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
     this.tag.visible = !v.dead;
@@ -151,10 +223,17 @@ class PlayerMesh {
   }
 }
 
-/** One enemy. Every kind is the goblin cone until the roster lands; the kind picks the def. */
+/** One enemy: its kind's placeholder figure (figures.ts) plus the telegraphs and bars. */
 class EnemyMesh {
   group = new THREE.Group();
-  body: THREE.Mesh;
+  figure: Figure;
+  private walk: WalkState = newWalkState();
+  get walkAmount() {
+    return this.walk.amount;
+  }
+  get kindName() {
+    return this.kind;
+  }
   telegraph: THREE.Mesh;
   hpBar: THREE.Sprite;
   /** Shield kinds only: the raised shield, lowered (hidden) while the guard is broken. */
@@ -166,17 +245,13 @@ class EnemyMesh {
   /** The war-paint red a rallied enemy takes on. */
   private ralliedColor: number;
 
-  constructor(kind: EnemyKind) {
+  constructor(private readonly kind: EnemyKind) {
     const def = ENEMY_KINDS[kind];
     this.color =
       kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : kind === "packLeader" ? PALETTE.packLeader : PALETTE.goblin;
     this.ralliedColor = new THREE.Color(this.color).lerp(new THREE.Color(PALETTE.banner), 0.35).getHex();
     this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
-    this.body = new THREE.Mesh(
-      new THREE.ConeGeometry(def.radius * 1.1, kind === "shieldbearer" ? 1.8 : 1.5, 7),
-      new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.85, flatShading: true })
-    );
-    this.body.position.y = 0.75;
+    this.figure = enemyFigure(kind, this.color);
     if (def.rally) {
       // A banner on a pole above the chief: the one to reach first.
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x5a4632 }));
@@ -213,15 +288,7 @@ class EnemyMesh {
       this.shield.castShadow = true;
       this.group.add(this.shield);
     }
-    this.body.castShadow = true;
-    this.group.add(this.body);
-
-    const eyes = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.12, 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xffe08a })
-    );
-    eyes.position.set(0, 0.95, def.radius * 0.75);
-    this.group.add(eyes);
+    this.group.add(this.figure.root);
 
     const wedge = new THREE.RingGeometry(0.3, def.attackRange * 1.15, 20, 1, -def.attackArc / 2, def.attackArc);
     this.telegraph = new THREE.Mesh(
@@ -235,7 +302,7 @@ class EnemyMesh {
     this.group.add(this.telegraph);
 
     this.hpBar = makeBar();
-    this.hpBar.position.y = 2.0;
+    this.hpBar.position.y = Math.max(2.0, this.figure.height + 0.35);
     this.group.add(this.hpBar);
   }
 
@@ -243,7 +310,8 @@ class EnemyMesh {
     this.group.position.set(pose.x, 0, pose.z);
     this.group.rotation.y = pose.facing;
     this.group.visible = v.phase !== "dead";
-    const mat = this.body.material as THREE.MeshStandardMaterial;
+    const f = this.figure;
+    const mat = f.skin;
     mat.color.setHex(v.hitFlash ? 0xffffff : v.phase === "windup" ? this.windupColor : v.rallied ? this.ralliedColor : this.color);
     if (this.shield) this.shield.visible = v.guardUp;
     if (this.lane) {
@@ -255,9 +323,14 @@ class EnemyMesh {
       const s = 0.35 + 0.65 * v.windup;
       this.telegraph.scale.set(s, s, 1);
       (this.telegraph.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.45 * v.windup;
-      this.body.position.y = 0.75 + 0.25 * v.windup; // a rising crouch reads as "about to hit"
-    } else {
-      this.body.position.y = 0.75;
+    }
+    if (this.group.visible) {
+      stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+      // A windup rears back with the weapon arm raised: "about to hit" from across the room.
+      // The Charger's "arms" are its forelegs, so it only rears.
+      const windup = v.phase === "windup" ? v.windup : 0;
+      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup);
+      f.root.rotation.x = -0.3 * windup;
     }
     updateBar(this.hpBar, v.hp / v.maxHp);
   }
@@ -275,9 +348,18 @@ export class View {
   /** The level's stairs (null without): a dark dais, lit while open. */
   private stairs: THREE.Mesh | null = null;
   private readonly wallMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true });
+  /** A wall between the eye and the player swaps to this, so the player is never lost behind it. */
+  private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
+  /** The walls the fade checks: their rectangle and height, beside the mesh. */
+  private wallMeshes: { mesh: THREE.Mesh; rect: WallRect; h: number }[] = [];
   private camTarget = new THREE.Vector3();
-  private camPos = new THREE.Vector3(0, 13, 9);
-  private readonly camOffset = new THREE.Vector3(0, 13, 9);
+  private camPos = new THREE.Vector3();
+  private readonly camOffset = { x: 0, y: 0, z: 0 };
+  private readonly fadeEye = { x: 0, y: 0, z: 0 };
+  private readonly fadeAim = { x: 0, y: 0, z: 0 };
+  private camStarted = false;
+  /** The camera's turn about the player (camera.ts): 0 is the old view from the south. Input reads it. */
+  yaw = 0;
   // Hit-feedback nudge: added on top of the smoothed camera so it never disturbs the follow.
   private nudgeDir = new THREE.Vector3();
   private nudgeStart = -Infinity;
@@ -287,6 +369,11 @@ export class View {
   /** Nudges started so far; read by the e2e test through the debug handle. */
   nudges = 0;
   private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /** Where Arrow rain lands: a few rings built once, each shown for RAIN_SHOW_MS after a volley. */
+  private rainRings: { mesh: THREE.Mesh; until: number }[] = [];
+  /** The bow's target: a ring on the ground under it, bright for a lock, faint for the auto pick. */
+  private lockRing: THREE.Mesh;
+  private readonly lockMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -295,8 +382,24 @@ export class View {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
+    this.lockRing = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 28), this.lockMat);
+    this.lockRing.rotation.x = -Math.PI / 2;
+    this.lockRing.position.y = 0.07;
+    this.lockRing.visible = false;
+    this.scene.add(this.lockRing);
+
+    const rainMat = new THREE.MeshBasicMaterial({ color: PALETTE.lock, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+    const rainGeo = new THREE.CircleGeometry(1, 32);
+    for (let i = 0; i < RAIN_RINGS; i++) {
+      const mesh = new THREE.Mesh(rainGeo, rainMat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = 0.06;
+      mesh.visible = false;
+      this.scene.add(mesh);
+      this.rainRings.push({ mesh, until: 0 });
+    }
+
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
-    this.camera.position.copy(this.camPos);
 
     this.scene.background = new THREE.Color(PALETTE.sky);
     this.scene.fog = new THREE.Fog(PALETTE.sky, 30, 70);
@@ -370,6 +473,7 @@ export class View {
     if (this.wallsFor === level.id) return;
     this.wallsFor = level.id;
     this.walls.clear();
+    this.wallMeshes = [];
     for (const w of level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
       const h = pillar ? 1.8 : 1.1;
@@ -378,6 +482,7 @@ export class View {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.walls.add(mesh);
+      this.wallMeshes.push({ mesh, rect: w, h });
     }
     this.stairs = null;
     if (level.stairs) {
@@ -389,6 +494,26 @@ export class View {
       this.stairs.receiveShadow = true;
       this.walls.add(this.stairs);
     }
+  }
+
+  /** An Arrow rain landed: flash a disc of its radius at (x, z), reusing the oldest ring. */
+  showRain(x: number, z: number, radius: number) {
+    let slot = this.rainRings[0];
+    for (const r of this.rainRings) if (r.until < slot.until) slot = r;
+    slot.mesh.position.x = x;
+    slot.mesh.position.z = z;
+    slot.mesh.scale.setScalar(radius);
+    slot.mesh.visible = true;
+    slot.until = performance.now() + RAIN_SHOW_MS;
+  }
+
+  /** The bow's target marker: under (x, z), solid for a lock and faint for the auto pick; null hides it. */
+  setTargetMarker(at: Pose | null, locked: boolean) {
+    this.lockRing.visible = at !== null;
+    if (!at) return;
+    this.lockRing.position.x = at.x;
+    this.lockRing.position.z = at.z;
+    this.lockMat.opacity = locked ? 0.95 : 0.35;
   }
 
   /** Light the stairs while they are open, brighter as the party's hold fills. */
@@ -442,15 +567,69 @@ export class View {
     return [...this.enemies.keys()];
   }
 
-  /** Follow the given point with a raised third-person camera. */
-  follow(x: number, z: number, dtMs: number) {
-    const k = 1 - Math.exp(-dtMs / 120);
-    this.camTarget.lerp(new THREE.Vector3(x, 0.8, z), k);
-    this.camPos.lerp(new THREE.Vector3(x, 0, z).add(this.camOffset), k);
+  /**
+   * Follow the given point with the raised third-person camera, turning slowly toward `fightYaw`
+   * (camera.ts; null holds still). Reduced motion keeps the camera from turning at all.
+   */
+  follow(x: number, z: number, dtMs: number, fightYaw: number | null) {
+    if (!this.reducedMotion.matches) this.yaw = slewYaw(this.yaw, fightYaw, dtMs);
+    const k = this.camStarted ? 1 - Math.exp(-dtMs / CAMERA.followMs) : 1;
+    this.camStarted = true;
+    this.camTarget.x += (x - this.camTarget.x) * k;
+    this.camTarget.y = CAMERA.targetY;
+    this.camTarget.z += (z - this.camTarget.z) * k;
+    // The eye hangs off the smoothed target at the current yaw, so a turn keeps its distance.
+    const o = cameraOffset(this.yaw, this.camOffset);
+    this.camPos.set(this.camTarget.x + o.x, this.camTarget.y + o.y, this.camTarget.z + o.z);
     const n = nudgeOffset(performance.now() - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
     this.nudgeVec.copy(this.nudgeDir).multiplyScalar(n);
     this.camera.position.copy(this.camPos).add(this.nudgeVec);
     this.camera.lookAt(this.nudgeVec.add(this.camTarget));
+    this.fadeWalls(x, z);
+  }
+
+  /** Fade the walls that stand between the eye and the player; restore the rest. */
+  private fadeWalls(x: number, z: number) {
+    this.fadeEye.x = this.camPos.x;
+    this.fadeEye.y = this.camPos.y;
+    this.fadeEye.z = this.camPos.z;
+    this.fadeAim.x = x;
+    this.fadeAim.y = CAMERA.fadeAimY;
+    this.fadeAim.z = z;
+    for (const w of this.wallMeshes) {
+      const hides = wallHides(this.fadeEye, this.fadeAim, w.rect, w.h);
+      w.mesh.material = hides ? this.wallFadedMat : this.wallMat;
+      w.mesh.castShadow = !hides;
+    }
+  }
+
+  /**
+   * What each figure is made of, for the e2e checks through the debug handle: its part count,
+   * its height and footprint (a bounding box of the figure alone), and how far into a stride it is.
+   */
+  figureStats() {
+    const box = new THREE.Box3();
+    const size = new THREE.Vector3();
+    const stat = (f: Figure, walk: number) => {
+      box.setFromObject(f.root);
+      box.getSize(size);
+      let parts = 0;
+      f.root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) parts++;
+      });
+      return { parts, height: size.y, width: Math.max(size.x, size.z), stride: walk };
+    };
+    return {
+      players: Object.fromEntries([...this.players].map(([id, m]) => [id, stat(m.figure, m.walkAmount)])),
+      enemies: Object.fromEntries([...this.enemies].map(([id, m]) => [id, { kind: m.kindName, ...stat(m.figure, m.walkAmount) }]))
+    };
+  }
+
+  /** Walls faded this frame; read by the e2e checks through the debug handle. */
+  fadedWalls(): number {
+    let n = 0;
+    for (const w of this.wallMeshes) if (w.mesh.material === this.wallFadedMat) n++;
+    return n;
   }
 
   /**
@@ -469,6 +648,8 @@ export class View {
   }
 
   render() {
+    const t = performance.now();
+    for (const r of this.rainRings) if (r.mesh.visible && t >= r.until) r.mesh.visible = false;
     this.renderer.render(this.scene, this.camera);
   }
 
