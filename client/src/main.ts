@@ -27,7 +27,8 @@ import {
   isDead,
   isDowned,
   type PlayerSim,
-  type SimEvent
+  type SimEvent,
+  clearedBarText
 } from "@hearthgate/shared";
 import { Input } from "./input";
 import { pickWeapon } from "./join";
@@ -267,6 +268,7 @@ function draw(dt: number) {
     enemyMaxHp: nearest?.view.maxHp ?? 0,
     enemiesLeft: left,
     enemiesTotal: total,
+    clearedText: clearedBarText(net.level),
     players: 1 + net.remotes.size,
     rtt: net.rttMs,
     pending: net.pending.length,

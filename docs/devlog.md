@@ -2,6 +2,21 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-06: Session 33, the enemy bar stops promising a return on a floor
+
+**What changed**
+
+- The enemy bar's text once nothing lives comes from `clearedBarText(level)` (`shared/src/feedback.ts`): "returning soon" on a level without stairs (the field and the yard, which reset after `ROOM.resetMs`), "floor clear" on one with stairs (the Warrens, the cellar), where nothing returns until the party leaves. The label above it still reads "Stairs open: everyone onto them". Fixes the critic's 2026-10-06 find.
+- Test: one unit test over the four combat levels (184 in all).
+
+**Learned**
+
+- The HUD had one level-blind string left from the field's reset loop; the stairs' arrival made it false. Any text that describes what the level does next belongs with the level, not the HUD.
+
+**Next**
+
+- Execute in melee slot 2 and the combo callout (Michael's A).
+
 ## 2026-10-06: Session 32, the client walks the village and follows the hand-off
 
 **What changed**
