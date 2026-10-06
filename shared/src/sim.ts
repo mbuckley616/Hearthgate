@@ -12,7 +12,7 @@
  * which matches Three.js `rotation.y`.
  */
 
-import { applyState, expireStates, hasState, resolveHit, type HitTag, type StateSet } from "./states";
+import { applyState, comboMultiplier, expireStates, hasState, resolveHit, type ComboEffect, type HitResult, type HitTag, type StateSet } from "./states";
 import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level, type Npc } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
 
@@ -425,6 +425,22 @@ export const ABILITIES = {
     cooldownMs: 6000
   },
   /**
+   * Melee, slot 2 (design doc: "heavy damage on a staggered target"): one blow at the
+   * nearest Staggered enemy in its cone, else the nearest. It consumes Staggered for the
+   * crit (COMBO.staggerCritMult) and the knockdown, times the combo multiplier when someone
+   * else did the staggering, so Cleave from one player then Execute from another is the
+   * two-player combo. On an enemy that is not staggered it is a plain heavy hit. The windup
+   * is short enough to land inside Staggered's 2.5 s after a teammate's Cleave.
+   */
+  execute: {
+    windupMs: 300,
+    durationMs: 650,
+    range: 2.4,
+    arc: Math.PI * 0.6, // 108 degrees, the sword's: it picks one target, not a sweep
+    damage: 18,
+    cooldownMs: 5000
+  },
+  /**
    * Ranged, slot 1 (design doc: "arrows fall on a marked area"): a volley loosed high that
    * lands on every enemy within `radius` of the spot. The spot is the bow's lock, else the
    * enemy the bow would shoot now, else `aheadM` in front; chosen when the volley lands, so
@@ -446,9 +462,9 @@ export type AbilityId = keyof typeof ABILITIES;
 
 /**
  * Slots by the weapon's style. Melee weapons (sword and two-handers alike) put Cleave in
- * slot 1, the bow Arrow rain; the staff (Magic) comes with Magic missile.
+ * slot 1 and Execute in slot 2, the bow Arrow rain in slot 1.
  */
-export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "", ""];
+export const SWORD_SLOTS: readonly (AbilityId | "")[] = ["cleave", "execute", ""];
 export const BOW_SLOTS: readonly (AbilityId | "")[] = ["arrowRain", "", ""];
 const EMPTY_SLOTS: readonly (AbilityId | "")[] = ["", "", ""];
 
@@ -695,6 +711,11 @@ export type SimEvent =
   | { kind: "playerParried"; playerId: string; enemyId: string; postureBroken: boolean }
   | { kind: "playerStaggered"; playerId: string }
   | { kind: "postureBroken"; enemyId: string; byId: string }
+  /**
+   * A hit consumed a state for its payoff (states.ts): the callout over the enemy. `mult` is
+   * the combo multiplier from `contributors` distinct players; 1 is a solo payoff.
+   */
+  | { kind: "combo"; attackerId: string; enemyId: string; payoff: ComboEffect["kind"]; contributors: number; mult: number }
   | { kind: "playerKnocked"; playerId: string; enemyId: string }
   | { kind: "chargeWall"; enemyId: string }
   | { kind: "roomCleared"; byId: string; room: string }
@@ -1190,6 +1211,15 @@ export function resolvePlayerAttacks(
     e.hp = Math.max(0, e.hp - damage);
     e.hitFlashUntil = now + 120;
   };
+  // A consumed state's payoff: the callout, and the side effects resolveHit leaves to us.
+  // Marked consumes nothing and adds to every hit, so it is not a callout.
+  const payoffs = (p: PlayerSim, e: EnemySim, r: HitResult) => {
+    for (const fx of r.effects) {
+      if (fx.kind === "marked") continue;
+      if (fx.kind === "crit" && e.hp > 0) knockDown(e, fx.knockdownMs, now);
+      events.push({ kind: "combo", attackerId: p.id, enemyId: e.id, payoff: fx.kind, contributors: fx.contributors, mult: comboMultiplier(fx.contributors) });
+    }
+  };
   // After the hit event: a kill, and the clear if it was the last one standing in its room.
   const settle = (p: PlayerSim, e: EnemySim) => {
     if (e.hp > 0) return;
@@ -1216,7 +1246,8 @@ export function resolvePlayerAttacks(
           // breaks the guard outright (The Old Gates' power-versus-shield rule).
           const shielded = shieldCovers(e, p);
           const base = shielded ? def.damage * (ENEMY_KINDS[e.kind].frontGuard ?? 1) : def.damage;
-          const { damage } = resolveHit(e.states, { damage: Math.round(base), tags: ["melee", "area"], byId: p.id }, now);
+          const r = resolveHit(e.states, { damage: Math.round(base), tags: ["melee", "area"], byId: p.id }, now);
+          const damage = r.damage;
           applyState(e.states, "staggered", p.id, now);
           hit(e, damage);
           const broke = drainEnemyPosture(e, shielded ? e.maxPosture : POSTURE.abilityDrain, p.id, now);
@@ -1227,6 +1258,22 @@ export function resolvePlayerAttacks(
           }
           events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted });
           if (broke) events.push({ kind: "postureBroken", enemyId: e.id, byId: p.id });
+          payoffs(p, e, r);
+          settle(p, e);
+        }
+      } else if (ability === "execute") {
+        const def = ABILITIES.execute;
+        const inReach = enemiesInCone(p, enemies, def.range, def.arc);
+        const e = inReach.find((o) => hasState(o.states, "staggered", now)) ?? inReach[0];
+        if (e) {
+          const shielded = shieldCovers(e, p);
+          const base = shielded ? def.damage * (ENEMY_KINDS[e.kind].frontGuard ?? 1) : def.damage;
+          const r = resolveHit(e.states, { damage: Math.round(base), tags: ["melee", "execute"], byId: p.id }, now);
+          hit(e, r.damage);
+          const broke = r.consumed.length === 0 && drainEnemyPosture(e, POSTURE.abilityDrain, p.id, now);
+          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage: r.damage, enemyHp: e.hp, interrupted: false });
+          if (broke) events.push({ kind: "postureBroken", enemyId: e.id, byId: p.id });
+          payoffs(p, e, r);
           settle(p, e);
         }
       } else if (ability === "arrowRain") {
@@ -1237,9 +1284,10 @@ export function resolvePlayerAttacks(
         events.push({ kind: "arrowRain", playerId: p.id, x: spot.x, z: spot.z, hits: under.length });
         for (const e of under) {
           // From above: a raised shield does not cover it, and it breaks nothing.
-          const { damage } = resolveHit(e.states, { damage: def.damage, tags: ["ranged", "area"], byId: p.id }, now);
-          hit(e, damage);
-          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage, enemyHp: e.hp, interrupted: false });
+          const r = resolveHit(e.states, { damage: def.damage, tags: ["ranged", "area"], byId: p.id }, now);
+          hit(e, r.damage);
+          events.push({ kind: "abilityHit", attackerId: p.id, enemyId: e.id, ability, damage: r.damage, enemyHp: e.hp, interrupted: false });
+          payoffs(p, e, r);
           settle(p, e);
         }
       }
@@ -1262,15 +1310,29 @@ export function resolvePlayerAttacks(
     for (const target of targets.slice(0, stats.cleaveTargets)) {
       const shielded = shieldCovers(target, p);
       const base = shielded ? Math.round(stats.damage * (ENEMY_KINDS[target.kind].frontGuard ?? 1)) : stats.damage;
-      const { damage } = resolveHit(target.states, { damage: base, tags, byId: p.id }, now);
+      const r = resolveHit(target.states, { damage: base, tags, byId: p.id }, now);
+      const damage = r.damage;
       hit(target, damage);
       const broke = drainEnemyPosture(target, POSTURE.weaponDrain * stats.postureMult, p.id, now);
       events.push({ kind: "playerHit", attackerId: p.id, enemyId: target.id, damage, enemyHp: target.hp, shielded });
       if (broke) events.push({ kind: "postureBroken", enemyId: target.id, byId: p.id });
+      payoffs(p, target, r);
       settle(p, target);
     }
   }
   return events;
+}
+
+/**
+ * A crit's knockdown (Staggered consumed): the enemy is down in recovery, its guard dropped
+ * and its posture broken for the time, so nothing it was winding up lands.
+ */
+function knockDown(e: EnemySim, ms: number, now: number): void {
+  e.phase = "recover";
+  e.phaseUntil = Math.max(e.phaseUntil, now + ms);
+  e.postureBrokenUntil = Math.max(e.postureBrokenUntil, now + ms);
+  e.guardUp = false;
+  e.chargeLeft = 0;
 }
 
 /** A raised shield faces the attacker: they are in its front half. */

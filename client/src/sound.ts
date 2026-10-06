@@ -38,6 +38,32 @@ export class Sound {
     this.thump(volume * 0.7, 600, 90, 0.16);
   }
 
+  /**
+   * A combo paid off: a rising chime, one note per contributor (two players, two notes), so
+   * a combo sounds different from a hit and a bigger one sounds bigger.
+   */
+  combo(notes: number, volume = 1) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== "running" || volume <= 0) return;
+    const t0 = ctx.currentTime;
+    const n = Math.max(2, Math.min(4, notes));
+    for (let i = 0; i < n; i++) {
+      const t = t0 + i * 0.07;
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(0.25 * volume, t + 0.01);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      out.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      // A major arpeggio up from A5: 880, 1109, 1319, 1760 Hz.
+      osc.frequency.setValueAtTime(880 * [1, 1.26, 1.5, 2][i], t);
+      osc.connect(out);
+      osc.start(t);
+      osc.stop(t + 0.36);
+    }
+  }
+
   private thump(gain: number, filterHz: number, toneHz: number, seconds: number) {
     const ctx = this.ctx;
     if (!ctx || !this.noise || ctx.state !== "running" || gain <= 0) return;
