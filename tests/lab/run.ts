@@ -18,7 +18,7 @@
  *              and the mean distance left at that shift (m)
  *   rtt        Alpha's HUD round trip
  *
- * Run: npm run lab [-- --seconds 60 --only 150 --level field]. Writes tests/tmp/lab-result.json.
+ * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10]. Writes tests/tmp/lab-result.json.
  *
  * The level is pinned (`--level`, default `field`: the Phase 0 arena with one goblin, the ground the
  * first runs measured) because the client's default level changes as the floor is built, and a
@@ -68,6 +68,7 @@ const REMOTE_SERVER = argOf("--server") ?? "";
 const REMOTE_CLIENT = argOf("--client") ?? "";
 const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
 const LEVEL = argOf("--level") ?? "field";
+const WARMUP_S = Number(argOf("--warmup") ?? 10);
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -167,7 +168,7 @@ interface Row {
   verdict: string;
 }
 
-async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number): Promise<Row> {
+async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number, seconds = SECONDS): Promise<Row> {
   const proxy = REMOTE_SERVER ? null : await startProxy(port, SERVER_PORT, c);
   const errors: string[] = [];
   const ctxA = await ba.newContext({ viewport: LAB_VIEWPORT });
@@ -190,7 +191,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     // Alpha's schedule: seeded, so every condition and every day plays the same game.
     const rng = mulberry32(7);
     const home = await a.evaluate(() => ({ x: (window as any).__hg.me.x, z: (window as any).__hg.me.z }));
-    const end = Date.now() + SECONDS * 1000;
+    const end = Date.now() + seconds * 1000;
     let downs = 0;
     let wasDown = false;
     const held = new Set<string>();
@@ -300,7 +301,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       const back = trueTrack.some((r, j) => j > 0 && trueTrack[j - 1][3] <= 0 && r[3] > 0 && Math.abs(r[0] - t) < 500);
       if (back) respawnSnaps += trueTrack[i][4] - trueTrack[i - 1][4];
     }
-    const minutes = SECONDS / 60;
+    const minutes = seconds / 60;
     const corr = corr1 - corr0;
     const snaps = snaps1 - snaps0 - respawnSnaps;
     const cpm = corr / minutes;
@@ -312,7 +313,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       latency: c.oneWayMs,
       jitter: c.jitterMs,
       loss: c.loss,
-      seconds: SECONDS,
+      seconds,
       corrections: corr,
       corrections_per_min: Math.round(cpm * 10) / 10,
       snaps,
@@ -354,6 +355,13 @@ async function main() {
     const conditions: Condition[] = REMOTE_SERVER
       ? [{ name: `remote ${new URL(REMOTE_SERVER).host}`, oneWayMs: 0, jitterMs: 0, loss: 0 }]
       : CONDITIONS;
+    // A fresh VM's first condition ran slow once (19 holds a minute at 0 ms that never came back:
+    // JIT, Vite's first transform, SwiftShader's shader cache), so a short clean run goes first and
+    // is thrown away. Local only: a hosted run's wake-up is already behind the health wait.
+    if (!REMOTE_SERVER && WARMUP_S > 0) {
+      const w = await runCondition(ba, bb, { name: "warm-up", oneWayMs: 0, jitterMs: 0, loss: 0 }, PROXY_BASE + 9, WARMUP_S);
+      console.log(`warm-up (${WARMUP_S} s, discarded): corr/min ${w.corrections_per_min}, holds/min ${w.holds_per_min}, fps ${w.fps_a}/${w.fps_b}`);
+    }
     for (const c of conditions) {
       if (ONLY && !c.name.startsWith(ONLY)) continue;
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
