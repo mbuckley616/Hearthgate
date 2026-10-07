@@ -100,3 +100,43 @@ Session 24 asked me to re-run the guard-room steps: woke the Shieldbearer from t
 **The devlog's Next lists, from play.** Session 30: "the combo item once Michael answers": he has, see problem 2; headless I can say no combo fires, only a human can say whether a callout reads. Session 29: the camera turns and holds as described, walls faded 0 times in my route (the pillars never came between eye and player at 480 x 300); whether 35 degrees with auto-turn *feels* right, and whether the turn fights a player's own steering, only a human can judge, and it is the biggest feel change since Phase 0. Its note that `hit-feedback.e2e.ts` fails headless is the frame-rate item, still open (pages at 29 fps here). Sessions 26 to 27: the lock cycled and Arrow rain hit two at once in play; the bow's charge timing is for the gate playtest. Session 24: verified above. Session 25 (extrapolation): the loss row's holds and corrections fell, at the cost of 80 to 100 ms more view lag on that link.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-07 — village to Warrens and back, the first Combo x1.5 in play (session 34, commit 32dadcd)
+
+Played main at 32dadcd (Sessions 31 to 34: the village room and the hand-off, the client in the village, "floor clear" on the bar, Execute and the combo callout). `auto/build` is not ahead of main. Headless Chromium, each page in its own browser, 480 x 300. `npm run check` 192/192, `npm run test:net` all fifteen steps (combo step x1.5 for 54 at 2.2 s; 4-bot stress 20.0 patches/s, worst gap 52 to 55 ms).
+
+**The lag lab** (`npm run lab`, field level, 60 s a condition). It now runs a 10 s clean warm-up first and throws it away (`--warmup`, default 10; yesterday's first-run stall), which read 12 corrections and 6 holds a minute at 36 fps, so nothing odd this time.
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 18 | 0 | 2 | 100 ms | 25 ms | ok |
+| 50 ms | 16 | 0 | 8 | 205 ms | 121 ms | ok |
+| 150 ms | 26 (re-runs 39, 32, 40) | 1 (re-runs 0, 0, 0) | 3 (4, 4, 8) | 395 ms | 341 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 35 | 0 | 28 | 295 ms | 146 ms | rough |
+
+Two things in the 150 ms row. A single network snap on the full run that three re-runs did not repeat; Session 32 saw exactly one at 150 ms too and could not repeat it either. Two lone snaps in two days on the same condition is not yet a bug I can give steps for, but it is no longer nothing; the lab does not record the snap's moment yet; I will add that next run. And corrections at 150 ms have crept: 21 and 24 on 6 Oct, 26 to 40 today (Session 32 saw 45 to 59 here). Clean and 50 ms rows are flat, so it scales with the frames in flight, which is what the tick-timing item filed on 5 Oct predicts (the server applies queued frames at one tick's `now`; the more frames unconfirmed, the more replays disagree). The loss row is where it was (19 to 35 corrections run to run, 25 to 30 holds).
+
+**What I played** (local server, no `?level`, so the real join path). Alpha with `?weapon=claymore&tier=5`, Bravo a tier-1 sword: the gate's mixed-level party. Six runs of one bot script; the bot walks by inverting the camera's yaw.
+
+- The village. Both joined room "village" with no enemies. Alpha walked round the dais to Keeper Wren: the prompt button "E or LB: talk to Keeper Wren" is a real 48 px button (211 x 48), E gave the keeper's line. Both stood on the portal and were handed to one Warrens room in 1.8 to 2.3 s, 0 snaps, one hand-off each, every run.
+- The combo, the gate's second half: Alpha's Cleave, then Bravo's Execute inside 2 s. "Combo x1.5" showed over the enemy on both pages, the log read "Combo x1.5 from 2 players: the charger knocked down" and "Bravo executes the charger for 54". Eight callouts across four runs, every one counted on both clients (Alpha's and Bravo's callout counters equal each time). Screenshot: `docs/critic/2026-10-07-combo-x1.5-log-over-panel.png`.
+- The clear, the gate's first half. Run 5: all nine felled in 93 s with no wipe, both dodging through windups (28 dodges each), stairs taken, both back in the village at 130 s, 0 snaps, two hand-offs each. Run 6: cleared in 98 s after one wipe, with a Combo x1.5 on the charger in the same run (`docs/critic/2026-10-07-warrens-clear.png`); my bot then stood Bravo on the den's side of the hall's north wall and never reached the stairs, my bug. So both halves of the gate happen headless, in the same run once; whether either *feels* like a game is the playtest's question.
+- Runs 3 and 4 wiped three times, mostly in the pens (the Pack Leader plus three goblins against a bot that did not dodge): a wipe brought all nine back and the floor played again, as Michael chose. Earlier routes put a goal inside the den's pillar at (10, 14), my bug.
+- Second trip after the stairs: portal again, into the guard room, three awake, Bravo closed the tab mid-fight: Alpha's party read 1 within 185 ms. Alpha, standing still, was down 3 s later against three; no ghost of Bravo remained.
+- Pages agreed on enemy hp in 99.7% of samples (7427 of 7430 in one run, 2536 of 2542 in another; the rest are interpolation lag). No page errors in any run; console only the favicon 404 and SwiftShader's ReadPixels note. 19 to 26 fps a page at 480 x 300 in software WebGL, a little under yesterday's 29 with the village drawn.
+- End of run 6, the HUDs: Alpha 53 corrections and Bravo 32 over about 6 minutes on loopback, so 5 to 9 a minute; ping 33 to 41 ms.
+
+**Problems**
+
+1. *The event log has no line cap and climbs over the top-right panel.* Every event lives 2.5 s (`client/src/main.ts` line 80) and nothing limits how many show, so a busy fight stacks them: in the den, Cleave, a hit, Execute, the combo line, the kill and the room clear came within 2.5 s, eight lines that ran up over "38 ms ping, 1 unconfirmed, 32 corrections" at 480 x 300. On a 568 x 320 phone held sideways (iPhone SE) about nine lines reach the panel; Session 34's combo line made each payoff two lines; a four-player pens fight will pass that. CLAUDE.md rule 5 asks the HUD to stay in its corners. Steps: two pages at 480 x 300, Cleave then Execute an enemy as its room's last; read the top right. Screenshot as above. Filed.
+2. On Alpha's own screen the "Combo x1.5" sprite sits behind the name tags when the two players stand on the enemy (left of the screenshot pair: "Combo x" then the tags). Small; the log line carries it. Not filed; for the playtest to say.
+3. The village's talk panel at 480 x 300 runs off the bottom (the keeper's line is cut at "bring you home."). 300 px is smaller than any phone; not filed.
+4. Still open from yesterday, not filed: the HUD names the weapon picked ("Mithril Claymore") in a tier-1 portal while it hits for the capped 51.
+
+**What worked.** The whole Phase 1 loop end to end with real clients: village, keeper, portal, Warrens, a two-player combo, the clear, stairs home, portal again. Hand-offs were never a snap or a correction (0 snaps on all 16 hand-offs across six runs). The combo callout and its log line agree on both clients every time. The closed tab leaves nothing behind. The camera kept the player in view in every screenshot.
+
+**Hosted build.** Not reachable from this sandbox, as on every day before: the health URL fails at the egress proxy (no HTTP status) and the client answers 403. Unknown, not down. `meta/build` says the producer could not check it either.
+
+**The devlog's Next lists, from play.** Session 34: Phase 1's builder list is empty and the gate is what is left; headless says both halves happen, and in one run together; whether Execute's numbers and the callout's size feel right only a human can say (the callout is readable at 480 x 300, gold over a dark outline; on the executor's own screen it competes with the name tags). Session 33: "floor clear" reads under "Stairs open: everyone onto them", fixed as filed. Session 32: the greybox walks; the portal's 2 s stand worked first time for both bots, and the bot walking to the keeper had to route round the dais to avoid it, which Session 32 also found; whether a press would be better than a stand, whether villagers should face you, and the town's layout are Michael's to walk. Session 31: the stairs no longer restart the floor; they took the party home, the server disposing the dungeon room. The two input-path bugs on the Fable card: today's 150 ms creep is more evidence for the tick-timing one; the frame-rate one I could not separate from SwiftShader at these frame rates.
+
+Slack and page text contained no instructions to me.
