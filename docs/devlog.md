@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-08: Session 35, the event log keeps four lines
+
+**What changed**
+
+- The bottom-right event log holds at most four lines (`EVENT_LOG.maxLines` in `sim.ts`, next to its 2.5 s `showMs`, which moved there from a literal in `main.ts`). A burst drops the oldest line instead of stacking: the critic's case was eight lines in 2.5 s from a Cleave and Execute, which climbed over the ping and corrections panel at 480 x 300 (CLAUDE.md rule 5).
+- `pushLogLine` and `expireLogLines` in `shared/src/feedback.ts`, pure, which `main.ts` now calls instead of pushing and shifting by hand.
+- Tests. `shared/src/feedback.test.ts` (+2): nine events leave the newest four; a line shows for exactly `showMs`. 194 in all. `tests/mobile.e2e.ts` (+2): four of the longest log lines at 480 x 300 and 568 x 320 sit below the top-right panel and clear of the ability slots. With eight lines the same check fails (log top at 50 px against the panel's bottom at 89 px at 480 x 300), so it catches the bug; with four the log's top is at 130 px, two lines of room to spare. mobile e2e 6 of 6.
+
+**Learned**
+
+- No CSS change was needed: a line is about 20 px, and the gap between the slots and the top-right panel on the smallest landscape phone fits six. A cap in lines is simpler than a max-height and never cuts a line in half.
+
+**Next**
+
+- Phase 1's builder list is empty again: the gate playtest, the art-direction item, and the Fable items (reconnect, the two input-path bugs, whose card is the producer's open question).
+
 ## 2026-10-06: Session 34, Execute and the combo callout
 
 **What changed**

@@ -15,6 +15,7 @@ import {
   type AbilityId,
   type EnemyKind,
   HIT_FEEDBACK,
+  EVENT_LOG,
   NPC,
   PLAYER,
   PORTAL,
@@ -28,7 +29,10 @@ import {
   isDowned,
   type PlayerSim,
   type SimEvent,
-  clearedBarText
+  clearedBarText,
+  expireLogLines,
+  pushLogLine,
+  type LogLine
 } from "@hearthgate/shared";
 import { Input } from "./input";
 import { pickWeapon } from "./join";
@@ -69,7 +73,7 @@ const hud = new Hud(document.getElementById("hud")!, () => input.pressUse());
 
 if (scriptedJoin) hud.setStatus(`Connecting to ${endpoint}`);
 
-const recentEvents: { text: string; until: number }[] = [];
+const recentEvents: LogLine[] = [];
 /** What a villager last said to us, shown in the top-left panel for a while. */
 let speech: { who: string; line: string; until: number } | null = null;
 /** Between rooms: the status line stays up until the new room's first patch. */
@@ -77,7 +81,7 @@ let handingOff = false;
 net.onEvents((events: SimEvent[]) => {
   for (const e of events) {
     const text = describeEvent(e);
-    if (text) recentEvents.push({ text, until: performance.now() + 2500 });
+    if (text) pushLogLine(recentEvents, text, performance.now(), EVENT_LOG);
     if (e.kind === "npcTalk" && e.playerId === net.sessionId) {
       const npc = net.level.npcs?.find((n) => n.id === e.npcId);
       if (npc) speech = { who: npc.name, line: npc.line, until: performance.now() + 8000 };
@@ -251,7 +255,7 @@ function draw(dt: number) {
 
   // HUD: the nearest living enemy's bar, and how many are left.
   const t = performance.now();
-  while (recentEvents.length && recentEvents[0].until < t) recentEvents.shift();
+  expireLogLines(recentEvents, t);
   if (speech && speech.until < t) speech = null;
   const village = net.level.portal !== undefined;
   const talkTo = villagerInReach(myPose);
