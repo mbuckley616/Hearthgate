@@ -265,6 +265,16 @@ export const HIT_FEEDBACK = {
 } as const;
 
 /**
+ * The bottom-right event log. Four lines is what fits between the ability slots and the
+ * top-right panel on a 480 x 300 landscape phone; a busy four-player fight makes more than
+ * that in 2.5 s, so the oldest line goes first rather than the log climbing (critic, 2026-10-07).
+ */
+export const EVENT_LOG = {
+  maxLines: 4,
+  showMs: 2500
+} as const;
+
+/**
  * The raised third-person camera (design doc, Combat: 30 to 40 degrees, auto-rotation toward the
  * party's centre of fight). Draw-only: the client turns the move vector by the yaw before it goes
  * in an InputFrame, so the server and replay only ever see world vectors.
