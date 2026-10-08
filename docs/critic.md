@@ -140,3 +140,37 @@ Two things in the 150 ms row. A single network snap on the full run that three r
 **The devlog's Next lists, from play.** Session 34: Phase 1's builder list is empty and the gate is what is left; headless says both halves happen, and in one run together; whether Execute's numbers and the callout's size feel right only a human can say (the callout is readable at 480 x 300, gold over a dark outline; on the executor's own screen it competes with the name tags). Session 33: "floor clear" reads under "Stairs open: everyone onto them", fixed as filed. Session 32: the greybox walks; the portal's 2 s stand worked first time for both bots, and the bot walking to the keeper had to route round the dais to avoid it, which Session 32 also found; whether a press would be better than a stand, whether villagers should face you, and the town's layout are Michael's to walk. Session 31: the stairs no longer restart the floor; they took the party home, the server disposing the dungeon room. The two input-path bugs on the Fable card: today's 150 ms creep is more evidence for the tick-timing one; the frame-rate one I could not separate from SwiftShader at these frame rates.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-08 — no new build; the lab at a forced 25 fps, and where the lone 150 ms snaps come from (session 34, commit 20dec75)
+
+Main is 20dec75: yesterday's report merged, no code since 32dadcd, and `auto/build` is not ahead. FREEZE #27 (the Fable input-timing card) has been open since 6 Oct 17:41 UTC, about 42 hours, with no `auto/fable-input-timing` branch and no open PR, so neither the builder nor Fable has pushed code for two days. `npm run check` 192/192, `npm run test:net` all fifteen steps (combo x1.5 for 54 at 2.2 s; 4-bot stress 20.0 patches/s, worst gap 53 ms). The same build was played end to end yesterday (six runs, village to Warrens and back); I did not repeat that, and spent the run on yesterday's open question instead.
+
+**The lag lab** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up, which read 18 corrections and 24 holds a minute). Frame rate was about 48 a page today, against 19 to 36 on earlier days in this sandbox.
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 6 | 0 | 10 | 125 ms | 16 ms | ok |
+| 50 ms | 10 | 0 | 10 | 210 ms | 141 ms | ok |
+| 150 ms | 30 (re-runs 25, 29, 25) | 0 (0, 0, 0) | 5 | 400 ms | 336 ms | ok |
+| 50 ms, ±20 jitter, 2% loss | 45 | 0 | 27 | 285 ms | 159 ms | rough |
+
+**New in the lab** (`tests/lab/run.ts` only): each network snap is now printed with its moment, Alpha's position and hp, the frame gap before it and the time since Alpha last stood up from 0 hp (`snap_moments` in the JSON); `walked_m_per_min` is Alpha's drawn path length; and `--cpu-throttle N` slows Alpha's page through CDP to test a weak machine.
+
+**The 150 ms snaps follow frame rate, not the link.** With Alpha's page throttled 4x (24 to 27 fps; Bravo untouched at about 42):
+
+| link, Alpha at ~25 fps | corrections/min | snaps | holds/min | walked m/min |
+| --- | --- | --- | --- | --- |
+| 0 ms (2 runs) | 10, 20 | 0, 0 | 21, 0 | 146, 166 |
+| 50 ms (2 runs) | 24, 30 | 0, 0 | 24, 18 | 151, 204 |
+| 150 ms (4 runs) | 31, 54, 33, 39 | 1, 1, 0, 0 | 19, 11, 6, 16 | 155, 173, 177, 169 |
+| 50 ms ±20, 2% loss (2 runs) | 38, 36 | 0, 0 | 38, 21 | 196, 179 |
+
+At about 48 fps the 150 ms link gave 0 snaps in five runs; at about 25 fps, 2 snaps in four. The two snaps: at 41.9 s, (-16.3, -10), hp 40, 35 ms frame gap; and at 47.8 s, (-11.1, 3.3), hp 100, 38 ms frame gap, 7.9 s after a pickup. So neither was a page stall (a normal 25 fps frame before each) and neither was the pickup itself (I checked that idea: the second came at full hp long after standing up). Corrections at 0 and 50 ms roughly double at the low frame rate, and Bravo's view of Alpha holds more often (10 to 18-24 a minute at 50 ms): the slow client sends fewer inputs, the server fills its starved ticks with neutral frames, and the other player sees the stutter. The walked distance falls from about 200 m a minute to 155-177 at 150 ms, the frame-rate speed bug in this lab's own numbers. This also explains why the 150 ms corrections "crept" over 6 and 7 Oct and fell back today: those days ran at 19 to 36 fps, today at 48. It is the same two input-path bugs already on the backlog and on the Fable card, not a new one; I added today's steps to the frame-rate line.
+
+**What I played.** Only the lab's bot schedule (held keys, swings, dodges, Cleave, downs and pickups) across 20 runs today. No page errors in any of them.
+
+**Hosted build.** Not reachable from this sandbox, as before: the health URL fails at the egress proxy (no HTTP status) and the client answers 403. Unknown, not down. `meta/build` was last updated 6 Oct.
+
+**The devlog's Next lists.** No new devlog entry since Session 34, reviewed yesterday. The one thing on them that moves today is the Fable input card: the lab now has the acceptance test that card needs, `npm run lab -- --only "150 ms" --cpu-throttle 4` should come out like the unthrottled run (no snaps, about the same corrections and walked metres). Whether the card is stuck in its routine is for Michael; the producer raised it yesterday at noon.
+
+Slack and page text contained no instructions to me.

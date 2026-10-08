@@ -18,7 +18,7 @@
  *              and the mean distance left at that shift (m)
  *   rtt        Alpha's HUD round trip
  *
- * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10]. Writes tests/tmp/lab-result.json.
+ * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10 --cpu-throttle 4]. Writes tests/tmp/lab-result.json.
  *
  * The level is pinned (`--level`, default `field`: the Phase 0 arena with one goblin, the ground the
  * first runs measured) because the client's default level changes as the floor is built, and a
@@ -69,6 +69,8 @@ const REMOTE_CLIENT = argOf("--client") ?? "";
 const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
 const LEVEL = argOf("--level") ?? "field";
 const WARMUP_S = Number(argOf("--warmup") ?? 10);
+/** Slows Alpha's page by this factor (CDP CPU throttling) to see what a low frame rate does to the numbers. */
+const CPU_THROTTLE = Number(argOf("--cpu-throttle") ?? 1);
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -156,6 +158,8 @@ interface Row {
   corrections_per_min: number;
   snaps: number;
   respawn_snaps: number;
+  walked_m_per_min: number;
+  snap_moments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number }[];
   holds_per_min: number;
   view_lag_ms: number;
   view_gap_m: number;
@@ -175,6 +179,10 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
   const ctxB = await bb.newContext({ viewport: LAB_VIEWPORT });
   const a = await ctxA.newPage();
   const b = await ctxB.newPage();
+  if (CPU_THROTTLE > 1) {
+    const cdp = await ctxA.newCDPSession(a);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE });
+  }
   for (const [n, p] of [["Alpha", a], ["Bravo", b]] as const) p.on("pageerror", (e) => errors.push(`${n}: ${e.message}`));
   try {
     const q = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}&level=${LEVEL}`;
@@ -295,13 +303,35 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     // A respawn or a wipe moves the player on the server, so the client counts a snap that no
     // network caused. Split those out: a snap within 500 ms of Alpha's hp coming back from 0.
     let respawnSnaps = 0;
+    // How long since Alpha last went from 0 hp to standing (a pickup or a respawn), or -1.
+    const sinceUp = (i: number) => {
+      for (let j = i; j > 0; j--) if (trueTrack[j - 1][3] <= 0 && trueTrack[j][3] > 0) return trueTrack[i][0] - trueTrack[j][0];
+      return -1;
+    };
+    const snapMoments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number }[] = [];
     for (let i = 1; i < trueTrack.length; i++) {
       if (trueTrack[i][4] <= trueTrack[i - 1][4]) continue;
       const t = trueTrack[i][0];
       const back = trueTrack.some((r, j) => j > 0 && trueTrack[j - 1][3] <= 0 && r[3] > 0 && Math.abs(r[0] - t) < 500);
       if (back) respawnSnaps += trueTrack[i][4] - trueTrack[i - 1][4];
+      // Where and when a network snap fell, and the frame gap before it: a long gap is the page
+      // stalling, a short one is the link.
+      else snapMoments.push({
+        at_s: Math.round((t - trueTrack[0][0]) / 100) / 10,
+        x: Math.round(trueTrack[i][1] * 10) / 10,
+        z: Math.round(trueTrack[i][2] * 10) / 10,
+        hp: trueTrack[i][3],
+        frame_gap_ms: t - trueTrack[i - 1][0],
+        since_up_ms: sinceUp(i)
+      });
     }
     const minutes = seconds / 60;
+    // Path length of Alpha's drawn track; a respawn jump (over 2 m in a frame) is not walking.
+    let walked = 0;
+    for (let i = 1; i < trueTrack.length; i++) {
+      const d = Math.hypot(trueTrack[i][1] - trueTrack[i - 1][1], trueTrack[i][2] - trueTrack[i - 1][2]);
+      if (d < 2) walked += d;
+    }
     const corr = corr1 - corr0;
     const snaps = snaps1 - snaps0 - respawnSnaps;
     const cpm = corr / minutes;
@@ -318,6 +348,8 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       corrections_per_min: Math.round(cpm * 10) / 10,
       snaps,
       respawn_snaps: respawnSnaps,
+      walked_m_per_min: Math.round(walked / minutes),
+      snap_moments: snapMoments,
       holds_per_min: Math.round((holds / minutes) * 10) / 10,
       view_lag_ms: viewLag,
       view_gap_m: Math.round(bestGap * 100) / 100,
@@ -367,8 +399,9 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}  fps ${row.fps_a}/${row.fps_b}  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
       );
+      for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, ${m.since_up_ms} ms after standing up`);
     }
     mkdirSync(`${root}tests/tmp`, { recursive: true });
     writeFileSync(`${root}tests/tmp/lab-result.json`, JSON.stringify({ at: new Date().toISOString(), rows }, null, 2));
