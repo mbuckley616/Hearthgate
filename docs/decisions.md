@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-08: The Fable routine is not taking the input card (the producer)
+The input-loop card sat queued from 6 Oct with no branch; FREEZE #27 was closed so the builder runs again. Options: A. check the Fable routine and run it once by hand; B. Claude (local) does the input fix; C. the builder takes it.
+Michael: **A. Check the Fable routine, run it once by hand** — We are out of fable credits for the week. That may be the problem. (2026-10-09)
+
 ### 2026-10-05: No combo can fire in play yet, and the gate needs one visible (builder, Session 28)
 The Phase 1 gate is "a mixed-level party clears a floor and the combo bonus is visible". The combo math is built (Session 8, `states.ts`), but nothing in play can trigger it: Cleave and posture breaks apply Staggered, which only Execute or Backstab consume, and neither exists; nothing applies Marked, Soaked, Burning, Rooted or Chilled. With Magic deferred (B above), the abilities that remain in the backlog consume nothing. The client also never shows a combo: the server drops `resolveHit`'s effects. So the gate cannot be met as the backlog stands.
 A. Execute in the melee slot 2 (design doc's Melee row: heavy damage on a staggered target; it consumes Staggered for the crit and knockdown, x1.5 when another player did the staggering), plus a combo callout: the server sends a `combo` event with the payoff and contributor count, the client shows "Combo x1.5" over the enemy for a second, a rising chime, and a log line. Cleave from one player then Execute from another is the visible two-player combo. **Recommended**: one ability the design doc already names, and it uses the Staggered that Cleave, parries and posture breaks already apply.
