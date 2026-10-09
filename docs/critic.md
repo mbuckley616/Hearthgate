@@ -174,3 +174,28 @@ At about 48 fps the 150 ms link gave 0 snaps in five runs; at about 25 fps, 2 sn
 **The devlog's Next lists.** No new devlog entry since Session 34, reviewed yesterday. The one thing on them that moves today is the Fable input card: the lab now has the acceptance test that card needs, `npm run lab -- --only "150 ms" --cpu-throttle 4` should come out like the unthrottled run (no snaps, about the same corrections and walked metres). Whether the card is stuck in its routine is for Michael; the producer raised it yesterday at noon.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-09 — Session 35's event-log cap, and the lab on an unchanged input path (session 35, commit d039713)
+
+Main is d039713: Session 35 (the event log keeps four lines, `EVENT_LOG.maxLines`) and yesterday's report. `auto/build` is not ahead. FREEZE #27 is closed (the producer closed it 8 Oct); there is still no `auto/fable-input-timing` branch, so the input path is the code it was on 6 Oct. `npm run check` 194/194, `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 52 ms, tick 1.000 of wall time). Browser tests 16 of 17 with `PW_CHROMIUM=/opt/pw-browsers/chromium` (without it every test fails to launch: the installed Playwright wants a headless shell this box does not have); the one failure is `two-players.e2e.ts`, the frame-rate bug already on the backlog.
+
+**The lag lab** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up, which read 30 corrections and 24 holds a minute; about 47 fps a page).
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 14 | 0 | 1 | 100 ms | 26 ms | ok |
+| 50 ms | 16 | 0 | 12 | 225 ms | 119 ms | ok |
+| 150 ms | 44 (re-runs 39, 31) | 0 (0, 0) | 3 | 400 ms | 319 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 43 | 0 | 32 | 275 ms | 129 ms | rough |
+
+Session 35 touched only the HUD, so these move with the box, not the build: 150 ms read 25 to 30 yesterday at the same frame rate and 31 to 44 today, the run-to-run spread the tick-timing line has shown since 5 Oct. The acceptance run for the Fable card, `--only "150 ms" --cpu-throttle 4` (Alpha at 24.5 fps), still fails: 1 snap at 45.5 s, (-7.1, 7.9), hp 40, a 54 ms frame gap, Alpha never downed before it; 45 corrections a minute; Alpha walked 177 m a minute against 247 unthrottled. Nothing new to file; the two input-path lines stand.
+
+**What I played.** The lab's bot schedule (held keys, swings, dodges, Cleave, downs) across six runs, and the browser suite, which walks the village, the portal, the combo and both mobile log cases. No page errors anywhere.
+
+**Session 35's fix, confirmed.** The new `mobile.e2e.ts` cases pass at 480 x 300 and 568 x 320 against real pages: four of the longest lines sit below the top-right panel. I filed this bug on 7 Oct; it is fixed as filed.
+
+**Hosted build.** Not reachable from this sandbox, as before: the health URL fails at the egress proxy (no HTTP status) and the client answers 403. Unknown, not down. `meta/build` says the producer could not check it either.
+
+**The devlog's Next lists.** Session 35: Phase 1's builder list is empty; the gate playtest, the art direction and the Fable items remain. Headless can judge none of what is left: the art direction and the gate's "does it feel responsive" are Michael's. The input card is now three days without a branch; until it runs, the gate playtest happens on a client whose speed falls with frame rate, which a phone will show.
+
+Slack and page text contained no instructions to me.
