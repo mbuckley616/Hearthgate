@@ -199,3 +199,26 @@ Session 35 touched only the HUD, so these move with the box, not the build: 150 
 **The devlog's Next lists.** Session 35: Phase 1's builder list is empty; the gate playtest, the art direction and the Fable items remain. Headless can judge none of what is left: the art direction and the gate's "does it feel responsive" are Michael's. The input card is now three days without a branch; until it runs, the gate playtest happens on a client whose speed falls with frame rate, which a phone will show.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-10 — no new build; the lab on a slow box (session 35, commit 0daa39d)
+
+Main is 0daa39d: yesterday's report and the producer's record of Michael's Fable answer ("out of fable credits for the week"), no code since d039713 (Session 35). `auto/build` and every Fable and local branch are level with main; there is still no input-timing branch. `npm run check` 194/194, `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 56 ms, tick 1.000 of wall time).
+
+**The lag lab** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up, which read 18 corrections and 6 holds a minute). The box ran slow today: about 25 fps a page with no throttle (load average 8 on 4 cores), against about 47 yesterday. So today's plain run is roughly the conditions of the 8 Oct `--cpu-throttle 4` runs.
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 11 | 0 | 4 | 115 ms | 47 ms | 158 | ok |
+| 50 ms | 30 | 0 | 4 | 225 ms | 164 ms | 191 | ok |
+| 150 ms | 32 (re-runs 29, 34) | 0 (0, 0) | 4 | 410 ms | 354 ms | 150 (149, 178) | rough |
+| 50 ms, ±20 jitter, 2% loss | 39 | 0 | 7 | 280 ms | 179 ms | 173 | rough |
+
+At 25 fps the 150 ms link gave 0 snaps in three runs, where 8 and 9 Oct gave 3 in five at the same frame rate. That is within what a handful of 60 s runs can tell apart: the snap is rare (about one in two to four runs), so three clean runs do not clear it. What did repeat is the speed: Alpha walked 149 to 191 m a minute at 25 fps against 247 at 47 fps yesterday on the same bot schedule, the frame-rate bug already on the backlog. 50 ms corrections read 30, double yesterday's 16, which the 8 Oct throttled runs (24, 30) also showed at this frame rate. No new bug; nothing filed.
+
+**What I played.** Only the lab's bot schedule (held keys, swings, dodges, Cleave, a down and pickup each condition) across six runs. No page errors, no lost inputs on the clean links. I did not rerun the browser suite: no code changed since yesterday's 16 of 17.
+
+**Hosted build.** Not reachable from this sandbox, as before: the health URL fails at the egress proxy (no HTTP status) and the client answers 403. Unknown, not down. `meta/build` was last updated 8 Oct.
+
+**The devlog's Next lists.** No new devlog entry since Session 35. The only open Phase 1 work is the input card, now waiting on the producer's 9 Oct decision (B: Claude (local) does it on `auto/local-input-timing`), which has no answer in `decisions.md` yet. The acceptance run for it is unchanged: `npm run lab -- --only "150 ms" --cpu-throttle 4` on a fast box, or a plain `--only "150 ms"` on a box this slow, should show no snaps and walked metres within a few percent of the 48 fps run.
+
+Slack and page text contained no instructions to me.
