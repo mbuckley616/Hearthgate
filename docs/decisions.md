@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-09: Fable credits are out: how does the input fix land? (the producer)
+The input-loop Fable card has sat queued with no branch since 6 Oct and the weekly Fable credits are out. Options: A. wait for the weekly credit reset; B. Claude (local) does the input fix on auto/local-input-timing; C. the builder takes it.
+Michael: **A. Wait for the weekly credit reset** — answered on the control room. (2026-10-10) The card stays queued and the builder idles on that item.
+
 ### 2026-10-08: The Fable routine is not taking the input card (the producer)
 The input-loop card sat queued from 6 Oct with no branch; FREEZE #27 was closed so the builder runs again. Options: A. check the Fable routine and run it once by hand; B. Claude (local) does the input fix; C. the builder takes it.
 Michael: **A. Check the Fable routine, run it once by hand** — We are out of fable credits for the week. That may be the problem. (2026-10-09)
