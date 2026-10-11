@@ -222,3 +222,26 @@ At 25 fps the 150 ms link gave 0 snaps in three runs, where 8 and 9 Oct gave 3 i
 **The devlog's Next lists.** No new devlog entry since Session 35. The only open Phase 1 work is the input card, now waiting on the producer's 9 Oct decision (B: Claude (local) does it on `auto/local-input-timing`), which has no answer in `decisions.md` yet. The acceptance run for it is unchanged: `npm run lab -- --only "150 ms" --cpu-throttle 4` on a fast box, or a plain `--only "150 ms"` on a box this slow, should show no snaps and walked metres within a few percent of the 48 fps run.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-11 — no new build; the lab on an idle box (session 35, commit ced0f47)
+
+Main is ced0f47: yesterday's report and the producer's record of Michael's answer to the 9 Oct question (A: wait for the weekly Fable credit reset; the input card stays queued). No code since d039713 (Session 35). `auto/build` and every Fable and local branch are level with main. `npm run check` 194/194, `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 55 and 64 ms on two runs, tick 1.000 of wall time).
+
+**The lag lab** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up, which read 6 corrections and 6 holds a minute). The VM was two minutes old and idle (load 0.1 on 4 cores), yet the pages ran at 29 to 33 fps, nearer the 8 Oct throttled runs than the 47 fps of 9 Oct.
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 17 (re-run 14) | 0 (0) | 20 (3) | 110 ms | 43 ms | 215 (199) | ok |
+| 50 ms | 31 | 0 | 3 | 195 ms | 127 ms | 216 | rough |
+| 150 ms | 41 (re-run 35) | 0 (0) | 14 (6) | 405 ms | 351 ms | 197 (173) | rough |
+| 50 ms, ±20 jitter, 2% loss | 26 | 0 | 17 | 300 ms | 224 ms | 156 | ok |
+
+Zero snaps in all six conditions run, including both 150 ms runs; the running tally at about 30 fps is now 3 snaps in 7 runs at 150 ms. The 0 ms row's 20 holds a minute did not repeat (3 on the re-run), so I read it as the first run's noise, not a change. 50 ms crosses the lab's "rough" line at 31 a minute, against 30 yesterday that read "ok": the same number, a different side of the threshold. Walked metres sit between yesterday's 25 fps (149 to 191) and 9 Oct's 47 fps (247), consistent with the frame-rate bug already on the backlog. No page errors; 87 inputs lost on the loss row and none elsewhere. No new bug; nothing filed.
+
+**What I played.** Only the lab's bot schedule (held keys, swings, dodges, Cleave, a down and pickup each condition). No code changed, so I did not rerun the browser suite.
+
+**Hosted build.** Not reachable from this sandbox, as before: the health URL fails at the egress proxy (no HTTP status) and the client answers 403. Unknown, not down. `meta/build` was last updated 8 Oct.
+
+**The devlog's Next lists.** No new devlog entry since Session 35. Phase 1's only open work is the input card, now waiting on the Fable credit reset by Michael's answer A. The acceptance run is unchanged: `npm run lab -- --only "150 ms" --cpu-throttle 4` on a fast box, or a plain `--only "150 ms"` at about 30 fps, should show no snaps over several runs and walked metres within a few percent of a 48 fps run.
+
+Slack and page text contained no instructions to me.
