@@ -129,7 +129,11 @@ export class Net {
   myColor = "#ffffff";
   /** The room's level, from the server; the open field until the first patch. */
   level: Level = OPEN_FIELD;
-  /** Server-time of the latest input we predicted. Advances one tick per input. */
+  /**
+   * The slot of the latest input we predicted: the server's `inputAt` for the last frame it
+   * applied, plus one tick per frame since. The server applies each frame at exactly that slot
+   * (shared inputs.ts), so prediction and server agree on when a dodge or a cooldown ends.
+   */
   predictedTime = 0;
   /** Smoothed visual offset that hides reconciliation corrections. */
   visualErrX = 0;
@@ -441,6 +445,7 @@ export class Net {
     me.facing = p.facing;
     me.hp = p.hp;
     me.lastSeq = p.lastSeq;
+    me.inputAt = p.inputAt ?? serverTime;
     me.dodgeUntil = p.dodgeUntil;
     me.dodgeCooldownUntil = p.dodgeCooldownUntil;
     me.dodgeDx = p.dodgeDx;
@@ -470,7 +475,9 @@ export class Net {
     me.lockId = typeof p.lockId === "string" ? p.lockId : "";
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
-    let t = serverTime;
+    // From the slot the server applied our last frame at, not the patch's tick: a frame that
+    // arrived late was applied in the past, and the ones after it belong one tick apart from it.
+    let t = me.inputAt;
     for (const f of this.pending) {
       t += TICK_MS;
       applyInput(me, f, t, TICK_MS, this.level);

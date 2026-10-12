@@ -25,6 +25,9 @@ import {
   type Npc,
   isPlayerStaggered,
   TICK_MS,
+  createInputClock,
+  dueInputTicks,
+  nextInputAt,
   isDead,
   isDowned,
   type PlayerSim,
@@ -159,10 +162,16 @@ function enemyPose(id: string): { x: number; z: number } {
   });
 
 function startLoops() {
-  // Fixed-rate input tick. setInterval drifts slightly but the server re-times inputs per tick anyway.
-  window.setInterval(() => {
-    net.tick(input.sample(view.yaw));
-  }, TICK_MS);
+  // One input frame per tick of wall time, not per timer callback: a busy main thread runs the
+  // timer late, and each frame it missed is sent when it does run (up to a cap), so a held key
+  // covers the same ground at 10 fps as at 60. Self-scheduled to the next due tick, like the server's pump.
+  const clock = createInputClock(performance.now());
+  const pumpInput = () => {
+    const n = dueInputTicks(clock, performance.now());
+    for (let i = 0; i < n; i++) net.tick(input.sample(view.yaw));
+    window.setTimeout(pumpInput, Math.max(1, nextInputAt(clock) - performance.now()));
+  };
+  window.setTimeout(pumpInput, TICK_MS);
 
   let last = performance.now();
   const frame = (t: number) => {

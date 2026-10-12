@@ -34,11 +34,23 @@ test("the camera turns toward the fight and S walks toward the eye", async ({ pa
 
   await wakeYardGoblin(page);
   // From some spawns the goblin ends up nearly straight up-screen, inside the deadband; stepping
-  // west puts it off to the side, so the camera has a turn to make.
-  await page.keyboard.down("KeyA");
-  await page.waitForTimeout(1200);
-  await page.keyboard.up("KeyA");
-  await expect.poll(async () => Math.abs((await hg(page)).camYaw), { timeout: 10_000 }).toBeGreaterThan(0.15);
+  // west puts it off to the side, so the camera has a turn to make. Short steps until it turns:
+  // the goblin chases, and one long step (1.2 s was tuned when a held key walked slower) can put
+  // it straight in front again.
+  await expect
+    .poll(
+      async () => {
+        const yaw = Math.abs((await hg(page)).camYaw);
+        if (yaw > 0.15) return yaw;
+        await page.keyboard.down("KeyA");
+        await page.waitForTimeout(250);
+        await page.keyboard.up("KeyA");
+        await page.waitForTimeout(600);
+        return Math.abs((await hg(page)).camYaw);
+      },
+      { timeout: 15_000, intervals: [100] }
+    )
+    .toBeGreaterThan(0.15);
 
   const a = await hg(page);
   await page.keyboard.down("KeyS");

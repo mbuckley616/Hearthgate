@@ -14,6 +14,8 @@ export class PlayerState extends Schema {
   @type("number") facing = 0;
   @type("number") hp = 100;
   @type("number") lastSeq = 0;
+  /** When lastSeq was applied (the player's input clock): the client replays its pending frames from here. */
+  @type("number") inputAt = 0;
   @type("number") dodgeUntil = 0;
   @type("number") dodgeCooldownUntil = 0;
   @type("number") dodgeDx = 0;

@@ -3,14 +3,15 @@ import {
   PLAYER_COLORS,
   SPAWN_POINTS,
   TICK_MS,
-  applyInput,
+  INPUT_TIMING,
+  applyDueInputs,
   createEncounter,
+  createInputQueue,
   createInputBucket,
   createPlayer,
   cycleLock,
   gearName,
   isValidInput,
-  neutralInput,
   stepEncounter,
   takeInputToken,
   talkToNpc,
@@ -18,7 +19,7 @@ import {
   useDraught,
   type EnemySim,
   type InputBucket,
-  type InputFrame,
+  type InputQueue,
   type Level,
   type PlayerSim,
   type SimEvent,
@@ -32,7 +33,6 @@ import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js
  * several ticks instead of all at once, which stops speed exploits.
  */
 const MAX_QUEUED_INPUTS = 12;
-const MAX_INPUTS_PER_TICK = 2;
 /**
  * Ticks the loop may run back to back to catch up with wall time. Past this the process
  * stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not replayed.
@@ -75,7 +75,7 @@ export abstract class SimRoom extends Room<DungeonState> {
     encounter: null as unknown as Encounter,
     tick: 0
   };
-  private queues = new Map<string, InputFrame[]>();
+  private queues = new Map<string, InputQueue>();
   private buckets = new Map<string, InputBucket>();
   private nextSpawn = 0;
   /** Wall time of simulation time zero; tick n is due at epoch + n * TICK_MS. */
@@ -125,9 +125,9 @@ export abstract class SimRoom extends Room<DungeonState> {
       if (!isValidInput(frame)) return;
       const q = this.queues.get(client.sessionId);
       if (!q) return;
-      const last = q.length ? q[q.length - 1].seq : this.sim.players.get(client.sessionId)?.lastSeq ?? 0;
+      const last = q.frames.length ? q.frames[q.frames.length - 1].seq : this.sim.players.get(client.sessionId)?.lastSeq ?? 0;
       if (frame.seq <= last) return; // duplicate or out of order
-      if (q.length < MAX_QUEUED_INPUTS) q.push(frame);
+      if (q.frames.length < MAX_QUEUED_INPUTS) q.frames.push(frame);
     });
 
     // Clock sync: the client times the round trip and reads its offset from the reply with the shortest trip back.
@@ -149,8 +149,10 @@ export abstract class SimRoom extends Room<DungeonState> {
     const spawn = SPAWN_POINTS[slot];
     const p = createPlayer(client.sessionId, spawn.x, spawn.z);
     p.weapon = weaponFromPick(options.weapon, options.tier);
+    // Far enough back that the first frame counts as late and is placed at its tick.
+    p.inputAt = this.sim.tick * TICK_MS - INPUT_TIMING.maxLagMs;
     this.sim.players.set(client.sessionId, p);
-    this.queues.set(client.sessionId, []);
+    this.queues.set(client.sessionId, createInputQueue());
     this.buckets.set(client.sessionId, createInputBucket(performance.now()));
 
     const ps = new PlayerState();
@@ -251,17 +253,12 @@ export abstract class SimRoom extends Room<DungeonState> {
     const users: PlayerSim[] = [];
     const cyclers: PlayerSim[] = [];
     for (const [id, p] of this.sim.players) {
-      const q = this.queues.get(id) ?? [];
-      const frames = q.splice(0, MAX_INPUTS_PER_TICK);
-      if (frames.length === 0) {
-        // A late frame must not lower a held guard: raising it again would open a fresh
-        // parry window the player never timed.
-        applyInput(p, { ...neutralInput(p.lastSeq), block: p.guarding }, now, TICK_MS, level);
-      } else {
-        for (const f of frames) applyInput(p, f, now, TICK_MS, level);
-        if (frames.some((f) => f.use)) users.push(p);
-        if (frames.some((f) => f.cycle)) cyclers.push(p);
-      }
+      const q = this.queues.get(id);
+      if (!q) continue;
+      // Each frame at its own slot, not this tick's now (inputs.ts): where the client's replay put it.
+      const applied = applyDueInputs(p, q, now, level);
+      if (applied.some((f) => f.use)) users.push(p);
+      if (applied.some((f) => f.cycle)) cyclers.push(p);
     }
 
     const events: SimEvent[] = [];
@@ -310,6 +307,7 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.facing = p.facing;
   ps.hp = p.hp;
   ps.lastSeq = p.lastSeq;
+  ps.inputAt = p.inputAt;
   ps.dodgeUntil = p.dodgeUntil;
   ps.dodgeCooldownUntil = p.dodgeCooldownUntil;
   ps.dodgeDx = p.dodgeDx;
