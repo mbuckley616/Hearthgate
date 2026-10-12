@@ -27,6 +27,12 @@ const PAD_BLOCK_BUTTON = 6;
 const PAD_CYCLE_BUTTON = 7;
 export class Input {
   private down = new Set<string>();
+  /**
+   * Keys pressed since the last sample. A tap shorter than the gap between two samples (a busy
+   * main thread stretches it) still counts as held for one frame, so it turns or steps the player
+   * instead of vanishing; the same frame-rate dependence as a dropped input tick.
+   */
+  private tapped = new Set<string>();
   private attackPressed = false;
   private dodgePressed = false;
   private padAttackWasDown = false;
@@ -44,6 +50,7 @@ export class Input {
       if (e.repeat) return;
       const code = e.code;
       this.down.add(code);
+      this.tapped.add(code);
       if (isAttackKey(code)) this.attackPressed = true;
       if (isDodgeKey(code)) this.dodgePressed = true;
       const slot = slotKey(code);
@@ -57,6 +64,7 @@ export class Input {
     });
     target.addEventListener("blur", () => {
       this.down.clear();
+      this.tapped.clear();
     });
   }
 
@@ -72,19 +80,21 @@ export class Input {
 
   /** `yaw` is the camera's turn (View.yaw); 0 is the view from the south. */
   sample(yaw = 0): InputFrame {
+    const held = (code: string) => this.down.has(code) || this.tapped.has(code);
     let dx = 0;
     let dy = 0;
-    if (this.down.has("KeyA") || this.down.has("ArrowLeft")) dx -= 1;
-    if (this.down.has("KeyD") || this.down.has("ArrowRight")) dx += 1;
+    if (held("KeyA") || held("ArrowLeft")) dx -= 1;
+    if (held("KeyD") || held("ArrowRight")) dx += 1;
     // Screen "up" (dy -1) is away from the camera: world -z at yaw 0.
-    if (this.down.has("KeyW") || this.down.has("ArrowUp")) dy -= 1;
-    if (this.down.has("KeyS") || this.down.has("ArrowDown")) dy += 1;
+    if (held("KeyW") || held("ArrowUp")) dy -= 1;
+    if (held("KeyS") || held("ArrowDown")) dy += 1;
 
     let attack = this.attackPressed;
     let dodge = this.dodgePressed;
     let ability = this.abilityPressed;
     let use = this.usePressed;
-    let block = this.down.has("KeyL") || this.down.has("KeyQ");
+    let block = held("KeyL") || held("KeyQ");
+    this.tapped.clear();
     this.attackPressed = false;
     this.dodgePressed = false;
     this.abilityPressed = 0;

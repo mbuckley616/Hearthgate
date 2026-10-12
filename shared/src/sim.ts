@@ -326,6 +326,35 @@ export const INPUT_LIMIT = {
 } as const;
 
 /**
+ * When inputs are applied (inputs.ts). Every frame has a slot one tick after the one before
+ * it, and the server applies it at that slot's time, so it lands where the client's replay put
+ * it however the network bunched it. The bounds keep that honest: a slot is never later than
+ * the server's tick (nobody acts in the future), never more than `maxLagMs` before it (past
+ * that the frame is placed at the tick instead, the one case the client is corrected for),
+ * and at most `maxPerTick` frames a tick catch up after a late one.
+ */
+export const INPUT_TIMING = {
+  maxPerTick: 2,
+  /** Four ticks: a frame up to this late still lands in its own slot. Longer stalls are rare and
+   * a correction is the right answer to them; a longer window would let a player act further in the past. */
+  maxLagMs: 200,
+  /**
+   * A frame that waits for its slot is latency: the client ran ahead (a burst after a stall, a
+   * join) and every frame since sits a tick in the queue, while a frame that arrives late costs
+   * nothing (it is applied in its slot, in the past). When ticks that end with a frame waiting
+   * outnumber those that do not by this many, the slots move one tick earlier. That retiming is
+   * the one thing the client's prediction cannot know in advance (it can correct a dodge or a
+   * cooldown ending near the shift), so it waits about a second of mostly-waiting ticks to be
+   * sure the backlog is standing, not a passing bunch. Measured in the lab before this rule: the
+   * driven client sat at 0.7 to 1 frame waiting, about 40 ms of view lag on a clean link.
+   */
+  drainAfterTicks: 20,
+  /** Frames the client may send at once for ticks its main thread missed; past this the time is dropped
+   * (a sleeping tab must not dump seconds of stale movement), as the server's pump drops lost ticks. */
+  clientCatchupTicks: 4
+} as const;
+
+/**
  * Client clock sync (see clock.ts). The client pings; the server echoes its simulation
  * time, and every patch carries its tick's time too. The message with the shortest trip
  * from server to client in the window is the one least delayed by queueing, so its offset
@@ -603,6 +632,12 @@ export interface PlayerSim {
   hp: number;
   /** Sequence number of the last input the simulation applied. */
   lastSeq: number;
+  /**
+   * The simulation time the player's last input was applied at: their own input clock
+   * (inputs.ts). The next frame belongs one tick after it, which is where the client's
+   * replay puts it too. Server-kept; the client copies it and never advances it itself.
+   */
+  inputAt: number;
   dodgeUntil: number;
   dodgeCooldownUntil: number;
   dodgeDx: number;
@@ -752,6 +787,7 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     facing: 0,
     hp: PLAYER.hp,
     lastSeq: 0,
+    inputAt: 0,
     dodgeUntil: 0,
     dodgeCooldownUntil: 0,
     dodgeDx: 0,
