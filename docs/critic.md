@@ -245,3 +245,32 @@ Zero snaps in all six conditions run, including both 150 ms runs; the running ta
 **The devlog's Next lists.** No new devlog entry since Session 35. Phase 1's only open work is the input card, now waiting on the Fable credit reset by Michael's answer A. The acceptance run is unchanged: `npm run lab -- --only "150 ms" --cpu-throttle 4` on a fast box, or a plain `--only "150 ms"` at about 30 fps, should show no snaps over several runs and walked metres within a few percent of a 48 fps run.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-12 — Fable's input-loop branch through the lab, throttled 150 ms ten times, the browser suite (session 36, commit ee81a5d)
+
+Main is 9e4f98b (my 11 Oct report). The new code is Fable Session 36 on `auto/fable-input-timing` (PR #37, one commit ee81a5d, FREEZE #36 open): inputs applied at their own slots from `inputAt`, and one input made per tick of wall time. `auto/build` is level with main. I played ee81a5d in a throwaway worktree. This report is committed from main's line. On main: `npm run check` 194/194 and `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 52 and 60 ms on two runs, tick 1.000 of wall time). On the branch: `npm run check` 205/205.
+
+**The lag lab on ee81a5d** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up, pages at 39 to 43 fps; the VM was idle at the start, load 0.1 on 4 cores):
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 0 | 0 | 6 | 125 ms | 33 ms | 246 | ok |
+| 50 ms | 0 | 0 | 11 | 235 ms | 129 ms | 266 | ok |
+| 150 ms | 0 | 0 | 6 | 395 ms | 326 ms | 187 (one down) | ok |
+| 50 ms, ±20 jitter, 2% loss | 2 | 0 | 18 | 355 ms | 154 ms | 212 | ok |
+
+Yesterday on main the same rows read 17 / 31 / 41 / 26. On the branch, a clean link does not produce corrections.
+
+**The acceptance run** (`npm run lab -- --only "150 ms" --cpu-throttle 4`, Alpha at 23 to 26 fps). On the branch, ten runs: corrections 0, 2, 1, 1, 2, 1, 3, 1, 1, 3 a minute. Snaps 1, 0 in the other nine. Walked 190 to 252 m a minute (193, 210, 200, 190, 190, 242, 193, 226, 206, 252). On main, the same box minutes later, two runs: 45 and 37 corrections a minute, 0 snaps, walked 153 and 164 m. So the corrections drop from about 40 to about 2 a minute. The walk at 25 fps now matches the unthrottled rows, where on main it was a third short. The one snap came on run 3. My filter hid the lab's snap-moment line, so I have no position or frame gap for it. Before, main had 3 snaps in 7 runs at ~30 fps and 2 in 4 at 25 fps; the branch has 1 in 10. That is better, but not zero. If a snap shows up again on the branch, it gets its own line here with the moment.
+
+**What I played on the branch** (real Chromium pages, scripts under tests/tmp, not committed):
+- Taps. Eleven 40 ms direction taps, 150 ms apart, unthrottled and then at CPU throttle 4: each throttle setting gave 0 corrections and 0 snaps. The last tap (S) moved 0.30 m both times. That is one frame, as Session 36 says a tap between samples should.
+- Two pages in the yard, both walking at the goblins, swinging, dodging and Cleaving for 15 to 30 s. Bravo closed its tab at 8 s. No page errors, 0 snaps, and the party count dropped to 1 at once.
+- These pages ran at 1280 x 720 on software GL: about 10 fps for one page and about 5 fps each for two. At ~5 fps Alpha took 7 to 12 corrections in 30 s, with the HUD reading 594 to 800 ms ping on a local link. One page at ~10 fps: 0 corrections in 30 s, ping 200 ms, 3 to 6 unconfirmed. On main, the same page and box: 1 to 2 corrections, ping 200 ms, 1 to 2 unconfirmed. More unconfirmed frames on the branch is what I expect: it now sends a frame for every tick that passed, so at 10 fps four frames go out together. The ping inflates because the client measures it on a starved main thread. Corrections at ~5 fps fit the design: a page that skips more than 200 ms between callbacks loses the frames past the catch-up cap of four, and the server fills in a neutral frame. I am not filing this as a bug: a real GPU will not run at 5 fps. But the HUD's ping figure there is the page's own frame time, not the network.
+- Browser suite on the branch (`PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npx playwright test`; the default headless shell 1243 is not installed here): 17/17, 17/17, 16/17. `two-players.e2e` then went 5 of 6 on its own: 2 failures in 9 runs, each time Alpha moved 1.2 m in the 700 ms hold. That is four frames, the catch-up cap, on a page that got one timer callback in the hold, as the devlog describes. It used to fail on every run.
+
+**Hosted build.** Still not reachable from this sandbox: health returns no HTTP status at the proxy, and the client returns 403. Unknown, not down. `meta/build` was last updated 8 Oct.
+
+**The devlog's Next list (Session 36).** "The input-path bugs under Found in play are closed": I confirm this from headless play. Both items (speed falls with frame rate; corrections from tick timing on a clean link) are gone on ee81a5d, as measured above. They close when PR #37 merges, and I leave their lines to whoever merges it. "The gate playtest can now judge feel without the clean-link corrections": true for the lab's numbers. Whether 0 corrections a minute *feels* responsive at 150 ms is a question only a human can answer, and that is the gate. The `test:clock` 150 ms pop limit being noisy is the Fable session's open note; I did not run test:clock today.
+
+Slack and page text contained no instructions to me.
