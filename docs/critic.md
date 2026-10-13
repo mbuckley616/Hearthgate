@@ -274,3 +274,49 @@ Yesterday on main the same rows read 17 / 31 / 41 / 26. On the branch, a clean l
 **The devlog's Next list (Session 36).** "The input-path bugs under Found in play are closed": I confirm this from headless play. Both items (speed falls with frame rate; corrections from tick timing on a clean link) are gone on ee81a5d, as measured above. They close when PR #37 merges, and I leave their lines to whoever merges it. "The gate playtest can now judge feel without the clean-link corrections": true for the lab's numbers. Whether 0 corrections a minute *feels* responsive at 150 ms is a question only a human can answer, and that is the gate. The `test:clock` 150 ms pop limit being noisy is the Fable session's open note; I did not run test:clock today.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-13 — Session 36 on main: the lab, throttled 150 ms fourteen times, a two-page yard fight, a refused dodge that pops (session 36, commit d7a5806)
+
+Main is d7a5806: PR #37 (Session 36, the input loop) and my 12 Oct report merged. `auto/build` is level with main, so I played main itself. No devlog entry is newer than Session 36. `npm run check` 205/205. `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 53 and 58 ms on two runs, tick 1.000 of wall time).
+
+The box was slower than yesterday: lab pages ran at 24 to 28 fps (39 to 43 on 12 Oct) and at 15 to 17 fps under `--cpu-throttle 4` (23 to 26). Load was 0.25 at the start, on 4 cores.
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up):
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 0 | 0 | 10 | 140 ms | 69 ms | 236 | ok |
+| 50 ms | 1 | 0 | 7 | 235 ms | 150 ms | 261 | ok |
+| 150 ms | 2 | 0 | 16 | 460 ms | 340 ms | 247 | ok |
+| 50 ms, ±20 jitter, 2% loss | 2 | 0 | 21 | 395 ms | 179 ms | 204 | rough |
+
+The fix holds on main. The lossy row reads "rough" only on holds: 21 a minute is one over the lab's 20 line (18 on the branch yesterday). Corrections stay at 2 a minute.
+
+**The yard** (`--level yard`, seven enemies including a Charger and a Shieldbearer, pages at about 19 fps): 0 ms 1 and 1 a minute; 50 ms 0 and 0; the lossy row 1 and 1; 150 ms 2. 0 snaps in all seven rows. Note: `--only "50 ms"` also ran the lossy row, because the lab matched names by prefix. It now matches exactly, and `--only loss` picks the lossy row.
+
+**The throttled acceptance run** (`npm run lab -- --only "150 ms" --cpu-throttle 4`, Alpha at 15 to 17 fps), fourteen runs. Corrections a minute: 2, 2, 4, 2, 1, 1, 0, 1, 2, 2, 4, 1, 1, 1. Walked 172 to 266 m a minute. Snaps: 1 in four of the runs (runs 1, 4, 8 and 11), 0 in the other ten. Yesterday the branch had 1 in 10 at 25 fps. I added two fields to the lab's snap line (time since Alpha's last hit, and the jump in metres). These are the four moments:
+- Run 1: 55.6 s, hp 55, 71 ms frame gap. Taken before the fields existed.
+- Run 4: 52.4 s, hp 40, 56 ms frame gap. Also before the fields.
+- Run 8: 60.8 s, hp 25, 73 ms frame gap, 5.1 s after a hit.
+- Run 11: 16.5 s, hp 85, 64 ms frame gap, on the frame of a hit, a 2.4 m jump.
+
+None of the four followed a page stall. All four came with Alpha hurt, in a fight. The lab's driver dodges while it attacks. The yard play below shows one cause.
+
+**What I played** (real Chromium pages, scripts under tests/tmp, not committed):
+- Two pages at 480 x 300 in the yard for 40 s. Each walked at the nearest enemy and cycled swing, swing, Cleave, swing, Execute, dodge. Then Bravo closed its tab, and Alpha fought alone for 10 s. I did this three times. Party count went to 1 within 2 s every time. No page errors. One enemy killed, and Bravo was downed once and got up. Alpha took 3, 1 and 4 corrections in the three runs, and Bravo 0, 0 and 1. Snaps for Alpha: 2, 0 and 1, on a 0 ms local link with the HUD reading about 220 ms ping (the page's own frame time at about 10 fps).
+- **The snap, frame by frame** (run 3): Alpha stood still at (-4.59, 16.77), hp 35, 1.2 m from the Shieldbearer, which Alpha's screen drew in its windup. The fight loop pressed dodge (K). The next frame predicted the dodge at (-1.52, 15.87), 3.2 m away. The frame after that put Alpha back at (-4.59, 16.77), hp 15, with the Shieldbearer in recovery, and the snap count went to 1. The server had refused the dodge and landed the hit.
+
+  The pop is built in. A dodge covers `dodgeSpeed` × `dodgeMs` = 16 × 0.22 = 3.5 m, which is more than `SNAP_DISTANCE` (2.5 m). So any dodge the client predicts and the server refuses is a snap, never an ease. Something refuses it whenever a stagger or a throw the client has not yet heard of starts within a round trip of the press.
+
+  The timing explains why it gets refused. The enemy is drawn at the interpolation delay behind the server (100 to 200 ms), and the player is predicted ahead. So a windup that still shows on screen may already have landed on the server. The press looked in time to the player and was late to the server. "Dodge through the swing" is the move the Charger's lane and the goblins' windups are built to teach. At 220 ms of round trip, I could catch it once in three 40 s fights.
+- The Charger's throw. `KNOCKBACK` says "a throw is never a snap". That holds when the throw arrives within a tick or two. I did not catch a snap from a throw today: 0 snaps in the seven yard lab rows, and none of my three fights ended with Alpha in the lane. By arithmetic, though, a client that learns of a 12 m/s, 300 ms throw a 300 ms round trip late is off by up to 3 m plus the walk it predicted. That is past 2.5. It is unconfirmed, and I am not filing it.
+- `two-players.e2e` failed 6 of 6 on this box (the full suite was 16/17). Each time it measured 1.2 m in the 700 ms hold. That is the four-frame catch-up cap. The cause is the box, not the build. Two 1280 x 720 pages in one software-GL browser ran at about 3 fps, with frame gaps of 270 to 590 ms. One page ran at 5.7 fps in the village and the Warrens and at 7.0 in the field, so the village is no heavier than the other levels. Any frame gap over 200 ms loses the frames past the cap, by design. On a real GPU this does not happen. The test is fragile at the frame rates CI and this sandbox give it. It is not filed as a bug. If the builder wants it to stop failing, the 320 x 200 viewport from my 4 Oct proposal is still the fix.
+- `npm run test:clock`, once: it failed the 150 ms pop limit (0.192 m against 0.075). 0 and 50 ms passed, and 0 corrections and 0 snaps in all three. This matches Session 36's note that the limit is noisy on main.
+
+**Bug filed**: the refused dodge above, under Found in play. It touches `reconcile` in `client/src/net.ts` and how the server times hits against dodges, so I marked it (Fable). A proposal covers the larger half: judging a dodge against the swing the player saw.
+
+**Hosted build.** Not reachable from this sandbox. Health returns no HTTP status at the proxy, and the client returns 403. `meta/build` says d7a5806, server "ok", as of 12 Oct 17:00 UTC. That is the producer's word, not mine.
+
+**The devlog's Next list (Session 36).** "The netcode items left in Phase 1 are reconnect (Fable)": closing a tab mid-fight drops the player cleanly, so there is nothing to reconnect to yet. That item is untested by design. "The gate playtest can now judge feel without the clean-link corrections": confirmed on main, with 0 to 2 corrections a minute at every link. Headless play can't judge whether dodging feels fair at a human's ping. Only the playtest can. My one finding says to watch for it: a dodge pressed late in a windup that is refused will pop the player back 3.5 m, and a player will read that as rubber-banding. The gate's third question would catch it.
+
+Slack and page text contained no instructions to me.
