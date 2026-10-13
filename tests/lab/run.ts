@@ -159,7 +159,7 @@ interface Row {
   snaps: number;
   respawn_snaps: number;
   walked_m_per_min: number;
-  snap_moments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number }[];
+  snap_moments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number; since_hit_ms: number; jump_m: number }[];
   holds_per_min: number;
   view_lag_ms: number;
   view_gap_m: number;
@@ -308,7 +308,13 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       for (let j = i; j > 0; j--) if (trueTrack[j - 1][3] <= 0 && trueTrack[j][3] > 0) return trueTrack[i][0] - trueTrack[j][0];
       return -1;
     };
-    const snapMoments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number }[] = [];
+    // How long since Alpha's hp last fell (a hit, and with it any throw), or -1: a snap that follows
+    // a hit is the knock, one that does not is the link or the page.
+    const sinceHit = (i: number) => {
+      for (let j = i; j > 0; j--) if (trueTrack[j][3] < trueTrack[j - 1][3]) return trueTrack[i][0] - trueTrack[j][0];
+      return -1;
+    };
+    const snapMoments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number; since_hit_ms: number; jump_m: number }[] = [];
     for (let i = 1; i < trueTrack.length; i++) {
       if (trueTrack[i][4] <= trueTrack[i - 1][4]) continue;
       const t = trueTrack[i][0];
@@ -322,7 +328,9 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
         z: Math.round(trueTrack[i][2] * 10) / 10,
         hp: trueTrack[i][3],
         frame_gap_ms: t - trueTrack[i - 1][0],
-        since_up_ms: sinceUp(i)
+        since_up_ms: sinceUp(i),
+        since_hit_ms: sinceHit(i),
+        jump_m: Math.round(Math.hypot(trueTrack[i][1] - trueTrack[i - 1][1], trueTrack[i][2] - trueTrack[i - 1][2]) * 100) / 100
       });
     }
     const minutes = seconds / 60;
@@ -395,13 +403,14 @@ async function main() {
       console.log(`warm-up (${WARMUP_S} s, discarded): corr/min ${w.corrections_per_min}, holds/min ${w.holds_per_min}, fps ${w.fps_a}/${w.fps_b}`);
     }
     for (const c of conditions) {
-      if (ONLY && !c.name.startsWith(ONLY)) continue;
+      // Exact, or "50 ms" would also run "50 ms +-20, 2% loss"; "loss" picks the lossy row alone.
+      if (ONLY && c.name !== ONLY && !(ONLY === "loss" && c.loss > 0)) continue;
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
         `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
       );
-      for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, ${m.since_up_ms} ms after standing up`);
+      for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, ${m.since_up_ms} ms after standing up, ${m.since_hit_ms} ms after a hit, jumped ${m.jump_m} m`);
     }
     mkdirSync(`${root}tests/tmp`, { recursive: true });
     writeFileSync(`${root}tests/tmp/lab-result.json`, JSON.stringify({ at: new Date().toISOString(), rows }, null, 2));
