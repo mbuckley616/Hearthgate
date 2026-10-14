@@ -19,7 +19,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 **Next**
 
 - The builder takes the over-the-shoulder camera item.
-- Michael picks the three reference models (candidates in the guide) and starts the character commission and the asset-pack purchase. A sixth sheet could cover what the five missed: the rest room choice, combo, downed and revive, the Guide, the trade window, a corner HUD with three slots.
+- Michael picked the three reference models (the base adventurer, the basic goblin, the regional building; `decisions.md`). Next for him: the character commission and the asset-pack purchase. A sixth sheet could cover what the five missed: the rest room choice, combo, downed and revive, the Guide, the trade window, a corner HUD with three slots.
 
 ## 2026-10-13: Session 37, a refused dodge eases back instead of popping
 
