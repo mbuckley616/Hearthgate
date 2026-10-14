@@ -105,6 +105,38 @@ Raised third person, about 35 degrees above the action, a little behind the play
 | Corner HUD, big buttons, key and gamepad prompts | Mouse cursors, hover tooltips, centre-screen clutter |
 | Its own look | Copying any existing game's characters, logos or UI |
 
+### Reference sheets (2026-10-13)
+
+Five sheets Michael generated in ChatGPT from the Part 2 prompts, kept in `docs/art/concept/`. **They settle the look, not the content.** The style landed: faceted low-poly, chunky 4.5-head figures, warm saturated villages, torch-lit dungeons with one accent each, floor telegraphs, outlines and name tags. Where a sheet shows a feature, building, skill or control that the design doc does not have, the design doc wins; those are listed under each sheet so nobody builds from them by accident.
+
+**[01: World, regions and mood](art/concept/01-world-regions.webp)**
+- Use: the palette strips; the overall village rendering; dungeon entrances with their accents (panel 5); the dungeon interior mood (panel 6); morning and evening lighting (panel 7); the scale card (panel 9).
+- Ignore: the building names (House, Blacksmith, Market, Farm are not the design's list; it has Home, Forge, Market Hall and no Farm); "Overworld exploration" (the village is the only overworld at launch); the regions drawn as castles and cities rather than the same village per region; the steep, near-isometric overview camera.
+
+**[02: Characters, gear and hirelings](art/concept/02-characters-gear.webp)**
+- Use: proportions and silhouettes (panel 1); the gear-slot grid showing each slot changing the outline (panel 3); the four regional armour sets (panel 4); the weapon line-up (panel 5); the party shot with outlines and name tags (panel 7); NPC villagers (panel 8).
+- Ignore: Warrior, Ranger, Mage and Cleric as classes (Hearthgate has no classes; role comes from the weapon and loadout, and there is no healer style); the hireling roster is inspiration only, the pet-handler included.
+- Missing: the Guide with the lantern, the sword at tiers 1 to 5, cross-region gear.
+
+**[03: Enemies, combat and dungeons](art/concept/03-enemies-combat.webp)**
+- Use: the archetype silhouettes (panel 1); the goblin family (panel 2: the Shaman reads as the Pack Leader's buff role, the Brute as a Charger); the per-dungeon line-ups (panel 3); the circle, cone and line telegraphs (panel 4, the strongest panel across all five sheets); the six states with their shapes; group combat (panel 7).
+- Ignore: the Cave Golem labelled Verdant Vale (Verdant's dungeon is the Druid Ruins with treants; a golem belongs to Emberreach's Forge-Depths).
+- Missing: the Shieldbearer by name, the war pig, the regional signature enemies, the combo strip, downed and revive.
+
+**[04: The village and the run](art/concept/04-village-run.webp)**
+- Use: one building across four upgrade levels (panel 2); the same building in each region's style (panel 3, exactly the "shared neutrals, regional colour" rule); village NPC life (panel 4); the portal shrine (panel 6); day and night (panel 8).
+- Ignore: the building names again; "Gather" outdoors as step 1 of the loop (resources come from runs); level ranges such as "Lv 5 - 10" on portals (the design uses tiers 1 to 5).
+- Missing: the rest room and the go-deeper-or-go-home choice, the core decision of every run; Market Hall trading; the travelling merchant; visitors arriving.
+
+**[05: HUD, menus and interaction](art/concept/05-hud-menus.webp)**
+- Use: the party frames and portrait style (panel 1); the inventory and gear screen (panel 2); the portal selection layout (panel 4); the crafting panel (panel 6); dialogue with numbered choices (panel 7); notification toasts (panel 9); settings toggles for telegraphs and outlines (panel 10).
+- Ignore: the ability bar in the bottom centre with four abilities (the design has three slots plus attack, in the corners, centre third clear); the minimap; Acrobatics, jumping and the skill list (the design's skills are Melee, Ranged, Magic, Gathering, Crafting, Alchemy, Rune-crafting, Cooking); the world map and quest log (not in the design); "Party (1-4)" (up to 8); the controller mapping (the design doc's Platform and controls table is the binding one); "PC (keyboard & mouse)" (mouse is never required).
+- Missing: the go-deeper choice screen, the trade window, the phone layout.
+
+**Candidates for the three reference models** (the guide's gate for the commission): the base adventurer from sheet 02 panel 1, the basic goblin from sheet 03 panel 2, and one building in its four regional styles from sheet 04 panel 3. Michael picks.
+
+**For a second round:** the gaps above (rest room choice, combo, downed and revive, Guide, trade window, corner HUD with three slots) would make a good sixth sheet. Prompt it with "Use the exact style of the sheets I already made" and list only those panels.
+
 ---
 
 ## Part 2: The prompts for ChatGPT
