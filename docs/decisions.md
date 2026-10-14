@@ -16,6 +16,10 @@ B. One more agent pass on the adventurer with the specific fixes.
 C. Hire a freelancer to the reference, as first planned.
 Michael: **A, an asset pack (KayKit Adventurers)** (2026-10-14, in chat). The environment pack: he asked for a comparison of packs first. The style guide is trimmed to one page; the concept-sheet notes and prompts moved to `docs/art/concept/README.md`.
 
+### 2026-10-14: The dungeon kit, the village buildings and the goblins (Claude (local))
+The comparison of packs (https://claude.ai/artifact/QqeTEhWyfe9tcpeQFpPyjH) left three picks. 1: the dungeon kit, A. KayKit Dungeon Pack free tier, B. its Extra tier now ($7.95). 2: the village buildings, A. test a scaled-up KayKit Medieval Hexagon tavern from the game camera first, Quaternius Medieval Village MegaKit as the fallback, B. the Quaternius kit, C. keep the greybox until Phase 2. 3: the goblins, A. keep the spike's agent-built goblin, restyled to sit beside the pack, B. a KayKit orc (Mystery Monthly Series 6, $19.99), C. Quaternius Bestiary (QAL licence, other rig). A was recommended in each.
+Michael: **1A 2A 3A** (2026-10-14, in chat).
+
 ### 2026-10-13: Can a Claude agent model and animate instead of a freelancer? (Claude (local))
 The design doc's asset plan has packs for environment and props, a freelancer for characters and signature enemies, and Claude-authored procedural pieces for layouts, terrain and scatter. Michael asked whether an agent could do the modelling and animating. The flat-shaded low-poly style suits code-built models, an agent can render and compare its own work, and rigid-part animation fits the chunky style; the risk is charm (faces, organic shapes) and smooth skinned animation.
 A. Hire the freelancer as planned.

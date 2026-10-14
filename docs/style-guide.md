@@ -110,8 +110,9 @@ Over the shoulder, in the manner of RuneScape: Dragonwilds (Michael, 2026-10-13;
 | What | Source | Status |
 | --- | --- | --- |
 | Player characters | [KayKit Adventurers](https://kaylousberg.itch.io/kaykit-adventurers) (CC0, rigged and animated, glTF), with the [KayKit Character Animations](https://kaylousberg.itch.io/kaykit-character-animations) pack | Michael, 2026-10-14: an asset pack instead of a commission. The agent-built spike (`docs/art/spike/`) read too boxy beside the reference. |
-| Enemies | Open: the spike's goblin read closer to its reference than the adventurer did | To decide with the environment pack |
-| Dungeon and village kit | Open: a comparison of packs for Michael to pick from | Michael, 2026-10-14: options first |
+| Goblins | The spike's agent-built goblin (`client/src/figures.ts`), restyled to sit beside the pack | Michael, 2026-10-14: KayKit has no goblin, and the spike's read close to its reference |
+| Dungeon kit | [KayKit Dungeon Pack](https://kaylousberg.itch.io/kaykit-dungeon-pack), free tier (CC0, glTF, the Adventurers' colour atlas) | Michael, 2026-10-14 |
+| Village buildings | [KayKit Medieval Hexagon](https://kaylousberg.itch.io/kaykit-medieval-hexagon) scaled up, if one tavern holds up from the game camera; else [Quaternius Medieval Village MegaKit](https://quaternius.itch.io/medieval-village-megakit) | Michael, 2026-10-14: test first |
 | Layouts, terrain, scatter | Built in code (`shared/src/level.ts`) to these rules | As the design doc plans |
 
 A pack is on-style if it matches the rules above beside the reference models; its own palette is retinted toward the shared neutrals and the region swatches where it does not.
