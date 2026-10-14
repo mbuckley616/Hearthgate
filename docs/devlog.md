@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-13: local session, art direction style guide draft
+
+**What changed**
+
+- New `docs/style-guide.md`, the draft of the one-page style guide the backlog's (Michael) art direction item asks for. Part 1: style rules, camera, palette swatches (shared neutrals, the four regions, the dungeon accents, the six states, party outlines), lighting, UI direction, a do / do not table. Part 2: a master style block and five concept-sheet prompts for ChatGPT (world and regions; characters and gear; enemies and combat readability; village and the run; HUD and menus), plus one-line fixes for when an image drifts. Michael read it and approved it as it stands.
+
+**Learned**
+
+- The Old Gates concept sheets are painterly and near-realistic; Hearthgate's design doc asks for flat-shaded low-poly. An image model drifts toward painterly unless told otherwise in every prompt, so the guide says so up front and the fixes list leads with it.
+
+**Next**
+
+- Michael generates the five sheets. Then trim the guide to one page with the chosen images as the reference models, and start the character commission and the asset-pack purchase.
+
 ## 2026-10-05: Session 23, the adaptive delay merged with the Warrens groundwork
 
 **What changed**
