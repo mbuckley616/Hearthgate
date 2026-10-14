@@ -9,6 +9,13 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-14: The art spike's verdict: keep, one more pass, a pack, or hire? (Claude (local))
+Session 39's turnarounds (`docs/art/spike/`) get the palette and readability right, but the adventurer reads boxy beside its reference: small hands, long thin legs, little charm. The goblin is closer.
+A. An asset pack for the characters: KayKit Adventurers (CC0, chunky low-poly, rigged with 130+ animations in its companion pack, glTF), by the same artist as the KayKit dungeon and village kits, so the game matches. No commission. **Recommended.**
+B. One more agent pass on the adventurer with the specific fixes.
+C. Hire a freelancer to the reference, as first planned.
+Michael: **A, an asset pack (KayKit Adventurers)** (2026-10-14, in chat). The environment pack: he asked for a comparison of packs first. The style guide is trimmed to one page; the concept-sheet notes and prompts moved to `docs/art/concept/README.md`.
+
 ### 2026-10-13: Can a Claude agent model and animate instead of a freelancer? (Claude (local))
 The design doc's asset plan has packs for environment and props, a freelancer for characters and signature enemies, and Claude-authored procedural pieces for layouts, terrain and scatter. Michael asked whether an agent could do the modelling and animating. The flat-shaded low-poly style suits code-built models, an agent can render and compare its own work, and rigid-part animation fits the chunky style; the risk is charm (faces, organic shapes) and smooth skinned animation.
 A. Hire the freelancer as planned.
