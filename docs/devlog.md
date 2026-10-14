@@ -2,6 +2,28 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: local session, the art sources picked and the KayKit packs in the repo
+
+**What changed**
+
+- The control room's "Fable routine has not taken the input-timing card" blocker is cleared. It was stale: the routine has run on Opus as the deep-work session since 12 Oct and took the card that day (Session 36, PR #37). CLAUDE.md's Model split and team list say so, and the 9 Oct "wait for the credit reset" decision is marked superseded. The "fable" names on cards, branches and the backlog mark stay, because the producer and the routine match on them.
+- `docs/style-guide.md` is one page: rules, palette, camera, lighting, UI, the three reference models and a "Where the art comes from" table. The per-sheet notes and the ChatGPT prompts moved to `docs/art/concept/README.md`. Rule 1 now allows a small colour-swatch texture, since every KayKit pack uses one.
+- Michael's calls (`decisions.md`): on the Session 39 spike, KayKit Adventurers for the characters instead of a commission; from a comparison of packs (https://claude.ai/artifact/QqeTEhWyfe9tcpeQFpPyjH), the KayKit Dungeon Pack, a scaled-up KayKit Hexagon tavern tested from the game camera before the village is settled (the Quaternius Medieval Village MegaKit as the fallback), and the spike's goblin kept.
+- The free tiers of KayKit Adventurers, Character Animations, Dungeon Pack and Medieval Hexagon are in `client/public/models/kaykit/`: glTF and GLB only, 18 MB, 525 files, each pack's CC0 licence beside it and a README listing what is there. Hexagon is only the eight green buildings the test needs.
+- The art direction backlog item is closed; two builder items replace it: the Knight as the player figure, then the dungeon kit on the Warrens plus the tavern test shots.
+
+**Learned**
+
+- The free Adventurers tier has only idle and basic movement clips; the swing, block and dodge clips come from the Character Animations pack, on the same Rig_Medium.
+- The Dungeon Pack has torches (`torch`, `torch_lit`, `torch_mounted`), which the pack page did not say.
+- KayKit has no goblin, and its character textures are one shared atlas, so the party colour cannot tint a tunic; it stays on the outline and name tag.
+- itch.io's free download links expire 60 s after they are issued.
+
+**Next**
+
+- The producer cards this branch: it is no longer docs only (the models are under `client/`), so it needs Michael's approval before it merges, and the builder sees the two new items only once it is on main.
+- The builder takes the Knight item, then the dungeon kit and the tavern test; Michael looks at `docs/art/spike/hexagon-tavern-*.png` and picks the village kit.
+
 ## 2026-10-14: Session 39, the art spike: the adventurer and the goblin rebuilt to the references
 
 **What changed**
