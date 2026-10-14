@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { PLAYER, cameraRelativeMove } from "@hearthgate/shared";
+import { ENEMY_KINDS, PLAYER, cameraRelativeMove } from "@hearthgate/shared";
 
 /** The eight key combinations and their screen vectors (input.ts: W is dy -1, D is dx +1). */
 const DIRECTIONS: [string[], number, number][] = [
@@ -32,17 +32,21 @@ test("Cleave then Execute shows the callout over the goblin", async ({ page }) =
     });
 
   // Walk at the goblin with the keys that point at it from where the camera has turned (the camera
-  // turns toward the fight, so fixed keys drift off it), stop short, step once more to face it (we
+  // swings in behind the travel, so fixed keys drift off it), stop short, step once more to face it (we
   // face the way we last moved, and Execute's cone is in front), then 1, then 2 a beat later.
   // The step lengths come from the distance, not a fixed hold: a held key now covers the same
   // ground at any frame rate, and a fixed hold tuned to a slow page overshoots on a fast one.
-  const toward = async () => {
+  // The goblin closes too, so the approach is timed on both speeds; a run that still ends inside
+  // it (under a metre, where the cones' "in front" is a coin toss) backs off first. Without that
+  // the test stood in the goblin until it lost the fight (1 run in 10, more under the camera's
+  // swing in behind, which turns the keys a little between the aim and the press).
+  const toward = async (away = false) => {
     const at = await page.evaluate(() => {
       const h = (window as any).__hg;
       const e = Object.values(h.enemies as Record<string, { pose: { x: number; z: number } }>)[0];
       return { x: h.me.x, z: h.me.z, gx: e?.pose.x ?? h.me.x, gz: e?.pose.z ?? h.me.z, yaw: h.camYaw as number };
     });
-    const want = Math.atan2(at.gx - at.x, at.gz - at.z);
+    const want = Math.atan2(at.gx - at.x, at.gz - at.z) + (away ? Math.PI : 0);
     let best: string[] = [];
     let bestCos = -Infinity;
     for (const [keys, dx, dy] of DIRECTIONS) {
@@ -65,7 +69,11 @@ test("Cleave then Execute shows the callout over the goblin", async ({ page }) =
         if (s.callouts > 0) return s.callouts;
         if (s.d > 2.2) {
           // Close in, stopping about 1.5 m short; it is walking at us too.
-          await hold(await toward(), Math.min(300, ((s.d - 1.5) / PLAYER.speed) * 1000));
+          await hold(await toward(), Math.min(300, ((s.d - 1.5) / (PLAYER.speed + ENEMY_KINDS.goblin.speed)) * 1000));
+          return s.callouts;
+        }
+        if (s.d < 1) {
+          await hold(await toward(true), ((1.5 - s.d) / PLAYER.speed) * 1000);
           return s.callouts;
         }
         await hold(await toward(), 40);
