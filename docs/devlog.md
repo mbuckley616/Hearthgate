@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 40, combo.e2e no longer loses the fight standing in the goblin
+
+**What changed**
+
+- `tests/combo.e2e.ts` failed about 1 run in 10 here (3 in 7 on the critic's runs of the branch, 2026-10-14), always at its 30 s limit. A trace of a failing run: the close-in step was timed on the player's speed alone, the goblin closed at its 3.4 m/s too, and the player ended 0.43 m from it, then 0.16 m. That near, "in front" for Cleave's and Execute's cones is a coin toss: one Cleave landed, every Execute after it missed, and the goblin downed the player at 29 s. The camera's swing in behind (Session 38) turns the keys a little between the aim and the press, which makes the overshoot likelier, not the cause.
+- The approach step is now timed on both speeds (`PLAYER.speed + ENEMY_KINDS.goblin.speed`), and under 1 m the test backs off to about 1.5 m before it strikes. The stale comment about the camera turning toward the fight now says it swings in behind the travel. No game code changed.
+- `combo.e2e` 40/40 in two runs of 20 (7.4 to 9.7 s each; before, 9/10 with the failure at 31 s); the full browser suite 18/18; `npm run check` 208; `npm run test:net` all fifteen steps.
+
+**Learned**
+
+- A player standing inside an enemy happens in play (the drawn goblin sat 0.16 m from the player for 15 s), and at that distance a melee cone misses as often as it hits. For a test that is a steering bug; for a player it would read as "my Execute whiffed point blank". Worth the gate playtest's eye, not a change now.
+
+**Next**
+
+- Phase 1 has no builder item left; the gate playtest and the art spike's keep-or-hire look are Michael's.
+
 ## 2026-10-14: Session 39, the art spike: the adventurer and the goblin rebuilt to the references
 
 **What changed**
