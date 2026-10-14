@@ -16,8 +16,8 @@ const outDir = join(root, "docs/art/spike");
 
 /** Where each reference model stands in its sheet: [x, y, w, h] in source pixels. */
 const REFS = {
-  // The coloured front, side and back of the base adventurer (sheet 02 panel 1).
-  adventurer: { file: "adventurer.png", crop: [255, 70, 450, 345] },
+  // The coloured front, side and back of the base adventurer (sheet 02 panel 1), which the Knight replaces.
+  knight: { file: "adventurer.png", crop: [255, 70, 450, 345] },
   // The basic goblin, the first of the four (sheet 03 panel 2).
   goblin: { file: "goblin.png", crop: [5, 150, 200, 240] }
 } as const;

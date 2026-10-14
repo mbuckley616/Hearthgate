@@ -38,6 +38,7 @@ import {
 } from "@hearthgate/shared";
 import { Input } from "./input";
 import { pickWeapon } from "./join";
+import { loadModels } from "./models";
 import { Net, type Pose } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
@@ -146,7 +147,9 @@ function enemyPose(id: string): { x: number; z: number } {
   return pose ?? { x: net.me.x + Math.sin(net.me.facing), z: net.me.z + Math.cos(net.me.facing) };
 }
 
-(scriptedJoin ? Promise.resolve(weaponFromPick(params.get("weapon") ?? "sword", params.get("tier") ?? 1)) : pickWeapon())
+// The figures load once, before anyone is let in; a scripted join waits for them too.
+const models = loadModels();
+(scriptedJoin ? models.then(() => weaponFromPick(params.get("weapon") ?? "sword", params.get("tier") ?? 1)) : pickWeapon(models))
   .then((weapon) => {
     hud.setStatus(`Connecting to ${endpoint}`);
     return net.connect(endpoint, name, levelParam, weapon);

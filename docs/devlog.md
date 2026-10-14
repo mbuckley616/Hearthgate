@@ -2,6 +2,32 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 41, the KayKit Knight is every player
+
+**What changed**
+
+- `client/src/models.ts` loads the KayKit figures once with three's `GLTFLoader` before anyone joins: the Knight and the four villager bodies, the four held weapons, and five Rig_Medium clip files. The join screen's button reads "Loading" until they are in (a press made while loading joins as soon as they are); a scripted join (`?name=`, tests, the lab) waits for them too. Each figure is a `SkeletonUtils.clone` scaled to 1.8 m, facing +z, returned as the same `Figure` render.ts already used, with a `rig` (one `AnimationMixer`) in place of the hand-posed parts.
+- Every player is the Knight, whatever the weapon. The held weapon is the pack's own in the rig's `handslot.r`: `sword_1handed` for the one-handers, `sword_2handed` for the Claymore, `axe_2handed` for the other two-handers, `bow_withString` for the bow, tinted 45% toward its material's colour with the old glow for the high tiers. The party colour is an outline (each body mesh drawn again on the same skeleton, back faces pushed 2.2 cm out along the normals) and the name tag; the outline is what flashes, lightens on a swing and darkens when downed or dead.
+- `RigAnimator` maps the timers render.ts already has onto clips: `Idle_A` (`Melee_2H_Idle` with a two-hander, `Ranged_Bow_Idle` with the bow), `Walking_A` under 2.6 m/s and `Running_A` (`Running_HoldingBow`) above, at a time scale from the drawn speed `stepFigureWalk` now also keeps; `Melee_Blocking` while blocking, `Crawling` while downed, `Death_A` held at its end while dead. One-shots play over the base and hand back: `Melee_1H_Attack_Chop`, `Melee_2H_Attack_Chop` or `Ranged_Bow_Release` on a swing (fitted into the swing's time plus 0.3 s), `Dodge_Forward`, `Hit_A` when the drawn hp drops, `Spawn_Ground` on standing up from a down or a respawn. A staggered player still rocks back 0.25 rad. The clips' root translation is dropped at load, so the dodge never draws the figure off the server's spot. No allocation per frame.
+- Villagers are the Barbarian, Mage, Ranger and Rogue in turn, each in `Idle_A` at a different phase, stepped in `View.render`.
+- The goblin's gear moved onto the dungeon atlas's colours (wood `#A86A4C`, leather `#5E4A40`, iron `#5F676C`, gold `#F0B84A`); its Grub green skin already sits on the atlas's green. The other enemy figures are unchanged. The spike's adventurer code is gone from `figures.ts`.
+- `npm run turnaround` renders the Knight (idle, walk, swing; front, side, back, in game) through the real clips, beside the adventurer reference it replaces: `docs/art/spike/knight-*.png`; the goblin sheets are re-rendered in the new colours. The adventurer sheets stay as they were.
+- Tests: `figures.e2e` checks the Knight's budget (14,000 drawn triangles), its height, and that it stands in `Idle_A`, runs in `Running_A` and chops on J. `two-players.e2e` now joins the open field (below). Browser suite 18/18, with figures, village, combo and hit-feedback 12/12 over three repeats and two-players 6/6; `npm run check` 208; `npm run test:net` all steps.
+
+**Learned**
+
+- The clips in the pack: General (Death_A, Death_A_Pose, Death_B, Death_B_Pose, Hit_A, Hit_B, Idle_A, Idle_B, Interact, PickUp, Spawn_Air, Spawn_Ground, Throw, Use_Item), MovementBasic (Jump_Full_Long, Jump_Full_Short, Jump_Idle, Jump_Land, Jump_Start, Running_A, Running_B, Walking_A, Walking_B, Walking_C), MovementAdvanced (Crawling, Crouching, Dodge_Backward, Dodge_Forward, Dodge_Left, Dodge_Right, Running_HoldingBow, Running_HoldingRifle, Running_Strafe_Left, Running_Strafe_Right, Sneaking, Walking_Backwards), CombatMelee (Melee_1H_Attack_Chop, _Jump_Chop, _Slice_Diagonal, _Slice_Horizontal, _Stab, Melee_2H_Attack_Chop, _Slice, _Spin, _Spinning, _Stab, Melee_2H_Idle, Melee_Block, Melee_Block_Attack, Melee_Block_Hit, Melee_Blocking, Melee_Dualwield_Attack_Chop/_Slice/_Stab, Melee_Unarmed_Attack_Kick, Melee_Unarmed_Attack_Punch_A, Melee_Unarmed_Idle), CombatRanged (Ranged_1H_/2H_ Aiming, Reload, Shoot, Shooting; Ranged_Bow_Aiming_Idle, _Draw, _Draw_Up, _Idle, _Release, _Release_Up; Ranged_Magic_Raise, _Shoot, _Spellcasting, _Spellcasting_Long, _Summon); every file also has T-Pose. Simulation, Special and Tools are not loaded.
+- The Knight is 5,800 triangles (the spike's adventurer was 564), drawn twice for the outline: 13,504 with the sword in hand. The client now loads 6.4 MB of models: 1.97 MB of bodies, 0.16 MB of weapons and textures, 4.25 MB of clip files. The clip files are two thirds of it and carry a mannequin mesh and about 80 clips we do not use; cutting them to the 15 we play would bring the load near 2.5 MB.
+- three's loader drops the dots from the pack's bone names: `handslot.r` is `handslotr`.
+- The first patch of a join puts the predicted time 200 ms before zero for one frame, so `now < dodgeUntil` reads true; the old figure leaned for a frame, the Knight would play a whole dodge. The animator takes the state as it stands for its first 0.3 s.
+- Headless Chromium here draws in software: two pages in the village went from about 183 ms a frame to about 280 ms with the skinned figures, past the input clock's 200 ms catch-up, so `two-players.e2e` held D for 700 ms and moved 1.2 m in one run of four. Turning off the outline, the villagers' shadows or frustum culling each saved about a tenth. The test was written before the village and moved into it silently when the village became the first room; it now joins the open field, which is what it checks. The cost is the software rasteriser's, not the game's; the critic's lab pages (about 31 fps) will say what a real frame costs.
+
+**Next**
+
+- The dungeon kit on the Warrens and the Hexagon tavern test shots (the next item).
+- The critic's lab pages give the frame time with the Knight; if it costs, a smaller clip file (the 15 clips we use) and a single-mesh outline are the first cuts.
+- Michael's eye at the gate playtest: the swing clips are fitted to the swing's time, not to the server's hit frame.
+
 ## 2026-10-14: local session, the art sources picked and the KayKit packs in the repo
 
 **What changed**
