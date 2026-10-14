@@ -280,26 +280,49 @@ export const EVENT_LOG = {
  * in an InputFrame, so the server and replay only ever see world vectors.
  */
 export const CAMERA = {
-  /** Elevation of the eye above the look target, degrees. */
-  pitchDeg: 35,
-  /** Eye to look target, metres. The old fixed camera sat 15.8 m away at 55 degrees. */
-  distanceM: 12,
-  /** Look target height above the ground (about the player's chest). */
-  targetY: 0.8,
+  /** Over the shoulder (Michael, 2026-10-13: like RuneScape: Dragonwilds). Starting pitch of the
+   * eye above the look target, degrees; the player tilts it between minPitchDeg and maxPitchDeg. */
+  pitchDeg: 14,
+  minPitchDeg: 5,
+  maxPitchDeg: 45,
+  /** Eye to look target, metres, before a wall pulls it in. */
+  distanceM: 5.5,
+  /** Look target height above the ground: the player's head, so the horizon sits ahead, not the floor. */
+  targetY: 1.6,
+  /** The look target sits this far to the camera's right, so the player stands left of centre
+   * and the way ahead is clear. */
+  shoulderM: 0.55,
   /** Follow smoothing time constant for the look target. */
   followMs: 120,
-  /** Awake enemies and living teammates this close to the player make up the fight. */
-  fightRadiusM: 14,
-  /** A fight centre closer than this to the player gives no direction: hold the yaw. */
-  minLeadM: 1.5,
-  /** The camera ignores this much of its error, so small shifts in the fight never turn it. */
-  deadbandDeg: 20,
-  /** Turning: eased with this time constant, never faster than maxTurnDegPerS. Slow on purpose:
-   * the move keys turn with the camera, so a fast swing would bend the player's path. */
-  turnMs: 1500,
-  maxTurnDegPerS: 40,
-  /** Height on the player the wall-fade ray aims at (mid-body), metres. At 35 degrees a 1.1 m wall
-   * would have to be within 0.3 m of the player's centre to cover it, so the 1.8 m pillars are what fade. */
+  /** The player's own turning: arrows or the right stick at full deflection. */
+  yawRateDegPerS: 150,
+  pitchRateDegPerS: 75,
+  /** Stick deflection below this is drift, not a turn. */
+  stickDeadzone: 0.2,
+  /** After this long with no camera input, the camera swings in behind the player's travel. */
+  swingDelayMs: 1200,
+  /** Only travel at least this fast (m/s, the drawn motion) swings it: standing still holds. */
+  swingMinSpeed: 1.5,
+  /** Only travel within this angle of the view swings it. The move keys are camera-relative, so
+   * swinging behind a sideways or backward walk would wheel the player round in a circle. */
+  swingWindowDeg: 75,
+  /** The swing: ignores this much error, eases with turnMs, never faster than maxTurnDegPerS.
+   * Slow on purpose: the move keys turn with the camera, so a fast swing bends the path. */
+  deadbandDeg: 8,
+  turnMs: 900,
+  maxTurnDegPerS: 45,
+  /** With the bow's lock held, the camera keeps the target within this angle of straight ahead. */
+  lockFrameDeg: 15,
+  lockTurnMs: 300,
+  lockMaxTurnDegPerS: 120,
+  /** A wall between the head and the eye pulls the eye in to this short of the wall, never closer
+   * to the head than minDistanceM. It comes in at once and eases back out over pullOutMs, so
+   * walking past a pillar does not pump the view. */
+  wallPadM: 0.3,
+  minDistanceM: 0.9,
+  pullOutMs: 350,
+  /** Height on the player the wall-fade ray aims at (mid-body), metres. The pull-in keeps walls off
+   * the head ray; the fade still catches a pillar the shoulder offset leaves across the body. */
   fadeAimY: 0.9
 } as const;
 
