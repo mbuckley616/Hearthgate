@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 42, the Hexagon tavern scale test
+
+**What changed**
+
+- `npm run tavern-test` (`tests/tavern-test.ts`, page `client/tavern-test.html`, dev only like the turnaround) builds the real village `View`, hides the greybox Tavern (walls, roof, sign; the sim's walls are unchanged), stands KayKit Hexagon's `building_tavern_green` on its spot turned so its arched door faces the square, puts the Knight beside it in its idle, and renders from the game's camera (`CAMERA`'s 5.5 m, 1.6 m look height, 0.55 m shoulder, 50 degree field of view) at 1280 x 720. Two shots, committed: `docs/art/spike/hexagon-tavern-door.png` (at the foot of its steps, starting pitch) and `hexagon-tavern-square.png` (from beside the Storehouse across the square, 18 degrees). `-- --probe` writes turns of the model to `test-results/` to find the door again.
+- The tavern is scaled 6x: its door then stands about 2.2 m against the 1.8 m Knight, on a stone plinth about 0.8 m high with three steps, and the building is about 7 m wide, 8 m deep and 8.4 m to the top of the barrel on its roof (the greybox Tavern is 10 x 6 m). The rest of the village is not dressed.
+
+**Learned**
+
+- The Hexagon models carry no door node and no hex tile under the buildings: the scale comes from the shots, not the data. 1 unit of the tavern is 1.4 units tall, so at 6x it is 8.4 m.
+- At that scale it reads as a building a Knight walks into, and the pack's villagers stand right beside it. Its footprint is squarer than the greybox's, so taking the kit means re-blocking the Tavern's walls to about 7 x 8 m.
+
+**Next**
+
+- Michael looks at `docs/art/spike/hexagon-tavern-*.png` and picks Hexagon or the Quaternius Medieval Village MegaKit for the village.
+- The builder takes part (1) of the item: the KayKit dungeon kit on the Warrens.
+
 ## 2026-10-14: Session 41, the KayKit Knight is every player
 
 **What changed**

@@ -21,7 +21,8 @@
     "test:net": "tsx tests/reconcile-placement.ts && tsx tests/netcode-smoke.ts",
     "test:clock": "tsx tests/clock-sync.ts",
     "lab": "tsx tests/lab/run.ts",
-    "turnaround": "tsx tests/turnaround.ts"
+    "turnaround": "tsx tests/turnaround.ts",
+    "tavern-test": "tsx tests/tavern-test.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
