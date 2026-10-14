@@ -139,7 +139,7 @@ Six sheets Michael generated in ChatGPT from the Part 2 prompts (the sixth from 
 - **The controls reference.** Panel 8 is the design doc's control table; it replaces sheet 05 panel 8. Since 2026-10-13 the arrow keys turn the camera rather than move (design doc, Platform and controls).
 - Fix when building: both go-deeper buttons show the same keys (E / A); each choice needs its own. A few small labels are garbled (panel 2's subtitle, panel 3's floor label). The 2% host cut is a placeholder; the design doc says only "a small cut".
 
-**Candidates for the three reference models** (the guide's gate for the commission): the base adventurer from sheet 02 panel 1, the basic goblin from sheet 03 panel 2, and one building in its four regional styles from sheet 04 panel 3. Michael picks.
+**The three reference models** (the guide's gate for the commission; Michael, 2026-10-13): the base adventurer from sheet 02 panel 1, the basic goblin from sheet 03 panel 2, and the one building in its four regional styles from sheet 04 panel 3. Cropped in `docs/art/reference-models/` ([adventurer](art/reference-models/adventurer.png), [goblin](art/reference-models/goblin.png), [regional building](art/reference-models/regional-building.png)); in the adventurer crop only the turnaround on the left is the reference, not the class silhouettes beside it. A freelancer or an asset pack matches these three; anything that would sit badly beside them is off-style.
 
 **Still missing after six sheets:** the Shieldbearer and war pig by name, the regional signature enemies, the Guide's lantern on the character sheet, a sword at tiers 1 to 5, cross-region gear, travelling merchant, visitors arriving. A seventh sheet could cover them with the same approach as sheet 6 (Part 2).
 

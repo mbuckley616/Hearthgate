@@ -9,6 +9,16 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-13: Can a Claude agent model and animate instead of a freelancer? (Claude (local))
+The design doc's asset plan has packs for environment and props, a freelancer for characters and signature enemies, and Claude-authored procedural pieces for layouts, terrain and scatter. Michael asked whether an agent could do the modelling and animating. The flat-shaded low-poly style suits code-built models, an agent can render and compare its own work, and rigid-part animation fits the chunky style; the risk is charm (faces, organic shapes) and smooth skinned animation.
+A. Hire the freelancer as planned.
+B. A spike first: an agent builds the base adventurer and the goblin to match the reference models, with a walk and a swing, and renders them beside the references; Michael judges. If it holds up, an Artist agent joins the team and the freelancer is kept for hero pieces at most. **Recommended.**
+Michael: **B, set up the spike** (2026-10-13, in chat). The asset plan in the design doc changes only if the spike passes his look.
+
+### 2026-10-13: The style guide's three reference models (Claude (local))
+The style guide asks for three reference models to gate the commission and the asset-pack purchase; the concept sheets offered candidates.
+Michael: **the base adventurer (sheet 02 panel 1), the basic goblin (sheet 03 panel 2) and the regional building (sheet 04 panel 3)** (2026-10-13, in chat).
+
 ### 2026-10-13: The camera: raised third person or over the shoulder? (Claude (local))
 Session 29 built the design doc's camera: 35 degrees above the player at 12 m, turning on its own toward the fight. Looking at the concept sheets, Michael asked for it to play "more third-person / WoW style ... rather than top-down / birds-eye like in Baldur's Gate or Diablo", and on the question of how a keyboard player turns, answered: "I really just want it to be like Runescape Dragonwilds". Dragonwilds is a free-look over-the-shoulder camera: low and close behind the character, the player turns it (mouse or right stick), movement is relative to it, with target lock-on and dodge-cancel combat.
 Michael: **Over the shoulder, like RuneScape: Dragonwilds** (2026-10-13, in chat). Read as: the camera sits low and close behind the player and the player turns it; WASD and the left stick move relative to it; arrow keys and the right stick turn and tilt it (keyboard-only still works, CLAUDE.md rule 4); an optional mouse look can come later but is never required; the auto-rotation toward the fight is replaced by a gentle swing in behind the player while they move, and by the existing lock-on when one is held. Sheet 06 in `docs/art/concept/` is the picture of it. Supersedes the design doc's "30 to 40 degrees with auto-rotation".
