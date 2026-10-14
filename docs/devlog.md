@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-13: local session, art direction style guide draft
+
+**What changed**
+
+- New `docs/style-guide.md`, the draft of the one-page style guide the backlog's (Michael) art direction item asks for. Part 1: style rules, camera, palette swatches (shared neutrals, the four regions, the dungeon accents, the six states, party outlines), lighting, UI direction, a do / do not table. Part 2: a master style block and five concept-sheet prompts for ChatGPT (world and regions; characters and gear; enemies and combat readability; village and the run; HUD and menus), plus one-line fixes for when an image drifts. Michael read it and approved it as it stands.
+- Michael generated the five sheets in ChatGPT; they are in `docs/art/concept/` (WebP, about 450 KB each), and the style guide has a Reference sheets section that links each one with what to use, what to ignore and what is missing.
+- A sixth sheet (`06-run-choices.webp`) from a prompt written for the gaps: rest room, go deeper, wipe, combo, downed and revive, the Guide, a corner HUD with three slots, the design's control table, Market Hall trade, the phone layout. It drew all ten and kept the design's bindings.
+- Michael's camera direction (decisions.md, 2026-10-13): over the shoulder, like RuneScape: Dragonwilds, not a raised camera that reads as top-down. The design doc's Combat camera paragraph and control table, the style guide's camera rules and prompts, and a new Phase 1 backlog item for the builder carry it. Arrow keys move from walking to turning the camera, so WASD is the only keyboard move.
+
+**Learned**
+
+- The Old Gates concept sheets are painterly and near-realistic; Hearthgate's design doc asks for flat-shaded low-poly. An image model drifts toward painterly unless told otherwise in every prompt, so the guide says so up front and the fixes list leads with it.
+- With the style stated that firmly, the look landed on the first try; the content is what drifted. Every sheet invents features the design does not have (classes, a Farm, jumping, a world map and quest log, a centre ability bar, level ranges instead of tiers) and leaves out the rest room choice. Generated sheets are style references only; the notes list each conflict so no one builds from a picture.
+
+**Next**
+
+- The builder takes the over-the-shoulder camera item.
+- Michael picks the three reference models (candidates in the guide) and starts the character commission and the asset-pack purchase. A sixth sheet could cover what the five missed: the rest room choice, combo, downed and revive, the Guide, the trade window, a corner HUD with three slots.
+
 ## 2026-10-13: Session 37, a refused dodge eases back instead of popping
 
 **What changed**
