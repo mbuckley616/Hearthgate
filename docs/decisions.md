@@ -9,6 +9,17 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-14: The art spike's verdict: keep, one more pass, a pack, or hire? (Claude (local))
+Session 39's turnarounds (`docs/art/spike/`) get the palette and readability right, but the adventurer reads boxy beside its reference: small hands, long thin legs, little charm. The goblin is closer.
+A. An asset pack for the characters: KayKit Adventurers (CC0, chunky low-poly, rigged with 130+ animations in its companion pack, glTF), by the same artist as the KayKit dungeon and village kits, so the game matches. No commission. **Recommended.**
+B. One more agent pass on the adventurer with the specific fixes.
+C. Hire a freelancer to the reference, as first planned.
+Michael: **A, an asset pack (KayKit Adventurers)** (2026-10-14, in chat). The environment pack: he asked for a comparison of packs first. The style guide is trimmed to one page; the concept-sheet notes and prompts moved to `docs/art/concept/README.md`.
+
+### 2026-10-14: The dungeon kit, the village buildings and the goblins (Claude (local))
+The comparison of packs (https://claude.ai/artifact/QqeTEhWyfe9tcpeQFpPyjH) left three picks. 1: the dungeon kit, A. KayKit Dungeon Pack free tier, B. its Extra tier now ($7.95). 2: the village buildings, A. test a scaled-up KayKit Medieval Hexagon tavern from the game camera first, Quaternius Medieval Village MegaKit as the fallback, B. the Quaternius kit, C. keep the greybox until Phase 2. 3: the goblins, A. keep the spike's agent-built goblin, restyled to sit beside the pack, B. a KayKit orc (Mystery Monthly Series 6, $19.99), C. Quaternius Bestiary (QAL licence, other rig). A was recommended in each.
+Michael: **1A 2A 3A** (2026-10-14, in chat).
+
 ### 2026-10-13: Can a Claude agent model and animate instead of a freelancer? (Claude (local))
 The design doc's asset plan has packs for environment and props, a freelancer for characters and signature enemies, and Claude-authored procedural pieces for layouts, terrain and scatter. Michael asked whether an agent could do the modelling and animating. The flat-shaded low-poly style suits code-built models, an agent can render and compare its own work, and rigid-part animation fits the chunky style; the risk is charm (faces, organic shapes) and smooth skinned animation.
 A. Hire the freelancer as planned.
@@ -26,6 +37,7 @@ Michael: **Over the shoulder, like RuneScape: Dragonwilds** (2026-10-13, in chat
 ### 2026-10-09: Fable credits are out: how does the input fix land? (the producer)
 The input-loop Fable card has sat queued with no branch since 6 Oct and the weekly Fable credits are out. Options: A. wait for the weekly credit reset; B. Claude (local) does the input fix on auto/local-input-timing; C. the builder takes it.
 Michael: **A. Wait for the weekly credit reset** — answered on the control room. (2026-10-10) The card stays queued and the builder idles on that item.
+Superseded 2026-10-12: Michael moved the lane off Fable to an Opus deep-work session (same routine, same cards), which took the card that day (Session 36, PR #37). Michael, 2026-10-14: "We should not be blocked on Fable." CLAUDE.md's Model split says so.
 
 ### 2026-10-08: The Fable routine is not taking the input card (the producer)
 The input-loop card sat queued from 6 Oct with no branch; FREEZE #27 was closed so the builder runs again. Options: A. check the Fable routine and run it once by hand; B. Claude (local) does the input fix; C. the builder takes it.
