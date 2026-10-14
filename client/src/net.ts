@@ -47,6 +47,14 @@ export type { Pose } from "@hearthgate/shared";
 /** Prediction error larger than this snaps instead of smoothing. */
 export const SNAP_DISTANCE = 2.5;
 
+/**
+ * The snap limit for a correction that a refused or retimed dodge explains. A dodge is
+ * 3.5 m, over SNAP_DISTANCE, so the server refusing one we predicted (an enemy's blow landed
+ * first, which we could not see: enemies are drawn 100 to 200 ms behind) would otherwise pop
+ * us back. Taken from the dodge's own numbers so it follows their tuning.
+ */
+export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.dodgeSpeed * PLAYER.dodgeMs) / 1000;
+
 export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
   at: number;
@@ -438,6 +446,9 @@ export class Net {
     const beforeX = this.me.x;
     const beforeZ = this.me.z;
     const wasDead = isDead(this.me);
+    // A dodge start always sets the cooldown, so a different cooldown after the replay means a
+    // dodge we predicted was refused or moved by the server.
+    const predictedDodgeCooldown = this.me.dodgeCooldownUntil;
 
     const me = this.me;
     me.x = p.x;
@@ -499,7 +510,8 @@ export class Net {
     const errZ = beforeZ - me.z;
     const err = Math.hypot(errX, errZ);
     if (err > 0.02) this.corrections++;
-    if (err < SNAP_DISTANCE) {
+    const dodgeRefused = me.dodgeCooldownUntil !== predictedDodgeCooldown;
+    if (err < (dodgeRefused ? DODGE_SNAP_DISTANCE : SNAP_DISTANCE)) {
       this.visualErrX += errX;
       this.visualErrZ += errZ;
     } else {

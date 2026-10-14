@@ -6,13 +6,15 @@
  *   3. a real prediction error over SNAP_DISTANCE still is;
  *   4. a Charger's throw is replayed as a slide from the server's knock state: the patch that
  *      brings it is a smoothed correction (the client could not know), never a snap, and the
- *      next patch agrees with the replay.
+ *      next patch agrees with the replay;
+ *   5. a dodge we predicted that the server refused (an enemy's blow staggered us first) is
+ *      eased back like any correction, not snapped, though the slide is over SNAP_DISTANCE.
  * The critic found respawns and wipes inflating the HUD counts and `__hg.snaps` (2026-10-04).
  *
  * Run: part of npm run test:net
  */
-import { KNOCKBACK, PLAYER, TICK_MS } from "@hearthgate/shared";
-import { Net, SNAP_DISTANCE } from "../client/src/net.ts";
+import { applyInput, type InputFrame, KNOCKBACK, PLAYER, POSTURE, TICK_MS } from "@hearthgate/shared";
+import { DODGE_SNAP_DISTANCE, Net, SNAP_DISTANCE } from "../client/src/net.ts";
 
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
@@ -94,4 +96,34 @@ const afterThrow = net.corrections;
 patch(net, { x: 0, z: slid, hp: PLAYER.hp, lastSeq: 12, ...knock });
 if (net.corrections !== afterThrow || net.snaps !== beforeThrow.snaps) fail("the patch after a throw disagreed with the replay");
 
-console.log("ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps; a throw replays as a slide");
+// 5. Standing at the origin, we press dodge east and keep walking east for six frames; the
+// server applied the first of them a tick after a goblin's blow staggered us, so it refused
+// the dodge, and the five after it are replayed off balance.
+patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 20 });
+const beforeDodge = { snaps: net.snaps, corrections: net.corrections };
+const frames: InputFrame[] = [21, 22, 23, 24, 25, 26].map((seq) => ({ seq, dx: 1, dy: 0, attack: false, dodge: seq === 21, ability: 0, use: false }));
+net.predictedTime = tick * TICK_MS;
+for (const f of frames) {
+  // As Net.tick predicts, without a room to send to.
+  net.predictedTime += TICK_MS;
+  applyInput(net.me, f, net.predictedTime, TICK_MS, net.level);
+  net.pending.push(f);
+}
+const dodged = net.me.x;
+if (dodged < SNAP_DISTANCE) fail(`the predicted dodge only went ${dodged} m, not past SNAP_DISTANCE`);
+if (dodged >= DODGE_SNAP_DISTANCE) fail(`the predicted dodge went ${dodged} m, past DODGE_SNAP_DISTANCE`);
+const struckAt = tick * TICK_MS;
+patch(net, { x: 0, z: 0, hp: PLAYER.hp - 20, lastSeq: 21, staggerUntil: struckAt + POSTURE.playerStaggerMs });
+if (net.me.x !== 0) fail(`after the refused dodge the replay put us at x = ${net.me.x}, not where the server holds us`);
+if (net.snaps !== beforeDodge.snaps) fail(`a refused ${dodged.toFixed(2)} m dodge snapped instead of easing`);
+if (net.corrections !== beforeDodge.corrections + 1) fail("a refused dodge was not counted as a correction");
+if (Math.abs(net.visualErrX - dodged) > 1e-9) fail(`the eased offset is ${net.visualErrX} m, not the ${dodged} m we were drawn ahead`);
+// The same error with no dodge in it is still a snap: the wider limit is the dodge's alone.
+patch(net, { x: 0, z: 0, hp: PLAYER.hp - 20, lastSeq: 26 });
+const beforeJump = net.snaps;
+patch(net, { x: dodged, z: 0, hp: PLAYER.hp - 20, lastSeq: 26 });
+if (net.snaps !== beforeJump + 1) fail(`a ${dodged.toFixed(2)} m error with no dodge in it did not snap`);
+
+console.log(
+  `ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps; a throw replays as a slide; a refused ${dodged.toFixed(2)} m dodge eases`
+);
