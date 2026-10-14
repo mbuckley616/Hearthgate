@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 44, jump, sprint and dodge: the design question (Fable)
+
+**What changed**
+
+- Nothing in code. Read the movement path end to end (`applyInput` in `shared/src/sim.ts`, `client/src/input.ts`, the replay in `client/src/net.ts`, `SimRoom`) and wrote the design question under Pending in `decisions.md`: the jump (a hop that clears nothing, a hop that clears low cover, or a hop that is also a defence), the sprint (free, stamina shared with the dodge, or out of combat only), and the buttons (Space jump, hold Shift sprint, K or C dodge; gamepad A jump, B dodge, left-stick click sprint, ability slot 2 to RT).
+- FREEZE #50 stays open: the builder must not run while the card holds `shared/`.
+
+**Learned**
+
+- Space is the attack key today (with J) and Shift and K are dodge, so Michael's note moves three bindings, not one; the gamepad has no free face button, which is why slot 2 has to move.
+- Walls are footprints with no height in the sim: the 3.2 m dungeon walls and the yard's "low wall" differ only in how they are drawn. Clearing low cover means giving every wall a height, which is why it is its own option.
+- A jump is vertical state the server owns: `y` and a vertical speed on `PlayerSim`, `y` in the schema, `y` in the remote pose track, and the replay restoring both. Integrating it per tick with a fixed `dtMs` keeps prediction and replay identical; with g = 20 m/s² a 0.6 m hop is 4.9 m/s up and 0.49 s in the air.
+
+**Next**
+
+- When Michael answers: the sim (jump, sprint, constants in `PLAYER`), `InputFrame` (`jump`, `sprint`), the schema and the replay, the bindings and the HUD hint, unit tests, `test:net`, and the lag lab at 0, 50 and 150 ms against main's 0 / 0 / 0.
+
 ## 2026-10-14: Session 43, the Warrens in the KayKit dungeon kit
 
 **What changed**
