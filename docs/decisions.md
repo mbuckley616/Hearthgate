@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-14: Mouse look and mouse buttons (the producer)
+Michael wants the mouse to aim and turn the camera, left button to attack and right to block, with WASD to move. Keyboard-only play must keep working (rule 4).
+Michael: **A: Mouse look with pointer lock, LMB attack, RMB block** — keyboard and gamepad bindings stay as they are. (2026-10-14)
+
 ### 2026-10-14: The art spike's verdict: keep, one more pass, a pack, or hire? (Claude (local))
 Session 39's turnarounds (`docs/art/spike/`) get the palette and readability right, but the adventurer reads boxy beside its reference: small hands, long thin legs, little charm. The goblin is closer.
 A. An asset pack for the characters: KayKit Adventurers (CC0, chunky low-poly, rigged with 130+ animations in its companion pack, glTF), by the same artist as the KayKit dungeon and village kits, so the game matches. No commission. **Recommended.**
