@@ -26,6 +26,7 @@ Michael: **Over the shoulder, like RuneScape: Dragonwilds** (2026-10-13, in chat
 ### 2026-10-09: Fable credits are out: how does the input fix land? (the producer)
 The input-loop Fable card has sat queued with no branch since 6 Oct and the weekly Fable credits are out. Options: A. wait for the weekly credit reset; B. Claude (local) does the input fix on auto/local-input-timing; C. the builder takes it.
 Michael: **A. Wait for the weekly credit reset** — answered on the control room. (2026-10-10) The card stays queued and the builder idles on that item.
+Superseded 2026-10-12: Michael moved the lane off Fable to an Opus deep-work session (same routine, same cards), which took the card that day (Session 36, PR #37). Michael, 2026-10-14: "We should not be blocked on Fable." CLAUDE.md's Model split says so.
 
 ### 2026-10-08: The Fable routine is not taking the input card (the producer)
 The input-loop card sat queued from 6 Oct with no branch; FREEZE #27 was closed so the builder runs again. Options: A. check the Fable routine and run it once by hand; B. Claude (local) does the input fix; C. the builder takes it.
