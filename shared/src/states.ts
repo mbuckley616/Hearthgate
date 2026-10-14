@@ -83,9 +83,11 @@ export function expireStates(s: StateSet, now: number): void {
   }
 }
 
-/** Distinct players behind a payoff: the state's appliers plus the finisher. */
+/** Distinct players behind a payoff: the state's player appliers plus the finisher. */
 export function contributors(a: ActiveState, finisherId: string): number {
-  return a.by.includes(finisherId) ? a.by.length : a.by.length + 1;
+  // "" is the level (a Charger into a wall), not a player: it sets up but never counts.
+  const players = a.by.filter((id) => id !== "");
+  return players.includes(finisherId) ? players.length : players.length + 1;
 }
 
 /** 1 for a solo payoff, +perContributor for each other distinct player, capped. */

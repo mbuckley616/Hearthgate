@@ -1,40 +1,63 @@
 import { Client, Room } from "colyseus.js";
 import {
   CLOCK_SYNC,
+  ENEMY_KINDS,
   OPEN_FIELD,
+  PLAYER,
   TICK_MS,
+  VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
   applyInput,
   createClockSync,
   createPlayer,
+  createPoseTrack,
   interpDelayAt,
   isAlive,
   isDead,
   levelById,
   minRtt,
+  pushPoseSnapshot,
   remoteTimeAt,
+  samplePoseTrack,
   serverTimeAt,
   type EnemyKind,
   type EnemyPhase,
   type InputFrame,
   type Level,
   type PlayerSim,
-  type SimEvent
+  type Pose,
+  type PoseSnapshot,
+  type PoseTrack,
+  type SimEvent,
+  type WeaponGear,
+  weaponFromPick
 } from "@hearthgate/shared";
 
-const SNAPSHOT_KEEP = 24;
+/** What a room sends when the party moves to another: a seat reserved there, and the level it runs. */
+interface Handoff {
+  reservation: Parameters<Client["consumeSeatReservation"]>[0];
+  level: string;
+}
+
+export type HandoffListener = (level: string) => void;
+
+export type { Pose } from "@hearthgate/shared";
+
 /** Prediction error larger than this snaps instead of smoothing. */
 export const SNAP_DISTANCE = 2.5;
 
-export interface Snapshot {
-  /** Server time the snapshot describes. */
-  t: number;
+/**
+ * The snap limit for a correction that a refused or retimed dodge explains. A dodge is
+ * 3.5 m, over SNAP_DISTANCE, so the server refusing one we predicted (an enemy's blow landed
+ * first, which we could not see: enemies are drawn 100 to 200 ms behind) would otherwise pop
+ * us back. Taken from the dodge's own numbers so it follows their tuning.
+ */
+export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.dodgeSpeed * PLAYER.dodgeMs) / 1000;
+
+export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
   at: number;
-  x: number;
-  z: number;
-  facing: number;
 }
 
 export interface RemotePlayer {
@@ -53,7 +76,10 @@ export interface RemotePlayer {
   dodgeUntil: number;
   guarding: boolean;
   staggerUntil: number;
-  snaps: Snapshot[];
+  /** Their weapon (picked at join): the mesh and the swing timings come from it. */
+  weapon: WeaponGear;
+  /** Snapshots and the easing state the pose is drawn from (interp.ts). */
+  track: PoseTrack<Snapshot>;
 }
 
 export interface EnemyView {
@@ -70,13 +96,7 @@ export interface EnemyView {
   postureBrokenUntil: number;
   guardUp: boolean;
   rallied: boolean;
-  snaps: Snapshot[];
-}
-
-export interface Pose {
-  x: number;
-  z: number;
-  facing: number;
+  track: PoseTrack<Snapshot>;
 }
 
 export type EventListener = (events: SimEvent[]) => void;
@@ -87,7 +107,10 @@ export type EventListener = (events: SimEvent[]) => void;
  *    rewound and replayed whenever the server's copy arrives;
  *  - interpolation: everyone else is drawn 100 to 200 ms in the past (INTERP, adapted to
  *    the jitter seen) between two received snapshots so movement is smooth at 20 updates
- *    a second.
+ *    a second. When a snapshot is later than even that delay allows, the pose is projected
+ *    along its last tick of motion by at most one tick and held there, kept out of the walls,
+ *    and the snapshot that ends the guess eases the drawn pose over to what it says instead
+ *    of popping (shared interp.ts; the server is untouched by any of this).
  *
  * The server clock behind interpolation comes from stamped messages: the server echoes
  * its simulation time to pings and stamps every patch with its tick, the message with the
@@ -98,6 +121,12 @@ export type EventListener = (events: SimEvent[]) => void;
  *
  * Prediction runs inside the room's level (walls included), which the first patch names;
  * the server steps the same level, so a wall is never a correction.
+ *
+ * Rooms: the client joins the village first (`?level=` asks for a dungeon floor by id instead,
+ * as the tests and the lab do). When the party takes the portal or the stairs the server sends
+ * a `handoff` with a seat in the next room: everything tied to this room (the clock, the
+ * pending inputs, the remotes, the enemies, the placement) is dropped and the seat consumed,
+ * so the new room's first patch places us as a join does.
  */
 export class Net {
   room: Room | null = null;
@@ -108,7 +137,11 @@ export class Net {
   myColor = "#ffffff";
   /** The room's level, from the server; the open field until the first patch. */
   level: Level = OPEN_FIELD;
-  /** Server-time of the latest input we predicted. Advances one tick per input. */
+  /**
+   * The slot of the latest input we predicted: the server's `inputAt` for the last frame it
+   * applied, plus one tick per frame since. The server applies each frame at exactly that slot
+   * (shared inputs.ts), so prediction and server agree on when a dodge or a cooldown ends.
+   */
   predictedTime = 0;
   /** Smoothed visual offset that hides reconciliation corrections. */
   visualErrX = 0;
@@ -120,31 +153,113 @@ export class Net {
   rttMs = 0;
   connected = false;
   lastServerTick = 0;
-  /** The floor's stairs: open, how long the party has stood on them (ms), which floor. */
+  /** The floor's stairs: open, and how long the party has stood on them (ms). */
   stairsOpen = false;
   descendMs = 0;
-  floor = 1;
   /** Count of reconciliations that moved us more than a few centimetres (debug HUD). */
   corrections = 0;
   /** Count of corrections too big to smooth (over SNAP_DISTANCE), which pop instead. */
   snaps = 0;
+
+  /** How long the party has held the village's portal (ms). */
+  portalMs = 0;
+  /** Rooms this client has been handed to so far (debug HUD and the tests). */
+  handoffs = 0;
 
   /** False until the first patch places us; that placement is not a correction. */
   private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
   private listeners: EventListener[] = [];
+  private handoffListeners: HandoffListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
+  private client: Client | null = null;
+  private weapon: WeaponGear = weaponFromPick("sword", 1);
 
-  async connect(endpoint: string, name: string, level?: string): Promise<void> {
-    const client = new Client(endpoint);
-    const room = await client.joinOrCreate("dungeon", level ? { name, level } : { name });
+  /**
+   * Join with the weapon picked on the join screen; the server checks it and the first patch
+   * confirms it. Without a level, or with the village's id, this is the village room; with a
+   * level id it is a dungeon room on that floor.
+   */
+  async connect(endpoint: string, name: string, level?: string, weapon: WeaponGear = weaponFromPick("sword", 1)): Promise<void> {
+    this.client = new Client(endpoint);
+    this.weapon = { ...weapon };
+    const options: Record<string, unknown> = { name, weapon: weapon.type, tier: weapon.tier };
+    const village = !level || level === VILLAGE_LEVEL_ID;
+    if (!village) options.level = level;
+    this.level = levelById(village ? VILLAGE_LEVEL_ID : level!);
+    const room = await this.client.joinOrCreate(village ? "village" : "dungeon", options);
+    this.attach(room);
+  }
+
+  /** The name of the room we are in ("village" or "dungeon"), "" between rooms. */
+  get roomName(): string {
+    return this.room?.name ?? "";
+  }
+
+  /** Called with the next room's level id when a hand-off starts; the first patch there ends it. */
+  onHandoff(listener: HandoffListener) {
+    this.handoffListeners.push(listener);
+  }
+
+  /**
+   * The server moved the party: leave this room, forget everything that was its (the clock
+   * most of all: each room counts ticks from its own zero), take the seat and start over in
+   * the new level. Inputs sent meanwhile go nowhere; the new room's first patch places us.
+   */
+  private async handoff(m: Handoff) {
+    const old = this.room;
+    this.room = null;
+    this.connected = false;
+    this.handoffs++;
+    this.reset(levelById(m.level));
+    for (const l of this.handoffListeners) l(m.level);
+    if (old) {
+      old.removeAllListeners();
+      try {
+        await old.leave(true);
+      } catch {
+        // Already gone; the seat is still ours.
+      }
+    }
+    if (!this.client) return;
+    try {
+      this.attach(await this.client.consumeSeatReservation(m.reservation));
+    } catch (err) {
+      console.error("hand-off failed", err);
+    }
+  }
+
+  /** Drop every piece of state that belonged to the room we are leaving. */
+  private reset(level: Level) {
+    if (this.pingTimer !== null) clearTimeout(this.pingTimer);
+    this.pingTimer = null;
+    this.level = level;
+    this.predictedTime = 0;
+    this.visualErrX = 0;
+    this.visualErrZ = 0;
+    this.pending = [];
+    this.remotes.clear();
+    this.enemies.clear();
+    this.rttMs = 0;
+    this.lastServerTick = 0;
+    this.stairsOpen = false;
+    this.descendMs = 0;
+    this.portalMs = 0;
+    this.placed = false;
+    this.clock = createClockSync();
+    this.pingsSent = 0;
+  }
+
+  private attach(room: Room) {
     this.room = room;
     this.sessionId = room.sessionId;
     this.me = createPlayer(room.sessionId);
+    this.me.weapon = { ...this.weapon };
     this.connected = true;
 
     room.onStateChange((state: any) => this.onState(state));
+    room.onMessage("handoff", (m: Handoff) => void this.handoff(m));
     room.onMessage("events", (events: SimEvent[]) => {
       for (const l of this.listeners) l(events);
     });
@@ -155,7 +270,7 @@ export class Net {
       addClockSample(this.clock, m.sentAt, now, m.serverTime);
     });
     room.onLeave(() => {
-      this.connected = false;
+      if (this.room === room) this.connected = false;
     });
 
     this.ping();
@@ -230,8 +345,8 @@ export class Net {
     return remoteTimeAt(this.clock, performance.now());
   }
 
-  remotePose(r: { snaps: Snapshot[] }): Pose | null {
-    return sampleSnapshots(r.snaps, this.remoteNow());
+  remotePose(r: { track: PoseTrack<Snapshot> }): Pose | null {
+    return samplePoseTrack(r.track, this.remoteNow(), this.level);
   }
 
   /** The living enemy drawn nearest to (x, z), for the HUD and hit feedback. */
@@ -263,7 +378,7 @@ export class Net {
     this.lastServerTick = state.tick;
     this.stairsOpen = state.stairsOpen === true;
     this.descendMs = state.descendMs ?? 0;
-    this.floor = state.floor ?? 1;
+    this.portalMs = state.portalMs ?? 0;
     // Every patch is a clock sample too: it left the server at the time it is stamped with.
     addArrivalSample(this.clock, at, serverTime);
     if (typeof state.levelId === "string" && state.levelId !== this.level.id) this.level = levelById(state.levelId);
@@ -277,7 +392,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, snaps: [] };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, weapon: weaponFromPick(p.weaponType, p.weaponTier), track: createPoseTrack<Snapshot>(PLAYER.radius) };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -293,7 +408,8 @@ export class Net {
       r.dodgeUntil = p.dodgeUntil;
       r.guarding = p.guarding === true;
       r.staggerUntil = p.staggerUntil ?? 0;
-      pushSnapshot(r.snaps, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing });
+      syncWeapon(r.weapon, p);
+      pushPoseSnapshot(r.track, { t: serverTime, at, x: p.x, z: p.z, facing: p.facing }, this.level);
     });
     for (const id of [...this.remotes.keys()]) if (!seen.has(id)) this.remotes.delete(id);
 
@@ -302,7 +418,7 @@ export class Net {
       seenEnemies.add(id);
       let v = this.enemies.get(id);
       if (!v) {
-        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, rallied: false, snaps: [] };
+        v = { id, kind: e.kind, hp: e.hp, maxHp: e.maxHp, phase: e.phase, phaseUntil: 0, targetId: "", hitFlashUntil: 0, posture: 0, maxPosture: 0, postureBrokenUntil: 0, guardUp: false, rallied: false, track: createPoseTrack<Snapshot>(ENEMY_KINDS[e.kind as EnemyKind]?.radius ?? PLAYER.radius) };
         this.enemies.set(id, v);
       }
       v.kind = e.kind;
@@ -317,7 +433,7 @@ export class Net {
       v.postureBrokenUntil = e.postureBrokenUntil ?? 0;
       v.guardUp = e.guardUp === true;
       v.rallied = e.rallied === true;
-      pushSnapshot(v.snaps, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing });
+      pushPoseSnapshot(v.track, { t: serverTime, at, x: e.x, z: e.z, facing: e.facing }, this.level);
     });
     for (const id of [...this.enemies.keys()]) if (!seenEnemies.has(id)) this.enemies.delete(id);
   }
@@ -330,6 +446,9 @@ export class Net {
     const beforeX = this.me.x;
     const beforeZ = this.me.z;
     const wasDead = isDead(this.me);
+    // A dodge start always sets the cooldown, so a different cooldown after the replay means a
+    // dodge we predicted was refused or moved by the server.
+    const predictedDodgeCooldown = this.me.dodgeCooldownUntil;
 
     const me = this.me;
     me.x = p.x;
@@ -337,6 +456,7 @@ export class Net {
     me.facing = p.facing;
     me.hp = p.hp;
     me.lastSeq = p.lastSeq;
+    me.inputAt = p.inputAt ?? serverTime;
     me.dodgeUntil = p.dodgeUntil;
     me.dodgeCooldownUntil = p.dodgeCooldownUntil;
     me.dodgeDx = p.dodgeDx;
@@ -360,9 +480,15 @@ export class Net {
     me.knockUntil = p.knockUntil ?? 0;
     me.knockDx = p.knockDx ?? 0;
     me.knockDz = p.knockDz ?? 0;
+    // The server's checked weapon, before the replay: a two-hander's swing times differ.
+    syncWeapon(me.weapon, p);
+    // Server only (cycleLock): prediction never moves it, so it is copied, not replayed.
+    me.lockId = typeof p.lockId === "string" ? p.lockId : "";
 
     this.pending = this.pending.filter((f) => f.seq > p.lastSeq);
-    let t = serverTime;
+    // From the slot the server applied our last frame at, not the patch's tick: a frame that
+    // arrived late was applied in the past, and the ones after it belong one tick apart from it.
+    let t = me.inputAt;
     for (const f of this.pending) {
       t += TICK_MS;
       applyInput(me, f, t, TICK_MS, this.level);
@@ -384,7 +510,8 @@ export class Net {
     const errZ = beforeZ - me.z;
     const err = Math.hypot(errX, errZ);
     if (err > 0.02) this.corrections++;
-    if (err < SNAP_DISTANCE) {
+    const dodgeRefused = me.dodgeCooldownUntil !== predictedDodgeCooldown;
+    if (err < (dodgeRefused ? DODGE_SNAP_DISTANCE : SNAP_DISTANCE)) {
       this.visualErrX += errX;
       this.visualErrZ += errZ;
     } else {
@@ -401,43 +528,11 @@ export class Net {
   }
 }
 
-function pushSnapshot(buf: Snapshot[], s: Snapshot) {
-  const last = buf[buf.length - 1];
-  if (last && last.t === s.t) {
-    buf[buf.length - 1] = s;
-    return;
-  }
-  buf.push(s);
-  if (buf.length > SNAPSHOT_KEEP) buf.shift();
-}
-
-function lerpAngle(a: number, b: number, k: number): number {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return a + d * k;
-}
-
-/** Interpolate (or hold) a pose from a snapshot buffer at time t. */
-export function sampleSnapshots(snaps: Snapshot[], t: number): Pose | null {
-  if (snaps.length === 0) return null;
-  if (snaps.length === 1 || t <= snaps[0].t) {
-    const s = snaps[0];
-    return { x: s.x, z: s.z, facing: s.facing };
-  }
-  for (let i = 0; i < snaps.length - 1; i++) {
-    const a = snaps[i];
-    const b = snaps[i + 1];
-    if (t >= a.t && t <= b.t) {
-      const k = b.t === a.t ? 1 : (t - a.t) / (b.t - a.t);
-      return {
-        x: a.x + (b.x - a.x) * k,
-        z: a.z + (b.z - a.z) * k,
-        facing: lerpAngle(a.facing, b.facing, k)
-      };
-    }
-  }
-  // Past the newest snapshot: hold it (no extrapolation in Phase 0; see backlog).
-  const s = snaps[snaps.length - 1];
-  return { x: s.x, z: s.z, facing: s.facing };
+/** Copy the schema's weapon into a sim weapon in place, checked like the server checks a pick. */
+function syncWeapon(w: WeaponGear, p: any) {
+  if (typeof p.weaponType !== "string") return;
+  if (w.type === p.weaponType && w.tier === p.weaponTier) return;
+  const checked = weaponFromPick(p.weaponType, p.weaponTier);
+  w.type = checked.type;
+  w.tier = checked.tier;
 }

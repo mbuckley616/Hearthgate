@@ -1,5 +1,7 @@
 export interface HudData {
   myName: string;
+  /** "Iron Claymore": what you picked on the join screen. */
+  weapon: string;
   myHp: number;
   myMaxHp: number;
   dead: boolean;
@@ -11,6 +13,8 @@ export interface HudData {
   enemyMaxHp: number;
   enemiesLeft: number;
   enemiesTotal: number;
+  /** The bar's text once no enemy lives (`clearedBarText`). */
+  clearedText: string;
   players: number;
   rtt: number;
   pending: number;
@@ -20,6 +24,10 @@ export interface HudData {
   /** Revive Draughts left, and the dead teammate one would reach now ("" when none). */
   draughts: number;
   reviveTarget: string;
+  /** The village: no enemy bar; the villager in reach ("" when none), and what the last one said. */
+  village: boolean;
+  talkTo: string;
+  speech: { who: string; line: string } | null;
   /** Our posture, and whether the guard is up or we are off balance. */
   posture: number;
   postureMax: number;
@@ -40,6 +48,10 @@ export class Hud {
   private enemyFill: HTMLElement;
   private enemyText: HTMLElement;
   private draught: HTMLElement;
+  private talk: HTMLButtonElement;
+  private speech: HTMLElement;
+  private enemyRow: HTMLElement;
+  private weaponEl: HTMLElement;
   private posture: HTMLElement;
   private party: HTMLElement;
   private net: HTMLElement;
@@ -48,17 +60,20 @@ export class Hud {
   private slotEls: HTMLElement[];
   private lastEvents = "";
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, onTalk: () => void = () => {}) {
     this.root = root;
     root.innerHTML = `
       <div class="hud-status" id="hud-status"></div>
       <div class="hud-panel hud-top-left">
         <div class="hud-name" id="hud-name"></div>
+        <div class="hud-sub hud-weapon" id="hud-weapon"></div>
         <div class="hud-bar"><div class="hud-fill hud-fill-player" id="hud-hp-fill"></div><span id="hud-hp-text"></span></div>
         <div class="hud-sub hud-posture" id="hud-posture"></div>
         <div class="hud-sub" id="hud-enemy-label">Goblin</div>
-        <div class="hud-bar"><div class="hud-fill hud-fill-enemy" id="hud-enemy-fill"></div><span id="hud-enemy-text"></span></div>
+        <div class="hud-bar" id="hud-enemy-row"><div class="hud-fill hud-fill-enemy" id="hud-enemy-fill"></div><span id="hud-enemy-text"></span></div>
         <div class="hud-sub hud-draught" id="hud-draught"></div>
+        <button class="hud-talk" id="hud-talk" type="button"></button>
+        <div class="hud-speech" id="hud-speech"></div>
       </div>
       <div class="hud-panel hud-top-right">
         <div id="hud-party"></div>
@@ -75,7 +90,8 @@ export class Hud {
         <span><b>Shift</b> dodge</span>
         <span><b>1 2 3</b> abilities</span>
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
-        <span><b>E</b> revive draught</span>
+        <span><b>E</b> talk, revive draught</span>
+        <span><b>Tab</b> bow lock-on</span>
         <span>Gamepad: stick, X, A; Y B RB; LB; LT block</span>
       </div>
     `;
@@ -87,6 +103,16 @@ export class Hud {
     this.enemyFill = root.querySelector("#hud-enemy-fill")!;
     this.enemyText = root.querySelector("#hud-enemy-text")!;
     this.draught = root.querySelector("#hud-draught")!;
+    this.talk = root.querySelector("#hud-talk")!;
+    this.speech = root.querySelector("#hud-speech")!;
+    this.enemyRow = root.querySelector("#hud-enemy-row")!;
+    // A tap or a click talks; the button never takes focus, so Space and Enter stay the game's.
+    this.talk.tabIndex = -1;
+    this.talk.addEventListener("click", () => {
+      onTalk();
+      this.talk.blur();
+    });
+    this.weaponEl = root.querySelector("#hud-weapon")!;
     this.posture = root.querySelector("#hud-posture")!;
     this.party = root.querySelector("#hud-party")!;
     this.net = root.querySelector("#hud-net")!;
@@ -102,19 +128,27 @@ export class Hud {
 
   update(d: HudData) {
     this.name.textContent = d.myName;
+    if (this.weaponEl.textContent !== d.weapon) this.weaponEl.textContent = d.weapon;
     this.hpFill.style.width = `${(100 * d.myHp) / d.myMaxHp}%`;
     this.hpText.textContent = `${d.myHp} / ${d.myMaxHp}`;
     this.enemyLabel.textContent = d.enemyLabel;
     this.enemyLabel.setAttribute("data-left", String(d.enemiesLeft));
     const noEnemy = d.enemiesLeft === 0 || d.enemyMaxHp === 0;
     this.enemyFill.style.width = noEnemy ? "0%" : `${(100 * d.enemyHp) / d.enemyMaxHp}%`;
-    this.enemyText.textContent = noEnemy ? "returning soon" : `${d.enemyHp} / ${d.enemyMaxHp}`;
+    this.enemyText.textContent = noEnemy ? d.clearedText : `${d.enemyHp} / ${d.enemyMaxHp}`;
     this.draught.textContent =
       d.draughts > 0 && d.reviveTarget
         ? `E or LB: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
         : `Revive Draughts: ${d.draughts}`;
     this.draught.classList.toggle("is-ready", d.draughts > 0 && !!d.reviveTarget);
     this.draught.setAttribute("data-draughts", String(d.draughts));
+    this.enemyRow.style.display = d.village ? "none" : "";
+    const talkText = d.talkTo ? `E or LB: talk to ${d.talkTo}` : "";
+    if (this.talk.textContent !== talkText) this.talk.textContent = talkText;
+    this.talk.style.display = talkText ? "block" : "none";
+    const speechText = d.speech ? `${d.speech.who}: ${d.speech.line}` : "";
+    if (this.speech.textContent !== speechText) this.speech.textContent = speechText;
+    this.speech.style.display = speechText ? "block" : "none";
     this.posture.textContent = `Posture ${Math.ceil(d.posture)} / ${d.postureMax}${d.staggered ? ", off balance" : d.guarding ? ", guard up" : ""}`;
     this.posture.classList.toggle("is-staggered", d.staggered);
     this.posture.setAttribute("data-posture", String(Math.ceil(d.posture)));

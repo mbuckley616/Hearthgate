@@ -1,4 +1,4 @@
-import type { InputFrame } from "@hearthgate/shared";
+import { cameraRelativeMove, type InputFrame } from "@hearthgate/shared";
 
 /**
  * Samples keyboard and gamepad into one InputFrame per tick.
@@ -9,7 +9,12 @@ import type { InputFrame } from "@hearthgate/shared";
  * read if one is connected: left stick moves, X attacks, A dodges, the
  * ability slots are Y, B and RB (keys 1, 2 and 3), LB (key E) uses a
  * Revive Draught on a dead teammate in reach, and LT (keys L or Q) is block,
- * held: raise it just before a blow lands to parry.
+ * held: raise it just before a blow lands to parry. With a bow, RT (keys Tab or R)
+ * cycles the lock-on through the enemies in range, then back to auto.
+ *
+ * Movement is camera-relative: W and the stick's up walk away from the camera whichever way
+ * it has turned. The turn happens here, so the frame carries a plain world vector and the
+ * server and the replay never need to know where the camera was.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
@@ -18,8 +23,16 @@ const PAD_SLOT_BUTTONS = [3, 1, 5];
 const PAD_USE_BUTTON = 4;
 /** Gamepad button for block (standard mapping: LT, an analogue trigger read as pressed). */
 const PAD_BLOCK_BUTTON = 6;
+/** Gamepad button for the bow's lock-on cycle (standard mapping: RT). */
+const PAD_CYCLE_BUTTON = 7;
 export class Input {
   private down = new Set<string>();
+  /**
+   * Keys pressed since the last sample. A tap shorter than the gap between two samples (a busy
+   * main thread stretches it) still counts as held for one frame, so it turns or steps the player
+   * instead of vanishing; the same frame-rate dependence as a dropped input tick.
+   */
+  private tapped = new Set<string>();
   private attackPressed = false;
   private dodgePressed = false;
   private padAttackWasDown = false;
@@ -28,6 +41,8 @@ export class Input {
   private padSlotWasDown = [false, false, false];
   private usePressed = false;
   private padUseWasDown = false;
+  private cyclePressed = false;
+  private padCycleWasDown = false;
   private seq = 0;
 
   constructor(target: Window = window) {
@@ -35,11 +50,13 @@ export class Input {
       if (e.repeat) return;
       const code = e.code;
       this.down.add(code);
+      this.tapped.add(code);
       if (isAttackKey(code)) this.attackPressed = true;
       if (isDodgeKey(code)) this.dodgePressed = true;
       const slot = slotKey(code);
       if (slot) this.abilityPressed = slot;
       if (isUseKey(code)) this.usePressed = true;
+      if (isCycleKey(code)) this.cyclePressed = true;
       if (isGameKey(code)) e.preventDefault();
     });
     target.addEventListener("keyup", (e) => {
@@ -47,7 +64,13 @@ export class Input {
     });
     target.addEventListener("blur", () => {
       this.down.clear();
+      this.tapped.clear();
     });
+  }
+
+  /** The HUD's talk button (a tap or a click): the same use press as E or LB. */
+  pressUse() {
+    this.usePressed = true;
   }
 
   /** True while the player is holding a movement key. Used by the HUD hint. */
@@ -55,25 +78,29 @@ export class Input {
     return this.down.size > 0;
   }
 
-  sample(): InputFrame {
+  /** `yaw` is the camera's turn (View.yaw); 0 is the view from the south. */
+  sample(yaw = 0): InputFrame {
+    const held = (code: string) => this.down.has(code) || this.tapped.has(code);
     let dx = 0;
     let dy = 0;
-    if (this.down.has("KeyA") || this.down.has("ArrowLeft")) dx -= 1;
-    if (this.down.has("KeyD") || this.down.has("ArrowRight")) dx += 1;
-    // Screen "up" is world -z (the camera looks down +z toward the player's front at facing 0),
-    // so W moves toward -z.
-    if (this.down.has("KeyW") || this.down.has("ArrowUp")) dy -= 1;
-    if (this.down.has("KeyS") || this.down.has("ArrowDown")) dy += 1;
+    if (held("KeyA") || held("ArrowLeft")) dx -= 1;
+    if (held("KeyD") || held("ArrowRight")) dx += 1;
+    // Screen "up" (dy -1) is away from the camera: world -z at yaw 0.
+    if (held("KeyW") || held("ArrowUp")) dy -= 1;
+    if (held("KeyS") || held("ArrowDown")) dy += 1;
 
     let attack = this.attackPressed;
     let dodge = this.dodgePressed;
     let ability = this.abilityPressed;
     let use = this.usePressed;
-    let block = this.down.has("KeyL") || this.down.has("KeyQ");
+    let block = held("KeyL") || held("KeyQ");
+    this.tapped.clear();
     this.attackPressed = false;
     this.dodgePressed = false;
     this.abilityPressed = 0;
     this.usePressed = false;
+    let cycle = this.cyclePressed;
+    this.cyclePressed = false;
 
     const pad = firstGamepad();
     if (pad) {
@@ -98,6 +125,9 @@ export class Input {
       if (padUse && !this.padUseWasDown) use = true;
       this.padUseWasDown = padUse;
       if (pad.buttons[PAD_BLOCK_BUTTON]?.pressed) block = true;
+      const padCycle = pad.buttons[PAD_CYCLE_BUTTON]?.pressed ?? false;
+      if (padCycle && !this.padCycleWasDown) cycle = true;
+      this.padCycleWasDown = padCycle;
     }
 
     const len = Math.hypot(dx, dy);
@@ -105,9 +135,10 @@ export class Input {
       dx /= len;
       dy /= len;
     }
+    if (yaw !== 0) ({ dx, dy } = cameraRelativeMove(dx, dy, yaw));
 
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle };
   }
 }
 
@@ -121,6 +152,11 @@ function isAttackKey(code: string): boolean {
 
 function isDodgeKey(code: string): boolean {
   return code === "ShiftLeft" || code === "ShiftRight" || code === "KeyK";
+}
+
+/** Tab is the usual target-cycle key; R for keyboards where Tab is awkward. */
+function isCycleKey(code: string): boolean {
+  return code === "Tab" || code === "KeyR";
 }
 
 function isUseKey(code: string): boolean {
@@ -139,6 +175,8 @@ function isGameKey(code: string): boolean {
     isUseKey(code) ||
     code === "KeyL" ||
     code === "KeyQ" ||
+    code === "Tab" ||
+    code === "KeyR" ||
     code.startsWith("Arrow") ||
     code === "Space" ||
     code === "KeyW" ||
@@ -148,7 +186,7 @@ function isGameKey(code: string): boolean {
   );
 }
 
-function firstGamepad(): Gamepad | null {
+export function firstGamepad(): Gamepad | null {
   if (typeof navigator === "undefined" || !navigator.getGamepads) return null;
   for (const g of navigator.getGamepads()) if (g) return g;
   return null;

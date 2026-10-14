@@ -59,7 +59,6 @@ describe("ability slots", () => {
 
   it("empty slots do nothing, and the downed cannot use abilities", () => {
     const p = createPlayer("a");
-    applyInput(p, press(1, 2), 100, TICK_MS);
     applyInput(p, press(2, 3), 150, TICK_MS);
     expect(p.abilityUntil).toBe(0);
     downPlayer(p, 200);

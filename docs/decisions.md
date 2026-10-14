@@ -9,6 +9,27 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-09: Fable credits are out: how does the input fix land? (the producer)
+The input-loop Fable card has sat queued with no branch since 6 Oct and the weekly Fable credits are out. Options: A. wait for the weekly credit reset; B. Claude (local) does the input fix on auto/local-input-timing; C. the builder takes it.
+Michael: **A. Wait for the weekly credit reset** — answered on the control room. (2026-10-10) The card stays queued and the builder idles on that item.
+
+### 2026-10-08: The Fable routine is not taking the input card (the producer)
+The input-loop card sat queued from 6 Oct with no branch; FREEZE #27 was closed so the builder runs again. Options: A. check the Fable routine and run it once by hand; B. Claude (local) does the input fix; C. the builder takes it.
+Michael: **A. Check the Fable routine, run it once by hand** — We are out of fable credits for the week. That may be the problem. (2026-10-09)
+
+### 2026-10-05: No combo can fire in play yet, and the gate needs one visible (builder, Session 28)
+The Phase 1 gate is "a mixed-level party clears a floor and the combo bonus is visible". The combo math is built (Session 8, `states.ts`), but nothing in play can trigger it: Cleave and posture breaks apply Staggered, which only Execute or Backstab consume, and neither exists; nothing applies Marked, Soaked, Burning, Rooted or Chilled. With Magic deferred (B above), the abilities that remain in the backlog consume nothing. The client also never shows a combo: the server drops `resolveHit`'s effects. So the gate cannot be met as the backlog stands.
+A. Execute in the melee slot 2 (design doc's Melee row: heavy damage on a staggered target; it consumes Staggered for the crit and knockdown, x1.5 when another player did the staggering), plus a combo callout: the server sends a `combo` event with the payoff and contributor count, the client shows "Combo x1.5" over the enemy for a second, a rising chime, and a log line. Cleave from one player then Execute from another is the visible two-player combo. **Recommended**: one ability the design doc already names, and it uses the Staggered that Cleave, parries and posture breaks already apply.
+B. Arrow rain applies Marked (8 s), and every hit on a marked enemy shows the bonus (the same callout as A). Less to build, but Marked never consumes, so it reads as a damage buff more than a combo.
+C. Both A and B: two combos for the playtest, melee and ranged.
+Michael: **A. Execute in melee slot 2, plus a combo callout**. (2026-10-05)
+
+### 2026-10-05: The staff for Magic missile (builder, Session 27)
+The backlog's "Arrow rain (Ranged) and Magic missile (Magic) in slot 1 for the bow and the staff" needs a staff, and The Old Gates has none: its eleven weapon types are melee and the bow, so there are no tuned numbers to lift. Arrow rain is built (Session 27). The design doc's Magic row is Magic missile (hits up to 5 enemies once each), Shatter and Ward.
+A. Add a Staff weapon type (Magic style, two-handed) to `gear.ts` on the bow's damage curve, pickable on the join screen; its swing is a short-range bolt at the soft auto-target, and slot 1 is Magic missile: up to 5 living enemies in sight within 10 m, nearest first, once each. First-guess numbers, tuned in the playtest. **Recommended**: it completes the three styles the combo system scales on, and the gate's combo bonus is easier to see with more than two styles in a party.
+B. Leave Magic for Phase 2 or later: Phase 1 ships with Melee and Ranged only, and this backlog item closes with Arrow rain.
+Michael: **B. Leave Magic for Phase 2 or later** — answered on the control room. (2026-10-05)
+
 ### 2026-10-05: A village greybox before the Phase 1 gate? (Claude (local))
 Michael asked why the game is still a simple top-down arena with pills when the design doc promises a town, a portal, buildings with NPCs, a third-person camera and character models. The answer: the town is Phase 2 and CLAUDE.md forbids starting a later phase early; the camera is off-spec (about 55 degrees and fixed, against the doc's 30 to 40 with auto-rotation) and was on no list; the style guide and first commission were meant to be ordered during Phase 1 and were on no list either.
 A. Keep the phase order; the town waits for the Phase 1 gate.

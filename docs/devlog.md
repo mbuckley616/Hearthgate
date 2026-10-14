@@ -18,6 +18,326 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 - Michael picks the three reference models (candidates in the guide) and starts the character commission and the asset-pack purchase. A sixth sheet could cover what the five missed: the rest room choice, combo, downed and revive, the Guide, the trade window, a corner HUD with three slots.
 
+## 2026-10-13: Session 37, a refused dodge eases back instead of popping
+
+**What changed**
+
+- `reconcile` (`client/src/net.ts`) tells a refused dodge from a teleport. It keeps the predicted `dodgeCooldownUntil` before it rewinds; a dodge start always sets the cooldown, so a different one after the replay means the server refused or moved a dodge we predicted. Such a correction eases into the visual offset up to `DODGE_SNAP_DISTANCE`, the snap limit plus the dodge's own length (2.5 + 16 m/s x 220 ms = 6.02 m, taken from `PLAYER` so it follows the dodge's tuning), instead of snapping at `SNAP_DISTANCE`. Any other error over 2.5 m still snaps; respawns and hand-offs are placements as before. It still counts as a correction.
+- Server and sim unchanged: the server still refuses the dodge and lands the blow, as it should. Only how the client draws the undo changed.
+- CLAUDE.md's netcode section names the exception.
+- Tests. `tests/reconcile-placement.ts` (part of `npm run test:net`) grew case 5: through the real `Net`, a dodge east predicted over six frames (4.30 m), then a patch where the server applied the dodge frame staggered by a blow (hp down 20, no dodge) and the replay holds us off balance. It eases (0 snaps, 1 correction, a 4.30 m offset to decay); the same 4.30 m error with no dodge in it still snaps. Without the fix the case fails ("a refused 4.30 m dodge snapped instead of easing"). `npm run check` 205; `npm run test:net` all fifteen steps.
+- Lag lab, this branch, 60 s a condition on the field: corrections a minute 0 / 1 / 1 / 7 at 0 / 50 / 150 ms / the lossy row, 0 snaps throughout (the critic on main: 0 / 1 / 2 / 2, 0 snaps). The throttled acceptance run (`--only "150 ms" --cpu-throttle 4`, Alpha at 20 to 28 fps), eight runs: corrections a minute 1, 2, 4, 2, 1, 4, 1, 0, walked 181 to 295 m a minute, 0 snaps in all eight. The critic had 4 snaps in 14 runs on main, all with Alpha hurt mid-fight, where the lab's driver dodges while it attacks.
+
+**Learned**
+
+- The dodge was the only predicted move longer than the snap limit, so the limit was really "a dodge is never refused". The cooldown is a free witness: it is set only by a dodge start, so the client needs no new state to know a dodge is what it got wrong.
+- A 3.5 m ease over the 90 ms decay is a fast glide back, not a pop; it reads as being caught, which is what happened on the server.
+
+**Next**
+
+- Part 2 of the critic's item, judging a dodge against the swing the player saw (lag compensation of the defender), is not done and not raised: the critic advises holding it until a human says dodges feel late, and the gate playtest's third question will say. The Charger's throw learned a round trip late could in theory exceed 2.5 m too (critic, unconfirmed, not filed). Reconnect is the Phase 1 netcode item left.
+
+## 2026-10-12: Session 36, inputs land in their own slots and come by wall time
+
+**What changed**
+
+- The server applies each input at its slot, not at the tick it arrived in (`shared/src/inputs.ts`, `applyDueInputs`, tuned by `INPUT_TIMING` in `sim.ts`). A player has an input clock, `inputAt` (in `PlayerSim` and the schema): the time their last frame was applied. The next frame belongs one tick after it, never later than the tick (nobody acts in the future, which is also the speed limit), at most two a tick. So a frame that arrived a tick late is applied a tick in the past, where the client predicted it, and two frames that arrive together get two times instead of one. A quiet tick does nothing within 200 ms (`maxLagMs`); past that the player gets a neutral frame at the window's edge (guard kept, so a knock still slides) and the next frame is placed at the tick, the one case the client is corrected for. A frame that waits for its slot is pure latency, so when ticks ending with a frame waiting outnumber those without by 20 (`drainAfterTicks`), the slots move a tick earlier.
+- The client replays its pending frames one tick apart from the patch's `inputAt` instead of the patch's tick, so its replay and the server agree on when a dodge, a swing or a cooldown ends. `predictedTime` is now `inputAt` plus a tick per unconfirmed frame.
+- The client makes one frame per tick of wall time (`InputClock`, `dueInputTicks`), from a timer scheduled to the next due tick like the server's pump: a timer that runs late sends a frame for every tick it missed, up to four (`clientCatchupTicks`), and drops the rest, so a sleeping tab does not dump stale movement. A held key covers the same ground at 10 fps as at 60.
+- A key pressed and released between two samples counts as held for one frame (`input.ts`): on a busy page a short tap of a direction or of block used to vanish, the same frame-rate dependence as a dropped tick.
+- Three e2e tests were tuned, without knowing it, to the slow walk the frame-rate bug gave a starved headless page. `combo` walked at the goblin with fixed W+D holds; at full speed it overshot and faced away, so Execute's cone missed. It now aims with the camera's yaw and sizes its steps by distance. `village` stopped within the keeper's talk range on the portal (2.5 m radius, 3.2 m from the keeper) and got handed off mid-walk; it now comes at the keeper from the east, taps the last 2.5 m and checks the portal label while it walks. `camera` held A for 1.2 s and walked 7 m, far enough for the chasing goblin to be in front again; it now takes short steps until the camera turns.
+- CLAUDE.md's netcode section describes the slots, the input clock and the replay.
+- Tests. `shared/src/inputs.test.ts` (11): a 1.5 s hold covers 9 m within one 10 fps frame at 60, 21 and 10 fps (one frame a callback walked 4.5 m at 10 fps); the catch-up cap; a late frame lands in its slot; nothing applies ahead of the tick; two a tick; the stall rule; the silent-player neutral frame with the guard held; the drain, and no drain for a bunch that comes and goes; determinism. And a client and server over a link that bunches frames (60 ms one way, 0 to 70 ms late, order kept), with dodges, swings and guards: the old timing corrected 30 times in 200 frames, the slots 0. 205 in all.
+- `npm run test:net`: all fifteen steps.
+- e2e: `two-players`, failing since Session 4, passes. The suite went 17/17, 16/17 and 17/17 in three runs; the miss was `two-players` on a page that got one timer callback in its 700 ms hold (four frames, 1.2 m). On main it fails every run.
+- Lag lab, 60 s a condition, main then this branch, corrections a minute: 0 ms 9 and 16 → 0; 50 ms 18 and 15 → 0; 150 ms 31 and 52 → 1; 50 ms ±20 with 2% loss 41 and 21 → 3. Snaps 0 throughout, before and after. View lag 100–110 ms on a clean link before and 115 after; 50 ms 210–240 → 200; 150 ms 395–425 → 405. With `--cpu-throttle 4` (Alpha at about 25 fps) on the 150 ms link: corrections 35 → 1 a minute, walked 174 → 209 m a minute.
+- `npm run test:clock` is noisy on main too: its 150 ms pop limit (0.075 m) failed in 2 of the last 4 runs on main (0.225 m) and in about half the runs here (0.1 to 0.25 m). Its held and pop numbers come from late patches and the one-tick projection, not from the inputs. It still needs a look. A guess, not measured: the harness drives Alpha from a `setInterval`, which sends a little under 20 frames a second, and the slots turn that into a frame placed at the tick every few seconds where main gave a neutral frame.
+
+**Learned**
+
+- The corrections on a clean link were never the network: they came from the server and the client giving the same frame different times. Once both count slots from the same `inputAt`, the whole class goes away, not just the dodge cases.
+- The first version kept a frame that arrived early until its slot came, which put a standing queue of 0.7 to 1 frames on the driven client (about 40 ms more view lag). A strict "waited every tick for a second" drain never fired, because jitter emptied the queue now and then; counting up and down does.
+- A held key that walks the right speed showed up three e2e tests leaning on the bug.
+
+**Next**
+
+- The netcode items left in Phase 1 are reconnect (Fable). The input-path bugs under Found in play are closed. The gate playtest can now judge feel without the clean-link corrections.
+
+## 2026-10-08: Session 35, the event log keeps four lines
+
+**What changed**
+
+- The bottom-right event log holds at most four lines (`EVENT_LOG.maxLines` in `sim.ts`, next to its 2.5 s `showMs`, which moved there from a literal in `main.ts`). A burst drops the oldest line instead of stacking: the critic's case was eight lines in 2.5 s from a Cleave and Execute, which climbed over the ping and corrections panel at 480 x 300 (CLAUDE.md rule 5).
+- `pushLogLine` and `expireLogLines` in `shared/src/feedback.ts`, pure, which `main.ts` now calls instead of pushing and shifting by hand.
+- Tests. `shared/src/feedback.test.ts` (+2): nine events leave the newest four; a line shows for exactly `showMs`. 194 in all. `tests/mobile.e2e.ts` (+2): four of the longest log lines at 480 x 300 and 568 x 320 sit below the top-right panel and clear of the ability slots. With eight lines the same check fails (log top at 50 px against the panel's bottom at 89 px at 480 x 300), so it catches the bug; with four the log's top is at 130 px, two lines of room to spare. mobile e2e 6 of 6.
+
+**Learned**
+
+- No CSS change was needed: a line is about 20 px, and the gap between the slots and the top-right panel on the smallest landscape phone fits six. A cap in lines is simpler than a max-height and never cuts a line in half.
+
+**Next**
+
+- Phase 1's builder list is empty again: the gate playtest, the art-direction item, and the Fable items (reconnect, the two input-path bugs, whose card is the producer's open question).
+
+## 2026-10-06: Session 34, Execute and the combo callout
+
+**What changed**
+
+- Execute is the melee weapons' slot 2 (key 2, gamepad B), Michael's A on "No combo can fire in play yet". `ABILITIES.execute` in `sim.ts`: 300 ms windup, 650 ms committed, 2.4 m, the sword's 108 degree cone, 18 damage, 5 s cooldown. It takes the nearest Staggered enemy in its cone, else the nearest, with the tags `melee` and `execute`, so `resolveHit` consumes Staggered for the crit (x2) times the combo multiplier: 36 alone, 54 when someone else did the staggering (x1.5 for two players). On an enemy that is not staggered it is an 18 hit that drains posture like Cleave. A goblin (60) is felled by a teammate's Cleave (14) then Execute (54).
+- The crit's knockdown is carried out now (`knockDown`): recovery for `COMBO.knockdownMs` (1.2 s), guard down, posture broken for the time, any charge stopped.
+- The server no longer drops the payoffs: every hit that consumes a state adds a `combo` event (attacker, enemy, payoff, contributors, multiplier), broadcast with the tick's other events. Marked, which consumes nothing, is not a callout.
+- `contributors` ignores the empty applier: a Charger stunned on a wall is Staggered by the level, which set up a crit but is not a second player (it would have read x1.5 alone).
+- Client: the callout over the enemy, "Combo x1.5" (or "Critical" alone), gold with a dark outline, rising 0.7 m and fading over a second, from three sprites built once in `render.ts`; a rising chime in `sound.ts`, one note per player (two to four); a log line ("Combo x1.5 from 2 players: the goblin knocked down"); the slot reads "Execute".
+- Tests. `shared/src/execute.test.ts` (8): slot 2 commits and cools down; a plain hit with no combo; a solo crit with the knockdown; the two-player x1.5 that kills the goblin; Execute lands inside Staggered's 2.5 s after a teammate's Cleave; it prefers the staggered enemy over a nearer one; a wall stun counts no extra player; a plain swing makes no combo event. 192 in all. `npm run test:net` grew a step: in a cellar Mira cleaves, Nell executes, and both clients get the combo event, x1.5 from 2 players for 54, 2.2 s after setting off. `tests/combo.e2e.ts`: a real browser walks at the cellar's goblin, presses 1 then 2, and sees the callout ("Critical"), the log line and the slot's name, no page errors. camera, figures, join, mobile, village and combo e2e 13 of 13.
+
+**Learned**
+
+- Every piece of the combo was built except the last metre: the states, the multiplier and the contributor count were in `states.ts` since Session 8, but nothing consumed Staggered and the server threw the result away. The gate's "visible" was a missing event and a sprite, not a system.
+
+**Next**
+
+- Phase 1's builder list is empty: what is left is the gate playtest (a mixed-level party clears the Warrens and sees "Combo x1.5"), the art-direction item, and the Fable items (reconnect, the two input-path bugs). Whether Execute's numbers and the callout's size feel right is the playtest's call.
+
+## 2026-10-06: Session 33, the enemy bar stops promising a return on a floor
+
+**What changed**
+
+- The enemy bar's text once nothing lives comes from `clearedBarText(level)` (`shared/src/feedback.ts`): "returning soon" on a level without stairs (the field and the yard, which reset after `ROOM.resetMs`), "floor clear" on one with stairs (the Warrens, the cellar), where nothing returns until the party leaves. The label above it still reads "Stairs open: everyone onto them". Fixes the critic's 2026-10-06 find.
+- Test: one unit test over the four combat levels (184 in all).
+
+**Learned**
+
+- The HUD had one level-blind string left from the field's reset loop; the stairs' arrival made it false. Any text that describes what the level does next belongs with the level, not the HUD.
+
+**Next**
+
+- Execute in melee slot 2 and the combo callout (Michael's A).
+
+## 2026-10-06: Session 32, the client walks the village and follows the hand-off
+
+**What changed**
+
+- The client joins the village first: `Net.connect` picks the `village` room when no level is asked for (or the village's id) and a `dungeon` room on that floor otherwise, so the tests and the lab (`?level=field`, `yard`, `warrens`) go where they always did. A `handoff` message from the server (`Net.handoff`) leaves the room, drops everything that was its (the clock, since each room counts ticks from its own zero; the pending inputs, the remotes, the enemies, the placement, the pings) and consumes the seat; the new room's first patch places us as a join does, so the move is neither a correction nor a snap (`tests/village.e2e.ts` checks `snaps` stays 0). A status line ("Through the portal: The Goblin Warrens", "Up the stairs: back to the village") shows until that patch; the event log and any villager's line are cleared with it.
+- The town's look, built once per level in `render.ts`: the ground, grid and edge wall now take the level's bounds (the village is 48 m square, the sun's shadow box follows); a wall is drawn at its own `h` when the level gives one, so the buildings stand 3.2 m with a doorway, a flat roof a little proud of the walls and a sign over the door; each villager is the player figure in a plain coat with a name tag; the portal is a blue dais in a ring of stones that glows a little always and brightens as the party's hold fills (`setPortal`), beside the stairs' dais.
+- The villager prompt: when a villager is within `NPC.talkRange` of where we are drawn, the top-left panel shows a real button, "E or LB: talk to Keeper Wren", at least 48 px high, that a tap or a click presses as E does (`Input.pressUse`), so the touch layout can keep it as it is. The server's `npcTalk` for us puts the line under it for 8 s ("Keeper Wren: The shrine's portal opens on..."); a friend's talk is a log line. In the village the enemy bar is hidden and its label says where you are, or the portal's hold as it fills. The enemy label is capped at the bar's width so a long one wraps instead of pushing the panel into the top-right one (the mobile test caught it on a 412 px portrait phone).
+- Tests. `tests/village.e2e.ts`, a real browser: joins the village (level and room "village", no enemies), walks round the dais to the keeper, sees the prompt (48 px) and the keeper's line on E, stands on the portal, is moved to a Warrens room with nine enemies and one hand-off, no snap, the status line gone, and a step still moves it on the new server clock, with no page errors (25 s). The rest of the suite: `camera`, `figures`, `join`, `mobile` 11 of 11 with it; `two-players` fails on the committed tree as it has since Session 4 (0.3 m in 700 ms headless, the frame-rate item in Found in play) and `hit-feedback` as Session 29 found. `npm run check` 183, `npm run test:net` all fourteen steps.
+- The lag lab (`npm run lab`, 60 s a condition, on the field as the critic pins it, so a dungeon room and none of this session's code in the path): corrections a minute 12 / 36 / 59 / 20 and holds 15 / 2 / 20 / 21 at 0 / 50 / 150 ms / the loss row, 0 snaps but one at 150 ms. Against the critic's 13 / 20 / 16 / 52 and 7 / 8 / 4 / 43 on 2026-10-05 that read worse, so the 150 ms condition was run again on main and on this branch back to back on the same box: main 45 corrections and 12 holds, the branch 52 and 5, no snap on either. That is this sandbox's spread (the critic saw 11 to 24 on one build and Session 25 saw 51 on main at 150 ms here, both at about 30 fps under software WebGL), and the corrections are the tick-timing item the critic filed, not the rooms: the dungeon's step is the same code moved into `SimRoom`. The single snap did not come back in either re-run.
+- CLAUDE.md's netcode section describes the two room types and the hand-off; the backlog item is checked.
+
+**Learned**
+
+- The hand-off's cost on the client is the clock: it starts over, and the first second in the new room runs on the fast pings (twelve at 250 ms) before the window fills, as a join does. Nothing else about the netcode knew which room it was in, which is what the `SimRoom` split was for.
+- A slow walk across the dais is a hold: the first e2e run was handed to the Warrens on its way to the keeper, because the headless page walks at about a metre a second and the portal takes two seconds of everyone standing on it. At 6 m/s a player crosses the 5 m dais in under a second, so in play it needs a stop; the test goes round it. Whether the portal should ask for a press rather than a stand is a feel question for the playtest, noted below.
+
+**Next**
+
+- The greybox is Michael's to walk: the layout (the shrine straight ahead, the tavern behind and to the left so the camera is not inside it from the square), the hold on the portal against a press, whether villagers should face you when you talk, and what the stairs' return should feel like. Then the Phase 1 gate playtest, the combo item (builder), and the Fable items left: reconnect with a grace period, the two input-path bugs the critic filed.
+
+## 2026-10-06: Session 31, the village room and the hand-off between rooms
+
+**What changed**
+
+- The server has two room types, as the design doc's Rooms paragraph says: a `village` room the client joins first and a `dungeon` room a run. Both are a `SimRoom` (`server/src/rooms/SimRoom.ts`): one `Level`, the 20 Hz tick locked to wall time, two queued inputs a player a tick, the patch at the end of each step, the clock pings. `DungeonRoom` and `VillageRoom` only name their level and act on the tick's events, so nothing in the netcode's shape moved.
+- The village is a `Level` (`VILLAGE` in `shared/src/level.ts`): four greybox buildings (Portal Shrine north, General Store west, Storehouse east, Tavern south) whose walls are ordinary `WallRect`s made by `buildingWalls` (four faces at 3.2 m, a 2.4 m doorway in the face the door is on), so a building stops a player exactly as a ruin does and the client's prediction already runs it. A villager (`Npc`) stands by each door with one line; a portal on the ground before the shrine leads to the Warrens. No enemies. `WallRect.h` is a drawing height the collision ignores.
+- The hand-off. The party moves as the stairs already did: every standing player on the portal (`PORTAL`, 2.5 m, 2 s) or the open stairs (`STAIRS`, unchanged) for the hold. The sim says so once (`portalTaken`, `stairsTaken`; `Encounter.departed` latches) and the server does the rest in `SimRoom.handOffParty`: it locks the room, makes a fresh dungeon room on the portal's level (or finds an open village, or makes one), reserves a seat per client under their own name, weapon and tier, and sends each a `handoff` message with the reservation and the level id. The client leaves and consumes the seat (`colyseus.js` `consumeSeatReservation`); the old room disposes when empty. A refused reservation clears the latch so the portal or the stairs fire again.
+- The stairs no longer restart the floor: `floorDescended` and the floor counter are gone, with the enemy reset and the draught refill that rode on them (a fresh run is a fresh dungeon room). `use` (E, LB) is one key: a dead teammate in reach takes the draught, else a villager in reach talks (`talkToNpc`, 2.5 m) and the server broadcasts `npcTalk`; the line itself is level data, never sent.
+- `CELLAR`: the smallest floor, one goblin and the stairs, for the tests. `LEVELS` now holds five.
+- Tests. `shared/src/village.test.ts` (10, 183 in all): a building's five walls and its doorway on each face, a player through the door and stopped beside it; the village's spawns, villagers and portal clear of its walls and the spawns off the portal; every door reachable from the square and every back wall closed; talk in reach and not out of it or downed; the portal fires once when everyone holds it, resets when one steps off, ignores the dead, and works again after the server clears the latch. The Warrens stairs tests say "taken, once" instead of "restart the floor". `npm run test:net` grew two steps: two bots in a village room (no enemies, four villagers), one talks to the keeper in 1.5 s, both hold the portal and are handed seats in one fresh Warrens room 3.3 s after setting off, there together with the bow Juno picked; then in a cellar Kit kills the goblin in 2.7 s, both hold the open stairs and are handed to a village together, 2.9 s. The server log shows each left room disposing. The old eight steps and the stress run (20.0 patches a second, 54 ms worst gap) are unchanged.
+- Client: only what the typecheck needed (the floor counter and its log line); the join, the hand-off, the town's look and the villager prompt are the next session.
+
+**Learned**
+
+- Colyseus's matchmaker does the hand-off's hard part on the server: `createRoom` plus `joinById` per client gives every member a seat in the same new room before any of them moves, and a locked room is skipped by `joinOrCreate`, so a party on its way out cannot be joined. The clients never see a room id they did not get from the server.
+- One hold rule for both moves keeps the sim to one new function (`holdOn`) and means the portal needs nothing the stairs did not already have on keyboard, gamepad and a later touch layout.
+
+**Next**
+
+- Session 32: the client joins the village by default and follows a `handoff` (tear down the level, the remotes and the clock, consume the seat, build the new level), draws the buildings with roofs and signs, the villagers and the portal, shows the 48 px talk button and the line, and the e2e test walks a real browser through the portal. Then CLAUDE.md's netcode section, the lab numbers and the backlog.
+
+## 2026-10-05: Session 30, placeholder figures instead of pills
+
+**What changed**
+
+- Every player and enemy is a low-poly figure of flat-shaded parts instead of a capsule or a cone, built once per entity in `client/src/figures.ts`, one function per kind behind `enemyFigure(kind)` and `playerFigure(colour)`, each returning a `Figure` (root, hip and shoulder pivots, the right hand, the flashing material, the height) so a commissioned model can replace a kind without touching `render.ts`.
+- Players: broad-shouldered wedge torso in the party colour, a head with a dark brow band on the front (the facing; the old nose block is gone), dark legs, arms. The held weapon now hangs from the right hand, a little oversized per the design doc's Art section, so a swing lifts it with the arm.
+- Goblins small and hunched (1.0 m, leaning 0.45 rad) with big ears, glowing eyes and a stubby club. The Shieldbearer the same family at 1.35x, more upright, with a helmet, behind its existing plank shield. The Pack Leader 1.45x and nearly upright with a red crest of spikes under its existing banner: the tallest outline in the room. The Charger a four-legged beast, long and low (wider than it is tall), with a hump, a low head and tusks.
+- Animation without a skeleton: `stepFigureWalk` advances a stride from how far the drawn pose moved (a full cycle per 1.3 m; a jump over 1.5 m is a placement, not a stride) and eases the swing in and out over about 100 ms; `poseFigure` swings legs and arms opposite, bobs the root, and raises the weapon arm for a swing. An enemy's windup rears it back with the arm raised (the Charger only rears), replacing the old rising cone. Dodge, stagger, downed and dead lean or lay the whole figure as they did the capsule; hit flash, windup and rally tints are unchanged. Name tags and party colours stay; the HP bar sits above the tallest figures.
+- Tests: `tests/figures.e2e.ts` reads a new `__hg.figures()`: each of the four kinds and the player has 7+ parts; goblin shorter than the player, Shieldbearer taller than the goblin, Pack Leader taller still, Charger wider than tall; standing stride under 0.05, over 0.5 while S is held, back under 0.05 after. `camera`, `join`, `mobile` e2e green with it (11 of 11, three runs). `npm run check` 173.
+- Follow-up to Session 29: `tests/camera.e2e.ts` walks at the goblin until it wakes instead of for a fixed 1.5 s, and steps west before waiting for the turn: 1 run in 6 had stopped short or left the goblin inside the deadband. 16 of 16 after.
+
+**Learned**
+
+- At the new camera the yard's 1.1 m walls read as big blocks; the figures are scaled to them (the player 1.84 m) rather than the other way round, so the levels' numbers did not move.
+
+**Next**
+
+- The combo item once Michael answers. Then Phase 1 holds only Fable work, the art-direction item and the gate playtest.
+
+## 2026-10-05: Session 29, the camera to the design doc's spec
+
+**What changed**
+
+- Merged main (Fable's extrapolation, PR #17, and the local camera/art backlog) into `auto/build`. Three conflicts, all keep-both: `client/src/net.ts` (each remote player keeps its `weapon` from Session 25 and takes main's `PoseTrack`; the old `sampleSnapshots` and `pushSnapshot` go, `syncWeapon` stays), `decisions.md` (the staff and village answers side by side) and the devlog (both Session 25 entries kept).
+- The camera sits at 35 degrees and 12 m from the player instead of 55 degrees and 15.8 m, so it reads as third person, not top-down. It turns toward the fight: the centre of the awake enemies and living teammates within 14 m, the player included. The turn ignores the first 20 degrees of error, eases over 1.5 s and never exceeds 40 degrees a second; out of combat, or with the fight centred on the player, it holds still. All of it is pure in `shared/src/camera.ts`, tuned by `CAMERA` in `sim.ts`, and draw-only.
+- Movement is camera-relative: `Input.sample(yaw)` turns WASD and the left stick by the camera's yaw before the vector goes in the `InputFrame`, so the server and the replay still see plain world vectors and nothing in the simulation changed. At yaw 0 the frame is exactly what it was.
+- Walls between the eye and the player swap to a see-through material (and stop casting shadows) while they are in the way: the sight line to the player's middle is clipped to each wall's footprint and checked against its top where it leaves. At 35 degrees that is the 1.8 m pillars; a 1.1 m wall would have to stand within 0.3 m of the player's centre.
+- Reduced motion (`prefers-reduced-motion`) keeps the camera from turning, as the hit nudge already did; the nudge still rides on top of the follow.
+- Tests: 7 in `shared/src/camera.test.ts` (173 in all): 35 degrees and closer than before; yaw 0 moves as before; W away from the eye and D to the screen's right at any yaw; the fight pulls the camera, out of range or out of combat holds; the turn is capped per frame, takes the short way across the back and rests inside the deadband; which pillar hides the player at two yaws. `tests/camera.e2e.ts` (2 of 2): in the yard the camera turns once a goblin wakes and S then walks toward the eye within 35 degrees; with reduced motion the yaw stays 0. `join` and `mobile` e2e 7 of 7. `npm run test:net` green on the merged tree.
+
+**Learned**
+
+- `hit-feedback.e2e.ts` fails without this change too (no hit lands in 20 s headless): the same headless slowness as the critic's frame-rate item, not the camera.
+- A sight line falls from the eye to the player, so it is lowest where it leaves a wall's footprint, not where it enters; testing the entry point missed a pillar standing right behind the player.
+
+**Next**
+
+- Placeholder figures instead of pills, the next builder item. Then the combo item once Michael answers.
+
+## 2026-10-05: Session 28, Magic deferred; no combo fires in play
+
+**What changed**
+
+- Michael's answer B on "The staff for Magic missile" (control room, 2026-10-05): Magic and Magic missile wait for Phase 2 or later. The Arrow rain item closes with Arrow rain (Session 27), and the weapon classes item closes too: the staff goes with Magic, and the bow's charge timing is left for the gate playtest to judge. The question moves to Answered in `decisions.md`.
+- Checked what the gate's "combo bonus is visible" can rest on, and it is nothing yet. `resolveHit` pays off only when a hit's tags consume a state: Staggered (applied by Cleave, parries and posture breaks) is consumed by `execute` or `backstab`, and no hit carries either tag; Marked, Soaked, Burning, Rooted and Chilled are applied by nothing. The server also ignores the returned `effects`, so even a payoff would reach no client. New question under Pending: "No combo can fire in play yet" (A, Execute in the melee slot 2 plus a combo callout over the enemy, recommended), and a **(design)** item in the backlog for it.
+- No code changed. `npm run check` (155 tests) and `npm run test:net` green on the merged tree.
+
+**Learned**
+
+- The states system was built ahead of the abilities that feed it (Session 8), and the abilities that landed since (Cleave, Arrow rain) apply or ignore states without consuming any, so the combo half of the gate fell through a gap no single item owned.
+
+**Next**
+
+- Build to Michael's answer on the combo question. Without it, nothing is left in Phase 1 for the builder: the rest is Fable work and the gate playtest.
+
+## 2026-10-05: Session 27, Arrow rain
+
+**What changed**
+
+- The bow's slot 1 (design doc: "Arrow rain: arrows fall on a marked area"; `ABILITIES.arrowRain` in `sim.ts`, `BOW_SLOTS`). Press 1 (gamepad Y) with a bow: a 650 ms draw and flight, committed for 700 ms, then a volley lands on every living enemy within 3 m of the spot for 16 each, tagged ranged and area for the combos; 8 s cooldown. It comes from above, so a Shieldbearer's raised shield does not cut it, and it breaks no windup (Cleave's job).
+- Where it falls (`rainSpot`, server only, chosen when it lands so it falls where the target is now): the bow's lock if it is within 12 m and in sight, else the enemy a bow shot would take, else 7 m ahead inside the level. Session 26's lock is the "mark".
+- `SimEvent` gains `arrowRain` (the spot and how many it hit), sent even when it hits nobody; the client flashes a gold disc of the volley's size there for 400 ms (four discs built once in the View, the oldest reused). The log says "Your arrows hit the goblin for 16", or "Your arrows found nothing". The slot reads "Arrow rain".
+- Magic missile waits: the staff does not exist in The Old Gates. Question under Pending in `decisions.md` ("The staff for Magic missile"; A, add a Staff with Magic missile, recommended).
+- Tests: 4 more in `shared/src/weapons.test.ts` (155 in all): on the lock, three of a pack under it and the fourth outside untouched, once each and not again; the auto target and the miss ahead; full damage on a raised shield; a lock behind a wall is not the spot. An earlier test now checks that an archer's empty slot 2 spends nothing. `npm run test:net`: the lock-on room now casts Arrow rain on the locked goblin and sees it land for 16. `tests/join.e2e.ts` 4 of 4 and `tests/mobile.e2e.ts` 4 of 4, twice; the archer's walk now holds the keys until the goblin is in range, since a fixed 1.5 s walk fell 4.6 m short in one run (the frame-rate bug).
+
+**Learned**
+
+- Choosing the spot when the volley lands, not when it is loosed, keeps it out of prediction entirely: the cast (cooldown, commitment) is predicted from the player alone, and only the server, which knows where every enemy is, picks the spot.
+- The client's disc shows where it landed, after the fact. A telegraph before landing would matter if enemies could see it; for now the bow's target ring is the aim.
+
+**Next**
+
+- Magic missile and the staff after Michael's answer.
+- The Phase 1 builder list is otherwise done: the gate needs a playtest of a mixed-level party clearing the Warrens, and the combo bonus has nothing on screen beyond the log (Session 22's note), which may be worth a backlog item before that playtest.
+
+## 2026-10-05: Session 26, the bow's lock-on cycle
+
+**What changed**
+
+- The design doc's Targeting line ("ranged weapons use a lock-on cycle rather than free aim"): with a bow, Tab or R (gamepad RT) locks on. The candidates are the living enemies within the bow's 12 m with a clear line, in any direction, nearest first; each press moves the lock to the next, and past the last it goes back to soft auto-targeting, so the same key lets go. Any other weapon clears the lock.
+- The server decides it, as the draught is decided: `InputFrame.cycle` (a press; `isValidInput` checks it), and `cycleLock` runs in `DungeonRoom.step` after everyone has moved, from where the archer stands. `PlayerSim.lockId` is in the schema (`lockId`); the client copies it on reconcile and never predicts it, since `applyInput` does not touch it (a unit test proves a cycle frame predicts exactly like one without).
+- A locked shot goes to the lock wherever the archer faces, while it is in range and in sight; with a wall between them the shot falls back to the cone and the lock holds. `dropStaleLocks` (once a tick in `stepEncounter`) lets go when the enemy dies, gets past 1.25x the bow's range (`LOCK_ON.keepRangeMult` in `sim.ts`), or the archer is down or dead.
+- Client: one ring built once in the View, on the ground under the bow's target: solid gold under a lock, faint under the enemy the cone would pick now (presentation only, from the interpolated poses). The enemy panel follows the lock ("Goblin (locked), 1 of 1 left"). The controls hint lists Tab.
+- Tests: 6 in `shared/src/weapons.test.ts` (151 in all): the cycle order through range, sight and direction and back to auto, only a bow locks, a locked shot behind the archer, a lock out of sight falling back without letting go, letting go on death and distance, the input check and prediction parity. `npm run test:net` adds a lock-on room: nothing in range at 17 m, the field goblin locked at 8.3 m after walking toward it, back to auto on the next press. `tests/join.e2e.ts` adds an archer who walks in and presses Tab: the lock reaches `__hg` and the HUD says "(locked)". join 4 of 4 twice, mobile 4 of 4.
+
+**Learned**
+
+- A key that cycles is a toggle in disguise: the first version of the e2e pressed Tab every 300 ms until it read a lock, and a press still in flight let go again. Anything scripted against the cycle should press once and wait for the patch.
+- The goblin's aggro (14 m) is longer than the bow's reach (12 m), so a goblin always closes on an archer it has seen; the Shieldbearer (10 m) and the Charger's lane are where the bow's range will matter.
+
+**Next**
+
+- Arrow rain in the bow's slot 1 (Ranged), with a ground marker on the lock. The staff (Magic) and Magic missile need defining, since The Old Gates has no staff; they may want a design question first.
+
+## 2026-10-05: Session 25, pick a weapon before joining
+
+**What changed**
+
+- Michael's answer A (2026-10-05) to "How a player picks a weapon": a join screen before the room (`client/src/join.ts`). Two rows of buttons, the eleven weapon types and the ten materials, and Join. Arrows or WASD move, Enter or Space joins; a gamepad's d-pad or stick moves and A joins (polled per frame, acting on the press, and a button already down when the screen opens is ignored); every choice is a real button of at least 48 px, so a tap works too, and nothing needs hover. A line under the rows says what the pick does and what it is worth here: "Iron Claymore, two-handed: slower, hits up to 3 in front; Cleave on 1. 51 a hit in a tier-1 portal, held to Bronze (a tier-1 portal allows up to tier 2).". The last pick is remembered in the browser (wrapped in try/catch; a private window starts from the sword).
+- A scripted join skips the screen: a URL with `?name=` or `?weapon=` connects straight away, which keeps the e2e tests and the critic's lab unchanged; `?weapon=claymore&tier=5` picks for it (Michael's note on A).
+- The server trusts only a type name and a number: `weaponFromPick` in `gear.ts` turns an unknown type (or `toString`, or an object) into the starter sword and clamps the tier to 1..10. `DungeonRoom.onJoin` sets the player's weapon from it; `PlayerState` gains `weaponType` and `weaponTier`, so every client sees what everyone holds.
+- Prediction: the client starts with its pick and takes the server's checked weapon on every reconcile, before the replay, so a Claymore's 300 ms windup is predicted with a Claymore. Remote players carry theirs for drawing.
+- Abilities by style (`slotsFor`): melee weapons (one- and two-handed) carry Cleave in slot 1, the bow's slots are empty until Arrow rain. `abilityInSlot` now takes the weapon; before this an archer would have cleaved.
+- Client: one held mesh per class (a blade, a long blade, a bow) and one swing arc per class sized to its range and cone, built once per player and toggled; the held mesh takes the material's colour and its glow from Mithril up, changed only when the weapon changes. The swing flash follows the class's timings instead of the Phase 0 sword's. The HUD's top-left panel shows the weapon under the name.
+- Tests: 4 in `shared/src/weapons.test.ts` (145 in all): the pick, the fallbacks and clamps, slots by style, and an archer pressing 1 spending nothing on either side. `npm run test:net` adds a weapon-pick room: a tier-5 Claymore reaches both clients and swings two-handed on the server, a "laser" at tier 99 becomes a tier-1 sword. `tests/join.e2e.ts` (3, all green): keyboard alone picks an Iron Claymore and joins with it; at 360 x 640 every choice is 48 px or more with no sideways scroll, and a tap on Bow then Join works; a scripted join skips the screen. `tests/mobile.e2e.ts` 4 of 4.
+
+**Learned**
+
+- `tests/hit-feedback.e2e.ts` is flaky on this box with or without this session's change (1 of 3 on the merged tree before it, 1 of 2 after): the player walks 1.5 s toward the yard's first goblin and sometimes never trades a hit within 20 s. Likely the frame-rate movement bug (Fable, in Found in play) or the Session 24 chase routes; not chased here.
+- Putting the weapon on the name line pushed the top-left panel into the top-right one at 360 px (the mobile e2e caught it); it has its own line now.
+
+**Next**
+
+- The bow's lock-on marker and a key and button to cycle targets, then Arrow rain in the bow's slot 1. The staff (Magic) and Magic missile need defining: The Old Gates has no staff.
+- The gate's "mixed-level party" is now possible: two players can join with different tiers.
+
+## 2026-10-05: Session 24, enemies use the doors
+
+(Numbered 24 because the Fable branch, PR #9, already carries a Session 23.)
+
+**What changed**
+
+- The critic's bug (2026-10-05): an awake enemy whose target left its room pressed straight at them into the wall and slid to a corner, where it stayed; a Shieldbearer sat at (-1, 8.9) inside the guard room while its target stood in the hall at (2, 3).
+- `Level.waypoints` in `shared/src/level.ts`: points either side of each doorway, 1.8 m out from the wall so the way to them clears the jambs. The Warrens has six (guard room to hall, pens to hall, guard room to den). The field and the yard have none and behave as before.
+- `pathClear` (a body of a given radius fits from a to b: the centre line and both edges clear) and `steerToward` (the target itself when the way is clear, else the first waypoint on the shortest route, a Dijkstra over the handful of points with ties to the lower index, so it is deterministic). In `stepEnemy`'s chase, an enemy that cannot walk straight now walks to that waypoint and faces it; arriving hands on to the next leg. With no route it slides as before. The wake rule (line of sight) and the Charger's lane are unchanged.
+- Tests: `shared/src/pathing.test.ts`, 6 (136 in all): the critic's exact case reaches the hall, a den goblin reaches the hall through the guard room, a pens goblin uses its door, straight walking when clear and on levels without waypoints, two runs agree. The three chase tests fail on the old code. `npm run test:net` green (no server change; the Warrens and 4-bot stress steps unchanged).
+
+**Learned**
+
+- A single door point in the wall's plane is not enough: a chaser pressed along the wall approaches it nearly parallel and its edge clips the jamb, so the route says blocked. Two points per doorway, set back from the wall, fix that and give the chaser a straight line through.
+- Routes are recomputed every tick per enemy; with six points and nine walls that is cheap. A bigger floor would want the waypoint-to-waypoint visibility cached per level.
+
+**Next**
+
+- Still waiting on Michael's answer on picking a weapon (decisions.md); then the rest of the weapon classes, Arrow rain and Magic missile.
+- For the critic: re-run the guard-room steps; a chaser should now come out of the door within a few seconds.
+## 2026-10-05: Session 25, extrapolation past a late snapshot
+
+**What changed**
+
+- `shared/src/interp.ts`, pure and unit tested: the remote pose lookup the client used to keep in `net.ts` (`sampleSnapshots`, `pushSnapshot`, the 24-deep buffer) moved here as a `PoseTrack` per entity, and learned two things. Past the newest snapshot, `projectPose` moves the pose along the motion of the last tick (the last two snapshots) by at most `INTERP.extrapolateMaxMs` (one tick, 50 ms) and holds there; facing is held, because the sim turns a player to a new heading inside one tick and projecting that would spin them past it. The projection runs through `collideWalls` with the entity's radius (`PLAYER.radius`, or the kind's from `ENEMY_KINDS`), so a goblin walking at a wall is drawn stopped at its face the way the server stops it, never inside. A step faster than `INTERP.extrapolateMaxMps` (20 m/s; the fastest real move, a dodge, a charge or a throw, is 12) is a placement, a respawn or the stairs, and is held rather than flung another 15 m.
+- The ease. A projection is a guess, and the snapshot that ends it can disagree: the player stopped, turned, or the stall ran past the cap and they are a metre on. `pushPoseSnapshot` remembers the pose the track last handed out and the draw time it was for; when the newest snapshot arrives for a time the track was already past, it interpolates the new buffer at that same draw time and makes the difference a per-entity offset that `samplePoseTrack` adds to every later pose, decaying with time constant `INTERP.easeMs` (100 ms). So the first frame after the late snapshot continues from the last one drawn, and the remote is on the true path within half a second. Over `INTERP.easeSnapM` (2.5 m) the difference is a placement and pops, as a correction of the own player does over `SNAP_DISTANCE`. Position only: facing was already interpolated across a tick.
+- `client/src/net.ts`: `RemotePlayer` and `EnemyView` carry a `track` instead of `snaps`; `remotePose` is `samplePoseTrack` at `remoteNow()` inside `net.level`; the snapshot push passes the level too, so the fold-in sees the same walls. `Pose` is the shared type now, re-exported for `render.ts`. `main.ts` is unchanged: every call site (the draw loop, the HUD's nearest enemy, the revive prompt, `__hg`) goes through `remotePose`, so remote players and every enemy get the projection and the ease together.
+- Constants in `INTERP` (`sim.ts`): `extrapolateMaxMs`, `extrapolateMaxMps`, `easeMs`, `easeSnapM`. The server is untouched: this is draw-only, and the shared sim's step does not call any of it.
+- `tests/clock-sync.ts` reports five more columns and fails on three of them: `late %` (frames whose newest snapshot was late, what a fixed pose would have held on), `proj %` (late within one tick: projected), `held %` (late past the cap: frozen), `ahead` (the furthest a drawn pose sat from the newest snapshot while projecting, m; one tick of travel is 0.3 m walking and 0.6 when the tick before was a server catch-up of two inputs, so the bar is the code's own guarantee, one tick at `extrapolateMaxMps`, 1.0 m, and the table shows what really happens), and `pop` (the largest change between frames of the drawn pose's error against the true path, rebuilt after the run from every snapshot received; limit a quarter of a tick of travel). The 150 ms link's bar moved from 0.4% held to 0.02%. 10 new unit tests (146 total): interpolation unchanged, the projection and its cap, a standing entity and a respawn held, a wall and the bounds, the ease's continuity and convergence, a hold's end eased, a placement popping, determinism of the whole track.
+- `CLAUDE.md`: the interpolation bullet describes the projection and the ease and no longer ends "No extrapolation yet".
+
+`npm run test:clock -- --seconds 30`, before (this branch with only the harness change) and after:
+
+| link | delay mean / max (ms) | late frames | projected | held | ahead max (m) | pop max (m) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms, before | 100.0 / 100.0 | 0.00% | | 0.00% | | 0.098 |
+| 0 ms, after | 100.0 / 100.0 | 0.00% | 0.00% | 0.00% | 0.000 | 0.001 |
+| 50 ms, before | 101.2 / 106.7 | 0.05% | | 0.05% | | 0.039 |
+| 50 ms, after | 105.7 / 106.9 | 0.05% | 0.05% | 0.00% | 0.012 | 0.001 |
+| 150 ms, before | 157.9 / 165.3 | 0.76% | | 0.76% | | 0.488 |
+| 150 ms, after | 165.1 / 175.1 | 0.00% | 0.00% | 0.00% | 0.000 | 0.001 |
+| 150 ms, after, 60 s | 157.1 / 165.4 | 0.08% | 0.08% | 0.00% | 0.071 | 0.053 |
+
+Before, every late frame was a held frame (the two columns are the same number) and the pop column is the hold ending. After, the 60 s row is the one where the projection fired: the drawn player ran 7 cm past the newest snapshot at most (a 12 ms guess) and the ease's first frame moved it 5 cm more than the true path did, against the 49 cm jump a hold's end made before. The pop limit (a quarter of a tick of travel) is for this link, whose lateness never passes the cap; a 200 ms TCP stall, the lab's loss row, ends with the ease walking 1.2 m back over a few frames, 18 cm in the first, which is a catch-up rather than a jump but would fail this bar, so the bar stays on the jitter link only. The 150 ms link's late share runs 0.27% to 0.76% from run to run (Sessions 14 and 23 saw 0.2% and 0.1%); the 30 s "after" run happened to see none, hence the 60 s row. The one baseline run with a 0.098 m pop on the clean link was a frame 16 ms late; the first baseline (same code, first version of the metric) had 0.00% late there.
+
+`npm run check` (146 unit tests) and `npm run test:net` (placement, field, flooder, downs, Cleave, draught, the yard wall, 4-bot stress at 20.0 patches/s and tick 1.000 of wall time) green. Lab (`npm run lab -- --seconds 60`, the field level, two headless Chromiums at 48 fps on this box), with the critic's run on main this morning for comparison:
+
+| link | corrections/min, critic / here | holds/min, critic / here |
+| --- | --- | --- |
+| 0 ms | 13 / 7 | 7 / 7 |
+| 50 ms | 20 / 22 | 8 / 12 |
+| 150 ms | 16 / 53 (main on this box, same hour: 51) | 4 / 3 |
+| 50 ms, ±20 jitter, 2% loss | 52 / 26 | 43 / 32 |
+
+The lab's hold is Bravo's drawn Alpha standing still for four or more samples while Alpha moved. The 0 and 50 ms conditions have no jitter and no late snapshot, so their holds are Bravo's page skipping frames at 48 fps headless (the sampler reads the same `__hg` until the next draw), which no drawing change can remove; they are the same here as on main. The loss row is where the network holds live: a lost segment stalls TCP for 200 ms, four ticks past the one-tick cap, so the projection covers the first tick of each stall and the hold count falls by a quarter rather than to nothing. That cap is the card's; raising it is a design question for Michael, not this session's. Corrections are Alpha's own reconciliation, which this change does not touch (draw-only); the 150 ms figure is this box's: main run here the same hour, same condition, gives 51 a minute and 4 holds, so the box (two browsers, the server and Vite on a small VM) is where the critic's 16 became 53, and the critic's tick-timing item under "Found in play" is the cause either way.
+
+**Learned**
+
+- The first pop metric (the drawn step beyond walking speed in a frame) read 0.1 m on a clean link with no late frames at all. That is the server, not the drawing: a tick that applies two queued inputs moves a player 0.6 m in 50 ms, and interpolating that tick draws 12 m/s for 50 ms. It is the critic's tick-timing finding seen from the other side and the harness cannot fix it, so the metric compares the drawn pose with the true path instead (every snapshot received, interpolated after the run), and a pop is the change in that error between frames. The server's catch-up ticks are then invisible to it and a hold ending is not.
+- The 150 ms link's late share is a few events a run and swings fourfold between runs of the same code (0.00, 0.27, 0.76% here). A 30 s run proves the projection works when it fires and says little about how often; the 60 s row and the lab's daily run are the frequency numbers. A run of `npm run check` on the same box while the harness measured the clean link cost that link 11 ms of delay and a 67 ms late patch; the harness measures the box as Session 15 said.
+- The ease folds the disagreement in at the arrival, not at the next frame, and compares the pose last handed out (offset included) with what the new buffer says for that same draw time, then replaces the offset rather than adding to it. That is what makes the drawn pose exactly continuous: at the draw time of the fold the new sample plus the new offset equals the old pose by construction. Adding would double count when two late snapshots arrive a frame apart.
+- The projection uses the real wall collision rather than clamping to the last snapshot: `collideWalls` is two passes over the level's rectangles, cheap at ten entities and sixty frames, and it draws the one thing a player near a wall expects, the body stopping at the face. A clamp would have made the entity visibly stop a tick early at every wall on a bad link.
+
+**Next**
+
+- Reconnect with a grace period (the last Phase 0 Fable carry-over), then the two items under "Found in play" that share the input path: movement speed falling with frame rate, and corrections from tick timing.
+- The lab's `holds/min` already reads the projected pose through `__hg`, so the critic's loss row (TCP stalls of 200 ms, 48 holds a minute before the adaptive delay) will show what the ease does at a hold's end: catching up 1.2 m over a few frames instead of a jump.
+
 ## 2026-10-05: Session 23, the adaptive delay merged with the Warrens groundwork
 
 **What changed**

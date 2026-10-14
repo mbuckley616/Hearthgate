@@ -102,3 +102,30 @@ for (const phone of PHONES) {
     await ctx.close();
   });
 }
+
+// The event log holds at most EVENT_LOG.maxLines lines; at that cap it must stay clear of the
+// top-right panel on the smallest landscape phones (critic, 2026-10-07: eight lines covered it).
+for (const vp of [
+  { width: 480, height: 300 },
+  { width: 568, height: 320 }
+]) {
+  test(`a full event log stays clear of the top-right panel at ${vp.width} x ${vp.height}`, async ({ browser }) => {
+    const ctx = await browser.newContext({ ...devices["Pixel 7"], viewport: vp });
+    const page = await ctx.newPage();
+    await page.goto("/?name=Phone");
+    await expect(page.locator("#hud-party")).toHaveAttribute("data-players", /[1-8]/, { timeout: 15_000 });
+    // Four of the longest lines a fight writes. The HUD only rewrites the log when its events
+    // change, so in a quiet room these stay as placed.
+    await page.evaluate(() => {
+      const line = "Bramblewick's arrows hit Shieldbearer for 24";
+      document.getElementById("hud-log")!.innerHTML = Array.from({ length: 4 }, () => `<div>${line}</div>`).join("");
+    });
+    const log = await box(page, "#hud-log");
+    const panel = await box(page, "#hud .hud-top-right");
+    const slots = await box(page, "#hud .hud-slots");
+    expect(log.y).toBeGreaterThanOrEqual(panel.y + panel.height);
+    expect(overlaps(log, slots)).toBe(false);
+    expect(log.x).toBeGreaterThanOrEqual(0);
+    await ctx.close();
+  });
+}

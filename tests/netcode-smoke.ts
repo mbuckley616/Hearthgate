@@ -18,7 +18,11 @@
  *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
  *      walking into one of its walls is stopped by the server where the shared sim says;
  *   6b. the Warrens: a room made with level "warrens" syncs its enemies, all asleep while the party
- *      stands in the hall, the stairs shut and floor 1;
+ *      stands in the hall, the stairs shut;
+ *   6c. the village and the hand-off: two bots join a village room (no enemies, four villagers); one
+ *      talks to the keeper with the use key; both hold the portal and are handed seats in one fresh
+ *      Warrens room, with their names and weapons; then, in a cellar floor, they kill its goblin,
+ *      hold the open stairs and are handed back to a village together;
  *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -29,7 +33,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { DOWNS, TICK_MS, WARRENS, YARD } from "@hearthgate/shared";
+import { CELLAR, DOWNS, NPC, PORTAL, STAIRS, TICK_MS, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -250,8 +254,13 @@ async function main() {
     await b.leave();
     await sleep(300);
 
+    await weaponPick(client);
+    await lockOn(client);
     await yard(client);
     await warrens(client);
+    await village(client);
+    await stairsBack(client);
+    await combo(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
@@ -297,7 +306,79 @@ async function yard(client: Client) {
   await sleep(300);
 }
 
-/** The Warrens floor (`?level=warrens`): its enemies arrive asleep, the stairs shut, floor 1. */
+/**
+ * The join screen's pick (Michael, A, 2026-10-05): a weapon and tier sent as join options reach every client,
+ * the server swings with it, and a pick the server does not know is the starter sword at a real tier.
+ */
+async function weaponPick(client: Client) {
+  const f = await client.create("dungeon", { name: "Foxtrot", level: "field", weapon: "claymore", tier: 5 });
+  const g = await client.joinById(f.roomId, { name: "Golf", weapon: "laser", tier: 99 });
+  let fState: any = null;
+  let gState: any = null;
+  f.onStateChange((s: any) => (fState = s));
+  g.onStateChange((s: any) => (gState = s));
+  await sleep(400);
+  if (!fState || !gState) fail("weapon pick: no state received");
+  const fox = gState.players.get(f.sessionId);
+  const golf = fState.players.get(g.sessionId);
+  if (fox?.weaponType !== "claymore" || fox?.weaponTier !== 5) fail(`weapon pick: Golf sees Foxtrot with ${fox?.weaponType} ${fox?.weaponTier}, not claymore 5`);
+  if (golf?.weaponType !== "sword" || golf?.weaponTier !== 1) fail(`weapon pick: a bad pick became ${golf?.weaponType} ${golf?.weaponTier}, not sword 1`);
+  f.send("input", { seq: 1, dx: 0, dy: 0, attack: true, dodge: false });
+  await sleep(300);
+  const swung = fState.players.get(f.sessionId);
+  const two = WEAPON_CLASSES.twoHand;
+  if (swung.attackUntil - swung.attackHitAt !== two.durationMs - two.windupMs) {
+    fail(`weapon pick: Foxtrot's swing recovers in ${swung.attackUntil - swung.attackHitAt} ms, not the two-hander's ${two.durationMs - two.windupMs}`);
+  }
+  console.log("ok: weapon pick: a Claymore at tier 5 reaches both clients and swings two-handed; an unknown pick is a tier-1 sword");
+
+  await g.leave();
+  await f.leave();
+  await sleep(300);
+}
+
+/**
+ * The bow's lock-on, alone in a fresh field: Hotel spawns at (-3, 3), 17 m from the goblin at (9, -9), so a
+ * press finds nothing; after walking a second toward it a press locks it, and the next goes back to auto.
+ */
+async function lockOn(client: Client) {
+  const h = await client.create("dungeon", { name: "Hotel", level: "field", weapon: "bow", tier: 1 });
+  let hState: any = null;
+  h.onStateChange((s: any) => (hState = s));
+  const hEvents: any[] = [];
+  h.onMessage("events", (evs: any[]) => hEvents.push(...evs));
+  let hseq = 0;
+  const press = async () => {
+    h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, cycle: true });
+    await sleep(300);
+    return hState.players.get(h.sessionId);
+  };
+  await sleep(300);
+  const far = await press();
+  if (far.lockId !== "") fail(`lock-on: Hotel at (${far.x}, ${far.z}) locked "${far.lockId}" with nothing in range`);
+  for (let i = 0; i < 20; i++) {
+    h.send("input", { seq: ++hseq, dx: 0.707, dy: -0.707, attack: false, dodge: false });
+    await sleep(TICK_MS);
+  }
+  const goblinId = [...hState.enemies.keys()][0];
+  const near = await press();
+  const gob = hState.enemies.get(goblinId);
+  const d = Math.hypot(gob.x - near.x, gob.z - near.z);
+  if (near.lockId !== goblinId) fail(`lock-on: ${d.toFixed(1)} m from the goblin Hotel's lock is "${near.lockId}", not ${goblinId}`);
+  // Arrow rain on the lock: it lands on the goblin wherever it has walked to.
+  h.send("input", { seq: ++hseq, dx: 0, dy: 0, attack: false, dodge: false, ability: 1 });
+  await sleep(1000);
+  const volley = hEvents.find((e) => e.kind === "arrowRain");
+  const rained = hEvents.find((e) => e.kind === "abilityHit" && e.ability === "arrowRain" && e.enemyId === goblinId);
+  if (!volley || !rained) fail(`arrow rain: ${volley ? `fell at (${volley.x.toFixed(1)}, ${volley.z.toFixed(1)}) and hit ${volley.hits}` : "never fell"}, expected it on the locked goblin`);
+  const again = await press();
+  if (again.lockId !== "") fail(`lock-on: a second press with one target left the lock on "${again.lockId}"`);
+  console.log(`ok: lock-on: nothing in range at 17 m, the goblin locked at ${d.toFixed(1)} m, Arrow rain on it for ${rained.damage}, back to auto on the next press`);
+  await h.leave();
+  await sleep(300);
+}
+
+/** The Warrens floor (`?level=warrens`): its enemies arrive asleep, the stairs shut. */
 async function warrens(client: Client) {
   const w = await client.create("dungeon", { name: "Echo", level: "warrens" });
   let wState: any = null;
@@ -312,9 +393,207 @@ async function warrens(client: Client) {
     if (e.phase !== "idle") awake++;
   });
   if (awake !== 0) fail(`warrens: ${awake} enemies woke with the party still in the hall`);
-  if (wState.stairsOpen !== false || wState.floor !== 1) fail(`warrens: stairs ${wState.stairsOpen}, floor ${wState.floor}`);
-  console.log(`ok: warrens room has ${wState.enemies.size} enemies asleep in their rooms, stairs shut, floor ${wState.floor}`);
+  if (wState.stairsOpen !== false) fail(`warrens: stairs ${wState.stairsOpen}`);
+  console.log(`ok: warrens room has ${wState.enemies.size} enemies asleep in their rooms, stairs shut`);
   await w.leave();
+  await sleep(300);
+}
+
+/**
+ * The two-player combo (Michael, A, 2026-10-05): in a cellar Mira cleaves the goblin (Staggered), then Nell's
+ * Execute consumes it. Both clients must get a "combo" event, x1.5 from two players, for the callout.
+ */
+async function combo(client: Client) {
+  const m = await client.create("dungeon", { name: "Mira", level: "cellar" });
+  const n = await client.joinById(m.roomId, { name: "Nell" });
+  let mState: any = null;
+  m.onStateChange((s: any) => (mState = s));
+  const mEvents: any[] = [];
+  const nEvents: any[] = [];
+  m.onMessage("events", (evs: any[]) => mEvents.push(...evs));
+  n.onMessage("events", (evs: any[]) => nEvents.push(...evs));
+  await sleep(400);
+  if (!mState || mState.enemies.size !== 1) fail(`combo: cellar has ${mState?.enemies.size} enemies`);
+  let mseq = 0;
+  let nseq = 0;
+  // Each steps up to the goblin and faces it; Mira presses Cleave, Nell Execute once Cleave has landed.
+  const press = (room: any, nextSeq: () => number, slot: number) => {
+    const me = mState.players.get(room.sessionId);
+    const e = nearestEnemy(mState, me.x, me.z);
+    if (!e) return;
+    const d = Math.hypot(e.x - me.x, e.z - me.z);
+    if (d > 1.9) return stepToward(room, mState, nextSeq, e.x, e.z, 1.4);
+    const f = 0.01 / d;
+    room.send("input", { seq: nextSeq(), dx: (e.x - me.x) * f, dy: (e.z - me.z) * f, attack: false, dodge: false, ability: slot });
+  };
+  const start = Date.now();
+  const cleaved = () => mEvents.some((x) => x.kind === "abilityHit" && x.ability === "cleave" && x.attackerId === m.sessionId);
+  const bots = setInterval(() => {
+    press(m, () => ++mseq, cleaved() ? 0 : 1);
+    press(n, () => ++nseq, cleaved() ? 2 : 0);
+  }, TICK_MS);
+  const isCombo = (x: any) => x.kind === "combo" && x.attackerId === n.sessionId;
+  while (!(mEvents.some(isCombo) && nEvents.some(isCombo)) && Date.now() - start < 15000) await sleep(50);
+  clearInterval(bots);
+  const seen = [mEvents.find(isCombo), nEvents.find(isCombo)];
+  if (seen.some((x) => !x)) fail(`combo: Mira saw ${JSON.stringify(seen[0])}, Nell ${JSON.stringify(seen[1])}; events ${JSON.stringify(mEvents.map((x) => x.kind))}`);
+  const c = seen[0];
+  if (c.payoff !== "crit" || c.contributors !== 2 || c.mult !== 1.5) fail(`combo: expected a two-player crit x1.5, got ${JSON.stringify(c)}`);
+  const exec = mEvents.find((x) => x.kind === "abilityHit" && x.ability === "execute");
+  console.log(`ok: combo: Mira's Cleave then Nell's Execute, Combo x${c.mult} from ${c.contributors} players for ${exec?.damage} on both clients ${Date.now() - start} ms after setting off`);
+  await m.leave();
+  await n.leave();
+  await sleep(300);
+}
+
+/** Walk `room`'s player (as `state` sees them) toward (tx, tz) one tick, stopping within `stopAt`; extra flags ride along. */
+function stepToward(room: any, state: any, nextSeq: () => number, tx: number, tz: number, stopAt: number, extra: Record<string, unknown> = {}) {
+  const me = state.players.get(room.sessionId);
+  const vx = tx - me.x;
+  const vz = tz - me.z;
+  const d = Math.hypot(vx, vz);
+  const k = d > stopAt ? 1 / d : 0;
+  room.send("input", { seq: nextSeq(), dx: vx * k, dy: vz * k, attack: false, dodge: false, ...extra });
+}
+
+/** Wait for a "handoff" message on each room, in the order given; fails after `timeoutMs`. */
+async function handoffs(rooms: any[], timeoutMs: number): Promise<any[]> {
+  const got: any[] = rooms.map(() => null);
+  rooms.forEach((r, i) => r.onMessage("handoff", (m: any) => (got[i] = m)));
+  const start = Date.now();
+  while (got.some((m) => m === null) && Date.now() - start < timeoutMs) await sleep(50);
+  return got;
+}
+
+/**
+ * The village and the portal. Ivy and Juno join a village room: no enemies, the village's level,
+ * both players. Ivy walks to Keeper Wren and presses use: an npcTalk event names them both. Then
+ * both walk onto the portal and stand: within PORTAL.holdMs of the second arriving, each gets a
+ * "handoff" with a seat in the same fresh dungeon room on the Warrens; consuming it lands them
+ * there together, Juno still with her bow, and the village room has let them go.
+ */
+async function village(client: Client) {
+  const a = await client.create("village", { name: "Ivy" });
+  const b = await client.joinById(a.roomId, { name: "Juno", weapon: "bow", tier: 2 });
+  let aState: any = null;
+  let bState: any = null;
+  a.onStateChange((s: any) => (aState = s));
+  b.onStateChange((s: any) => (bState = s));
+  const aEvents: any[] = [];
+  a.onMessage("events", (evs: any[]) => aEvents.push(...evs));
+  await sleep(400);
+  if (!aState || !bState) fail("village: no state received");
+  if (aState.levelId !== VILLAGE.id || aState.enemies.size !== 0 || bState.players.size !== 2) {
+    fail(`village: expected ${VILLAGE.id} with no enemies and 2 players, got ${aState.levelId}, ${aState.enemies.size} enemies, ${bState.players.size} players`);
+  }
+
+  // The keeper: walk up and press use once in reach.
+  const keeper = VILLAGE.npcs![0];
+  let aseq = 0;
+  let bseq = 0;
+  const talkStart = Date.now();
+  const talker = setInterval(() => {
+    const me = aState.players.get(a.sessionId);
+    const near = Math.hypot(me.x - keeper.x, me.z - keeper.z) <= NPC.talkRange - 0.3;
+    stepToward(a, aState, () => ++aseq, keeper.x, keeper.z, NPC.talkRange - 0.5, near ? { use: true } : {});
+  }, TICK_MS);
+  while (!aEvents.some((e) => e.kind === "npcTalk") && Date.now() - talkStart < 8000) await sleep(50);
+  clearInterval(talker);
+  const talk = aEvents.find((e) => e.kind === "npcTalk");
+  if (!talk || talk.npcId !== keeper.id || talk.playerId !== a.sessionId) fail(`village: no talk with ${keeper.name} (${JSON.stringify(talk)})`);
+  const talkedIn = Date.now() - talkStart;
+
+  // The portal: both walk onto it and stand.
+  const portal = VILLAGE.portal!;
+  const walkers = setInterval(() => {
+    stepToward(a, aState, () => ++aseq, portal.x, portal.z, 0.8);
+    stepToward(b, aState, () => ++bseq, portal.x, portal.z, 0.8);
+  }, TICK_MS);
+  const holdStart = Date.now();
+  const got = await handoffs([a, b], 15000);
+  clearInterval(walkers);
+  if (got.some((m) => m === null)) fail(`village: handoff reached ${got.filter(Boolean).length} of 2 clients after ${Date.now() - holdStart} ms (portalMs ${aState.portalMs})`);
+  const [ha, hb] = got;
+  if (ha.level !== portal.to || hb.level !== portal.to) fail(`village: handoff level ${ha.level}, ${hb.level}, expected ${portal.to}`);
+  if (ha.reservation.room.name !== "dungeon" || ha.reservation.room.roomId !== hb.reservation.room.roomId) {
+    fail(`village: seats in ${ha.reservation.room.name} ${ha.reservation.room.roomId} and ${hb.reservation.room.name} ${hb.reservation.room.roomId}, expected one dungeon room`);
+  }
+  await a.leave();
+  await b.leave();
+  const a2 = await client.consumeSeatReservation(ha.reservation);
+  const b2 = await client.consumeSeatReservation(hb.reservation);
+  let a2State: any = null;
+  a2.onStateChange((s: any) => (a2State = s));
+  await sleep(500);
+  if (!a2State || a2State.levelId !== WARRENS.id || a2State.enemies.size !== WARRENS.enemies.length || a2State.players.size !== 2) {
+    fail(`village: after the portal, ${a2State?.levelId} with ${a2State?.enemies.size} enemies and ${a2State?.players.size} players`);
+  }
+  const juno = a2State.players.get(b2.sessionId);
+  if (juno?.name !== "Juno" || juno.weaponType !== "bow" || juno.weaponTier !== 2) fail(`village: Juno arrived as ${juno?.name} with ${juno?.weaponType} ${juno?.weaponTier}`);
+  console.log(
+    `ok: village: ${VILLAGE.npcs!.length} villagers, ${keeper.name} answered in ${talkedIn} ms; the portal handed Ivy and Juno to dungeon ${a2.roomId.slice(0, 6)} on ${ha.level} ${Date.now() - holdStart} ms after they set off, both there with their weapons`
+  );
+  await a2.leave();
+  await b2.leave();
+  await sleep(300);
+}
+
+/**
+ * The stairs: Kit and Lark in a cellar (one goblin, the stairs at the middle). Kit walks to the
+ * goblin and swings until it falls; the stairs open; both stand on them and are handed seats in one
+ * village room, where they arrive together with no enemies.
+ */
+async function stairsBack(client: Client) {
+  const k = await client.create("dungeon", { name: "Kit", level: "cellar" });
+  const l = await client.joinById(k.roomId, { name: "Lark" });
+  let kState: any = null;
+  k.onStateChange((s: any) => (kState = s));
+  await sleep(400);
+  if (!kState || kState.levelId !== CELLAR.id || kState.enemies.size !== 1) fail(`cellar: got ${kState?.levelId} with ${kState?.enemies.size} enemies`);
+  let kseq = 0;
+  let lseq = 0;
+  const fightStart = Date.now();
+  const fighter = setInterval(() => {
+    const me = kState.players.get(k.sessionId);
+    const e = nearestEnemy(kState, me.x, me.z);
+    if (!e) return;
+    const d = Math.hypot(e.x - me.x, e.z - me.z);
+    if (d > 1.8) return stepToward(k, kState, () => ++kseq, e.x, e.z, 1.4);
+    // Face it with a tiny step and swing.
+    const f = 0.01 / d;
+    k.send("input", { seq: ++kseq, dx: (e.x - me.x) * f, dy: (e.z - me.z) * f, attack: true, dodge: false });
+  }, TICK_MS);
+  while (!kState.stairsOpen && Date.now() - fightStart < 20000) await sleep(50);
+  clearInterval(fighter);
+  if (!kState.stairsOpen) fail(`cellar: the stairs never opened (goblin ${JSON.stringify(nearestEnemy(kState, 0, 0)?.hp)} hp)`);
+  const fought = Date.now() - fightStart;
+  const stairs = CELLAR.stairs!;
+  const walkers = setInterval(() => {
+    stepToward(k, kState, () => ++kseq, stairs.x, stairs.z, 0.8);
+    stepToward(l, kState, () => ++lseq, stairs.x, stairs.z, 0.8);
+  }, TICK_MS);
+  const holdStart = Date.now();
+  const got = await handoffs([k, l], 15000);
+  clearInterval(walkers);
+  if (got.some((m) => m === null)) fail(`cellar: handoff reached ${got.filter(Boolean).length} of 2 clients after ${Date.now() - holdStart} ms (descendMs ${kState.descendMs} of ${STAIRS.holdMs})`);
+  const [hk, hl] = got;
+  if (hk.level !== VILLAGE.id || hk.reservation.room.name !== "village" || hk.reservation.room.roomId !== hl.reservation.room.roomId) {
+    fail(`cellar: seats in ${hk.reservation.room.name} ${hk.reservation.room.roomId} and ${hl.reservation.room.name} ${hl.reservation.room.roomId} (${hk.level})`);
+  }
+  await k.leave();
+  await l.leave();
+  const k2 = await client.consumeSeatReservation(hk.reservation);
+  const l2 = await client.consumeSeatReservation(hl.reservation);
+  let k2State: any = null;
+  k2.onStateChange((s: any) => (k2State = s));
+  await sleep(500);
+  if (!k2State || k2State.levelId !== VILLAGE.id || k2State.enemies.size !== 0 || k2State.players.size !== 2) {
+    fail(`cellar: after the stairs, ${k2State?.levelId} with ${k2State?.enemies.size} enemies and ${k2State?.players.size} players`);
+  }
+  if (k2State.portalMs !== 0 || k2State.players.get(k2.sessionId).name !== "Kit") fail("cellar: the village they came back to is not fresh, or Kit lost their name");
+  console.log(`ok: cellar: the goblin fell in ${fought} ms and the stairs opened; they handed Kit and Lark to village ${k2.roomId.slice(0, 6)} ${Date.now() - holdStart} ms after they set off`);
+  await k2.leave();
+  await l2.leave();
   await sleep(300);
 }
 
