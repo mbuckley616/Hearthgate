@@ -29,7 +29,7 @@ const BOW_RANGE = WEAPON_CLASSES.bow.range;
 const STICK_PRESS = 0.6;
 
 /** Ask the player for a weapon; resolves when they join. */
-export function pickWeapon(): Promise<WeaponGear> {
+export function pickWeapon(ready: Promise<unknown>): Promise<WeaponGear> {
   return new Promise((resolve) => {
     const saved = loadPick();
     let typeIdx = Math.max(0, PICKABLE_WEAPONS.indexOf(saved.type));
@@ -80,6 +80,23 @@ export function pickWeapon(): Promise<WeaponGear> {
       return b;
     });
     go.addEventListener("click", () => finish());
+    // Nobody joins before the figures have loaded: the button says so, and a press made while
+    // loading joins as soon as they are in.
+    let loaded = false;
+    let joinWhenLoaded = false;
+    go.textContent = "Loading";
+    go.setAttribute("aria-busy", "true");
+    ready.then(
+      () => {
+        loaded = true;
+        go.textContent = "Join";
+        go.removeAttribute("aria-busy");
+        if (joinWhenLoaded) finish();
+      },
+      () => {
+        go.textContent = "Could not load";
+      }
+    );
 
     const pick = (): WeaponGear => weaponFromPick(PICKABLE_WEAPONS[typeIdx], tierIdx + 1);
 
@@ -142,6 +159,10 @@ export function pickWeapon(): Promise<WeaponGear> {
 
     function finish() {
       if (done) return;
+      if (!loaded) {
+        joinWhenLoaded = true;
+        return;
+      }
       done = true;
       window.removeEventListener("keydown", onKey);
       const w = pick();

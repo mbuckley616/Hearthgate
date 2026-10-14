@@ -10,8 +10,10 @@ test("two players see each other move", async ({ browser }) => {
   const a = await ctxA.newPage();
   const b = await ctxB.newPage();
 
-  await a.goto("/?name=Alpha");
-  await b.goto("/?name=Bravo");
+  // The open field: this checks two players seeing each other, not the village, whose four
+  // skinned villagers make a headless software-GL frame slow enough to drop input ticks.
+  await a.goto("/?name=Alpha&level=field");
+  await b.goto("/?name=Bravo&level=field");
 
   await expect(a.locator("#hud-party")).toHaveAttribute("data-players", "2", { timeout: 15_000 });
   await expect(b.locator("#hud-party")).toHaveAttribute("data-players", "2", { timeout: 15_000 });

@@ -1,14 +1,15 @@
 import * as THREE from "three";
 import { CAMERA } from "@hearthgate/shared";
-import { goblinFigure, newWalkState, playerFigure, poseFigure, type Figure } from "./figures";
+import { goblinFigure, newWalkState, poseFigure, type Figure } from "./figures";
+import { knightFigure, loadModels, weaponMesh, type RigState } from "./models";
 
 /**
- * The art spike's turnaround sheet (`npm run turnaround`, `tests/turnaround.ts`): each reference
- * kind on a plain backdrop from the front, side, back and the game's over-the-shoulder camera, in
+ * The turnaround sheet (`npm run turnaround`, `tests/turnaround.ts`): the KayKit Knight every
+ * player is and the spike's goblin, each on a plain backdrop from the front, side, back and the game's over-the-shoulder camera, in
  * its idle, mid-walk and mid-swing pose, with the reference model's crop on the left. Dev only:
  * the production build has one entry, `index.html`, and never ships this page.
  */
-type Kind = "adventurer" | "goblin";
+type Kind = "knight" | "goblin";
 type PoseName = "idle" | "walk" | "swing";
 
 const PANEL_W = 300;
@@ -16,7 +17,8 @@ const PANEL_H = 400;
 const LABEL_H = 30;
 const BACKDROP = 0xefe3c6; // Bone, the reference sheets' parchment
 const INK = "#2a2622";
-const PARTY_BLUE = new THREE.Color(0x3fa9f5); // The first party colour; the reference tunic is blue.
+const GOBLIN_SKIN = 0xa5c83a; // render.ts PALETTE.goblin
+const PARTY_BLUE = new THREE.Color(0x3fa9f5); // The first party colour, on the Knight's outline.
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1);
@@ -34,16 +36,30 @@ function scene(): THREE.Scene {
 }
 
 function build(kind: Kind): Figure {
-  if (kind === "goblin") return goblinFigure(0xa5c83a);
-  const f = playerFigure(PARTY_BLUE);
+  if (kind === "goblin") return goblinFigure(GOBLIN_SKIN);
+  const f = knightFigure(PARTY_BLUE);
   // The one-handed sword the game puts in the hand (render.ts PlayerMesh), so the swing reads.
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.95), new THREE.MeshStandardMaterial({ color: 0x9a7a52, roughness: 0.5, metalness: 0.3 }));
-  blade.position.set(0, 0, 0.42);
-  f.hand.add(blade);
+  f.hand.add(weaponMesh("sword_1handed"));
   return f;
 }
 
+/** The Knight's clips, run the way render.ts runs them: settle into the base, then into the pose. */
+function poseRig(f: Figure, p: PoseName) {
+  const s: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, hit: false, downed: false, dead: false };
+  if (p === "walk") s.speed = 1.5;
+  for (let i = 0; i < 30; i++) f.rig!.update(1 / 30, s);
+  if (p !== "swing") return;
+  s.attacking = true;
+  // About the chop's top: the blade overhead, before it comes down.
+  for (let i = 0; i < 9; i++) f.rig!.update(1 / 30, s);
+}
+
 function pose(f: Figure, kind: Kind, p: PoseName) {
+  if (f.rig) {
+    poseRig(f, p);
+    f.root.updateMatrixWorld(true);
+    return;
+  }
   const walk = newWalkState();
   if (p === "walk") {
     walk.phase = Math.PI / 2; // the widest point of the stride
@@ -140,7 +156,8 @@ async function sheet(kind: Kind, p: PoseName, ref: { src: string; crop: [number,
 /** Called by the turnaround script with the reference images; returns one PNG per kind and pose. */
 (window as unknown as { __turnaround: unknown }).__turnaround = async (refs: Record<Kind, { src: string; crop: [number, number, number, number] }>) => {
   const sheets: Record<string, string> = {};
-  for (const kind of ["adventurer", "goblin"] as const) {
+  await loadModels();
+  for (const kind of ["knight", "goblin"] as const) {
     for (const p of ["idle", "walk", "swing"] as const) sheets[`${kind}-${p}`] = await sheet(kind, p, refs[kind]);
   }
   return sheets;

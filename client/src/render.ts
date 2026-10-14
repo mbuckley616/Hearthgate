@@ -30,7 +30,9 @@ import {
   type WeaponGear
 } from "@hearthgate/shared";
 import type { Pose } from "./net";
-import { enemyFigure, newWalkState, playerFigure, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
+import { enemyFigure, newWalkState, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
+import { dressDungeon, type Dressing } from "./dungeon";
+import { knightFigure, villagerFigure, weaponMesh, weaponModelFor, type RigState, type WeaponModel } from "./models";
 
 export interface PlayerVisual {
   hp: number;
@@ -82,7 +84,6 @@ const PALETTE = {
   wall: 0x9a978c,
   roof: 0x6b5244,
   sign: "#f3efe4",
-  villager: 0xa88a62,
   villagerTag: "#f1d9a8",
   portal: 0x3b6fa6,
   portalLit: 0x7fb8ff,
@@ -94,6 +95,10 @@ const PALETTE = {
 
 const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
 const WHITE = new THREE.Color(0xffffff);
+const TINT = new THREE.Color();
+/** How far a held weapon's colour moves from the pack's own toward its material's. */
+const WEAPON_TINT = 0.45;
+const WEAPON_MODELS: readonly WeaponModel[] = ["sword_1handed", "sword_2handed", "axe_2handed", "bow_withString"];
 /** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
 /** Width of the bright rim on a floor telegraph, metres: what reads when the low camera flattens the fill. */
 const TELEGRAPH_RIM_M = 0.14;
@@ -103,27 +108,24 @@ const RAIN_SHOW_MS = 400;
 const CALLOUT_MS = 1000;
 const CALLOUT_RISE_M = 0.7;
 const CALLOUTS = 3;
-/** A hit rocks a player figure back for this long. */
-const FLINCH_MS = 220;
-
-/** 1 the moment a blow lands, easing to 0 over FLINCH_MS. */
-function flinchAmount(sinceMs: number): number {
-  return sinceMs >= FLINCH_MS ? 0 : 1 - sinceMs / FLINCH_MS;
-}
 
 class PlayerMesh {
   group = new THREE.Group();
-  /** The placeholder figure (figures.ts); the commissioned model replaces it. */
+  /** The KayKit Knight (models.ts), whatever the weapon: Hearthgate has no classes. */
   figure: Figure;
   private walk: WalkState = newWalkState();
   get walkAmount() {
     return this.walk.amount;
   }
-  /** Per weapon class, built once: the swing's arc and the weapon in hand. Only the held class shows. */
+  /** Per weapon class, built once: the swing's arc. Only the held class shows. */
   swings: Record<WeaponClass, THREE.Mesh>;
-  held: Record<WeaponClass, THREE.Mesh>;
-  /** Shared by the three held meshes; tinted with the material. */
-  heldMat: THREE.MeshStandardMaterial;
+  /** The pack's weapons in the rig's right hand slot, built once; only the held one shows. */
+  held: Record<WeaponModel, THREE.Object3D>;
+  /** Every material of the held weapons, tinted toward the weapon's material tier. */
+  private heldMats: THREE.MeshStandardMaterial[] = [];
+  private heldModel: WeaponModel = "sword_1handed";
+  private readonly rigState: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, hit: false, downed: false, dead: false };
+  private lastDrawAt = NaN;
   cleave: THREE.Mesh;
   guard: THREE.Mesh;
   tag: THREE.Sprite;
@@ -135,7 +137,7 @@ class PlayerMesh {
 
   constructor(name: string, color: string) {
     this.baseColor = new THREE.Color(color);
-    this.figure = playerFigure(this.baseColor);
+    this.figure = knightFigure(this.baseColor);
     this.group.add(this.figure.root);
 
     // Attack arcs: a flat wedge per class, shown for a few frames when the hit resolves.
@@ -153,24 +155,19 @@ class PlayerMesh {
     };
     this.swings = { oneHand: makeArc("oneHand"), twoHand: makeArc("twoHand"), bow: makeArc("bow") };
 
-    // The weapon in the right hand, so a party reads as mixed at a glance and a swing lifts it.
-    // Oversized on purpose (design doc, Art: wide weapons that read at the camera's distance).
-    this.heldMat = new THREE.MeshStandardMaterial({ color: 0x9a7a52, roughness: 0.5, metalness: 0.3 });
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.95), this.heldMat);
-    blade.position.set(0, 0, 0.42);
-    const great = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.16, 1.5), this.heldMat);
-    great.position.set(0, 0.1, 0.6);
-    great.rotation.x = -0.35;
-    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 16, Math.PI), this.heldMat);
-    bow.position.set(0.04, 0.05, 0.12);
-    bow.rotation.y = Math.PI / 2;
-    this.held = { oneHand: blade, twoHand: great, bow };
-    for (const cls of CLASSES) {
-      const m = this.held[cls];
-      m.castShadow = true;
-      m.visible = false;
-      this.figure.hand.add(m);
-    }
+    // The weapon in the right hand, so a party reads as mixed at a glance: the pack's own, in its
+    // hand slot, so the swing clips carry it.
+    const model = (m: WeaponModel) => {
+      const w = weaponMesh(m);
+      w.visible = false;
+      w.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh) this.heldMats.push(mesh.material as THREE.MeshStandardMaterial);
+      });
+      this.figure.hand.add(w);
+      return w;
+    };
+    this.held = { sword_1handed: model("sword_1handed"), sword_2handed: model("sword_2handed"), axe_2handed: model("axe_2handed"), bow_withString: model("bow_withString") };
 
     const c = ABILITIES.cleave;
     this.cleave = new THREE.Mesh(
@@ -207,22 +204,25 @@ class PlayerMesh {
   }
 
   private lastHp = Infinity;
-  private flinchAt = -Infinity;
   private heldType = "";
   private heldTier = 0;
   private heldClass: WeaponClass = "oneHand";
 
-  /** Show the held class's mesh in its material's colour; work only when the weapon changes. */
+  /** Show the held class's model tinted toward its material; work only when the weapon changes. */
   private setWeapon(w: WeaponGear) {
     if (w.type === this.heldType && w.tier === this.heldTier) return;
     this.heldType = w.type;
     this.heldTier = w.tier;
     this.heldClass = weaponClassOf(w);
-    for (const cls of CLASSES) this.held[cls].visible = cls === this.heldClass;
+    this.heldModel = weaponModelFor(this.heldClass, w.type);
+    this.held[this.heldModel].visible = true;
     const material = materialOf(w.tier);
-    this.heldMat.color.setHex(material.color);
-    this.heldMat.emissive.setHex(material.glow ?? 0x000000);
-    this.heldMat.emissiveIntensity = material.glow === null ? 0 : 0.6;
+    for (const m of this.heldMats) {
+      // The pack's texture keeps its detail; the tint says the tier.
+      m.color.set(WHITE).lerp(TINT.setHex(material.color), WEAPON_TINT);
+      m.emissive.setHex(material.glow ?? 0x000000);
+      m.emissiveIntensity = material.glow === null ? 0 : 0.6;
+    }
   }
 
   apply(pose: Pose, v: PlayerVisual) {
@@ -233,24 +233,31 @@ class PlayerMesh {
     const mat = f.skin;
     const lying = v.dead || v.downed;
     const now = performance.now();
-    // Draw-only: a drop in the drawn hp is a blow landing, so the figure rocks back for a moment.
-    if (v.hp < this.lastHp && !lying) this.flinchAt = now;
+    // Draw-only: a drop in the drawn hp is a blow landing, so the figure flinches.
+    const hit = v.hp < this.lastHp && !lying;
     this.lastHp = v.hp;
     stepFigureWalk(this.walk, pose.x, pose.z, now);
-    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0, now, lying ? 0 : flinchAmount(now - this.flinchAt));
-    if (lying) {
-      // Face down; the downed keep their colour (still in the fight), the dead go dark.
-      f.root.rotation.x = Math.PI / 2;
-      f.root.position.y = 0.2;
-      mat.color.copy(this.baseColor).multiplyScalar(v.dead ? 0.45 : 0.8);
-    } else {
-      f.root.rotation.x = v.dodging ? 0.5 : v.staggered ? -0.35 : 0;
-      if (v.dodging) f.root.position.y = 0;
-      mat.color.copy(this.baseColor);
-      if (v.attacking) mat.color.lerp(WHITE, 0.25);
-    }
+    // The clips follow the drawn state: the server never hears of them.
+    const r = this.rigState;
+    r.speed = this.walk.speed;
+    r.cls = this.heldClass;
+    r.attacking = v.attacking;
+    r.guarding = v.guarding;
+    r.dodging = v.dodging;
+    r.hit = hit;
+    r.downed = v.downed;
+    r.dead = v.dead;
+    const dtS = Number.isNaN(this.lastDrawAt) ? 0 : Math.min(0.1, (now - this.lastDrawAt) / 1000);
+    this.lastDrawAt = now;
+    f.rig!.update(dtS, r);
+    // A broken posture rocks the whole figure back; the clips have no stagger of their own.
+    f.root.rotation.x = v.staggered && !lying ? -0.25 : 0;
+    // The downed keep their colour (still in the fight), the dead go dark.
+    mat.color.copy(this.baseColor);
+    if (lying) mat.color.multiplyScalar(v.dead ? 0.45 : 0.8);
+    else if (v.attacking) mat.color.lerp(WHITE, 0.25);
     for (const cls of CLASSES) this.swings[cls].visible = cls === this.heldClass && v.swingActive && !v.dead;
-    this.held[this.heldClass].visible = !v.dead && !v.downed;
+    for (const m of WEAPON_MODELS) this.held[m].visible = m === this.heldModel && !v.dead && !v.downed;
     this.guard.visible = v.guarding && !v.dead && !v.downed;
     this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
     this.tag.visible = this.showTag && !v.dead;
@@ -399,6 +406,9 @@ export class View {
   /** Everything that is the level's (ground, walls, buildings, villagers, the dais), rebuilt when the room names a different level. */
   private walls = new THREE.Group();
   private wallsFor = "";
+  /** The level's villagers: pack figures standing in their idle, stepped in `render`. */
+  private villagers: Figure[] = [];
+  private lastRenderAt = NaN;
   /** The level's stairs (null without): a dark dais, lit while open. */
   private stairs: THREE.Mesh | null = null;
   /** The village's portal (null without): a blue dais, brighter as the party's hold fills. */
@@ -408,7 +418,9 @@ export class View {
   /** A wall between the eye and the player swaps to this, so the player is never lost behind it. */
   private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
   /** The walls the fade checks: their rectangle and height, beside the mesh. */
-  private wallMeshes: { mesh: THREE.Mesh; rect: WallRect; h: number }[] = [];
+  private wallMeshes: { meshes: THREE.Mesh[]; rect: WallRect; h: number; mat: THREE.Material; faded: THREE.Material }[] = [];
+  /** The kit-dressed level's pieces (dungeon.ts), or null on a greybox level. */
+  dressing: Dressing | null = null;
   /** What the eye may not pass through: every wall and every roof (camera.ts clearDistance). */
   private camWalls: CameraWall[] = [];
   private camTarget = new THREE.Vector3();
@@ -521,10 +533,12 @@ export class View {
     this.scene.add(meadow);
   }
 
-  /** The level's ground, its grid and the low stone wall at its edge, sized to its bounds. */
-  private buildGround(level: Level) {
+  /** The level's ground, its grid and the low stone wall at its edge, sized to its bounds; a dressed level brings its own floor and edge. */
+  private buildGround(level: Level, dressed: boolean) {
     const w = level.halfW * 2;
     const d = level.halfD * 2;
+    this.fitShadow(level);
+    if (dressed) return;
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: PALETTE.ground, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -549,6 +563,9 @@ export class View {
       wall.receiveShadow = true;
       this.walls.add(wall);
     }
+  }
+
+  private fitShadow(level: Level) {
     const s = this.sun.shadow.camera;
     s.left = -level.halfW - 2;
     s.right = level.halfW + 2;
@@ -570,8 +587,17 @@ export class View {
     this.walls.clear();
     this.wallMeshes = [];
     this.camWalls = [];
-    this.buildGround(level);
-    for (const w of level.walls) {
+    // The Warrens wear the KayKit dungeon kit; the other floors and the village stay greybox.
+    this.dressing = level.id === "warrens" ? dressDungeon(level) : null;
+    this.buildGround(level, this.dressing !== null);
+    if (this.dressing) {
+      this.walls.add(this.dressing.group);
+      for (const dw of this.dressing.walls) {
+        this.wallMeshes.push({ meshes: dw.meshes, rect: dw.rect, h: dw.h, mat: this.dressing.material, faded: this.dressing.faded });
+        this.camWalls.push({ rect: dw.rect, h: dw.h });
+      }
+    }
+    for (const w of this.dressing ? [] : level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
       const h = w.h ?? (pillar ? 1.8 : 1.1);
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w.hw * 2, h, w.hd * 2), this.wallMat);
@@ -579,7 +605,7 @@ export class View {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.walls.add(mesh);
-      this.wallMeshes.push({ mesh, rect: w, h });
+      this.wallMeshes.push({ meshes: [mesh], rect: w, h, mat: this.wallMat, faded: this.wallFadedMat });
       this.camWalls.push({ rect: w, h });
     }
     const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9, flatShading: true });
@@ -598,15 +624,17 @@ export class View {
       sign.position.set(b.door.x + Math.sin(b.door.facing) * 0.4, h - 0.5, b.door.z + Math.cos(b.door.facing) * 0.4);
       this.walls.add(sign);
     }
-    for (const n of level.npcs ?? []) {
-      const figure = playerFigure(new THREE.Color(PALETTE.villager));
+    this.villagers = [];
+    (level.npcs ?? []).forEach((n, i) => {
+      const figure = villagerFigure(i);
+      this.villagers.push(figure);
       figure.root.position.set(n.x, 0, n.z);
       figure.root.rotation.y = n.facing;
       this.walls.add(figure.root);
       const tag = makeTag(n.name, PALETTE.villagerTag);
       tag.position.set(n.x, 2.25, n.z);
       this.walls.add(tag);
-    }
+    });
     this.stairs = null;
     if (level.stairs) {
       this.stairs = new THREE.Mesh(
@@ -820,8 +848,10 @@ export class View {
     this.fadeAim.z = z;
     for (const w of this.wallMeshes) {
       const hides = wallHides(this.fadeEye, this.fadeAim, w.rect, w.h);
-      w.mesh.material = hides ? this.wallFadedMat : this.wallMat;
-      w.mesh.castShadow = !hides;
+      for (const m of w.meshes) {
+        m.material = hides ? w.faded : w.mat;
+        m.castShadow = !hides;
+      }
     }
   }
 
@@ -845,7 +875,7 @@ export class View {
         const g = m.geometry;
         tris += (g.index ? g.index.count : g.getAttribute("position").count) / 3;
       });
-      return { parts, tris, height: size.y, width: Math.max(size.x, size.z), stride: walk };
+      return { parts, tris, height: size.y, width: Math.max(size.x, size.z), stride: walk, anim: f.rig?.playing() ?? "" };
     };
     return {
       players: Object.fromEntries([...this.players].map(([id, m]) => [id, stat(m.figure, m.walkAmount)])),
@@ -856,7 +886,7 @@ export class View {
   /** Walls faded this frame; read by the e2e checks through the debug handle. */
   fadedWalls(): number {
     let n = 0;
-    for (const w of this.wallMeshes) if (w.mesh.material === this.wallFadedMat) n++;
+    for (const w of this.wallMeshes) if (w.meshes.length && w.meshes[0].material === w.faded) n++;
     return n;
   }
 
@@ -877,6 +907,9 @@ export class View {
 
   render() {
     const t = performance.now();
+    const dtS = Number.isNaN(this.lastRenderAt) ? 0 : Math.min(0.1, (t - this.lastRenderAt) / 1000);
+    this.lastRenderAt = t;
+    for (const v of this.villagers) v.rig!.update(dtS);
     for (const r of this.rainRings) if (r.mesh.visible && t >= r.until) r.mesh.visible = false;
     for (const c of this.callouts) {
       if (!c.sprite.visible) continue;
