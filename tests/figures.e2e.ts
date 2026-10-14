@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
  * silhouette (the goblin small, the Shieldbearer bigger, the Pack Leader tallest, the Charger
  * long and low), and a walking player strides. Reads the window.__hg debug handle.
  */
-type Stat = { parts: number; height: number; width: number; stride: number };
+type Stat = { parts: number; tris: number; height: number; width: number; stride: number };
 const figures = (page: Page) =>
   page.evaluate(() => (window as any).__hg.figures() as { players: Record<string, Stat>; enemies: Record<string, Stat & { kind: string }> });
 
@@ -27,6 +27,9 @@ test("each enemy kind and the player read as distinct figures", async ({ page })
   expect(byKind.shieldbearer.height).toBeGreaterThan(byKind.goblin.height);
   expect(byKind.packLeader.height).toBeGreaterThan(byKind.shieldbearer.height);
   expect(byKind.charger.width).toBeGreaterThan(byKind.charger.height);
+  // The art spike's budgets (backlog): about 1,500 triangles a player, 800 a goblin.
+  expect(me.tris).toBeLessThanOrEqual(1500);
+  expect(byKind.goblin.tris).toBeLessThanOrEqual(800);
   await page.screenshot({ path: "test-results/figures-still.png" });
 
   // Walking strides; standing still settles.

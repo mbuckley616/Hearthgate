@@ -71,7 +71,8 @@ const PALETTE = {
   ground: 0x7fa86a,
   groundDark: 0x6f965b,
   edge: 0x5c6f4a,
-  goblin: 0x4f8a4f,
+  // Grub green, the Warrens' accent in the style guide: the basic goblin's reference is a bright yellow-green.
+  goblin: 0xa5c83a,
   goblinDark: 0x2f5c2f,
   shieldbearer: 0x6f6a62,
   charger: 0x8a5a3c,
@@ -102,6 +103,13 @@ const RAIN_SHOW_MS = 400;
 const CALLOUT_MS = 1000;
 const CALLOUT_RISE_M = 0.7;
 const CALLOUTS = 3;
+/** A hit rocks a player figure back for this long. */
+const FLINCH_MS = 220;
+
+/** 1 the moment a blow lands, easing to 0 over FLINCH_MS. */
+function flinchAmount(sinceMs: number): number {
+  return sinceMs >= FLINCH_MS ? 0 : 1 - sinceMs / FLINCH_MS;
+}
 
 class PlayerMesh {
   group = new THREE.Group();
@@ -198,6 +206,8 @@ class PlayerMesh {
     this.group.add(this.tag);
   }
 
+  private lastHp = Infinity;
+  private flinchAt = -Infinity;
   private heldType = "";
   private heldTier = 0;
   private heldClass: WeaponClass = "oneHand";
@@ -222,8 +232,12 @@ class PlayerMesh {
     const f = this.figure;
     const mat = f.skin;
     const lying = v.dead || v.downed;
-    stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
-    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0);
+    const now = performance.now();
+    // Draw-only: a drop in the drawn hp is a blow landing, so the figure rocks back for a moment.
+    if (v.hp < this.lastHp && !lying) this.flinchAt = now;
+    this.lastHp = v.hp;
+    stepFigureWalk(this.walk, pose.x, pose.z, now);
+    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0, now, lying ? 0 : flinchAmount(now - this.flinchAt));
     if (lying) {
       // Face down; the downed keep their colour (still in the fight), the dead go dark.
       f.root.rotation.x = Math.PI / 2;
@@ -273,7 +287,7 @@ class EnemyMesh {
     this.color =
       kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : kind === "packLeader" ? PALETTE.packLeader : PALETTE.goblin;
     this.ralliedColor = new THREE.Color(this.color).lerp(new THREE.Color(PALETTE.banner), 0.35).getHex();
-    this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
+    this.windupColor = new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
     this.figure = enemyFigure(kind, this.color);
     if (def.rally) {
       // A banner on a pole above the chief: the one to reach first.
@@ -364,11 +378,12 @@ class EnemyMesh {
       (this.telegraph.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.45 * v.windup;
     }
     if (this.group.visible) {
-      stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+      const now = performance.now();
+      stepFigureWalk(this.walk, pose.x, pose.z, now);
       // A windup rears back with the weapon arm raised: "about to hit" from across the room.
       // The Charger's "arms" are its forelegs, so it only rears.
       const windup = v.phase === "windup" ? v.windup : 0;
-      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup);
+      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup, now, v.hitFlash ? 1 : 0);
       f.root.rotation.x = -0.3 * windup;
     }
     updateBar(this.hpBar, v.hp / v.maxHp);
@@ -821,10 +836,16 @@ export class View {
       box.setFromObject(f.root);
       box.getSize(size);
       let parts = 0;
+      let tris = 0;
       f.root.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) parts++;
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        parts++;
+        if (!m.visible) return;
+        const g = m.geometry;
+        tris += (g.index ? g.index.count : g.getAttribute("position").count) / 3;
       });
-      return { parts, height: size.y, width: Math.max(size.x, size.z), stride: walk };
+      return { parts, tris, height: size.y, width: Math.max(size.x, size.z), stride: walk };
     };
     return {
       players: Object.fromEntries([...this.players].map(([id, m]) => [id, stat(m.figure, m.walkAmount)])),

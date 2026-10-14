@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 39, the art spike: the adventurer and the goblin rebuilt to the references
+
+**What changed**
+
+- `playerFigure` is now the base adventurer from `docs/art/reference-models/adventurer.png`: 1.8 m, a big blocky head (jaw, nose, ears, dark eyes and brows, brown hair with a swept quiff), broad iron shoulder pads, a tunic flaring to a skirt at mid-thigh with a belt, brass buckle and a bandolier front and back, dark sleeves, leather bracers, big gloves, dark trousers and chunky boots with a turned cuff. The party colour tints the tunic only. 38 parts, 564 triangles (budget 1,500).
+- `goblinFigure` is now the basic goblin from `goblin.png`: 1.1 m, hunched 0.4 rad with the head lifted out of the hunch, an oversized faceted head, two huge flat ears swept out and up, a drooping nose, glowing torch-orange eyes under angry brows, a leather vest over a pot belly, wrapped wrists, boots, a short iron sword carried point-up and a round oak shield with an iron rim and brass boss on the off arm. 29 parts, 480 triangles (budget 800). Its skin is now Grub green `#A5C83A` (the Warrens accent; the reference is yellow-green), and its windup colour lightens it like the other kinds.
+- Both are flat-shaded, one colour per face, with a lighter top baked into vertex colours (0.82 at the feet to 1 at the head), colours from the style guide's neutrals. Geometry is built once per kind and shared by every figure of it; only the tinted material is per figure. The Shieldbearer, Charger and Pack Leader are untouched (they keep `goblinShape`).
+- Animation, all in `poseFigure` by moving whole parts: an idle sway (a 3 s breath on the torso and arms, fading out as the walk comes in), the walk (the old stride plus a lean and a shoulder twist against the hips), the swing (the torso twists into it; the goblin's windup lifts the sword overhead, 2.6 rad), and a hit flinch (torso and head rock back). The goblin flinches while its hit flash shows; a player flinches for 220 ms when its drawn hp drops (`render.ts`, draw-only). Nothing allocated per frame.
+- `npm run turnaround` (`tests/turnaround.ts`, page `client/turnaround.html`, dev only: the build still has one entry): starts Vite on port 5179, renders each figure on a Bone backdrop under the game's lights from the front, side, back and the game's over-the-shoulder camera (`CAMERA`'s pitch, distance and shoulder, 50 degree field of view), in idle, mid-walk and mid-swing, with the reference crop on the left, and writes six PNGs to `docs/art/spike/` (committed). In a cloud session it needs `PW_CHROMIUM=/opt/pw-browsers/chromium`.
+- Tests: `tests/figures.e2e.ts` now checks the triangle budgets (visible meshes, so the held weapon counts); it, `camera`, `hit-feedback` and `village` e2e pass.
+
+**Learned**
+
+- The silhouette carries it: the goblin's ears and the adventurer's head and pads read at once in the turnarounds, and at the in-game distance (a figure about a fifth of the screen tall) the detail below that (buckle, brows, wraps) barely registers. Budget spent on shape beats budget spent on trim.
+- What a box-built figure cannot match is the reference's softness: rounded cheeks, the hair's tufts and the cloth folds. That is the line between "good enough to keep" and "hire".
+
+**Next**
+
+- Michael's one look at `docs/art/spike/*.png`: keep (an Artist agent joins and the other kinds follow) or hire (the freelancer commission goes ahead). The spike does not touch the other kinds, `shared/` or the server.
+- Phase 1 has no builder item left after this; the gate playtest is Michael's.
+
 ## 2026-10-14: Session 38, the camera goes over the shoulder
 
 **What changed**
