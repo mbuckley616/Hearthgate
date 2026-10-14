@@ -10,6 +10,14 @@ import {
   STAIRS,
   WEAPON_CLASSES,
   cameraOffset,
+  clearDistance,
+  easeDistance,
+  LOCK_TUNING,
+  lockYaw,
+  swingTarget,
+  turnCamera,
+  type CameraWall,
+  type Point,
   materialOf,
   nudgeOffset,
   slewYaw,
@@ -63,7 +71,8 @@ const PALETTE = {
   ground: 0x7fa86a,
   groundDark: 0x6f965b,
   edge: 0x5c6f4a,
-  goblin: 0x4f8a4f,
+  // Grub green, the Warrens' accent in the style guide: the basic goblin's reference is a bright yellow-green.
+  goblin: 0xa5c83a,
   goblinDark: 0x2f5c2f,
   shieldbearer: 0x6f6a62,
   charger: 0x8a5a3c,
@@ -86,12 +95,21 @@ const PALETTE = {
 const CLASSES: readonly WeaponClass[] = ["oneHand", "twoHand", "bow"];
 const WHITE = new THREE.Color(0xffffff);
 /** Arrow rains drawn at once (more archers than this reuse the oldest), and how long each shows. */
+/** Width of the bright rim on a floor telegraph, metres: what reads when the low camera flattens the fill. */
+const TELEGRAPH_RIM_M = 0.14;
 const RAIN_RINGS = 4;
 const RAIN_SHOW_MS = 400;
 /** A combo callout ("Combo x1.5") hangs over the enemy this long, rising CALLOUT_RISE_M. */
 const CALLOUT_MS = 1000;
 const CALLOUT_RISE_M = 0.7;
 const CALLOUTS = 3;
+/** A hit rocks a player figure back for this long. */
+const FLINCH_MS = 220;
+
+/** 1 the moment a blow lands, easing to 0 over FLINCH_MS. */
+function flinchAmount(sinceMs: number): number {
+  return sinceMs >= FLINCH_MS ? 0 : 1 - sinceMs / FLINCH_MS;
+}
 
 class PlayerMesh {
   group = new THREE.Group();
@@ -109,6 +127,8 @@ class PlayerMesh {
   cleave: THREE.Mesh;
   guard: THREE.Mesh;
   tag: THREE.Sprite;
+  /** False for the local player's figure, whose tag is never drawn. */
+  showTag = true;
   /** Ground ring that grows while a teammate picks this player up. */
   pickupRing: THREE.Mesh;
   private baseColor: THREE.Color;
@@ -186,6 +206,8 @@ class PlayerMesh {
     this.group.add(this.tag);
   }
 
+  private lastHp = Infinity;
+  private flinchAt = -Infinity;
   private heldType = "";
   private heldTier = 0;
   private heldClass: WeaponClass = "oneHand";
@@ -210,8 +232,12 @@ class PlayerMesh {
     const f = this.figure;
     const mat = f.skin;
     const lying = v.dead || v.downed;
-    stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
-    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0);
+    const now = performance.now();
+    // Draw-only: a drop in the drawn hp is a blow landing, so the figure rocks back for a moment.
+    if (v.hp < this.lastHp && !lying) this.flinchAt = now;
+    this.lastHp = v.hp;
+    stepFigureWalk(this.walk, pose.x, pose.z, now);
+    poseFigure(f, this.walk, v.attacking && !lying ? 1 : 0, now, lying ? 0 : flinchAmount(now - this.flinchAt));
     if (lying) {
       // Face down; the downed keep their colour (still in the fight), the dead go dark.
       f.root.rotation.x = Math.PI / 2;
@@ -227,7 +253,7 @@ class PlayerMesh {
     this.held[this.heldClass].visible = !v.dead && !v.downed;
     this.guard.visible = v.guarding && !v.dead && !v.downed;
     this.cleave.visible = v.cleaveActive && !v.dead && !v.downed;
-    this.tag.visible = !v.dead;
+    this.tag.visible = this.showTag && !v.dead;
     // Grows from the player outward as the pickup channel fills.
     this.pickupRing.visible = v.downed && v.pickup > 0;
     if (this.pickupRing.visible) this.pickupRing.scale.setScalar(0.15 + 0.85 * v.pickup);
@@ -261,7 +287,7 @@ class EnemyMesh {
     this.color =
       kind === "shieldbearer" ? PALETTE.shieldbearer : kind === "charger" ? PALETTE.charger : kind === "packLeader" ? PALETTE.packLeader : PALETTE.goblin;
     this.ralliedColor = new THREE.Color(this.color).lerp(new THREE.Color(PALETTE.banner), 0.35).getHex();
-    this.windupColor = kind === "goblin" ? 0x6aa66a : new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
+    this.windupColor = new THREE.Color(this.color).lerp(new THREE.Color(0xffffff), 0.2).getHex();
     this.figure = enemyFigure(kind, this.color);
     if (def.rally) {
       // A banner on a pole above the chief: the one to reach first.
@@ -287,6 +313,14 @@ class EnemyMesh {
       this.lane.rotation.x = Math.PI / 2; // lie flat, pointing along local +z
       this.lane.position.y = 0.03;
       this.lane.visible = false;
+      // Rims down both sides of the lane, for the same reason as the wedge's.
+      const rimMat = new THREE.MeshBasicMaterial({ color: PALETTE.telegraph, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
+      const half = def.radius + PLAYER.radius;
+      for (const side of [-1, 1]) {
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(TELEGRAPH_RIM_M, len), rimMat);
+        strip.position.set(side * (half - TELEGRAPH_RIM_M / 2), len / 2, -0.005);
+        this.lane.add(strip);
+      }
       this.group.add(this.lane);
     }
     if (def.frontGuard !== undefined) {
@@ -310,6 +344,14 @@ class EnemyMesh {
     this.telegraph.rotation.z = -Math.PI / 2;
     this.telegraph.position.y = 0.04;
     this.telegraph.visible = false;
+    // A bright rim on the wedge's far edge: from the low camera the fill is a sliver, the rim still reads.
+    const reach = def.attackRange * 1.15;
+    const rim = new THREE.Mesh(
+      new THREE.RingGeometry(reach - TELEGRAPH_RIM_M, reach, 20, 1, -def.attackArc / 2, def.attackArc),
+      new THREE.MeshBasicMaterial({ color: PALETTE.telegraph, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
+    );
+    rim.position.z = 0.005;
+    this.telegraph.add(rim);
     this.group.add(this.telegraph);
 
     this.hpBar = makeBar();
@@ -336,11 +378,12 @@ class EnemyMesh {
       (this.telegraph.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.45 * v.windup;
     }
     if (this.group.visible) {
-      stepFigureWalk(this.walk, pose.x, pose.z, performance.now());
+      const now = performance.now();
+      stepFigureWalk(this.walk, pose.x, pose.z, now);
       // A windup rears back with the weapon arm raised: "about to hit" from across the room.
       // The Charger's "arms" are its forelegs, so it only rears.
       const windup = v.phase === "windup" ? v.windup : 0;
-      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup);
+      poseFigure(f, this.walk, this.kind === "charger" ? 0 : windup, now, v.hitFlash ? 1 : 0);
       f.root.rotation.x = -0.3 * windup;
     }
     updateBar(this.hpBar, v.hp / v.maxHp);
@@ -366,14 +409,30 @@ export class View {
   private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
   /** The walls the fade checks: their rectangle and height, beside the mesh. */
   private wallMeshes: { mesh: THREE.Mesh; rect: WallRect; h: number }[] = [];
+  /** What the eye may not pass through: every wall and every roof (camera.ts clearDistance). */
+  private camWalls: CameraWall[] = [];
   private camTarget = new THREE.Vector3();
   private camPos = new THREE.Vector3();
   private readonly camOffset = { x: 0, y: 0, z: 0 };
   private readonly fadeEye = { x: 0, y: 0, z: 0 };
   private readonly fadeAim = { x: 0, y: 0, z: 0 };
+  private readonly camHead = { x: 0, y: 0, z: 0 };
+  private readonly camEyeFull = { x: 0, y: 0, z: 0 };
+  private readonly camLook = new THREE.Vector3();
   private camStarted = false;
-  /** The camera's turn about the player (camera.ts): 0 is the old view from the south. Input reads it. */
+  /** The camera's turn about the player (camera.ts): 0 is the view from the south. Input reads it. */
   yaw = 0;
+  /** The eye's pitch above the head, degrees: the player tilts it within CAMERA's clamp. */
+  pitchDeg: number = CAMERA.pitchDeg;
+  /** Eye to head this frame, metres: CAMERA.distanceM unless a wall pulled it in. */
+  camDistance: number = CAMERA.distanceM;
+  /** When the player last turned the camera; the swing in behind waits CAMERA.swingDelayMs after it. */
+  private lastLookAt = -Infinity;
+  /** The drawn player's ground velocity, smoothed, for the swing in behind the travel. */
+  private velX = 0;
+  private velZ = 0;
+  private lastX = NaN;
+  private lastZ = NaN;
   // Hit-feedback nudge: added on top of the smoothed camera so it never disturbs the follow.
   private nudgeDir = new THREE.Vector3();
   private nudgeStart = -Infinity;
@@ -510,6 +569,7 @@ export class View {
     this.wallsFor = level.id;
     this.walls.clear();
     this.wallMeshes = [];
+    this.camWalls = [];
     this.buildGround(level);
     for (const w of level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
@@ -520,6 +580,7 @@ export class View {
       mesh.receiveShadow = true;
       this.walls.add(mesh);
       this.wallMeshes.push({ mesh, rect: w, h });
+      this.camWalls.push({ rect: w, h });
     }
     const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9, flatShading: true });
     for (const b of level.buildings ?? []) {
@@ -528,6 +589,7 @@ export class View {
       for (const w of level.walls) if (w.h && Math.abs(w.x - b.x) <= b.hw + 0.5 && Math.abs(w.z - b.z) <= b.hd + 0.5) h = Math.max(h, w.h);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(b.hw * 2 + 0.6, 0.3, b.hd * 2 + 0.6), roofMat);
       roof.position.set(b.x, h + 0.15, b.z);
+      this.camWalls.push({ rect: { x: b.x, z: b.z, hw: b.hw + 0.3, hd: b.hd + 0.3 }, y0: h, h: h + 0.3 });
       roof.castShadow = true;
       roof.receiveShadow = true;
       this.walls.add(roof);
@@ -633,10 +695,15 @@ export class View {
     m.emissiveIntensity = 0.25 + 0.75 * progress;
   }
 
-  ensurePlayer(id: string, name: string, color: string) {
+  /**
+   * `own` is the local player: the camera sits just behind their head, so their own name tag would
+   * hang in the middle of the view. The HUD already names them; teammates keep theirs.
+   */
+  ensurePlayer(id: string, name: string, color: string, own = false) {
     const existing = this.players.get(id);
     if (existing) return;
     const m = new PlayerMesh(name, color);
+    m.showTag = !own;
     this.players.set(id, m);
     this.scene.add(m.group);
   }
@@ -679,23 +746,67 @@ export class View {
   }
 
   /**
-   * Follow the given point with the raised third-person camera, turning slowly toward `fightYaw`
-   * (camera.ts; null holds still). Reduced motion keeps the camera from turning at all.
+   * Follow the given point with the camera over the player's shoulder. `look` is the player's own
+   * turn this frame (Input.look); with none for CAMERA.swingDelayMs the camera swings in behind the
+   * travel, and while the bow's lock is held (`lock`, the target's drawn position) it keeps the
+   * target framed instead. Reduced motion keeps both of those off; the player's own turning stays.
+   * A wall between the head and the eye pulls the eye in along its ray.
    */
-  follow(x: number, z: number, dtMs: number, fightYaw: number | null) {
-    if (!this.reducedMotion.matches) this.yaw = slewYaw(this.yaw, fightYaw, dtMs);
+  follow(x: number, z: number, dtMs: number, look: { x: number; y: number }, lock: Point | null) {
+    const now = performance.now();
+    if (dtMs > 0 && Number.isFinite(this.lastX)) {
+      const kv = 1 - Math.exp(-dtMs / 150);
+      this.velX += (((x - this.lastX) * 1000) / dtMs - this.velX) * kv;
+      this.velZ += (((z - this.lastZ) * 1000) / dtMs - this.velZ) * kv;
+    }
+    this.lastX = x;
+    this.lastZ = z;
+
+    if (look.x !== 0 || look.y !== 0) {
+      const t = turnCamera(this.yaw, this.pitchDeg, look.x, look.y, dtMs);
+      this.yaw = t.yaw;
+      this.pitchDeg = t.pitchDeg;
+      this.lastLookAt = now;
+    } else if (!this.reducedMotion.matches) {
+      if (lock) {
+        this.camHead.x = x;
+        this.camHead.z = z;
+        this.yaw = slewYaw(this.yaw, lockYaw(this.camHead, lock), dtMs, LOCK_TUNING);
+      } else if (now - this.lastLookAt >= CAMERA.swingDelayMs) {
+        this.yaw = slewYaw(this.yaw, swingTarget(this.yaw, this.velX, this.velZ), dtMs);
+      }
+    }
+
     const k = this.camStarted ? 1 - Math.exp(-dtMs / CAMERA.followMs) : 1;
     this.camStarted = true;
     this.camTarget.x += (x - this.camTarget.x) * k;
     this.camTarget.y = CAMERA.targetY;
     this.camTarget.z += (z - this.camTarget.z) * k;
-    // The eye hangs off the smoothed target at the current yaw, so a turn keeps its distance.
-    const o = cameraOffset(this.yaw, this.camOffset);
-    this.camPos.set(this.camTarget.x + o.x, this.camTarget.y + o.y, this.camTarget.z + o.z);
-    const n = nudgeOffset(performance.now() - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
+
+    // The full eye: back and up from the head at the yaw and pitch, and out to the right shoulder.
+    const h = this.camHead;
+    h.x = this.camTarget.x;
+    h.y = this.camTarget.y;
+    h.z = this.camTarget.z;
+    const o = cameraOffset(this.yaw, this.pitchDeg, CAMERA.distanceM, this.camOffset);
+    const sx = Math.cos(this.yaw) * CAMERA.shoulderM;
+    const sz = -Math.sin(this.yaw) * CAMERA.shoulderM;
+    const e = this.camEyeFull;
+    e.x = h.x + o.x + sx;
+    e.y = h.y + o.y;
+    e.z = h.z + o.z + sz;
+    const full = Math.hypot(e.x - h.x, e.y - h.y, e.z - h.z);
+    this.camDistance = easeDistance(this.camDistance, clearDistance(h, e, this.camWalls), dtMs);
+    // In along the head-to-eye ray, the shoulder shrinking with it, so a close wall never puts the
+    // eye inside it and the look target stays beside the head.
+    const f = Math.min(1, this.camDistance / full);
+    this.camPos.set(h.x + (e.x - h.x) * f, h.y + (e.y - h.y) * f, h.z + (e.z - h.z) * f);
+    this.camLook.set(h.x + sx * f, h.y, h.z + sz * f);
+
+    const n = nudgeOffset(now - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
     this.nudgeVec.copy(this.nudgeDir).multiplyScalar(n);
     this.camera.position.copy(this.camPos).add(this.nudgeVec);
-    this.camera.lookAt(this.nudgeVec.add(this.camTarget));
+    this.camera.lookAt(this.nudgeVec.add(this.camLook));
     this.fadeWalls(x, z);
   }
 
@@ -725,10 +836,16 @@ export class View {
       box.setFromObject(f.root);
       box.getSize(size);
       let parts = 0;
+      let tris = 0;
       f.root.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) parts++;
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        parts++;
+        if (!m.visible) return;
+        const g = m.geometry;
+        tris += (g.index ? g.index.count : g.getAttribute("position").count) / 3;
       });
-      return { parts, height: size.y, width: Math.max(size.x, size.z), stride: walk };
+      return { parts, tris, height: size.y, width: Math.max(size.x, size.z), stride: walk };
     };
     return {
       players: Object.fromEntries([...this.players].map(([id, m]) => [id, stat(m.figure, m.walkAmount)])),

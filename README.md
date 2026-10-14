@@ -25,7 +25,7 @@ npm run dev
 
 This starts the game server on port 2567 and the client on port 5173. Open **http://localhost:5173** in a browser tab. Open it again in a second tab (or a second browser). Both tabs are in the same room.
 
-Controls: **WASD** or arrows to move, **J** or **Space** to attack, **Shift** to dodge. A gamepad works too: left stick, X to attack, A to dodge.
+Controls: **WASD** to move, **arrows** to turn and tilt the camera, **J** or **Space** to attack, **Shift** to dodge. A gamepad works too: left stick moves, right stick turns the camera, X to attack, A to dodge.
 
 Add `?name=Yourname` to the URL to pick a name, for example `http://localhost:5173/?name=Michael`.
 

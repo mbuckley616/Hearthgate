@@ -1,4 +1,4 @@
-import { cameraRelativeMove, type InputFrame } from "@hearthgate/shared";
+import { CAMERA, cameraRelativeMove, type InputFrame } from "@hearthgate/shared";
 
 /**
  * Samples keyboard and gamepad into one InputFrame per tick.
@@ -14,7 +14,9 @@ import { cameraRelativeMove, type InputFrame } from "@hearthgate/shared";
  *
  * Movement is camera-relative: W and the stick's up walk away from the camera whichever way
  * it has turned. The turn happens here, so the frame carries a plain world vector and the
- * server and the replay never need to know where the camera was.
+ * server and the replay never need to know where the camera was. WASD and the left stick are
+ * the only movement: the arrow keys and the right stick turn and tilt the camera (`look`), which
+ * never goes in an InputFrame.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, B, RB). */
@@ -78,16 +80,42 @@ export class Input {
     return this.down.size > 0;
   }
 
+  /**
+   * The camera turn the player is asking for this frame: x is -1 (Left arrow, right stick left)
+   * to 1, y is -1 (Up arrow, stick up) to 1. Read live every drawn frame, not per tick, since it
+   * only moves the view. Out keeps it allocation-free.
+   */
+  look(out: { x: number; y: number }): { x: number; y: number } {
+    let x = 0;
+    let y = 0;
+    if (this.down.has("ArrowLeft")) x -= 1;
+    if (this.down.has("ArrowRight")) x += 1;
+    if (this.down.has("ArrowUp")) y -= 1;
+    if (this.down.has("ArrowDown")) y += 1;
+    const pad = firstGamepad();
+    if (pad) {
+      const rx = pad.axes[2] ?? 0;
+      const ry = pad.axes[3] ?? 0;
+      if (Math.hypot(rx, ry) > CAMERA.stickDeadzone) {
+        x = rx;
+        y = ry;
+      }
+    }
+    out.x = x;
+    out.y = y;
+    return out;
+  }
+
   /** `yaw` is the camera's turn (View.yaw); 0 is the view from the south. */
   sample(yaw = 0): InputFrame {
     const held = (code: string) => this.down.has(code) || this.tapped.has(code);
     let dx = 0;
     let dy = 0;
-    if (held("KeyA") || held("ArrowLeft")) dx -= 1;
-    if (held("KeyD") || held("ArrowRight")) dx += 1;
+    if (held("KeyA")) dx -= 1;
+    if (held("KeyD")) dx += 1;
     // Screen "up" (dy -1) is away from the camera: world -z at yaw 0.
-    if (held("KeyW") || held("ArrowUp")) dy -= 1;
-    if (held("KeyS") || held("ArrowDown")) dy += 1;
+    if (held("KeyW")) dy -= 1;
+    if (held("KeyS")) dy += 1;
 
     let attack = this.attackPressed;
     let dodge = this.dodgePressed;

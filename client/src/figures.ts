@@ -24,6 +24,13 @@ export interface Figure {
   hunch: number;
   /** Top of the head above the feet, metres: name tags and bars sit above it. */
   height: number;
+  /** The reference-model kinds only (adventurer, basic goblin): the pivot at the hips the whole
+   * upper body hangs from, and the head on it. The idle sway, the swing's twist and the flinch
+   * move these; the older kinds leave them out and pose as before. */
+  torso?: THREE.Object3D;
+  head?: THREE.Object3D;
+  /** How far the weapon arm lifts at swing 1, radians (the goblin's windup goes overhead). */
+  swingLift?: number;
 }
 
 /** Walk state a mesh keeps between frames; `stepFigureWalk` advances it from the drawn pose. */
@@ -67,17 +74,33 @@ export function stepFigureWalk(w: WalkState, x: number, z: number, t: number) {
   w.amount += (target - w.amount) * (1 - Math.exp(-dt / 100));
 }
 
+/** The idle sway's period, ms: slow enough to read as breathing, not as fidgeting. */
+const IDLE_PERIOD_MS = 3000;
+
 /**
  * Pose the parts: a walk swing scaled by `walk.amount`, a small bob, and the right arm raised
- * forward by `swing` (0..1) for an attack. No allocations: rotations are set in place.
+ * forward by `swing` (0..1) for an attack. Figures with a torso pivot also sway at rest (by
+ * `now`, ms), twist into the swing and rock back by `flinch` (0..1, a hit just landed). No
+ * allocations: rotations are set in place.
  */
-export function poseFigure(f: Figure, walk: WalkState, swing: number) {
+export function poseFigure(f: Figure, walk: WalkState, swing: number, now = 0, flinch = 0) {
   const s = Math.sin(walk.phase) * 0.6 * walk.amount;
   f.legs[0].rotation.x = s;
   f.legs[1].rotation.x = -s;
   f.arms[0].rotation.x = -s * 0.8;
-  f.arms[1].rotation.x = swing > 0 ? -1.4 * swing : s * 0.8;
+  f.arms[1].rotation.x = swing > 0 ? -(f.swingLift ?? 1.4) * swing : s * 0.8;
   f.root.position.y = Math.abs(Math.cos(walk.phase)) * 0.06 * walk.amount;
+  if (!f.torso) return;
+  const rest = 1 - walk.amount;
+  const breath = Math.sin((now / IDLE_PERIOD_MS) * Math.PI * 2);
+  // Lean into the stride, twist the shoulders against the hips, sway side to side at rest.
+  f.torso.rotation.x = f.hunch + 0.08 * walk.amount + 0.02 * breath * rest + 0.12 * swing - 0.45 * flinch;
+  f.torso.rotation.y = -0.25 * s - 0.35 * swing;
+  f.torso.rotation.z = 0.04 * Math.sin((now / IDLE_PERIOD_MS) * Math.PI) * rest;
+  // Arms drift out a touch on the breath, so a standing figure is never a statue.
+  f.arms[0].rotation.z = -0.06 - 0.03 * breath * rest;
+  f.arms[1].rotation.z = 0.06 + 0.03 * breath * rest;
+  if (f.head) f.head.rotation.x = -0.35 * flinch - 0.06 * swing;
 }
 
 function flat(color: number): THREE.MeshStandardMaterial {
@@ -111,31 +134,7 @@ function upperBody(root: THREE.Group, hipY: number, hunch: number): THREE.Group 
 }
 
 export function playerFigure(color: THREE.Color): Figure {
-  const root = new THREE.Group();
-  const skin = new THREE.MeshStandardMaterial({ color, roughness: 0.8, flatShading: true });
-  const trousers = flat(0x3b3a40);
-  const face = flat(0xe0b48c);
-  const hipY = 0.8;
-  const legs: [THREE.Object3D, THREE.Object3D] = [
-    limb(root, trousers, -0.14, hipY, 0, 0.18, 0.8, 0.2),
-    limb(root, trousers, 0.14, hipY, 0, 0.18, 0.8, 0.2)
-  ];
-  const upper = upperBody(root, hipY, 0);
-  // Broad at the shoulders, narrow at the waist: four sides so the wedge stays flat-shaded.
-  const torso = new THREE.CylinderGeometry(0.42, 0.24, 0.62, 4);
-  torso.rotateY(Math.PI / 4);
-  part(torso, skin, 0, 0.31, 0, upper);
-  part(new THREE.IcosahedronGeometry(0.2, 0), face, 0, 0.84, 0, upper);
-  // A dark brow band on the front of the head: the facing reads even with the weapon away.
-  part(new THREE.BoxGeometry(0.3, 0.08, 0.1), trousers, 0, 0.88, 0.15, upper);
-  const arms: [THREE.Object3D, THREE.Object3D] = [
-    limb(upper, skin, -0.4, 0.56, 0, 0.14, 0.58, 0.16),
-    limb(upper, skin, 0.4, 0.56, 0, 0.14, 0.58, 0.16)
-  ];
-  const hand = new THREE.Group();
-  hand.position.set(0, -0.55, 0);
-  arms[1].add(hand);
-  return { root, legs, arms, hand, skin, hunch: 0, height: hipY + 1.04 };
+  return adventurerFigure(color);
 }
 
 /** The goblin family's shared shape, scaled and decorated per kind. */
@@ -174,12 +173,7 @@ function goblinShape(skinColor: number, scale: number, hunch: number, earLen: nu
 }
 
 export function goblinFigure(skinColor: number): Figure {
-  const g = goblinShape(skinColor, 1, 0.45, 0.42);
-  // A stubby club.
-  const club = new THREE.CylinderGeometry(0.07, 0.04, 0.5, 5);
-  club.rotateX(Math.PI / 2);
-  part(club, flat(0x6b4f33), 0, 0, 0.2, g.hand);
-  return g;
+  return basicGoblinFigure(skinColor);
 }
 
 export function shieldbearerFigure(skinColor: number): Figure {
@@ -243,4 +237,346 @@ export function enemyFigure(kind: EnemyKind, skinColor: number): Figure {
     default:
       return goblinFigure(skinColor);
   }
+}
+
+/*
+ * The reference-model kinds (the art spike, decisions.md 2026-10-13): the base adventurer and the
+ * basic goblin rebuilt to `docs/art/reference-models/`. Flat-shaded, one colour per face, a
+ * lighter top baked into vertex colours, colours from the style guide's palette. Geometry is built
+ * once per kind and shared by every figure of it; only the material that flashes is per figure.
+ */
+
+/** The style guide's shared neutrals and the few colours the two references add. */
+const INK = 0x2a2622;
+const OAK = 0x8b5a2b;
+const DARK_TIMBER = 0x5a3a22;
+const IRON = 0x6e7378;
+const SHADOWSTONE = 0x4e4a44;
+const BRASS = 0xc99a3b;
+const HEARTWOOD = 0xa0522d;
+const TORCH = 0xffb347;
+const SKIN_TONE = 0xf2c49b;
+
+/** The lighter-top gradient: a face at the feet is this bright, a face at the figure's top 1. */
+const SHADE_BOTTOM = 0.82;
+
+/**
+ * Bake the gradient into a part: non-indexed, so each face gets the one colour of its centroid's
+ * height (`atY` is where the part sits at rest, `topY` the figure's height). Returns the geometry.
+ */
+function shaded(geo: THREE.BufferGeometry, atY: number, topY: number): THREE.BufferGeometry {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  const pos = g.getAttribute("position");
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i += 3) {
+    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3 + atY;
+    const k = SHADE_BOTTOM + (1 - SHADE_BOTTOM) * Math.min(1, Math.max(0, cy / topY));
+    colors.fill(k, i * 3, i * 3 + 9);
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+function faceted(color: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true, vertexColors: true });
+}
+
+/** A box with its top corners pulled in by `taper` (0..1 of the half-width): a chunky low-poly wedge. */
+function taperedBox(w: number, h: number, d: number, taperX: number, taperZ = taperX): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const pos = g.getAttribute("position");
+  for (let i = 0; i < pos.count; i++) {
+    if (pos.getY(i) > 0) {
+      pos.setX(i, pos.getX(i) * (1 - taperX));
+      pos.setZ(i, pos.getZ(i) * (1 - taperZ));
+    }
+  }
+  return g;
+}
+
+interface Piece {
+  geo: THREE.BufferGeometry;
+  mat: THREE.Material;
+  x: number;
+  y: number;
+  z: number;
+  ry?: number;
+  rz?: number;
+}
+
+/** Add shared pieces under a pivot. */
+function attach(parent: THREE.Object3D, pieces: Piece[]) {
+  for (const p of pieces) {
+    const m = part(p.geo, p.mat, p.x, p.y, p.z, parent);
+    if (p.ry) m.rotation.y = p.ry;
+    if (p.rz) m.rotation.z = p.rz;
+  }
+}
+
+/** Shared, so many figures cost one set of buffers; the tinted material is the only per-figure one. */
+const MAT = {
+  skinTone: faceted(SKIN_TONE),
+  hair: faceted(HEARTWOOD),
+  trousers: faceted(DARK_TIMBER),
+  leather: faceted(OAK),
+  darkLeather: faceted(DARK_TIMBER),
+  iron: faceted(IRON),
+  sleeve: faceted(SHADOWSTONE),
+  brass: faceted(BRASS),
+  ink: new THREE.MeshBasicMaterial({ color: INK }),
+  glow: new THREE.MeshBasicMaterial({ color: TORCH })
+};
+
+/** Base adventurer: about 4.1 heads, big head and hands, broad shoulders, short legs. */
+const ADV = {
+  hipY: 0.74,
+  legX: 0.13,
+  shoulderX: 0.31,
+  shoulderY: 0.56,
+  neckY: 0.6,
+  top: 1.8
+};
+
+let advGeo: ReturnType<typeof buildAdventurerGeometry> | null = null;
+
+function buildAdventurerGeometry() {
+  const T = ADV.top;
+  const hip = ADV.hipY;
+  const legLen = hip - 0.26;
+  const neckW = hip + ADV.neckY;
+  const shoulderW = hip + ADV.shoulderY;
+  return {
+    // Legs: trousers, then a boot with a turned-down cuff and a toe that points the way.
+    thigh: shaded(new THREE.CylinderGeometry(0.11, 0.095, legLen, 6), hip - legLen / 2, T),
+    boot: shaded(taperedBox(0.22, 0.3, 0.32, 0.08, 0.2), 0.15, T),
+    cuff: shaded(new THREE.CylinderGeometry(0.14, 0.13, 0.1, 6), 0.3, T),
+    // The tunic: wide at the shoulders, narrower at the waist, skirted to mid-thigh.
+    tunic: shaded(taperedBox(0.42, 0.74, 0.32, -0.2, -0.05), hip + 0.25, T),
+    // The skirt flares below the belt, as the reference's does.
+    skirt: shaded(taperedBox(0.5, 0.2, 0.36, 0.14, 0.08), hip - 0.04, T),
+    belt: shaded(new THREE.BoxGeometry(0.46, 0.09, 0.35), hip + 0.05, T),
+    buckle: shaded(new THREE.BoxGeometry(0.1, 0.08, 0.03), hip + 0.05, T),
+    strap: shaded(new THREE.BoxGeometry(0.07, 0.66, 0.02), hip + 0.32, T),
+    clasp: shaded(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 6).rotateX(Math.PI / 2), hip + 0.44, T),
+    pad: shaded(taperedBox(0.27, 0.16, 0.32, 0.3), shoulderW, T),
+    neck: shaded(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 6), neckW, T),
+    // Head: a chunky block with a jaw, hair swept up at the front, small dark eyes.
+    skull: shaded(taperedBox(0.32, 0.34, 0.31, 0.05), neckW + 0.21, T),
+    jaw: shaded(taperedBox(0.26, 0.08, 0.24, -0.15), neckW + 0.04, T),
+    hairTop: shaded(taperedBox(0.36, 0.1, 0.34, 0.12), neckW + 0.4, T),
+    hairBack: shaded(new THREE.BoxGeometry(0.35, 0.24, 0.07), neckW + 0.28, T),
+    hairSide: shaded(new THREE.BoxGeometry(0.05, 0.14, 0.2), neckW + 0.32, T),
+    quiff: shaded(new THREE.ConeGeometry(0.1, 0.22, 4).rotateX(-0.5), neckW + 0.42, T),
+    eye: new THREE.BoxGeometry(0.045, 0.065, 0.02),
+    brow: new THREE.BoxGeometry(0.08, 0.025, 0.02),
+    nose: shaded(taperedBox(0.05, 0.08, 0.06, 0.4), neckW + 0.17, T),
+    ear: shaded(new THREE.BoxGeometry(0.05, 0.09, 0.06), neckW + 0.2, T),
+    // Arms: a dark sleeve, a leather bracer, a big glove.
+    sleeve: shaded(new THREE.CylinderGeometry(0.09, 0.085, 0.24, 6), shoulderW - 0.12, T),
+    bracer: shaded(new THREE.CylinderGeometry(0.1, 0.11, 0.2, 6), shoulderW - 0.34, T),
+    glove: shaded(taperedBox(0.17, 0.17, 0.17, -0.05), shoulderW - 0.53, T)
+  };
+}
+
+function adventurerFigure(color: THREE.Color): Figure {
+  const g = (advGeo ??= buildAdventurerGeometry());
+  const root = new THREE.Group();
+  // The party colour: the tunic (it flashes and darkens; render.ts tints it).
+  const tunic = new THREE.MeshStandardMaterial({ color, roughness: 0.8, flatShading: true, vertexColors: true });
+  const hip = ADV.hipY;
+  const legLen = hip - 0.26;
+  const leg = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * ADV.legX, hip, 0);
+    root.add(pivot);
+    attach(pivot, [
+      { geo: g.thigh, mat: MAT.trousers, x: 0, y: -legLen / 2, z: 0 },
+      { geo: g.cuff, mat: MAT.darkLeather, x: 0, y: 0.29 - hip, z: 0 },
+      { geo: g.boot, mat: MAT.leather, x: 0, y: 0.14 - hip, z: 0.04 }
+    ]);
+    return pivot;
+  };
+  const legs: [THREE.Object3D, THREE.Object3D] = [leg(-1), leg(1)];
+
+  const torso = upperBody(root, hip, 0);
+  attach(torso, [
+    { geo: g.tunic, mat: tunic, x: 0, y: 0.25, z: 0 },
+    { geo: g.skirt, mat: tunic, x: 0, y: -0.04, z: 0 },
+    { geo: g.belt, mat: MAT.darkLeather, x: 0, y: 0.05, z: 0 },
+    { geo: g.buckle, mat: MAT.brass, x: 0, y: 0.05, z: 0.185 },
+    // The bandolier crosses the chest from the left shoulder, and its back half shows from behind.
+    { geo: g.strap, mat: MAT.darkLeather, x: 0, y: 0.32, z: 0.17, rz: 0.55 },
+    { geo: g.strap, mat: MAT.darkLeather, x: 0, y: 0.32, z: -0.17, rz: -0.55 },
+    { geo: g.clasp, mat: MAT.brass, x: -0.06, y: 0.44, z: 0.185 },
+    { geo: g.pad, mat: MAT.iron, x: -ADV.shoulderX + 0.03, y: ADV.shoulderY + 0.02, z: 0 },
+    { geo: g.pad, mat: MAT.iron, x: ADV.shoulderX - 0.03, y: ADV.shoulderY + 0.02, z: 0 },
+    { geo: g.neck, mat: MAT.skinTone, x: 0, y: ADV.neckY, z: 0 }
+  ]);
+
+  const head = new THREE.Group();
+  head.position.set(0, ADV.neckY, 0);
+  torso.add(head);
+  attach(head, [
+    { geo: g.jaw, mat: MAT.skinTone, x: 0, y: 0.04, z: 0.02 },
+    { geo: g.skull, mat: MAT.skinTone, x: 0, y: 0.21, z: 0 },
+    { geo: g.nose, mat: MAT.skinTone, x: 0, y: 0.17, z: 0.17 },
+    { geo: g.ear, mat: MAT.skinTone, x: -0.17, y: 0.2, z: -0.01 },
+    { geo: g.ear, mat: MAT.skinTone, x: 0.17, y: 0.2, z: -0.01 },
+    { geo: g.eye, mat: MAT.ink, x: -0.07, y: 0.23, z: 0.157 },
+    { geo: g.eye, mat: MAT.ink, x: 0.07, y: 0.23, z: 0.157 },
+    { geo: g.brow, mat: MAT.hair, x: -0.075, y: 0.285, z: 0.157 },
+    { geo: g.brow, mat: MAT.hair, x: 0.075, y: 0.285, z: 0.157 },
+    { geo: g.hairTop, mat: MAT.hair, x: 0, y: 0.4, z: -0.01 },
+    { geo: g.hairBack, mat: MAT.hair, x: 0, y: 0.28, z: -0.14 },
+    { geo: g.hairSide, mat: MAT.hair, x: -0.165, y: 0.32, z: -0.04 },
+    { geo: g.hairSide, mat: MAT.hair, x: 0.165, y: 0.32, z: -0.04 },
+    { geo: g.quiff, mat: MAT.hair, x: 0.04, y: 0.44, z: 0.1 },
+    { geo: g.quiff, mat: MAT.hair, x: -0.08, y: 0.43, z: 0.02 },
+    { geo: g.quiff, mat: MAT.hair, x: 0.1, y: 0.42, z: -0.06 }
+  ]);
+
+  const arm = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * ADV.shoulderX, ADV.shoulderY, 0);
+    torso.add(pivot);
+    attach(pivot, [
+      { geo: g.sleeve, mat: MAT.sleeve, x: 0, y: -0.12, z: 0 },
+      { geo: g.bracer, mat: MAT.leather, x: 0, y: -0.34, z: 0 },
+      { geo: g.glove, mat: MAT.darkLeather, x: 0, y: -0.52, z: 0.01 }
+    ]);
+    return pivot;
+  };
+  const arms: [THREE.Object3D, THREE.Object3D] = [arm(-1), arm(1)];
+  const hand = new THREE.Group();
+  hand.position.set(0, -0.53, 0);
+  arms[1].add(hand);
+  return { root, legs, arms, hand, skin: tunic, hunch: 0, height: ADV.top, torso, head, swingLift: 1.4 };
+}
+
+/** Basic goblin: small and hunched, an oversized head with huge ears, sword and round shield. */
+const GOB = {
+  hipY: 0.42,
+  legX: 0.1,
+  shoulderX: 0.21,
+  shoulderY: 0.3,
+  neckY: 0.36,
+  hunch: 0.4,
+  top: 1.2
+};
+
+let gobGeo: ReturnType<typeof buildGoblinGeometry> | null = null;
+
+function buildGoblinGeometry() {
+  const T = GOB.top;
+  const hip = GOB.hipY;
+  const neckW = hip + GOB.neckY;
+  const shoulderW = hip + GOB.shoulderY;
+  // Ears: a flat four-sided blade pointing out along +x; the left is the same one turned round.
+  const ear = new THREE.ConeGeometry(0.1, 0.46, 4).rotateZ(-Math.PI / 2).scale(1, 1, 0.35);
+  return {
+    shin: shaded(new THREE.CylinderGeometry(0.055, 0.05, hip - 0.12, 5), hip / 2 + 0.06, T),
+    boot: shaded(taperedBox(0.13, 0.15, 0.2, 0.15, 0.25), 0.075, T),
+    vest: shaded(taperedBox(0.32, 0.4, 0.25, -0.12, 0), hip + 0.17, T),
+    belly: shaded(new THREE.DodecahedronGeometry(0.13, 0).scale(1, 0.8, 0.8), hip + 0.08, T),
+    belt: shaded(new THREE.BoxGeometry(0.33, 0.06, 0.26), hip + 0.02, T),
+    skull: shaded(new THREE.DodecahedronGeometry(0.21, 0).scale(1.1, 0.92, 1), neckW + 0.18, T),
+    jaw: shaded(taperedBox(0.24, 0.08, 0.2, -0.1), neckW + 0.06, T),
+    nose: shaded(new THREE.ConeGeometry(0.05, 0.17, 4).rotateX(Math.PI / 2 + 0.4), neckW + 0.15, T),
+    ear: shaded(ear, neckW + 0.24, T),
+    eye: new THREE.BoxGeometry(0.06, 0.04, 0.02),
+    brow: new THREE.BoxGeometry(0.09, 0.03, 0.03),
+    mouth: new THREE.BoxGeometry(0.12, 0.02, 0.02),
+    arm: shaded(new THREE.CylinderGeometry(0.05, 0.045, 0.3, 5), shoulderW - 0.15, T),
+    wrap: shaded(new THREE.CylinderGeometry(0.058, 0.058, 0.07, 5), shoulderW - 0.26, T),
+    hand: shaded(taperedBox(0.09, 0.09, 0.1, -0.1), shoulderW - 0.33, T),
+    // A short, broad sword pointing forward out of the fist, and a round wooden shield.
+    blade: shaded(taperedBox(0.07, 0.48, 0.025, 0.4, 0).rotateX(Math.PI / 2), shoulderW - 0.33, T),
+    guard: shaded(new THREE.BoxGeometry(0.16, 0.04, 0.04), shoulderW - 0.33, T),
+    grip: shaded(new THREE.CylinderGeometry(0.022, 0.022, 0.12, 5).rotateX(Math.PI / 2), shoulderW - 0.33, T),
+    shield: shaded(new THREE.CylinderGeometry(0.21, 0.21, 0.04, 8).rotateZ(Math.PI / 2), shoulderW - 0.2, T),
+    rim: shaded(new THREE.CylinderGeometry(0.235, 0.235, 0.03, 8).rotateZ(Math.PI / 2), shoulderW - 0.2, T),
+    boss: shaded(new THREE.ConeGeometry(0.06, 0.06, 6).rotateZ(Math.PI / 2), shoulderW - 0.2, T)
+  };
+}
+
+function basicGoblinFigure(skinColor: number): Figure {
+  const g = (gobGeo ??= buildGoblinGeometry());
+  const root = new THREE.Group();
+  // The skin flashes (hit, windup, rally); everything else is shared.
+  const skin = faceted(skinColor);
+  const hip = GOB.hipY;
+  const leg = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * GOB.legX, hip, 0);
+    root.add(pivot);
+    attach(pivot, [
+      { geo: g.shin, mat: skin, x: 0, y: -(hip / 2 - 0.06), z: 0 },
+      { geo: g.boot, mat: MAT.leather, x: 0, y: 0.075 - hip, z: 0.03 }
+    ]);
+    return pivot;
+  };
+  const legs: [THREE.Object3D, THREE.Object3D] = [leg(-1), leg(1)];
+
+  const torso = upperBody(root, hip, GOB.hunch);
+  attach(torso, [
+    { geo: g.belly, mat: skin, x: 0, y: 0.08, z: 0.05 },
+    { geo: g.vest, mat: MAT.leather, x: 0, y: 0.17, z: 0 },
+    { geo: g.belt, mat: MAT.darkLeather, x: 0, y: 0.02, z: 0 }
+  ]);
+
+  const head = new THREE.Group();
+  head.position.set(0, GOB.neckY, 0.06);
+  // The head comes up out of the hunch, so it looks ahead rather than at the floor.
+  head.rotation.x = -GOB.hunch * 0.7;
+  torso.add(head);
+  attach(head, [
+    { geo: g.skull, mat: skin, x: 0, y: 0.18, z: 0 },
+    { geo: g.jaw, mat: skin, x: 0, y: 0.06, z: 0.05 },
+    { geo: g.nose, mat: skin, x: 0, y: 0.15, z: 0.24 },
+    // Ears swept out and up, the goblin's whole silhouette.
+    { geo: g.ear, mat: skin, x: 0.36, y: 0.24, z: -0.03, ry: 0.35, rz: 0.3 },
+    { geo: g.ear, mat: skin, x: -0.36, y: 0.24, z: -0.03, ry: Math.PI - 0.35, rz: 0.3 },
+    // Eyes glow: the facing, and something to read in a dark room.
+    { geo: g.eye, mat: MAT.glow, x: -0.08, y: 0.21, z: 0.2 },
+    { geo: g.eye, mat: MAT.glow, x: 0.08, y: 0.21, z: 0.2 },
+    { geo: g.brow, mat: MAT.ink, x: -0.08, y: 0.25, z: 0.19, rz: -0.35 },
+    { geo: g.brow, mat: MAT.ink, x: 0.08, y: 0.25, z: 0.19, rz: 0.35 },
+    { geo: g.mouth, mat: MAT.ink, x: 0, y: 0.08, z: 0.15 }
+  ]);
+
+  const arm = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * GOB.shoulderX, GOB.shoulderY, 0.02);
+    torso.add(pivot);
+    attach(pivot, [
+      { geo: g.arm, mat: skin, x: 0, y: -0.15, z: 0 },
+      { geo: g.wrap, mat: MAT.leather, x: 0, y: -0.26, z: 0 },
+      { geo: g.hand, mat: skin, x: 0, y: -0.33, z: 0 }
+    ]);
+    return pivot;
+  };
+  const arms: [THREE.Object3D, THREE.Object3D] = [arm(-1), arm(1)];
+  const hand = new THREE.Group();
+  hand.position.set(0, -0.33, 0);
+  // The sword rides up out of the fist, as the reference holds it, not level with the floor.
+  hand.rotation.x = -0.8;
+  arms[1].add(hand);
+  attach(hand, [
+    { geo: g.grip, mat: MAT.darkLeather, x: 0, y: 0, z: 0.02 },
+    { geo: g.guard, mat: MAT.iron, x: 0, y: 0, z: 0.09 },
+    { geo: g.blade, mat: MAT.iron, x: 0, y: 0, z: 0.34 }
+  ]);
+  // The shield on the left forearm, turned to face forward and out.
+  const shield = new THREE.Group();
+  shield.position.set(-0.07, -0.2, 0.06);
+  shield.rotation.y = 0.9;
+  arms[0].add(shield);
+  attach(shield, [
+    { geo: g.rim, mat: MAT.iron, x: 0.005, y: 0, z: 0 },
+    { geo: g.shield, mat: MAT.leather, x: -0.01, y: 0, z: 0 },
+    { geo: g.boss, mat: MAT.brass, x: -0.05, y: 0, z: 0 }
+  ]);
+  const height = hip + (GOB.neckY + 0.4) * Math.cos(GOB.hunch);
+  return { root, legs, arms, hand, skin, hunch: GOB.hunch, height, torso, head, swingLift: 2.6 };
 }

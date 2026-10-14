@@ -2,6 +2,49 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 39, the art spike: the adventurer and the goblin rebuilt to the references
+
+**What changed**
+
+- `playerFigure` is now the base adventurer from `docs/art/reference-models/adventurer.png`: 1.8 m, a big blocky head (jaw, nose, ears, dark eyes and brows, brown hair with a swept quiff), broad iron shoulder pads, a tunic flaring to a skirt at mid-thigh with a belt, brass buckle and a bandolier front and back, dark sleeves, leather bracers, big gloves, dark trousers and chunky boots with a turned cuff. The party colour tints the tunic only. 38 parts, 564 triangles (budget 1,500).
+- `goblinFigure` is now the basic goblin from `goblin.png`: 1.1 m, hunched 0.4 rad with the head lifted out of the hunch, an oversized faceted head, two huge flat ears swept out and up, a drooping nose, glowing torch-orange eyes under angry brows, a leather vest over a pot belly, wrapped wrists, boots, a short iron sword carried point-up and a round oak shield with an iron rim and brass boss on the off arm. 29 parts, 480 triangles (budget 800). Its skin is now Grub green `#A5C83A` (the Warrens accent; the reference is yellow-green), and its windup colour lightens it like the other kinds.
+- Both are flat-shaded, one colour per face, with a lighter top baked into vertex colours (0.82 at the feet to 1 at the head), colours from the style guide's neutrals. Geometry is built once per kind and shared by every figure of it; only the tinted material is per figure. The Shieldbearer, Charger and Pack Leader are untouched (they keep `goblinShape`).
+- Animation, all in `poseFigure` by moving whole parts: an idle sway (a 3 s breath on the torso and arms, fading out as the walk comes in), the walk (the old stride plus a lean and a shoulder twist against the hips), the swing (the torso twists into it; the goblin's windup lifts the sword overhead, 2.6 rad), and a hit flinch (torso and head rock back). The goblin flinches while its hit flash shows; a player flinches for 220 ms when its drawn hp drops (`render.ts`, draw-only). Nothing allocated per frame.
+- `npm run turnaround` (`tests/turnaround.ts`, page `client/turnaround.html`, dev only: the build still has one entry): starts Vite on port 5179, renders each figure on a Bone backdrop under the game's lights from the front, side, back and the game's over-the-shoulder camera (`CAMERA`'s pitch, distance and shoulder, 50 degree field of view), in idle, mid-walk and mid-swing, with the reference crop on the left, and writes six PNGs to `docs/art/spike/` (committed). In a cloud session it needs `PW_CHROMIUM=/opt/pw-browsers/chromium`.
+- Tests: `tests/figures.e2e.ts` now checks the triangle budgets (visible meshes, so the held weapon counts); it, `camera`, `hit-feedback` and `village` e2e pass.
+
+**Learned**
+
+- The silhouette carries it: the goblin's ears and the adventurer's head and pads read at once in the turnarounds, and at the in-game distance (a figure about a fifth of the screen tall) the detail below that (buckle, brows, wraps) barely registers. Budget spent on shape beats budget spent on trim.
+- What a box-built figure cannot match is the reference's softness: rounded cheeks, the hair's tufts and the cloth folds. That is the line between "good enough to keep" and "hire".
+
+**Next**
+
+- Michael's one look at `docs/art/spike/*.png`: keep (an Artist agent joins and the other kinds follow) or hire (the freelancer commission goes ahead). The spike does not touch the other kinds, `shared/` or the server.
+- Phase 1 has no builder item left after this; the gate playtest is Michael's.
+
+## 2026-10-14: Session 38, the camera goes over the shoulder
+
+**What changed**
+
+- The camera sits low and close behind the player (Michael, 2026-10-13, "like RuneScape: Dragonwilds"), replacing Session 29's 35 degrees at 12 m. `CAMERA` in `sim.ts` holds every number: 14 degrees of pitch at 5.5 m, the look target at head height (1.6 m) and 0.55 m to the camera's right, so the player stands left of centre with the way ahead clear.
+- The player turns it. Left and Right arrows yaw it at 150 degrees a second, Up and Down tilt it at 75 a second between 5 and 45 degrees (Up raises the eye to look down more, as RuneScape's arrows do), and the right stick does both past a 0.2 deadzone (`Input.look`, `turnCamera`). The arrows no longer move the player: WASD and the left stick are the only movement, still camera-relative through `cameraRelativeMove`. The camera turn never goes in an `InputFrame`, so the server and the replay are unchanged.
+- The auto-turn toward the fight is gone (`fightYaw` deleted). In its place, after 1.2 s with no camera input, the camera swings in behind the player's drawn travel (`swingTarget`), at most 45 degrees a second past an 8 degree deadband, and only when the travel is faster than 1.5 m/s and within 75 degrees of the view: the move keys are camera-relative, so swinging behind a strafe or a backpedal would wheel the player round in a circle. While the bow's lock is held the camera keeps the locked enemy within 15 degrees of straight ahead instead (`lockYaw`, `LOCK_TUNING`). Reduced motion turns both off; the player's own turning stays.
+- Walls pull the eye in. `clearDistance` casts the head-to-eye segment through every wall as a box from the ground to its height, and every village roof as a slab, and stops the eye 0.3 m short of the first one, never closer than 0.9 m; it comes in at once and eases back out over 350 ms (`easeDistance`) so walking past a pillar does not pump the view. The shoulder offset shrinks with it, so the eye is never in a wall. The pillar fade stays for what the shoulder offset leaves across the body.
+- Floor telegraphs got bright rims (a 0.14 m band at the windup wedge's far edge, strips down both sides of the Charger's lane): at 14 degrees the fills flatten to slivers, the rims still read. Teammates' name tags already draw through walls (`depthTest: false`), so a teammate behind a wall stays findable; the local player's own tag is now hidden, since at this distance it hung in the middle of the view.
+- HUD hint: "WASD move, arrows camera" and "Gamepad: sticks". README controls updated.
+- Tests. `shared/src/camera.test.ts` rewritten (10): the pitch and distance sit in the item's ranges and the look target at head height; Left turns the view left, Up raises the eye, the tilt clamps at 5 and 45; the swing goes behind forward travel and holds for standing, strafing and backing up; it never snaps and rests at the deadband's edge; the lock framing; the pull-in short of a 3 m wall, not for a 1.1 m one the ray climbs over, the minimum when pressed against a wall, a roof overhead; in at once and eased out; the pillar fade. `npm run check` 208. `tests/camera.e2e.ts` rewritten (3): the arrows turn and tilt the camera and leave the player within 0.2 m, then S walks toward the eye at the turned yaw; W+D swings the camera; with reduced motion W+D leaves it at 0 and Right still turns it. e2e 18/18 twice; `combo` missed once in one earlier full-suite run and passed in the five runs since. `npm run test:net` all fifteen steps (nothing in `server/` or `net.ts` changed).
+
+**Learned**
+
+- With camera-relative movement, "swing behind the travel" and "the player strafes" fight each other: any swing during a strafe rotates the strafe with it. A window on the travel's angle to the view is the cheap answer; whether 75 degrees is right is for a playtest.
+- At 14 degrees the low walls (1.1 m) almost never block the head ray, the pillars (1.8 m) and the village's walls do; the pull-in mostly happens in the village and against the Warrens' pillars.
+
+**Next**
+
+- The optional mouse look (drag or pointer lock) the item allows is not built; it is never required (CLAUDE.md rule 4) and waits for someone to ask. The swing's window, speed and delay, and the arrows' rates, are first guesses for the gate playtest to judge.
+- Phase 1 has no builder item left; the gate playtest is Michael's.
+
 ## 2026-10-13: local session, art direction style guide draft
 
 **What changed**

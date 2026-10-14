@@ -4,7 +4,6 @@ import {
   ENEMY_KINDS,
   WEAPON_CLASSES,
   abilityInSlot,
-  fightYaw,
   slotsFor,
   weaponClassOf,
   gearName,
@@ -183,9 +182,9 @@ function startLoops() {
   requestAnimationFrame(frame);
 }
 
+const lookNow = { x: 0, y: 0 };
+
 function draw(dt: number) {
-  const fightMates: Pose[] = [];
-  const fightFoes: Pose[] = [];
   const now = net.predictedTime;
   const remoteNow = net.remoteNow();
   view.setLevel(net.level);
@@ -197,7 +196,7 @@ function draw(dt: number) {
   }
 
   // Me.
-  view.ensurePlayer(net.sessionId, net.myName || name, net.myColor);
+  view.ensurePlayer(net.sessionId, net.myName || name, net.myColor, true);
   const myPose = net.myPose(dt);
   const me = net.me;
   view.updatePlayer(net.sessionId, myPose, {
@@ -222,7 +221,6 @@ function draw(dt: number) {
     view.ensurePlayer(r.id, r.name, r.color);
     const pose = net.remotePose(r);
     if (!pose) continue;
-    if (r.hp > 0) fightMates.push(pose);
     view.updatePlayer(r.id, pose, {
       hp: r.hp,
       attacking: drawT < r.attackUntil,
@@ -249,7 +247,6 @@ function draw(dt: number) {
     view.ensureEnemy(e.id, e.kind);
     const ePose = net.remotePose(e);
     if (!ePose) continue;
-    if (e.phase !== "idle" && e.phase !== "dead") fightFoes.push(ePose);
     const def = ENEMY_KINDS[e.kind];
     const windup = e.phase === "windup" ? clamp01(1 - (e.phaseUntil - drawT) / def.windupMs) : 0;
     const aim = e.phase === "aim" && def.charge ? clamp01(1 - (e.phaseUntil - drawT) / def.charge.aimMs) : 0;
@@ -257,8 +254,8 @@ function draw(dt: number) {
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
-  // The camera turns toward the fight: the awake enemies and the living teammates near me.
-  view.follow(myPose.x, myPose.z, dt, fightYaw(myPose, fightFoes, fightMates));
+  // The camera: the player's own turn, else the bow's lock framed, else a swing in behind the travel.
+  view.follow(myPose.x, myPose.z, dt, input.look(lookNow), lockedPose());
 
   view.render();
 
@@ -342,6 +339,8 @@ function draw(dt: number) {
     tick: net.lastServerTick,
     nudges: view.nudges,
     camYaw: view.yaw,
+    camPitch: view.pitchDeg,
+    camDistance: view.camDistance,
     fadedWalls: view.fadedWalls(),
     figures: () => view.figureStats(),
     myHits: hitCount,
@@ -442,6 +441,14 @@ function capital(s: string): string {
  * nearest living enemy in its cone with a clear line (faint), which is the server's auto pick
  * as near as the interpolated poses can tell. Presentation only; the server decides the shot.
  */
+/** The bow's held lock, where it is drawn; null without one. The camera keeps it framed. */
+function lockedPose(): Pose | null {
+  const me = net.me;
+  if (!me.lockId || weaponClassOf(me.weapon) !== "bow" || isDead(me) || isDowned(me)) return null;
+  const v = net.enemies.get(me.lockId);
+  return v && v.phase !== "dead" ? net.remotePose(v) : null;
+}
+
 function markBowTarget(from: Pose) {
   const me = net.me;
   if (weaponClassOf(me.weapon) !== "bow" || isDead(me) || isDowned(me)) return view.setTargetMarker(null, false);

@@ -85,14 +85,14 @@ export class Hud {
         ${[1, 2, 3].map((k) => `<div class="hud-slot" data-slot="${k}"><b>${k}</b><span class="hud-slot-name"></span><span class="hud-slot-cd"></span></div>`).join("")}
       </div>
       <div class="hud-panel hud-bottom-left hud-controls">
-        <span><b>WASD</b> move</span>
+        <span><b>WASD</b> move, <b>arrows</b> camera</span>
         <span><b>J</b> or <b>Space</b> attack</span>
         <span><b>Shift</b> dodge</span>
         <span><b>1 2 3</b> abilities</span>
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
         <span><b>E</b> talk, revive draught</span>
         <span><b>Tab</b> bow lock-on</span>
-        <span>Gamepad: stick, X, A; Y B RB; LB; LT block</span>
+        <span>Gamepad: sticks, X, A; Y B RB; LB; LT block</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;
