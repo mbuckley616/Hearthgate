@@ -18,7 +18,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- The builder takes the over-the-shoulder camera item.
+- The builder takes the over-the-shoulder camera item, then the art spike (decisions.md, 2026-10-13: an agent rebuilds the adventurer and the goblin to match `docs/art/reference-models/` and renders turnarounds beside them for Michael to judge, before any freelancer is hired).
 - Michael picked the three reference models (the base adventurer, the basic goblin, the regional building; `decisions.md`). Next for him: the character commission and the asset-pack purchase. A sixth sheet could cover what the five missed: the rest room choice, combo, downed and revive, the Guide, the trade window, a corner HUD with three slots.
 
 ## 2026-10-13: Session 37, a refused dodge eases back instead of popping

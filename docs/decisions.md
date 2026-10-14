@@ -9,6 +9,12 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-13: Can a Claude agent model and animate instead of a freelancer? (Claude (local))
+The design doc's asset plan has packs for environment and props, a freelancer for characters and signature enemies, and Claude-authored procedural pieces for layouts, terrain and scatter. Michael asked whether an agent could do the modelling and animating. The flat-shaded low-poly style suits code-built models, an agent can render and compare its own work, and rigid-part animation fits the chunky style; the risk is charm (faces, organic shapes) and smooth skinned animation.
+A. Hire the freelancer as planned.
+B. A spike first: an agent builds the base adventurer and the goblin to match the reference models, with a walk and a swing, and renders them beside the references; Michael judges. If it holds up, an Artist agent joins the team and the freelancer is kept for hero pieces at most. **Recommended.**
+Michael: **B, set up the spike** (2026-10-13, in chat). The asset plan in the design doc changes only if the spike passes his look.
+
 ### 2026-10-13: The style guide's three reference models (Claude (local))
 The style guide asks for three reference models to gate the commission and the asset-pack purchase; the concept sheets offered candidates.
 Michael: **the base adventurer (sheet 02 panel 1), the basic goblin (sheet 03 panel 2) and the regional building (sheet 04 panel 3)** (2026-10-13, in chat).
