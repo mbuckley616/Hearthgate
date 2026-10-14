@@ -20,6 +20,9 @@ type Body = (typeof BODIES)[number];
 const VILLAGER_BODIES: readonly Body[] = ["Barbarian", "Mage", "Ranger", "Rogue"];
 const WEAPON_MODELS = ["sword_1handed", "sword_2handed", "axe_2handed", "bow_withString"] as const;
 export type WeaponModel = (typeof WEAPON_MODELS)[number];
+/** The Dungeon Pack pieces the Warrens are dressed with (dungeon.ts); all share one texture. */
+const KIT_PIECES = ["wall", "wall_endcap", "floor_tile_large", "torch_mounted", "pillar", "barrel_large", "crates_stacked"] as const;
+export type KitPiece = (typeof KIT_PIECES)[number];
 /** The Rig_Medium clip files the clips below come from; the pack's other files are not loaded. */
 const CLIP_FILES = ["General", "MovementBasic", "MovementAdvanced", "CombatMelee", "CombatRanged"] as const;
 
@@ -69,6 +72,10 @@ interface Loaded {
   clips: Map<string, THREE.AnimationClip>;
   /** Rig units to metres, from the Knight's bind-pose height. */
   scale: number;
+  /** Each kit piece's geometry, its node transforms baked in. */
+  kit: Record<KitPiece, THREE.BufferGeometry>;
+  /** The one material every kit piece draws with: the pack's `dungeon_texture.png`. */
+  kitMaterial: THREE.MeshStandardMaterial;
 }
 
 let loaded: Loaded | null = null;
@@ -91,11 +98,26 @@ export function clipNames(): string[] {
 
 async function load() {
   const loader = new GLTFLoader();
-  const [bodies, weapons, clipFiles] = await Promise.all([
+  const [bodies, weapons, clipFiles, kitFiles] = await Promise.all([
     Promise.all(BODIES.map((b) => loader.loadAsync(`${BASE}adventurers/characters/${b}.glb`))),
     Promise.all(WEAPON_MODELS.map((w) => loader.loadAsync(`${BASE}adventurers/weapons/${w}.gltf`))),
-    Promise.all(CLIP_FILES.map((f) => loader.loadAsync(`${BASE}animations/Rig_Medium_${f}.glb`)))
+    Promise.all(CLIP_FILES.map((f) => loader.loadAsync(`${BASE}animations/Rig_Medium_${f}.glb`))),
+    Promise.all(KIT_PIECES.map((k) => loader.loadAsync(`${BASE}dungeon/${k}.gltf`)))
   ]);
+  let kitMaterial: THREE.MeshStandardMaterial | null = null;
+  const kit = {} as Record<KitPiece, THREE.BufferGeometry>;
+  KIT_PIECES.forEach((k, i) => {
+    const scene = kitFiles[i].scene;
+    scene.updateMatrixWorld(true);
+    let mesh: THREE.Mesh | null = null;
+    scene.traverse((o) => {
+      if (!mesh && (o as THREE.Mesh).isMesh) mesh = o as THREE.Mesh;
+    });
+    if (!mesh) throw new Error(`KayKit piece ${k} has no mesh`);
+    const m = mesh as THREE.Mesh;
+    kit[k] = m.geometry.clone().applyMatrix4(m.matrixWorld);
+    kitMaterial ??= m.material as THREE.MeshStandardMaterial;
+  });
   const clips = new Map<string, THREE.AnimationClip>();
   for (const file of clipFiles) for (const clip of file.animations) clips.set(clip.name, rootInPlace(clip));
   for (const key of Object.keys(CLIPS) as ClipKey[]) if (!clips.has(CLIPS[key])) throw new Error(`KayKit clip ${CLIPS[key]} is missing`);
@@ -106,7 +128,9 @@ async function load() {
     bodies: Object.fromEntries(BODIES.map((b, i) => [b, bodies[i].scene])) as unknown as Record<Body, THREE.Object3D>,
     weapons: Object.fromEntries(WEAPON_MODELS.map((w, i) => [w, weapons[i].scene])) as unknown as Record<WeaponModel, THREE.Object3D>,
     clips,
-    scale
+    scale,
+    kit,
+    kitMaterial: kitMaterial!
   };
 }
 
@@ -208,6 +232,12 @@ export function weaponModelFor(cls: WeaponClass, type: string): WeaponModel {
   if (cls === "bow") return "bow_withString";
   if (cls === "twoHand") return type === "claymore" ? "sword_2handed" : "axe_2handed";
   return "sword_1handed";
+}
+
+/** A Dungeon Pack piece's geometry and the kit's one shared material. */
+export function kitPiece(k: KitPiece): { geometry: THREE.BufferGeometry; material: THREE.MeshStandardMaterial } {
+  if (!loaded) throw new Error("loadModels() has not finished");
+  return { geometry: loaded.kit[k], material: loaded.kitMaterial };
 }
 
 /** A fresh copy of a pack weapon with its own materials, so a per-player tint never leaks. */

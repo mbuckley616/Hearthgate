@@ -346,6 +346,7 @@ function draw(dt: number) {
     camDistance: view.camDistance,
     fadedWalls: view.fadedWalls(),
     figures: () => view.figureStats(),
+    dressing: view.dressing?.counts ?? null,
     myHits: hitCount,
     callouts: view.calloutCount,
     lastCallout: view.lastCallout

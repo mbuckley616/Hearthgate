@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-14: Session 43, the Warrens in the KayKit dungeon kit
+
+**What changed**
+
+- `client/src/dungeon.ts` dresses the Warrens (only them: the yard, the cellar, the field and the village stay greybox) from the Dungeon Pack at 0.8 m a kit unit, so a kit wall's 1-unit thickness is the sim's 0.8 m wall and it stands 3.2 m tall. Every long wall rectangle is tiled with `wall` pieces stretched along its length to fill it exactly, with a `wall_endcap` inside each open end (the six doorway sides); the level's edge, a collider already, gets the same walls just outside its bounds in place of the low greybox rim. The floor is 169 `floor_tile_large` tiles. The three cover pillars hold a kit `pillar`, `crates_stacked` and `barrel_large`, each scaled to sit inside its 1.4 m rectangle. 44 `torch_mounted` every 6 m along the room faces, and the torch nearest the middle of each room and of the hall carries a point light (4 in all, warm, 9 m, no shadows). Repeated pieces are one `InstancedMesh` per wall rectangle (so the camera's fade can swap one wall's material), the floor and the torches one each; everything draws with the pack's one material on `dungeon_texture.png`. `level.ts` and collision are untouched.
+- The camera: each dressed rectangle goes into the pull-in at the kit's height (3.2 m, a prop at its own), so the eye stops in front of the tall walls (2.7 m from the head with a wall behind it, in a check here); the fade swaps a dressed wall to a see-through copy of the kit material.
+- `models.ts` loads the seven pieces with the figures, before anyone joins. `__hg.dressing` gives the instance counts; `village.e2e` checks the Warrens arrive dressed with at most four lit torches.
+- Browser suite 18/18, `npm run check` 208, build clean.
+
+**Learned**
+
+- Frame time on the Warrens, one headless page here at 1280 x 720 (software GL, so only the ratios mean anything): 117 ms before, 450 ms with eight torch lights, 260 ms with none, 325 ms with the four kept. Every point light is paid on every lit pixel; the walls and floor (about 85,000 triangles, 50,000 of them in the shadow pass) cost the rest. The critic's lab pages will give the real number.
+- Bytes: the seven pieces and the texture add 0.23 MB, so the client loads 6.6 MB of models.
+- The kit's `wall_doorway`, `wall_corner` and chests were left out: the doorway piece is solid either side of a narrower opening than the sim's 3 m gaps, a corner and a chest reach outside the rectangles, and nothing in sight may be other than a collider. The end caps fit inside.
+
+**Next**
+
+- The critic's frame time on the Warrens; if it costs, the first cuts are two lit torches, not four, and no shadow from the floor-facing torches.
+- Michael's pick of the village kit from Session 42's shots.
+
 ## 2026-10-14: Session 42, the Hexagon tavern scale test
 
 **What changed**

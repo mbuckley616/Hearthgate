@@ -89,6 +89,11 @@ test("the village: a villager answers E, and the portal hands the party to the W
   expect(after.handoffs).toBe(1);
   expect(Object.keys(after.enemies)).toHaveLength(9);
   expect(after.snaps).toBe(0);
+  // The Warrens wear the KayKit dungeon kit (the village stays greybox): walls on every rectangle,
+  // end caps at the doorways, and no more than one lit torch a room plus the hall.
+  expect(after.dressing?.wall).toBeGreaterThan(40);
+  expect(after.dressing?.wall_endcap).toBeGreaterThan(0);
+  expect(after.dressing?.torchLights).toBeLessThanOrEqual(4);
   await expect(page.locator("#hud-status")).toBeHidden();
   await expect(page.locator("#hud-party")).toHaveAttribute("data-players", "1");
   // Still in control after the move: a step moves us on the new server clock.

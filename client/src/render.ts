@@ -31,6 +31,7 @@ import {
 } from "@hearthgate/shared";
 import type { Pose } from "./net";
 import { enemyFigure, newWalkState, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
+import { dressDungeon, type Dressing } from "./dungeon";
 import { knightFigure, villagerFigure, weaponMesh, weaponModelFor, type RigState, type WeaponModel } from "./models";
 
 export interface PlayerVisual {
@@ -417,7 +418,9 @@ export class View {
   /** A wall between the eye and the player swaps to this, so the player is never lost behind it. */
   private readonly wallFadedMat = new THREE.MeshStandardMaterial({ color: PALETTE.wall, roughness: 0.95, flatShading: true, transparent: true, opacity: 0.28, depthWrite: false });
   /** The walls the fade checks: their rectangle and height, beside the mesh. */
-  private wallMeshes: { mesh: THREE.Mesh; rect: WallRect; h: number }[] = [];
+  private wallMeshes: { meshes: THREE.Mesh[]; rect: WallRect; h: number; mat: THREE.Material; faded: THREE.Material }[] = [];
+  /** The kit-dressed level's pieces (dungeon.ts), or null on a greybox level. */
+  dressing: Dressing | null = null;
   /** What the eye may not pass through: every wall and every roof (camera.ts clearDistance). */
   private camWalls: CameraWall[] = [];
   private camTarget = new THREE.Vector3();
@@ -530,10 +533,12 @@ export class View {
     this.scene.add(meadow);
   }
 
-  /** The level's ground, its grid and the low stone wall at its edge, sized to its bounds. */
-  private buildGround(level: Level) {
+  /** The level's ground, its grid and the low stone wall at its edge, sized to its bounds; a dressed level brings its own floor and edge. */
+  private buildGround(level: Level, dressed: boolean) {
     const w = level.halfW * 2;
     const d = level.halfD * 2;
+    this.fitShadow(level);
+    if (dressed) return;
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: PALETTE.ground, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -558,6 +563,9 @@ export class View {
       wall.receiveShadow = true;
       this.walls.add(wall);
     }
+  }
+
+  private fitShadow(level: Level) {
     const s = this.sun.shadow.camera;
     s.left = -level.halfW - 2;
     s.right = level.halfW + 2;
@@ -579,8 +587,17 @@ export class View {
     this.walls.clear();
     this.wallMeshes = [];
     this.camWalls = [];
-    this.buildGround(level);
-    for (const w of level.walls) {
+    // The Warrens wear the KayKit dungeon kit; the other floors and the village stay greybox.
+    this.dressing = level.id === "warrens" ? dressDungeon(level) : null;
+    this.buildGround(level, this.dressing !== null);
+    if (this.dressing) {
+      this.walls.add(this.dressing.group);
+      for (const dw of this.dressing.walls) {
+        this.wallMeshes.push({ meshes: dw.meshes, rect: dw.rect, h: dw.h, mat: this.dressing.material, faded: this.dressing.faded });
+        this.camWalls.push({ rect: dw.rect, h: dw.h });
+      }
+    }
+    for (const w of this.dressing ? [] : level.walls) {
       const pillar = w.hw < 1 && w.hd < 1;
       const h = w.h ?? (pillar ? 1.8 : 1.1);
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w.hw * 2, h, w.hd * 2), this.wallMat);
@@ -588,7 +605,7 @@ export class View {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.walls.add(mesh);
-      this.wallMeshes.push({ mesh, rect: w, h });
+      this.wallMeshes.push({ meshes: [mesh], rect: w, h, mat: this.wallMat, faded: this.wallFadedMat });
       this.camWalls.push({ rect: w, h });
     }
     const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9, flatShading: true });
@@ -831,8 +848,10 @@ export class View {
     this.fadeAim.z = z;
     for (const w of this.wallMeshes) {
       const hides = wallHides(this.fadeEye, this.fadeAim, w.rect, w.h);
-      w.mesh.material = hides ? this.wallFadedMat : this.wallMat;
-      w.mesh.castShadow = !hides;
+      for (const m of w.meshes) {
+        m.material = hides ? w.faded : w.mat;
+        m.castShadow = !hides;
+      }
     }
   }
 
@@ -867,7 +886,7 @@ export class View {
   /** Walls faded this frame; read by the e2e checks through the debug handle. */
   fadedWalls(): number {
     let n = 0;
-    for (const w of this.wallMeshes) if (w.mesh.material === this.wallFadedMat) n++;
+    for (const w of this.wallMeshes) if (w.meshes.length && w.meshes[0].material === w.faded) n++;
     return n;
   }
 
