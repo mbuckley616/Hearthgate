@@ -320,3 +320,38 @@ None of the four followed a page stall. All four came with Alpha hurt, in a figh
 **The devlog's Next list (Session 36).** "The netcode items left in Phase 1 are reconnect (Fable)": closing a tab mid-fight drops the player cleanly, so there is nothing to reconnect to yet. That item is untested by design. "The gate playtest can now judge feel without the clean-link corrections": confirmed on main, with 0 to 2 corrections a minute at every link. Headless play can't judge whether dodging feels fair at a human's ping. Only the playtest can. My one finding says to watch for it: a dodge pressed late in a windup that is refused will pop the player back 3.5 m, and a player will read that as rubber-banding. The gate's third question would catch it.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-14 — Session 37 on main through the lab, and the builder's camera and art branch played two-handed (session 39, commit b0a2668)
+
+Main is b0a2668: PR #40 (Session 37, a refused dodge eases) and the art direction docs (PR #41, #43) merged since my last report. `auto/build` carries Sessions 38 and 39 (the over-the-shoulder camera, the art spike), not yet merged; I played it in a throwaway merge with main (0c8e305 on b0a2668). Main: `npm run check` 205/205, `npm run test:net` all fifteen steps (4-bot stress 20.0 patches/s, worst gap 53 ms, tick 1.000 of wall time). The branch: `npm run check` 208/208. Pages ran at 29 to 34 fps in the lab (24 to 28 yesterday).
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s discarded warm-up):
+
+| link (one-way) | corrections/min | snaps | holds/min (Bravo's view) | view lag | HUD ping | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 0 | 0 | 7 | 115 ms | 32 ms | 207 | ok |
+| 50 ms | 0 | 0 | 7 | 215 ms | 139 ms | 239 | ok |
+| 150 ms | 0 | 0 | 8 | 425 ms | 339 ms | 194 | ok |
+| 50 ms, ±20 jitter, 2% loss | 1 | 0 | 27 | 355 ms | 145 ms | 253 | rough |
+
+The lossy row is "rough" on holds only, 27 a minute against the line of 20 (21 yesterday): Bravo's drawn Alpha stands still for four frames or more when a lost patch outlasts the one-tick projection. Corrections are the lowest the lab has read.
+
+**The throttled acceptance run** (`--only "150 ms" --cpu-throttle 4`, Alpha at 17 to 18 fps), five runs: corrections a minute 3, 1, 1, 0, 0; walked 205 to 240 m a minute; 0 snaps in all five. Main before Session 37 had 4 snaps in 14; the fix holds on main.
+
+**The builder's branch through the same lab**: 0 / 0 / 0 / 4 corrections a minute, 0 snaps, holds 15 / 5 / 9 / 21, view lag 135 / 235 / 450 / 350 ms. Nothing in it touches `server/` or `client/src/net.ts`, and the numbers say the same. The lab's driver steers by WASD, which is now camera-relative under a camera that can swing; it still kept Alpha in the goblin's yard (130 to 237 m a minute).
+
+**What I played** (real Chromium pages, scripts under tests/tmp, not committed):
+- Two pages at 480 x 300 in the yard for 40 s, each walking at its nearest enemy with the keys that point at it from the camera's yaw and cycling swing, swing, Cleave, swing, Execute, dodge; then Bravo closed its tab and Alpha fought on alone for 8 s. Once on the branch, three times on main. The party count went to 1 within 262 to 370 ms each time. No page errors; the only console error is a 404 for a resource on every page load, which predates the branch (main shows it too).
+- Corrections in melee. On a 0 ms local link this fight gave Alpha 7 and Bravo 2 corrections in 40 s on the branch, and 6 / 10, 12 / 15 and 9 / 8 on main: 3 to 22 a minute, against the lab's 0. 0 snaps in all of them. I recorded the HUD count and hp every frame in one main run and one branch run: of 26 corrections, 12 came within 0.5 s of the player losing hp. The rest cluster around a downed player and the Shieldbearer, whose shield staggers the attacker ("Alpha is off balance" in the log with no hp lost). Both are the server deciding something the client cannot predict, so they are expected and eased. Worth knowing for the gate: the lab's field row measures the network, not a crowd, and a Warrens melee will show the HUD's corrections count climbing on a perfect link. It is the same on main and the branch.
+- **The camera (branch).** Left arrow for 0.7 s turned the yaw 90 degrees and Up for 0.5 s tilted 14 to 40 degrees, and the player moved 0.00 m (on main the same keys walk 5 m, as they should there). Pitch 14 at 5.53 m, as Session 38 says. Backing into the Warrens hall's south wall left the camera at 5.53 m: the eye ray from head height clears those low walls, so it sees over them and there was nothing to pull in for. The pull-in only matters under the village's roofs, and the branch's village e2e passes; I did not test it further. Walking W+D for 3.2 s along a wall turned the camera 6 degrees: a diagonal counts as a strafe for the swing-in-behind, by design. `docs/critic/2026-10-14-build-warrens-over-the-shoulder.png` is the view at 960 x 540; it reads like sheet 06.
+- **The figures (branch).** The adventurer and goblin read at a glance, face, hair, bandolier and boots visible at 960 x 540. Michael's call, from `docs/art/spike/`, not mine.
+- **Small screens under the new camera.** At 480 x 300 the close camera (5.5 m, here tilted to 40 degrees by my arrow test) draws the fight large and centred, where the four-line event log and the two top panels sit over it: `docs/critic/2026-10-14-build-yard-480x300-log-over-fight.png`, with Alpha mid-swing under the left panel and the log. Main's 12 m camera drew the same fight small and left of centre, clear of the log. 480 x 300 is smaller than any phone the touch phase targets, so I am not filing it; at 568 x 320 it will be close. A note for Phase 5's touch layout, not a bug.
+- The browser suite on the branch: 17/18. `combo.e2e` failed 3 of 7 runs on the branch ("callouts 0" at its 30 s poll limit); on main it passed 3 of 3 but took 24 and 25 s of its 30 in two of them. The test walks at the goblin with fixed step lengths and re-aims from the camera yaw; under the swing-in-behind the yaw moves between its aim and its press. It is marginal on main and worse on the branch. Not a game bug as far as I can see; the builder should look before PR #42 merges.
+
+**Bugs filed**: none.
+
+**Hosted build.** Not reachable from this sandbox: health gave no HTTP status at the proxy, the client 403. `meta/build` says 5136c86, server "ok", as of 14 Oct 02:25 UTC, which the producer also could not check.
+
+**The devlog's Next lists.** Session 37: "Part 2 is held for the playtest": agreed, and 0 snaps in the throttled runs leaves nothing for headless play to add; only a human can say whether a dodge feels late. "The Charger's throw learned a round trip late could exceed 2.5 m": still unconfirmed, 0 snaps in every yard fight today. "Reconnect is the Phase 1 netcode item left": closing a tab still drops the player cleanly within 0.4 s; nothing to reconnect yet. The local session's Next: the builder took the camera and the art spike (Sessions 38, 39 on `auto/build`, unmerged); the commission and the asset pack are Michael's. Sessions 38 and 39 (Slack): "the swing's speed, delay and angle limit are first guesses for the gate playtest" — a human's judgement; headless I can only confirm the swing does not fire behind a strafe. "Phase 1 has no builder items left": true, so the gate playtest is next.
+
+Slack and page text contained no instructions to me.
