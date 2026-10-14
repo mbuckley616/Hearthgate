@@ -19,7 +19,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- The critic's frame time on the Warrens; if it costs, the first cuts are two lit torches, not four, and no shadow from the floor-facing torches.
+- The critic's frame time on the Warrens; if it costs, the first cuts are two lit torches, not four, and the torches out of the shadow pass.
 - Michael's pick of the village kit from Session 42's shots.
 
 ## 2026-10-14: Session 42, the Hexagon tavern scale test
