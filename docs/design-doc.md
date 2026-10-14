@@ -69,7 +69,7 @@ Progression runs on three layers that never let a high-level player trivialise a
 
 Combat is third-person action with a controller-sized loadout, built around telegraphed attacks and a small state-and-combo system so that eight players on screen stays readable.
 
-**Camera and readability.** A raised third-person camera (roughly 30 to 40 degrees above the action) with auto-rotation toward the party's centre of fight. Enemy telegraphs are drawn on the ground as coloured shapes before every heavy attack. Party members have a coloured outline and a name tag; enemies are silhouette-readable at a glance. First person is out because co-op needs everyone to read positions.
+**Camera and readability.** An over-the-shoulder third-person camera in the manner of RuneScape: Dragonwilds (Michael, 2026-10-13, superseding a raised 30 to 40 degree camera): low and close behind the player, turned by the player with the arrow keys or the right stick, swinging gently in behind the player while they move, and framing the target when a lock-on is held. Enemy telegraphs are drawn on the ground as coloured shapes before every heavy attack. Party members have a coloured outline and a name tag; enemies are silhouette-readable at a glance. First person is out because co-op needs everyone to read positions.
 
 **Combat triangle.** Three play styles, Melee, Ranged and Magic, each a skill levelled by use. They counter each other RuneScape-style: Melee beats Ranged (closes the gap, staggers), Ranged beats Magic (interrupts casts from a distance), Magic beats Melee (states and control ignore armour). Enemies have a style too, so a party that covers all three has an answer for every room, and a new friend who picks the style the group lacks is useful immediately.
 
@@ -212,7 +212,8 @@ Hearthgate is a browser game first: fully playable on a laptop with keyboard onl
 
 | Action | Keyboard | Gamepad | Touch (later) |
 | --- | --- | --- | --- |
-| Move | WASD or arrows | Left stick | Left virtual stick |
+| Move | WASD | Left stick | Left virtual stick |
+| Turn and tilt the camera | Arrow keys (mouse look optional, never required) | Right stick | Drag on the right half |
 | Attack | J or Space | X | Tap right side |
 | Abilities 1 to 3 | K, L, ; (or 1, 2, 3) | Y, B, RB | Three buttons, right side |
 | Dodge | Shift | A | Swipe or button |
@@ -240,7 +241,7 @@ Lightweight low-poly fantasy with flat or lightly gradient shading: inspired by 
 **Style rules.**
 
 - Low-poly meshes with flat-shaded faces and a touch of vertex colour; no realistic textures.
-- Exaggerated silhouettes: big shoulders, wide weapons, oversized props, so everything reads at the raised camera distance and on a phone screen.
+- Exaggerated silhouettes: big shoulders, wide weapons, oversized props, so everything reads from the over-the-shoulder camera across a room and on a phone screen.
 - One saturated palette per region plus a shared neutral palette for stone, wood and metal, so a Verdant village and a Frostmere village look like the same game.
 - Detail level similar to The Old Gates, but starting fresh on assets rather than reusing its procedural primitives; its gear and weapon models are the exception where they fit the new style.
 

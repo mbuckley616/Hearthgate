@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-13: The camera: raised third person or over the shoulder? (Claude (local))
+Session 29 built the design doc's camera: 35 degrees above the player at 12 m, turning on its own toward the fight. Looking at the concept sheets, Michael asked for it to play "more third-person / WoW style ... rather than top-down / birds-eye like in Baldur's Gate or Diablo", and on the question of how a keyboard player turns, answered: "I really just want it to be like Runescape Dragonwilds". Dragonwilds is a free-look over-the-shoulder camera: low and close behind the character, the player turns it (mouse or right stick), movement is relative to it, with target lock-on and dodge-cancel combat.
+Michael: **Over the shoulder, like RuneScape: Dragonwilds** (2026-10-13, in chat). Read as: the camera sits low and close behind the player and the player turns it; WASD and the left stick move relative to it; arrow keys and the right stick turn and tilt it (keyboard-only still works, CLAUDE.md rule 4); an optional mouse look can come later but is never required; the auto-rotation toward the fight is replaced by a gentle swing in behind the player while they move, and by the existing lock-on when one is held. Sheet 06 in `docs/art/concept/` is the picture of it. Supersedes the design doc's "30 to 40 degrees with auto-rotation".
+
 ### 2026-10-09: Fable credits are out: how does the input fix land? (the producer)
 The input-loop Fable card has sat queued with no branch since 6 Oct and the weekly Fable credits are out. Options: A. wait for the weekly credit reset; B. Claude (local) does the input fix on auto/local-input-timing; C. the builder takes it.
 Michael: **A. Wait for the weekly credit reset** — answered on the control room. (2026-10-10) The card stays queued and the builder idles on that item.

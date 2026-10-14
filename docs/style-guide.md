@@ -8,7 +8,7 @@ Draft for Michael to edit. Drawn from the design doc's Art and audio direction, 
 
 ### The one-line pitch
 
-Cosy low-poly fantasy: a warm, sunlit village you own, and portals into torch-lit dungeons that are spooky-fun, never scary. Bright, chunky and readable from a raised camera on a laptop or a phone.
+Cosy low-poly fantasy: a warm, sunlit village you own, and portals into torch-lit dungeons that are spooky-fun, never scary. Bright, chunky and readable from an over-the-shoulder camera on a laptop or a phone.
 
 ### The biggest difference from The Old Gates
 
@@ -17,7 +17,7 @@ The Old Gates boards are painterly and near-realistic: textured cloth, brushed m
 ### Style rules
 
 1. **Low-poly, flat-shaded.** Visible facets, one colour per face, a little vertex-colour gradient (lighter at the top of a mesh, darker at the base). No photographic or hand-painted textures, no normal-map detail, no fur strands, no wood grain.
-2. **Exaggerated silhouettes.** Big shoulders, big hands, wide weapons, oversized props (a mug the size of a head, a key the size of a forearm). Everything must read as a shape from 15 metres up at a 35-degree angle.
+2. **Exaggerated silhouettes.** Big shoulders, big hands, wide weapons, oversized props (a mug the size of a head, a key the size of a forearm). Everything must read as a shape from across a dungeon room, seen from just behind the player's shoulder.
 3. **Chunky proportions.** Characters about 4.5 heads tall: big head and hands, short legs, broad torso. Friendly, not chibi, not heroic-realistic.
 4. **Shared neutrals, regional colour.** Stone, wood and metal use the same neutral palette everywhere; each region adds one saturated palette on top. A Verdant village and a Frostmere village must look like the same game.
 5. **Two moods.** Village and overworld: warm sun, soft shadows, long sightlines, high saturation, calm. Dungeons: darker and cooler, torchlight, blue-green shadows, low fog, one accent colour per dungeon type. Spooky-fun like a Saturday-morning cartoon, never gore, never horror.
@@ -27,7 +27,7 @@ The Old Gates boards are painterly and near-realistic: textured cloth, brushed m
 
 ### Camera
 
-Raised third person, about 35 degrees above the action, a little behind the player, slowly turned toward the centre of the fight. Not top-down, not isometric, not first person. Gameplay screenshots in the sheets should use this camera.
+Over the shoulder, in the manner of RuneScape: Dragonwilds (Michael, 2026-10-13; `decisions.md`): low and close behind the player, a little above head height, looking past the shoulder into the room, turned by the player. The horizon and the far wall are usually in view. Not top-down, not isometric, not a raised strategy view like Diablo or Baldur's Gate, not first person. Gameplay screenshots in the sheets should use this camera; sheet 06 is the reference for it, and the gameplay shots on sheets 01 to 05 sit too high.
 
 ### Palette
 
@@ -107,7 +107,7 @@ Raised third person, about 35 degrees above the action, a little behind the play
 
 ### Reference sheets (2026-10-13)
 
-Five sheets Michael generated in ChatGPT from the Part 2 prompts, kept in `docs/art/concept/`. **They settle the look, not the content.** The style landed: faceted low-poly, chunky 4.5-head figures, warm saturated villages, torch-lit dungeons with one accent each, floor telegraphs, outlines and name tags. Where a sheet shows a feature, building, skill or control that the design doc does not have, the design doc wins; those are listed under each sheet so nobody builds from them by accident.
+Six sheets Michael generated in ChatGPT from the Part 2 prompts (the sixth from a follow-up prompt for what the first five missed), kept in `docs/art/concept/`. **They settle the look, not the content.** The style landed: faceted low-poly, chunky 4.5-head figures, warm saturated villages, torch-lit dungeons with one accent each, floor telegraphs, outlines and name tags. Where a sheet shows a feature, building, skill or control that the design doc does not have, the design doc wins; those are listed under each sheet so nobody builds from them by accident.
 
 **[01: World, regions and mood](art/concept/01-world-regions.webp)**
 - Use: the palette strips; the overall village rendering; dungeon entrances with their accents (panel 5); the dungeon interior mood (panel 6); morning and evening lighting (panel 7); the scale card (panel 9).
@@ -131,11 +131,17 @@ Five sheets Michael generated in ChatGPT from the Part 2 prompts, kept in `docs/
 **[05: HUD, menus and interaction](art/concept/05-hud-menus.webp)**
 - Use: the party frames and portrait style (panel 1); the inventory and gear screen (panel 2); the portal selection layout (panel 4); the crafting panel (panel 6); dialogue with numbered choices (panel 7); notification toasts (panel 9); settings toggles for telegraphs and outlines (panel 10).
 - Ignore: the ability bar in the bottom centre with four abilities (the design has three slots plus attack, in the corners, centre third clear); the minimap; Acrobatics, jumping and the skill list (the design's skills are Melee, Ranged, Magic, Gathering, Crafting, Alchemy, Rune-crafting, Cooking); the world map and quest log (not in the design); "Party (1-4)" (up to 8); the controller mapping (the design doc's Platform and controls table is the binding one); "PC (keyboard & mouse)" (mouse is never required).
-- Missing: the go-deeper choice screen, the trade window, the phone layout.
+- Missing: the go-deeper choice screen, the trade window, the phone layout (all on sheet 06).
+
+**[06: The run: choices, teamwork and trade](art/concept/06-run-choices.webp)**
+- Use: all ten panels. The rest room with stash, gear rack, stairs down and portal home (panel 1); the go-deeper screen with the unbanked loot between the two choices (panel 2); the wipe (panel 3); the soak, freeze, shatter combo (panel 4); downed with the bleed-out ring and a teammate's pick-up bar (panel 5); the Guide's lantern, revealed floor, marked elite and rally point (panel 6); the corner HUD with three ability slots and the centre clear (panel 7); the Market Hall trade with two Ready toggles and the trade board (panel 9); the phone layout (panel 10).
+- **The camera reference.** Its gameplay shots are low and close behind the players, the over-the-shoulder view Michael asked for on 2026-10-13. Where sheets 01 to 05 show gameplay from higher up, this sheet wins.
+- **The controls reference.** Panel 8 is the design doc's control table; it replaces sheet 05 panel 8. Since 2026-10-13 the arrow keys turn the camera rather than move (design doc, Platform and controls).
+- Fix when building: both go-deeper buttons show the same keys (E / A); each choice needs its own. A few small labels are garbled (panel 2's subtitle, panel 3's floor label). The 2% host cut is a placeholder; the design doc says only "a small cut".
 
 **Candidates for the three reference models** (the guide's gate for the commission): the base adventurer from sheet 02 panel 1, the basic goblin from sheet 03 panel 2, and one building in its four regional styles from sheet 04 panel 3. Michael picks.
 
-**For a second round:** the gaps above (rest room choice, combo, downed and revive, Guide, trade window, corner HUD with three slots) would make a good sixth sheet. Prompt it with "Use the exact style of the sheets I already made" and list only those panels.
+**Still missing after six sheets:** the Shieldbearer and war pig by name, the regional signature enemies, the Guide's lantern on the character sheet, a sword at tiers 1 to 5, cross-region gear, travelling merchant, visitors arriving. A seventh sheet could cover them with the same approach as sheet 6 (Part 2).
 
 ---
 
@@ -164,7 +170,7 @@ FOUR REGIONS, each one saturated palette on top of the neutrals:
 - Tidewater (coast, harbours, coral, pearls): #1FA3A0 #145C7A #FF7F6A #F4EFE6 #E8D3A2 #4F8A5B
 - Frostmere (tundra, pine, standing stones, runes): #9FD8F0 #E6F6FF #2F5D50 #7B6FD6 #B08D6A #5B6B7A
 
-CAMERA for gameplay shots: raised third person, about 35 degrees above the action, slightly behind the player. Not top-down, not isometric, not first person.
+CAMERA for gameplay shots: over-the-shoulder third person, low and close behind the player, a little above head height, looking past the shoulder into the scene with the far wall or horizon in view, like a modern action-adventure game. Not top-down, not isometric, not a high strategy view, not first person.
 
 UI: warm wood and bone-coloured panels, chunky rounded corners, ink outlines, flat colour. HUD only in the four screen corners, centre kept clear. Buttons are big. Prompts show a keyboard key and a gamepad button, never a mouse cursor.
 
@@ -203,7 +209,7 @@ Panels:
 7. CROSS-REGION GEAR — a best-in-slot cloak of Frostmere fur lined with Verdant heartwood, and an Emberreach blade etched with a Frostmere rune. Caption: "The best gear is always mixed".
 8. THE GUIDE — a veteran holding a big glowing lantern, a marked enemy icon floating nearby. Caption: "Veterans lead newer friends".
 9. HIRELINGS — a tavern line-up of four hirelings on the same rig: a shieldbearer, an archer, a healer, a brawler, each with a small price tag. Caption: "Recruit at the tavern".
-10. PARTY OF FOUR — a raised third-person shot of four players in a dungeon, each with a different coloured outline (blue, gold, purple, teal) and a name tag above. Caption: "Outlines and name tags".
+10. PARTY OF FOUR — an over-the-shoulder shot of four players in a dungeon, each with a different coloured outline (blue, gold, purple, teal) and a name tag above. Caption: "Outlines and name tags".
 ```
 
 ### Sheet 3: Enemies and combat readability
@@ -216,7 +222,7 @@ Panels:
 2. ARCHETYPES — three enemies with silhouettes alone, then coloured: the Shieldbearer behind a huge shield, the Charger heavy and low, the Pack Leader tall with a crest. Caption: "Readable as shapes first".
 3. SHARED DUNGEON ENEMIES — skeleton shieldbearer and a wraith (Haunted Crypt), animated armour and an imp (Ruined Wizard Tower), a bandit archer (Bandit Fort). Cartoon-spooky, no gore.
 4. REGIONAL SIGNATURES — a treant (Verdant), a forge golem with lava seams (Emberreach), a crab knight (Tidewater), a frost wight (Frostmere).
-5. TELEGRAPHS — raised third-person gameplay shot: a big enemy winding up while a red-orange cone fills inward on the floor in front of it, players dodging out. Caption: "Every heavy attack is drawn on the floor".
+5. TELEGRAPHS — over-the-shoulder gameplay shot: a big enemy winding up while a red-orange cone fills inward on the floor in front of it, players dodging out. Caption: "Every heavy attack is drawn on the floor".
 6. SIX STATES — six enemies or six icons, each with a colour and a shape: Soaked (blue droplets), Staggered (yellow stars), Marked (pink lantern sigil), Burning (orange flames), Rooted (green vines), Chilled (pale blue frost). Names under each.
 7. COMBO — a three-step strip: one player soaks an enemy, a second freezes it, a third shatters it, with an escalating "COMBO x3" burst. Caption: "More friends, bigger payoff".
 8. DOWNED AND REVIVE — a downed player crawling with a shrinking ring timer, a teammate kneeling to pick them up. Caption: "Downed, not dead".
@@ -248,7 +254,7 @@ Panels:
 SHEET 5. Title banner: "HEARTHGATE — 05: HUD, Menus & Interaction". Tagline: "Four keys and a dodge. Big buttons, clear corners."
 
 Panels:
-1. COMBAT HUD — a full raised third-person gameplay screenshot with the HUD only in the corners: top-left the player's health and party members' small bars; bottom-left the weapon and three ability slots with key labels (J, K, L, ;); bottom-right dodge, block and a potion slot; top-right floor number and a ping readout. Centre of the screen clear.
+1. COMBAT HUD — a full over-the-shoulder gameplay screenshot with the HUD only in the corners: top-left the player's health and party members' small bars; bottom-left the weapon and three ability slots with key labels (J, K, L, ;); bottom-right dodge, block and a potion slot; top-right floor number and a ping readout. Centre of the screen clear.
 2. VILLAGE HUD — the same layout in the village, minimal: coin, region crest, an "E  Talk" prompt with a gamepad button next to it above an NPC.
 3. CONTROLS — a clean card showing the keyboard (WASD, J, K, L, ;, Shift, Ctrl, E, Q) and a generic gamepad with the same actions labelled. Caption: "Keyboard or gamepad, no mouse needed".
 4. INVENTORY — a chunky grid inventory with big square slots, the character in the middle with five gear slots, one item highlighted with a bold selection frame and its stats beside it. Caption: "Lists and grids, never hover".
@@ -260,10 +266,34 @@ Panels:
 10. TOUCH LATER — a phone in landscape with the same HUD: a virtual stick bottom-left, three ability buttons bottom-right, every button at least 48 pixels. Caption: "Nothing blocks a touch layout".
 ```
 
+### Sheet 6: The run, choices, teamwork and trade (follow-up)
+
+Written after the first five came back, for what they missed, and updated here for the over-the-shoulder camera and its arrow-key binding. Send it in the same chat as the first five, or attach sheets 03 and 05 first in a new chat.
+
+```
+SHEET 6. Use the exact art style, board layout, fonts, colours and panel frames of the five Hearthgate sheets already made (dark board, cream panels with numbered tabs, faceted low-poly 3D, chunky 4.5-head characters, torch-lit dungeons with one accent colour). Title banner: "HEARTHGATE — H6 · THE RUN: CHOICES, TEAMWORK & TRADE". Tagline: "Go deeper, or go home?"
+
+Gameplay shots use an over-the-shoulder camera, low and close behind the players. Party members always have a coloured outline and a name tag (Thorne blue, Lysa gold, Kael purple, Mara teal). Keep every label short and spelled exactly as written here.
+
+Panels:
+1. THE REST ROOM — a party of four around a campfire in a cosy dungeon alcove between floors: a shared stash chest, a weapon rack for swapping loadouts, and two glowing exits: a stone staircase leading down and a small portal home. Caption: "Bank, rest, decide".
+2. GO DEEPER? — a choice screen over the rest room: on the left a big button "Go deeper" with a small note "+30% loot, risk unbanked loot"; on the right a big button "Go home" with "Bank everything". Between them a row of item icons labelled "Unbanked loot". Under each button its own keyboard key and gamepad button. Caption: "The decision every floor".
+3. WIPE — the same party fading out of a dark dungeon and reappearing at the village portal shrine, a few loot icons crumbling to dust, the equipped weapons still in their hands. Caption: "Gear is kept, unbanked loot is lost".
+4. COMBO — a three-step strip in one dungeon room: Lysa soaks a goblin brute with water (blue droplets), Kael freezes it (pale frost crystals), Thorne shatters it with a big swing; a bright burst reading "COMBO x3". Caption: "More friends, bigger payoff".
+5. DOWNED & REVIVE — a downed player crawling on the floor with a shrinking ring timer around them, a teammate kneeling beside them with a short progress bar, and a small inset of a red "Revive Draught" potion. Caption: "Downed, not dead".
+6. THE GUIDE — a veteran in a hooded coat holding a big glowing lantern; a faint map of the floor revealed in the air, a pink lantern sigil floating over an elite enemy, and a glowing banner planted on the floor labelled "Rally point". Caption: "Veterans lead newer friends".
+7. CORNER HUD — a full gameplay screenshot with the HUD only in the corners and the centre third of the screen clear. Top-left: up to eight small party frames. Bottom-left: health bar and the weapon. Bottom-right: exactly three ability slots labelled K, L, ; with a dodge (Shift) and a potion slot (Q). Top-right: "Floor 2 / 4" and a small ping number. No minimap, no bottom-centre bar.
+8. CONTROLS — a clean card with two columns, Keyboard and Gamepad: Move WASD / Left stick; Camera Arrow keys / Right stick; Attack J / X; Abilities K L ; / Y B RB; Dodge Shift / A; Block Ctrl / LB; Interact E / RT; Potion Q / D-pad. Caption: "No mouse needed".
+9. MARKET HALL TRADE — two players from different regions (one in green Verdant gear, one in blue Tidewater gear) at a trade table; above them a trade window with two panels of offered items, a big "Ready" toggle under each, and a small "Host cut". Behind them a notice board with pinned offers labelled "Trade board". Caption: "Trade between regions".
+10. PHONE LAYOUT — a phone held in landscape showing the same game: a virtual stick bottom-left, three large ability buttons and a dodge button bottom-right, party frames top-left, every button big and thumb-sized. Caption: "Touch later, nothing blocks it".
+
+Do not add classes, jumping, a minimap, a world map, a quest log, level ranges, or a mouse cursor.
+```
+
 ### Fixes when an image drifts
 
 - **Too painterly or realistic:** "Too painterly. Redo as flat-shaded low-poly 3D: visible facets, one solid colour per face, no textures, no brush strokes."
 - **Too dark or grim:** "Too grim. Villages are warm and saturated; dungeons are spooky-fun, not horror. Remove anything gory."
-- **Wrong camera:** "Gameplay shots should be raised third person at about 35 degrees, slightly behind the player, not top-down and not isometric."
+- **Wrong camera:** "Gameplay shots should be over the shoulder: low and close behind the player, looking past the shoulder into the room. Not top-down, not isometric, not a high view."
 - **Garbled labels:** "Keep the same image but fix the labels; spell them exactly as: …"
 - **Too sparse:** "Keep the style but fill every panel; this should be as dense as a professional art-direction sheet."
