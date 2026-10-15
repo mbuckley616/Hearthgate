@@ -92,6 +92,7 @@ export class Hud {
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
         <span><b>E</b> talk, revive draught</span>
         <span><b>Tab</b> bow lock-on</span>
+        <span class="hud-hint-mouse">Mouse (optional): click to look, <b>left</b> attack, <b>right</b> block; <b>Esc</b> frees it</span>
         <span>Gamepad: sticks (L3 sprint), X attack, A jump, B dodge; Y RT RB; LB; LT block</span>
       </div>
     `;

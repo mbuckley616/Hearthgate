@@ -312,6 +312,9 @@ export const CAMERA = {
   pitchRateDegPerS: 75,
   /** Stick deflection below this is drift, not a turn. */
   stickDeadzone: 0.2,
+  /** Mouse look under pointer lock (Michael, 2026-10-14, A): degrees of yaw and pitch per pixel
+   * of mouse travel. 0.15 is a 2400 px sweep for a full turn, near the usual third-person default. */
+  mouseDegPerPx: 0.15,
   /** After this long with no camera input, the camera swings in behind the player's travel. */
   swingDelayMs: 1200,
   /** Only travel at least this fast (m/s, the drawn motion) swings it: standing still holds. */

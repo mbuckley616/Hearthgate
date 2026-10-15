@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-15: Session 46, mouse look and mouse buttons
+
+**What changed**
+
+- Michael's A (2026-10-14): pointer-lock mouse look, the left button attacks, the right blocks. A click on the game view takes the lock (`Input.attachMouse` on the renderer's canvas, from `startLoops`, so the join screen never takes it); under the lock the mouse turns the camera, and with it where W walks; Escape lets go, the browser's own key. The click that takes the lock does nothing else, and buttons are read only under the lock, so a click on the HUD's talk button never swings.
+- `mouseTurn` in `shared/src/camera.ts` (pure, beside `turnCamera`): `CAMERA.mouseDegPerPx` 0.15 in `sim.ts`, so 2,400 px is a full turn. Right turns the view right like the Right arrow; up lowers the eye to look up, the usual mouse way and the opposite of the Up arrow's RuneScape tilt; pitch stays in the 5 to 45 degree clamp. A per-pixel turn, not a rate, since the mouse is a position. `View.turnByMouse` counts it as the player's own camera input, so the swing in behind waits its 1.2 s after it as it does after the arrows.
+- Left button: the same attack press as J. Right button held: block, as L, Q or LT; let go on release anywhere, on losing the lock and on blur. The context menu is off on the canvas. Nothing in `InputFrame`, `shared/src/sim.ts`'s simulation, the server or the netcode changes: the buttons become the frame's existing `attack` and `block`.
+- The HUD's key list has a line for it, hidden on touch screens and on screens under 481 px tall, where it pushed the hint into the top-left panel at 640 x 400. `__hg` gains `mouseLocked`, `me.attackUntil` and `me.guarding`.
+- Tests: `camera.test.ts` one case (direction against the arrows, the clamp, a full sweep wraps, no travel no turn); `camera.e2e.ts` a mouse-look case with real pointer lock in headless Chromium: the locking click swings nothing, 200 px right turns 30 degrees, up lowers the pitch, right button guards and lets go, left button attacks, and after the lock is let go the mouse turns nothing (4/4 repeated). `npm run check` 226; browser suite 19/20, the one failure `two-players.e2e` at 1.2 m as on main here (Session 45).
+
+**Learned**
+
+- Headless Chromium grants pointer lock to a Playwright click and reports `movementX` from `page.mouse.move`, so the mouse is testable end to end without stubbing `pointerLockElement`.
+- "Turns the camera and aim": the player faces the way they move (`applyInput` sets `facing` from the move vector), so the mouse aims by turning the camera, which turns the move keys. A standing player swinging toward the crosshair would need a facing in `InputFrame`, which is shared-sim work, so it is not built; the bow's lock-on is unchanged.
+
+**Next**
+
+- Michael's feel at the gate playtest: the sensitivity (`CAMERA.mouseDegPerPx`), and whether a standing swing should face the crosshair (a **(Fable)** item if so).
+- The portal bug waits on Michael's answer to the critic's question in `decisions.md`.
+
 ## 2026-10-15: Session 45, jump, sprint and a separate dodge (Fable)
 
 **What changed**
