@@ -254,6 +254,16 @@ export const PORTAL = {
   holdMs: 2000
 } as const;
 
+/**
+ * The client's side of a move between rooms (client net.ts). A seat not taken within
+ * `seatTimeoutMs` is given up and the client joins the village instead, so a refused or
+ * stalled seat can never leave a player drawn in the new level with no room to send to.
+ * Under the server's 15 s seat reservation, and far over a real join (tens of ms).
+ */
+export const HANDOFF = {
+  seatTimeoutMs: 8000
+} as const;
+
 /** Villagers: how close a player must stand to talk to one (centre to centre). */
 export const NPC = {
   talkRange: 2.5
