@@ -2,6 +2,7 @@ import { Client, Room } from "colyseus.js";
 import {
   CLOCK_SYNC,
   ENEMY_KINDS,
+  HANDOFF,
   OPEN_FIELD,
   PLAYER,
   TICK_MS,
@@ -40,7 +41,8 @@ interface Handoff {
   level: string;
 }
 
-export type HandoffListener = (level: string) => void;
+/** `fallback`: the seat in `level` could not be taken, so this is the village instead. */
+export type HandoffListener = (level: string, fallback: boolean) => void;
 
 export type { Pose } from "@hearthgate/shared";
 
@@ -167,6 +169,8 @@ export class Net {
   portalMs = 0;
   /** Rooms this client has been handed to so far (debug HUD and the tests). */
   handoffs = 0;
+  /** Hand-offs whose seat could not be taken, so we joined the village instead (debug HUD and the tests). */
+  handoffFallbacks = 0;
 
   /** False until the first patch places us; that placement is not a correction. */
   private placed = false;
@@ -208,6 +212,12 @@ export class Net {
    * The server moved the party: leave this room, forget everything that was its (the clock
    * most of all: each room counts ticks from its own zero), take the seat and start over in
    * the new level. Inputs sent meanwhile go nowhere; the new room's first patch places us.
+   *
+   * Nothing here may leave us without a room: with none, inputs go nowhere and the player
+   * stands in the new level unable to move (Michael, 2026-10-14). So the old room's leave is
+   * not waited for (its acknowledgement is a round trip on a link that may be stalling, and
+   * the seat is ours either way), the seat gets HANDOFF.seatTimeoutMs, and a seat that is
+   * refused or never answers sends us to the village instead.
    */
   private async handoff(m: Handoff) {
     const old = this.room;
@@ -215,20 +225,26 @@ export class Net {
     this.connected = false;
     this.handoffs++;
     this.reset(levelById(m.level));
-    for (const l of this.handoffListeners) l(m.level);
+    for (const l of this.handoffListeners) l(m.level, false);
     if (old) {
       old.removeAllListeners();
-      try {
-        await old.leave(true);
-      } catch {
-        // Already gone; the seat is still ours.
-      }
+      void old.leave(true).catch(() => undefined);
     }
-    if (!this.client) return;
+    const client = this.client;
+    if (!client) return;
+    const room = await withTimeout(client.consumeSeatReservation(m.reservation), HANDOFF.seatTimeoutMs);
+    if (room) {
+      this.attach(room);
+      return;
+    }
+    console.error(`hand-off to ${m.level} failed: joining the village instead`);
+    this.handoffFallbacks++;
+    this.reset(levelById(VILLAGE_LEVEL_ID));
+    for (const l of this.handoffListeners) l(VILLAGE_LEVEL_ID, true);
     try {
-      this.attach(await this.client.consumeSeatReservation(m.reservation));
+      this.attach(await client.joinOrCreate("village", { name: this.myName, weapon: this.weapon.type, tier: this.weapon.tier }));
     } catch (err) {
-      console.error("hand-off failed", err);
+      console.error("rejoining the village failed", err);
     }
   }
 
@@ -541,4 +557,33 @@ function syncWeapon(w: WeaponGear, p: any) {
   const checked = weaponFromPick(p.weaponType, p.weaponTier);
   w.type = checked.type;
   w.tier = checked.tier;
+}
+
+/**
+ * The room once joined, or null if joining fails or takes longer than `ms`. A join that
+ * succeeds after it was given up is left at once, so it never holds a player in a room we
+ * are not drawing.
+ */
+async function withTimeout(join: Promise<Room>, ms: number): Promise<Room | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let gaveUp = false;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      gaveUp = true;
+      resolve(null);
+    }, ms);
+  });
+  const joined = join.then(
+    (room) => {
+      if (gaveUp) void room.leave(true).catch(() => undefined);
+      return room;
+    },
+    (err) => {
+      console.error("hand-off seat refused", err);
+      return null;
+    }
+  );
+  const room = await Promise.race([joined, timeout]);
+  clearTimeout(timer);
+  return room;
 }

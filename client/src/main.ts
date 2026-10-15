@@ -95,11 +95,13 @@ net.onEvents((events: SimEvent[]) => {
     if (e.kind === "combo") comboCallout(e);
   }
 });
-net.onHandoff((level) => {
+net.onHandoff((level, fallback) => {
   handingOff = true;
   recentEvents.length = 0;
   speech = null;
-  hud.setStatus(level === "village" ? "Up the stairs: back to the village" : `Through the portal: ${levelById(level).name}`);
+  hud.setStatus(
+    fallback ? "The way closed: back to the village" : level === "village" ? "Up the stairs: back to the village" : `Through the portal: ${levelById(level).name}`
+  );
 });
 
 /**
@@ -201,6 +203,9 @@ function draw(dt: number) {
   if (handingOff && net.lastServerTick > 0) {
     handingOff = false;
     hud.setStatus("");
+    // The new room put us somewhere else: a placement, so the camera starts there rather than
+    // gliding across and reading the jump as travel to swing round behind.
+    view.resetFollow();
   }
 
   // Me.
@@ -341,6 +346,7 @@ function draw(dt: number) {
     level: net.level.id,
     room: net.roomName,
     handoffs: net.handoffs,
+    handoffFallbacks: net.handoffFallbacks,
     portalMs: net.portalMs,
     talkTo: talkTo?.id ?? "",
     speech: speech ? speech.line : "",

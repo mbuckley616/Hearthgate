@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-15: Session 47, the portal can no longer strand a player
+
+**What changed**
+
+- Michael's report (B, 2026-10-15): through the portal, the figure at an angle, no movement at all, the HUD otherwise normal. Not reproduced: five browser runs here, a key held through the hand-off in three, all moved in the Warrens, and the shared sim moves from every spawn point on every level. One path in the code gives exactly those symptoms, and it is now closed: `Net.handoff` (`client/src/net.ts`) waited for the old room to acknowledge the leave, then took the seat, and if the seat was refused or never answered it only logged to the console. The client was then left with no room for good: the player drawn in the new level, the HUD up, every input dropped.
+- The hand-off now sends the old room's leave without waiting for it (the seat is ours either way), gives the seat `HANDOFF.seatTimeoutMs` (8 s, in `sim.ts`; the server holds a seat 15 s), and when the seat is refused or times out joins the village under the same name and weapon, with "The way closed: back to the village" on the status line. A join that answers after it was given up is left at once. `__hg.handoffFallbacks` counts them.
+- The camera starts over at the hand-off's placement (`View.resetFollow`): it used to glide 10 m from the portal to the new spawn and read the jump as travel, which swings the view round behind it, so the figure arrived seen from an angle.
+- Test: `test:net` step 6e drives the real `Net` at the client rate through the village portal (5.1 s) and walks 6.00 m east in the Warrens a second later; then a seat for a room that does not exist (the server answers "seat reservation expired") lands it in the village in 71 ms, where it walks 6.00 m. `npm run check` 226; `test:net` every step; `village.e2e` and `camera.e2e` 5/5.
+
+**Learned**
+
+- The server's refusal for a seat it does not hold is "seat reservation expired", the same error a seat taken after its 15 s gets, so the fallback covers a slow hand-off and a lost room alike.
+- In the headless browser here the first key pressed after arriving in the Warrens can be lost: the dressing builds on the first frame in the new level and the stall outlasts a short press. A held key is not lost. On real hardware the build is far shorter.
+
+**Next**
+
+- The critic: the portal on the hosted build (Michael's B), watching `__hg.handoffFallbacks` and the console for "hand-off to warrens failed". A fallback seen there means the seat is being lost and the server side is the next place to look; a stuck player with no fallback means another cause.
+- Phase 1 has no builder item left: the gate playtest is Michael's.
+
 ## 2026-10-15: Session 46, mouse look and mouse buttons
 
 **What changed**
