@@ -45,7 +45,7 @@ function build(kind: Kind): Figure {
 
 /** The Knight's clips, run the way render.ts runs them: settle into the base, then into the pose. */
 function poseRig(f: Figure, p: PoseName) {
-  const s: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, hit: false, downed: false, dead: false };
+  const s: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, jumping: false, hit: false, downed: false, dead: false };
   if (p === "walk") s.speed = 1.5;
   for (let i = 0; i < 30; i++) f.rig!.update(1 / 30, s);
   if (p !== "swing") return;

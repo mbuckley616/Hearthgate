@@ -15,6 +15,9 @@
  *      30 s bleed-out, so it is proved in shared/src/draught.test.ts);
  *   5c. a held block raises the guard, a three-tick gap in the inputs does not lower it or
  *      re-open its parry window, the other client sees it, and letting go lowers it;
+ *   5d. sprint and jump: a bot sprinting east for a second covers sprint distance on the server,
+ *      and a jump taken from the sprint reaches the other client as a landing time and the
+ *      carried takeoff speed, and lands where the shared sim says;
  *   6. the yard: a fresh room on the default level syncs four enemies and names its level, and a client
  *      walking into one of its walls is stopped by the server where the shared sim says;
  *   6b. the Warrens: a room made with level "warrens" syncs its enemies, all asleep while the party
@@ -33,7 +36,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
-import { CELLAR, DOWNS, NPC, PORTAL, STAIRS, TICK_MS, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
+import { CELLAR, DOWNS, NPC, PLAYER, PORTAL, STAIRS, TICK_MS, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -256,6 +259,7 @@ async function main() {
 
     await weaponPick(client);
     await lockOn(client);
+    await jumpSprint(client);
     await yard(client);
     await warrens(client);
     await village(client);
@@ -334,6 +338,54 @@ async function weaponPick(client: Client) {
 
   await g.leave();
   await f.leave();
+  await sleep(300);
+}
+
+/**
+ * Sprint and jump (Michael, 2026-10-15, 1A 2A): India sprints east for twenty ticks, then jumps from the
+ * sprint and lets go of the stick. Juliet sees the landing time and the carried speed; the hop lands
+ * the takeoff speed times the air time further on, walls permitting (the open field has none near).
+ */
+async function jumpSprint(client: Client) {
+  const i = await client.create("dungeon", { name: "India", level: "field" });
+  const j = await client.joinById(i.roomId, { name: "Juliet" });
+  let iState: any = null;
+  let jState: any = null;
+  i.onStateChange((s: any) => (iState = s));
+  j.onStateChange((s: any) => (jState = s));
+  await sleep(400);
+  if (!iState || !jState) fail("jump/sprint: no state received");
+  const x0 = iState.players.get(i.sessionId).x;
+  let seq = 0;
+  for (let k = 0; k < 20; k++) {
+    i.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true });
+    await sleep(TICK_MS);
+  }
+  await sleep(300);
+  const ran = iState.players.get(i.sessionId);
+  const sprintM = ran.x - x0;
+  const want = 20 * PLAYER.speed * PLAYER.sprintMult * (TICK_MS / 1000);
+  if (ran.lastSeq !== seq || Math.abs(sprintM - want) > 0.01) fail(`jump/sprint: 20 sprinting ticks moved India ${sprintM.toFixed(2)} m (seq ${ran.lastSeq} of ${seq}), not ${want.toFixed(2)}`);
+
+  const xJump = ran.x;
+  i.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true, jump: true });
+  for (let k = 1; k < PLAYER.jumpMs / TICK_MS + 4; k++) {
+    await sleep(TICK_MS);
+    i.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false });
+  }
+  await sleep(100);
+  const seen = jState.players.get(i.sessionId);
+  const truth = iState.players.get(i.sessionId);
+  if (!(seen.jumpUntil > 0) || seen.jumpUntil !== truth.jumpUntil) fail(`jump/sprint: Juliet sees India's landing at ${seen.jumpUntil}, the server has ${truth.jumpUntil}`);
+  const vx = PLAYER.speed * PLAYER.sprintMult;
+  if (Math.abs(seen.jumpVx - vx) > 1e-9) fail(`jump/sprint: the carried speed is ${seen.jumpVx}, not ${vx}`);
+  const hop = truth.x - xJump;
+  // The takeoff frame still holds the stick, so it steers one tick on top of the carried speed.
+  const wantHop = vx * (PLAYER.jumpMs / 1000) + PLAYER.speed * PLAYER.jumpSteer * (TICK_MS / 1000);
+  if (Math.abs(hop - wantHop) > 0.01) fail(`jump/sprint: the hop from a sprint carried India ${hop.toFixed(2)} m, not ${wantHop.toFixed(2)}`);
+  console.log(`ok: jump/sprint: 20 sprinting ticks ${sprintM.toFixed(2)} m; a sprint jump carried ${hop.toFixed(2)} m and Juliet saw its landing time and speed`);
+  await j.leave();
+  await i.leave();
   await sleep(300);
 }
 

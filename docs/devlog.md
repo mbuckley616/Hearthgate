@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-15: Session 45, jump, sprint and a separate dodge (Fable)
+
+**What changed**
+
+- Michael answered 1A 2A 3A on the control room. `applyInput` (`shared/src/sim.ts`) has a jump and a sprint; the numbers are in `PLAYER` (`sprintMult` 1.5, `jumpMs` 500, `jumpHeight` 0.6, `jumpSteer` 0.25).
+- The sprint: `sprint` held in the frame runs at 9 m/s. Swinging, an ability and the guard's shuffle are unchanged by it, so they stop it; a dodge from a sprint is the same dodge.
+- The jump: a `jump` press on the ground, not mid-swing or mid-dodge (a dodge pressed on the same tick wins), sets `jumpUntil` to ten ticks on and keeps this tick's ground velocity as `jumpVx`, `jumpVz`: 3 m walking, 4.5 m sprinting, plus a steer of a quarter of walking speed from the stick. In the air there is no swing, ability, dodge, guard or second jump; walls stop a hop as they stop a walk; a down or a respawn cancels it. `jumpHeight(p, now)` is the parabola, a pure function of the landing time.
+- Server: `jumpUntil`, `jumpVx`, `jumpVz` in `PlayerState` and `copyPlayer`. Client: the rewind copies them (so a jump replays like a dodge), remotes keep `jumpUntil` and are lifted by `jumpHeight` at `remoteNow()`, the figure rises by the height and plays `Jump_Full_Short` fitted to the 500 ms.
+- Bindings (`client/src/input.ts`): J attacks, Space jumps, Shift held sprints, K or C dodges. Gamepad: X attack, A jump, B dodge, a left-stick click sprints until the stick comes back to rest, slots Y, RT, RB; RT is also the bow's lock-on cycle, which is safe because the bow has no slot 2. The HUD's key list says so.
+- Tests: `shared/src/jump.test.ts` (17: speeds, the parabola, landing on a tick, carried speed, steering, what the air forbids, walls, a down, determinism over 200 scripted frames, validation). `test:net` step 5d: 20 sprinting ticks move 9.00 m on the server, a sprint jump carries 4.57 m (4.5 plus the takeoff tick's steer) and the other client sees the same landing time and speed. `figures.e2e` presses Space and sees the landing time come back and the jump clip play (3/3). `npm run check` 225, `npm run test:net` every step.
+- CLAUDE.md's netcode section has a line for the jump.
+
+**Learned**
+
+- Keeping the jump's height out of the integrator is what makes it free for the netcode: there is no vertical speed to drift, so nothing new can disagree between prediction and replay, and the remote hop needs no new snapshot field or interpolation. Session 44 planned `y` and a vertical speed in the sim and the schema; the landing time does both jobs.
+- Lag lab, 60 s a condition, on this machine at about 12 fps (branch run twice, main once): corrections a minute at 0 / 50 / 150 / 50 lossy were 3 / 5 / 1 / 4 and 6 / 1 / 0 / 1 on the branch, 1 / 2 / 4 / 3 on main; snaps 0 everywhere. Holds read 6 to 10 a minute on the branch and 4 to 10 on main. The lab's schedule never jumps or sprints, so the spread is the slow frames', not the change's; the critic's real-hardware run is the number to trust.
+- `two-players.e2e` fails here on main too, every run at exactly 1.2 m for a 700 ms hold of D: the headless software rasteriser of Session 41, not this change. The rest of the browser suite passes (17/18).
+
+**Next**
+
+- The critic: the lab with a schedule that jumps and sprints (it owns `tests/lab/`), and whether `two-players.e2e`'s 1.2 m reproduces off this machine.
+- Michael's playtest feel: the hop's height and air time, the sprint's 9 m/s against enemies (kiting), and RT for slot 2 on a pad.
+
 ## 2026-10-14: Session 44, jump, sprint and dodge: the design question (Fable)
 
 **What changed**

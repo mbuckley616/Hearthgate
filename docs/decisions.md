@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-14: Jump, sprint and a separate dodge: how they play and which buttons (Fable, Session 44)
 Your note asks for Space to jump, a sprint you can jump out of, and dodge on a button of its own. Today Space attacks (as does J), Shift or K dodges, and the gamepad's A dodges. Walls in the simulation are flat footprints with no height (the 3.2 m dungeon walls and the yard's "low wall" are only drawn tall or short), and a dodge makes you untouchable for its 220 ms. All three answers change the shared movement, so the server, the prediction and the replay change together. Three parts; answer like "1A 2A 3A".
 
@@ -23,8 +25,7 @@ C. Free, but only out of combat (no awake enemy within about 15 m); in a fight y
 **3. The buttons** (rule 4: a key and a gamepad button before any mouse binding).
 A. Keyboard: Space jumps, hold Shift sprints, K or C dodges; J (and the left mouse button, when mouse look lands) attacks. Gamepad: A jumps, B dodges, clicking the left stick sprints until you stop moving; ability slot 2 moves from B to RT, which with a bow stays the lock-on cycle (the bow has no slot 2). **Recommended:** the usual layout for this kind of game.
 B. As A on the keyboard; on the gamepad the existing buttons stay: dodge stays on A, jump goes on a left-stick click, and you sprint by pushing the left stick all the way. Fewer changes, but a jump on a stick click is awkward mid-fight.
-
-## Answered
+Michael: **1A 2A 3A** (2026-10-15, on the control room): a hop that clears nothing, a free sprint, the usual layout. Built in Session 45.
 
 ### 2026-10-14: Mouse look and mouse buttons (the producer)
 Michael wants the mouse to aim and turn the camera, left button to attack and right to block, with WASD to move. Keyboard-only play must keep working (rule 4).

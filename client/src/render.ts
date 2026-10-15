@@ -42,6 +42,9 @@ export interface PlayerVisual {
   swingActive: boolean; // the frames right after the hit resolves (flash the arc)
   cleaveActive: boolean; // the same for Cleave's wider arc
   dodging: boolean;
+  /** In the air, and how high the feet are (m): the whole figure rises, the shadow stays. */
+  jumping: boolean;
+  lift: number;
   /** Block held: a guard plate in front. */
   guarding: boolean;
   /** Posture broken: rocked back. */
@@ -124,7 +127,7 @@ class PlayerMesh {
   /** Every material of the held weapons, tinted toward the weapon's material tier. */
   private heldMats: THREE.MeshStandardMaterial[] = [];
   private heldModel: WeaponModel = "sword_1handed";
-  private readonly rigState: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, hit: false, downed: false, dead: false };
+  private readonly rigState: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, jumping: false, hit: false, downed: false, dead: false };
   private lastDrawAt = NaN;
   cleave: THREE.Mesh;
   guard: THREE.Mesh;
@@ -227,7 +230,7 @@ class PlayerMesh {
 
   apply(pose: Pose, v: PlayerVisual) {
     this.setWeapon(v.weapon);
-    this.group.position.set(pose.x, 0, pose.z);
+    this.group.position.set(pose.x, v.lift, pose.z);
     this.group.rotation.y = pose.facing;
     const f = this.figure;
     const mat = f.skin;
@@ -244,6 +247,7 @@ class PlayerMesh {
     r.attacking = v.attacking;
     r.guarding = v.guarding;
     r.dodging = v.dodging;
+    r.jumping = v.jumping;
     r.hit = hit;
     r.downed = v.downed;
     r.dead = v.dead;

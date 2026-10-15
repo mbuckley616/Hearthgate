@@ -52,7 +52,7 @@ const ready = setup();
   t.rotation.y = shot.turn;
   t.position.set(tavernSpot.x, 0, tavernSpot.z);
   const pose = { x: shot.player.x, z: shot.player.z, facing: shot.player.facing };
-  const v = { hp: 100, weapon: STARTER_WEAPON, attacking: false, swingActive: false, cleaveActive: false, dodging: false, guarding: false, staggered: false, downed: false, pickup: 0, dead: false };
+  const v = { hp: 100, weapon: STARTER_WEAPON, attacking: false, swingActive: false, cleaveActive: false, dodging: false, jumping: false, lift: 0, guarding: false, staggered: false, downed: false, pickup: 0, dead: false };
   // The game's camera, placed outright rather than eased there: behind the player along the yaw
   // (0 looks north, +z), CAMERA's distance and pitch, the look target at head height a shoulder
   // to the right.

@@ -33,7 +33,20 @@ export const PLAYER = {
   dodgeSpeed: 16,
   dodgeMs: 220,
   dodgeCooldownMs: 900,
-  respawnMs: 3000
+  respawnMs: 3000,
+  /** Held sprint (Michael, 2026-10-15, 2A): free, 9 m/s; a swing, a block or an ability stops it. */
+  sprintMult: 1.5,
+  /**
+   * The jump (1A): a hop for feel, 0.6 m at the top and 500 ms in the air (ten ticks exactly, so
+   * it lands on a slot), carrying the ground speed it took off with: 3 m walking, 4.5 m sprinting.
+   * It clears no wall and dodges no blow; no swing, dodge or guard while in the air. Its height
+   * is a function of time since takeoff (`jumpHeight`), not an integrated speed, so the server,
+   * the prediction and the replay agree on it to the bit.
+   */
+  jumpMs: 500,
+  jumpHeight: 0.6,
+  /** In the air the stick steers at this fraction of walking speed, on top of the takeoff speed. */
+  jumpSteer: 0.25
 } as const;
 
 /**
@@ -645,6 +658,10 @@ export interface InputFrame {
   block?: boolean;
   /** Cycle the bow's lock-on to the next target this tick (a press); absent means no. */
   cycle?: boolean;
+  /** Jump this tick (a press); absent means no. */
+  jump?: boolean;
+  /** Sprint held this tick; absent means no. */
+  sprint?: boolean;
 }
 
 export interface PlayerSim {
@@ -665,6 +682,11 @@ export interface PlayerSim {
   dodgeCooldownUntil: number;
   dodgeDx: number;
   dodgeDz: number;
+  /** Landing time of the current jump (0, or in the past, when on the ground). */
+  jumpUntil: number;
+  /** The takeoff ground velocity, m/s, carried through the jump. */
+  jumpVx: number;
+  jumpVz: number;
   /** Time the current swing finishes (0 when not attacking). */
   attackUntil: number;
   /** Time the current swing's hit resolves (0 when already resolved or not attacking). */
@@ -815,6 +837,9 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     dodgeCooldownUntil: 0,
     dodgeDx: 0,
     dodgeDz: 0,
+    jumpUntil: 0,
+    jumpVx: 0,
+    jumpVz: 0,
     attackUntil: 0,
     attackHitAt: 0,
     abilityUntil: 0,
@@ -935,7 +960,9 @@ export function isValidInput(v: unknown): v is InputFrame {
     (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS)) &&
     (f.use === undefined || typeof f.use === "boolean") &&
     (f.block === undefined || typeof f.block === "boolean") &&
-    (f.cycle === undefined || typeof f.cycle === "boolean")
+    (f.cycle === undefined || typeof f.cycle === "boolean") &&
+    (f.jump === undefined || typeof f.jump === "boolean") &&
+    (f.sprint === undefined || typeof f.sprint === "boolean")
   );
 }
 
@@ -968,6 +995,24 @@ export function clampToArena(o: { x: number; z: number }, radius: number): void 
 
 export function isDodging(p: PlayerSim, now: number): boolean {
   return now < p.dodgeUntil;
+}
+
+/** In the air: from takeoff until `jumpUntil`. */
+export function isAirborne(p: { jumpUntil: number }, now: number): boolean {
+  return now < p.jumpUntil;
+}
+
+/**
+ * Height of the feet above the ground at `now`, m: a parabola from takeoff to landing. Pure in
+ * `jumpUntil` and `now`, so a remote player's hop is drawn at remoteNow from the synced landing
+ * time alone, with no height in the snapshots.
+ */
+export function jumpHeight(p: { jumpUntil: number }, now: number): number {
+  if (now >= p.jumpUntil) return 0;
+  const t = now - (p.jumpUntil - PLAYER.jumpMs);
+  if (t <= 0) return 0;
+  const T = PLAYER.jumpMs;
+  return (4 * PLAYER.jumpHeight * t * (T - t)) / (T * T);
 }
 
 /** Committed to a sword swing or an ability: no walking, no new swing. */
@@ -1107,9 +1152,10 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
 
   const attacking = isAttacking(p, now);
   const dodging = isDodging(p, now);
+  const airborne = isAirborne(p, now);
 
-  // Start a dodge: in the input direction, or forward if standing still.
-  if (input.dodge && !dodging && !attacking && now >= p.dodgeCooldownUntil) {
+  // Start a dodge: in the input direction, or forward if standing still. Not from the air.
+  if (input.dodge && !dodging && !attacking && !airborne && now >= p.dodgeCooldownUntil) {
     if (moving) {
       const n = Math.max(len, 1);
       p.dodgeDx = dx / n;
@@ -1126,12 +1172,28 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.dodgeCooldownUntil = now + PLAYER.dodgeCooldownMs;
   }
 
-  // The guard: up while block is held and nothing else is committed. A dodge drops it.
-  const guard = input.block === true && !attacking && !isDodging(p, now);
+  // Take off: on the ground, not committed to a swing or a dodge (a dodge pressed on the same
+  // tick wins). The ground speed of this tick goes with you, sprint included.
+  const sprinting = input.sprint === true;
+  if (input.jump && !airborne && !attacking && !isDodging(p, now)) {
+    const speed = moving ? PLAYER.speed * (sprinting ? PLAYER.sprintMult : 1) : 0;
+    p.jumpVx = dx * speed;
+    p.jumpVz = dz * speed;
+    p.jumpUntil = now + PLAYER.jumpMs;
+    if (moving) p.facing = Math.atan2(dx, dz);
+  }
+  const inAir = isAirborne(p, now);
+
+  // The guard: up while block is held and nothing else is committed. A dodge or a jump drops it.
+  const guard = input.block === true && !attacking && !isDodging(p, now) && !inAir;
   if (guard && !p.guarding) p.blockSince = now;
   p.guarding = guard;
 
-  if (isDodging(p, now)) {
+  if (inAir) {
+    // The takeoff speed carries; the stick steers a little.
+    p.x += (p.jumpVx + dx * PLAYER.speed * PLAYER.jumpSteer) * dt;
+    p.z += (p.jumpVz + dz * PLAYER.speed * PLAYER.jumpSteer) * dt;
+  } else if (isDodging(p, now)) {
     p.x += p.dodgeDx * PLAYER.dodgeSpeed * dt;
     p.z += p.dodgeDz * PLAYER.dodgeSpeed * dt;
   } else if (p.guarding && moving) {
@@ -1139,16 +1201,17 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.x += dx * PLAYER.speed * GUARD.moveMult * dt;
     p.z += dz * PLAYER.speed * GUARD.moveMult * dt;
   } else if (!attacking && moving) {
-    p.x += dx * PLAYER.speed * dt;
-    p.z += dz * PLAYER.speed * dt;
+    const speed = PLAYER.speed * (sprinting ? PLAYER.sprintMult : 1);
+    p.x += dx * speed * dt;
+    p.z += dz * speed * dt;
     p.facing = Math.atan2(dx, dz);
   }
 
   // Start an ability, or else a swing. Both hits resolve later in resolvePlayerAttacks.
   const slot = input.ability ?? 0;
   const ability = slot > 0 ? abilityInSlot(p.weapon, slot) : "";
-  if (p.guarding) {
-    // Lower the guard to swing.
+  if (p.guarding || inAir) {
+    // Lower the guard to swing; land first.
   } else if (ability && !attacking && !isDodging(p, now) && now >= p.readyAt[slot - 1]) {
     const def = ABILITIES[ability];
     p.abilityUntil = now + def.durationMs;
@@ -1444,6 +1507,7 @@ export function downPlayer(p: PlayerSim, now: number): void {
   p.abilityUntil = 0;
   p.abilityHitAt = 0;
   p.dodgeUntil = 0;
+  p.jumpUntil = 0;
   p.guarding = false;
   p.staggerUntil = 0;
   p.knockUntil = 0;
@@ -1901,6 +1965,7 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.pickupMs = 0;
     p.pickupBy = "";
     p.dodgeUntil = 0;
+    p.jumpUntil = 0;
     p.attackUntil = 0;
     p.attackHitAt = 0;
     p.abilityUntil = 0;

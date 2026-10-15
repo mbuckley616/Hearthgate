@@ -74,6 +74,8 @@ export interface RemotePlayer {
   abilitySlot: number;
   attackHitAt: number;
   dodgeUntil: number;
+  /** Their landing time: the hop is drawn from it at remoteNow (jumpHeight). */
+  jumpUntil: number;
   guarding: boolean;
   staggerUntil: number;
   /** Their weapon (picked at join): the mesh and the swing timings come from it. */
@@ -392,7 +394,7 @@ export class Net {
       }
       let r = this.remotes.get(id);
       if (!r) {
-        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, guarding: false, staggerUntil: 0, weapon: weaponFromPick(p.weaponType, p.weaponTier), track: createPoseTrack<Snapshot>(PLAYER.radius) };
+        r = { id, name: p.name, color: p.color, hp: p.hp, downedUntil: 0, pickupMs: 0, respawnAt: 0, attackUntil: 0, abilityUntil: 0, abilitySlot: 0, attackHitAt: 0, dodgeUntil: 0, jumpUntil: 0, guarding: false, staggerUntil: 0, weapon: weaponFromPick(p.weaponType, p.weaponTier), track: createPoseTrack<Snapshot>(PLAYER.radius) };
         this.remotes.set(id, r);
       }
       r.name = p.name;
@@ -406,6 +408,7 @@ export class Net {
       r.abilitySlot = p.abilitySlot;
       r.attackHitAt = p.attackHitAt;
       r.dodgeUntil = p.dodgeUntil;
+      r.jumpUntil = p.jumpUntil ?? 0;
       r.guarding = p.guarding === true;
       r.staggerUntil = p.staggerUntil ?? 0;
       syncWeapon(r.weapon, p);
@@ -461,6 +464,9 @@ export class Net {
     me.dodgeCooldownUntil = p.dodgeCooldownUntil;
     me.dodgeDx = p.dodgeDx;
     me.dodgeDz = p.dodgeDz;
+    me.jumpUntil = p.jumpUntil ?? 0;
+    me.jumpVx = p.jumpVx ?? 0;
+    me.jumpVz = p.jumpVz ?? 0;
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
     me.abilityUntil = p.abilityUntil;
