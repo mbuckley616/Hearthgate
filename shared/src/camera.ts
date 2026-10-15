@@ -74,6 +74,19 @@ export function turnCamera(yaw: number, pitchDeg: number, lookX: number, lookY: 
   return { yaw: nextYaw, pitchDeg: nextPitch };
 }
 
+/**
+ * The player's turn from the mouse under pointer lock: `mx`, `my` are the pixels it travelled
+ * since the last frame (movementX, movementY). Right turns the view right, as the Right arrow does;
+ * up lowers the eye to look up, the usual mouse convention, so it tilts the opposite way to the Up
+ * arrow (which raises the eye, RuneScape's way). Pitch stays within CAMERA's clamp. A per-pixel
+ * turn, not a rate: the mouse is a position, so the frame time plays no part.
+ */
+export function mouseTurn(yaw: number, pitchDeg: number, mx: number, my: number): { yaw: number; pitchDeg: number } {
+  const nextYaw = wrapAngle(yaw - mx * CAMERA.mouseDegPerPx * RAD);
+  const nextPitch = Math.min(CAMERA.maxPitchDeg, Math.max(CAMERA.minPitchDeg, pitchDeg + my * CAMERA.mouseDegPerPx));
+  return { yaw: nextYaw, pitchDeg: nextPitch };
+}
+
 /** The yaw that looks along (dx, dz) on the ground: the eye goes behind, opposite the direction. */
 export function yawLookingAlong(dx: number, dz: number): number {
   return Math.atan2(-dx, -dz);

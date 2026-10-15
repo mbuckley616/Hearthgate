@@ -19,6 +19,11 @@ import { CAMERA, cameraRelativeMove, type InputFrame } from "@hearthgate/shared"
  * server and the replay never need to know where the camera was. WASD and the left stick are
  * the only movement: the arrow keys and the right stick turn and tilt the camera (`look`), which
  * never goes in an InputFrame.
+ *
+ * The mouse is an option, never required (Michael, 2026-10-14, A): a click on the game view takes
+ * pointer lock, and while it holds, the mouse turns the camera (and with it where W walks and the
+ * player faces), the left button attacks and the right button blocks, held. Escape lets go (the
+ * browser's own key), and the click that takes the lock does nothing else.
  */
 
 /** Gamepad buttons for ability slots 1..3 (standard mapping: Y, RT, RB). B is the dodge now. */
@@ -59,6 +64,13 @@ export class Input {
   private cyclePressed = false;
   private padCycleWasDown = false;
   private seq = 0;
+  /** The element pointer lock is taken on (the game canvas); null until attachMouse. */
+  private lockTarget: Element | null = null;
+  /** Mouse travel under the lock since the camera last took it, in pixels. */
+  private mouseX = 0;
+  private mouseY = 0;
+  /** The right button held under the lock: block, like L, Q or LT. */
+  private mouseBlock = false;
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
@@ -81,7 +93,60 @@ export class Input {
     target.addEventListener("blur", () => {
       this.down.clear();
       this.tapped.clear();
+      this.mouseBlock = false;
     });
+  }
+
+  /**
+   * Mouse look on `el`: a click takes pointer lock, then the mouse turns the camera, the left
+   * button attacks and the right blocks. Buttons are read only under the lock, so a click on the
+   * HUD or one that only took the lock never swings.
+   */
+  attachMouse(el: HTMLElement) {
+    this.lockTarget = el;
+    el.addEventListener("mousedown", (e) => {
+      if (!this.mouseLocked) {
+        if (e.button === 0) void requestLock(el);
+        return;
+      }
+      if (e.button === 0) this.attackPressed = true;
+      if (e.button === 2) this.mouseBlock = true;
+      e.preventDefault();
+    });
+    // Up anywhere: the lock may have gone between the press and the release.
+    window.addEventListener("mouseup", (e) => {
+      if (e.button === 2) this.mouseBlock = false;
+    });
+    document.addEventListener("mousemove", (e) => {
+      if (!this.mouseLocked) return;
+      this.mouseX += e.movementX;
+      this.mouseY += e.movementY;
+    });
+    document.addEventListener("pointerlockchange", () => {
+      if (this.mouseLocked) return;
+      this.mouseBlock = false;
+      this.mouseX = 0;
+      this.mouseY = 0;
+    });
+    // The right button is block, not a menu.
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  /** True while the game view holds pointer lock. */
+  get mouseLocked(): boolean {
+    return this.lockTarget !== null && document.pointerLockElement === this.lockTarget;
+  }
+
+  /**
+   * The mouse travel since the last call, in pixels (x right, y down), and reset. Read once per
+   * drawn frame by the camera. Out keeps it allocation-free.
+   */
+  takeMouse(out: { x: number; y: number }): { x: number; y: number } {
+    out.x = this.mouseX;
+    out.y = this.mouseY;
+    this.mouseX = 0;
+    this.mouseY = 0;
+    return out;
   }
 
   /** The HUD's talk button (a tap or a click): the same use press as E or LB. */
@@ -137,7 +202,7 @@ export class Input {
     let sprint = held("ShiftLeft") || held("ShiftRight");
     let ability = this.abilityPressed;
     let use = this.usePressed;
-    let block = held("KeyL") || held("KeyQ");
+    let block = held("KeyL") || held("KeyQ") || this.mouseBlock;
     this.tapped.clear();
     this.attackPressed = false;
     this.dodgePressed = false;
@@ -191,6 +256,20 @@ export class Input {
 
     this.seq++;
     return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle, jump, sprint };
+  }
+}
+
+/** Ask for pointer lock, raw (unaccelerated) where the browser offers it. A refusal (the lock was
+ * just let go, or the page is not focused) leaves the mouse free; the next click asks again. */
+async function requestLock(el: HTMLElement): Promise<void> {
+  try {
+    await (el.requestPointerLock as (o?: { unadjustedMovement?: boolean }) => Promise<void> | void).call(el, { unadjustedMovement: true });
+  } catch {
+    try {
+      await el.requestPointerLock();
+    } catch {
+      // Refused: the mouse stays free.
+    }
   }
 }
 

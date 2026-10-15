@@ -85,6 +85,59 @@ test("reduced motion keeps the swing off but the arrows still turn", async ({ pa
   expect((await hg(page)).camYaw).toBeLessThan(-0.2);
 });
 
+test("mouse look: a click takes the lock, the mouse turns the camera, left attacks, right blocks (Michael, 2026-10-14, A)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await join(page, "Mouse");
+  type M = { me: { attackUntil: number; guarding: boolean }; camYaw: number; camPitch: number; mouseLocked: boolean };
+  const m = () => page.evaluate(() => (window as any).__hg as M);
+  const a = await m();
+  expect(a.mouseLocked).toBe(false);
+
+  // The click that takes the lock swings nothing.
+  const box = (await page.locator("#app canvas").boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.click(cx, cy);
+  await expect.poll(async () => (await m()).mouseLocked, { timeout: 5_000 }).toBe(true);
+  await page.waitForTimeout(300);
+  expect((await m()).me.attackUntil).toBe(a.me.attackUntil);
+
+  // Right by 200 px turns the view right (yaw down) by 200 x mouseDegPerPx (0.15): 30 degrees.
+  // Steps, since one big jump can be clipped at the window's edge.
+  for (let i = 1; i <= 10; i++) await page.mouse.move(cx + i * 20, cy);
+  await page.waitForTimeout(150);
+  const b = await m();
+  expect(b.camYaw).toBeLessThan(-0.4);
+  expect(b.camYaw).toBeGreaterThan(-0.65);
+  // Up lowers the eye: the pitch falls.
+  for (let i = 1; i <= 5; i++) await page.mouse.move(cx + 200, cy - i * 10);
+  await page.waitForTimeout(150);
+  expect((await m()).camPitch).toBeLessThan(b.camPitch - 3);
+
+  // The right button blocks while held.
+  await page.mouse.down({ button: "right" });
+  await expect.poll(async () => (await m()).me.guarding, { timeout: 3_000 }).toBe(true);
+  await page.mouse.up({ button: "right" });
+  await expect.poll(async () => (await m()).me.guarding, { timeout: 3_000 }).toBe(false);
+
+  // The left button attacks.
+  const before = (await m()).me.attackUntil;
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect.poll(async () => (await m()).me.attackUntil, { timeout: 3_000 }).toBeGreaterThan(before);
+
+  // Let go of the lock: the mouse turns nothing.
+  await page.evaluate(() => document.exitPointerLock());
+  await expect.poll(async () => (await m()).mouseLocked, { timeout: 3_000 }).toBe(false);
+  const c = await m();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(cx + 200 - i * 20, cy);
+  await page.waitForTimeout(150);
+  expect((await m()).camYaw).toBeCloseTo(c.camYaw, 6);
+  expect(errors).toEqual([]);
+});
+
 function wrap(a: number): number {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
