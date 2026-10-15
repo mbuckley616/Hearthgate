@@ -166,6 +166,8 @@ const models = loadModels();
   });
 
 function startLoops() {
+  // Mouse look from here on, not on the join screen: a click on the game view takes the lock.
+  input.attachMouse(view.renderer.domElement);
   // One input frame per tick of wall time, not per timer callback: a busy main thread runs the
   // timer late, and each frame it missed is sent when it does run (up to a cap), so a held key
   // covers the same ground at 10 fps as at 60. Self-scheduled to the next due tick, like the server's pump.
@@ -188,6 +190,7 @@ function startLoops() {
 }
 
 const lookNow = { x: 0, y: 0 };
+const mouseNow = { x: 0, y: 0 };
 
 function draw(dt: number) {
   const now = net.predictedTime;
@@ -264,6 +267,8 @@ function draw(dt: number) {
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
   // The camera: the player's own turn, else the bow's lock framed, else a swing in behind the travel.
+  input.takeMouse(mouseNow);
+  view.turnByMouse(mouseNow.x, mouseNow.y);
   view.follow(myPose.x, myPose.z, dt, input.look(lookNow), lockedPose());
 
   view.render();
@@ -327,7 +332,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId, jumpUntil: me.jumpUntil },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId, jumpUntil: me.jumpUntil, attackUntil: me.attackUntil, guarding: me.guarding },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
@@ -349,6 +354,7 @@ function draw(dt: number) {
     nudges: view.nudges,
     camYaw: view.yaw,
     camPitch: view.pitchDeg,
+    mouseLocked: input.mouseLocked,
     camDistance: view.camDistance,
     fadedWalls: view.fadedWalls(),
     figures: () => view.figureStats(),

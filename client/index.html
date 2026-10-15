@@ -305,6 +305,13 @@
         color: var(--ink-soft);
         margin: 10px 0 0;
       }
+      /* The mouse line is for a desk: a touch screen has no mouse to lock, and a short landscape
+         screen needs the room for the panels above the hint. */
+      @media (pointer: coarse), (max-height: 480px) {
+        .hud-hint-mouse {
+          display: none;
+        }
+      }
       @media (max-width: 600px) {
         .hud-controls {
           display: none;

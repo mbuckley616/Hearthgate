@@ -10,6 +10,7 @@ import {
   slewYaw,
   swingTarget,
   turnCamera,
+  mouseTurn,
   wallHides,
   wrapAngle
 } from "./camera";
@@ -53,6 +54,27 @@ describe("camera", () => {
       expect(d.dx).toBeCloseTo(r.x, 9);
       expect(d.dy).toBeCloseTo(r.z, 9);
     }
+  });
+
+  it("turns with the mouse under pointer lock: right turns right, up looks up, clamped (Michael, 2026-10-14, A)", () => {
+    // Right by 100 px turns the way the Right arrow does: yaw down, and W walks more to the east.
+    const right = mouseTurn(0, CAMERA.pitchDeg, 100, 0);
+    expect(right.yaw).toBeCloseTo(-deg(100 * CAMERA.mouseDegPerPx), 9);
+    expect(Math.sign(right.yaw)).toBe(Math.sign(turnCamera(0, CAMERA.pitchDeg, 1, 0, 100).yaw));
+    expect(cameraRelativeMove(0, -1, right.yaw).dx).toBeGreaterThan(0);
+    expect(right.pitchDeg).toBe(CAMERA.pitchDeg);
+    // Up (negative movementY) lowers the eye, so the view looks up; the Up arrow does the reverse.
+    const up = mouseTurn(0, CAMERA.pitchDeg, 0, -20);
+    expect(up.pitchDeg).toBeCloseTo(CAMERA.pitchDeg - 20 * CAMERA.mouseDegPerPx, 9);
+    expect(up.yaw).toBe(0);
+    expect(mouseTurn(0, CAMERA.pitchDeg, 0, -10_000).pitchDeg).toBe(CAMERA.minPitchDeg);
+    expect(mouseTurn(0, CAMERA.pitchDeg, 0, 10_000).pitchDeg).toBe(CAMERA.maxPitchDeg);
+    // A full sweep comes back round, wrapped rather than wound up.
+    const sweep = mouseTurn(0, CAMERA.pitchDeg, 360 / CAMERA.mouseDegPerPx, 0);
+    expect(Math.abs(wrapAngle(sweep.yaw))).toBeLessThan(1e-9);
+    expect(Math.abs(mouseTurn(deg(-179), CAMERA.pitchDeg, 100, 0).yaw)).toBeLessThanOrEqual(Math.PI);
+    // Still: no travel, no turn.
+    expect(mouseTurn(0.3, 20, 0, 0)).toEqual({ yaw: 0.3, pitchDeg: 20 });
   });
 
   it("turns left on Left, raises the eye on Up, and keeps the tilt in its clamp", () => {

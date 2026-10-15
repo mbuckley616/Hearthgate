@@ -16,6 +16,7 @@ import {
   lockYaw,
   swingTarget,
   turnCamera,
+  mouseTurn,
   type CameraWall,
   type Point,
   materialOf,
@@ -775,6 +776,18 @@ export class View {
 
   enemyIds(): string[] {
     return [...this.enemies.keys()];
+  }
+
+  /**
+   * The mouse's turn under pointer lock, `mx`, `my` pixels since the last frame. Counts as the
+   * player's own camera input, so the swing in behind waits for a pause after it like the arrows.
+   */
+  turnByMouse(mx: number, my: number) {
+    if (mx === 0 && my === 0) return;
+    const t = mouseTurn(this.yaw, this.pitchDeg, mx, my);
+    this.yaw = t.yaw;
+    this.pitchDeg = t.pitchDeg;
+    this.lastLookAt = performance.now();
   }
 
   /**
