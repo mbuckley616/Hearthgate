@@ -22,7 +22,9 @@ import {
   STAIRS,
   levelById,
   type Npc,
+  isAirborne,
   isPlayerStaggered,
+  jumpHeight,
   TICK_MS,
   createInputClock,
   dueInputTicks,
@@ -209,6 +211,8 @@ function draw(dt: number) {
     swingActive: swingFlash(me.weapon, me.attackUntil, now),
     cleaveActive: cleaveFlash(me.weapon, me.abilitySlot, me.abilityUntil, now),
     dodging: now < me.dodgeUntil,
+    jumping: isAirborne(me, now),
+    lift: jumpHeight(me, now),
     guarding: me.guarding,
     staggered: isPlayerStaggered(me, now),
     downed: isDowned(me),
@@ -231,6 +235,8 @@ function draw(dt: number) {
       swingActive: swingFlash(r.weapon, r.attackUntil, drawT),
       cleaveActive: cleaveFlash(r.weapon, r.abilitySlot, r.abilityUntil, drawT),
       dodging: drawT < r.dodgeUntil,
+      jumping: isAirborne(r, drawT),
+      lift: jumpHeight(r, drawT),
       guarding: r.guarding,
       staggered: drawT < r.staggerUntil,
       downed: r.hp <= 0 && r.downedUntil > 0,
@@ -321,7 +327,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId, jumpUntil: me.jumpUntil },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },

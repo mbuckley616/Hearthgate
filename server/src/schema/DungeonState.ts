@@ -20,6 +20,10 @@ export class PlayerState extends Schema {
   @type("number") dodgeCooldownUntil = 0;
   @type("number") dodgeDx = 0;
   @type("number") dodgeDz = 0;
+  /** A jump in progress: everyone draws the hop from its landing time, and the client replays it. */
+  @type("number") jumpUntil = 0;
+  @type("number") jumpVx = 0;
+  @type("number") jumpVz = 0;
   @type("number") attackUntil = 0;
   @type("number") attackHitAt = 0;
   @type("number") abilityUntil = 0;

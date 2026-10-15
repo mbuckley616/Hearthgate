@@ -49,5 +49,11 @@ test("each enemy kind and the player read as distinct figures", async ({ page })
   // A swing plays the one-handed chop over the idle.
   await page.keyboard.press("KeyJ");
   await expect.poll(async () => Object.values((await figures(page)).players)[0].anim, { timeout: 2_000 }).toContain("Melee_1H_Attack_Chop");
+
+  // Space is the jump now (Michael, 3A), not a swing: the server's landing time comes back and the clip plays.
+  await page.waitForTimeout(800);
+  await page.keyboard.press("Space");
+  await expect.poll(async () => page.evaluate(() => (window as any).__hg.me.jumpUntil), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(async () => Object.values((await figures(page)).players)[0].anim, { timeout: 2_000 }).toContain("Jump_Full_Short");
   expect(errors).toEqual([]);
 });

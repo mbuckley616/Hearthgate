@@ -312,6 +312,9 @@ function copyPlayer(p: PlayerSim, ps: PlayerState) {
   ps.dodgeCooldownUntil = p.dodgeCooldownUntil;
   ps.dodgeDx = p.dodgeDx;
   ps.dodgeDz = p.dodgeDz;
+  ps.jumpUntil = p.jumpUntil;
+  ps.jumpVx = p.jumpVx;
+  ps.jumpVz = p.jumpVz;
   ps.attackUntil = p.attackUntil;
   ps.attackHitAt = p.attackHitAt;
   ps.abilityUntil = p.abilityUntil;

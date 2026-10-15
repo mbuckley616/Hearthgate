@@ -86,13 +86,13 @@ export class Hud {
       </div>
       <div class="hud-panel hud-bottom-left hud-controls">
         <span><b>WASD</b> move, <b>arrows</b> camera</span>
-        <span><b>J</b> or <b>Space</b> attack</span>
-        <span><b>Shift</b> dodge</span>
+        <span><b>J</b> attack, <b>Space</b> jump</span>
+        <span><b>Shift</b> sprint (hold), <b>K</b> or <b>C</b> dodge</span>
         <span><b>1 2 3</b> abilities</span>
         <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
         <span><b>E</b> talk, revive draught</span>
         <span><b>Tab</b> bow lock-on</span>
-        <span>Gamepad: sticks, X, A; Y B RB; LB; LT block</span>
+        <span>Gamepad: sticks (L3 sprint), X attack, A jump, B dodge; Y RT RB; LB; LT block</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;

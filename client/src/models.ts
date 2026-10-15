@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { WEAPON_CLASSES, type WeaponClass } from "@hearthgate/shared";
+import { PLAYER, WEAPON_CLASSES, type WeaponClass } from "@hearthgate/shared";
 import type { Figure } from "./figures";
 
 /**
@@ -41,6 +41,7 @@ const CLIPS = {
   swing2H: "Melee_2H_Attack_Chop",
   shoot: "Ranged_Bow_Release",
   dodge: "Dodge_Forward",
+  jump: "Jump_Full_Short",
   hit: "Hit_A",
   revive: "Spawn_Ground"
 } as const;
@@ -261,13 +262,14 @@ export interface RigState {
   attacking: boolean;
   guarding: boolean;
   dodging: boolean;
+  jumping: boolean;
   /** A blow landed this frame. */
   hit: boolean;
   downed: boolean;
   dead: boolean;
 }
 
-const IDLE_STATE: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, hit: false, downed: false, dead: false };
+const IDLE_STATE: RigState = { speed: 0, cls: "oneHand", attacking: false, guarding: false, dodging: false, jumping: false, hit: false, downed: false, dead: false };
 
 /**
  * One mixer per figure. A base clip loops (idle, walk, run, block, crawl, or the fall held at its
@@ -296,7 +298,7 @@ export class RigAnimator {
       b.setEffectiveWeight(0);
       this.baseW.set(b, 0);
     }
-    for (const once of [a.death, a.swing1H, a.swing2H, a.shoot, a.dodge, a.hit, a.revive]) {
+    for (const once of [a.death, a.swing1H, a.swing2H, a.shoot, a.dodge, a.jump, a.hit, a.revive]) {
       once.setLoop(THREE.LoopOnce, 1);
       once.clampWhenFinished = true;
     }
@@ -344,6 +346,7 @@ export class RigAnimator {
       // Take the state as it stands, without the edges into it.
       w.attacking = s.attacking;
       w.dodging = s.dodging;
+      w.jumping = s.jumping;
       w.downed = s.downed;
       w.dead = s.dead;
     }
@@ -352,6 +355,7 @@ export class RigAnimator {
       a.death.reset().play();
     } else if (!lying && (w.dead || w.downed)) this.startShot("revive");
     else if (!lying && s.dodging && !w.dodging) this.startShot("dodge");
+    else if (!lying && s.jumping && !w.jumping) this.startShot("jump", PLAYER.jumpMs / 1000);
     else if (!lying && s.attacking && !w.attacking) {
       const fit = (WEAPON_CLASSES[s.cls].durationMs + 300) / 1000;
       this.startShot(s.cls === "bow" ? "shoot" : s.cls === "twoHand" ? "swing2H" : "swing1H", fit);
@@ -362,6 +366,7 @@ export class RigAnimator {
     w.attacking = s.attacking;
     w.guarding = s.guarding;
     w.dodging = s.dodging;
+    w.jumping = s.jumping;
     w.downed = s.downed;
     w.dead = s.dead;
 

@@ -9,6 +9,24 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-14: Jump, sprint and a separate dodge: how they play and which buttons (Fable, Session 44)
+Your note asks for Space to jump, a sprint you can jump out of, and dodge on a button of its own. Today Space attacks (as does J), Shift or K dodges, and the gamepad's A dodges. Walls in the simulation are flat footprints with no height (the 3.2 m dungeon walls and the yard's "low wall" are only drawn tall or short), and a dodge makes you untouchable for its 220 ms. All three answers change the shared movement, so the server, the prediction and the replay change together. Three parts; answer like "1A 2A 3A".
+
+**1. The jump.**
+A. A hop for feel and getting around: about 0.6 m high and half a second in the air, carrying the speed you took off with (walk 2.9 m, sprint 4.4 m), a little steering. It clears nothing (walls block as now) and protects from nothing; no swing, dodge or block in the air. **Recommended:** it is the smallest change that feels like a jump, and B or C can follow a playtest.
+B. As A, and it clears low cover: walls get a height, the low ones (under about 0.8 m: the yard's low wall, crates, barrels) can be hopped over. Enemies still walk round them. About one more session, and every level needs its heights set.
+C. As A, and it is a defence: in the air you are safe from ground attacks (the Charger's rush, sweeps), like a second dodge. A rule of combat; it changes what the telegraphs teach.
+
+**2. The sprint.**
+A. Free: hold to run at 1.5× (9 m/s) for as long as you like. Swinging, blocking or using an ability stops it; a dodge from a sprint is the same dodge. Nothing new on the HUD. **Recommended:** it is what makes the village and the halls quicker, and a cost can be added if the playtest says sprint-kiting is too easy.
+B. Stamina: one bar that sprint drains and a dodge spends (the dodge's 0.9 s cooldown is replaced by its cost), refilling when you stop. The Dragonwilds and Souls way; a new bar in a HUD corner, and it changes how often you can dodge.
+C. Free, but only out of combat (no awake enemy within about 15 m); in a fight you walk.
+
+**3. The buttons** (rule 4: a key and a gamepad button before any mouse binding).
+A. Keyboard: Space jumps, hold Shift sprints, K or C dodges; J (and the left mouse button, when mouse look lands) attacks. Gamepad: A jumps, B dodges, clicking the left stick sprints until you stop moving; ability slot 2 moves from B to RT, which with a bow stays the lock-on cycle (the bow has no slot 2). **Recommended:** the usual layout for this kind of game.
+B. As A on the keyboard; on the gamepad the existing buttons stay: dodge stays on A, jump goes on a left-stick click, and you sprint by pushing the left stick all the way. Fewer changes, but a jump on a stick click is awkward mid-fight.
+Michael: **1A 2A 3A** (2026-10-15, on the control room): a hop that clears nothing, a free sprint, the usual layout. Built in Session 45.
+
 ### 2026-10-14: Mouse look and mouse buttons (the producer)
 Michael wants the mouse to aim and turn the camera, left button to attack and right to block, with WASD to move. Keyboard-only play must keep working (rule 4).
 Michael: **A: Mouse look with pointer lock, LMB attack, RMB block** — keyboard and gamepad bindings stay as they are. (2026-10-14)
