@@ -41,3 +41,24 @@ Pillar three asks for "telegraphed attacks": the windup is the telegraph, and do
 **Risk.** Part 1 hides real errors behind a bigger ease: a 3.5 m slide over `INTERP.easeMs` reads as a lurch, not a pop. That is still better, but not invisible. Part 2 lets a high-ping player dodge a swing the server already landed, by up to 200 ms. The other player sees the goblin's swing miss someone it seemed to hit. In co-op against AI that is the right side to err on (nobody is cheated), but it is a rule worth Michael's yes.
 
 **Recommendation.** Part 1 after the gate playtest, sooner if the playtest's question 3 names a pop near a dodge. Ask the playtesters specifically whether a dodge ever "did not take". Hold part 2 until a human on a real link says dodges feel late. Headless at 220 ms I caught one in three 40 s fights, and I cannot tell how often a person would notice.
+
+## 2026-10-15: Give the art a frame budget before the gate playtest
+
+**Why.** Measured this run (critic.md, 2026-10-15). The Knight took the lab's pages from about 21 fps to about 8 on the field, and the Warrens draw at 2.4 to 4.7 fps on one page, against 19 on the field. This box renders in software, so the absolute numbers are not a player's. The ratios are, though: the Knight costs about 2.7 times the old figure's frame, and the Warrens about 4 times the field. Under 5 fps the input clock drops everything past four frames a gap, so the player lurches 1.2 m at a time at a quarter of run speed. The HUD then shows a ping of seconds on a perfect link. Michael's "stuck after the portal" is not reproduced as an input bug, and slow Warrens frames on his machine would explain it.
+
+The gate asks whether a party on a real connection feels responsive. If the playtest machine's GPU struggles, the answer will be "no" for a reason that is not the network, and Phase 1 will be judged on the art. Pillar one is "works on a modest laptop first", and Phase 5 is phones.
+
+**What.**
+1. A frame-time readout on the HUD's net line next to ping and corrections: the slowest frame in the last second. A playtester can then tell slow frames from a bad link. Add `__hg.fps` for the lab.
+2. Make the cuts the builder already named, measured one at a time with the lab's pages before and after:
+   - two lit torches, not four;
+   - torches and floor out of the shadow pass;
+   - the outline drawn as one mesh, not each body part again;
+   - the clip files cut to the 15 clips played.
+3. The lab gains a frame-rate line: "slow" under 15 fps on a page. The critic can do that part itself.
+
+**Cost.** Builder work in `client/` only (`hud.ts`, `render.ts`, `dungeon.ts`, `models.ts`), one or two sessions. No netcode, not Fable.
+
+**Risk.** The torch and shadow cuts make the Warrens a little flatter, which is Michael's eye to judge against the style guide. The readout is one more line in a corner (rule 5 holds). If the playtest machine has a real GPU this buys nothing for the gate. It still buys Phase 5.
+
+**Recommendation.** Part 1 now, before the gate playtest: it is small, and it turns "it felt stuck" into a number. Do part 2 if Michael's machine reads under 30 fps in the Warrens.

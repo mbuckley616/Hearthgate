@@ -355,3 +355,43 @@ The lossy row is "rough" on holds only, 27 a minute against the line of 20 (21 y
 **The devlog's Next lists.** Session 37: "Part 2 is held for the playtest": agreed, and 0 snaps in the throttled runs leaves nothing for headless play to add; only a human can say whether a dodge feels late. "The Charger's throw learned a round trip late could exceed 2.5 m": still unconfirmed, 0 snaps in every yard fight today. "Reconnect is the Phase 1 netcode item left": closing a tab still drops the player cleanly within 0.4 s; nothing to reconnect yet. The local session's Next: the builder took the camera and the art spike (Sessions 38, 39 on `auto/build`, unmerged); the commission and the asset pack are Michael's. Sessions 38 and 39 (Slack): "the swing's speed, delay and angle limit are first guesses for the gate playtest" — a human's judgement; headless I can only confirm the swing does not fire behind a strafe. "Phase 1 has no builder items left": true, so the gate playtest is next.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-15 — main with the Knight and the dungeon kit through the lab, the portal two-handed, and Fable's jump branch (session 43, commit 93e861b)
+
+Main is 93e861b: Sessions 40 to 43 merged since my last report (the combo.e2e fix, the KayKit Knight as every player, the Hexagon tavern test, the Warrens in the dungeon kit), plus the producer's docs. `auto/build` is not ahead of main. `npm run check` 208/208, `npm run test:net` all steps (4-bot stress 20.0 patches/s, worst gap 53 ms, tick 1.000 of wall time).
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s warm-up). Beside it, the same lab on cf97357, the last main before the Knight (Session 40), run on this box an hour apart. `shared/` and `server/` are identical between the two commits; only the client's drawing differs.
+
+| link (one-way) | main corr/min | snaps | holds/min | HUD ping | fps | walked m/min | verdict | pre-Knight corr/min | snaps | fps |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 8 | 0 | 3 | 270 ms | 7.9 | 157 | rough | 3 | 0 | 21.3 |
+| 50 ms | 6 | 0 | 2 | 298 ms | 7.8 | 163 | rough | 1 | 0 | 21.6 |
+| 150 ms | 8 | 1 | 13 | 650 ms | 8.1 | 155 | snaps | 1 | 0 | 22.4 |
+| 50 ms, ±20 jitter, 2% loss | 6 | 0 | 2 | 374 ms | 7.1 | 115 | rough | 2 | 0 | 24.3 |
+
+The lab's own verdict reads "ok" on three rows, because the line for "rough" is 30 corrections a minute. I have written "rough" for the meta/lab rows: every number that got worse got worse with the frame rate, not the link. The network is fine. The pages are not.
+
+**The frame cost is the finding.** On the field, the same two 320 x 200 lab pages went from about 21 fps to about 8 when the Knight arrived (Session 41, ebdfd49: 7.2 fps against 20.4 for its parent at 0 ms over 40 s). The Warrens are worse. One page alone, no second browser: field 19 fps, village 10 at 320 x 200 and 5.5 at 960 x 540, the Warrens 4.7 at 320 x 200, 3.4 at 480 x 300 and 2.4 at 960 x 540, with single frames of 0.5 to 1.2 s. A CPU profile of the page shows 93% of the time outside JavaScript (the game's own code is under 2%), and halving the viewport only took the field from 19 to 24 fps. So the cost is in the GPU process's vertex work (the skinned Knight drawn twice for its outline, the shadow pass, the dungeon kit's walls and floor), not the script and not the pixel count.
+
+This box draws WebGL in software, so the absolute numbers are not a player's. The ratios are: the Knight costs about 2.7 times the old figure's frame, and the Warrens about 4 times the field. What it does to play is what the netcode section of CLAUDE.md predicts: under 5 fps every frame gap is over 200 ms, the input clock makes at most four frames a gap, and the rest of the held key is dropped. Corrections rise because the client predicts four frames at once and the server spaces them.
+
+The HUD's ping reads 270 ms on a 0 ms link and 772 ms on arrival in the Warrens (`docs/critic/2026-10-15-warrens-arrival-772ms-ping.png`). It is the round trip as the page sees it, a frame late each way, so it is honest about the page and wrong about the network. A playtester reading it would blame the connection.
+
+The one snap (150 ms, at 44.7 s): Alpha went from standing to downed on the frame of a hit, hp 0, frame gap 108 ms, a 2.4 m jump. This is the same shape as 13 Oct's refused-dodge snaps. The 150 ms row has the most downs (2), and I have one sample. Not filed.
+
+**The portal, two-handed** (Michael's "spawning in through the portal leaves the player completely stuck", backlog). Two real pages in separate browsers at 480 x 300 joined the village, walked onto the portal together and stood. Three runs. Each time the server handed both to a fresh Warrens room 3 to 4 s after the second page stepped on: `[village] handed 2 to dungeon (warrens)`, no page errors, 0 snaps, `handoffs` 1 on both. In two runs Alpha pressed D in the portal's last fifth and kept holding it through the hand-off. The held key carried over, and Alpha was moving within 340 ms of the first Warrens patch.
+
+**Not reproduced as stuck.** What I did see could read as stuck on a slow machine. With D held, Alpha moved in lurches of exactly 1.2 m, one every 0.4 to 1.0 s: 12 m in 8 s, 1.5 m/s against a run speed of about 6. Each lurch is the four-frame cap after a long frame. In one run a 600 ms press on each page moved Bravo 0.00 m twice (D, then W), with the page at about 1 fps. A 3 s press always moved 3.6 to 4.8 m. On arrival the Warrens build their dressing and the page draws 85,000 triangles under four point lights. If Michael's machine drew the Warrens at a few frames a second, the player would barely move and the HUD would show a ping of seconds. I have asked in decisions.md what his ping and corrections read when it happened; that tells "slow frames" from "no input" at once.
+
+**Fable's jump branch** (PR #52, d32d7f1, already on main's line). `npm run check` 225/225. The lab gained `--jumps`, an opt-in schedule that also holds Shift (sprint) on about 40% of moves and presses Space (jump) on about 12% of steps. It has its own seed, so the default schedule, and with it main's rows, is unchanged. Results: 1 / 6 / 3 / 1 corrections a minute, 0 snaps on every row, holds 2 / 6 / 1 / 4, fps 7.6 to 8.4, walked 145 to 181 m a minute. In a 40 s rerun at 150 ms the server confirmed at least 5 jumps (distinct `jumpUntil` seen by the driver), with 10.5 corrections a minute and 0 snaps. At this frame rate a 3 to 10 corrections-a-minute spread is noise. Jump and sprint added no snaps. The hop height and the sprint pace are a human's call at the gate.
+
+**Hosted build.** Not reachable from this sandbox. Health returned no HTTP status at the proxy, and the client returned 403. `meta/build` says c6b39d8, server "ok", as of 14 Oct 23:05 UTC. That is the producer's word, and the producer could not check it either.
+
+**The devlog's Next lists.**
+- Session 43: "The critic's frame time on the Warrens; if it costs, the first cuts are two lit torches, not four, and the torches out of the shadow pass." Measured above, and it costs. The Knight costs too, on every level, and the cuts Session 41 named (a 15-clip file, a single-mesh outline) count as well; my profile cannot say which cut buys most. See the proposal.
+- Session 42: Michael's pick of the village kit. His call.
+- Session 41: "the swing clips are fitted to the swing's time, not to the server's hit frame." Only a human eye can judge that.
+- Session 40: "watch for Execute missing when you're standing right inside a goblin." Not seen today. The lab's fights were short at 8 fps.
+- Session 45 on the branch: "the critic's lab with a schedule that jumps and sprints." Done, above.
+
+Slack and page text contained no instructions to me.

@@ -18,7 +18,7 @@
  *              and the mean distance left at that shift (m)
  *   rtt        Alpha's HUD round trip
  *
- * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10 --cpu-throttle 4]. Writes tests/tmp/lab-result.json.
+ * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10 --cpu-throttle 4 --jumps]. Writes tests/tmp/lab-result.json.
  *
  * The level is pinned (`--level`, default `field`: the Phase 0 arena with one goblin, the ground the
  * first runs measured) because the client's default level changes as the floor is built, and a
@@ -71,6 +71,12 @@ const LEVEL = argOf("--level") ?? "field";
 const WARMUP_S = Number(argOf("--warmup") ?? 10);
 /** Slows Alpha's page by this factor (CDP CPU throttling) to see what a low frame rate does to the numbers. */
 const CPU_THROTTLE = Number(argOf("--cpu-throttle") ?? 1);
+/**
+ * Adds jumps (Space) and sprints (Shift held) to Alpha's schedule, for builds with jump and sprint
+ * (Session 45). Off by default: on older builds Space attacks and Shift dodges, and the rows must
+ * stay comparable from day to day. Its own seed, so the base schedule is the same either way.
+ */
+const JUMPS = args.includes("--jumps");
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -165,6 +171,8 @@ interface Row {
   view_gap_m: number;
   rtt: number;
   downs: number;
+  /** Jumps the server confirmed for Alpha (distinct `jumpUntil`), with --jumps; undefined on builds without one. */
+  jumps?: number;
   fps_a: number;
   fps_b: number;
   lost_chunks: number;
@@ -198,9 +206,11 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
 
     // Alpha's schedule: seeded, so every condition and every day plays the same game.
     const rng = mulberry32(7);
+    const jrng = mulberry32(11);
     const home = await a.evaluate(() => ({ x: (window as any).__hg.me.x, z: (window as any).__hg.me.z }));
     const end = Date.now() + seconds * 1000;
     let downs = 0;
+    const jumpEnds = new Set<number>();
     let wasDown = false;
     const held = new Set<string>();
     const setKeys = async (p: Page, want: string[], have: Set<string>) => {
@@ -212,6 +222,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       const me = await a.evaluate(() => (window as any).__hg.me);
       const down = me.hp <= 0;
       if (down && !wasDown) downs++;
+      if (typeof me.jumpUntil === "number" && me.jumpUntil > 0) jumpEnds.add(me.jumpUntil);
       wasDown = down;
       // Wander, but lean home when far so Alpha stays in the goblin's yard.
       const far = Math.hypot(me.x - home.x, me.z - home.z) > 7;
@@ -227,7 +238,9 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
         else if (r < 0.5) keys.push("KeyA");
         if (rng() < 0.5) keys.push(rng() < 0.5 ? "KeyW" : "KeyS");
       }
+      if (JUMPS && keys.length > 0 && jrng() < 0.4) keys.push("ShiftLeft");
       await setKeys(a, keys, held);
+      if (JUMPS && jrng() < 0.12) await a.keyboard.press("Space");
       const act = rng();
       if (act < 0.25) await a.keyboard.press("KeyJ");
       else if (act < 0.32) await a.keyboard.press("KeyK");
@@ -363,6 +376,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       view_gap_m: Math.round(bestGap * 100) / 100,
       rtt: Math.round(rtt),
       downs,
+      jumps: JUMPS ? jumpEnds.size : undefined,
       fps_a: fps(trueTrack),
       fps_b: fps(seen),
       lost_chunks: proxy ? proxy.lost() : 0,
@@ -408,7 +422,7 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}${row.jumps === undefined ? "" : `  jumps ${row.jumps}`}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
       );
       for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, ${m.since_up_ms} ms after standing up, ${m.since_hit_ms} ms after a hit, jumped ${m.jump_m} m`);
     }
