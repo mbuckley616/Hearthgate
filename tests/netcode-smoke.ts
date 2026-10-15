@@ -26,6 +26,9 @@
  *      talks to the keeper with the use key; both hold the portal and are handed seats in one fresh
  *      Warrens room, with their names and weapons; then, in a cellar floor, they kill its goblin,
  *      hold the open stairs and are handed back to a village together;
+ *   6e. the hand-off in the real client (`Net`): one player walks through the portal and can move
+ *      in the Warrens straight after; then a seat that cannot be taken lands it in the village,
+ *      still able to move, never stranded with no room (Michael's "stuck after the portal");
  *   7. stress: STRESS_BOTS bots (default 4) in a fresh yard room walk, swing and dodge at the
  *      client rate for STRESS_MS; every client sees every bot where the server has it,
  *      every input is applied, nobody is dropped, patches keep coming at the tick rate
@@ -36,6 +39,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
+import { Net } from "../client/src/net.ts";
 import { CELLAR, DOWNS, NPC, PLAYER, PORTAL, STAIRS, TICK_MS, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
 
 const PORT = 2599;
@@ -264,10 +268,85 @@ async function main() {
     await warrens(client);
     await village(client);
     await stairsBack(client);
+    await handoffClient();
     await combo(client);
     await stress(client);
   } finally {
     server.kill("SIGTERM");
+  }
+}
+
+/**
+ * 6e. The hand-off as the browser does it, through the real `Net`: frames predicted and sent at
+ * the client rate, the seat taken from the "handoff" message, the clock and the pending inputs
+ * started over. Then the failure Michael's report points at: a seat the server will not honour.
+ * Before Session 47 a refused seat left `Net` with no room at all, so the player stood in the new
+ * level, drawn and with the HUD up, and every input went nowhere.
+ */
+async function handoffClient() {
+  const net = new Net();
+  let seq = 0;
+  /** Send frames at the client rate for `ms`, steering with `steer` (null stops early). */
+  const drive = async (ms: number, steer: () => { dx: number; dy: number } | null) => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const s = steer();
+      if (!s) return;
+      net.tick({ seq: ++seq, dx: s.dx, dy: s.dy, attack: false, dodge: false });
+      await sleep(TICK_MS);
+    }
+  };
+  /** Until the room we are in has placed us: a patch arrived and we are connected. */
+  const placed = async (what: string) => {
+    const start = Date.now();
+    while (!(net.connected && net.lastServerTick > 0)) {
+      if (Date.now() - start > 12000) fail(`hand-off client: ${what}: no patch after 12 s (room "${net.roomName}", handoffs ${net.handoffs})`);
+      await sleep(TICK_MS);
+    }
+  };
+  /** Walk east for a second and report how far the server moved us (the reconciled position). */
+  const walks = async () => {
+    const x0 = net.me.x;
+    await drive(1000, () => ({ dx: 1, dy: 0 }));
+    await sleep(300);
+    return net.me.x - x0;
+  };
+  try {
+    await net.connect(`ws://localhost:${PORT}`, "Wren");
+    await placed("village");
+    if (net.roomName !== "village") fail(`hand-off client: joined "${net.roomName}", not the village`);
+    const portal = VILLAGE.portal!;
+    const startAt = Date.now();
+    await drive(15000, () => {
+      if (net.handoffs > 0) return null;
+      const dx = portal.x - net.me.x;
+      const dz = portal.z - net.me.z;
+      const d = Math.hypot(dx, dz);
+      return d < 0.5 ? { dx: 0, dy: 0 } : { dx: dx / Math.max(d, 1), dy: dz / Math.max(d, 1) };
+    });
+    if (net.handoffs !== 1) fail(`hand-off client: the portal did not move us in 15 s (at ${net.me.x.toFixed(2)}, ${net.me.z.toFixed(2)})`);
+    await placed("the Warrens");
+    if (net.roomName !== "dungeon" || net.level.id !== WARRENS.id) fail(`hand-off client: arrived in "${net.roomName}" on ${net.level.id}`);
+    const inWarrens = await walks();
+    if (inWarrens < 3) fail(`hand-off client: after the portal a second east moved us ${inWarrens.toFixed(2)} m`);
+    const tookMs = Date.now() - startAt;
+
+    // A seat for a room that does not exist: the server refuses the join.
+    const refused = { room: { name: "dungeon", roomId: "no-such-room", processId: "no-such-process" }, sessionId: "no-such-seat" };
+    const failStart = Date.now();
+    await (net as any).handoff({ reservation: refused, level: WARRENS.id });
+    await placed("the fallback");
+    const fellBackMs = Date.now() - failStart;
+    if (net.handoffFallbacks !== 1 || net.roomName !== "village" || net.level.id !== VILLAGE.id)
+      fail(`hand-off client: a refused seat left us in "${net.roomName}" on ${net.level.id} with ${net.handoffFallbacks} fallbacks`);
+    const inVillage = await walks();
+    if (inVillage < 3) fail(`hand-off client: after the fallback a second east moved us ${inVillage.toFixed(2)} m`);
+    console.log(
+      `ok: hand-off client: Net walked through the portal (${tookMs} ms) and moved ${inWarrens.toFixed(2)} m in the Warrens; a refused seat put it in the village in ${fellBackMs} ms, where it moved ${inVillage.toFixed(2)} m`
+    );
+  } finally {
+    net.dispose();
+    await sleep(300);
   }
 }
 

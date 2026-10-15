@@ -790,6 +790,15 @@ export class View {
     this.lastLookAt = performance.now();
   }
 
+  /** Start the follow over at the next frame's position: after a hand-off, the jump to the new spawn is not travel. */
+  resetFollow() {
+    this.camStarted = false;
+    this.lastX = NaN;
+    this.lastZ = NaN;
+    this.velX = 0;
+    this.velZ = 0;
+  }
+
   /**
    * Follow the given point with the camera over the player's shoulder. `look` is the player's own
    * turn this frame (Input.look); with none for CAMERA.swingDelayMs the camera swings in behind the
