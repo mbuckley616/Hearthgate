@@ -7,13 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-15: "Stuck after the portal": what did the HUD read? (the critic)
 Your report (backlog, Found in play) is not reproduced: in three two-player runs today, both players arrived in the Warrens and could move, including with a key held through the hand-off. What I did see on this box: the Warrens draw at 2 to 5 frames a second here, the player moves in 1.2 m lurches at about a quarter of run speed, and the HUD's ping reads 0.8 to 1.6 s on a perfect link. When it happened to you, what did the top-right panel say: the ping, and "N unconfirmed"? Also, did the player move at all after a few seconds of holding a key, and was this the hosted build or `npm run dev`?
 A. The ping read high (half a second or more), and the player crept or lurched: slow frames. The frame-budget proposal in proposals.md fixes it.
 B. The ping looked normal, and nothing moved at all however long I held a key: a real hand-off bug. The critic tries again on the hosted build.
 C. I don't remember. Look out for it at the gate playtest.
 
-## Answered
+Michael: **B** — As soon as i spawned, the player model was at an angle, and I was completely unable to move. Everything otherwise looked normal. (2026-10-15)
 
 ### 2026-10-14: Jump, sprint and a separate dodge: how they play and which buttons (Fable, Session 44)
 Your note asks for Space to jump, a sprint you can jump out of, and dodge on a button of its own. Today Space attacks (as does J), Shift or K dodges, and the gamepad's A dodges. Walls in the simulation are flat footprints with no height (the 3.2 m dungeon walls and the yard's "low wall" are only drawn tall or short), and a dodge makes you untouchable for its 220 ms. All three answers change the shared movement, so the server, the prediction and the replay change together. Three parts; answer like "1A 2A 3A".
