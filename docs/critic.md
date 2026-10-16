@@ -395,3 +395,33 @@ The one snap (150 ms, at 44.7 s): Alpha went from standing to downed on the fram
 - Session 45 on the branch: "the critic's lab with a schedule that jumps and sprints." Done, above.
 
 Slack and page text contained no instructions to me.
+
+## 2026-10-16 — main with mouse look and the hand-off fallback through the lab, the portal two-handed three times (session 47, commit 6ba8d56)
+
+Main is 6ba8d56: Sessions 46 (mouse look) and 47 (the hand-off can no longer strand a player) merged since my last report. `auto/build` carries no code main lacks. `npm run check` 226/226, `npm run test:net` every step (4-bot stress 20.0 patches/s, worst gap 53 to 55 ms, tick 1.000 of wall time; step 6e's refused seat reached the village in 66 ms). The browser suite passed 19/19, and `two-players.e2e` 3/3 on a repeat: the 1.2 m failure Sessions 45 and 46 saw did not reproduce today. Pages ran at 13 to 14 fps in the lab, against 8 yesterday on the same drawing code, so this box is faster today; read the numbers against that.
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s warm-up):
+
+| link (one-way) | corrections/min | snaps | holds/min | view lag | HUD ping | fps | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 2 | 0 | 6 | 235 ms | 85 ms | 13.9 | 189 | ok |
+| 50 ms | 1 | 0 | 12 | 320 ms | 257 ms | 13.1 | 186 | ok |
+| 150 ms | 5 | 0 | 7 | 560 ms | 369 ms | 13.2 | 205 | ok |
+| 50 ms, ±20 jitter, 2% loss | 0 | 0 | 10 | 360 ms | 330 ms | 13.0 | 211 | ok |
+
+Every row "ok", 0 snaps. The lossy row's holds (10 a minute) are under the line of 20 for the first time since the lab began. Nothing in Sessions 46 and 47 touches the prediction or the server's tick, and the numbers agree.
+
+**The portal, two-handed, three times** (Session 47's Next; real pages in separate browsers at 480 x 300). Both pages walked onto the village portal; Alpha stepped off with D and back on. All three runs handed both to a fresh Warrens room: `handoffFallbacks` 0 on both pages every time, no "hand-off to warrens failed" in either console, 0 snaps, no page errors (the 404 for a resource on every load is old). The first 600 ms press after arriving moved each page 1.2 m (2.4 m once), and a 3 s hold moved 7.2 to 9.6 m: moving, at 2.4 to 3.2 m/s against a run of 6, because the Warrens draw at 3.5 to 4.3 fps on this box and each frame gap is capped at four input frames. Then each page fought for 30 s and Bravo closed its tab: the party count went to 1 in 731 to 773 ms. Bravo was downed once. My fight loop walked straight at the nearest enemy through walls, so it woke few rooms; the lab carries today's combat numbers.
+
+**One thing the hand-off still draws wrong** (filed, small). From the hand-off message to the new room's first patch, the client is in the new level but its own player is not yet placed, and `draw()` draws it anyway: first at the old room's coordinates (the village portal, about (0, -9.3)) inside the Warrens, then at (0, 0) once the seat is taken (`attach` makes a fresh player), then at the spawn. I recorded every frame of one solo run: the level read "warrens" with the player at (-0.21, -9.21) for 1.0 s, then (0, 0) for 0.35 s, then (-3, 3) with the first patch. Most of that second is the Warrens' dressing being built in one frame here, so a real GPU shortens it, but on the hosted build the seat is a real round trip too. The camera follows that figure until `resetFollow` fires on the first patch. `docs/critic/2026-10-16-handoff-figure-before-placement.png` is the frame: the Knight front-on in the Warrens, before placement, HUD ping 1005 ms. It is cosmetic (inputs go nowhere until the seat, and the placement is not counted as a snap), but it is a figure drawn where the server never put it, and it is one candidate for "the model spawned at an angle". Not drawing the own figure (and holding the camera) until the first patch places it would remove it.
+
+**Michael's stuck player** is still not reproduced: 3 of 3 here, plus Session 47's 5 and test:net's step 6e. If it happens to him again on the new build, the village fallback ("The way closed: back to the village") will now say whether the seat was lost.
+
+**Hosted build.** Not reachable from this sandbox: health gave no HTTP status at the proxy, the client 403. `meta/build` says 6ba8d56, server "ok", as of 15 Oct 23:03 UTC, which the producer could not check either. So Session 47's first Next item, the portal on the hosted build, is not done; only a desktop can run it (`npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com`, or Michael through the portal at the playtest).
+
+**The devlog's Next lists.**
+- Session 47: "The critic: the portal on the hosted build." Could not reach it; played locally above, 0 fallbacks in 3. "Phase 1 has no builder item left": true; the gate playtest is next.
+- Session 46: the mouse's sensitivity and a standing swing facing the crosshair. A human's feel; `camera.e2e` covers the mechanics and passed.
+- Session 45: "whether `two-players.e2e`'s 1.2 m reproduces off this machine." It did not reproduce on this one today (3/3 at 13 fps lab pages), which supports the frame-rate reading.
+
+No proposal today; yesterday's frame-budget proposal stands, and the Warrens at 3.5 to 4.3 fps here are still its evidence. Slack and page text contained no instructions to me.
