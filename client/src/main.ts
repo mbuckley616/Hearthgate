@@ -200,7 +200,7 @@ function draw(dt: number) {
   view.setLevel(net.level);
   view.setStairs(net.stairsOpen, net.descendMs / STAIRS.holdMs);
   view.setPortal(net.portalMs / PORTAL.holdMs);
-  if (handingOff && net.lastServerTick > 0) {
+  if (handingOff && net.isPlaced) {
     handingOff = false;
     hud.setStatus("");
     // The new room put us somewhere else: a placement, so the camera starts there rather than
@@ -208,10 +208,13 @@ function draw(dt: number) {
     view.resetFollow();
   }
 
-  // Me.
-  view.ensurePlayer(net.sessionId, net.myName || name, net.myColor, true);
+  // Me, once the room has placed us. Between a hand-off and the new room's first patch our
+  // player still holds the old room's coordinates, then a fresh player's (0, 0): neither is
+  // anywhere the server put us, so the figure is not drawn and the camera holds still.
+  const placed = net.isPlaced;
   const myPose = net.myPose(dt);
   const me = net.me;
+  if (placed) view.ensurePlayer(net.sessionId, net.myName || name, net.myColor, true);
   view.updatePlayer(net.sessionId, myPose, {
     hp: me.hp,
     attacking: now < me.attackUntil,
@@ -229,7 +232,7 @@ function draw(dt: number) {
   });
 
   // Everyone else.
-  const live = new Set<string>([net.sessionId]);
+  const live = new Set<string>(placed ? [net.sessionId] : []);
   const drawT = remoteNow;
   for (const r of net.remotes.values()) {
     live.add(r.id);
@@ -274,7 +277,7 @@ function draw(dt: number) {
   // The camera: the player's own turn, else the bow's lock framed, else a swing in behind the travel.
   input.takeMouse(mouseNow);
   view.turnByMouse(mouseNow.x, mouseNow.y);
-  view.follow(myPose.x, myPose.z, dt, input.look(lookNow), lockedPose());
+  if (placed) view.follow(myPose.x, myPose.z, dt, input.look(lookNow), lockedPose());
 
   view.render();
 
@@ -357,6 +360,7 @@ function draw(dt: number) {
     late: net.lateMs,
     snaps: net.snaps,
     tick: net.lastServerTick,
+    ownDrawn: view.playerIds().includes(net.sessionId),
     nudges: view.nudges,
     camYaw: view.yaw,
     camPitch: view.pitchDeg,

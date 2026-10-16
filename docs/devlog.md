@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-16: Session 48, no figure where the server never put it
+
+**What changed**
+
+- The critic's bug (2026-10-16): from the `handoff` message to the new room's first patch, `draw()` drew our own player in the new level at the old room's coordinates (the village portal, about (0, -9.3)), then at a fresh player's (0, 0) once the seat was taken, and the camera followed it; 1.35 s on the critic's box. Now `draw()` in `client/src/main.ts` draws the own figure and moves the camera only once `Net.isPlaced` (a new getter on the existing `placed` flag in `net.ts`) says the room's first patch has placed us. Until then the figure is removed and the camera holds where it was; the mouse and arrows still turn it. The hand-off's `resetFollow` keys off the same flag, so the camera starts at the placement.
+- The same holds on the first join, where the camera used to start at (0, 0) and glide to the spawn.
+- `__hg.ownDrawn` for the tests. Nothing in `shared/`, the server, prediction or the inputs changes: draw-only.
+- Test: `tests/village.e2e.ts` records every frame through the portal and fails if the own figure is drawn between the hand-off and the Warrens' first patch. With the fix turned off it fails, the figure at (1.70, -9.72) inside the Warrens. `npm run check` 226; `test:net` every step; the browser suite 19/19; `village.e2e` 9 of 10 repeated, the one failure at the keeper's speech before the portal (main alone failed 1 of 4 here, at the step after arrival).
+
+**Learned**
+
+- Playwright here needs `PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`: the installed `@playwright/test` looks for headless shell 1243, and the image carries 1194.
+- `village.e2e` flakes on this box about one run in five, at different steps (the keeper's speech, the step after arrival), with or without this change: slow headless frames against fixed timeouts. Worth the critic's look if it continues.
+
+**Next**
+
+- Phase 1 has no builder item left: the gate playtest is Michael's. If he sees the figure "at an angle" again after the portal, it is no longer this.
+
 ## 2026-10-15: Session 47, the portal can no longer strand a player
 
 **What changed**
