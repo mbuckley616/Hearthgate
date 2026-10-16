@@ -76,6 +76,18 @@ test("the village: a villager answers E, and the portal hands the party to the W
   await page.keyboard.press("KeyE");
   await expect(page.locator("#hud-speech")).toContainText("Keeper Wren: The shrine's portal", { timeout: 5_000 });
 
+  // Every frame from here: where the own figure is drawn while the hand-off is under way.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__frames = [];
+    const rec = () => {
+      const h = w.__hg;
+      if (h) w.__frames.push({ level: h.level, tick: h.tick, handoffs: h.handoffs, ownDrawn: h.ownDrawn, x: h.me.x, z: h.me.z });
+      requestAnimationFrame(rec);
+    };
+    requestAnimationFrame(rec);
+  });
+
   // The portal at (0, -9.5): stand on it alone for two seconds and the server moves us.
   // The label is checked while we walk: stepping onto the portal starts its two seconds.
   await Promise.all([
@@ -85,6 +97,14 @@ test("the village: a villager answers E, and the portal hands the party to the W
   await expect.poll(() => page.evaluate(() => (window as any).__hg.level), { timeout: 15_000 }).toBe("warrens");
   await expect.poll(() => page.evaluate(() => (window as any).__hg.tick), { timeout: 10_000 }).toBeGreaterThan(0);
   const after = await hg(page);
+  // Between the hand-off and the Warrens' first patch the player is nowhere the server put it
+  // (the portal's village coordinates, then a fresh (0, 0)): never drawn there (critic, 2026-10-16).
+  const frames: { level: string; tick: number; handoffs: number; ownDrawn: boolean; x: number; z: number }[] = await page.evaluate(() => (window as any).__frames);
+  const between = frames.filter((f) => f.handoffs === 1 && f.tick === 0);
+  const drawnBetween = between.filter((f) => f.ownDrawn);
+  expect(drawnBetween, `own figure drawn before placement at ${JSON.stringify(drawnBetween[0])}`).toEqual([]);
+  expect(frames.some((f) => f.handoffs === 0 && f.ownDrawn)).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).__hg.ownDrawn)).toBe(true);
   expect(after.room).toBe("dungeon");
   expect(after.handoffs).toBe(1);
   expect(Object.keys(after.enemies)).toHaveLength(9);

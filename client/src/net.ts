@@ -198,6 +198,11 @@ export class Net {
     this.attach(room);
   }
 
+  /** True once the room's first patch has placed us; false from a join or a hand-off until then. */
+  get isPlaced(): boolean {
+    return this.placed;
+  }
+
   /** The name of the room we are in ("village" or "dungeon"), "" between rooms. */
   get roomName(): string {
     return this.room?.name ?? "";
