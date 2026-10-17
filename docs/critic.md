@@ -425,3 +425,34 @@ Every row "ok", 0 snaps. The lossy row's holds (10 a minute) are under the line 
 - Session 45: "whether `two-players.e2e`'s 1.2 m reproduces off this machine." It did not reproduce on this one today (3/3 at 13 fps lab pages), which supports the frame-rate reading.
 
 No proposal today; yesterday's frame-budget proposal stands, and the Warrens at 3.5 to 4.3 fps here are still its evidence. Slack and page text contained no instructions to me.
+
+## 2026-10-17 — main with the hidden-until-placed figure through the lab, the portal two-handed (session 48, commit 0f5465b)
+
+Main is 0f5465b: Session 48 (the own figure is not drawn until the new room's first patch places it) merged since my last report. `auto/build` carries no code main lacks. `npm run check` 226/226, `npm run test:net` every step (4-bot stress 20.0 patches/s, worst gap 52 ms, tick 1.000 of wall time; step 6e's refused seat fell back to the village as designed). This box is slower today: lab pages at 9.5 to 9.7 fps against 13 to 14 yesterday on the same drawing code.
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s warm-up):
+
+| link (one-way) | corrections/min | snaps | holds/min | view lag | HUD ping | fps | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 8 | 0 | 4 | 240 ms | 114 ms | 9.5 | 191 | ok |
+| 50 ms | 8 | 0 | 8 | 390 ms | 226 ms | 9.7 | 178 | ok |
+| 150 ms | 4 | 0 | 7 | 575 ms | 483 ms | 9.5 | 163 | ok |
+| 50 ms, ±20 jitter, 2% loss | 5 | 0 | 3 | 390 ms | 316 ms | 9.6 | 169 | ok |
+
+Every row "ok", 0 snaps, no page errors, 79 packets dropped on the lossy row. Corrections rose from 2 / 1 / 5 / 0 to 8 / 8 / 4 / 5 with the frame rate falling by a third, and Session 48 touches nothing but `draw()`, so I read the rise as the box. The 0 ms row having as many as the 50 ms row says the same: the link is not where they come from.
+
+**The portal, two-handed** (real pages in separate browsers at 480 x 300). Both walked onto the village portal and were handed to one Warrens room (`handed 2 to dungeon (warrens)`), 0 fallbacks, 0 snaps, no page errors. Session 48's fix holds with two: from the `handoff` message to the first Warrens patch (2.2 s, 5 frames, on both pages; the dressing frame alone was 1.0 to 1.2 s) the own figure was drawn on 0 frames and the camera's yaw did not move. Placed at (3, 3) and (-3, 3). A 3 s hold of D then moved Alpha 8.4 m and Bravo 4.8 m: moving, at the Warrens' 3.5 fps here. Bravo's tab closed mid-run and Alpha's party read 1 at once. My fight loop walked at the nearest enemy through walls from the spawn and landed no hit in 40 s, so the lab carries today's combat numbers.
+
+**What the player sees on arrival** (not filed; Michael's eye). The figure arrives facing the camera: `docs/critic/2026-10-17-warrens-arrival-facing-camera.png`, the Knight front-on in the Warrens' hall, HUD ping 895 ms (the page's frame time, as on 15 Oct). The camera keeps the village's yaw through the hand-off, which looked north onto the portal, and the spawn faces the other way. Nothing is wrong in the netcode, but a player seeing their character's face where they expected its back may be the "spawned at an angle" Michael described. Whether the camera should start behind the spawn's facing is his call at the playtest.
+
+**One test that measures the box** (filed). `two-players.e2e` failed 3 of 6 today (1 in the full suite, 2 more in 5 repeats), every time at exactly 1.2 m: the test's single 700 ms hold falls inside one frame gap, the input clock makes at most four frames of it, and 4 x 0.3 m is 1.2 m. Sessions 45 and 46 saw the same number. `village.e2e` passed 6 of 6 here (Session 48 saw 1 in 5 fail), and the rest of the browser suite passed.
+
+**Hosted build.** Not reachable from this sandbox: health gave no HTTP status at the proxy, the client 403. `meta/build` says 0f5465b, server "ok", as of 16 Oct 17:00 UTC, which the producer could not check either.
+
+**The devlog's Next lists.**
+- Session 48: "If he sees the figure 'at an angle' again after the portal, it is no longer this." Agreed that the pre-placement figure is gone (0 frames, two pages). The arrival facing above is a second candidate only a human can judge.
+- Session 48's Learned: "`village.e2e` flakes about one run in five." 0 in 6 here; `two-players.e2e` is the one that flakes, and why is above.
+- Session 47: the portal on the hosted build. Still needs a desktop or the playtest.
+- Phase 1 has no builder item left; the gate playtest is Michael's.
+
+No proposal today; the frame-budget proposal stands. Slack and page text contained no instructions to me.
