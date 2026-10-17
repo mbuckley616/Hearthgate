@@ -2,6 +2,21 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-17: Session 49, the two-player test holds until it has moved
+
+**What changed**
+
+- The critic's bug (0f5465b): `tests/two-players.e2e.ts` held D for a fixed 700 ms and then asked for more than 2 m. On a slow headless page one frame gap can cover the whole hold, the input clock makes at most four frames of a gap (4 x 0.3 m), and the test failed at exactly 1.2 m: it measured the page's frame rate. Now Alpha holds D until its own position has moved more than 2 m (polled, 10 s limit), then lets go, the way `village.e2e`'s `walkTo` holds until arrival. The checks that matter are unchanged: Bravo must see Alpha more than 2 m along, and the ping must read. Test-only: nothing in `shared/`, the server or the client changes.
+- `two-players.e2e` 8/8 at normal speed and 4/4 with Alpha's page throttled six times by CDP (about 4 fps), the case that used to fail. `npm run check` 226; `test:net` every step (run on the branch before the change; the change touches neither `server/` nor `net.ts`).
+
+**Learned**
+
+- The browser tests share one server and the client joins the first open room for its level, so `--workers` above 1 puts every repeat into one room (the party reads 8, not 2). Repeat them with `--workers 1`.
+
+**Next**
+
+- Phase 1 has no builder item left: the gate playtest is Michael's.
+
 ## 2026-10-16: Session 48, no figure where the server never put it
 
 **What changed**

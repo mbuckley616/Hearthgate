@@ -21,13 +21,14 @@ test("two players see each other move", async ({ browser }) => {
   const alphaId = await a.evaluate(() => (window as any).__hg.sessionId);
   const startX = await a.evaluate(() => (window as any).__hg.me.x);
 
+  // Held until Alpha has moved, not for a fixed time: a slow headless page can cover a short hold
+  // with one frame gap, and the input clock makes at most four frames (1.2 m) of a gap, so a timed
+  // hold measured the page's frame rate rather than the two players seeing each other.
   await a.keyboard.down("KeyD");
-  await a.waitForTimeout(700);
+  await expect
+    .poll(async () => a.evaluate(() => (window as any).__hg.me.x), { timeout: 10_000 })
+    .toBeGreaterThan(startX + 2);
   await a.keyboard.up("KeyD");
-  await a.waitForTimeout(300);
-
-  const endX = await a.evaluate(() => (window as any).__hg.me.x);
-  expect(endX - startX).toBeGreaterThan(2);
 
   await expect
     .poll(async () => b.evaluate((id) => (window as any).__hg.players[id]?.pose?.x ?? -999, alphaId), {
