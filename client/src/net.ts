@@ -16,6 +16,7 @@ import {
   interpDelayAt,
   isAlive,
   isDead,
+  isDowned,
   levelById,
   minRtt,
   pushPoseSnapshot,
@@ -56,6 +57,18 @@ export const SNAP_DISTANCE = 2.5;
  * us back. Taken from the dodge's own numbers so it follows their tuning.
  */
 export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.dodgeSpeed * PLAYER.dodgeMs) / 1000;
+
+/** The longest unconfirmed stretch, ms, a downing blow's correction is eased over rather than snapped. */
+export const DOWNED_EASE_MS = 500;
+
+/**
+ * The snap limit for a correction that a downing blow explains. We keep predicting our run
+ * for a round trip past the frame the server downed us on, and a downed player's replayed
+ * frames barely move, so the error is ground speed times the round trip: over SNAP_DISTANCE
+ * once that passes about 420 ms. Sprinting for DOWNED_EASE_MS bounds it, past which a jump
+ * is no longer one the blow explains.
+ */
+export const DOWNED_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.speed * PLAYER.sprintMult * DOWNED_EASE_MS) / 1000;
 
 export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
@@ -470,6 +483,7 @@ export class Net {
     const beforeX = this.me.x;
     const beforeZ = this.me.z;
     const wasDead = isDead(this.me);
+    const wasAlive = isAlive(this.me);
     // A dodge start always sets the cooldown, so a different cooldown after the replay means a
     // dodge we predicted was refused or moved by the server.
     const predictedDodgeCooldown = this.me.dodgeCooldownUntil;
@@ -538,7 +552,9 @@ export class Net {
     const err = Math.hypot(errX, errZ);
     if (err > 0.02) this.corrections++;
     const dodgeRefused = me.dodgeCooldownUntil !== predictedDodgeCooldown;
-    if (err < (dodgeRefused ? DODGE_SNAP_DISTANCE : SNAP_DISTANCE)) {
+    const downedNow = wasAlive && isDowned(me);
+    const limit = downedNow ? DOWNED_SNAP_DISTANCE : dodgeRefused ? DODGE_SNAP_DISTANCE : SNAP_DISTANCE;
+    if (err < limit) {
       this.visualErrX += errX;
       this.visualErrZ += errZ;
     } else {

@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-18: Session 50, a downing blow eases instead of snapping
+
+**What changed**
+
+- The critic's bug (c44600d): on a slow link a downing blow snapped the player back. The client keeps predicting its run for a round trip past the frame the server downed it on, and a downed player's replayed frames only crawl, so the error is run speed times the round trip, over `SNAP_DISTANCE` (2.5 m) once that passes about 420 ms; the lab saw 2.7 m and 2.4 m. Like the refused dodge (Session 37), it is a prediction the client could not make, not a teleport. `reconcile` in `client/src/net.ts` now eases a correction on the patch that takes us from standing to downed up to `DOWNED_SNAP_DISTANCE`: the snap limit plus `DOWNED_EASE_MS` (500 ms) of sprinting, 7.0 m, from `PLAYER`'s own numbers so it follows their tuning. The same error while already down, or with no down in it, still snaps.
+- Draw and count only: the server, `shared/` and the prediction are unchanged; the player still ends exactly where the server put them, the offset decays as every correction's does.
+- Test: `tests/reconcile-placement.ts` case 6 runs east with eleven frames unconfirmed (550 ms), the server downs us at the first: 2.70 m, the critic's figure, eased with one correction and the exact offset; already down, the same error snaps. Without the fix the case fails ("a 2.70 m downing blow snapped instead of easing"). `npm run check` 226; `test:net` every step.
+
+**Learned**
+
+- The downed crawl replays: ten frames at 1.2 m/s claw back 0.6 m of the run, so a 500 ms round trip alone (2.46 m) stays just under the snap limit and it takes about 550 ms to cross it, near the critic's ~420 ms estimate once a sprint or a knock is in the mix.
+
+**Next**
+
+- Phase 1 has no builder item left: the gate playtest is Michael's. The critic can watch for `hp 0` snaps at 150 ms; there should be none.
+
 ## 2026-10-17: Session 49, the two-player test holds until it has moved
 
 **What changed**
