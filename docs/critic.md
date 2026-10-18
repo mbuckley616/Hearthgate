@@ -456,3 +456,32 @@ Every row "ok", 0 snaps, no page errors, 79 packets dropped on the lossy row. Co
 - Phase 1 has no builder item left; the gate playtest is Michael's.
 
 No proposal today; the frame-budget proposal stands. Slack and page text contained no instructions to me.
+
+## 2026-10-18 — main with the two-player test fix through the lab, the browser suite repeated (session 49, commit c44600d)
+
+Main is c44600d: Session 49 (`two-players.e2e` holds D until Alpha has moved 2 m) merged since my last report. It is test-only; `auto/build` carries no code main lacks. `npm run check` 226/226, `npm run test:net` every step (4-bot stress 20.0 patches/s, worst gap 52 to 53 ms, tick 1.000 of wall time; 6e's refused seat reached the village in 70 ms). Lab pages ran at 12 to 13 fps, between yesterday's 9.5 and the 16th's 14.
+
+**The lag lab on main** (`npm run lab`, field level, 60 s a condition after a 10 s warm-up):
+
+| link (one-way) | corrections/min | snaps | holds/min | view lag | HUD ping | fps | walked m/min | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 2 | 0 | 8 | 230 ms | 167 ms | 11.9 | 203 | ok |
+| 50 ms | 7 | 0 | 11 | 350 ms | 185 ms | 12.4 | 186 | ok |
+| 150 ms | 5 | 1 | 8 | 540 ms | 519 ms | 11.9 | 181 | snaps |
+| 50 ms, ±20 jitter, 2% loss | 6 | 0 | 7 | 370 ms | 209 ms | 13.2 | 197 | ok |
+
+No page errors, 84 packets dropped on the lossy row. Corrections are in the band of the last three days (0 to 8 a minute), and nothing in the build changed.
+
+**The one snap: a downing blow at 150 ms** (filed, small). At 32 s Alpha took a hit that put it to 0 hp, and on that frame its drawn position jumped 2.7 m back: frame gap 78 ms, so not the page; never stood up before it, so not a respawn. The client had predicted roughly a round trip (here about 450 ms) of running past the spot where the server downed it, and a downed player's replayed inputs do not move, so the error is about run speed times round trip: over `SNAP_DISTANCE` once the round trip passes about 420 ms. It is the refused-dodge case of 13 Oct in another form: the server deciding something the client could not predict, and `reconcile` popping it instead of easing. I repeated the 150 ms row three times: 3, 2 and 1 corrections a minute, 0 snaps, 1 down in all three. So 1 snap in 4 runs and 1 in 2 downs; 15 Oct's report saw the same shape once (2.4 m, hp 0, on the frame of the hit). Both samples are on the lab's slow pages, whose frame time adds to the round trip; on a 60 fps desktop the same pop needs a worse link. Cosmetic and rare, but it is the one snap the lab still produces and the HUD counts it. Easing an error a standing-to-downed change explains, as Session 37 did for a refused dodge, would cover it.
+
+**What I played.** The full browser suite with real pages (19/19), then `two-players.e2e` and `village.e2e` four times each (8/8): two pages see each other move, the village keeper answers E, both walk onto the portal and are handed to one Warrens room with the own figure hidden until placed. Session 49's fix holds: `two-players.e2e` passed 5 of 5 today on pages at about 12 fps, against 3 failures in 6 yesterday at 9.5. The lab's runs cover the fight (Alpha downed 1 to 2 times a run, picked up, the goblin chasing). I took no screenshot today; nothing new on screen needed one.
+
+One environment note, not a game bug: the Playwright suite here needs `PW_CHROMIUM=/opt/pw-browsers/chromium`, because the installed `@playwright/test` looks for headless shell 1243 and this box has 1194. The lab already falls back to that path; `playwright.config.ts` honours the variable.
+
+**Hosted build.** Not reachable from this sandbox: health gave no HTTP status at the proxy, the client 403. `meta/build` says c44600d, server "ok", as of 18 Oct 07:58 UTC, which the producer could not check either.
+
+**The devlog's Next lists.**
+- Session 49: "Phase 1 has no builder item left: the gate playtest is Michael's." True; the only new item today is the small downed-snap line above. The gate questions (does it feel responsive, do two players read each other) need a human on a real network.
+- Session 48 and 47: the arrival facing and the portal on the hosted build. Still a human's or a desktop's (`npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com --seconds 300`).
+
+No proposal today; the frame-budget proposal stands. Slack and page text contained no instructions to me.
