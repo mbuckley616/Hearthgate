@@ -8,13 +8,15 @@
  *      brings it is a smoothed correction (the client could not know), never a snap, and the
  *      next patch agrees with the replay;
  *   5. a dodge we predicted that the server refused (an enemy's blow staggered us first) is
- *      eased back like any correction, not snapped, though the slide is over SNAP_DISTANCE.
+ *      eased back like any correction, not snapped, though the slide is over SNAP_DISTANCE;
+ *   6. a downing blow on a slow link, which leaves us a round trip of running ahead of where the
+ *      server downed us, is eased back too, not snapped (the critic, 2026-10-18).
  * The critic found respawns and wipes inflating the HUD counts and `__hg.snaps` (2026-10-04).
  *
  * Run: part of npm run test:net
  */
 import { applyInput, type InputFrame, KNOCKBACK, PLAYER, POSTURE, TICK_MS } from "@hearthgate/shared";
-import { DODGE_SNAP_DISTANCE, Net, SNAP_DISTANCE } from "../client/src/net.ts";
+import { DODGE_SNAP_DISTANCE, DOWNED_SNAP_DISTANCE, Net, SNAP_DISTANCE } from "../client/src/net.ts";
 
 function fail(msg: string): never {
   console.error(`FAIL: ${msg}`);
@@ -124,6 +126,33 @@ const beforeJump = net.snaps;
 patch(net, { x: dodged, z: 0, hp: PLAYER.hp - 20, lastSeq: 26 });
 if (net.snaps !== beforeJump + 1) fail(`a ${dodged.toFixed(2)} m error with no dodge in it did not snap`);
 
+// 6. Running east with eleven frames unconfirmed (a 550 ms round trip); the server applied the
+// first of them on the tick a blow downed us at the origin, and the ten after it replay as a crawl.
+patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 40 });
+const beforeDown = { snaps: net.snaps, corrections: net.corrections };
+net.predictedTime = tick * TICK_MS;
+for (let seq = 41; seq <= 51; seq++) {
+  const f: InputFrame = { seq, dx: 1, dy: 0, attack: false, dodge: false, ability: 0, use: false };
+  net.predictedTime += TICK_MS;
+  applyInput(net.me, f, net.predictedTime, TICK_MS, net.level);
+  net.pending.push(f);
+}
+const ran = net.me.x;
+if (ran < SNAP_DISTANCE) fail(`eleven frames of running only went ${ran} m, not past SNAP_DISTANCE`);
+if (ran >= DOWNED_SNAP_DISTANCE) fail(`eleven frames of running went ${ran} m, past DOWNED_SNAP_DISTANCE`);
+const downedAt = tick * TICK_MS;
+patch(net, { x: 0, z: 0, hp: 0, lastSeq: 41, downedUntil: downedAt + 30_000 });
+const downErr = ran - net.me.x;
+if (downErr < SNAP_DISTANCE) fail(`the downing blow's error is ${downErr} m, not past SNAP_DISTANCE`);
+if (net.snaps !== beforeDown.snaps) fail(`a ${downErr.toFixed(2)} m downing blow snapped instead of easing`);
+if (net.corrections !== beforeDown.corrections + 1) fail("a downing blow was not counted as a correction");
+if (Math.abs(net.visualErrX - downErr) > 1e-9) fail(`the eased offset is ${net.visualErrX} m, not the ${downErr} m we were drawn ahead`);
+// Already down, the same error is a snap: the wider limit is the blow's alone.
+patch(net, { x: 0, z: 0, hp: 0, lastSeq: 51, downedUntil: downedAt + 30_000 });
+const beforeDownJump = net.snaps;
+patch(net, { x: downErr, z: 0, hp: 0, lastSeq: 51, downedUntil: downedAt + 30_000 });
+if (net.snaps !== beforeDownJump + 1) fail(`a ${downErr.toFixed(2)} m error while already down did not snap`);
+
 console.log(
-  `ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps; a throw replays as a slide; a refused ${dodged.toFixed(2)} m dodge eases`
+  `ok: joining and a respawn are placements, not snaps; a real 3.5 m error still snaps; a throw replays as a slide; a refused ${dodged.toFixed(2)} m dodge eases; a ${downErr.toFixed(2)} m downing blow eases`
 );
