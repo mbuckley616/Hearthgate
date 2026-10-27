@@ -2,6 +2,28 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-26: local session, the combat port begins (step 1, part one)
+
+**What changed**
+
+- Michael's combat slice (a separate repo, M0 to M6 passed today) is now the reference for Hearthgate's combat. `docs/combat-port-plan.md` has the plan: Hearthgate's server and netcode stay, and the slice's simulation, tuning, input, camera, views, effects and sound come across in seven steps, each with a playtest gate. His answers are in `decisions.md`: 1A 2A 3A 4B 5A 7A 8A 9A 10A, and his own progression (the slice's levels to 50 with a talent point a level, then Champion-style points). The steps head Phase 1 in the backlog, all **(Fable)**. A `FREEZE:` issue (#63) keeps the builder idle while the shared sim is rewritten.
+- The server ticks at 60 Hz (1A) and sends a patch every second tick, 30 a second (`PATCH_TICKS`, `PATCH_MS`). A tick is 16.7 ms, not a whole number of ms, so every slot and replay time goes through `onTick` (back onto the grid), and every time in the schema is `float64`: Colyseus sends a `number` as float32 whenever that loses under 1e-4, which moved a swing's end a hair off the grid and would have made the replay end it a tick late.
+- The slice's movement in `applyInput`, with the slice's numbers in the new `shared/src/tuning.ts`: acceleration toward the stick (velocity `vx`, `vz` is synced and rewound), strafe movement facing the camera's aim (`aimX`, `aimZ` in every frame; a frame with no aim turns to run, so the bots still swing where they walk), walk, run 5.5, sprint 8 forward only, the slice's dodge (two charges, an eased roll, a backstep with no direction, i-frames for the first 300 ms in `isUntouchable`, any input ends the tail past 240 ms, it cuts a swing short), the slice's jump arc (still a pure function of the landing time). Combat on top is still Hearthgate's until step 2.
+- The live tuning panel (backtick, lil-gui, `client/src/debug.ts`). An edit goes to the server as `tune`; the server checks it against `tuningRanges`, applies it and every room sends its clients the whole set; a joining client gets it before its first patch.
+- CLAUDE.md: rule 2 reads "time comes from the tick count" (2A), `tuning.ts` is the tuning surface, and the netcode and movement notes are rewritten for 60 Hz.
+
+**Learned**
+
+- The 60 Hz tick first made the lag lab much worse on this desktop (corrections a minute at 0 / 50 / 150 ms: 68 / 234 / 46; the 20 Hz build on the same box: 14 at 0 ms). Counters on the input queue showed why: under the lab's load the server stalled 200 to 450 ms several times a run, past its 200 ms catch-up, and dropped that time; every client's frames then sat up to 25 ticks ahead of their slots, and the drain cleared them one tick a second, each a correction. At 20 Hz the same stall dropped four ticks. Three fixes: the pump catches up 500 ms, the drain moves the slots back by the whole standing backlog in one step, and the lag window is 300 ms, so a frame a TCP retransmit held up (200 ms minimum timeout) still lands in its slot (the lossy row went from 34 corrections a minute to 6 with it). After those and the movement: 8 / 3 / 1 at 0 / 50 / 150 ms and 8 on the lossy link, no snaps, every row ok.
+- More packets mean more lost packets: at 60 Hz the client sends three times the input messages, so a lossy link holds up frames three times as often. Batching frames is the next lever if the hosted build shows it.
+- A Node timer asked for 16.7 ms fires nearer 25 ms on Windows, so the bot harness now paces frames by wall time (`sendPaced`), as the browser's `InputClock` does.
+- An idle enemy kept the first player in the room as its target while asleep; at 60 Hz a tick falls between two joins. Asleep, it now wakes for whoever is nearest.
+- The browser suite: 19/19 after two fixes. A tap of a key is one frame, which with acceleration moves about a centimetre, so `village.e2e` nudges onto its marks with 150 ms holds. And dungeon rooms are now matched by level (`filterBy(["level"])`): a page asking for `?level=yard` had joined a field room an earlier test left open. A browser-pane tab left in the village also stalls that test's portal, which waits for everyone in the room.
+
+**Next**
+
+- Step 1 is not finished: the 10A key layout through the slice's action layer (Ctrl dodge, left click attack, right click guard, Q/E, F; J, L and the arrows for keyboard-only), and the slice's orbit camera. Then Michael's step 1 gate on the hosted build.
+
 ## 2026-10-18: Session 50, a downing blow eases instead of snapping
 
 **What changed**
