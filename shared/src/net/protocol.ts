@@ -1,8 +1,9 @@
 import type { Loadout } from '../sim/coop';
+import type { PortalState } from '../game/portal';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -41,9 +42,18 @@ export type ToPeer =
    * for each joiner, every event since the previous snapshot, and how fast
    * the server is running the fight (1, or the debug slow motion's scale).
    */
-  | { k: 'snap'; s: SimState; acks: Record<string, number>; ev: SimEvent[]; scale: number }
+  | { k: 'snap'; s: SimState; acks: Record<string, number>; ev: SimEvent[]; scale: number; portal: PortalState | null }
   /** Every tuning edit the server has applied since it started (path -> value). */
-  | { k: 'tuning'; edits: Record<string, number | boolean> };
+  | { k: 'tuning'; edits: Record<string, number | boolean> }
+  /**
+   * The party took a portal (T3): a seat the server reserved for this player in the next room. The
+   * browser leaves this room and takes the seat (colyseus.js consumeSeatReservation); `level` says
+   * what that room runs, so it can be built before the first snapshot.
+   */
+  | { k: 'handoff'; reservation: unknown; level: LevelKind };
+
+/** The two kinds of room: the host's village and a dungeon run (the slice's arena, for now). */
+export type LevelKind = 'village' | 'arena';
 
 /** Player id for a party slot (slot 0 is p1, as the slice's host was). */
 export function slotPlayerId(slot: number): string {

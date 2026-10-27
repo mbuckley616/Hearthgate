@@ -2,6 +2,124 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T3: the village and the portal
+
+**What changed**
+
+- Michael on T1 and T2 (decisions.md): "Feels good"; lag testing waits, content first. T1's gate passed on his solo play (PR #69); T2 (PR #68) is out of draft, waiting for his approval.
+- His answers for T3: a portal in the arena brings the party home, and the village is a golden afternoon.
+- **The village** (`shared/src/level/village.ts`): a second level kind in the slice's own format. The four starting buildings round a square (Portal Shrine north with the portal before it, General Store east, Storehouse west, Tavern south-west), a villager at each door who answers F (TalkUi), a well, trees inside a palisade and a wood beyond. Its run-start line lies off the map, so the slice's sim runs in it unchanged and no run or enemy ever starts there; the arena's `buildWorld` path is untouched (parity identical).
+- **Rooms** (`server/src/rooms/`): HostRoom (the old FightRoom) under VillageRoom and DungeonRoom. Play makes a village; everyone standing in its ring for 2 s is handed into a fresh dungeon run; once the run is won or lost a ring opens in the antechamber and takes the party back to the same village, which stays open while they are away.
+- **Client**: ServerLink follows a hand-off (a lost seat lands in a village of our own), ClientSession drops the old room's state and builds the new world, Game rebuilds the level's views without a reload (music and the mouse capture survive). The village is drawn in code (VillageView, villageTextures: grass, packed earth, plaster and timber, shingles, planks, fieldstone) under `tuning.villageLook` (a low western sun, gold-to-blue sky dome, bluish shade, dust motes), tunable live in the panel. PortalView draws the ring, its swirl and the fill as the party holds it.
+- **Tests**: portal and village unit tests (check 34); `test:net` takes two bots village -> ring -> one dungeon -> finish -> ring -> the same village; the browser smoke test adds the round trip with Keeper Wren's line (4/4). The lab and the gate test start in a run (`?dungeon`).
+
+**Learned**
+
+- A dungeon room closes as its party leaves it, before they have taken their seats in the village, so a village that closed when its last run closed lost the returning party ("seat reservation expired"). It now waits 30 s.
+- The paths are drawn pulled toward the camera so they never flicker against the grass, which hid a ring lying on them; the ring now sits higher with a stronger pull of its own.
+- The well's roof stood in the camera's way: its collider now reaches the roof and fades like the trees.
+- Bots steering by snapshots overshoot a 2.4 m ring at a run; they ease off near a mark.
+- CI found two bugs in T2's input slots, both fixed here (#68 as approved has them): a player stalled past 300 ms whose next input never came was held still for good, and a server ticking slower than wall time (CI's runner at about three quarters speed; a busy free host could do the same) let a player's backlog grow without bound, so inputs landed 0.6 s late. A stalled player now picks up from the first input that arrives, and more than four beyond the cushion are used at once, as the slice folded them. The lossy lab row afterwards, one 120 s run: 57.5 corrections a minute over 2 cm, 13.5 over 10 cm; too noisy against T2's single run to call.
+- Bots that fall silent read to the slots as late, which widens the cushion; the test bots keep sending while they stand.
+
+**Next**
+
+- Michael: the village and the portal on the hosted build once #68 and this PR are merged (T3's gate is two players village to dungeon and back, nobody stranded, and the village looks like it belongs to the slice).
+- T4, the dungeon generator, from the kit of pieces in decisions.md (27 Oct).
+
+## 2026-10-27: local session, T2: the clean link's corrections were enemy bodies
+
+**What changed**
+
+- The lab splits each correction over 10 cm by what the hero was doing (its own swing or ability, a hit taken, placed by the server, or neither), and `--diag` records, for each, every field where the server's hero at the acked input differs from the browser's prediction of that input. Bravo now fights (it faces the nearest enemy and swings), so a pair can try to finish a run.
+- The diagnosis: the 0 ms row's remaining big corrections differed in position alone, mid-dodge or mid-run. The server pushes heroes out of enemy bodies in the enemy step (`settle`), which a joiner's prediction never runs. `separateBodies()` is that push lifted out unchanged (parity with the slice still identical); `ClientSession` applies it after each predicted step against the enemies as the last snapshot had them.
+
+**Lab (local)**
+
+A/B at 0 ms, 180 s each: 231 corrections a minute over 2 cm without the push predicted, 6 with it; over 10 cm 23.7 against 1.7 (of those 1.3 placements, 0 from the network).
+
+| Link (120 s) | Over 2 cm a minute | Over 10 cm | of which placed | Holds a minute | Inputs in flight |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 14 | 3.5 | 1 | 3.5 | 61 ms |
+| 50 ms | 31 | 2.5 | 1 | 3 | 240 ms |
+| 150 ms | 28 | 6 | 1.5 | 5 | 352 ms |
+| 50 ms ±20, 2% loss | 47.5 | 4.5 | 2 | 25 | 358 ms |
+
+The lab against the hosted build with Bravo fighting (main, before these fixes): 5 minutes, 0 network snaps, 54 corrections a minute over 2 cm, 8 runs started and none won.
+
+**Learned**
+
+- My first reading (the clean link's big corrections were the swing's lunge) was wrong; the split and the field diff found the real cause in one run. Measure the cause before naming it.
+- Over 10 cm, 0 and 50 ms are inside T2's gate (8 / 3); 150 ms is not (6, or 4.5 without placements, against 1). Lossy holds are 25 a minute, over the lab's line of 20.
+- The bots cannot win a run even with Bravo fighting; the T1 gate's two players through a run needs people.
+
+**Next**
+
+- Michael: the T1 gate's two-player run (people), and #68 once he has looked.
+- T2: the 150 ms row's remaining big corrections (the diag), and the lossy row's holds.
+- The lab against the hosted build once #68 ships.
+
+## 2026-10-27: local session, T2: input slots for the lossy link
+
+**What changed**
+
+- T1 merged (PR #67, Michael on GitHub) and is live. Michael played it solo on the hosted build: "Gameplay looks good." He answered the fight's small corrections A (they stay; T2's gate counts corrections over 10 cm). The T1 gate is filed in `playtest-notes.md` with the lab against the hosted build (PR #69): 5 minutes, two browsers through Render, 0 network snaps, 70 corrections a minute over 2 cm, 2.8 holds a minute, but no run finished, since the bot pair only revives.
+- `shared/src/game/inputSlots.ts` replaces the slice host's input queue. Each input has a slot one tick after the one before, behind a cushion. A tick whose input is missing runs on the held buttons and counts as that input (acked); the input is dropped when it lands, its presses carried to the next tick. Late arrivals widen the cushion a tick each (up to 15), five calm seconds narrow it, a player silent 300 ms has stalled. 5 unit tests in `HostSession.test.ts` (check 28); `test:net`'s ack checks now allow the server's 18 stood-in ticks after a bot stops.
+- `CLAUDE.md`'s netcode section describes the slots and the adaptive delay.
+
+**Lab (local, 60 s a row)**
+
+| Link | Corrections a minute (over 2 cm) | Over 10 cm | Holds a minute | Inputs in flight |
+| --- | --- | --- | --- | --- |
+| 0 ms | 77 (repeat: 120) | 16 (repeat: 14) | 0 (repeat: 6) | 74 ms |
+| 50 ms | 102 | 5 | 7 | 168 ms |
+| 150 ms | 76 | 6 | 5 | 364 ms |
+| 50 ms ±20, 2% loss | 92 (before: 277) | 8 (before: 170) | 27 | 360 ms (before: 197) |
+
+**Learned**
+
+- The slice's queue already counted ticks roughly right on a lossy link (repeating held buttons, then folding the burst), but every press and key change in the gap landed ticks from the prediction. Standing in for each missing input and acking it keeps the count exact; widening the cushion after the first retransmit means later ones fit, at the cost of the player's actions reaching the server up to a quarter of a second later on that link.
+- One 60-second row is noisy here: the same 0 ms row read 77 and 120 corrections a minute over 2 cm. Compare rows over several runs before calling a change.
+- On a clean link the over-10 cm count (14 to 16 at 0 ms) was above the gate's 8. I first put it down to the swing's lunge and turn (decision A); the lab now splits each by what the hero was doing, and that was wrong: with Bravo fighting, the rows read 8 / 5 / 3 over 10 cm at 0 / 50 / 150 ms and 4 lossy, and at 0 ms 6 of the 8 were neither a swing nor a hit taken (50 ms: 3 of 5; 150 ms: 1 of 3).
+
+**Next**
+
+- T2: what the 0 ms row's remaining big corrections are (neither swing nor hit: a dodge, a jump or a stall are the candidates). With Bravo fighting the rows are near the gate (8 / 5 / 3 against 8 / 3 / 1), but rows with a fighting Bravo are not comparable with the earlier ones.
+- The lab's bot pair cannot finish a run (5 minutes on the hosted build with Bravo fighting: 8 runs, none won, 0 network snaps), so the T1 gate's two-players-through-a-run needs two people.
+- The lab against the hosted build once #68 ships, for the real link.
+- Bandwidth stays (about 117 KB/s a player).
+
+## 2026-10-27: local session, T2 begun: where the lab's corrections come from, and the clock back from the shelf
+
+Started on Michael's word ("after this work is finished ... please begin the next step ... I don't want to be a blocker", while T1 waits for its gate), on `auto/local-slice-netcode`, stacked on T1's branch. Nothing here is merged or meant to be before T1's gate.
+
+**What changed**
+
+- `shared/src/net/clock.ts`: Hearthgate's Phase 0 clock, back from the shelf for snapshots only (no pings). The offset is the window's least-delayed snapshot rather than the slice's 5% average, and the interpolation delay follows the longest wait for a snapshot a frame saw: the slice's 80 ms on a clean link, rising on a lossy one up to the lag grace (150 ms), never later, since hits on you wait that long so an on-screen dodge counts. Both slew at 10 ms/s. Its numbers are in `tuning.coop` (`interpDelayMaxMs`, `clockWindowMs`, `clockSlewMsPerS`, `clockSnapMs`). 6 unit tests (check 27).
+- The lab: `--tune path=value` sends a tuning edit through the server before the run, to test one cause at a time; it reports corrections over 10 cm and the draw delay.
+- `decisions.md`: the small corrections in a fight, three options (recommended A, leave them and judge at the gate).
+
+**Lab (local, 60 s a row)**
+
+| Link | Corrections a minute (over 2 cm) | Over 10 cm | Holds a minute | Draw delay |
+| --- | --- | --- | --- | --- |
+| 0 ms | 75 | 10 | 1 | 83 ms |
+| 50 ms | 65 | 5 | 4 | 83 ms |
+| 150 ms | 124 | 3 | 4 | 82 ms |
+| 50 ms ±20, 2% loss | 277 | 170 | 22 (T1: 30) | 150 ms |
+
+**Learned**
+
+- The fight's corrections are the hero's own swings, not hits taken and not the input queue: at 0 ms the count was about the same with enemies that never swing (164 a minute counting every difference), higher with god mode (319, Alpha fights longer), and unchanged with a four-tick input cushion (159). A melee swing's lunge stretches to its soft target and the soft target turns the hero, both measured on the client against the last snapshot's enemy. Over 10 cm they read 10 / 5 / 3 a minute at 0 / 50 / 150 ms, near Hearthgate's old 8 / 3 / 1.
+- With the delay capped at 200 ms the lossy row held only 12 times a minute, but on clean links the delay drifted to 120 to 160 ms after single slow snapshots, later than the lag grace. Capped at the grace: 22 holds, and clean links stay at the slice's 80.
+- The lossy row's 170 big corrections a minute are the slice's input queue under retransmits: a player's inputs held 200 ms, the server repeating their held buttons meanwhile, then folding the late burst into fewer ticks, so a dodge or a turn lands at a different tick than predicted.
+
+**Next**
+
+- Michael: the decision on the fight's corrections (decisions.md); T1's gate first.
+- T2: the input queue under loss (the lossy row's 170 a minute over 10 cm). Candidates: count the ticks the server guessed and drop as many late inputs when they arrive (keeping their presses), so a late burst is neither folded nor replayed; or Hearthgate's old input slots. Measured on the lossy row before and after.
+- T2: bandwidth stays as it is (about 120 KB/s a player); deltas only if the hosted lab or Render's limits ask.
+
 ## 2026-10-27: local session, T1: the combat slice on Hearthgate's server
 
 **What changed**

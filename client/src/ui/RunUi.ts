@@ -63,6 +63,12 @@ export class RunUi {
     document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end);
   }
 
+  /** In the village (T3) there is no run: no banner, timer, prompt or end card. */
+  hide(): void {
+    this.banner.style.opacity = '0';
+    for (const el of [this.boss, this.timer, this.prompt, this.end]) el.style.display = 'none';
+  }
+
   handle(events: SimEvent[]): void {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'Final wave' : `Wave ${ev.wave} of ${FINAL_WAVE}`, ev.title);
@@ -97,7 +103,8 @@ export class RunUi {
           ? `Waiting for the party  ·  the gate closes in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`
           : 'Step through the gate when you are ready  ·  I for gear';
     }
-    this.again.textContent = role === 'host' ? 'Press F (or A) to run again  ·  I for gear' : 'Waiting for the host to start again  ·  I for gear';
+    this.again.textContent =
+      role === 'host' ? 'Step into the ring by the gate to go home  ·  F (or A) to run again  ·  I for gear' : 'Waiting for the host to start again  ·  I for gear';
 
     const over = r.phase === 'won' || r.phase === 'lost';
     this.end.style.display = over ? 'flex' : 'none';

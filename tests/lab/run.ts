@@ -4,7 +4,7 @@
  *
  * Boots the server and the Vite dev server on spare ports, puts tests/lab/proxy.ts in front of the
  * server, and opens two Chromium pages through it, each in its own browser so neither is a
- * background tab. Alpha makes a fight (`?play`) and Bravo joins it by its code; both walk through
+ * background tab. Alpha makes a fight (`?play&dungeon`) and Bravo joins it by its code; both walk through
  * the antechamber gate, and for `--seconds` per condition Alpha fights by a seeded schedule of held
  * keys, swings (J), dodges (Ctrl), jumps, Q and E and hero swaps, leaning back to where the run
  * started; Bravo stands, revives Alpha when down, and a lost run is restarted (F) and walked into
@@ -70,6 +70,15 @@ const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
 const WARMUP_S = Number(argOf("--warmup") ?? 10);
 /** Slows Alpha's page by this factor (CDP CPU throttling) to see what a low frame rate does to the numbers. */
 const CPU_THROTTLE = Number(argOf("--cpu-throttle") ?? 1);
+/** --diag: Alpha records each correction over 10 cm (ClientSession.diag), written to tests/tmp/lab-diag.json. */
+const DIAG = args.includes("--diag");
+/** --no-shove: Alpha does not predict enemies pushing the hero (ClientSession.predictBodies), for an A/B of T2's fix. */
+const NO_SHOVE = args.includes("--no-shove");
+/** --tune path=value (repeatable): tuning edits Alpha sends through the server once in the fight, to test one cause at a time. */
+const TUNES = args.flatMap((a, i) => (a === "--tune" ? [args[i + 1]] : [])).map((t) => {
+  const [path, raw] = t.split("=");
+  return { path, value: raw === "true" ? true : raw === "false" ? false : Number(raw) };
+});
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -139,6 +148,24 @@ const PROBE = `(() => {
     },
     other: (id) => lerp(s.view(), id),
     phase: () => s.view().curr.run.phase,
+    /** The nearest enemy still standing, as drawn here. */
+    enemy: () => {
+      const h = s.hero();
+      if (!h) return null;
+      let best = null, bd = Infinity;
+      for (const e of s.view().curr.enemies) {
+        if (e.ai === 'dead' || e.hp <= 0) continue;
+        const d = Math.hypot(e.x - h.curr.x, e.z - h.curr.z);
+        if (d < bd) { bd = d; best = { x: e.x, z: e.z, d }; }
+      }
+      return best;
+    },
+    /** Turn the camera to face a point, so W walks there and a swing goes there (the camera is the browser's own). */
+    aim: (x, z) => {
+      const h = s.hero();
+      if (!h) return;
+      window.game.cam.yaw = Math.atan2(-(x - h.curr.x), -(z - h.curr.z));
+    },
   };
 })()`;
 
@@ -152,7 +179,7 @@ function recorder(watchId: string | null) {
     const s = window.game.session;
     if (id === null) {
       const m = window.__probe.me();
-      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection]);
+      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection, s.stats.bigCorrections, s.stats.bigBySwing, s.stats.bigByHit, s.stats.bigOther, s.stats.bigPlaced]);
     } else {
       const p = window.__probe.other(id);
       if (p) window.__lab.push([Date.now(), p.x, p.z]);
@@ -193,6 +220,12 @@ interface Row {
   /** Mean and largest correction (m): eased over coop.correctionBlendMs, so a few cm do not show. */
   correction_mean_m: number;
   correction_max_m: number;
+  /** Corrections over 10 cm a minute, and those by cause: the hero's own swing or ability, a hit taken, or neither (the network's). */
+  big_per_min: number;
+  big_swing_per_min: number;
+  big_hit_per_min: number;
+  big_other_per_min: number;
+  big_placed_per_min: number;
   snaps: number;
   placed_snaps: number;
   walked_m_per_min: number;
@@ -200,10 +233,14 @@ interface Row {
   holds_per_min: number;
   view_lag_ms: number;
   view_gap_m: number;
+  /** How far behind the server Bravo draws everyone else at the end (the adaptive delay, T2). */
+  draw_delay_ms: number;
   in_flight_ms: number;
   kb_per_s_per_player: number;
   downs: number;
   runs_started: number;
+  /** Runs the pair finished with the Warden down. */
+  runs_won: number;
   fps_a: number;
   fps_b: number;
   lost_chunks: number;
@@ -234,12 +271,15 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
   };
   try {
     const server = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}`;
-    await a.goto(`${CLIENT_BASE}/?play&${server}`);
+    await a.goto(`${CLIENT_BASE}/?play&dungeon&${server}`);
     await until(async () => (await info(a)).playing, 20000, "Alpha in a fight");
     const { code, id: alphaId } = await info(a);
     await b.goto(`${CLIENT_BASE}/?join=${code}&${server}`);
     await until(async () => (await info(b)).playing && (await info(a)).players === 2, 20000, "Bravo joined");
     for (const p of [a, b]) await p.evaluate(PROBE);
+    if (DIAG) await a.evaluate("window.game.session.diag = []");
+    if (NO_SHOVE) await a.evaluate("window.game.session.predictBodies = false");
+    for (const t of TUNES) await a.evaluate(`window.game.session.request({ k: "tune", edit: ${JSON.stringify(t)} })`);
 
     // Into the arena together: the run starts when both are through the gate.
     let runs = 0;
@@ -264,9 +304,11 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const end = Date.now() + seconds * 1000;
     let downs = 0;
     let wasDown = false;
+    let won = 0;
     while (Date.now() < end) {
       const phase = (await info(a)).phase;
       if (phase === "won" || phase === "lost") {
+        if (phase === "won") won++;
         await setKeys(a, []);
         await setKeys(b, []);
         await a.keyboard.press("KeyF");
@@ -304,25 +346,21 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       else if (act < 0.5) await a.keyboard.press(rng() < 0.5 ? "KeyQ" : "KeyE");
       else if (act < 0.53) await a.keyboard.press(["Digit1", "Digit2", "Digit3"][Math.floor(rng() * 3)]);
 
-      // Bravo walks to a downed Alpha and holds F (the slice's revive), and otherwise stands still.
-      if (down) {
-        const bv = (await b.evaluate(`({ me: window.__probe.me(), al: window.__probe.other(${JSON.stringify(alphaId)}) })`)) as {
-          me: { x: number; z: number };
-          al: { x: number; z: number } | null;
-        };
-        const want: string[] = [];
-        if (bv.al && bv.me) {
-          const dx = bv.al.x - bv.me.x;
-          const dz = bv.al.z - bv.me.z;
-          if (Math.hypot(dx, dz) < 1.2) want.push("KeyF");
-          else {
-            if (dx > 0.6) want.push("KeyD");
-            else if (dx < -0.6) want.push("KeyA");
-            if (dz > 0.6) want.push("KeyS");
-            else if (dz < -0.6) want.push("KeyW");
-          }
+      // Bravo fights: faces the nearest enemy, closes in and swings; and when Alpha is down, goes to
+      // them and holds F (the slice's revive). Deterministic, so Alpha's seeded schedule is unchanged.
+      const target = down
+        ? ((await b.evaluate(`window.__probe.other(${JSON.stringify(alphaId)})`)) as { x: number; z: number } | null)
+        : ((await b.evaluate("window.__probe.enemy()")) as { x: number; z: number } | null);
+      const bme = (await b.evaluate("window.__probe.me()")) as { x: number; z: number; mode: string } | null;
+      if (target && bme && bme.mode !== "down") {
+        await b.evaluate(`window.__probe.aim(${target.x}, ${target.z})`);
+        const d = Math.hypot(target.x - bme.x, target.z - bme.z);
+        if (down) await setKeys(b, d < 1.2 ? ["KeyF"] : ["KeyW"]);
+        else if (d > 2) await setKeys(b, d > 6 ? ["KeyW", "ShiftLeft"] : ["KeyW"]);
+        else {
+          await setKeys(b, []);
+          for (let i = 0; i < 3; i++) await b.keyboard.press("KeyJ");
         }
-        await setKeys(b, want);
       } else await setKeys(b, []);
       await sleep(250 + rng() * 650);
     }
@@ -332,6 +370,11 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const fps = (track: number[][]) => (track.length > 1 ? Math.round(((track.length - 1) / ((track[track.length - 1][0] - track[0][0]) / 1000)) * 10) / 10 : 0);
     const trueTrack = (await a.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
     const seen = (await b.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
+    const drawDelay = (await b.evaluate("window.game.session.drawDelayMs")) as number;
+    if (DIAG) {
+      mkdirSync(`${root}tests/tmp`, { recursive: true });
+      writeFileSync(`${root}tests/tmp/lab-diag.json`, JSON.stringify(await a.evaluate("window.game.session.diag"), null, 1));
+    }
 
     // How far behind does Bravo draw Alpha? The lag that best lines the two tracks up.
     const trueAt = (t: number) => {
@@ -421,6 +464,11 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       corrections_per_min: Math.round(cpm * 10) / 10,
       correction_mean_m: corr > 0 ? Math.round(((last[8] - first[8]) / corr) * 1000) / 1000 : 0,
       correction_max_m: Math.round(last[9] * 100) / 100,
+      big_per_min: Math.round(((last[10] - first[10]) / minutes) * 10) / 10,
+      big_swing_per_min: Math.round(((last[11] - first[11]) / minutes) * 10) / 10,
+      big_hit_per_min: Math.round(((last[12] - first[12]) / minutes) * 10) / 10,
+      big_other_per_min: Math.round(((last[13] - first[13]) / minutes) * 10) / 10,
+      big_placed_per_min: Math.round(((last[14] - first[14]) / minutes) * 10) / 10,
       snaps,
       placed_snaps: placedSnaps,
       walked_m_per_min: Math.round(walked / minutes),
@@ -428,10 +476,12 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       holds_per_min: Math.round((holds / minutes) * 10) / 10,
       view_lag_ms: viewLag,
       view_gap_m: Math.round(bestGap * 100) / 100,
+      draw_delay_ms: Math.round(drawDelay),
       in_flight_ms: Math.round(((inFlight / Math.max(1, trueTrack.length - 1)) * 1000) / 60),
       kb_per_s_per_player: proxy ? Math.round((proxy.bytesDown() - bytes0) / 1024 / 2 / ((Date.now() - wall0) / 1000)) : 0,
       downs,
       runs_started: runs,
+      runs_won: won,
       fps_a: fps(trueTrack),
       fps_b: fps(seen),
       lost_chunks: proxy ? proxy.lost() : 0,
@@ -474,7 +524,7 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (mean ${row.correction_mean_m} m, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}: swing ${row.big_swing_per_min} hit ${row.big_hit_per_min} other ${row.big_other_per_min} placed ${row.big_placed_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started} (won ${row.runs_won})  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
       );
       for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, jumped ${m.jump_m} m`);
       for (const e of row.page_errors.slice(0, 3)) console.log(`  page error: ${e}`);

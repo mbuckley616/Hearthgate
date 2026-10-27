@@ -1,13 +1,16 @@
 import { applyServerEdits } from '@hearthgate/shared/config/edits';
 import { tuning } from '@hearthgate/shared/config/tuning';
-import type { World } from '@hearthgate/shared/level/arena';
-import { arena } from '@hearthgate/shared/level/arena';
-import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
+import type { PortalState } from '@hearthgate/shared/game/portal';
+import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
+import { village } from '@hearthgate/shared/level/village';
+import { PROTOCOL_VERSION, type LevelKind, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { applyLoadout } from '@hearthgate/shared/sim/coop';
+import { separateBodies } from '@hearthgate/shared/sim/enemies';
 import { stepPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { createSimState } from '@hearthgate/shared/sim/world';
+import { addArrivalSample, createClockSync, remoteTimeAt, type ClockConfig, type ClockSync } from '@hearthgate/shared/net/clock';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
 import { isPredictedFor, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
 
@@ -16,6 +19,34 @@ import { isPredictedFor, withoutPresses, type Blend, type Session } from '@heart
  * from 2 cm since Phase 0, so the numbers compare across the transplant. Smaller ones still ease out.
  */
 const CORRECTION_M = 0.02;
+
+/** A hero's plain fields (numbers, strings, booleans), for the lab's diagnosis. */
+function scalars(p: PlayerState): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(p)) if (v === null || typeof v !== 'object') out[k] = v;
+  return out;
+}
+
+/** The clock's numbers, read from tuning each time so the panel tunes them live. */
+function clockConfig(): ClockConfig {
+  const c = tuning.coop;
+  return {
+    windowMs: c.clockWindowMs,
+    slewMsPerS: c.clockSlewMsPerS,
+    snapMs: c.clockSnapMs,
+    intervalMs: (Math.max(1, Math.round(c.snapshotEveryTicks)) * 1000) / tuning.sim.tickRate,
+    baseMs: c.interpDelayMs,
+    // Never later than the lag grace: hits on you wait coop.lagGraceMs so a dodge that was on time on
+    // your screen counts, and an enemy drawn later than that would eat the grace (the lab, T2).
+    maxMs: Math.max(c.interpDelayMs, Math.min(c.interpDelayMaxMs, c.lagGraceMs)),
+  };
+}
+
+/** Each level's world, built once: the village and the arena (T3). */
+const worlds: Partial<Record<LevelKind, World>> = {};
+export function worldFor(kind: LevelKind): World {
+  return (worlds[kind] ??= buildWorld(kind === 'village' ? village : arena));
+}
 
 interface Snapshot {
   s: SimState;
@@ -32,6 +63,18 @@ export interface PredictionStats {
   snaps: number;
   /** Largest correction so far (m). */
   maxCorrection: number;
+  /** Corrections over 10 cm, the ones a player might see through the ease (decisions.md, 27 Oct, T2). */
+  bigCorrections: number;
+  /**
+   * The same, by what the hero was doing (here or on the server): their own swing or ability (its lunge
+   * and turn toward a target that moved, decision A), taking a hit (a knock the browser could not
+   * foresee), or neither: what is left is the network's.
+   */
+  bigBySwing: number;
+  bigByHit: number;
+  bigOther: number;
+  /** Over 2.5 m, or going from down to standing: the server placed the hero (a restart, a revive, the gate), not the network. */
+  bigPlaced: number;
   /** Sum of every correction (m), for the mean. */
   sumCorrection: number;
 }
@@ -47,6 +90,11 @@ export interface PredictionStats {
  * Changed from the slice only where the host moved: the relay is a Colyseus room (ServerLink),
  * the server's tuning edits are applied as they arrive, and the clock that draws and predicts
  * runs at the server's speed, so the debug slow motion (now the server's) slows both.
+ *
+ * Since T3 a session lives through more than one room: the village first, then a dungeon run and
+ * back, each a room of its own on the server. A portal's `handoff` drops everything that was the
+ * old room's (its snapshots, the prediction, the clock: each room counts its own time) and joins the
+ * next; `kind` and `world` follow the room, and `levelVersion` tells the game to rebuild its view.
  */
 export class ClientSession implements Session {
   readonly role = 'client' as const;
@@ -66,8 +114,8 @@ export class ClientSession implements Session {
   private history: SeqCommand[] = [];
   private outgoing: SeqCommand[] = [];
   private accumulator = 0;
-  /** Server sim time minus the local clock (s), smoothed. */
-  private offset: number | null = null;
+  /** The server's clock on the least-delayed path, and the delay to draw behind it (T2: it adapts to late snapshots). */
+  private sync: ClockSync = createClockSync(clockConfig());
   /** Host events, released when the drawn time reaches them. */
   private inbox: { t: number; ev: SimEvent }[] = [];
   /** Visual-only offset that eases out prediction corrections. */
@@ -78,26 +126,43 @@ export class ClientSession implements Session {
   /** Seconds of fight time on this machine: wall time at the server's speed. */
   private clock = 0;
   private clockWall = performance.now();
-  /** What to draw before the first snapshot: the empty arena. */
-  private readonly empty: SimState;
-  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0 };
+  /** What this room runs, and its world (collision, ground); the village until a room says otherwise. */
+  kind: LevelKind = 'village';
+  world: World = worldFor('village');
+  /** Bumped each time a room is joined (the first, and each portal's), so the game rebuilds its view. */
+  levelVersion = 0;
+  /** The open portal and how full it is, from the latest snapshot. */
+  portal: PortalState | null = null;
+  /** What to draw before the first snapshot: this level, empty. */
+  private empty: SimState;
+  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0, bigPlaced: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
+  /**
+   * The lab's diagnosis of big corrections (off unless set to an array): for each one over 10 cm, the
+   * hero's fields where the server, at the acked input, differs from this browser's prediction of
+   * that same input, and the command the input carried.
+   */
+  diag: { at: number; seq: number; size: number; modes: (string | undefined)[]; diffs: Record<string, [unknown, unknown]>; cmd: PlayerCommand | null }[] | null = null;
+  private diagPred = new Map<number, Record<string, unknown>>();
+  /** Predict enemies pushing the hero (T2); the lab turns it off with --no-shove to measure what it buys. */
+  predictBodies = true;
 
   constructor(
-    private readonly world: World,
-    /** A friend's room code, or null to start a fight of our own. */
+    /** A friend's room code, or null to start a village of our own. */
     code: string | null,
     loadout: Loadout,
     /** The server to play on (default: serverUrl(), from the page); the netcode test passes its own. */
     url?: string,
+    /** With no code, the room to make: a village (Play), or a dungeon run straight away (?dungeon, the tests and the lab). */
+    create: 'village' | 'dungeon' = 'village',
   ) {
     this.relay = new ServerLink(url);
     this.code = code ?? '';
     this.loadout = loadout;
-    this.empty = createSimState(arena, [], world);
+    this.empty = createSimState(this.world.level, [], this.world);
     this.relay.onEvent((ev) => this.onRelay(ev));
-    void this.relay.join(code);
+    void this.relay.join(code, create);
   }
 
   get playing(): boolean {
@@ -161,6 +226,7 @@ export class ClientSession implements Session {
       this.outgoing.push(sc);
       this.prevMe = structuredClone(this.me);
       this.predictTick(tickCmd, step);
+      if (this.diag) this.diagPred.set(sc.seq, scalars(this.me));
       // Our own swings, shots, spells and melee contact play now, not a round trip later.
       for (const ev of this.pred.events) if (isPredictedFor(ev, this.localId)) events.push(ev);
       this.accumulator -= step;
@@ -212,6 +278,9 @@ export class ClientSession implements Session {
     pred.events = [];
     const w = pred.run.gateClosed ? this.world : { ...this.world, colliders: this.world.collidersOpen };
     stepPlayer(this.me!, cmd, step, w, pred);
+    // The server pushes heroes out of enemy bodies in the enemy step, which prediction never runs:
+    // push against the enemies as the last snapshot had them, or every brush with one is a correction (T2).
+    if (this.predictBodies) for (const e of pred.enemies) if (e.ai !== 'dead') separateBodies(e, this.me!);
     pred.time += step;
   }
 
@@ -223,7 +292,12 @@ export class ClientSession implements Session {
   }
 
   private renderTime(): number {
-    return this.clock + (this.offset ?? 0) - tuning.coop.interpDelayMs / 1000;
+    return remoteTimeAt(this.sync, clockConfig(), this.clock * 1000) / 1000;
+  }
+
+  /** How far behind the server everyone else is drawn now, ms. */
+  get drawDelayMs(): number {
+    return this.sync.delay;
   }
 
   private releaseInbox(): SimEvent[] {
@@ -242,6 +316,10 @@ export class ClientSession implements Session {
     switch (ev.t) {
       case 'joined':
         this.code = ev.code;
+        this.kind = ev.kind;
+        this.world = worldFor(ev.kind);
+        this.empty = createSimState(this.world.level, [], this.world);
+        this.levelVersion++;
         this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout });
         break;
       case 'error':
@@ -269,8 +347,35 @@ export class ClientSession implements Session {
       applyServerEdits(msg.edits);
       this.tuningVersion++;
     } else if (msg.k === 'snap') {
+      this.portal = msg.portal;
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
+    } else if (msg.k === 'handoff') {
+      this.leaveRoom();
+      void this.relay.handoff(msg.reservation);
     }
+  }
+
+  /**
+   * Forget everything that was the old room's: its snapshots, the prediction and the inputs it has
+   * not applied, the server clock (each room counts its own time), events still waiting to be drawn.
+   * The hero reappears where the next room's first snapshot puts it, so a portal is never a
+   * correction.
+   */
+  private leaveRoom(): void {
+    this.state = 'joining';
+    this.localId = '';
+    this.snaps = [];
+    this.pred = null;
+    this.me = null;
+    this.prevMe = null;
+    this.history = [];
+    this.outgoing = [];
+    this.accumulator = 0;
+    this.sync = createClockSync(clockConfig());
+    this.inbox = [];
+    this.err = { x: 0, y: 0, z: 0 };
+    this.portal = null;
+    this.diagPred.clear();
   }
 
   private onSnapshot(s: SimState, acks: Record<string, number>, events: SimEvent[], scale: number): void {
@@ -282,10 +387,8 @@ export class ClientSession implements Session {
     if (this.snaps.length > 12) this.snaps.shift();
     this.stats.snapshots++;
 
-    // Track the server's clock: jump on big changes (a stall), otherwise drift gently.
-    const sample = s.time - now;
-    if (this.offset === null || Math.abs(sample - this.offset) > 0.25) this.offset = sample;
-    else this.offset += (sample - this.offset) * 0.05;
+    // Track the server's clock on its least-delayed snapshots (clock.ts): a late one cannot drag it later.
+    addArrivalSample(this.sync, clockConfig(), now * 1000, s.time * 1000);
 
     // Server events wait until the drawn world catches up with them, so effects line up with what's on screen.
     for (const ev of events) if (!isPredictedFor(ev, this.localId)) this.inbox.push({ t: s.time, ev });
@@ -293,15 +396,23 @@ export class ClientSession implements Session {
 
     // Reconcile: restart from the server's version of our hero and replay what it hasn't seen.
     const ack = acks[this.localId] ?? 0;
+    const ackedCmd = this.diag ? (this.history.find((h) => h.seq === ack)?.cmd ?? null) : null;
     this.history = this.history.filter((h) => h.seq > ack);
     const base = structuredClone(s);
     const mine = base.players.find((p) => p.id === this.localId);
     if (!mine) return;
     const before = this.me ? { x: this.me.x, y: this.me.y, z: this.me.z } : null;
+    const modes = [this.me?.mode, mine.mode];
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
-    for (const h of this.history) this.predictTick(h.cmd, 1 / tuning.sim.tickRate);
+    const serverMine = this.diag ? scalars(mine) : null;
+    const predAtAck = this.diag ? this.diagPred.get(ack) : undefined;
+    if (this.diag) for (const k of this.diagPred.keys()) if (k <= ack) this.diagPred.delete(k);
+    for (const h of this.history) {
+      this.predictTick(h.cmd, 1 / tuning.sim.tickRate);
+      if (this.diag) this.diagPred.set(h.seq, scalars(mine));
+    }
     // Replayed hits mustn't count XP twice; the server's number is the truth.
     mine.xp = xp;
     base.events = [];
@@ -311,6 +422,19 @@ export class ClientSession implements Session {
       if (size > CORRECTION_M) {
         this.stats.corrections++;
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
+        if (size > 0.1) {
+          this.stats.bigCorrections++;
+          if (size > 2.5 || (modes[0] === 'down' && modes[1] !== 'down')) this.stats.bigPlaced++;
+          else if (modes.some((m) => m === 'attack' || m === 'ability')) this.stats.bigBySwing++;
+          else if (modes.some((m) => m === 'hurt' || m === 'down')) this.stats.bigByHit++;
+          else this.stats.bigOther++;
+          if (this.diag && serverMine && predAtAck) {
+            const diffs: Record<string, [unknown, unknown]> = {};
+            for (const k of Object.keys(serverMine)) if (serverMine[k] !== predAtAck[k]) diffs[k] = [predAtAck[k], serverMine[k]];
+            this.diag.push({ at: s.time, seq: ack, size, modes, diffs, cmd: ackedCmd });
+            if (this.diag.length > 200) this.diag.shift();
+          }
+        }
         this.stats.sumCorrection += size;
       }
       this.err.x += d.x;

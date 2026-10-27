@@ -707,6 +707,29 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
 }
 
 /**
+ * Push an enemy and a hero out of each other's bodies. Exported so a joiner's prediction can apply
+ * the same push against the enemies as it last saw them (T2): the host does it in the enemy step,
+ * which a joiner never runs, so every brush with an enemy used to correct the joiner's hero.
+ */
+export function separateBodies(e: EnemyState, p: PlayerState): void {
+  if (Math.abs(p.y - e.y) > LEVEL_GAP) return;
+  const s = enemyStats(e.kind);
+  const dx = e.x - p.x;
+  const dz = e.z - p.z;
+  const d = Math.hypot(dx, dz);
+  const min = s.radius + tuning.movement.radius;
+  if (d < min && d > 1e-4) {
+    // Big enemies shove the hero more than they get shoved.
+    const share = e.kind === 'grunt' || e.kind === 'archer' ? 0.7 : 0.15;
+    const overlap = min - d;
+    e.x += (dx / d) * overlap * share;
+    e.z += (dz / d) * overlap * share;
+    p.x -= (dx / d) * overlap * (1 - share);
+    p.z -= (dz / d) * overlap * (1 - share);
+  }
+}
+
+/**
  * Keep an enemy on walkable ground (no stepping up ledges or ramp sides),
  * out of walls and pillars, off the players, and archers on their ledge.
  */
@@ -717,22 +740,7 @@ function settle(state: SimState, world: World, e: EnemyState, fromX: number, fro
     e.z = fromZ;
   }
   if (e.ai !== 'dead') {
-    for (const p of state.players) {
-      if (Math.abs(p.y - e.y) > LEVEL_GAP) continue;
-      const dx = e.x - p.x;
-      const dz = e.z - p.z;
-      const d = Math.hypot(dx, dz);
-      const min = s.radius + tuning.movement.radius;
-      if (d < min && d > 1e-4) {
-        // Big enemies shove the hero more than they get shoved.
-        const share = e.kind === 'grunt' || e.kind === 'archer' ? 0.7 : 0.15;
-        const overlap = min - d;
-        e.x += (dx / d) * overlap * share;
-        e.z += (dz / d) * overlap * share;
-        p.x -= (dx / d) * overlap * (1 - share);
-        p.z -= (dz / d) * overlap * (1 - share);
-      }
-    }
+    for (const p of state.players) separateBodies(e, p);
   }
   resolveCircle(e, s.radius, e.y + 0.3, e.y + s.height, world.colliders);
   if (e.kind === 'archer' && e.y > world.level.ledge.height - 0.1) {

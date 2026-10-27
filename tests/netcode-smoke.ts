@@ -13,12 +13,16 @@
  *   8. the dev cheats: skip to the Warden;
  *   9. the real ClientSession (the browser's) runs, sprints and dodges for three seconds with no
  *      snap and ends exactly where the server has it;
+ *   8b. the village and the portal (T3): two bots make a village and walk into its ring together, are
+ *      handed into one dungeon run, finish it (the dev cheats), stand in the ring that opens in the
+ *      antechamber and are handed back to the same village;
  *  10. stress: four bots fight in a fresh room for STRESS_MS; every input is applied, nobody is
  *      dropped, snapshots keep coming at 30 a second and the fight keeps wall time.
  *
  * Run: npm run test:net
  */
-import { arena, buildWorld } from "@hearthgate/shared/level/arena";
+import { arena } from "@hearthgate/shared/level/arena";
+import { village } from "@hearthgate/shared/level/village";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
 import { Bot, MSG, TICK_MS, bootServer, command, loadout, sleep, waitForHealth } from "./bots";
@@ -38,8 +42,8 @@ async function main() {
   const bots: Bot[] = [];
   try {
     await waitForHealth(`http://127.0.0.1:${PORT}/health`);
-    const bot = async (name: string, code: string | null) => {
-      const b = await new Bot(name, ENDPOINT).join(code);
+    const bot = async (name: string, code: string | null, create: "dungeon" | "village" = "dungeon") => {
+      const b = await new Bot(name, ENDPOINT).join(code, create);
       bots.push(b);
       return b;
     };
@@ -68,7 +72,9 @@ async function main() {
     const moved = b.me("p1")!.x - a.state.players.find((p) => p.id === "p1")!.x;
     check(Math.abs(moved) < 1e-9, "both players' snapshots agree on Alpha");
     check(b.me("p1")!.x > 3, "Alpha ran east on the server and Bravo saw it", `${b.me("p1")!.x.toFixed(2)} m east, z ${z0.toFixed(2)}`);
-    check(a.ack === a.seq, "every input Alpha sent was applied and acked", `ack ${a.ack} of ${a.seq}`);
+    // The server stands in for a quiet player's missing inputs for up to 18 ticks and acks them (inputSlots.ts), so once
+    // a bot stops sending, the ack runs a little past its last input.
+    check(a.ack >= a.seq && a.ack <= a.seq + 18, "every input Alpha sent was used and acked", `ack ${a.ack} of ${a.seq}`);
 
     // 4. Through the gate together: the run starts.
     const entryZ = arena.arenaEntryZ;
@@ -138,9 +144,38 @@ async function main() {
     for (const x of bots) await x.leave();
     bots.length = 0;
 
+    // 8b. The village and the portal.
+    const va = await bot("Vale", null, "village");
+    const vb = await bot("Wren", va.code, "village");
+    const home = va.code;
+    check(va.kind === "village" && va.state.enemies.length === 0 && va.state.run.phase === "ante", "a village: no enemies, no run", `code ${home}`);
+    check(va.snaps[va.snaps.length - 1].portal?.to === "arena", "the village's portal is open and leads to a run");
+    const ring = village.village!.portal;
+    // Round the well (it stands between the spawn and the shrine), then into the ring.
+    await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
+    // Anywhere well inside the 2.4 m ring will do: a looser mark than a spot, so a slow runner settles on it.
+    await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.5), vb.walkTo(ring.x + 0.6, ring.z, 1.5)]);
+    await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's hand-off"), vb.until(() => vb.handoff !== null, 5000, "Wren's hand-off")]);
+    check(va.handoff?.level === "arena" && vb.handoff?.level === "arena", "two seconds in the ring together hand both on to a run");
+    await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
+    check(va.kind === "dungeon" && va.code === vb.code && va.code !== home, "both arrive in the same dungeon room", va.code);
+    check(va.state.players.length === 2 && va.me()!.z > arena.arenaEntryZ, "the party stands in the antechamber", `z ${va.me()!.z.toFixed(1)}`);
+    va.send({ k: "cheat", cheat: "warden" });
+    await va.until(() => va.state.run.wave === 4 && va.state.enemies.length > 0, 3000, "the Warden");
+    va.send({ k: "cheat", cheat: "killAll" });
+    await va.until(() => va.state.run.phase === "won", 5000, "the run won");
+    const exit = va.snaps[va.snaps.length - 1].portal;
+    check(exit?.to === "village", "a ring opens in the antechamber when the run is over", exit ? `(${exit.x}, ${exit.z})` : "none");
+    await Promise.all([va.walkTo(exit!.x - 0.5, exit!.z, 1.1), vb.walkTo(exit!.x + 0.5, exit!.z, 1.1)]);
+    await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way home"), vb.until(() => vb.handoff !== null, 5000, "Wren's way home")]);
+    await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
+    check(va.kind === "village" && va.code === home && vb.code === home, "the ring takes both home to the same village", va.code);
+    check(va.state.players.length === 2, "both stand in the village again");
+    for (const x of [va, vb]) await x.leave();
+    bots.length = 0;
+
     // 9. The browser's own ClientSession, solo.
-    const world = buildWorld(arena);
-    const cs = new ClientSession(world, null, loadout("Delta"), ENDPOINT);
+    const cs = new ClientSession(null, loadout("Delta"), ENDPOINT, "dungeon");
     const start = performance.now();
     while (!cs.playing) {
       if (performance.now() - start > 5000) throw new Error("ClientSession never started");
@@ -182,7 +217,7 @@ async function main() {
     const tickRate = (s1.state.tick - ticksAt) / wall;
     const snapRate = (s1.snaps.length - snapsAt) / wall;
     check(party.every((p) => p.closedWith === null), "nobody is dropped under load");
-    check(party.every((p) => p.ack === p.seq), "every input is applied", party.map((p) => `${p.ack}/${p.seq}`).join(" "));
+    check(party.every((p) => p.ack >= p.seq && p.ack <= p.seq + 18), "every input is used", party.map((p) => `${p.ack}/${p.seq}`).join(" "));
     check(Math.abs(tickRate - 60) < 2, "the fight keeps wall time", `${tickRate.toFixed(1)} ticks a second`);
     check(snapRate > 28, "snapshots keep coming", `${snapRate.toFixed(1)} a second`);
     const bytes = JSON.stringify(s1.state).length;

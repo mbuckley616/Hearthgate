@@ -1,9 +1,11 @@
 import { chromium, expect, test, type Page } from "@playwright/test";
 
 /**
- * The browser smoke test for T1: the combat slice's client against Hearthgate's server. Solo, two
- * players in one fight, and walking through the antechamber gate to start the run. `?play` skips
- * the title screen as a join link does; the slice's `window.game` handle reads the state.
+ * The browser smoke test: the combat slice's client against Hearthgate's server. Solo and two players
+ * in a village (T3), walking through the antechamber gate to start a run (`?dungeon` makes a run
+ * straight away), and the village's round trip: talk to the keeper, take the ring into a run, finish
+ * it (the dev server's cheats) and take the antechamber's ring home. `?play` skips the title screen
+ * as a join link does; the slice's `window.game` handle reads the state.
  *
  * Each player gets a browser of their own: headless Chromium throttles a second page's timers,
  * which starves its frames and inputs (the lesson of the old two-players test).
@@ -12,6 +14,7 @@ import { chromium, expect, test, type Page } from "@playwright/test";
 interface Seen {
   id: string;
   code: string;
+  kind: string;
   playing: boolean;
   snaps: number;
   players: { id: string; x: number; z: number; mode: string }[];
@@ -29,6 +32,7 @@ async function seen(page: Page): Promise<Seen> {
     return {
       id: session.localId,
       code: session.code,
+      kind: session.kind,
       playing: session.playing,
       snaps: session.stats.snapshots,
       players: s.players.map((p: any) => ({ id: p.id, x: p.x, z: p.z, mode: p.mode })),
@@ -63,11 +67,25 @@ async function holdUntil(page: Page, key: string, done: () => Promise<boolean>, 
   }
 }
 
-test("solo: a fight of our own on the server, the scene drawn, and the hero runs", async ({ page }) => {
+/** Face the camera at (x, z) and hold W until the hero is within `tol` of it: W walks where the camera looks. */
+async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
+  const near = async () => {
+    const s = await seen(page);
+    const p = mine(s);
+    await page.evaluate(([tx, tz, px, pz]) => {
+      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
+    }, [x, z, p.x, p.z]);
+    return Math.hypot(p.x - x, p.z - z) <= tol;
+  };
+  await holdUntil(page, "KeyW", near, 25_000);
+}
+
+test("solo: a village of our own on the server, the scene drawn, and the hero runs", async ({ page }) => {
   const errors: string[] = [];
   await open(page, "play", errors);
   const s0 = await seen(page);
   expect(s0.code).toMatch(/^[A-Z2-9]{4}$/);
+  expect(s0.kind).toBe("village");
   expect(s0.players.map((p) => p.id)).toEqual(["p1"]);
   expect(s0.phase).toBe("ante");
 
@@ -123,7 +141,8 @@ test("two players: a friend joins by the code, and each sees the other move", as
 
 test("the run's gate: walking through it starts the run and wave 1 comes", async ({ page }) => {
   const errors: string[] = [];
-  await open(page, "play", errors);
+  await open(page, "play&dungeon", errors);
+  expect((await seen(page)).kind).toBe("arena");
   // The camera starts behind the hero, facing the arena: W walks through the antechamber's gate.
   await holdUntil(page, "KeyW", async () => (await seen(page)).phase !== "ante", 20_000);
   await expect.poll(async () => (await seen(page)).phase, { timeout: 10_000 }).toMatch(/intro|wave/);
@@ -131,5 +150,37 @@ test("the run's gate: walking through it starts the run and wave 1 comes", async
   const s = await seen(page);
   expect(s.wave).toBe(1);
   expect(s.stats.snaps).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("the village: talk to the keeper, take the ring into a run, and the antechamber's ring home", async ({ page }) => {
+  const errors: string[] = [];
+  await open(page, "play", errors);
+  const home = (await seen(page)).code;
+
+  // Keeper Wren stands by the shrine; F in reach shows her line. Round the well first: it stands on the way.
+  await walkTo(page, 3.2, 2, 1.2);
+  await walkTo(page, 2.6, -11.6, 1.6);
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".talk-box")).toBeVisible();
+  await expect(page.locator(".talk-name")).toHaveText("Keeper Wren");
+
+  // Into the ring and hold still: two seconds later the party is handed to a run.
+  await walkTo(page, 0, -10.5, 0.8);
+  await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("arena");
+  const run = await seen(page);
+  expect(run.code).not.toBe(home);
+  await expect.poll(async () => (await seen(page)).players.length).toBe(1);
+
+  // Finish it (the dev server's cheats), then the ring that opens in the antechamber, where we stand, takes us home.
+  await page.evaluate(() => (window as unknown as { game: any }).game.session.request({ k: "cheat", cheat: "warden" }));
+  await expect.poll(async () => (await seen(page)).wave, { timeout: 5_000 }).toBe(4);
+  await page.evaluate(() => (window as unknown as { game: any }).game.session.request({ k: "cheat", cheat: "killAll" }));
+  await expect.poll(async () => (await seen(page)).phase, { timeout: 8_000 }).toBe("won");
+  await walkTo(page, 0, 19.4, 0.8);
+  await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("village");
+  const back = await seen(page);
+  expect(back.code).toBe(home);
+  expect(back.stats.snaps).toBe(0);
   expect(errors).toEqual([]);
 });

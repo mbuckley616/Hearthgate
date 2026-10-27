@@ -1,33 +1,33 @@
 import { applyTuningEdit, tuningEdits } from '../config/edits';
 import { tuning } from '../config/tuning';
-import { arena, type World } from '../level/arena';
-import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type SeqCommand, type ToHost, type ToPeer } from '../net/protocol';
+import type { World } from '../level/arena';
+import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer } from '../sim/coop';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
-import { idleCommand, type PlayerCommand, type SimEvent, type SimState } from '../sim/types';
+import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 import { createSimState, stepSim } from '../sim/world';
-import { mergePresses, withoutPresses } from './Session';
+import { createSlots, nextSlotCommand, receiveInputs, type SlotConfig, type Slots } from './inputSlots';
+import { PORTAL_HOLD_S, partyOnPortal, portalFor, type PortalState } from './portal';
 
-/** A joiner's inputs waiting for host ticks; more than this get folded together so lag can't pile up. */
-export const MAX_QUEUE = 4;
-/** Ticks without input from a joiner (a stall, a hidden tab) before their held buttons let go. */
-export const STALE_TICKS = 15;
+/**
+ * The input slots' numbers (inputSlots.ts). The cushion starts at the slice's coop.inputBufferTicks;
+ * it widens to cover late inputs up to a quarter of a second, the TCP retransmit a lossy link costs
+ * (200 ms) and a little; a player silent for 300 ms has stalled rather than lagged; the held
+ * buttons let go after the slice's 15 ticks; five calm seconds narrow the cushion by a tick; and
+ * more than four waiting beyond the cushion are used up at once, as the slice's host folded them.
+ */
+export function slotConfig(): SlotConfig {
+  return { baseCushion: Math.max(1, Math.round(tuning.coop.inputBufferTicks)), maxCushion: 15, maxGuess: 18, staleTicks: 15, calmTicks: 300, maxQueued: 120, maxExtra: 4 };
+}
 
 /** How the host's messages leave: to one peer, or to every peer when `peer` is omitted. */
 export type Send = (msg: ToPeer, peer?: string) => void;
 
 interface Remote {
   id: string;
-  queue: SeqCommand[];
-  /** Held buttons repeat when a tick's input hasn't arrived yet. */
-  last: PlayerCommand;
-  /** Last input seq applied, sent back so the joiner can drop it from its replay list. */
-  ack: number;
-  /** Ticks since an input from them was applied. */
-  starved: number;
-  /** Ran dry: wait until the cushion (coop.inputBufferTicks) refills before using inputs again. */
-  refilling: boolean;
+  /** Their inputs and when each takes effect; `slots.ack` goes back to them in every snapshot. */
+  slots: Slots;
 }
 
 /**
@@ -35,7 +35,7 @@ interface Remote {
  * it ran in the host player's browser with that player's own hero stepped from their keyboard;
  * here every player is a joiner, peers are the server's connections (keyed by session id), and
  * the room's 60 Hz pump calls tick() instead of a browser frame calling advance(). The input
- * queue, acks, folding and staleness are the slice's, line for line.
+ * queue is T2's input slots (inputSlots.ts), which replaced the slice's after the lab's lossy row.
  *
  * What the slice's host did from its own keyboard and debug panel arrives as messages: a restart
  * once the run is over (anyone's F), tuning edits, and (in a dev build) the cheat buttons.
@@ -45,13 +45,26 @@ export class HostSession {
   private remotes = new Map<string, Remote>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
+  /** Seconds the whole party has stood in the open portal (T3). */
+  private portalHeld = 0;
+  /** The portal was taken and the room is moving the party; it fires once until reopenPortal(). */
+  private portalTaken = false;
+
   constructor(
     private readonly world: World,
     private readonly send: Send,
-    /** Whether the cheat buttons work (a dev build). */
+    /** Whether the cheat buttons work (a dev build; never in the village). */
     private readonly cheats = false,
+    /** Called once when the party has held the open portal long enough: the room hands them on. */
+    private readonly onPortal: () => void = () => {},
   ) {
-    this.sim = createSimState(arena, [], world);
+    this.sim = createSimState(world.level, [], world);
+  }
+
+  /** The hand-off failed (or was refused): the portal can be taken again. */
+  reopenPortal(): void {
+    this.portalTaken = false;
+    this.portalHeld = 0;
   }
 
   get playerCount(): number {
@@ -71,6 +84,7 @@ export class HostSession {
     stepSim(this.sim, commands, step, this.world);
     const events = this.sim.events;
     this.outbox.push(...events);
+    this.stepPortal(step);
     if (this.remotes.size > 0 && this.sim.tick % Math.max(1, Math.round(tuning.coop.snapshotEveryTicks)) === 0) this.sendSnapshot();
     return events;
   }
@@ -83,7 +97,7 @@ export class HostSession {
       if (this.sim.players.length >= tuning.coop.maxPlayers) return send({ k: 'refused', reason: 'The party is full' });
       const id = this.freeId();
       this.between(() => addPlayer(this.sim, this.world, id, msg.loadout, true));
-      this.remotes.set(peer, { id, queue: [], last: idleCommand(), ack: 0, starved: 0, refilling: true });
+      this.remotes.set(peer, { id, slots: createSlots(slotConfig()) });
       send({ k: 'welcome', id });
       send({ k: 'tuning', edits: tuningEdits() });
       this.sendSnapshot();
@@ -93,7 +107,7 @@ export class HostSession {
     if (!r) return;
     switch (msg.k) {
       case 'input':
-        for (const c of msg.cmds) if (c.seq > r.ack && !r.queue.some((q) => q.seq === c.seq)) r.queue.push(c);
+        receiveInputs(r.slots, slotConfig(), msg.cmds);
         break;
       case 'loadout': {
         const p = this.sim.players.find((pl) => pl.id === r.id);
@@ -109,7 +123,7 @@ export class HostSession {
         applyTuningEdit(msg.edit.path, msg.edit.value);
         break;
       case 'cheat':
-        if (this.cheats) this.cheat(msg.cheat, r.id);
+        if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id);
         break;
     }
   }
@@ -123,12 +137,17 @@ export class HostSession {
 
   /** The last input seq applied for a peer (0 before any), for tests and the lab. */
   ackOf(peer: string): number {
-    return this.remotes.get(peer)?.ack ?? 0;
+    return this.remotes.get(peer)?.slots.ack ?? 0;
   }
 
   /** Inputs waiting for a peer, for tests and the lab. */
   queuedOf(peer: string): number {
-    return this.remotes.get(peer)?.queue.length ?? 0;
+    return this.remotes.get(peer)?.slots.queue.length ?? 0;
+  }
+
+  /** A peer's input slots, for tests and the lab. */
+  slotsOf(peer: string): Slots | undefined {
+    return this.remotes.get(peer)?.slots;
   }
 
   /** The lowest free party slot's id, so a party of four is always p1 to p4. */
@@ -139,24 +158,9 @@ export class HostSession {
     }
   }
 
-  /** One tick's input for a joiner: the next queued one, or the last held state if it hasn't arrived. */
+  /** One tick's input for a joiner: the one whose slot this is, or their held buttons standing in for it. */
   private nextCommand(r: Remote): PlayerCommand {
-    while (r.queue.length > MAX_QUEUE) {
-      const a = r.queue.shift()!;
-      r.queue[0] = { seq: r.queue[0].seq, cmd: mergePresses(a.cmd, r.queue[0].cmd) };
-    }
-    if (r.queue.length === 0) r.refilling = true;
-    if (r.refilling && r.queue.length >= Math.max(1, Math.round(tuning.coop.inputBufferTicks))) r.refilling = false;
-    const next = r.refilling ? undefined : r.queue.shift();
-    if (!next) {
-      // Keep moving through a hiccup, but stop if they've gone quiet.
-      if (++r.starved > STALE_TICKS) r.last = { ...idleCommand(), aimX: r.last.aimX, aimZ: r.last.aimZ };
-      return r.last;
-    }
-    r.starved = 0;
-    r.ack = next.seq;
-    r.last = withoutPresses(next.cmd);
-    return next.cmd;
+    return nextSlotCommand(r.slots, slotConfig());
   }
 
   /** Back to the antechamber with a fresh run (everyone keeps their heroes, at full health). */
@@ -207,6 +211,27 @@ export class HostSession {
     });
   }
 
+  /** The open portal and how long the party has held it; take it once they have held it long enough. */
+  private stepPortal(step: number): void {
+    const portal = portalFor(this.world, this.sim);
+    if (!portal || this.remotes.size === 0 || !partyOnPortal(this.sim, portal)) {
+      this.portalHeld = 0;
+      return;
+    }
+    this.portalHeld = Math.min(PORTAL_HOLD_S, this.portalHeld + step);
+    if (this.portalHeld >= PORTAL_HOLD_S && !this.portalTaken) {
+      this.portalTaken = true;
+      this.onPortal();
+    }
+  }
+
+  /** What the snapshot says about the open portal. */
+  private portalState(): PortalState | null {
+    const portal = portalFor(this.world, this.sim);
+    if (!portal) return null;
+    return { x: portal.x, z: portal.z, radius: portal.radius, held: this.portalHeld, to: this.world.level.village ? 'arena' : 'village' };
+  }
+
   /** Change the sim between ticks, keeping any events it raises. */
   private between(fn: () => void): void {
     const before = this.sim.events.length;
@@ -216,8 +241,8 @@ export class HostSession {
 
   private sendSnapshot(): void {
     const acks: Record<string, number> = {};
-    for (const r of this.remotes.values()) acks[r.id] = r.ack;
-    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale() };
+    for (const r of this.remotes.values()) acks[r.id] = r.slots.ack;
+    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale(), portal: this.portalState() };
     this.send(msg);
     this.outbox = [];
   }
