@@ -9,6 +9,15 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: T5: party rules (Claude (local))
+Asked in chat as four cards, with a follow-up on the first. Recommendations were: one hero with three weapons (4B), Hearthgate's downs (5A), a party of 4 for Phase 1, nothing extra for mixed levels. The follow-up asked how to lock a role in a dungeon: pick at the ring and change only in rest rooms (recommended), two weapons a run, or slow swaps with a cooldown.
+Michael (2026-10-27, in chat):
+- **Heroes: one hero, any weapon.** "A player should be able to use any weapon, but they level up their abilities/skills depending on the weapon they use. So, closer to One Hero, 3 Weapons." Roles should be "somewhat 'locked' when in a dungeon", so nobody flips role constantly. **The lock is gear, not a rule:** "We should have a bag / inventory system, similar to Runescape. You have free inventory space, and can equip/unequip gear to the body silhouette. Wearing melee gear does not prohibit you from using ranged or magic weapons, but you will be less effective." Supersedes 4B's "swaps them live (1/2/3)" as the whole answer: a weapon can still be changed in a dungeon (from the bag), and the armour worn is what makes a role.
+- **Downs: Hearthgate's (5A).** Crawl, 30 s bleed-out, out until the room is cleared, hold F (or A) for 3 s to revive, a Revive Draught per floor (the 4 Oct stand-in counter).
+- **Party size: 4 for Phase 1**, with today's scaling (+60% enemy health and more enemies per extra player); 8 waits until Phase 2 measures the netcode cost.
+- **Mixed levels: nothing extra yet.** Floors already grow with the party's average level; the gate shows whether a lower-level friend keeps up before T6.
+Left for the build, to ask then: the bag's size (RuneScape's is 28), the body's slots, and how much less effective mismatched armour makes you (a number in tuning).
+
 ### 2026-10-27: T4b: where hand-built dungeons are kept, and how the portal offers them (Claude (local))
 Asked in chat before building T4b. Where saved dungeons live: A. in the browser, playable at once, with an Export file that ships to everyone once committed to the repo (survives server restarts until Phase 2's database); B. on the server, for everyone at once, but lost on every redeploy of the free Render server. How the village's portal offers one: A. Keeper Wren picks where the one ring leads; B. a second ring beside the shrine.
 Michael (2026-10-27, in chat): **A and A.** Built as: the editor saves to the browser and exports a file; files in `shared/src/level/dungeons/` ship with the game (The Old Cellar is the first). F to Keeper Wren says where the ring opens; F again while she speaks turns it to the next (a new generated dungeon, then the hand-built ones this browser can play); the server checks the layout, and the ring's label shows the whole party where it leads.
