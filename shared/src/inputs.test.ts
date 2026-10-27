@@ -126,6 +126,28 @@ describe("applyDueInputs", () => {
     expect(q.frames.length).toBe(0);
   });
 
+  it("clears a standing backlog of several frames in one retiming, not one tick a second", () => {
+    const p = createPlayer("a");
+    p.inputAt = at(T0);
+    // A client four ticks ahead (the server dropped time in a stall): four frames always waiting.
+    const q = queueOf(walk(1), walk(2), walk(3), walk(4));
+    let seq = 4;
+    let n = T0;
+    for (let i = 0; i < INPUT_TIMING.drainAfterTicks; i++) {
+      q.frames.push(walk(++seq));
+      applyDueInputs(p, q, at(++n));
+    }
+    // The drain tick moved the slots back by the four waiting frames at once.
+    expect(p.inputAt).toBe(at(n - 4));
+    // From here the backlog goes at maxPerTick a tick, every frame in its slot, and stays gone.
+    for (let i = 0; i < 8; i++) {
+      q.frames.push(walk(++seq));
+      applyDueInputs(p, q, at(++n));
+    }
+    expect(q.frames.length).toBeLessThanOrEqual(1);
+    expect(p.inputAt).toBe(at(n));
+  });
+
   it("drains a backlog that jitter empties one tick in five, and leaves one that comes and goes", () => {
     const run = (pattern: number[]) => {
       const p = createPlayer("a");

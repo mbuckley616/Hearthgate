@@ -36,10 +36,12 @@ import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js
  */
 const MAX_QUEUED_INPUTS = 36;
 /**
- * Ticks the loop may run back to back to catch up with wall time, 200 ms of them. Past this the
- * process stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not replayed.
+ * Ticks the loop may run back to back to catch up with wall time, half a second of them. Past this
+ * the process stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not
+ * replayed. Dropped time leaves every client's frames that much ahead of the slots, a backlog the
+ * drain has to clear, so the window covers the 200 to 450 ms stalls a busy machine gives a server.
  */
-const MAX_CATCHUP_TICKS = 12;
+const MAX_CATCHUP_TICKS = 30;
 
 /** Close code sent to a client dropped for flooding inputs (4000-4999 is the app range). */
 export const CLOSE_INPUT_FLOOD = 4001;

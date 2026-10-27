@@ -30,7 +30,8 @@ export function createInputQueue(): InputQueue {
  *  - A slot later than `now` waits: the client is ahead of the tick, and a frame never acts in
  *    the future. This is also what holds a client to one frame a tick of movement. When ticks
  *    that end with a frame waiting outnumber those that do not by `INPUT_TIMING.drainAfterTicks`,
- *    the slots move a tick earlier: a standing backlog is latency, and a late frame costs nothing.
+ *    the slots move earlier by as many ticks as frames are waiting: a standing backlog is latency,
+ *    and a late frame costs nothing.
  *  - A slot `INPUT_TIMING.maxLagMs` or more before `now` is a stall, not jitter: the frame is
  *    applied at `now` and the slots after it count from there (the client is corrected once).
  *  - A player who sends nothing for longer than that window still has their body moved (a knock,
@@ -60,7 +61,10 @@ export function applyDueInputs(p: PlayerSim, q: InputQueue, now: number, level: 
   const waiting = q.frames.length > 0 && onTick(p.inputAt + TICK_MS) > now;
   q.waitingTicks = Math.max(0, q.waitingTicks + (waiting ? 1 : -1));
   if (q.waitingTicks >= INPUT_TIMING.drainAfterTicks) {
-    p.inputAt = onTick(p.inputAt - TICK_MS);
+    // The whole standing backlog at once, one retiming the client corrects for once; never so far
+    // that the oldest waiting frame would land outside the lag window and be placed at the tick.
+    const ahead = Math.min(q.frames.length, Math.round(INPUT_TIMING.maxLagMs / TICK_MS) - 1);
+    p.inputAt = onTick(p.inputAt - TICK_MS * Math.max(1, ahead));
     q.waitingTicks = 0;
   }
   return applied;

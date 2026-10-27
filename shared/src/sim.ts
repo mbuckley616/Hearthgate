@@ -403,14 +403,19 @@ export const INPUT_LIMIT = {
  */
 export const INPUT_TIMING = {
   maxPerTick: 2,
-  /** Twelve ticks: a frame up to this late still lands in its own slot. Longer stalls are rare and
-   * a correction is the right answer to them; a longer window would let a player act further in the past. */
-  maxLagMs: 200,
+  /** A frame up to this late still lands in its own slot. 300 ms, eighteen ticks: a lost packet's
+   * retransmit (TCP's minimum timeout is 200 ms) plus the trip still lands in its slot. At 60 Hz a
+   * lost packet holds up three times the frames it did at 20 Hz, and the old 200 ms window turned
+   * each into a correction (lab, 2% loss: 34 a minute, 6 with this window). Longer stalls are rare and
+   * a correction is the right answer to them; a longer window lets a player act further in the past. */
+  maxLagMs: 300,
   /**
    * A frame that waits for its slot is latency: the client ran ahead (a burst after a stall, a
    * join) and every frame since sits a tick in the queue, while a frame that arrives late costs
    * nothing (it is applied in its slot, in the past). When ticks that end with a frame waiting
-   * outnumber those that do not by this many, the slots move one tick earlier. That retiming is
+   * outnumber those that do not by this many, the slots move earlier by as many ticks as frames are
+   * waiting, in one step (at 60 Hz a server stall left 25 frames waiting, and a tick a second took
+   * 25 s and 25 corrections to clear them). That retiming is
    * the one thing the client's prediction cannot know in advance (it can correct a dodge or a
    * cooldown ending near the shift), so it waits about a second of mostly-waiting ticks to be
    * sure the backlog is standing, not a passing bunch. Measured in the lab before this rule: the
