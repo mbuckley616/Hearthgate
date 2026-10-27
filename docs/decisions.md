@@ -9,6 +9,15 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: T5: the bag and the body (Claude (local))
+Asked in chat as four cards before building the bag and body: the bag's size (28 as RuneScape, recommended; 20; 40), the body's slots (6: head, body, legs, hands, feet and the weapon, recommended; 4; RuneScape's full set), the cost of armour of another kind than the weapon (per piece, -5% damage each, recommended; a flat -25%; -10% a piece), and the hero's look (follows the armour, each piece drawn as the slice's figure for its kind, recommended; one figure for all, tinted).
+Michael (2026-10-27, in chat):
+- **Bag: 28 spaces**, as RuneScape. Worn gear takes none.
+- **Body: RuneScape's full set**: head, cape, neck, body, legs, hands, feet, ring, shield, and the weapon.
+- **Mismatch: per piece**, -5% damage for each worn armour piece of another kind than the weapon in hand (a full wrong set, -25%).
+- **Look: every piece its own.** "Every armor piece should be custom & show up uniquely on the hero. An Iron Helm and a Black Platebody should show exactly as that on their hero model when the hero has them equipped."
+Planned as two steps (slice-transplant-plan.md, T5b and T5c): an item catalogue, the bag, the ten slots and the equip screen first; then each piece drawn on the hero.
+
 ### 2026-10-27: T5: party rules (Claude (local))
 Asked in chat as four cards, with a follow-up on the first. Recommendations were: one hero with three weapons (4B), Hearthgate's downs (5A), a party of 4 for Phase 1, nothing extra for mixed levels. The follow-up asked how to lock a role in a dungeon: pick at the ring and change only in rest rooms (recommended), two weapons a run, or slow swaps with a cooldown.
 Michael (2026-10-27, in chat):

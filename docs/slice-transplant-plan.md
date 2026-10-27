@@ -76,7 +76,11 @@ Each step ends in Michael's playtest on the hosted build and does not start befo
 - **Hearthgate's downs (5A):** crawl, 30 s bleed-out, out until the room is cleared, hold F for 3 s to revive, a Revive Draught per floor.
 - **A party of 4** for Phase 1, with the slice's scaling; 8 waits for Phase 2's measurement. Hirelings later (9A).
 - **Mixed levels:** nothing extra; the gate shows whether it is enough.
-Order: the downs first (small, in the sim, re-recording parity on purpose), then the hero's one look and the bag and body.
+Order:
+- **T5a, the downs** (built 27 Oct): behind `coop.bleedOut`; the parity test plays the slice's downs, so it still proves every other rule is the slice's.
+- **T5b, the bag and the body** (decisions.md, 27 Oct, the bag and the body): an item catalogue in code, each item a slot, a kind (melee, ranged, magic, or none for capes, necks and rings), a material tier and its stats. A 28-space bag and RuneScape's ten body slots (head, cape, neck, body, legs, hands, feet, ring, shield, weapon) in the browser's save, replacing the slice's four slots; the weapon in hand sets the style (1/2/3 take the best weapon of that kind from the bag). Each worn armour piece of another kind than the weapon costs 5% damage. Bows and staves take both hands, so a shield is slung on the back and gives nothing while one is held. Drops roll from the catalogue behind `gear.catalogue`, which the parity test keeps off (the slice's loot is rolled in the fight). An equip screen with a body silhouette, keyboard and pad first. A new hero starts with a plain weapon of each kind and no armour.
+- **T5c, the look**: every piece drawn on the hero as itself (an iron helm as an iron helm, a black platebody as black plate), from the piece's shape and its material, on the slice's code-drawn figure.
+- Then the Phase 1 gate.
 *Gate:* **the Phase 1 gate** (design doc), filed in `playtest-notes.md`: a mixed-level party clears a generated floor and a combo bonus is visible.
 
 **T6. Progression to 50, then champion points** (`combat-port-plan.md` section 3a, decision 6): style levels to 50 with a talent point a level, the milestone rows, then three constellations of champion points under one ceiling.
