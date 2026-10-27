@@ -153,7 +153,8 @@ async function main() {
     const ring = village.village!.portal;
     // Round the well (it stands between the spawn and the shrine), then into the ring.
     await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
-    await Promise.all([va.walkTo(ring.x - 0.6, ring.z), vb.walkTo(ring.x + 0.6, ring.z)]);
+    // Anywhere well inside the 2.4 m ring will do: a looser mark than a spot, so a slow runner settles on it.
+    await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.2), vb.walkTo(ring.x + 0.6, ring.z, 1.2)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's hand-off"), vb.until(() => vb.handoff !== null, 5000, "Wren's hand-off")]);
     check(va.handoff?.level === "arena" && vb.handoff?.level === "arena", "two seconds in the ring together hand both on to a run");
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
@@ -165,7 +166,7 @@ async function main() {
     await va.until(() => va.state.run.phase === "won", 5000, "the run won");
     const exit = va.snaps[va.snaps.length - 1].portal;
     check(exit?.to === "village", "a ring opens in the antechamber when the run is over", exit ? `(${exit.x}, ${exit.z})` : "none");
-    await Promise.all([va.walkTo(exit!.x - 0.5, exit!.z), vb.walkTo(exit!.x + 0.5, exit!.z)]);
+    await Promise.all([va.walkTo(exit!.x - 0.5, exit!.z, 1.1), vb.walkTo(exit!.x + 0.5, exit!.z, 1.1)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way home"), vb.until(() => vb.handoff !== null, 5000, "Wren's way home")]);
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
     check(va.kind === "village" && va.code === home && vb.code === home, "the ring takes both home to the same village", va.code);

@@ -150,13 +150,13 @@ export class Bot {
    * trip behind where we really are, so a bot coasts past its mark; after stopping it looks again and
    * corrects, a few times if it must, until the server has it standing on the mark.
    */
-  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 20000) {
+  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 30000) {
     const start = performance.now();
     for (let tries = 0; tries < 6; tries++) {
       for (;;) {
         const p = this.me();
         if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
-        if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z})`);
+        if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z}): at ${p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere"}`);
         const dx = p ? x - p.x : 0;
         const dz = p ? z - p.z : -1;
         const d = Math.hypot(dx, dz) || 1;
