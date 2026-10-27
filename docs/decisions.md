@@ -9,6 +9,15 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: The port's direction after step 1: the slice's look first, the server, generated dungeons (Claude (local))
+After step 1 Michael asked why Hearthgate still had its old look, and whether to restart from the combat slice instead, since he disliked the old look and feel. Asked in chat whether that meant only the look and feel or the game around the fights, and whether the fight should run on the host's browser instead of a server (less to maintain). The trade-off given: the design doc's economy (characters and items carried between villages, the seven-day trade board, offline visits, "duplication is impossible by construction") needs an always-on server either way, and a host that decides hits and drops can cheat loot into that economy; host-based only fits if trading is cut to trusted friends.
+Michael (2026-10-27, in chat):
+- **The server stays as designed.** The fight runs on the server; trading as the design doc has it.
+- **The slice's look and gameplay feel replace Hearthgate's**: that is what he disliked. The look moves from the port's last step to step 2, all at once, with the KayKit packs and the old figures deleted.
+- **The village and the portal into various dungeons stay.**
+- **Dungeons are not single rooms or one long corridor:** "a dungeon builder / generator that makes unique dungeon configurations based on a set of pre built components (i.e. dungeon hallway, dungeon staircase, dungeon small room, dungeon medium room, etc.)", with open rooms like the slice's arena among them. Step 6 of the re-planned port; its detail questions are asked when it starts.
+`docs/combat-port-plan.md` section 4 has the new order.
+
 ### 2026-10-26: Bringing the combat slice into Hearthgate (Claude (local))
 Michael's combat slice (a separate repo, M0 to M6 passed on 26 Oct) is the reference for Hearthgate's combat. `docs/combat-port-plan.md` has the plan, ten questions with the options as asked, and the porting order. In short: Hearthgate's server and netcode stay, and the slice's simulation, tuning file, debug panel, input layer, camera, views, effects and sound come across in seven steps, each with a playtest gate.
 Michael: **1A 2A 3A 4B 5A 7A 8A 9A 10A** (2026-10-26, in chat), and his own answer to 6. Spelled out:

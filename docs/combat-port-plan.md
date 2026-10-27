@@ -12,6 +12,8 @@ One consequence is good news. In Hearthgate every step is online from the start,
 
 **Michael's answers (26 Oct 2026):** 1A 2A 3A 4B 5A 7A 8A 9A 10A, as recommended. For 6 (progression), his own answer: keep the slice's progression as built, with style levels to 50 and a point every level, then champion points in the style of Elder Scrolls Online, so a player builds a specific character, works alongside gear, and grows slightly stronger over time. Section 3a sets out how that would work. The questions below are kept as they were asked.
 
+**Re-planned 27 Oct 2026:** the slice's look comes first (step 2), the server stays as designed, and dungeons are generated from a kit of hand-built pieces (step 6). Section 4 has the new order.
+
 ---
 
 ## 1. How Hearthgate is built, and how well the slice fits
@@ -143,31 +145,40 @@ The slice's flat +10% damage at level 4 becomes a might-style rank on the board,
 
 ## 4. The porting order
 
+**Re-planned 27 Oct 2026** (Michael, in chat; `decisions.md`). After step 1 he asked why the game still looked like old Hearthgate: the slice's look and feel should replace it, not arrive last. The server stays as designed. Dungeons become generated floors built from a kit of hand-built pieces, not one hand-made floor. So the look moves up to step 2, and a dungeon generator gets a step of its own before the Phase 1 gate. The order as first approved is kept in git history (`1eb829d`).
+
 Each step is small, ends with a playtest Michael can run on the hosted build, and does not start until the previous gate passes (the slice's rule). Every step also keeps Hearthgate's own checks green: `npm run check` and `npm run test:net`, plus the lag lab against the hosted build at 0, 50 and 150 ms.
 
-**Step 1: Foundation.** The tuning file and debug panel, the input action layer, the slice's camera, the server at 60 Hz (per question 1), and the slice's hero movement (run, sprint, jump, dodge, backstep) replacing `applyInput`'s movement on the server and in prediction. Today's combat stays in place underneath, so nothing else breaks yet.
-*Gate:* run around the Warrens on the hosted build. It feels like the slice, the camera never clips, the panel tunes it live, keyboard-only works, and the lag lab is no worse than today (0/0/1 corrections a minute at 0/50/150 ms).
+**Step 1: Foundation** (built 27 Oct). The tuning file and debug panel, the input action layer with the keys of question 10, the slice's orbit camera, the server at 60 Hz (question 1), and the slice's hero movement (run, sprint, jump, dodge, backstep) behind `applyInput`. Today's combat stays in place underneath.
+*Gate:* run around the Warrens on the hosted build. It feels like the slice, the camera never clips, the panel tunes it live, keyboard-only works, and the lab is no worse than before.
 
-**Step 2: The knight's combat.** The 5-hit chain with buffering and cancels, guard and parry, poise and hitstop, all the hit feel (trail, sparks, numbers, shake, sound), the slice's hero and enemy rendering, and one grunt (the goblin, re-made as the slice's grunt). Today's swing, Cleave and Execute are retired or moved per question 4.
+**Step 2: The slice's look, everywhere.** Everything the player sees and hears, in one go: the slice's renderer with its pixel and CRT pass (with an off switch for the mobile tier), palette and lighting, the UI theme, the slice's hero rig drawing today's moves, its grunt for the goblin and the other kinds restyled to match, its stone and torchlight on today's floors, the village graded warm and bright, and the slice's synthesised sound effects. The KayKit packs (18 MB) and the old figures are deleted, not kept beside it. Draw-only: the server and `shared/` do not change.
+*Gate:* the Warrens and the village look like the slice, and the frame time on a laptop is measured.
+
+**Step 3: The sword's combat.** The 5-hit chain with buffering and cancels, guard and parry, poise and hitstop, and the hit feel (trail, sparks, numbers, shake, sound). Today's swing, Cleave and Execute are retired or moved per question 4.
 *Gate:* side by side with the slice at 0.25× slow motion, it feels the same. Then a two-player fight on the hosted build with no snap.
 
-**Step 3: All three styles.** Bow and staff chains, projectiles, abilities, soft targeting, lock-on, and swapping (per question 4). This is where Hearthgate's Magic finally arrives.
+**Step 4: All three styles.** Bow and staff chains, projectiles, abilities, soft targeting, lock-on, and swapping on 1, 2 and 3 (question 4). This is where Hearthgate's Magic finally arrives.
 *Gate:* each style feels distinct, and swapping mid-fight is natural.
 
-**Step 4: Enemies and a floor.** The slice's archer, brute and the Warden; Hearthgate's Shieldbearer, Charger and Pack Leader rebuilt in the slice's framework; attack tokens and floor telegraphs; the Warrens floor rebalanced with a boss room at the end.
-*Gate:* a solo Warrens floor is tense, readable and winnable.
+**Step 5: Enemies.** The slice's archer, brute and the Warden; Hearthgate's Shieldbearer, Charger and Pack Leader rebuilt in the slice's framework; attack tokens and floor telegraphs.
+*Gate:* in an open room like the slice's arena, each enemy is readable and a mixed pack is tense and winnable solo.
 
-**Step 5: Party rules.** Lag grace, downs and revives (question 5), the cross-style combos expressed as Hearthgate's states (Shatter on Chilled, Skewer on Staggered, Detonate on Marked) with the payoff scaling by distinct contributors, and enemy scaling by party size.
-*Gate:* **the Phase 1 gate itself**, filed in `playtest-notes.md`: a mixed-level party clears a Warrens floor and the combo bonus is visible.
+**Step 6: The dungeon generator** (Michael, 27 Oct). A kit of hand-built pieces (hallway, corner, junction, staircase, small, medium and large rooms, open arena rooms like the slice's, a rest room and a boss room), each with doorway sockets, and a seeded generator that joins them into a floor: branching, with loops and side rooms, never one long corridor. The server generates the floor from the run's seed and sends the seed, so every client builds the same floor and the same walls; enemies are placed per room from a budget, and the stairs or the rest room close the floor. The portal picks the dungeon type, tier and seed, and a run is 3 to 5 floors (the design doc's Dungeons section already describes this: "floors are assembled from hand-built rooms ... joined by a procedural layout"). Staircases bring height into collision (the slice's ramps and ledges), which the sim's walls do not have yet. The Warrens floor of today retires.
+*Gate:* five floors in a row from five seeds, each a different shape, none broken or unreachable, each 4 to 6 minutes, readable from the camera.
+Questions to answer before it starts: does a staircase change level within a floor, or only lead to the next floor; how big a floor is; whether unexplored rooms are hidden; and how pieces are authored (in code, or drawn in a small editor).
 
-**Step 6a: The slice's progression.** Style levels and unlocks, talent boards and the talent screen (with keyboard and gamepad navigation), slots and perks folded into `gear.ts`, and the browser save checked by the server (section 3a).
+**Step 7: Party rules.** Lag grace, downs and revives (question 5), the cross-style combos expressed as Hearthgate's states (Shatter on Chilled, Skewer on Staggered, Detonate on Marked) with the payoff scaling by distinct contributors, and enemy scaling by party size.
+*Gate:* **the Phase 1 gate itself**, filed in `playtest-notes.md`: a mixed-level party clears a generated floor and the combo bonus is visible.
+
+**Step 8a: The slice's progression.** Style levels and unlocks, talent boards and the talent screen (with keyboard and gamepad navigation), slots and perks folded into `gear.ts`, and the browser save checked by the server (section 3a).
 *Gate:* "you want to start a second run right away."
 
-**Step 6b: Champion points.** The three constellations, passive and slotted perks, the overall ceiling, the perk screen, and respec at the shrine. The XP curve and every perk's numbers go in `tuning.ts` and the debug panel, so Michael can tune them live.
+**Step 8b: Champion points.** The three constellations, passive and slotted perks, the overall ceiling, the perk screen, and respec at the shrine. The XP curve and every perk's numbers go in `tuning.ts` and the debug panel, so Michael can tune them live.
 *Gate:* with a character taken past level 50 by the debug panel's XP grant, you can plan a build, feel it working in a fight, and a lower-level friend still pulls their weight beside you.
 
-**Step 7: Look and sound** (per question 8). The pixel and CRT pipeline, palette and UI theme, the village grade, and music. The synthesised sound effects can land as early as step 2.
-*Gate:* a 60-second clip of a Warrens floor and the village that Michael would show someone.
+**Step 9: Music and finish.** Music, and whatever of the look the earlier steps left rough. The design doc's art section and the style guide are rewritten to match the slice (question 8).
+*Gate:* a 60-second clip of a generated floor and the village that Michael would show someone.
 
 ## 5. Risks
 
