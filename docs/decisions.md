@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: T1 and T2 closed on feel; lag testing waits, content first (Claude (local))
+After playing the slice on the hosted build, Michael, in chat: **"Feels good. I'm honestly not concerned about testing for lag right now. I'd rather flesh out the content / the game first. Can we move on to what's next?"** (2026-10-27).
+Recorded as: the T1 gate passes on his solo play; its two-player run and T2's open lab items (the 150 ms row above the gate, the lossy link's holds) wait until he wants lag tested again. T2 (PR #68) ships as it is once approved. The plan moves to T3, the village and the portal.
+
 ### 2026-10-27: T2: the small corrections in a fight (Claude (local))
 The lab on T1 (local, 60 s a row) counts 59 / 71 / 93 corrections a minute at 0 / 50 / 150 ms, against Hearthgate's old 8 / 3 / 1. None of them snaps. Each is a few centimetres to about 20 cm, eased out over 120 ms (`coop.correctionBlendMs`). They are not network trouble: with no enemies there are none, and enemies that never swing change nothing. They come from your own swings. A melee swing's lunge stretches to reach its soft target, and the soft target turns you toward it. Your browser measures both against the enemy where the last snapshot had it, and the server measures them a few ticks later, when the enemy has moved. In the slice this only happened to joiners; now solo is a joiner too. The T1 gate is where you will feel whether they matter.
 A. Leave them. They are the slice's own joiner feel; judge them at the T1 gate side by side. T2's gate then reads "no network snaps, and corrections over 10 cm no worse than 8 / 3 / 1 a minute" instead of every correction over 2 cm, and the lab reports both. If you feel them at the gate, this comes back as B. _(recommended: nothing changes in the fight, and the parity test stays exact)_

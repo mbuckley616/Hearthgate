@@ -89,4 +89,4 @@ Other notes
 - A second run the same day, with the lab's Bravo made to fight (it faces the nearest enemy, closes in and swings, and still revives; PR #68's lab against the hosted build): 5 minutes, 0 network snaps (7 placements), 54 corrections a minute over 2 cm, 0.6 holds a minute, 0 page errors. 8 runs started, none won: Bravo charges in and goes down, then Alpha. The bots cannot finish a run, so "two players through a whole run" needs two people.
 
 Decisions
-- Michael's call: the T1 gate (solo the same as the slice, then two players through a run with no snap).
+- Gate: passed on Michael's solo play (2026-10-27, "Feels good"). The two-player run and lag testing wait: he wants content first (decisions.md, 27 Oct).
