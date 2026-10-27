@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T2: input slots for the lossy link
+
+**What changed**
+
+- T1 merged (PR #67, Michael on GitHub) and is live. Michael played it solo on the hosted build: "Gameplay looks good." He answered the fight's small corrections A (they stay; T2's gate counts corrections over 10 cm). The T1 gate is filed in `playtest-notes.md` with the lab against the hosted build (PR #69): 5 minutes, two browsers through Render, 0 network snaps, 70 corrections a minute over 2 cm, 2.8 holds a minute, but no run finished, since the bot pair only revives.
+- `shared/src/game/inputSlots.ts` replaces the slice host's input queue. Each input has a slot one tick after the one before, behind a cushion. A tick whose input is missing runs on the held buttons and counts as that input (acked); the input is dropped when it lands, its presses carried to the next tick. Late arrivals widen the cushion a tick each (up to 15), five calm seconds narrow it, a player silent 300 ms has stalled. 5 unit tests in `HostSession.test.ts` (check 28); `test:net`'s ack checks now allow the server's 18 stood-in ticks after a bot stops.
+- `CLAUDE.md`'s netcode section describes the slots and the adaptive delay.
+
+**Lab (local, 60 s a row)**
+
+| Link | Corrections a minute (over 2 cm) | Over 10 cm | Holds a minute | Inputs in flight |
+| --- | --- | --- | --- | --- |
+| 0 ms | 77 (repeat: 120) | 16 (repeat: 14) | 0 (repeat: 6) | 74 ms |
+| 50 ms | 102 | 5 | 7 | 168 ms |
+| 150 ms | 76 | 6 | 5 | 364 ms |
+| 50 ms ±20, 2% loss | 92 (before: 277) | 8 (before: 170) | 27 | 360 ms (before: 197) |
+
+**Learned**
+
+- The slice's queue already counted ticks roughly right on a lossy link (repeating held buttons, then folding the burst), but every press and key change in the gap landed ticks from the prediction. Standing in for each missing input and acking it keeps the count exact; widening the cushion after the first retransmit means later ones fit, at the cost of the player's actions reaching the server up to a quarter of a second later on that link.
+- One 60-second row is noisy here: the same 0 ms row read 77 and 120 corrections a minute over 2 cm. Compare rows over several runs before calling a change.
+- On a clean link the over-10 cm count (14 to 16 at 0 ms) is above the gate's 8. These are no longer the network: they are the swing's lunge and turn (decision A) where the enemy has moved more than 10 cm between the snapshot and the server's tick.
+
+**Next**
+
+- T2's gate is not met at 0 ms (over 10 cm: 14 to 16 against 8). Michael's call: count only network corrections (leave the swing's out of the gate), or reopen decision A as B.
+- The lab against the hosted build once #68 ships, for the real link.
+- Bandwidth stays (about 117 KB/s a player).
+
 ## 2026-10-27: local session, T2 begun: where the lab's corrections come from, and the clock back from the shelf
 
 Started on Michael's word ("after this work is finished ... please begin the next step ... I don't want to be a blocker", while T1 waits for its gate), on `auto/local-slice-netcode`, stacked on T1's branch. Nothing here is merged or meant to be before T1's gate.
