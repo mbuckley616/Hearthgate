@@ -160,16 +160,17 @@ export class Bot {
         const dx = p ? x - p.x : 0;
         const dz = p ? z - p.z : -1;
         const d = Math.hypot(dx, dz) || 1;
-        // Ease off near the mark.
-        const k = Math.min(1, Math.max(0.25, d / 4));
+        // Ease off near the mark: the last few metres at a walk, so a late snapshot cannot carry us far past it.
+        const k = Math.min(1, Math.max(0.2, (d - tol * 0.5) / 5));
         await this.drive(4, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
       }
-      await this.drive(40);
-      await sleep(150);
+      // Stand still (sending, not silent: the server reads silence as lateness) and look again.
+      await this.drive(50);
       const p = this.me();
       if (p && Math.hypot(p.x - x, p.z - z) <= tol) return;
     }
-    throw new Error(`${this.name} would not settle on (${x}, ${z})`);
+    const p = this.me();
+    throw new Error(`${this.name} would not settle on (${x}, ${z}): at ${p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere"}`);
   }
 
   async until(ok: () => boolean, timeoutMs: number, what: string) {
