@@ -14,24 +14,25 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 - Gone: Hearthgate's `sim.ts` and its modules and ~230 tests, the old client, the schema, the village, dungeon and sim rooms, the levels, the KayKit packs and the art spike images. `clock.ts`, `interp.ts` and `gear.ts` are read-only in `docs/reference/hearthgate-shelf/` for T2 and Phase 3; the hand-off is at 1f4e3e9 for T3.
 - Tests: `tests/parity.ts` plays two scripted parties (a party of three to four through four waves with a join and a leave; the Warden, a wipe, a restart and the run again; 9,000 ticks each) through the slice's own `stepSim` from its repo and through Hearthgate's copy: identical every tick. Their hashes are in `shared/src/parity/golden.json`, which `npm test` checks, so CI holds the line without the slice. Unit tests for the room's queue, acks, joins, snapshots and requests, and for the message checks (21 in all). `test:net` rewritten on bots speaking the slice's messages, plus the browser's own `ClientSession` (25 checks). `tests/smoke.e2e.ts`: solo, two players by code, through the gate into wave 1 (3/3). The lab rewritten for the new client.
 
-**Lab (local, this desktop, 60 s a row, both pages at 60 fps on the GPU)**
+**Lab (local, this desktop, 60 s a row, both pages at 60 fps on the GPU; a correction is a replay that moves the hero over 2 cm, the old client's line)**
 
-| Link | Corrections a minute (mean size) | Snaps | Holds a minute | View lag | Inputs in flight | Server to each player |
+| Link | Corrections a minute | Snaps | Holds a minute | View lag | Inputs in flight | Server to each player |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0 ms | 212 | 0 (+2 placed) | 0 | 125 ms | 70 ms | 119 KB/s |
-| 50 ms | 227 | 0 (+2 placed) | 2 | 210 ms | 175 ms | 114 KB/s |
-| 150 ms | 203 | 0 (+2 placed) | 2 | 415 ms | 372 ms | 116 KB/s |
-| 50 ms ±20, 2% loss | 401 | 0 (+2 placed) | 31 | 225 ms | 196 ms | 116 KB/s |
+| 0 ms | 59 | 0 (+2 placed) | 0 | 110 ms | 66 ms | 122 KB/s |
+| 50 ms | 71 | 0 (+2 placed) | 2 | 215 ms | 175 ms | 119 KB/s |
+| 150 ms | 93 | 0 (+2 placed) | 3 | 410 ms | 366 ms | 118 KB/s |
+| 50 ms ±20, 2% loss | 379 | 0 (+2 placed) | 30 | 225 ms | 196 ms | 118 KB/s |
 
-"Placed" snaps are the server moving the player itself (the gate bringing stragglers in, a restart). Without enemies the browser's `ClientSession` makes no corrections at all (`test:net`: 0 in four seconds of running, sprinting, dodging and jumping); in a fight it makes a few hundred a minute, a few centimetres each (3 cm mean in a 30 s run with no placements), eased out over 120 ms.
+Hearthgate's last numbers (step 1, its own fight) were 8 / 3 / 1 and 8 lossy. "Placed" snaps are the server moving the player itself (the gate bringing stragglers in, a restart). Counting every difference instead of those over 2 cm, the same rows read about 210 a minute at 0 ms, 3 cm on average. Without enemies the browser's `ClientSession` makes none at all (`test:net`: four seconds of running, sprinting, dodging and jumping). The same row with enemies that never swing reads about the same as with them, and with god mode more (Alpha fights longer): the corrections come from the hero's own swings, not from hits taken. A melee swing's lunge stretches to reach its soft target and the soft target turns the hero, both measured against the enemy where the last snapshot had it; the server measures a few ticks later.
 
 **Learned**
 
-- The corrections are the slice's own joiner prediction, now every player's: the hero is predicted against the enemies where the last snapshot had them, so a hit's hitstop or a lunge toward a soft target lands a tick or two apart from the server's. In the slice the host never predicted; solo is now a joiner, so solo has them too. They are small and eased, but the lab's old line (30 a minute) calls every row rough. That is T2's first question.
+- The corrections are the slice's own joiner prediction, now every player's: a swing's lunge and soft-target turn are predicted against enemies where the last snapshot had them. In the slice the host never predicted; solo is now a joiner, so solo has them too. They are eased over 120 ms, but the lab's line (30 a minute) calls every row rough. That is T2's first question, and Michael's, since the fixes change the slice's fight or its feel.
+- On the lossy link the slice's input queue is the trouble: a retransmit holds a player's inputs 200 ms, the server repeats their held buttons meanwhile, then folds the late burst into fewer ticks. 379 corrections a minute, and Bravo's view of Alpha holds 30 times a minute behind the fixed 80 ms delay.
 - The slice's input cushion (two ticks) assumes one tick a frame. At 25 fps (the lab's first run, software WebGL) every frame carried two or three ticks, the queue ran dry between frames, the server repeated the held buttons, and corrections ran 268 a minute at 0 ms. A machine below 60 fps will see the same.
 - A restart has to travel as a message: the slice's host read F's *press*, and a tap released inside one frame never shows as interact held in any command. The lab caught it.
 - Lag grace (150 ms) now covers every player, solo included; in the slice the host had none. Whether enemy hits feel late solo is a gate question.
-- About 115 KB/s a player as msgpack (a snapshot is 5.3 KB as JSON for four players): under the 170 KB/s the plan feared.
+- About 120 KB/s a player as msgpack (a snapshot is 5.3 KB as JSON for four players): under the 170 KB/s the plan feared.
 
 **Next**
 
