@@ -203,10 +203,10 @@ describe("input rate limit", () => {
 
   it("drops a client that sustains more than INPUT_LIMIT.ratePerSec", () => {
     const b = createInputBucket(0);
-    const flood = send(b, 60, 10);
+    const flood = send(b, 2 * INPUT_LIMIT.ratePerSec, 10);
     expect(flood.ok).toBe(false);
-    // 60/s drains 35 tokens a second net, so the burst lasts well under a second.
-    expect(flood.at).toBeLessThan(1000);
+    // Twice the limit drains ratePerSec tokens a second net, so the burst lasts about a second.
+    expect(flood.at).toBeLessThan(1100);
   });
 
   it("drops a client just over the limit, but only after it is sustained", () => {

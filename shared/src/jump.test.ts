@@ -80,11 +80,12 @@ describe("jump", () => {
 
   it("takes off on a press and lands after jumpMs, on a tick", () => {
     const p = createPlayer("a");
-    applyInput(p, frame(1, { jump: true }), 50, TICK_MS);
-    expect(p.jumpUntil).toBe(50 + PLAYER.jumpMs);
-    expect(PLAYER.jumpMs % TICK_MS).toBe(0);
-    expect(isAirborne(p, 50 + PLAYER.jumpMs - TICK_MS)).toBe(true);
-    expect(isAirborne(p, 50 + PLAYER.jumpMs)).toBe(false);
+    const air = Math.round(PLAYER.jumpMs / TICK_MS);
+    expect(Math.abs(air * TICK_MS - PLAYER.jumpMs)).toBeLessThan(1e-9);
+    applyInput(p, frame(1, { jump: true }), 3 * TICK_MS, TICK_MS);
+    expect(p.jumpUntil).toBe((3 + air) * TICK_MS);
+    expect(isAirborne(p, (2 + air) * TICK_MS)).toBe(true);
+    expect(isAirborne(p, (3 + air) * TICK_MS)).toBe(false);
   });
 
   it("carries the takeoff speed: about 3 m walking and 4.5 m sprinting", () => {

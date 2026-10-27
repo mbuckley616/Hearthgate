@@ -3,7 +3,9 @@ import {
   PLAYER_COLORS,
   SPAWN_POINTS,
   TICK_MS,
+  PATCH_TICKS,
   INPUT_TIMING,
+  onTick,
   applyDueInputs,
   createEncounter,
   createInputQueue,
@@ -32,12 +34,12 @@ import { DungeonState, EnemyState, PlayerState } from "../schema/DungeonState.js
  * A client that lags and then sends a burst gets its inputs applied over
  * several ticks instead of all at once, which stops speed exploits.
  */
-const MAX_QUEUED_INPUTS = 12;
+const MAX_QUEUED_INPUTS = 36;
 /**
- * Ticks the loop may run back to back to catch up with wall time. Past this the process
- * stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not replayed.
+ * Ticks the loop may run back to back to catch up with wall time, 200 ms of them. Past this the
+ * process stalled (a long GC pause, a sleeping laptop) and the lost time is dropped, not replayed.
  */
-const MAX_CATCHUP_TICKS = 4;
+const MAX_CATCHUP_TICKS = 12;
 
 /** Close code sent to a client dropped for flooding inputs (4000-4999 is the app range). */
 export const CLOSE_INPUT_FLOOD = 4001;
@@ -63,8 +65,8 @@ export interface Handoff {
 
 /**
  * A room that steps the shared simulation: the village and every dungeon floor. One Level, a
- * player per client, the 20 Hz tick locked to wall time, two queued inputs a player a tick,
- * the patch broadcast at the end of each step, and the hand-off of the whole party to another
+ * player per client, the 60 Hz tick locked to wall time, two queued inputs a player a tick,
+ * the patch broadcast at the end of every PATCH_TICKS-th step, and the hand-off of the whole party to another
  * room (the portal and the stairs). Subclasses name the level and act on the tick's events.
  */
 export abstract class SimRoom extends Room<DungeonState> {
@@ -83,6 +85,8 @@ export abstract class SimRoom extends Room<DungeonState> {
   /** Wall time the last step's patch left, so simNow() can place a ping reply inside the tick. */
   private lastStepAt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Events of the steps since the last patch: they go out with it, so a client never hears of a hit before the patch that shows it. */
+  private pendingEvents: SimEvent[] = [];
   /** A hand-off is under way: the seats are being reserved and the clients told. */
   private handingOff = false;
 
@@ -150,7 +154,7 @@ export abstract class SimRoom extends Room<DungeonState> {
     const p = createPlayer(client.sessionId, spawn.x, spawn.z);
     p.weapon = weaponFromPick(options.weapon, options.tier);
     // Far enough back that the first frame counts as late and is placed at its tick.
-    p.inputAt = this.sim.tick * TICK_MS - INPUT_TIMING.maxLagMs;
+    p.inputAt = onTick(this.sim.tick * TICK_MS - INPUT_TIMING.maxLagMs);
     this.sim.players.set(client.sessionId, p);
     this.queues.set(client.sessionId, createInputQueue());
     this.buckets.set(client.sessionId, createInputBucket(performance.now()));
@@ -275,9 +279,13 @@ export abstract class SimRoom extends Room<DungeonState> {
     for (const p of cyclers) cycleLock(p, this.sim.encounter.enemies.values(), level);
     events.push(...stepEncounter(this.sim.encounter, this.sim.players, now, TICK_MS));
 
-    this.syncState();
-    if (events.length) this.broadcast("events", events);
-    this.broadcastPatch();
+    this.pendingEvents.push(...events);
+    if (this.sim.tick % PATCH_TICKS === 0) {
+      this.syncState();
+      if (this.pendingEvents.length) this.broadcast("events", this.pendingEvents);
+      this.pendingEvents = [];
+      this.broadcastPatch();
+    }
     // Taken after the patch leaves, so a ping reply and a patch stamped the same server
     // time left the server at the same wall time and the client's clock sees one path.
     this.lastStepAt = performance.now();

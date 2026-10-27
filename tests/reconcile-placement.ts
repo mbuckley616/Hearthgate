@@ -15,7 +15,7 @@
  *
  * Run: part of npm run test:net
  */
-import { applyInput, type InputFrame, KNOCKBACK, PLAYER, POSTURE, TICK_MS } from "@hearthgate/shared";
+import { applyInput, type InputFrame, KNOCKBACK, onTick, PLAYER, POSTURE, TICK_MS } from "@hearthgate/shared";
 import { DODGE_SNAP_DISTANCE, DOWNED_SNAP_DISTANCE, Net, SNAP_DISTANCE } from "../client/src/net.ts";
 
 function fail(msg: string): never {
@@ -98,16 +98,17 @@ const afterThrow = net.corrections;
 patch(net, { x: 0, z: slid, hp: PLAYER.hp, lastSeq: 12, ...knock });
 if (net.corrections !== afterThrow || net.snaps !== beforeThrow.snaps) fail("the patch after a throw disagreed with the replay");
 
-// 5. Standing at the origin, we press dodge east and keep walking east for six frames; the
-// server applied the first of them a tick after a goblin's blow staggered us, so it refused
-// the dodge, and the five after it are replayed off balance.
+// 5. Standing at the origin, we press dodge east and keep walking east for fourteen frames (the
+// dodge and a step); the server applied the first of them a tick after a goblin's blow staggered
+// us, so it refused the dodge, and the thirteen after it are replayed off balance.
 patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 20 });
 const beforeDodge = { snaps: net.snaps, corrections: net.corrections };
-const frames: InputFrame[] = [21, 22, 23, 24, 25, 26].map((seq) => ({ seq, dx: 1, dy: 0, attack: false, dodge: seq === 21, ability: 0, use: false }));
+const frames: InputFrame[] = Array.from({ length: 14 }, (_, i) => ({ seq: 21 + i, dx: 1, dy: 0, attack: false, dodge: i === 0, ability: 0, use: false }));
+const lastDodgeSeq = 21 + frames.length - 1;
 net.predictedTime = tick * TICK_MS;
 for (const f of frames) {
   // As Net.tick predicts, without a room to send to.
-  net.predictedTime += TICK_MS;
+  net.predictedTime = onTick(net.predictedTime + TICK_MS);
   applyInput(net.me, f, net.predictedTime, TICK_MS, net.level);
   net.pending.push(f);
 }
@@ -121,25 +122,25 @@ if (net.snaps !== beforeDodge.snaps) fail(`a refused ${dodged.toFixed(2)} m dodg
 if (net.corrections !== beforeDodge.corrections + 1) fail("a refused dodge was not counted as a correction");
 if (Math.abs(net.visualErrX - dodged) > 1e-9) fail(`the eased offset is ${net.visualErrX} m, not the ${dodged} m we were drawn ahead`);
 // The same error with no dodge in it is still a snap: the wider limit is the dodge's alone.
-patch(net, { x: 0, z: 0, hp: PLAYER.hp - 20, lastSeq: 26 });
+patch(net, { x: 0, z: 0, hp: PLAYER.hp - 20, lastSeq: lastDodgeSeq });
 const beforeJump = net.snaps;
-patch(net, { x: dodged, z: 0, hp: PLAYER.hp - 20, lastSeq: 26 });
+patch(net, { x: dodged, z: 0, hp: PLAYER.hp - 20, lastSeq: lastDodgeSeq });
 if (net.snaps !== beforeJump + 1) fail(`a ${dodged.toFixed(2)} m error with no dodge in it did not snap`);
 
-// 6. Running east with eleven frames unconfirmed (a 550 ms round trip); the server applied the
-// first of them on the tick a blow downed us at the origin, and the ten after it replay as a crawl.
+// 6. Running east with thirty-three frames unconfirmed (a 550 ms round trip); the server applied the
+// first of them on the tick a blow downed us at the origin, and the thirty-two after it replay as a crawl.
 patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 40 });
 const beforeDown = { snaps: net.snaps, corrections: net.corrections };
 net.predictedTime = tick * TICK_MS;
-for (let seq = 41; seq <= 51; seq++) {
+for (let seq = 41; seq <= 73; seq++) {
   const f: InputFrame = { seq, dx: 1, dy: 0, attack: false, dodge: false, ability: 0, use: false };
-  net.predictedTime += TICK_MS;
+  net.predictedTime = onTick(net.predictedTime + TICK_MS);
   applyInput(net.me, f, net.predictedTime, TICK_MS, net.level);
   net.pending.push(f);
 }
 const ran = net.me.x;
-if (ran < SNAP_DISTANCE) fail(`eleven frames of running only went ${ran} m, not past SNAP_DISTANCE`);
-if (ran >= DOWNED_SNAP_DISTANCE) fail(`eleven frames of running went ${ran} m, past DOWNED_SNAP_DISTANCE`);
+if (ran < SNAP_DISTANCE) fail(`550 ms of running only went ${ran} m, not past SNAP_DISTANCE`);
+if (ran >= DOWNED_SNAP_DISTANCE) fail(`550 ms of running went ${ran} m, past DOWNED_SNAP_DISTANCE`);
 const downedAt = tick * TICK_MS;
 patch(net, { x: 0, z: 0, hp: 0, lastSeq: 41, downedUntil: downedAt + 30_000 });
 const downErr = ran - net.me.x;
@@ -148,9 +149,9 @@ if (net.snaps !== beforeDown.snaps) fail(`a ${downErr.toFixed(2)} m downing blow
 if (net.corrections !== beforeDown.corrections + 1) fail("a downing blow was not counted as a correction");
 if (Math.abs(net.visualErrX - downErr) > 1e-9) fail(`the eased offset is ${net.visualErrX} m, not the ${downErr} m we were drawn ahead`);
 // Already down, the same error is a snap: the wider limit is the blow's alone.
-patch(net, { x: 0, z: 0, hp: 0, lastSeq: 51, downedUntil: downedAt + 30_000 });
+patch(net, { x: 0, z: 0, hp: 0, lastSeq: 73, downedUntil: downedAt + 30_000 });
 const beforeDownJump = net.snaps;
-patch(net, { x: downErr, z: 0, hp: 0, lastSeq: 51, downedUntil: downedAt + 30_000 });
+patch(net, { x: downErr, z: 0, hp: 0, lastSeq: 73, downedUntil: downedAt + 30_000 });
 if (net.snaps !== beforeDownJump + 1) fail(`a ${downErr.toFixed(2)} m error while already down did not snap`);
 
 console.log(

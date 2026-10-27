@@ -6,6 +6,7 @@ import {
   OPEN_FIELD,
   PLAYER,
   TICK_MS,
+  onTick,
   VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
@@ -349,7 +350,7 @@ export class Net {
   /** Called once per client tick with the sampled input. Predicts locally and sends. */
   tick(frame: InputFrame) {
     if (!this.room || !this.connected) return;
-    this.predictedTime += TICK_MS;
+    this.predictedTime = onTick(this.predictedTime + TICK_MS);
     applyInput(this.me, frame, this.predictedTime, TICK_MS, this.level);
     this.pending.push(frame);
     if (this.pending.length > 64) this.pending.shift(); // never let a dead link grow unbounded
@@ -531,7 +532,7 @@ export class Net {
     // arrived late was applied in the past, and the ones after it belong one tick apart from it.
     let t = me.inputAt;
     for (const f of this.pending) {
-      t += TICK_MS;
+      t = onTick(t + TICK_MS);
       applyInput(me, f, t, TICK_MS, this.level);
     }
     this.predictedTime = t;

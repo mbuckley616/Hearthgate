@@ -28,7 +28,7 @@ function deadAndFriend(gap: number) {
 function bleedOut(downed: PlayerSim[]) {
   const enemy = createEnemy();
   const players = [...downed, createPlayer("far", 15, 15)];
-  for (let t = TICK_MS; t <= DOWNS.bleedOutMs; t += TICK_MS) stepDowns(players, [enemy], t, TICK_MS);
+  for (let n = 1; n <= Math.round(DOWNS.bleedOutMs / TICK_MS); n++) stepDowns(players, [enemy], n * TICK_MS, TICK_MS);
 }
 
 describe("revive draught (Phase 1 stand-in counter)", () => {

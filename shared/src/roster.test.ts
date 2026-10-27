@@ -10,6 +10,7 @@ import {
   POSTURE,
   SHIELDBEARER,
   TICK_MS,
+  onTick,
   applyInput,
   createEnemies,
   createEnemy,
@@ -157,17 +158,18 @@ describe("the Charger", () => {
     expect(e.facing).toBe(0);
   });
 
-  it("runs down the lane and throws the player it meets: double damage and a 3 m slide they cannot act through", () => {
+  it("runs down the lane and throws the player it meets: double damage and a 3.4 m slide they cannot act through", () => {
     const { e, p, players } = lane(8);
     const { events, now } = run(e, players, 1000, 3000, OPEN_FIELD, (ev) => ev.some((x) => x.kind === "playerKnocked"));
     expect(events.map((x) => x.kind)).toEqual(["enemyHit", "playerKnocked"]);
     expect(events[0]).toMatchObject({ damage: c.damage, blocked: false });
     expect(e.phase).toBe("recover");
-    expect(p.knockUntil).toBe(now + KNOCKBACK.ms);
+    expect(p.knockUntil).toBe(onTick(now + KNOCKBACK.ms));
     const z0 = p.z;
     let t = now + TICK_MS;
-    for (; t < now + KNOCKBACK.ms; t += TICK_MS) applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: true, dodge: true }, t, TICK_MS);
-    expect(p.z - z0).toBeCloseTo(3, 6);
+    for (; t < p.knockUntil; t = onTick(t + TICK_MS)) applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: true, dodge: true }, t, TICK_MS);
+    // The slide runs on the ticks after the blow, up to knockUntil: one tick short of the window.
+    expect(p.z - z0).toBeCloseTo((KNOCKBACK.speed * (KNOCKBACK.ms - TICK_MS)) / 1000, 6);
     expect([p.x, p.attackUntil, p.dodgeUntil]).toEqual([0, 0, 0]);
     applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: false, dodge: false }, t, TICK_MS);
     expect(p.x).toBeLessThan(0); // free again

@@ -18,8 +18,26 @@ import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGe
 
 export { ARENA_HALF };
 
-export const TICK_RATE = 20;
-export const TICK_MS = 1000 / TICK_RATE; // 50 ms
+/**
+ * 60 ticks a second (Michael, 2026-10-26, the combat port's 1A): the combat slice's feel was
+ * tuned at 60 Hz, and its timings (a 60 ms hitstop, a 200 ms parry window, buffered presses)
+ * need ticks finer than the 50 ms of the old 20 Hz.
+ */
+export const TICK_RATE = 60;
+export const TICK_MS = 1000 / TICK_RATE; // 16.7 ms
+/** A patch every second tick, 30 a second: the slice's snapshot rate, half the sim's bandwidth. */
+export const PATCH_TICKS = 2;
+export const PATCH_MS = TICK_MS * PATCH_TICKS;
+
+/**
+ * A time put back on the tick grid. A tick is not a whole number of ms, so a slot reached by
+ * adding TICK_MS to the last one drifts from `tick * TICK_MS` by a few 1e-13 ms, and a slot that
+ * compares a hair later than the tick it belongs to would wait a tick. Every slot the server
+ * applies a frame at, and every one the client replays at, goes through here.
+ */
+export function onTick(t: number): number {
+  return Math.round(t / TICK_MS) * TICK_MS;
+}
 
 export const PLAYER = {
   hp: 100,
@@ -37,7 +55,7 @@ export const PLAYER = {
   /** Held sprint (Michael, 2026-10-15, 2A): free, 9 m/s; a swing, a block or an ability stops it. */
   sprintMult: 1.5,
   /**
-   * The jump (1A): a hop for feel, 0.6 m at the top and 500 ms in the air (ten ticks exactly, so
+   * The jump (1A): a hop for feel, 0.6 m at the top and 500 ms in the air (thirty ticks exactly, so
    * it lands on a slot), carrying the ground speed it took off with: 3 m walking, 4.5 m sprinting.
    * It clears no wall and dodges no blow; no swing, dodge or guard while in the air. Its height
    * is a function of time since takeoff (`jumpHeight`), not an integrated speed, so the server,
@@ -140,7 +158,8 @@ export const KNOCKBACK = {
   speed: 12, // m/s
   /**
    * The slide runs on the ticks after the blow (inputs are applied before hits resolve), so a
-   * 300 ms window is five ticks at 12 m/s: 3 m, The Old Gates' lair beast's throw.
+   * 300 ms window is seventeen ticks at 12 m/s: 3.4 m (3 m, The Old Gates' lair beast's throw,
+   * at the old 20 Hz). The slice's knockback replaces it in the combat port's step 2.
    */
   ms: 300
 } as const;
@@ -365,13 +384,13 @@ export const SPAWN_POINTS = [
 
 /**
  * Server-side input flood limit, a token bucket per client. An honest client sends
- * TICK_RATE (20) inputs a second; the refill sits above that so ordinary jitter never
+ * TICK_RATE (60) inputs a second; the refill sits a quarter above that so ordinary jitter never
  * trips it, and the burst lets a client that stalled for a second dump its backlog.
  * Only a sustained rate above `ratePerSec` drains the bucket and gets the client dropped.
  */
 export const INPUT_LIMIT = {
-  ratePerSec: 25,
-  burst: 25
+  ratePerSec: 75,
+  burst: 75
 } as const;
 
 /**
@@ -384,7 +403,7 @@ export const INPUT_LIMIT = {
  */
 export const INPUT_TIMING = {
   maxPerTick: 2,
-  /** Four ticks: a frame up to this late still lands in its own slot. Longer stalls are rare and
+  /** Twelve ticks: a frame up to this late still lands in its own slot. Longer stalls are rare and
    * a correction is the right answer to them; a longer window would let a player act further in the past. */
   maxLagMs: 200,
   /**
@@ -397,10 +416,10 @@ export const INPUT_TIMING = {
    * sure the backlog is standing, not a passing bunch. Measured in the lab before this rule: the
    * driven client sat at 0.7 to 1 frame waiting, about 40 ms of view lag on a clean link.
    */
-  drainAfterTicks: 20,
-  /** Frames the client may send at once for ticks its main thread missed; past this the time is dropped
-   * (a sleeping tab must not dump seconds of stale movement), as the server's pump drops lost ticks. */
-  clientCatchupTicks: 4
+  drainAfterTicks: TICK_RATE,
+  /** Frames the client may send at once for ticks its main thread missed, 200 ms of them; past this the
+   * time is dropped (a sleeping tab must not dump seconds of stale movement), as the server's pump drops lost ticks. */
+  clientCatchupTicks: 12
 } as const;
 
 /**
@@ -428,9 +447,9 @@ export const CLOCK_SYNC = {
 /**
  * How far behind the server clock remote players and the goblin are drawn (clock.ts keeps
  * the estimate). The clock sits on the best delivery the link gives, so this delay is the
- * whole budget a late snapshot has: one arriving more than `delay - TICK_MS` behind the best
+ * whole budget a late snapshot has: one arriving more than `delay - PATCH_MS` behind the best
  * path holds the remote player still until the next. `baseMs` is the floor and the whole
- * delay on a clean link: it absorbs 50 ms of lateness by itself. Above that the delay
+ * delay on a clean link: it absorbs 67 ms of lateness by itself. Above that the delay
  * follows the longest wait for a patch the frames in the clock window saw, so a jittery link
  * gets exactly the budget its worst recent packet needed and a clean one pays nothing, up
  * to `maxMs`. It slews like the clock, so it never jumps. What the delay does not cover (the
@@ -443,11 +462,11 @@ export const INTERP = {
   slewMsPerS: 10,
   /**
    * When the draw time passes the newest snapshot anyway, the pose is projected along its
-   * last tick of motion by at most this long, ms, and holds there; see interp.ts. One tick:
-   * what a late patch usually costs, and as far as a guess about where a player is going
-   * stays good.
+   * last patch of motion by at most this long, ms, and holds there; see interp.ts. One patch
+   * interval: what a late patch usually costs, and as far as a guess about where a player is
+   * going stays good.
    */
-  extrapolateMaxMs: TICK_MS,
+  extrapolateMaxMs: PATCH_MS,
   /**
    * Motion faster than this between two snapshots, m/s, is a placement (a respawn, a wipe,
    * the stairs), not travel, and is held rather than projected. The fastest real move in the
@@ -1192,7 +1211,7 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     const speed = moving ? PLAYER.speed * (sprinting ? PLAYER.sprintMult : 1) : 0;
     p.jumpVx = dx * speed;
     p.jumpVz = dz * speed;
-    p.jumpUntil = now + PLAYER.jumpMs;
+    p.jumpUntil = onTick(now + PLAYER.jumpMs);
     if (moving) p.facing = Math.atan2(dx, dz);
   }
   const inAir = isAirborne(p, now);
@@ -1655,8 +1674,9 @@ export function stepEnemy(
   // A shield kind raises its guard again once the stagger that dropped it is over.
   if (!enemy.guardUp && def.frontGuard !== undefined && !isEnemyStaggered(enemy, now)) enemy.guardUp = true;
 
-  // Keep the current target while it is alive and in range, else re-acquire.
-  let target = enemy.targetId ? players.get(enemy.targetId) ?? null : null;
+  // Keep the current target while it is alive and in range, else re-acquire. Asleep, it has no
+  // target to keep: it wakes for whoever is nearest, not whoever happened to be in the room first.
+  let target = enemy.targetId && enemy.phase !== "idle" ? players.get(enemy.targetId) ?? null : null;
   if (!target || !isAlive(target)) target = nearestAlivePlayer(enemy, players.values());
   if (target && Math.hypot(target.x - enemy.x, target.z - enemy.z) > def.aggroRange * 1.5) {
     target = nearestAlivePlayer(enemy, players.values());
@@ -1774,7 +1794,7 @@ function stepCharge(enemy: EnemySim, def: EnemyDef, players: Map<string, PlayerS
     const struck = strikePlayer(enemy, victim, c.damage, now);
     events.push(...struck);
     if (isAlive(victim) && !struck.some((e) => e.kind === "playerParried")) {
-      victim.knockUntil = now + KNOCKBACK.ms;
+      victim.knockUntil = onTick(now + KNOCKBACK.ms);
       victim.knockDx = fx * KNOCKBACK.speed;
       victim.knockDz = fz * KNOCKBACK.speed;
       victim.guarding = false;

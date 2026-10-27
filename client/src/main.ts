@@ -51,7 +51,7 @@ import { Sound } from "./sound";
  * Warrens, and the stairs bring it home; the server moves everyone between the two rooms.
  *
  * Loop shape:
- *  - a fixed 20 Hz tick samples input, predicts our own player, sends the frame;
+ *  - a fixed 60 Hz tick samples input, predicts our own player, sends the frame;
  *  - requestAnimationFrame draws: our predicted player with error smoothing,
  *    everyone else interpolated 100 ms behind the server, the enemies likewise.
  */
