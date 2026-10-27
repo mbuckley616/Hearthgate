@@ -1,6 +1,6 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { BUTTON_ACTIONS, type ActionFrame, type InputSource } from './actions';
-import { keyboardBindings, keyboardMove } from './bindings';
+import { keyboardBindings, keyboardLook, keyboardMove } from './bindings';
 
 const DEG = Math.PI / 180;
 
@@ -34,7 +34,7 @@ export class KeyboardMouseSource implements InputSource {
     if (this.pointerLocked) document.exitPointerLock();
   }
 
-  contribute(frame: ActionFrame): void {
+  contribute(frame: ActionFrame, dt: number): void {
     const any = (codes: string[]) => codes.some((c) => this.held.has(c));
     const mx = (any(keyboardMove.right) ? 1 : 0) - (any(keyboardMove.left) ? 1 : 0);
     const my = (any(keyboardMove.forward) ? 1 : 0) - (any(keyboardMove.back) ? 1 : 0);
@@ -43,6 +43,11 @@ export class KeyboardMouseSource implements InputSource {
       frame.move.x += mx / len;
       frame.move.y += my / len;
     }
+
+    const lx = (any(keyboardLook.right) ? 1 : 0) - (any(keyboardLook.left) ? 1 : 0);
+    const ly = (any(keyboardLook.up) ? 1 : 0) - (any(keyboardLook.down) ? 1 : 0);
+    frame.look.x += lx * tuning.camera.gamepadYawDegPerSec * DEG * dt;
+    frame.look.y += ly * tuning.camera.gamepadPitchDegPerSec * DEG * dt;
 
     const sens = tuning.camera.mouseSensitivity * DEG;
     frame.look.x += this.mouseDX * sens;

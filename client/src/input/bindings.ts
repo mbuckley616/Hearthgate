@@ -9,9 +9,10 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   dodge: ['ControlLeft'],
   jump: ['Space'],
   sprint: ['ShiftLeft'],
-  attack: ['Mouse0'],
+  // J and L (and the arrows below) are Hearthgate's keyboard-only keys (decision 10A, CLAUDE.md rule 4).
+  attack: ['Mouse0', 'KeyJ'],
   // Not in the brief's table; added with the guard after M4.
-  block: ['Mouse2'],
+  block: ['Mouse2', 'KeyL'],
   ability1: ['KeyQ'],
   ability2: ['KeyE'],
   style1: ['Digit1'],
@@ -29,10 +30,18 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
 };
 
 export const keyboardMove = {
-  forward: ['KeyW', 'ArrowUp'],
-  back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
+  forward: ['KeyW'],
+  back: ['KeyS'],
+  left: ['KeyA'],
+  right: ['KeyD'],
+};
+
+/** Keyboard-only camera: the arrows turn and tilt it at the right stick's rates (decision 10A). */
+export const keyboardLook = {
+  up: ['ArrowUp'],
+  down: ['ArrowDown'],
+  left: ['ArrowLeft'],
+  right: ['ArrowRight'],
 };
 
 /** Standard-mapping gamepad button indices. */

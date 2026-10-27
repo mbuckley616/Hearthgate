@@ -632,13 +632,13 @@ export class Game {
           <tr><td>Move</td><td>WASD · left stick</td></tr>
           <tr><td>Sprint</td><td>hold Shift · left stick click</td></tr>
           <tr><td>Walk</td><td>light stick tilt</td></tr>
-          <tr><td>Camera</td><td>mouse · right stick</td></tr>
-          <tr><td>Attack</td><td>left click · X / Square (chains up to 5 hits)</td></tr>
+          <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
+          <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits)</td></tr>
           <tr><td>Abilities</td><td>Q, E · LB, RB</td></tr>
           <tr><td>Lock on</td><td>Tab · middle click · right stick click (flick to switch)</td></tr>
           <tr><td>Swap hero</td><td>1 knight · 2 archer · 3 mage · wheel · D-pad</td></tr>
           <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
-          <tr><td>Guard</td><td>hold right click · LT / L2 (raise it just before a hit to parry)</td></tr>
+          <tr><td>Guard</td><td>hold right click · hold L · LT / L2 (raise it just before a hit to parry)</td></tr>
           <tr><td>Jump</td><td>Space · Y / Triangle</td></tr>
           <tr><td>Revive an ally</td><td>hold F · hold A / Cross</td></tr>
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
