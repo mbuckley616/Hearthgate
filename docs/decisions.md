@@ -7,13 +7,14 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-27: T4: must a floor be cleared before the way down opens? (Claude (local))
 Built as: the rest room's two rings are open as soon as the party reaches it, so a party can run past fight rooms; only the rooms they walk into shut on them. The 4 Oct answer for the old Warrens floor was "clear every room, then the stairs open".
 A. Keep it: the rings are open on arrival; fights are the rooms you walk into. **Recommended** for now: a 40-piece floor has a dozen fight rooms, and clearing all of them on every one of five floors makes a run long.
 B. The deeper ring opens only once every fight room on the floor is cleared (the home ring stays open).
 C. In between: the deeper ring opens once the rooms on the way (the shortest path from the entrance) are cleared.
-
-## Answered
+Michael (2026-10-27, in chat): **A, open on arrival.** "You should be able to skip rooms and rush the dungeon. You don't have to clear everything!" Built that way in T4 (PR #71).
 
 ### 2026-10-27: T3: the way home and the village's light (Claude (local))
 Asked in chat before building T3: how does the party get back to the village after a run (A: the end screen's F takes everyone home; B: a portal opens in the arena and the party stands in it together), and what time of day is the village (golden afternoon, bright midday, or dusk with lanterns; golden afternoon recommended).

@@ -24,7 +24,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- Michael: the T4 gate on the hosted build once merged: `?floor&play&seed=101&pieces=10`, `seed=202&pieces=18`, `seed=303&pieces=28&at=2`, `seed=404&pieces=40&floors=5`, `seed=505&pieces=50&floors=5&at=5` (M for the whole floor). Then decisions.md's question on clearing a floor.
+- Michael: the T4 gate on the hosted build once merged: `?floor&play&seed=101&pieces=10`, `seed=202&pieces=18`, `seed=303&pieces=28&at=2`, `seed=404&pieces=40&floors=5`, `seed=505&pieces=50&floors=5&at=5` (M for the whole floor). (Michael answered the clearing question the same day: rings open on arrival, rooms can be skipped.)
 - T4b, the dungeon editor; the builder can take kit pieces (archer ledges in the arena piece, more room shapes) and the minimap's polish.
 
 ## 2026-10-27: local session, T3: the village and the portal
