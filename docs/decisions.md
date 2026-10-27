@@ -17,6 +17,7 @@ Michael (2026-10-27, in chat):
 - **The village and the portal into various dungeons stay.**
 - **Dungeons are not single rooms or one long corridor:** "a dungeon builder / generator that makes unique dungeon configurations based on a set of pre built components (i.e. dungeon hallway, dungeon staircase, dungeon small room, dungeon medium room, etc.)", with open rooms like the slice's arena among them. Step 6 of the re-planned port.
 `docs/combat-port-plan.md` section 4 has the new order.
+Who runs the steps (asked the same day): pushing the slice to a private GitHub repo now, steps 2 and 3 in local sessions with Michael, the deep-work routine from step 4. Michael approved; the slice is `mbuckley616/combat-slice` (`main`, 363b726 when pushed), and the desktop folder stays the working copy.
 Michael, on step 6's questions (2026-10-27, in chat):
 - **Staircases** go up or down and connect to another room at a different height: "just to prevent a single dungeon from feeling flat." A staircase is a connector piece within the floor, not the way to the next floor.
 - **Size:** a floor (Michael: "I guess AKA a Dungeon") is 10 to 50 distinct rooms and pieces, growing with the dungeon's difficulty and level. The design doc's run of 3 to 5 floors with a rest room between stands: each floor is one generated layout of 10 to 50 pieces (Michael, confirmed the same day: "Let's stick to that").
