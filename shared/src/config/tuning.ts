@@ -574,8 +574,20 @@ export const tuning = {
     inputBufferTicks: 2,
     /** The host sends a snapshot every this many ticks (2 = 30 per second). */
     snapshotEveryTicks: 2,
-    /** Joiners draw everything but their own hero this far in the past, between snapshots. */
+    /**
+     * Joiners draw everything but their own hero this far in the past, between snapshots: the
+     * whole delay on a clean link. On a late or lossy one it grows to what the worst recent
+     * snapshot needed, up to interpDelayMaxMs (shared/src/net/clock.ts, T2).
+     */
     interpDelayMs: 80,
+    /** Capped by lagGraceMs as well, so an enemy is never drawn later than the grace that keeps a dodge fair. */
+    interpDelayMaxMs: 200,
+    /** The server clock is the least-delayed snapshot in this window; the delay follows its longest wait. */
+    clockWindowMs: 20000,
+    /** Fastest the drawn clock and the delay move, ms per second, so the drawn world never skips. */
+    clockSlewMsPerS: 10,
+    /** A clock this far off is taken at once (the first snapshot, a tab that slept). */
+    clockSnapMs: 250,
     /** When a snapshot disagrees with a joiner's prediction, the visible hero eases over this long. */
     correctionBlendMs: 120,
     /** Debug: fake one-way network delay added to every message this browser sends. */
@@ -844,6 +856,41 @@ export const tuning = {
     dust: 220,
   },
 
+  /**
+   * The village's mood (T3; Michael, 27 Oct: a golden afternoon): these replace the matching look
+   * values while the party is in the village. Low warm sun from the west, honey light, bluish shade,
+   * a clear sky fading to a gold horizon, motes of dust in the light and no embers. The player's own
+   * settings (pixel size, the CRT, scanlines) still come from look.
+   */
+  villageLook: {
+    exposure: 1.2,
+    contrast: 1.06,
+    saturation: 1.12,
+    shadowTint: 0x4f5c9c,
+    highlightTint: 0xffc47a,
+    splitTone: 0.2,
+    vignette: 0.3,
+    fogColor: 0xe9bf8c,
+    fogDensity: 0.006,
+    skyTopColor: 0x8fb8e2,
+    skyHorizonColor: 0xffd49a,
+    hemiSkyColor: 0xffe4b8,
+    hemiGroundColor: 0x5e4a32,
+    hemiIntensity: 1.25,
+    /** The sun: in the look's moon slot (the one shadow-casting light), low in the west. */
+    moonColor: 0xffc27a,
+    moonIntensity: 3.0,
+    sunHeightDeg: 24,
+    sunBearingDeg: 250,
+    rimColor: 0xffd59a,
+    rimIntensity: 0.45,
+    bloomStrength: 0.4,
+    bloomRadius: 0.5,
+    bloomThreshold: 0.82,
+    embers: 0,
+    dust: 160,
+  },
+
   debug: {
     /** 0.25 when slow motion is on; read by the main loop. */
     slowMoScale: 0.25,
@@ -896,6 +943,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'coop.snapshotEveryTicks': [1, 6, 1],
   'coop.inputBufferTicks': [0, 8, 1],
   'coop.interpDelayMs': [0, 300, 5],
+  'coop.interpDelayMaxMs': [0, 500, 10],
+  'coop.clockWindowMs': [1000, 60000, 1000],
+  'coop.clockSlewMsPerS': [1, 100, 1],
+  'coop.clockSnapMs': [50, 1000, 10],
   'coop.correctionBlendMs': [0, 500, 10],
   'coop.fakeLatencyMs': [0, 300, 5],
   'combos.windowMs': [0, 6000, 100],
@@ -1374,6 +1425,22 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'look.bloomStrength': [0, 3, 0.01],
   'look.bloomRadius': [0, 1, 0.01],
   'look.bloomThreshold': [0, 1.5, 0.01],
+  'villageLook.exposure': [0.2, 3, 0.01],
+  'villageLook.contrast': [0.5, 2, 0.01],
+  'villageLook.saturation': [0, 2, 0.01],
+  'villageLook.splitTone': [0, 1, 0.01],
+  'villageLook.vignette': [0, 1.5, 0.01],
+  'villageLook.fogDensity': [0, 0.1, 0.001],
+  'villageLook.hemiIntensity': [0, 3, 0.01],
+  'villageLook.moonIntensity': [0, 6, 0.01],
+  'villageLook.sunHeightDeg': [5, 85, 1],
+  'villageLook.sunBearingDeg': [0, 360, 1],
+  'villageLook.rimIntensity': [0, 5, 0.01],
+  'villageLook.bloomStrength': [0, 3, 0.01],
+  'villageLook.bloomRadius': [0, 1, 0.01],
+  'villageLook.bloomThreshold': [0, 1.5, 0.01],
+  'villageLook.embers': [0, 600, 10],
+  'villageLook.dust': [0, 800, 10],
 
   'debug.slowMoScale': [0.05, 1, 0.05],
 };

@@ -513,3 +513,43 @@ body.on-title .run-banner {
   border: 2px solid #5a3a20;
   box-shadow: 0 0 0 1px var(--frame-dark);
 }
+
+/* Talking to villagers (T3): a hint above the hotbar, the line in a panel at the bottom centre. */
+.talk-hint,
+.talk-box {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 2px var(--frame-dark),
+    inset 0 0 0 2px var(--frame-inner),
+    0 8px 30px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+  z-index: 6;
+  pointer-events: none;
+}
+.talk-hint {
+  bottom: 150px;
+  padding: 8px 14px;
+  font-size: 15px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+.talk-box {
+  bottom: 120px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 12px 16px;
+}
+.talk-name {
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.talk-line {
+  font-size: 16px;
+  line-height: 1.4;
+}

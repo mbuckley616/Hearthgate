@@ -5,6 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { RetroPass } from './RetroPass';
+import { activeLook, lookMood } from './look';
 
 /**
  * Renderer, scene-wide lighting and post-processing. Violet moonlight and
@@ -24,6 +25,9 @@ export class SceneRenderer {
   private fog: THREE.FogExp2;
   /** Prefiltered reflection map for metal (armour, weapons); not applied scene-wide. */
   readonly envMap: THREE.Texture;
+  /** The village's sky: a dome from a gold horizon to blue overhead (T3); hidden in the dungeon. */
+  private sky: THREE.Mesh;
+  private skyColors: THREE.BufferAttribute;
 
   constructor(
     container: HTMLElement,
@@ -70,6 +74,14 @@ export class SceneRenderer {
     s.radius = look.shadowRadius;
     this.scene.add(this.moon, this.moon.target);
 
+    const skyGeo = new THREE.SphereGeometry(140, 24, 12);
+    this.skyColors = new THREE.BufferAttribute(new Float32Array(skyGeo.attributes.position.count * 3), 3);
+    skyGeo.setAttribute('color', this.skyColors);
+    this.sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+    this.sky.renderOrder = -1;
+    this.sky.visible = false;
+    this.scene.add(this.sky);
+
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, camera));
     this.bloom = new UnrealBloomPass(
@@ -82,6 +94,18 @@ export class SceneRenderer {
     this.composer.addPass(new OutputPass());
     this.retro = new RetroPass();
     this.composer.addPass(this.retro);
+  }
+
+  /** The level changed (T3): size the shadow area to it and show the sky only outdoors. */
+  setLevel(roomHalfSize: number): void {
+    const s = this.moon.shadow;
+    const ext = roomHalfSize + 2;
+    s.camera.left = -ext;
+    s.camera.right = ext;
+    s.camera.top = ext;
+    s.camera.bottom = -ext;
+    s.camera.far = Math.max(60, roomHalfSize * 4);
+    s.camera.updateProjectionMatrix();
   }
 
   resize(width: number, height: number): void {
@@ -99,9 +123,37 @@ export class SceneRenderer {
     this.composer.render();
   }
 
+  /** Colour the sky dome from the horizon up, only when the colours changed. */
+  private paintSky(top: number, horizon: number): void {
+    const key = `${top}/${horizon}`;
+    if (key === paintedSky) return;
+    paintedSky = key;
+    skyTop.setHex(top);
+    skyBottom.setHex(horizon);
+    const pos = this.sky.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const up = Math.max(0, pos.getY(i) / 140);
+      skyMix.copy(skyBottom).lerp(skyTop, Math.pow(up, 0.6));
+      this.skyColors.setXYZ(i, skyMix.r, skyMix.g, skyMix.b);
+    }
+    this.skyColors.needsUpdate = true;
+  }
+
   /** Apply live tuning changes from the debug panel. */
   private syncLook(): void {
-    const look = tuning.look;
+    const look = activeLook();
+    const village = lookMood() === 'village';
+    this.sky.visible = village;
+    if (village) {
+      const v = tuning.villageLook;
+      this.paintSky(v.skyTopColor, v.skyHorizonColor);
+      // The sun, low in the west (the look's one shadow caster), far enough out to light the whole square.
+      const el = (v.sunHeightDeg * Math.PI) / 180;
+      const az = (v.sunBearingDeg * Math.PI) / 180;
+      this.moon.position.set(Math.sin(az) * Math.cos(el) * 40, Math.sin(el) * 40, -Math.cos(az) * Math.cos(el) * 40);
+    } else {
+      this.moon.position.set(-8, 22, 6);
+    }
     this.renderer.toneMappingExposure = look.exposure;
     if (pixelRatio() !== this.renderer.getPixelRatio() || look.pixelSize !== this.shownPixelSize) this.resize(window.innerWidth, window.innerHeight);
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -126,6 +178,11 @@ export class SceneRenderer {
     this.bloom.threshold = look.bloomThreshold;
   }
 }
+
+const skyTop = new THREE.Color();
+const skyBottom = new THREE.Color();
+const skyMix = new THREE.Color();
+let paintedSky = '';
 
 /** Device pixels per CSS pixel to render at: a fraction when drawing chunky retro pixels. */
 function pixelRatio(): number {

@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Music, type Mood } from '../audio/Music';
 import { Sfx } from '../audio/Sfx';
 import { OrbitCamera } from '../camera/OrbitCamera';
@@ -8,7 +9,9 @@ import { GamepadSource } from '../input/GamepadSource';
 import { InputManager } from '../input/InputManager';
 import { KeyboardMouseSource } from '../input/KeyboardMouseSource';
 import type { ActionFrame } from '../input/actions';
-import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
+import type { World } from '@hearthgate/shared/level/arena';
+import { TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
+import type { LevelKind } from '@hearthgate/shared/net/protocol';
 import { AmbientView } from '../render/AmbientView';
 import { DropView } from '../render/DropView';
 import { EnemiesView } from '../render/EnemyView';
@@ -18,6 +21,9 @@ import { Nameplate } from '../render/Nameplate';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
 import { RoomView } from '../render/RoomView';
+import { PortalView } from '../render/PortalView';
+import { VillageView } from '../render/VillageView';
+import { setLookMood } from '../render/look';
 import { SceneRenderer } from '../render/SceneRenderer';
 import { TelegraphView } from '../render/TelegraphView';
 import { rollItem } from '@hearthgate/shared/sim/gear';
@@ -30,6 +36,7 @@ import { RunUi } from '../ui/RunUi';
 import { Settings } from '../ui/Settings';
 import { StyleBar } from '../ui/StyleBar';
 import { TitleScreen } from '../ui/TitleScreen';
+import { TalkUi } from '../ui/TalkUi';
 import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
 import { isServerTuning } from '@hearthgate/shared/config/edits';
 import type { Cheat } from '@hearthgate/shared/net/protocol';
@@ -47,11 +54,15 @@ interface RemoteHero {
  * Client loop: input -> commands -> session (a joiner's prediction plus the
  * server's snapshots) -> interpolated render. The fight runs on Hearthgate's
  * server, so every player is the slice's joiner; solo is a room of one.
+ *
+ * Since T3 the session moves between rooms (the village, a dungeon run, home
+ * again); whenever it joins one, enterLevel() rebuilds what belongs to a level
+ * (its room view, embers and dust, floor telegraphs, the camera's walls and the
+ * lighting mood) and drops what was the old room's.
  */
 export class Game {
   /** First, so saved settings are in tuning before anything reads it. */
   private readonly settings = new Settings();
-  private readonly world: World;
   private readonly session: ClientSession;
   private readonly music = new Music();
   private readonly title: TitleScreen;
@@ -67,14 +78,19 @@ export class Game {
   private readonly kbm: KeyboardMouseSource;
   private readonly cam: OrbitCamera;
   private readonly gfx: SceneRenderer;
-  private readonly room: RoomView;
-  private readonly ambient: AmbientView;
+  private room: RoomView | VillageView;
+  private ambient: AmbientView;
+  /** Which level the views were built for, and the session's room count they last followed. */
+  private builtKind: LevelKind;
+  private shownLevel = 0;
+  private readonly portal = new PortalView();
+  private readonly talk = new TalkUi();
   private readonly hero: HeroView;
   private readonly remoteHeroes = new Map<string, RemoteHero>();
   private readonly palette: Palette;
   private readonly projectiles: ProjectileView;
   private readonly enemies: EnemiesView;
-  private readonly telegraphs: TelegraphView;
+  private telegraphs: TelegraphView;
   private readonly runUi = new RunUi();
   private readonly drops = new DropView();
   private readonly profile = new Profile();
@@ -98,17 +114,20 @@ export class Game {
   private lastFrameAt = performance.now();
 
   constructor(container: HTMLElement) {
-    this.world = buildWorld(arena);
-    // A ?join=CODE link joins a friend's fight; anything else starts one on the server (solo until someone joins).
+    // A ?join=CODE link joins a friend's room; anything else makes a village of our own on the server (solo until someone joins).
     const params = new URLSearchParams(location.search);
     const join = params.get('join');
-    this.session = new ClientSession(this.world, join ? join.toUpperCase() : null, this.profile.loadout());
+    // ?dungeon (with ?play) makes a dungeon run straight away: the lab and the browser tests start in a fight.
+    this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, params.has('dungeon') ? 'dungeon' : 'village');
+    this.builtKind = this.session.kind;
+    setLookMood(this.builtKind);
 
-    this.cam = new OrbitCamera(window.innerWidth / window.innerHeight, this.world.colliders, (arena.spawn.yawDeg * Math.PI) / 180);
-    this.gfx = new SceneRenderer(container, this.cam.camera, arena.floorSize / 2);
-    this.room = new RoomView(this.world);
-    this.ambient = new AmbientView(this.room.fireSources, arena.floorSize / 2);
+    const level = this.world.level;
+    this.cam = new OrbitCamera(window.innerWidth / window.innerHeight, this.world.colliders, (level.spawn.yawDeg * Math.PI) / 180);
+    this.gfx = new SceneRenderer(container, this.cam.camera, level.floorSize / 2);
     this.palette = new Palette(this.gfx.envMap);
+    this.room = this.buildRoomView();
+    this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
     this.enemies = new EnemiesView(this.palette);
     this.telegraphs = new TelegraphView(this.world);
     this.hero = new HeroView(this.palette);
@@ -126,6 +145,7 @@ export class Game {
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
+      this.portal.group,
     );
 
     const canvas = this.gfx.renderer.domElement;
@@ -241,6 +261,65 @@ export class Game {
     return JSON.stringify(this.session.view().curr);
   }
 
+  /** The level the session is in now (it changes at each portal). */
+  private get world(): World {
+    return this.session.world;
+  }
+
+  private buildRoomView(): RoomView | VillageView {
+    return this.world.level.village ? new VillageView(this.world, this.palette) : new RoomView(this.world);
+  }
+
+  /**
+   * The session joined a room (the first, or the next through a portal): rebuild the views that
+   * belong to a level when it changed, and drop everything that was the old room's (the other
+   * heroes, the lock, the gear screen, a villager's words), facing the camera the way the level does.
+   */
+  private enterLevel(): void {
+    this.shownLevel = this.session.levelVersion;
+    const kind = this.session.kind;
+    const level = this.world.level;
+    if (kind !== this.builtKind) {
+      this.builtKind = kind;
+      this.gfx.scene.remove(this.room.group, this.ambient.group, this.telegraphs.group);
+      for (const g of [this.room.group, this.ambient.group, this.telegraphs.group]) disposeTree(g);
+      this.room = this.buildRoomView();
+      this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
+      this.telegraphs = new TelegraphView(this.world);
+      this.gfx.scene.add(this.room.group, this.ambient.group, this.telegraphs.group);
+      this.gfx.setLevel(level.floorSize / 2);
+      setLookMood(kind);
+    }
+    for (const [id, r] of this.remoteHeroes) {
+      this.gfx.scene.remove(r.view.root, r.view.effects);
+      r.plate.dispose();
+      this.remoteHeroes.delete(id);
+    }
+    this.lockOn.targetId = -1;
+    this.equip.setVisible(false);
+    this.talk.clear();
+    this.lastPhase = '';
+    this.pending = Game.noPresses();
+    this.cam.setColliders(this.world.colliders);
+    this.cam.yaw = (level.spawn.yawDeg * Math.PI) / 180 + Math.PI;
+  }
+
+  /** The villager the hero can talk to now: the nearest in reach, in the village. */
+  private villagerInReach(me: PlayerState | null): Villager | null {
+    const v = this.world.level.village;
+    if (!v || !me || me.mode === 'down') return null;
+    let best: Villager | null = null;
+    let bestD = TALK_RANGE;
+    for (const n of v.villagers) {
+      const d = Math.hypot(n.x - me.x, n.z - me.z);
+      if (d < bestD) {
+        bestD = d;
+        best = n;
+      }
+    }
+    return best;
+  }
+
   /** The local hero, latest state (predicted on a joiner). */
   private me(): PlayerState | null {
     return this.session.hero()?.curr ?? null;
@@ -259,6 +338,7 @@ export class Game {
     this.lastTime = now;
 
     const actions = this.input.poll(realDt);
+    if (this.session.levelVersion !== this.shownLevel) this.enterLevel();
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;
@@ -311,7 +391,9 @@ export class Game {
     this.runUi.handle(events);
     this.progress(events, realDt);
     // Run over: anyone's F / A asks the server to start again (the slice's host did it itself); the view follows the snapshot.
-    if ((world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
+    const village = !!this.world.level.village;
+    if (!village && (world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
+    this.talk.update(this.villagerInReach(this.me()), actions.pressed.has('interact'), realDt);
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 
@@ -330,7 +412,9 @@ export class Game {
       world.drops.filter((d) => d.owner === localId),
       this.presentTime,
     );
-    this.runUi.update(world, realDt, 'host');
+    if (village) this.runUi.hide();
+    else this.runUi.update(world, realDt, 'host');
+    this.portal.update(this.session.portal, dt);
     this.lockOn.updateMarker(world, dt);
     const ended = this.session.ended;
     this.party.update(this.session.status(), world, curr, localId, ended);
@@ -372,7 +456,7 @@ export class Game {
     this.debug.frame(realDt);
   }
 
-  /** Title screen: the fight idles behind a slow camera drift around the arena. */
+  /** Title screen: the level idles behind a slow camera drift (over the village square, or inside the arena's entrance). */
   private titleFrame(realDt: number, draw: boolean): void {
     this.titleTime += realDt;
     this.presentTime += realDt;
@@ -385,11 +469,18 @@ export class Game {
     this.enemies.update(view.prev.enemies, view.curr.enemies, view.alpha, realDt, view.curr.time);
     this.ambient.update(realDt);
     this.fx.update(realDt);
-    // A slow sway just inside the entrance, looking up the arena past the braziers.
+    this.portal.update(this.session.portal, realDt);
     const sway = Math.sin(this.titleTime * 0.08);
     const cam = this.cam.camera;
-    cam.position.set(sway * 3.2, 3.4 + Math.sin(this.titleTime * 0.13) * 0.3, 11.2);
-    cam.lookAt(sway * 1.5, 2.3, -6);
+    if (this.world.level.village) {
+      // Over the square from the south, looking up the path to the shrine and its ring.
+      cam.position.set(sway * 5, 4.6 + Math.sin(this.titleTime * 0.13) * 0.3, 19);
+      cam.lookAt(sway * 2, 2.4, -12);
+    } else {
+      // A slow sway just inside the entrance, looking up the arena past the braziers.
+      cam.position.set(sway * 3.2, 3.4 + Math.sin(this.titleTime * 0.13) * 0.3, 11.2);
+      cam.lookAt(sway * 1.5, 2.3, -6);
+    }
     cam.updateMatrixWorld();
     this.room.update(realDt, this.presentTime, new Set(), false);
     if (draw) this.gfx.render();
@@ -398,7 +489,7 @@ export class Game {
     this.music.update(realDt);
   }
 
-  /** Off the title screen into the antechamber; lock the mouse unless a menu should stay up. */
+  /** Off the title screen into the level; lock the mouse unless a menu should stay up. */
   private leaveTitle(lock = true): void {
     this.title.setVisible(false);
     const me = this.me();
@@ -656,4 +747,17 @@ export class Game {
     const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.title?.visible;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
+}
+
+/** Free the GPU side of a level's views when the party leaves it. */
+function disposeTree(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    for (const m of Array.isArray(mat) ? mat : mat ? [mat] : []) {
+      for (const v of Object.values(m)) if (v instanceof THREE.Texture) v.dispose();
+      m.dispose();
+    }
+  });
 }

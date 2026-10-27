@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: T3: the way home and the village's light (Claude (local))
+Asked in chat before building T3: how does the party get back to the village after a run (A: the end screen's F takes everyone home; B: a portal opens in the arena and the party stands in it together), and what time of day is the village (golden afternoon, bright midday, or dusk with lanterns; golden afternoon recommended).
+Michael (2026-10-27, in chat): **a portal in the arena**, and **golden afternoon**. Built as: a ring opens in the antechamber when a run is won or lost, and everyone standing inside it for 2 s goes home to the village they came from (downed heroes get up a few seconds after a run ends, so a wipe can walk out too); the village is lit by tuning.villageLook, a low warm sun from the west under a gold-to-blue sky.
+
 ### 2026-10-27: Move the combat slice over whole, on the server (Claude (local))
 Michael played step 1 of the port on the hosted build: "It feels okay but clearly not the full combat slice ported over. The combat is still like the original. And movement feels similar but with different animations and meshes it's hard to tell. ... I fear we're going to end up with a watered down version of the combat slice." Proposed in chat: the slice's fight is already one pure function (`stepSim`) with `HostSession` running it and `ClientSession` predicting for joiners, so copy the slice as it is and change one thing, `HostSession` running on Hearthgate's server, every player joining through `ClientSession`; keep Hearthgate's server, hosting, hand-off, lab, team and design; replace its sim, client, schema, levels and KayKit look.
 Michael: **"Yes: move the slice over whole on the server."** (2026-10-27, in chat.) `docs/slice-transplant-plan.md` has the plan, what is kept and what goes; it replaces `docs/combat-port-plan.md` except that plan's section 3a (progression). Decisions 4B (one character, three weapons) and 5A (Hearthgate's downs) are reopened for step T5, with the slice's versions in play until then; 1A, 2A, 6, 7A, 8A, 9A and the 27 Oct generator answers stand.

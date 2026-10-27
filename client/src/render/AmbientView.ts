@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tuning } from '@hearthgate/shared/config/tuning';
+import { activeLook } from './look';
 
 const MAX_EMBERS = 600;
 const MAX_DUST = 800;
@@ -67,7 +67,7 @@ export class AmbientView {
 
   update(dt: number): void {
     this.time += dt;
-    const look = tuning.look;
+    const look = activeLook();
     const ne = Math.min(MAX_EMBERS, Math.max(0, Math.round(look.embers)));
     for (let i = 0; i < ne; i++) {
       this.emberLife[i] -= dt;

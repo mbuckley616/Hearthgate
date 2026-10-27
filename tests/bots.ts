@@ -8,6 +8,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client, type Room } from "colyseus.js";
 import { tuning } from "@hearthgate/shared/config/tuning";
+import type { PortalState } from "@hearthgate/shared/game/portal";
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
@@ -56,32 +57,69 @@ export async function waitForHealth(url: string, timeoutMs = 30000) {
 
 export class Bot {
   room!: Room;
+  client!: Client;
   id = "";
   code = "";
   seq = 0;
-  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number }[] = [];
+  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number; portal: PortalState | null }[] = [];
+  /** A portal's hand-off the server sent, not yet taken. */
+  handoff: { reservation: unknown; level: string } | null = null;
+  /** What the room we are in runs. */
+  kind = "";
   messages: ToPeer[] = [];
   closedWith: number | null = null;
+  /** Every quarter second: tick, position, mode, ack and inputs sent, for a walk that fails on a slow machine. */
+  trace: string[] = [];
 
   constructor(
     readonly name: string,
     private readonly endpoint: string,
   ) {}
 
-  /** Make a fight of our own (code null) or join one by code, say hello and wait for the welcome. */
-  async join(code: string | null): Promise<this> {
+  /** Make a room of our own (code null: a dungeon run unless told otherwise) or join one by code, say hello and wait for the welcome. */
+  async join(code: string | null, create: "dungeon" | "village" = "dungeon"): Promise<this> {
     const client = new Client(this.endpoint);
-    this.room = code ? await client.joinById(code) : await client.create("fight");
-    this.code = this.room.roomId;
-    this.room.onMessage(MSG, (m: ToPeer) => {
-      this.messages.push(m);
-      if (m.k === "welcome") this.id = m.id;
-      if (m.k === "snap") this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale });
-    });
-    this.room.onLeave((c) => (this.closedWith = c));
-    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: loadout(this.name) });
+    this.client = client;
+    this.attach(code ? await client.joinById(code) : await client.create(create));
     await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed`);
     return this;
+  }
+
+  /** Take the seat a portal's hand-off reserved: leave this room, join the next, say hello again. */
+  async takeHandoff(): Promise<this> {
+    const h = this.handoff!;
+    this.handoff = null;
+    const old = this.room;
+    this.id = "";
+    this.snaps = [];
+    this.seq = 0;
+    void old.leave();
+    this.attach(await this.client.consumeSeatReservation(h.reservation as Parameters<Client["consumeSeatReservation"]>[0]));
+    await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed after the portal`);
+    return this;
+  }
+
+  private attach(room: Room) {
+    this.room = room;
+    this.kind = room.name;
+    this.code = room.roomId;
+    room.onMessage(MSG, (m: ToPeer) => {
+      // The room we left on a hand-off may still say something on its way out.
+      if (this.room !== room) return;
+      this.messages.push(m);
+      if (m.k === "welcome") this.id = m.id;
+      if (m.k === "snap") {
+        this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portal: m.portal });
+        const p = m.s.players.find((q) => q.id === this.id);
+        if (p && m.s.tick % 15 === 0) this.trace.push(`t${m.s.tick} (${p.x.toFixed(1)},${p.z.toFixed(1)}) ${p.mode} ack${m.acks[this.id] ?? 0} seq${this.seq}`);
+        if (this.trace.length > 80) this.trace.shift();
+      }
+      if (m.k === "handoff") this.handoff = { reservation: m.reservation, level: m.level };
+    });
+    room.onLeave((c) => {
+      if (this.room === room) this.closedWith = c;
+    });
+    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: loadout(this.name) });
   }
 
   send(msg: ToHost | Record<string, unknown>) {
@@ -112,6 +150,38 @@ export class Bot {
       if (cmds.length) this.send({ k: "input", cmds });
       if (sent < ticks) await sleep(2);
     }
+  }
+
+  /**
+   * Run toward (x, z) until within `tol` metres and settled there. The snapshot we steer by is a round
+   * trip behind where we really are, so a bot coasts past its mark; after stopping it looks again and
+   * corrects, a few times if it must, until the server has it standing on the mark.
+   */
+  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 30000) {
+    const start = performance.now();
+    for (let tries = 0; tries < 6; tries++) {
+      for (;;) {
+        const p = this.me();
+        if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
+        if (performance.now() - start > timeoutMs) {
+          const at = p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere";
+          throw new Error(`${this.name} never reached (${x}, ${z}): at ${at}\n  ${this.trace.join("\n  ")}`);
+        }
+        const dx = p ? x - p.x : 0;
+        const dz = p ? z - p.z : -1;
+        const d = Math.hypot(dx, dz) || 1;
+        // Ease off near the mark: the last few metres at a walk, so a late snapshot cannot carry us far past it.
+        const k = Math.min(1, Math.max(0.2, (d - tol * 0.5) / 5));
+        await this.drive(4, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
+      }
+      // Stand still (sending, not silent: the server reads silence as lateness) and look again.
+      await this.drive(50);
+      const p = this.me();
+      if (p && Math.hypot(p.x - x, p.z - z) <= tol) return;
+    }
+    const p = this.me();
+    const at = p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere";
+    throw new Error(`${this.name} would not settle on (${x}, ${z}): at ${at}\n  ${this.trace.join("\n  ")}`);
   }
 
   async until(ok: () => boolean, timeoutMs: number, what: string) {

@@ -6,7 +6,7 @@ import { tuning, tuningRanges } from './tuning';
  * correction. Values only this browser reads (the camera, the look, sound, the player's own
  * settings, the fake latency) stay local, as they were in the slice.
  */
-const LOCAL_SECTIONS = new Set(['sim', 'camera', 'look', 'audio', 'lockOn', 'heroAnim', 'input']);
+const LOCAL_SECTIONS = new Set(['sim', 'camera', 'look', 'villageLook', 'audio', 'lockOn', 'heroAnim', 'input']);
 const LOCAL_PATHS = new Set(['debug.showColliders', 'debug.showHitboxes', 'coop.fakeLatencyMs', 'hitFeel.sfxVolume', 'hitFeel.screenShake']);
 
 type Sections = Record<string, Record<string, unknown>>;
