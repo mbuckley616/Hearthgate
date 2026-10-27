@@ -68,7 +68,9 @@ async function main() {
     const moved = b.me("p1")!.x - a.state.players.find((p) => p.id === "p1")!.x;
     check(Math.abs(moved) < 1e-9, "both players' snapshots agree on Alpha");
     check(b.me("p1")!.x > 3, "Alpha ran east on the server and Bravo saw it", `${b.me("p1")!.x.toFixed(2)} m east, z ${z0.toFixed(2)}`);
-    check(a.ack === a.seq, "every input Alpha sent was applied and acked", `ack ${a.ack} of ${a.seq}`);
+    // The server stands in for a quiet player's missing inputs for up to 18 ticks and acks them (inputSlots.ts), so once
+    // a bot stops sending, the ack runs a little past its last input.
+    check(a.ack >= a.seq && a.ack <= a.seq + 18, "every input Alpha sent was used and acked", `ack ${a.ack} of ${a.seq}`);
 
     // 4. Through the gate together: the run starts.
     const entryZ = arena.arenaEntryZ;
@@ -182,7 +184,7 @@ async function main() {
     const tickRate = (s1.state.tick - ticksAt) / wall;
     const snapRate = (s1.snaps.length - snapsAt) / wall;
     check(party.every((p) => p.closedWith === null), "nobody is dropped under load");
-    check(party.every((p) => p.ack === p.seq), "every input is applied", party.map((p) => `${p.ack}/${p.seq}`).join(" "));
+    check(party.every((p) => p.ack >= p.seq && p.ack <= p.seq + 18), "every input is used", party.map((p) => `${p.ack}/${p.seq}`).join(" "));
     check(Math.abs(tickRate - 60) < 2, "the fight keeps wall time", `${tickRate.toFixed(1)} ticks a second`);
     check(snapRate > 28, "snapshots keep coming", `${snapRate.toFixed(1)} a second`);
     const bytes = JSON.stringify(s1.state).length;
