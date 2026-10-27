@@ -1,6 +1,6 @@
 import { DUNGEONS } from '@hearthgate/shared/level/dungeons';
 import type { Piece } from '@hearthgate/shared/level/generate';
-import { checkDungeon, HAND_EXTENT, HAND_MAX_LEVEL, readDungeon, type DungeonCheck, type HandDungeon, type HandPiece } from '@hearthgate/shared/level/handmade';
+import { checkHandDungeon, HAND_EXTENT, HAND_MAX_FLOORS, HAND_MAX_LEVEL, readDungeon, type DungeonCheck, type HandDungeon, type HandDungeonCheck, type HandPiece } from '@hearthgate/shared/level/handmade';
 import { KIT, OPPOSITE, SIDE_DIR, rotSide, rotSize, rotSocket, type PieceKind, type Side } from '@hearthgate/shared/level/kit';
 import { deleteDungeon, saveDungeon, savedDungeons } from './store';
 
@@ -34,8 +34,10 @@ const REPEAT_EVERY = 0.12;
  * triggers, View, Start); the mouse is an extra (click places, right click removes, the wheel zooms).
  * Every button is at least 48 px, and nothing needs a hover (rule 5).
  *
- * The layout is checked as it changes (checkDungeon, the same check the server makes), and the panel
- * says in words what keeps it from being played.
+ * A dungeon has one to five floors, each its own layout, shown as tabs ([ and ] or the stick clicks
+ * switch, N adds one); a run through it is exactly those floors (Michael's playtest, 27 Oct). The
+ * dungeon is checked as it changes (checkHandDungeon, the same check the server makes), and the
+ * panel says in words what keeps it from being played.
  */
 export class Editor {
   private dungeon: HandDungeon;
@@ -45,8 +47,12 @@ export class Editor {
   private rot = 0;
   private level = 0;
   private zoom = 30;
-  private history: HandPiece[][] = [];
+  /** The floor being edited (0-based). */
+  private floor = 0;
+  private history: { floors: HandDungeon['floors']; floor: number }[] = [];
+  private full: HandDungeonCheck;
   private check: DungeonCheck;
+  private readonly tabs = document.createElement('div');
   private readonly canvas = document.createElement('canvas');
   private readonly panel = document.createElement('aside');
   private readonly nameInput = document.createElement('input');
@@ -62,7 +68,8 @@ export class Editor {
 
   constructor(root: HTMLElement) {
     this.dungeon = this.loadDraft();
-    this.check = checkDungeon(this.dungeon);
+    this.full = checkHandDungeon(this.dungeon);
+    this.check = this.full.floors[0];
     root.className = 'editor';
     this.canvas.className = 'editor-canvas';
     this.toast.className = 'editor-toast';
@@ -86,6 +93,51 @@ export class Editor {
   }
 
   // ---------------------------------------------------------------- actions
+
+  /** The floor being edited. */
+  private get pieces(): HandPiece[] {
+    return this.dungeon.floors[this.floor].pieces;
+  }
+
+  private set pieces(list: HandPiece[]) {
+    this.dungeon.floors[this.floor].pieces = list;
+  }
+
+  /** Edit another floor (wrapping round). */
+  toFloor(i: number): void {
+    const n = this.dungeon.floors.length;
+    this.floor = ((i % n) + n) % n;
+    this.centreOnEntrance();
+    this.changed(false);
+  }
+
+  /** A new floor after the last, with an entrance to start from. */
+  addFloor(): void {
+    if (this.dungeon.floors.length >= HAND_MAX_FLOORS) return this.say(`A dungeon has at most ${HAND_MAX_FLOORS} floors.`);
+    this.remember();
+    this.dungeon.floors.push({ pieces: [{ kind: 'entrance', gx: 0, gz: 0, rot: 0, level: 0 }] });
+    this.floor = this.dungeon.floors.length - 1;
+    this.centreOnEntrance();
+    this.changed();
+    this.say(`Floor ${this.floor + 1} added. The floor before it needs a rest room: its violet ring leads here.`);
+  }
+
+  /** Take the floor being edited out of the dungeon (undo brings it back). */
+  removeFloor(): void {
+    if (this.dungeon.floors.length === 1) return this.say('A dungeon needs at least one floor.');
+    if (!confirm(`Remove floor ${this.floor + 1}? (Undo brings it back.)`)) return;
+    this.remember();
+    this.dungeon.floors.splice(this.floor, 1);
+    this.floor = Math.min(this.floor, this.dungeon.floors.length - 1);
+    this.centreOnEntrance();
+    this.changed();
+  }
+
+  private centreOnEntrance(): void {
+    const e = this.pieces.find((p) => p.kind === 'entrance');
+    this.cursor = e ? { x: e.gx, z: e.gz - 1 } : { x: 0, z: 0 };
+    this.view = { ...this.cursor };
+  }
 
   move(dx: number, dz: number): void {
     this.cursor.x = Math.max(-HAND_EXTENT, Math.min(HAND_EXTENT, this.cursor.x + dx));
@@ -116,9 +168,9 @@ export class Editor {
   place(): void {
     const piece: HandPiece = { kind: PALETTE[this.kind], gx: this.cursor.x, gz: this.cursor.z, rot: this.rot, level: this.level };
     if (!this.fits(piece)) return this.say('That spot is taken: remove what is there first (Backspace).');
-    if (this.dungeon.pieces.length >= 50) return this.say('A floor holds at most 50 pieces.');
+    if (this.pieces.length >= 50) return this.say('A floor holds at most 50 pieces.');
     this.remember();
-    this.dungeon.pieces.push(piece);
+    this.pieces.push(piece);
     this.changed();
   }
 
@@ -127,7 +179,7 @@ export class Editor {
     const i = this.pieceAt(this.cursor.x, this.cursor.z);
     if (i < 0) return this.say('Nothing here to remove.');
     this.remember();
-    this.dungeon.pieces.splice(i, 1);
+    this.pieces.splice(i, 1);
     this.changed();
   }
 
@@ -135,7 +187,7 @@ export class Editor {
   copy(): void {
     const i = this.pieceAt(this.cursor.x, this.cursor.z);
     if (i < 0) return this.say('Nothing here to copy.');
-    const p = this.dungeon.pieces[i];
+    const p = this.pieces[i];
     this.kind = PALETTE.indexOf(p.kind);
     this.rot = p.rot;
     this.level = p.level;
@@ -146,14 +198,16 @@ export class Editor {
   undo(): void {
     const last = this.history.pop();
     if (!last) return this.say('Nothing to undo.');
-    this.dungeon.pieces = last;
+    this.dungeon.floors = last.floors;
+    this.floor = Math.min(last.floor, last.floors.length - 1);
     this.changed();
   }
 
   clear(): void {
-    if (this.dungeon.pieces.length && !confirm('Start a new, empty dungeon? (Undo brings this one back.)')) return;
+    if (!confirm('Start a new, empty dungeon? (Undo brings this one back.)')) return;
     this.remember();
-    this.dungeon = { name: 'My dungeon', pieces: [{ kind: 'entrance', gx: 0, gz: 0, rot: 0, level: 0 }] };
+    this.dungeon = { name: 'My dungeon', floors: [{ pieces: [{ kind: 'entrance', gx: 0, gz: 0, rot: 0, level: 0 }] }] };
+    this.floor = 0;
     this.nameInput.value = this.dungeon.name;
     this.changed();
   }
@@ -165,14 +219,15 @@ export class Editor {
     this.dungeon.name = clean.name;
     saveDungeon(clean);
     this.refreshSaved();
-    this.say(this.check.def ? `Saved “${clean.name}”. Keeper Wren can offer it in your village.` : `Saved “${clean.name}”; it cannot be played until the panel’s list is clear.`);
+    this.say(this.full.playable ? `Saved “${clean.name}”. Keeper Wren can offer it in your village.` : `Saved “${clean.name}”; it cannot be played until every floor’s list is clear.`);
   }
 
   /** Save, then walk it: the game makes a floor of it on the server. */
   play(): void {
-    if (!this.check.def) return this.say('Not playable yet: see the list in the panel.');
+    if (!this.full.playable) return this.say('Not playable yet: see the list in the panel, on every floor.');
     this.save();
-    location.href = `./?floor&play&hand=${encodeURIComponent(this.dungeon.name)}`;
+    // Starts on the floor being edited, to try it without walking the ones before.
+    location.href = `./?floor&play&hand=${encodeURIComponent(this.dungeon.name)}&at=${this.floor + 1}`;
   }
 
   exportFile(): void {
@@ -208,16 +263,15 @@ export class Editor {
   load(d: HandDungeon): void {
     this.remember();
     this.dungeon = structuredClone(d);
+    this.floor = 0;
     this.nameInput.value = d.name;
-    const e = d.pieces.find((p) => p.kind === 'entrance');
-    this.cursor = e ? { x: e.gx, z: e.gz - 1 } : { x: 0, z: 0 };
-    this.view = { ...this.cursor };
+    this.centreOnEntrance();
     this.changed();
   }
 
-  /** The layout's check, for the browser test. */
+  /** What keeps the dungeon from play, every floor's and the whole's, for the browser test. */
   get errors(): string[] {
-    return this.check.errors;
+    return [...this.full.errors, ...this.full.floors.flatMap((c) => c.errors)];
   }
 
   // ---------------------------------------------------------------- state
@@ -229,17 +283,18 @@ export class Editor {
     } catch {
       // A broken draft starts over.
     }
-    return { name: 'My dungeon', pieces: [{ kind: 'entrance', gx: 0, gz: 0, rot: 0, level: 0 }] };
+    return { name: 'My dungeon', floors: [{ pieces: [{ kind: 'entrance', gx: 0, gz: 0, rot: 0, level: 0 }] }] };
   }
 
   private remember(): void {
-    this.history.push(structuredClone(this.dungeon.pieces));
+    this.history.push({ floors: structuredClone(this.dungeon.floors), floor: this.floor });
     if (this.history.length > 200) this.history.shift();
   }
 
   /** The layout changed: check it again, keep the draft, show the panel. */
   private changed(keep = true): void {
-    this.check = checkDungeon(this.dungeon);
+    this.full = checkHandDungeon(this.dungeon);
+    this.check = this.full.floors[this.floor];
     if (keep) {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...this.dungeon, name: this.nameInput.value || this.dungeon.name }));
@@ -256,7 +311,7 @@ export class Editor {
   }
 
   private pieceAt(x: number, z: number): number {
-    return this.dungeon.pieces.findIndex((p) => {
+    return this.pieces.findIndex((p) => {
       const f = this.footprint(p);
       return x >= f.x0 && x < f.x1 && z >= f.z0 && z < f.z1;
     });
@@ -301,11 +356,14 @@ export class Editor {
         PageDown: () => this.raise(-1),
         Space: () => this.place(),
         Enter: () => this.place(),
-        Backspace: () => this.remove(),
+        Backspace: () => (e.shiftKey ? this.removeFloor() : this.remove()),
         Delete: () => this.remove(),
         KeyF: () => this.copy(),
         KeyU: () => this.undo(),
         KeyP: () => this.play(),
+        BracketLeft: () => this.toFloor(this.floor - 1),
+        BracketRight: () => this.toFloor(this.floor + 1),
+        KeyN: () => this.addFloor(),
         Minus: () => this.zoomBy(-4),
         Equal: () => this.zoomBy(4),
       };
@@ -363,6 +421,8 @@ export class Editor {
       7: () => this.raise(1),
       8: () => this.undo(),
       9: () => this.play(),
+      10: () => this.toFloor(this.floor - 1),
+      11: () => this.toFloor(this.floor + 1),
     };
     const moves: Record<number, [number, number]> = { 12: [0, -1], 13: [0, 1], 14: [-1, 0], 15: [1, 0] };
     for (const i of down) {
@@ -424,6 +484,13 @@ export class Editor {
     this.nameInput.addEventListener('input', () => this.changed());
     p.appendChild(this.nameInput);
 
+    h('Floors  ·  [ and ], N adds one');
+    this.tabs.className = 'editor-tabs';
+    p.appendChild(this.tabs);
+    const fr = row();
+    button('Add floor  N', () => this.addFloor(), fr, 'editor-btn');
+    button('Remove floor  ⇧⌫', () => this.removeFloor(), fr, 'editor-btn');
+
     h('Piece  ·  Q / E, 1 to 0');
     const pal = row('editor-palette');
     PALETTE.forEach((kind, i) => {
@@ -472,7 +539,7 @@ export class Editor {
     const help = document.createElement('p');
     help.className = 'editor-help';
     help.textContent =
-      'Arrows or WASD move · Space places · Backspace removes · F copies the piece under the cursor · Pad: d-pad, A place, B remove, X turn, Y copy, LB/RB piece, LT/RT height, View undo, Start play. A piece is placed by its north-west corner.';
+      'Arrows or WASD move · Space places · Backspace removes · F copies the piece under the cursor · [ and ] change floor, N adds one, Shift+Backspace removes it · Pad: d-pad, A place, B remove, X turn, Y copy, LB/RB piece, LT/RT height, stick clicks change floor, View undo, Start play. A piece is placed by its north-west corner.';
     p.appendChild(help);
   }
 
@@ -480,9 +547,28 @@ export class Editor {
     for (const [kind, b] of this.palette) b.classList.toggle('chosen', kind === PALETTE[this.kind]);
     this.turnText.textContent = `facing ${['north', 'east', 'south', 'west'][this.rot]}`;
     this.heightText.textContent = `height ${this.level}`;
+    // A tab a floor: its number, and a mark for whether it can be played.
+    this.tabs.innerHTML = '';
+    this.dungeon.floors.forEach((_, i) => {
+      const t = document.createElement('button');
+      const ok = this.full.floors[i]?.def !== null;
+      t.className = `editor-btn editor-tab${i === this.floor ? ' chosen' : ''}`;
+      t.textContent = `Floor ${i + 1} ${ok ? '✓' : '!'}`;
+      t.title = ok ? 'Ready' : 'Not ready yet';
+      t.addEventListener('click', () => {
+        this.toFloor(i);
+        t.blur();
+      });
+      this.tabs.appendChild(t);
+    });
     const c = this.check;
+    const n = this.dungeon.floors.length;
     const lines: string[] = [];
-    if (c.def) lines.push(`<p class="ok">Ready to play: ${this.dungeon.pieces.length} pieces, ${c.def.pieces.filter((p) => p.fight).length} fight rooms.</p>`);
+    const last = this.floor === n - 1;
+    lines.push(`<p class="note">Floor ${this.floor + 1} of ${n}: ${last ? 'the last; the Warden’s hall ends the run, or a rest room leads home' : 'ends in a rest room, whose violet ring leads to floor ' + (this.floor + 2)}.</p>`);
+    if (this.full.playable) lines.push(`<p class="ok">Ready to play: ${n} floor${n === 1 ? '' : 's'}, ${this.dungeon.floors.reduce((t, fl) => t + fl.pieces.length, 0)} pieces.</p>`);
+    else if (c.def) lines.push(`<p class="ok">This floor is ready (${this.pieces.length} pieces, ${c.def.pieces.filter((p) => p.fight).length} fight rooms).</p>`);
+    for (const e of this.full.errors) lines.push(`<p class="err">${escape(e)}</p>`);
     for (const e of c.errors) lines.push(`<p class="err">${escape(e)}</p>`);
     for (const n of c.notes) lines.push(`<p class="note">${escape(n)}</p>`);
     this.status.innerHTML = lines.join('');
@@ -495,7 +581,8 @@ export class Editor {
       r.className = 'editor-row';
       const name = document.createElement('span');
       name.className = 'editor-saved-name';
-      name.textContent = ships ? `${d.name} (ships)` : d.name;
+      const fl = d.floors.length > 1 ? `, ${d.floors.length} floors` : '';
+      name.textContent = ships ? `${d.name} (ships${fl})` : `${d.name}${fl ? ` (${fl.slice(2)})` : ''}`;
       const open = document.createElement('button');
       open.className = 'editor-btn';
       open.textContent = 'Open';
@@ -558,8 +645,12 @@ export class Editor {
     g.fillStyle = 'rgba(164, 147, 184, 0.6)';
     g.font = '12px monospace';
     g.fillText('N', X(this.view.x) - 4, 14);
+    g.fillStyle = '#ffcf6a';
+    g.font = 'bold 16px Georgia, serif';
+    g.textAlign = 'left';
+    g.fillText(`Floor ${this.floor + 1} of ${this.dungeon.floors.length}`, 14, 24);
 
-    const top = Math.max(1, ...this.dungeon.pieces.map((p) => p.level + (p.kind === 'stair' ? 1 : 0)));
+    const top = Math.max(1, ...this.pieces.map((p) => p.level + (p.kind === 'stair' ? 1 : 0)));
     this.check.joined.forEach((piece) => this.drawPiece(g, piece, X, Y, top, 1));
 
     // The piece to place, where it would go.
@@ -576,9 +667,9 @@ export class Editor {
     // Its doorways: green where they would join a neighbour, amber where one meets it at another height.
     for (const sk of gp.sockets) {
       const d = SIDE_DIR[sk.side];
-      const n = this.dungeon.pieces[this.pieceAt(sk.cx + d.x, sk.cz + d.z)];
+      const n = this.pieces[this.pieceAt(sk.cx + d.x, sk.cz + d.z)];
       if (!n) continue;
-      const joined = this.check.joined[this.dungeon.pieces.indexOf(n)];
+      const joined = this.check.joined[this.pieces.indexOf(n)];
       const facing = joined?.sockets.find((o) => o.cx === sk.cx + d.x && o.cz === sk.cz + d.z && o.side === OPPOSITE[sk.side]);
       if (!facing) continue;
       g.fillStyle = facing.level === sk.level ? '#8fe38a' : '#ffb347';

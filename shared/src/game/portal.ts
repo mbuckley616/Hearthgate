@@ -43,10 +43,11 @@ export function portalsFor(world: World, state: SimState): Ring[] {
   const rest = layout.pieces[layout.def.exit];
   if (rest.kind !== 'rest' || state.run.phase !== 'ante') return [];
   const [deeper, home] = rest.rings;
-  return [
-    { ...deeper, y: rest.y, radius: FLOOR_RING_RADIUS, to: 'deeper' },
-    { ...home, y: rest.y, radius: FLOOR_RING_RADIUS, to: 'village' },
-  ];
+  const homeRing: Ring = { ...home, y: rest.y, radius: FLOOR_RING_RADIUS, to: 'village' };
+  // A hand-built dungeon's last floor may end in a rest room: nothing lies deeper, only the way home.
+  const spec = layout.def.spec;
+  if (spec.floor >= spec.floors) return [homeRing];
+  return [{ ...deeper, y: rest.y, radius: FLOOR_RING_RADIUS, to: 'deeper' }, homeRing];
 }
 
 /** The first open ring, or null: the village's and the arena's have one at most. */

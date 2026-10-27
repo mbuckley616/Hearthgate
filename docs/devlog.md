@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, the T3 / T4 / T4b playtest and its follow-ups
+
+**What changed**
+
+- Michael played T3, T4 and T4b on the hosted build: all three gates passed ("everything looks good for the most part"), filed in `playtest-notes.md`. He answered T5's questions as cards (decisions.md, PR #73, merged into this branch).
+- **The HUD overlap he saw** was a T4b regression: both pages imported `theme.css`, so the build moved it into a shared chunk that the game's page loaded before `style.css`, and the base styles won (the weapon chips and abilities fell back to their old centred spots, on top of each other). Dev serves CSS in import order, so only the built game showed it. The editor now keeps its own copy of the colour tokens; checked against a production build.
+- **A hand-built dungeon has floors of its own**, his second callout (going deeper fell into generated floors): one to five floors, each its own layout, and a run through it is exactly those floors. Every floor but the last ends in a rest room whose violet ring leads to the next; the last ends at the Warden's hall, or in a rest room with only the ring home. The editor shows floors as tabs ([ and ], the stick clicks, N adds, Shift+Backspace removes), each marked ready or not, and Play starts on the floor being edited. Files from before floors open as one floor. The Old Cellar has a second floor, a drop to the Warden. Protocol 6.
+- **Tests**: check 59 (the floor rules, legacy files); `test:net` takes The Old Cellar's deeper ring onto its own second floor; browser smoke 6/6 with two floors built by keys alone.
+
+**Learned**
+
+- A stylesheet two Vite pages share becomes its own chunk, loaded first: the cascade order of the built game is not the order of its imports. Check layout against `npm run build`, not only the dev server, when CSS moves between entries.
+
+**Next**
+
+- Michael: approve #73 (T5's answers, docs) and this branch's PR.
+- T5, starting with Hearthgate's downs.
+
 ## 2026-10-27: local session, T4b: the dungeon editor
 
 **What changed**

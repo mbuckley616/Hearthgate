@@ -1,5 +1,5 @@
 import { DUNGEONS } from '@hearthgate/shared/level/dungeons';
-import { checkDungeon, readDungeon, type HandDungeon } from '@hearthgate/shared/level/handmade';
+import { checkHandDungeon, readDungeon, type HandDungeon } from '@hearthgate/shared/level/handmade';
 
 /**
  * Hand-built dungeons kept in this browser (T4b; decisions.md 27 Oct: the browser, plus an exported
@@ -29,7 +29,7 @@ export function deleteDungeon(name: string): void {
 
 /** Every dungeon this browser can play: the ones that ship, then its own playable ones (a saved one shadows a shipped one of the same name). */
 export function playableDungeons(): HandDungeon[] {
-  const mine = savedDungeons().filter((d) => checkDungeon(d).def);
+  const mine = savedDungeons().filter((d) => checkHandDungeon(d).playable);
   return [...DUNGEONS.filter((d) => !mine.some((m) => m.name === d.name)), ...mine];
 }
 

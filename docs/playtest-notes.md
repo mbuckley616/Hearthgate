@@ -61,6 +61,30 @@ Other notes
 Decisions
 - Michael, 2026-10-04 (in chat): no friend on another network is available and it would stay a blocker, so the human remote playtest is dropped; this run and the critic's daily lab stand in for it. The gate was already passed on 2026-10-03.
 
+## 2026-10-27: T3, T4 and T4b gates (the village and portal, generated dungeons, the dungeon editor): Michael on the hosted build
+
+Played on the hosted build after #71 and #72 merged (main b9811c5). Who else joined and over what connection was not said.
+Ping (HUD): not recorded (the slice's HUD has no ping readout)
+Corrections (HUD, after 5 minutes): not recorded
+Session length: not recorded
+
+Gate questions
+1. Does your own movement feel instant? (yes / mostly / no, and what felt late) — Not answered one by one. Michael, in chat: "Playtest of T3, T4, and T4b is cleared - everything looks good for the most part."
+2. Do hits land where they look like they land, for you and for the other player? — As above.
+3. Did anything teleport, rubber-band, or freeze? When? — As above.
+
+The steps' own gates (slice-transplant-plan.md)
+- T3: village to dungeon and back, nobody stranded, the village belongs to the slice — passed.
+- T4: five floors from five seeds, each a different shape with a climb or drop, none broken, readable, the minimap showing where you are — passed (his screenshots of the five, earlier the same day: "as expected").
+- T4b: lay out a dungeon by hand and save one the portal can offer — passed ("creating a dungeon works great").
+
+Other notes
+- The editor makes one floor; going deeper from its rest room goes on into generated floors. Not wrong, he said, but a hand-built dungeon should be able to have several floors of its own, shown as tabs or similar. Taken up straight away (auto/local-t4-followups).
+- The ability squares and the weapon chips overlapped at the bottom of the screen (his screenshot). A regression from T4b: the built game loaded the theme before the base styles. Fixed the same day (auto/local-t4-followups).
+
+Decisions
+- Gates: T3, T4 and T4b passed (2026-10-27). T5 (party rules and the Phase 1 gate) is next; its answers are in decisions.md.
+
 ## 2026-10-27: T1 gate (the combat slice on the server): Michael solo on the hosted build, and the lag lab against it for two players
 
 Half 1: Michael, solo, side by side with the combat slice on his desktop, on the hosted build (main 9b6c0f2).

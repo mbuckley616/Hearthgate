@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HostSession } from '../game/HostSession';
+import { portalsFor } from '../game/portal';
 import { floorSpecFor, planRun, readRunPlan } from '../game/runPlan';
 import { PROTOCOL_VERSION } from '../net/protocol';
 import { readToHost } from '../net/validate';
@@ -11,22 +12,26 @@ import { createSimState } from '../sim/world';
 import { buildWorld, groundHeight } from './arena';
 import { floorLevel, insidePiece, walkRoute } from './floor';
 import { DUNGEONS } from './dungeons';
-import { checkDungeon, readDungeon, type HandDungeon } from './handmade';
+import { checkDungeon, checkHandDungeon, handFloor, readDungeon, type HandDungeon, type HandFloor } from './handmade';
 import { village } from './village';
 
 const cellar = DUNGEONS.find((d) => d.name === 'The Old Cellar')!;
-const without = (d: HandDungeon, kind: string): HandDungeon => ({ ...d, pieces: d.pieces.filter((p) => p.kind !== kind) });
+const first: HandFloor = handFloor(cellar, 1);
+const without = (f: HandFloor, kind: string): HandFloor => ({ ...f, pieces: f.pieces.filter((p) => p.kind !== kind) });
+/** The cellar with its first floor changed. */
+const withFirst = (f: HandFloor): HandDungeon => ({ ...cellar, floors: [{ pieces: f.pieces }, ...cellar.floors.slice(1)] });
 
 describe('hand-built dungeons (T4b)', () => {
-  it('ships dungeons that are all playable floors', () => {
+  it('ships dungeons that are all playable, floor by floor', () => {
     expect(DUNGEONS.length).toBeGreaterThan(0);
-    for (const d of DUNGEONS) expect(checkDungeon(d).errors).toEqual([]);
+    for (const d of DUNGEONS) expect(checkHandDungeon(d)).toMatchObject({ errors: [], playable: true });
+    expect(cellar.floors).toHaveLength(2);
   });
 
   it('joins doorways that face each other at one height, as the generator does', () => {
-    const { def } = checkDungeon(cellar);
+    const { def } = checkDungeon(first);
     const links = def!.pieces.reduce((n, p) => n + p.sockets.filter((sk) => sk.link >= 0).length, 0) / 2;
-    expect(links).toBe(cellar.pieces.length - 1);
+    expect(links).toBe(first.pieces.length - 1);
     expect(def!.pieces[def!.entrance].kind).toBe('entrance');
     expect(def!.pieces[def!.exit].kind).toBe('rest');
     // The entrance sits on the grid's origin, as a generated floor's does.
@@ -34,29 +39,43 @@ describe('hand-built dungeons (T4b)', () => {
   });
 
   it('says what is missing or wrong, in words', () => {
-    expect(checkDungeon(without(cellar, 'entrance')).errors.join(' ')).toMatch(/entrance/);
-    expect(checkDungeon(without(cellar, 'rest')).errors.join(' ')).toMatch(/rest room/);
+    expect(checkDungeon(without(first, 'entrance')).errors.join(' ')).toMatch(/entrance/);
+    expect(checkDungeon(without(first, 'rest')).errors.join(' ')).toMatch(/rest room/);
     // Take the staircase out: the room above can no longer be reached.
-    expect(checkDungeon(without(cellar, 'stair')).errors.join(' ')).toMatch(/can’t be reached/);
-    const stacked = { ...cellar, pieces: [...cellar.pieces, { kind: 'hall' as const, gx: 0, gz: 0, rot: 0, level: 0 }] };
+    expect(checkDungeon(without(first, 'stair')).errors.join(' ')).toMatch(/can’t be reached/);
+    const stacked = { ...first, pieces: [...first.pieces, { kind: 'hall' as const, gx: 0, gz: 0, rot: 0, level: 0 }] };
     expect(checkDungeon(stacked).errors.join(' ')).toMatch(/overlaps/);
     // A staircase turned the wrong way meets its room at another height: walled up, and the room cut off.
-    const flipped = { ...cellar, pieces: cellar.pieces.map((p) => (p.kind === 'stair' ? { ...p, rot: 2 } : p)) };
+    const flipped = { ...first, pieces: first.pieces.map((p) => (p.kind === 'stair' ? { ...p, rot: 2 } : p)) };
     const f = checkDungeon(flipped);
     expect(f.def).toBeNull();
     expect(f.notes.join(' ')).toMatch(/another height/);
   });
 
-  it('reads only clean layouts from outside: whole numbers on the grid, known pieces, a short name', () => {
-    expect(readDungeon({ name: 'x', pieces: [{ kind: 'dragon', gx: 0, gz: 0, rot: 0, level: 0 }] })).toBeNull();
-    expect(readDungeon({ name: 'x', pieces: [{ kind: 'hall', gx: 0.5, gz: 0, rot: 0, level: 0 }] })).toBeNull();
-    expect(readDungeon({ name: 'x', pieces: [{ kind: 'hall', gx: 999, gz: 0, rot: 0, level: 0 }] })).toBeNull();
-    expect(readDungeon({ name: 'x', pieces: new Array(51).fill({ kind: 'hall', gx: 0, gz: 0, rot: 0, level: 0 }) })).toBeNull();
-    expect(readDungeon({ name: '<b>' + 'a'.repeat(80), pieces: [] })!.name.length).toBeLessThanOrEqual(32);
+  it('lets only the last floor end at the Warden', () => {
+    const swapped: HandDungeon = { ...cellar, floors: [...cellar.floors].reverse() };
+    const c = checkHandDungeon(swapped);
+    expect(c.playable).toBe(false);
+    expect(c.errors.join(' ')).toMatch(/Floor 1 ends at the Warden’s hall/);
+    // One broken floor stops the whole dungeon.
+    expect(checkHandDungeon(withFirst(without(first, 'entrance'))).playable).toBe(false);
+  });
+
+  it('reads only clean dungeons from outside: whole numbers on the grid, known pieces, a short name, at most five floors', () => {
+    const floor = (pieces: unknown[]) => ({ name: 'x', floors: [{ pieces }] });
+    expect(readDungeon(floor([{ kind: 'dragon', gx: 0, gz: 0, rot: 0, level: 0 }]))).toBeNull();
+    expect(readDungeon(floor([{ kind: 'hall', gx: 0.5, gz: 0, rot: 0, level: 0 }]))).toBeNull();
+    expect(readDungeon(floor([{ kind: 'hall', gx: 999, gz: 0, rot: 0, level: 0 }]))).toBeNull();
+    expect(readDungeon(floor(new Array(51).fill({ kind: 'hall', gx: 0, gz: 0, rot: 0, level: 0 })))).toBeNull();
+    expect(readDungeon({ name: 'x', floors: new Array(6).fill({ pieces: [] }) })).toBeNull();
+    expect(readDungeon({ name: 'x', floors: [] })).toBeNull();
+    expect(readDungeon({ name: '<b>' + 'a'.repeat(80), floors: [{ pieces: [] }] })!.name.length).toBeLessThanOrEqual(32);
+    // A one-floor file from before floors still opens.
+    expect(readDungeon({ name: 'Old', pieces: first.pieces })).toEqual({ name: 'Old', floors: [{ pieces: first.pieces }] });
   });
 
   it('plays as a floor: a hero walks it from the entrance to the rest room, up its staircase', () => {
-    const level = floorLevel({ seed: 0, pieces: cellar.pieces.length, floor: 1, floors: 3, hand: cellar });
+    const level = floorLevel({ seed: 0, pieces: first.pieces.length, floor: 1, floors: 2, hand: first });
     const world = buildWorld(level);
     const layout = level.dungeon!;
     const state = createSimState(level, ['p1'], world);
@@ -76,20 +95,25 @@ describe('hand-built dungeons (T4b)', () => {
     expect(hero.y).toBeGreaterThan(2);
   });
 
-  it('starts a run: the hand-built floor first, then generated ones (or that floor alone if it ends at the Warden)', () => {
+  it('runs exactly its floors: deeper to the next, and a last rest room leads only home', () => {
     const plan = planRun([], 7, cellar);
-    expect(floorSpecFor(plan, 1).hand).toEqual(cellar);
-    expect(floorSpecFor(plan, 2).hand).toBeUndefined();
-    expect(plan.floors).toBe(3);
-    const boss: HandDungeon = { ...cellar, pieces: cellar.pieces.map((p) => (p.kind === 'rest' ? { ...p, kind: 'boss' as const } : p)) };
-    // The Warden's hall is bigger than the rest room; only its exit kind matters to the plan.
-    expect(planRun([], 7, boss).floors).toBe(1);
-    // From a room's create options (a browser's): checked, and dropped if it is not a floor.
+    expect(plan.floors).toBe(2);
+    expect(floorSpecFor(plan, 1).hand).toEqual(handFloor(cellar, 1));
+    expect(floorSpecFor(plan, 2).hand).toEqual(handFloor(cellar, 2));
+    expect(floorSpecFor(plan, 2).floors).toBe(2);
+    const rings = (d: HandDungeon, n: number) => {
+      const world = buildWorld(floorLevel(floorSpecFor(planRun([], 1, d), n)));
+      return portalsFor(world, createSimState(world.level, [], world)).map((r) => r.to);
+    };
+    expect(rings(cellar, 1)).toEqual(['deeper', 'village']);
+    // The first floor alone, as a dungeon of one floor: its rest room has only the way home.
+    expect(rings({ ...cellar, floors: [cellar.floors[0]] }, 1)).toEqual(['village']);
+    // From a room's create options (a browser's): checked, and dropped if any floor is not playable.
     expect(readRunPlan({ seed: 3, hand: cellar }).hand).toEqual(cellar);
-    expect(readRunPlan({ seed: 3, hand: without(cellar, 'entrance') }).hand).toBeUndefined();
+    expect(readRunPlan({ seed: 3, hand: withFirst(without(first, 'entrance')) }).hand).toBeUndefined();
   });
 
-  it('is what Keeper Wren sends the village: the ring then leads there, and a broken layout is dropped', () => {
+  it('is what Keeper Wren sends the village: the ring then leads there, and a broken dungeon is dropped', () => {
     const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
     const host = new HostSession(buildWorld(village), () => {});
     host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
@@ -100,7 +124,7 @@ describe('hand-built dungeons (T4b)', () => {
     };
     expect(ask(cellar)).not.toBeNull();
     expect(host.destination?.name).toBe('The Old Cellar');
-    expect(ask(without(cellar, 'rest'))).toBeNull();
+    expect(ask(withFirst(without(first, 'rest')))).toBeNull();
     expect(host.destination?.name).toBe('The Old Cellar');
     expect(ask(null)).not.toBeNull();
     expect(host.destination).toBeNull();

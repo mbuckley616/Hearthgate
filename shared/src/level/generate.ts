@@ -1,4 +1,4 @@
-import type { HandDungeon } from './handmade';
+import type { HandFloor } from './handmade';
 import { CELL, KIT, OPPOSITE, SIDE_DIR, rotSide, rotSize, rotSocket, type PieceKind, type Side } from './kit';
 
 /**
@@ -21,7 +21,7 @@ export interface FloorSpec {
   floor: number;
   floors: number;
   /** A hand-built floor (T4b, handmade.ts): its pieces as laid out in the editor, instead of a seed's. */
-  hand?: HandDungeon;
+  hand?: HandFloor;
 }
 
 export interface PlacedSocket {

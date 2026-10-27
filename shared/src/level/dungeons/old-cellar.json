@@ -1,14 +1,27 @@
 {
   "name": "The Old Cellar",
-  "pieces": [
-    { "kind": "entrance", "gx": 0, "gz": 0, "rot": 0, "level": 0 },
-    { "kind": "hall", "gx": 0, "gz": -1, "rot": 0, "level": 0 },
-    { "kind": "stair", "gx": 0, "gz": -3, "rot": 0, "level": 0 },
-    { "kind": "medium", "gx": -1, "gz": -6, "rot": 0, "level": 1 },
-    { "kind": "hallLong", "gx": 2, "gz": -5, "rot": 1, "level": 1 },
-    { "kind": "rest", "gx": 4, "gz": -6, "rot": 1, "level": 1 },
-    { "kind": "small", "gx": 2, "gz": 1, "rot": 0, "level": 0 },
-    { "kind": "hallLong", "gx": -2, "gz": 1, "rot": 1, "level": 0 },
-    { "kind": "small", "gx": -4, "gz": 0, "rot": 0, "level": 0 }
+  "floors": [
+    {
+      "pieces": [
+        { "kind": "entrance", "gx": 0, "gz": 0, "rot": 0, "level": 0 },
+        { "kind": "hall", "gx": 0, "gz": -1, "rot": 0, "level": 0 },
+        { "kind": "stair", "gx": 0, "gz": -3, "rot": 0, "level": 0 },
+        { "kind": "medium", "gx": -1, "gz": -6, "rot": 0, "level": 1 },
+        { "kind": "hallLong", "gx": 2, "gz": -5, "rot": 1, "level": 1 },
+        { "kind": "rest", "gx": 4, "gz": -6, "rot": 1, "level": 1 },
+        { "kind": "small", "gx": 2, "gz": 1, "rot": 0, "level": 0 },
+        { "kind": "hallLong", "gx": -2, "gz": 1, "rot": 1, "level": 0 },
+        { "kind": "small", "gx": -4, "gz": 0, "rot": 0, "level": 0 }
+      ]
+    },
+    {
+      "pieces": [
+        { "kind": "entrance", "gx": 0, "gz": 0, "rot": 0, "level": 1 },
+        { "kind": "hall", "gx": 0, "gz": -1, "rot": 0, "level": 1 },
+        { "kind": "stair", "gx": 0, "gz": -3, "rot": 2, "level": 0 },
+        { "kind": "boss", "gx": -2, "gz": -8, "rot": 0, "level": 0 },
+        { "kind": "small", "gx": 2, "gz": 1, "rot": 0, "level": 1 }
+      ]
+    }
   ]
 }
