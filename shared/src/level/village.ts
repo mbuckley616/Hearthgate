@@ -71,7 +71,7 @@ const villageDef: VillageDef = {
       z: -13.4,
       facingYawDeg: 0,
       look: 'staff',
-      line: 'The shrine opens on the old vault below. Step into the ring together and hold still; when the fighting is done, a ring opens there to bring you home.',
+      line: 'The shrine opens on the deep places below. Step into the ring together and hold still; down there, a ring in the place to rest brings you home.',
     },
     { id: 'storekeeper', name: 'Aldous', x: 9.6, z: -3.4, facingYawDeg: -90, look: 'sword', line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
     { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },

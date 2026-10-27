@@ -44,6 +44,19 @@ export class TalkUi {
     }
   }
 
+  /** Show someone's words now (Keeper Wren turning the ring, T4b). */
+  say(name: string, line: string): void {
+    this.name.textContent = name;
+    this.line.textContent = line;
+    this.shownFor = LINE_S;
+    this.box.style.display = 'block';
+  }
+
+  /** Whether this villager's words are up now (a second F to Keeper Wren turns the ring). */
+  showing(name: string): boolean {
+    return this.shownFor > 0 && this.name.textContent === name;
+  }
+
   /** Leaving the village: nothing stays up. */
   clear(): void {
     this.shownFor = 0;

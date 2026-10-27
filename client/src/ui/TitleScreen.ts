@@ -59,6 +59,10 @@ export class TitleScreen {
       code.focus();
     });
     menu.appendChild(joinRow);
+    // T4b: lay out a dungeon by hand; Keeper Wren offers it in the village.
+    button('Dungeon editor', () => {
+      location.href = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}editor.html${location.search}`;
+    });
     button('Settings', () => this.showSide(this.settings));
     button('Controls', () => this.showSide(this.controls));
 

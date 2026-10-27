@@ -6,7 +6,8 @@ import { chromium, expect, test, type Page } from "@playwright/test";
  * straight away), and the village's round trip: talk to the keeper, take the ring onto a generated
  * floor (T4), walk it to the rest room (the dev server's cheats clear the rooms that shut on the way)
  * and take the rest room's gold ring home. `?play` skips the title screen as a join link does; the
- * slice's `window.game` handle reads the state.
+ * slice's `window.game` handle reads the state. The dungeon editor (T4b) is built by keys alone and played,
+ * and Keeper Wren turns the village's ring to a hand-built dungeon.
  *
  * Each player gets a browser of their own: headless Chromium throttles a second page's timers,
  * which starves its frames and inputs (the lesson of the old two-players test).
@@ -189,6 +190,50 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   } finally {
     await tune(page, { "dungeon.pieces": 0, "dungeon.seed": 0 });
   }
+});
+
+test("the dungeon editor: a dungeon laid out by keys alone, saved and played", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/editor.html");
+  await page.evaluate(() => localStorage.removeItem("hearthgate.editor.draft"));
+  await page.reload();
+  const status = page.locator(".editor-status");
+  // A new draft is an entrance alone, the cursor on the cell north of it, a hall chosen.
+  await expect(status).toContainText("rest room");
+  await page.keyboard.press("Space");
+  // Three steps back through the palette is the rest room; its one doorway is in the middle of its south side.
+  for (const key of ["KeyQ", "KeyQ", "KeyQ", "ArrowLeft", "ArrowUp", "ArrowUp", "ArrowUp", "Space"]) await page.keyboard.press(key);
+  await expect(status).toContainText("Ready to play: 3 pieces");
+  await page.locator(".editor-name").fill("Keys Only");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+KeyS");
+  await expect(page.locator(".editor-saved")).toContainText("Keys Only");
+  await page.keyboard.press("KeyP");
+  await page.waitForURL(/hand=Keys%20Only/);
+  await expect.poll(async () => (await seen(page)).kind, { timeout: 20_000 }).toBe("floor");
+  const spec = await page.evaluate(() => (window as unknown as { game: any }).game.session.world.level.dungeon.def.spec);
+  expect(spec.hand.name).toBe("Keys Only");
+  expect(spec.hand.pieces).toHaveLength(3);
+  expect(errors).toEqual([]);
+});
+
+test("Keeper Wren turns the village's ring to a hand-built dungeon", async ({ page }) => {
+  const errors: string[] = [];
+  await open(page, "play", errors);
+  await walkTo(page, 3.2, 2, 1.2);
+  await walkTo(page, 3.0, -12.2, 0.8);
+  // Asked once she says where it opens; asked again she turns it to the next (the first hand-built one ships with the game).
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".talk-line")).toContainText("a new dungeon");
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
+  await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
+  await walkTo(page, 0, -10.5, 0.8);
+  await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
+  const hand = await page.evaluate(() => (window as unknown as { game: any }).game.session.world.level.dungeon.def.spec.hand?.name);
+  expect(hand).toBe("The Old Cellar");
+  expect(errors).toEqual([]);
 });
 
 /** Debug-panel edits through the server (a dev build takes them). */

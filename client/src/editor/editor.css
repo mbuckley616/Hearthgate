@@ -1,0 +1,164 @@
+/* The dungeon editor (T4b): a grid on the left, a framed panel on the right, in the game's colours. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0712;
+  color: var(--ink);
+  font: 14px/1.4 system-ui, sans-serif;
+}
+
+.editor {
+  display: flex;
+  height: 100vh;
+}
+
+.editor-canvas {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.editor-panel {
+  width: 360px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border-left: 2px solid var(--frame);
+  box-shadow: inset 2px 0 0 var(--frame-inner);
+}
+
+.editor-panel h1 {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font: 700 22px/1.1 Georgia, serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.editor-panel h2 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font: 600 12px/1 system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editor-name {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 12px;
+  background: #0d0815;
+  border: 2px solid var(--frame-inner);
+  color: var(--ink);
+  font: 600 16px Georgia, serif;
+}
+
+.editor-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.editor-row span {
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.editor-palette {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.editor-btn {
+  min-height: 48px;
+  padding: 0 10px;
+  background: linear-gradient(#2a1838, #1a0e26);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  color: var(--gold);
+  font: 600 13px/1.1 system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  flex: 1;
+}
+
+.editor-btn:hover,
+.editor-btn:focus-visible {
+  border-color: var(--gold);
+}
+
+.editor-btn.chosen {
+  background: linear-gradient(#5a3a1a, #3a2410);
+  color: #fff3d0;
+  border-color: var(--gold);
+}
+
+.editor-btn.primary {
+  background: linear-gradient(#6a3c12, #45250a);
+  color: #fff3d0;
+}
+
+.editor-back {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  text-decoration: none;
+}
+
+.editor-status {
+  margin: 12px 0;
+  padding: 8px 10px;
+  min-height: 24px;
+  background: #0d0815;
+  border: 1px solid var(--frame-inner);
+}
+
+.editor-status p {
+  margin: 4px 0;
+}
+
+.editor-status .ok {
+  color: #8fe38a;
+  font-weight: 600;
+}
+
+.editor-status .err {
+  color: #ff8a7a;
+}
+
+.editor-status .note {
+  color: var(--muted);
+}
+
+.editor-saved-name {
+  flex: 2;
+  color: var(--ink) !important;
+}
+
+.editor-help {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.editor-toast {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  max-width: calc(100vw - 420px);
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 2px solid var(--frame);
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}

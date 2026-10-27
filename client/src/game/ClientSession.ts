@@ -211,7 +211,7 @@ export class ClientSession implements Session {
   }
 
   /** Ask the server for something the slice's host did itself (a restart, a tuning edit, a cheat). */
-  request(msg: Extract<ToHost, { k: 'restart' | 'tune' | 'cheat' }>): void {
+  request(msg: Extract<ToHost, { k: 'restart' | 'tune' | 'cheat' | 'destination' }>): void {
     if (this.state === 'playing') this.send(msg);
   }
 

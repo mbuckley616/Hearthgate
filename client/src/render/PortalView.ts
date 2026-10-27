@@ -24,6 +24,10 @@ export class PortalView {
   private moteSeed = new Float32Array(MOTES);
   private time = 0;
   private shownTo = '';
+  /** Where the ring leads, in words above it (T4b: a hand-built dungeon's name, Deeper, Home). */
+  private label: THREE.Sprite;
+  private shownLabel = '';
+  private labelAspect = 1;
 
   constructor() {
     const glow = (color: number, opacity: number) =>
@@ -54,6 +58,10 @@ export class PortalView {
     );
     this.motes.frustumCulled = false;
     this.group.add(this.motes);
+    this.label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+    this.label.position.y = 2.7;
+    this.label.renderOrder = 3;
+    this.group.add(this.label);
     this.group.visible = false;
   }
 
@@ -69,10 +77,22 @@ export class PortalView {
       (this.motes.material as THREE.PointsMaterial).color.set(home ? 0xffe2a0 : 0xc4a4ff).multiplyScalar(2.5);
       (this.swirl.material as THREE.MeshBasicMaterial).color.set(home ? 0xffd890 : 0xffffff);
     }
+    if (portal.label !== this.shownLabel) {
+      this.shownLabel = portal.label;
+      const mat = this.label.material;
+      mat.map?.dispose();
+      const { texture, aspect } = labelTexture(portal.label);
+      mat.map = texture;
+      mat.needsUpdate = true;
+      this.labelAspect = aspect;
+      this.shownRadius = 0;
+    }
     if (portal.radius !== this.shownRadius) {
       this.shownRadius = portal.radius;
       this.group.scale.set(portal.radius, 1, portal.radius);
       this.motes.scale.set(1 / portal.radius, 1, 1 / portal.radius);
+      // The group is scaled to the ring; the words keep their own size.
+      this.label.scale.set((0.5 * this.labelAspect) / portal.radius, 0.5, 1);
     }
     this.swirl.rotation.z = this.time * 0.6;
     const k = Math.min(1, portal.held / PORTAL_HOLD_S);
@@ -96,6 +116,27 @@ export class PortalView {
     }
     this.motes.geometry.attributes.position.needsUpdate = true;
   }
+}
+
+/** The words over a ring, gold on a dark band, for a sprite. */
+function labelTexture(text: string): { texture: THREE.CanvasTexture; aspect: number } {
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d')!;
+  const font = 'bold 44px Georgia, serif';
+  g.font = font;
+  const w = Math.ceil(g.measureText(text).width) + 40;
+  c.width = w;
+  c.height = 64;
+  g.font = font;
+  g.fillStyle = 'rgba(12, 6, 20, 0.6)';
+  g.fillRect(0, 0, w, 64);
+  g.fillStyle = '#ffcf6a';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, 34);
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return { texture, aspect: w / 64 };
 }
 
 /** A soft violet spiral, drawn once. */
