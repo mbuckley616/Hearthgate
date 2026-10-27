@@ -2,6 +2,42 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T1: the combat slice on Hearthgate's server
+
+**What changed**
+
+- The combat slice (`mbuckley616/combat-slice`, 363b726) moved over whole. Its engine-free code (`sim/`, `config/tuning.ts`, `level/`, `net/protocol.ts`, `game/Session.ts`) is in `shared/src/` as it was, imported by path (`@hearthgate/shared/sim/world`); everything else (its `Game`, `ClientSession`, views, camera, UI, sound, input, debug panel, CSS, title screen) is in `client/src/` with only import paths changed. Three.js 0.186. TypeScript and Vite stay at 5.x and 6: the slice typechecks clean on them, and dropping `experimentalDecorators` and `useDefineForClassFields: false` (no schema now) gives its classes their own field semantics.
+- The slice's `HostSession` runs on the server (`shared/src/game/HostSession.ts`, in `server/src/rooms/FightRoom.ts`): its input queue, acks, folding and staleness line for line, with the local hero taken out and `send` in place of the relay. The room steps it on Hearthgate's wall-locked 60 Hz pump and broadcasts the slice's `snap` every second tick. One room type, `fight`, with the slice's four-letter codes as room ids: Play creates one (solo is a room of one), Invite shares `?join=CODE`.
+- Every player is the slice's joiner: `ClientSession` speaks to the room through `ServerLink` (colyseus.js, the relay's events). Its clock runs at the server's speed so debug slow motion, now the server's, slows prediction and drawing alike. It counts corrections and snaps for the tests and the lab.
+- What the slice's host did itself now goes to the server: a lost or won run restarts on anyone's F, tuning edits of values the fight reads are range-checked and passed to everyone (`config/edits.ts`), and the cheat buttons work in a dev build only (`npm run dev`, or `HEARTHGATE_DEV=1`, set in `render.yaml` for Phase 1). Every message is checked before the session sees it (`net/validate.ts`); the rate limit counts commands, 75 a second with a burst of 120.
+- Keyboard-only (rule 4, decision 10A): J attacks, L guards, the arrows turn and tilt the camera at the stick's rates. The slice had no attack or camera without a mouse.
+- Gone: Hearthgate's `sim.ts` and its modules and ~230 tests, the old client, the schema, the village, dungeon and sim rooms, the levels, the KayKit packs and the art spike images. `clock.ts`, `interp.ts` and `gear.ts` are read-only in `docs/reference/hearthgate-shelf/` for T2 and Phase 3; the hand-off is at 1f4e3e9 for T3.
+- Tests: `tests/parity.ts` plays two scripted parties (a party of three to four through four waves with a join and a leave; the Warden, a wipe, a restart and the run again; 9,000 ticks each) through the slice's own `stepSim` from its repo and through Hearthgate's copy: identical every tick. Their hashes are in `shared/src/parity/golden.json`, which `npm test` checks, so CI holds the line without the slice. Unit tests for the room's queue, acks, joins, snapshots and requests, and for the message checks (21 in all). `test:net` rewritten on bots speaking the slice's messages, plus the browser's own `ClientSession` (25 checks). `tests/smoke.e2e.ts`: solo, two players by code, through the gate into wave 1 (3/3). The lab rewritten for the new client.
+
+**Lab (local, this desktop, 60 s a row, both pages at 60 fps on the GPU)**
+
+| Link | Corrections a minute (mean size) | Snaps | Holds a minute | View lag | Inputs in flight | Server to each player |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 212 | 0 (+2 placed) | 0 | 125 ms | 70 ms | 119 KB/s |
+| 50 ms | 227 | 0 (+2 placed) | 2 | 210 ms | 175 ms | 114 KB/s |
+| 150 ms | 203 | 0 (+2 placed) | 2 | 415 ms | 372 ms | 116 KB/s |
+| 50 ms ±20, 2% loss | 401 | 0 (+2 placed) | 31 | 225 ms | 196 ms | 116 KB/s |
+
+"Placed" snaps are the server moving the player itself (the gate bringing stragglers in, a restart). Without enemies the browser's `ClientSession` makes no corrections at all (`test:net`: 0 in four seconds of running, sprinting, dodging and jumping); in a fight it makes a few hundred a minute, a few centimetres each (3 cm mean in a 30 s run with no placements), eased out over 120 ms.
+
+**Learned**
+
+- The corrections are the slice's own joiner prediction, now every player's: the hero is predicted against the enemies where the last snapshot had them, so a hit's hitstop or a lunge toward a soft target lands a tick or two apart from the server's. In the slice the host never predicted; solo is now a joiner, so solo has them too. They are small and eased, but the lab's old line (30 a minute) calls every row rough. That is T2's first question.
+- The slice's input cushion (two ticks) assumes one tick a frame. At 25 fps (the lab's first run, software WebGL) every frame carried two or three ticks, the queue ran dry between frames, the server repeated the held buttons, and corrections ran 268 a minute at 0 ms. A machine below 60 fps will see the same.
+- A restart has to travel as a message: the slice's host read F's *press*, and a tap released inside one frame never shows as interact held in any command. The lab caught it.
+- Lag grace (150 ms) now covers every player, solo included; in the slice the host had none. Whether enemy hits feel late solo is a gate question.
+- About 115 KB/s a player as msgpack (a snapshot is 5.3 KB as JSON for four players): under the 170 KB/s the plan feared.
+
+**Next**
+
+- Michael's T1 gate: side by side with the slice on his desktop, solo on the hosted build feels the same (movement, the chains at 0.25×, hit feel, the look, the sound); then two players through a run with no snap. Watch for: hits on you landing late solo (lag grace), and small eases in a fight.
+- T2, netcode from the lab: the combat corrections, the cushion at low frame rates, the lossy row's holds.
+
 ## 2026-10-27: local session, step 1 played; the slice moves over whole
 
 **What changed**
