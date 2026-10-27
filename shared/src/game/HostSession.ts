@@ -14,10 +14,11 @@ import { PORTAL_HOLD_S, partyOnPortal, portalFor, type PortalState } from './por
  * The input slots' numbers (inputSlots.ts). The cushion starts at the slice's coop.inputBufferTicks;
  * it widens to cover late inputs up to a quarter of a second, the TCP retransmit a lossy link costs
  * (200 ms) and a little; a player silent for 300 ms has stalled rather than lagged; the held
- * buttons let go after the slice's 15 ticks; and five calm seconds narrow the cushion by a tick.
+ * buttons let go after the slice's 15 ticks; five calm seconds narrow the cushion by a tick; and
+ * more than four waiting beyond the cushion are used up at once, as the slice's host folded them.
  */
 export function slotConfig(): SlotConfig {
-  return { baseCushion: Math.max(1, Math.round(tuning.coop.inputBufferTicks)), maxCushion: 15, maxGuess: 18, staleTicks: 15, calmTicks: 300, maxQueued: 120 };
+  return { baseCushion: Math.max(1, Math.round(tuning.coop.inputBufferTicks)), maxCushion: 15, maxGuess: 18, staleTicks: 15, calmTicks: 300, maxQueued: 120, maxExtra: 4 };
 }
 
 /** How the host's messages leave: to one peer, or to every peer when `peer` is omitted. */

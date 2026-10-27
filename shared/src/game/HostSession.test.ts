@@ -162,6 +162,20 @@ describe('the input slots (T2: each input at its own tick, behind a cushion)', (
     expect(player('p1').x).toBeGreaterThan(x0);
   });
 
+  it('a server running slower than the player never lets the inputs back up past the cushion and a few', () => {
+    // The player sends by the wall clock; the server, overloaded, ticks three times for every four inputs.
+    let seq = 0;
+    for (let t = 0; t < 600; t++) {
+      const n = t % 3 === 0 ? 2 : 1;
+      input('a', seq + 1, seq + n, () => cmd({ moveZ: -1 }));
+      seq += n;
+      host.tick();
+    }
+    const s = host.slotsOf('a')!;
+    expect(seq - host.ackOf('a')).toBeLessThanOrEqual(s.cushion + cfg.maxExtra + 2);
+    expect(s.stats.folded).toBeGreaterThan(100);
+  });
+
   it('narrows the cushion again after a calm spell', () => {
     const s = host.slotsOf('a')!;
     let seq = 0;

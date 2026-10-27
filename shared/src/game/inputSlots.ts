@@ -36,6 +36,8 @@ export interface SlotConfig {
   calmTicks: number;
   /** Inputs a player may have waiting; past this the oldest go (a flood, not a player). */
   maxQueued: number;
+  /** Inputs waiting beyond the cushion before the excess is used up at once (the slice folded past four). */
+  maxExtra: number;
 }
 
 export interface Slots {
@@ -59,7 +61,7 @@ export interface Slots {
   /** Ticks since a late arrival. */
   calm: number;
   /** Counters for tests and the lab. */
-  stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number; resynced: number };
+  stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number; resynced: number; folded: number };
 }
 
 export function createSlots(cfg: SlotConfig): Slots {
@@ -74,7 +76,7 @@ export function createSlots(cfg: SlotConfig): Slots {
     carry: null,
     quiet: 0,
     calm: 0,
-    stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0, resynced: 0 },
+    stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0, resynced: 0, folded: 0 },
   };
 }
 
@@ -122,6 +124,17 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     return withCarry(s, s.last);
   }
   s.calm++;
+  // More waiting than the cushion and a few more: a server running slower than wall time (an
+  // overloaded machine) while the player sends by the wall clock. Use the excess this tick, as the
+  // slice's host folded anything past four, keeping every press; left alone it grows without bound
+  // and every input lands later and later (CI found it: 0.6 s late, a bot running past its mark).
+  while (s.queue.length > s.cushion + cfg.maxExtra && s.queue[0].seq === s.next) {
+    const a = s.queue.shift()!;
+    s.ack = a.seq;
+    s.next = a.seq + 1;
+    s.carry = s.carry ? mergePresses(s.carry, a.cmd) : a.cmd;
+    s.stats.folded++;
+  }
   if (s.calm >= cfg.calmTicks && s.cushion > cfg.baseCushion && s.queue.length > cfg.baseCushion && s.queue[0].seq === s.next) {
     // A calm spell: narrow by one, using two inputs this tick (their presses kept).
     const a = s.queue.shift()!;
