@@ -5,6 +5,7 @@ import { arena } from '@hearthgate/shared/level/arena';
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { applyLoadout } from '@hearthgate/shared/sim/coop';
+import { separateBodies } from '@hearthgate/shared/sim/enemies';
 import { stepPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { createSimState } from '@hearthgate/shared/sim/world';
@@ -17,6 +18,13 @@ import { isPredictedFor, withoutPresses, type Blend, type Session } from '@heart
  * from 2 cm since Phase 0, so the numbers compare across the transplant. Smaller ones still ease out.
  */
 const CORRECTION_M = 0.02;
+
+/** A hero's plain fields (numbers, strings, booleans), for the lab's diagnosis. */
+function scalars(p: PlayerState): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(p)) if (v === null || typeof v !== 'object') out[k] = v;
+  return out;
+}
 
 /** The clock's numbers, read from tuning each time so the panel tunes them live. */
 function clockConfig(): ClockConfig {
@@ -58,6 +66,8 @@ export interface PredictionStats {
   bigBySwing: number;
   bigByHit: number;
   bigOther: number;
+  /** Over 2.5 m, or going from down to standing: the server placed the hero (a restart, a revive, the gate), not the network. */
+  bigPlaced: number;
   /** Sum of every correction (m), for the mean. */
   sumCorrection: number;
 }
@@ -106,9 +116,18 @@ export class ClientSession implements Session {
   private clockWall = performance.now();
   /** What to draw before the first snapshot: the empty arena. */
   private readonly empty: SimState;
-  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0 };
+  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0, bigPlaced: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
+  /**
+   * The lab's diagnosis of big corrections (off unless set to an array): for each one over 10 cm, the
+   * hero's fields where the server, at the acked input, differs from this browser's prediction of
+   * that same input, and the command the input carried.
+   */
+  diag: { at: number; seq: number; size: number; modes: (string | undefined)[]; diffs: Record<string, [unknown, unknown]>; cmd: PlayerCommand | null }[] | null = null;
+  private diagPred = new Map<number, Record<string, unknown>>();
+  /** Predict enemies pushing the hero (T2); the lab turns it off with --no-shove to measure what it buys. */
+  predictBodies = true;
 
   constructor(
     private readonly world: World,
@@ -187,6 +206,7 @@ export class ClientSession implements Session {
       this.outgoing.push(sc);
       this.prevMe = structuredClone(this.me);
       this.predictTick(tickCmd, step);
+      if (this.diag) this.diagPred.set(sc.seq, scalars(this.me));
       // Our own swings, shots, spells and melee contact play now, not a round trip later.
       for (const ev of this.pred.events) if (isPredictedFor(ev, this.localId)) events.push(ev);
       this.accumulator -= step;
@@ -238,6 +258,9 @@ export class ClientSession implements Session {
     pred.events = [];
     const w = pred.run.gateClosed ? this.world : { ...this.world, colliders: this.world.collidersOpen };
     stepPlayer(this.me!, cmd, step, w, pred);
+    // The server pushes heroes out of enemy bodies in the enemy step, which prediction never runs:
+    // push against the enemies as the last snapshot had them, or every brush with one is a correction (T2).
+    if (this.predictBodies) for (const e of pred.enemies) if (e.ai !== 'dead') separateBodies(e, this.me!);
     pred.time += step;
   }
 
@@ -322,6 +345,7 @@ export class ClientSession implements Session {
 
     // Reconcile: restart from the server's version of our hero and replay what it hasn't seen.
     const ack = acks[this.localId] ?? 0;
+    const ackedCmd = this.diag ? (this.history.find((h) => h.seq === ack)?.cmd ?? null) : null;
     this.history = this.history.filter((h) => h.seq > ack);
     const base = structuredClone(s);
     const mine = base.players.find((p) => p.id === this.localId);
@@ -331,7 +355,13 @@ export class ClientSession implements Session {
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
-    for (const h of this.history) this.predictTick(h.cmd, 1 / tuning.sim.tickRate);
+    const serverMine = this.diag ? scalars(mine) : null;
+    const predAtAck = this.diag ? this.diagPred.get(ack) : undefined;
+    if (this.diag) for (const k of this.diagPred.keys()) if (k <= ack) this.diagPred.delete(k);
+    for (const h of this.history) {
+      this.predictTick(h.cmd, 1 / tuning.sim.tickRate);
+      if (this.diag) this.diagPred.set(h.seq, scalars(mine));
+    }
     // Replayed hits mustn't count XP twice; the server's number is the truth.
     mine.xp = xp;
     base.events = [];
@@ -343,9 +373,16 @@ export class ClientSession implements Session {
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
         if (size > 0.1) {
           this.stats.bigCorrections++;
-          if (modes.some((m) => m === 'attack' || m === 'ability')) this.stats.bigBySwing++;
+          if (size > 2.5 || (modes[0] === 'down' && modes[1] !== 'down')) this.stats.bigPlaced++;
+          else if (modes.some((m) => m === 'attack' || m === 'ability')) this.stats.bigBySwing++;
           else if (modes.some((m) => m === 'hurt' || m === 'down')) this.stats.bigByHit++;
           else this.stats.bigOther++;
+          if (this.diag && serverMine && predAtAck) {
+            const diffs: Record<string, [unknown, unknown]> = {};
+            for (const k of Object.keys(serverMine)) if (serverMine[k] !== predAtAck[k]) diffs[k] = [predAtAck[k], serverMine[k]];
+            this.diag.push({ at: s.time, seq: ack, size, modes, diffs, cmd: ackedCmd });
+            if (this.diag.length > 200) this.diag.shift();
+          }
         }
         this.stats.sumCorrection += size;
       }
