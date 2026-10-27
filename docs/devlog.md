@@ -23,11 +23,12 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 - The slice's queue already counted ticks roughly right on a lossy link (repeating held buttons, then folding the burst), but every press and key change in the gap landed ticks from the prediction. Standing in for each missing input and acking it keeps the count exact; widening the cushion after the first retransmit means later ones fit, at the cost of the player's actions reaching the server up to a quarter of a second later on that link.
 - One 60-second row is noisy here: the same 0 ms row read 77 and 120 corrections a minute over 2 cm. Compare rows over several runs before calling a change.
-- On a clean link the over-10 cm count (14 to 16 at 0 ms) is above the gate's 8. These are no longer the network: they are the swing's lunge and turn (decision A) where the enemy has moved more than 10 cm between the snapshot and the server's tick.
+- On a clean link the over-10 cm count (14 to 16 at 0 ms) was above the gate's 8. I first put it down to the swing's lunge and turn (decision A); the lab now splits each by what the hero was doing, and that was wrong: with Bravo fighting, the rows read 8 / 5 / 3 over 10 cm at 0 / 50 / 150 ms and 4 lossy, and at 0 ms 6 of the 8 were neither a swing nor a hit taken (50 ms: 3 of 5; 150 ms: 1 of 3).
 
 **Next**
 
-- T2's gate is not met at 0 ms (over 10 cm: 14 to 16 against 8). Michael's call: count only network corrections (leave the swing's out of the gate), or reopen decision A as B.
+- T2: what the 0 ms row's remaining big corrections are (neither swing nor hit: a dodge, a jump or a stall are the candidates). With Bravo fighting the rows are near the gate (8 / 5 / 3 against 8 / 3 / 1), but rows with a fighting Bravo are not comparable with the earlier ones.
+- The lab's bot pair cannot finish a run (5 minutes on the hosted build with Bravo fighting: 8 runs, none won, 0 network snaps), so the T1 gate's two-players-through-a-run needs two people.
 - The lab against the hosted build once #68 ships, for the real link.
 - Bandwidth stays (about 117 KB/s a player).
 
