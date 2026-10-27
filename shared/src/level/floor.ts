@@ -1,7 +1,8 @@
 import type { LevelDef, Surface, World } from './arena';
 import type { Collider } from './geometry';
 import { generateFloor, pieceBounds, type FloorDef, type FloorSpec, type Piece } from './generate';
-import { CELL, DOOR_H, DOOR_W, KIT, LANDING, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
+import { checkDungeon } from './handmade';
+import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
  * A generated floor as a level (T4): the generator's pieces (generate.ts) turned into what the
@@ -64,7 +65,11 @@ export interface FloorLayout {
 
 /** The floor generated from a spec, as a level the sim runs. */
 export function floorLevel(spec: FloorSpec): LevelDef {
-  return levelFromFloor(generateFloor(spec));
+  if (!spec.hand) return levelFromFloor(generateFloor(spec));
+  // A hand-built floor was checked before its room was made; one that fails here was never sent.
+  const checked = checkDungeon(spec.hand, spec.floor, spec.floors);
+  if (!checked.def) throw new Error(`not a playable dungeon: ${checked.errors.join(' ')}`);
+  return levelFromFloor(checked.def);
 }
 
 /** Facing into the piece from a wall on this side (yaw 0 faces +z, the slice's convention). */
@@ -82,6 +87,10 @@ export function levelFromFloor(def: FloorDef): LevelDef {
   };
   const reach = Math.max(Math.abs(bounds.minX), Math.abs(bounds.maxX), Math.abs(bounds.minZ), Math.abs(bounds.maxZ));
   const entrance = pieces[def.entrance];
+  // The entrance's back wall (south, unturned) is behind the party; they face into the floor.
+  const back = rotSide('s', def.pieces[def.entrance].rot);
+  const ahead = SIDE_DIR[OPPOSITE[back]];
+  const mid = { x: (entrance.inner.minX + entrance.inner.maxX) / 2, z: (entrance.inner.minZ + entrance.inner.maxZ) / 2 };
   return {
     floorSize: Math.ceil(reach * 2),
     wallHeight: WALL_H,
@@ -98,8 +107,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     torches: [],
     braziers: [],
     banners: [],
-    // The entrance's back wall is south; the party faces north into the floor.
-    spawn: { x: (entrance.inner.minX + entrance.inner.maxX) / 2, z: entrance.inner.maxZ - 2.5, yawDeg: 180 },
+    spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
     dungeon: { def, pieces, torches, bounds },
   };
 }
