@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T4b: the dungeon editor
+
+**What changed**
+
+- Michael on T4: the screenshots were as expected; the rest room's rings stay open on arrival ("you should be able to skip rooms and rush the dungeon"). On T4b: dungeons saved in the browser plus an exported file committed to the repo, and Keeper Wren picks where the ring leads (decisions.md).
+- **Hand-built dungeons** (`shared/src/level/handmade.ts`): a layout is its placements only (piece, cell, turn, height). `checkDungeon` joins facing doorways at one height as the generator does and says in words what keeps a layout from play (no entrance, no way out, overlaps, a piece cut off; notes for walled-up doorways and ones that meet at another height). `FloorSpec.hand` carries one, so it plays through the floor code T4 built. A run can start on one: ending at the Warden's hall it is that floor alone; ending in a rest room its deeper ring goes on into generated floors. The Old Cellar (9 pieces, a staircase up, three fight rooms) ships in `shared/src/level/dungeons/`.
+- **The editor** (`client/editor.html`, `client/src/editor/`): a top-down grid with a ghost of the chosen piece at the cursor, its doorways green where they would join a neighbour and amber where one meets it at another height. Keyboard first (arrows or WASD, Q/E or 1 to 0, R, Z/X, Space, Backspace, F copies the piece under the cursor, U undo, Ctrl+S, P plays), the same on a gamepad, the mouse as an extra; 48 px buttons. Checked as it changes. Saved in the browser (a draft too, so a refresh keeps the work); Export and Import files; Play opens the game on `?floor&play&hand=NAME`. The title screen has a Dungeon editor button.
+- **Keeper Wren**: F says where the ring opens; F again while she speaks turns it. A `destination` message, checked whole on the server; the ring carries a label (the dungeon's name, Deeper, Home) drawn over it. Protocol 5.
+- **Tests**: 7 unit tests (check 58); `test:net` asks Wren for The Old Cellar, has a broken layout refused, and walks the floor with two bots; browser smoke 6/6, the editor built by keys alone, saved and played, and Wren turning the ring. Parity identical.
+
+**Learned**
+
+- Joining doorways by facing sockets made the hand-built and generated floors one format: nothing downstream of `FloorDef` had to change.
+- A synthetic keydown on `window` reaches the game's keyboard, so the browser can be driven for screenshots without the mouse capture.
+
+**Next**
+
+- Michael: approve #71 (T4), then this PR; build a dungeon in the editor, play it, and take it through Wren with a friend. Export the ones worth keeping; committed to `shared/src/level/dungeons/` they ship.
+- T5, party rules and the Phase 1 gate.
+
 ## 2026-10-27: local session, T4: the dungeon generator
 
 **What changed**
