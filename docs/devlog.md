@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, the combat port's step 1 finished (camera and keys)
+
+**What changed**
+
+- The camera is the combat slice's orbit camera (`client/src/orbit.ts`), centred behind the hero. It sphere-casts from a pivot 1.7 m up to the eye against the level's walls, roofs and the ground (`shared/src/geometry.ts`, the slice's cast on boxes), eases in early on a wider probe and on a cast where a fast swing is heading, and when the walls would bring it inside 1.5 m it cranes up over the hero instead. Pitch runs from 30 degrees below the pivot to 60 above, the bow's lock swings it round and pulls the look point toward the target, and a sprint widens the view by 5 degrees. Its numbers are `tuning.camera` and `tuning.lockOn`, so the panel tunes it. Hearthgate's swing in behind the travel is gone: with strafe movement the hero faces the camera, so there is no travel to swing behind. The old camera's helpers left `shared/src/camera.ts`; `CAMERA` keeps only the shot the art tools frame and the wall fade's aim height.
+- Input goes through the slice's action layer (`client/src/input/`, decision 10A): Ctrl dodge, Space jump, Shift sprint, left click or J attack, right click or L guard, Q and E the two ability slots, Tab or the middle button lock-on, F talks and uses the Revive Draught, WASD moves, the arrows turn the camera (Up still raises the eye; the mouse and the right stick tilt the usual way). The gamepad is the slice's: X attack, Y jump, B dodge, A interact, LB and RB the abilities, LT guard, L3 sprint, R3 lock-on. 1, 2 and 3 do nothing until step 3's weapon swap. The HUD's hints and slot keys say so.
+- Ctrl is the dodge and Ctrl+W (dodge while running forward) closes a tab, which no page may stop, so a real join asks before leaving, as the slice did; other Ctrl shortcuts are stopped while playing. Scripted joins (tests, the lab) skip the question.
+
+**Learned**
+
+- Backed flat against a wall the camera cranes nearly overhead (up to 85 degrees), the slice's behaviour, and eases back out as the hero steps away. It never enters a wall: `camera.e2e` backs into the yard's east wall at 20 degrees below the pivot and checks fifty frames that the eye is outside every wall and that no wall stands between it and the head; with the walls left out of the camera the same test fails with the eye inside the wall.
+- The browser pane's page runs about one frame a second while the pane is hidden, so camera feel cannot be judged there; the headless browser suite runs at full rate.
+- Checks: `npm run check` 229 (the old camera's seven tests out, three for the sphere cast in), `test:net` every step, the browser suite 20/20.
+
+**Next**
+
+- Step 1's gate, Michael's: run round the Warrens on the hosted build once the branch is approved and merged; it should feel like the slice, the camera never clips, the panel tunes it live, keyboard-only works, and the lab is no worse. The lab against the hosted build goes with it.
+- Then step 2, the sword's combat.
+
 ## 2026-10-26: local session, the combat port begins (step 1, part one)
 
 **What changed**
