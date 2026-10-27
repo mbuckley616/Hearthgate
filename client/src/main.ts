@@ -45,6 +45,7 @@ import { Net, type Pose } from "./net";
 import { View } from "./render";
 import { Hud } from "./hud";
 import { Sound } from "./sound";
+import { DebugPanel } from "./debug";
 
 /**
  * Phase 1: the party starts in the village (the greybox town), takes the portal into the
@@ -73,6 +74,12 @@ const view = new View(app);
 const input = new Input();
 const net = new Net();
 const sound = new Sound();
+// The live tuning panel (backtick): edits go through the server so every client steps the same numbers.
+const panel = new DebugPanel((edit) => net.sendTuning(edit));
+net.onTuning(() => panel.refresh());
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Backquote" && !e.repeat) panel.toggle();
+});
 // The villager prompt is a button too (a tap, for the touch layout to come): the same press as E.
 const hud = new Hud(document.getElementById("hud")!, () => input.pressUse());
 

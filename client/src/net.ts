@@ -8,6 +8,9 @@ import {
   TICK_MS,
   onTick,
   tuning,
+  applyTuning,
+  resetTuning,
+  type TuningEdit,
   VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
@@ -191,6 +194,7 @@ export class Net {
   private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
+  private tuningListeners: (() => void)[] = [];
   private listeners: EventListener[] = [];
   private handoffListeners: HandoffListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -307,11 +311,29 @@ export class Net {
       this.rttMs = this.rttMs === 0 ? rtt : this.rttMs * 0.8 + rtt * 0.2;
       addClockSample(this.clock, m.sentAt, now, m.serverTime);
     });
+    // The server's tuning, whole: every value back to its default, then the edits on top, so a
+    // value someone reset reaches us too. Prediction steps these from the next frame.
+    room.onMessage("tuning", (edits: unknown) => {
+      if (!Array.isArray(edits)) return;
+      resetTuning();
+      for (const e of edits) applyTuning(e);
+      for (const l of this.tuningListeners) l();
+    });
     room.onLeave(() => {
       if (this.room === room) this.connected = false;
     });
 
     this.ping();
+  }
+
+  /** Called when the server's tuning arrives (the debug panel redraws its sliders). */
+  onTuning(listener: () => void) {
+    this.tuningListeners.push(listener);
+  }
+
+  /** A debug panel edit: to the server, which checks it and sends it back to everyone. */
+  sendTuning(edit: TuningEdit) {
+    this.room?.send("tune", edit);
   }
 
   /** Pings quickly at first so the clock has a few samples within a second, then once a second. */
