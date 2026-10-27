@@ -574,8 +574,20 @@ export const tuning = {
     inputBufferTicks: 2,
     /** The host sends a snapshot every this many ticks (2 = 30 per second). */
     snapshotEveryTicks: 2,
-    /** Joiners draw everything but their own hero this far in the past, between snapshots. */
+    /**
+     * Joiners draw everything but their own hero this far in the past, between snapshots: the
+     * whole delay on a clean link. On a late or lossy one it grows to what the worst recent
+     * snapshot needed, up to interpDelayMaxMs (shared/src/net/clock.ts, T2).
+     */
     interpDelayMs: 80,
+    /** Capped by lagGraceMs as well, so an enemy is never drawn later than the grace that keeps a dodge fair. */
+    interpDelayMaxMs: 200,
+    /** The server clock is the least-delayed snapshot in this window; the delay follows its longest wait. */
+    clockWindowMs: 20000,
+    /** Fastest the drawn clock and the delay move, ms per second, so the drawn world never skips. */
+    clockSlewMsPerS: 10,
+    /** A clock this far off is taken at once (the first snapshot, a tab that slept). */
+    clockSnapMs: 250,
     /** When a snapshot disagrees with a joiner's prediction, the visible hero eases over this long. */
     correctionBlendMs: 120,
     /** Debug: fake one-way network delay added to every message this browser sends. */
@@ -896,6 +908,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'coop.snapshotEveryTicks': [1, 6, 1],
   'coop.inputBufferTicks': [0, 8, 1],
   'coop.interpDelayMs': [0, 300, 5],
+  'coop.interpDelayMaxMs': [0, 500, 10],
+  'coop.clockWindowMs': [1000, 60000, 1000],
+  'coop.clockSlewMsPerS': [1, 100, 1],
+  'coop.clockSnapMs': [50, 1000, 10],
   'coop.correctionBlendMs': [0, 500, 10],
   'coop.fakeLatencyMs': [0, 300, 5],
   'combos.windowMs': [0, 6000, 100],

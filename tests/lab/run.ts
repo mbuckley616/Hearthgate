@@ -70,6 +70,11 @@ const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
 const WARMUP_S = Number(argOf("--warmup") ?? 10);
 /** Slows Alpha's page by this factor (CDP CPU throttling) to see what a low frame rate does to the numbers. */
 const CPU_THROTTLE = Number(argOf("--cpu-throttle") ?? 1);
+/** --tune path=value (repeatable): tuning edits Alpha sends through the server once in the fight, to test one cause at a time. */
+const TUNES = args.flatMap((a, i) => (a === "--tune" ? [args[i + 1]] : [])).map((t) => {
+  const [path, raw] = t.split("=");
+  return { path, value: raw === "true" ? true : raw === "false" ? false : Number(raw) };
+});
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -152,7 +157,7 @@ function recorder(watchId: string | null) {
     const s = window.game.session;
     if (id === null) {
       const m = window.__probe.me();
-      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection]);
+      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection, s.stats.bigCorrections]);
     } else {
       const p = window.__probe.other(id);
       if (p) window.__lab.push([Date.now(), p.x, p.z]);
@@ -193,6 +198,8 @@ interface Row {
   /** Mean and largest correction (m): eased over coop.correctionBlendMs, so a few cm do not show. */
   correction_mean_m: number;
   correction_max_m: number;
+  /** Corrections over 10 cm a minute. */
+  big_per_min: number;
   snaps: number;
   placed_snaps: number;
   walked_m_per_min: number;
@@ -200,6 +207,8 @@ interface Row {
   holds_per_min: number;
   view_lag_ms: number;
   view_gap_m: number;
+  /** How far behind the server Bravo draws everyone else at the end (the adaptive delay, T2). */
+  draw_delay_ms: number;
   in_flight_ms: number;
   kb_per_s_per_player: number;
   downs: number;
@@ -240,6 +249,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     await b.goto(`${CLIENT_BASE}/?join=${code}&${server}`);
     await until(async () => (await info(b)).playing && (await info(a)).players === 2, 20000, "Bravo joined");
     for (const p of [a, b]) await p.evaluate(PROBE);
+    for (const t of TUNES) await a.evaluate(`window.game.session.request({ k: "tune", edit: ${JSON.stringify(t)} })`);
 
     // Into the arena together: the run starts when both are through the gate.
     let runs = 0;
@@ -332,6 +342,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const fps = (track: number[][]) => (track.length > 1 ? Math.round(((track.length - 1) / ((track[track.length - 1][0] - track[0][0]) / 1000)) * 10) / 10 : 0);
     const trueTrack = (await a.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
     const seen = (await b.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
+    const drawDelay = (await b.evaluate("window.game.session.drawDelayMs")) as number;
 
     // How far behind does Bravo draw Alpha? The lag that best lines the two tracks up.
     const trueAt = (t: number) => {
@@ -421,6 +432,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       corrections_per_min: Math.round(cpm * 10) / 10,
       correction_mean_m: corr > 0 ? Math.round(((last[8] - first[8]) / corr) * 1000) / 1000 : 0,
       correction_max_m: Math.round(last[9] * 100) / 100,
+      big_per_min: Math.round(((last[10] - first[10]) / minutes) * 10) / 10,
       snaps,
       placed_snaps: placedSnaps,
       walked_m_per_min: Math.round(walked / minutes),
@@ -428,6 +440,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       holds_per_min: Math.round((holds / minutes) * 10) / 10,
       view_lag_ms: viewLag,
       view_gap_m: Math.round(bestGap * 100) / 100,
+      draw_delay_ms: Math.round(drawDelay),
       in_flight_ms: Math.round(((inFlight / Math.max(1, trueTrack.length - 1)) * 1000) / 60),
       kb_per_s_per_player: proxy ? Math.round((proxy.bytesDown() - bytes0) / 1024 / 2 / ((Date.now() - wall0) / 1000)) : 0,
       downs,
@@ -474,7 +487,7 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (mean ${row.correction_mean_m} m, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
       );
       for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, jumped ${m.jump_m} m`);
       for (const e of row.page_errors.slice(0, 3)) console.log(`  page error: ${e}`);

@@ -8,6 +8,7 @@ import { applyLoadout } from '@hearthgate/shared/sim/coop';
 import { stepPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { createSimState } from '@hearthgate/shared/sim/world';
+import { addArrivalSample, createClockSync, remoteTimeAt, type ClockConfig, type ClockSync } from '@hearthgate/shared/net/clock';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
 import { isPredictedFor, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
 
@@ -16,6 +17,21 @@ import { isPredictedFor, withoutPresses, type Blend, type Session } from '@heart
  * from 2 cm since Phase 0, so the numbers compare across the transplant. Smaller ones still ease out.
  */
 const CORRECTION_M = 0.02;
+
+/** The clock's numbers, read from tuning each time so the panel tunes them live. */
+function clockConfig(): ClockConfig {
+  const c = tuning.coop;
+  return {
+    windowMs: c.clockWindowMs,
+    slewMsPerS: c.clockSlewMsPerS,
+    snapMs: c.clockSnapMs,
+    intervalMs: (Math.max(1, Math.round(c.snapshotEveryTicks)) * 1000) / tuning.sim.tickRate,
+    baseMs: c.interpDelayMs,
+    // Never later than the lag grace: hits on you wait coop.lagGraceMs so a dodge that was on time on
+    // your screen counts, and an enemy drawn later than that would eat the grace (the lab, T2).
+    maxMs: Math.max(c.interpDelayMs, Math.min(c.interpDelayMaxMs, c.lagGraceMs)),
+  };
+}
 
 interface Snapshot {
   s: SimState;
@@ -32,6 +48,8 @@ export interface PredictionStats {
   snaps: number;
   /** Largest correction so far (m). */
   maxCorrection: number;
+  /** Corrections over 10 cm, the ones a player might see through the ease (decisions.md, 27 Oct, T2). */
+  bigCorrections: number;
   /** Sum of every correction (m), for the mean. */
   sumCorrection: number;
 }
@@ -66,8 +84,8 @@ export class ClientSession implements Session {
   private history: SeqCommand[] = [];
   private outgoing: SeqCommand[] = [];
   private accumulator = 0;
-  /** Server sim time minus the local clock (s), smoothed. */
-  private offset: number | null = null;
+  /** The server's clock on the least-delayed path, and the delay to draw behind it (T2: it adapts to late snapshots). */
+  private sync: ClockSync = createClockSync(clockConfig());
   /** Host events, released when the drawn time reaches them. */
   private inbox: { t: number; ev: SimEvent }[] = [];
   /** Visual-only offset that eases out prediction corrections. */
@@ -80,7 +98,7 @@ export class ClientSession implements Session {
   private clockWall = performance.now();
   /** What to draw before the first snapshot: the empty arena. */
   private readonly empty: SimState;
-  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0 };
+  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
 
@@ -223,7 +241,12 @@ export class ClientSession implements Session {
   }
 
   private renderTime(): number {
-    return this.clock + (this.offset ?? 0) - tuning.coop.interpDelayMs / 1000;
+    return remoteTimeAt(this.sync, clockConfig(), this.clock * 1000) / 1000;
+  }
+
+  /** How far behind the server everyone else is drawn now, ms. */
+  get drawDelayMs(): number {
+    return this.sync.delay;
   }
 
   private releaseInbox(): SimEvent[] {
@@ -282,10 +305,8 @@ export class ClientSession implements Session {
     if (this.snaps.length > 12) this.snaps.shift();
     this.stats.snapshots++;
 
-    // Track the server's clock: jump on big changes (a stall), otherwise drift gently.
-    const sample = s.time - now;
-    if (this.offset === null || Math.abs(sample - this.offset) > 0.25) this.offset = sample;
-    else this.offset += (sample - this.offset) * 0.05;
+    // Track the server's clock on its least-delayed snapshots (clock.ts): a late one cannot drag it later.
+    addArrivalSample(this.sync, clockConfig(), now * 1000, s.time * 1000);
 
     // Server events wait until the drawn world catches up with them, so effects line up with what's on screen.
     for (const ev of events) if (!isPredictedFor(ev, this.localId)) this.inbox.push({ t: s.time, ev });
@@ -311,6 +332,7 @@ export class ClientSession implements Session {
       if (size > CORRECTION_M) {
         this.stats.corrections++;
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
+        if (size > 0.1) this.stats.bigCorrections++;
         this.stats.sumCorrection += size;
       }
       this.err.x += d.x;
