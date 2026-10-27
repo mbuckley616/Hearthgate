@@ -1,34 +1,57 @@
-import { STYLES, type Style } from '@hearthgate/shared/config/tuning';
-import type { Profile } from '../game/Profile';
-import {
-  GEAR_SLOTS,
-  LEVEL_UNLOCKS,
-  PERK_TEXT,
-  SLOT_LABELS,
-  levelFor,
-  levelProgress,
-  maxLevel,
-  statText,
-  type Item,
-} from '@hearthgate/shared/sim/gear';
+import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
+import { LEVEL_UNLOCKS, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
+import type { ActionFrame } from '../input/actions';
+import type { Profile } from '../game/Profile';
+import { gearLine, nameOf } from './gearText';
 
-const HERO_NAMES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
+/** The weapon kinds, by the style each fights with (one hero, any weapon: T5). */
+const STYLE_NAMES: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
+/** Where each worn slot sits on the silhouette (column, row), as RuneScape lays out its body. */
+const BODY_AT: Record<BodySlot, [number, number]> = {
+  head: [1, 0],
+  cape: [0, 1],
+  neck: [1, 1],
+  weapon: [0, 2],
+  body: [1, 2],
+  shield: [2, 2],
+  legs: [1, 3],
+  hands: [0, 4],
+  feet: [1, 4],
+  ring: [2, 4],
+};
+/** The bag is four across, seven down, to the right of the body. */
+const BAG_COLS = 4;
+const BAG_LEFT = 4;
 
-function itemHtml(item: Item): string {
-  const perk = item.perk ? `<div class="item-perk">${PERK_TEXT[item.perk]}</div>` : '';
-  return `<div class="item-name ${item.rarity}">${item.name}</div><div class="item-stat">${statText(item.stat, item.slot)}</div>${perk}`;
+/** A place the cursor can be: a worn slot or a bag space. */
+type Cell = { area: 'worn'; slot: BodySlot; col: number; row: number } | { area: 'bag'; space: number; col: number; row: number };
+
+function cells(): Cell[] {
+  const out: Cell[] = BODY_SLOTS.map((slot) => ({ area: 'worn' as const, slot, col: BODY_AT[slot][0], row: BODY_AT[slot][1] }));
+  for (let i = 0; i < 28; i++) out.push({ area: 'bag', space: i, col: BAG_LEFT + (i % BAG_COLS), row: Math.floor(i / BAG_COLS) });
+  return out;
 }
 
+const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+
 /**
- * The between-runs screen (brief: "one equip screen between runs"): each
- * hero's level and what's next, the equipped slots, and everything found.
- * Mouse-driven for now.
+ * The bag and the body (T5b; decisions.md 27 Oct): what the hero wears on RuneScape's ten slots, the
+ * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
+ * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
+ * wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
+ * between fights (I, or View on a pad), on a floor between rooms as well.
  */
 export class EquipScreen {
   private root = document.createElement('div');
   private body = document.createElement('div');
   private tab: 'gear' | 'talents' = 'gear';
+  private readonly grid = cells();
+  private cursor = 0;
+  /** Seconds until a held direction moves the cursor again. */
+  private repeat = 0;
+  private lastDir = '';
   visible = false;
 
   constructor(
@@ -40,7 +63,7 @@ export class EquipScreen {
     card.className = 'equip-card';
     const head = document.createElement('div');
     head.className = 'equip-head';
-    head.innerHTML = '<h2>Heroes</h2><span>I or Esc to close</span>';
+    head.innerHTML = '<h2>Your hero</h2><span>I, Esc or View to close</span>';
     card.append(head, this.body);
     this.root.appendChild(card);
     this.root.addEventListener('click', (e) => this.onClick(e));
@@ -58,12 +81,79 @@ export class EquipScreen {
     this.setVisible(!this.visible);
   }
 
+  /**
+   * Keys and pad while the screen is up (Game hands it the frame's actions and keeps the hero
+   * still): move to choose, interact to wear or take off, ability 1 to drop, the style keys for tabs.
+   */
+  handle(actions: ActionFrame, dt: number): void {
+    if (!this.visible) return;
+    if (actions.pressed.has('style1')) this.setTab('gear');
+    if (actions.pressed.has('style2')) this.setTab('talents');
+    if (this.tab !== 'gear') return;
+    const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
+    const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
+    const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
+    if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
+      this.step(dir);
+      this.repeat = dir === this.lastDir ? 0.12 : 0.35;
+    }
+    this.repeat -= dt;
+    this.lastDir = dir;
+    if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
+    if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+  }
+
+  private setTab(tab: 'gear' | 'talents'): void {
+    this.tab = tab;
+    this.render();
+  }
+
+  /** Move the cursor to the nearest cell that way. */
+  private step(dir: string): void {
+    const at = this.grid[this.cursor];
+    const [dx, dy] = dir === 'left' ? [-1, 0] : dir === 'right' ? [1, 0] : dir === 'up' ? [0, -1] : [0, 1];
+    let best = -1;
+    let bestScore = Infinity;
+    this.grid.forEach((c, i) => {
+      const ox = c.col - at.col;
+      const oy = c.row - at.row;
+      const along = ox * dx + oy * dy;
+      if (along <= 0) return;
+      const score = along + Math.abs(dx ? oy : ox) * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    });
+    if (best >= 0) {
+      this.cursor = best;
+      this.render();
+    }
+  }
+
+  private use(c: Cell): void {
+    if (c.area === 'bag') this.profile.wear(c.space);
+    else this.profile.takeOff(c.slot);
+    this.onChange();
+    this.render();
+  }
+
+  private drop(c: Cell): void {
+    if (c.area !== 'bag' || !this.profile.data.bag[c.space]) return;
+    this.profile.drop(c.space);
+    this.render();
+  }
+
   private onClick(e: MouseEvent): void {
     const el = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
     if (!el) return;
-    const { action, uid, slot, style, talent } = el.dataset;
-    if (action === 'equip' && uid) this.profile.equip(uid);
-    if (action === 'unequip' && slot) this.profile.unequip(slot as Item['slot']);
+    const { action, cell, style, talent } = el.dataset;
+    if (action === 'cell' && cell !== undefined) {
+      const i = Number(cell);
+      if (i === this.cursor) this.use(this.grid[i]);
+      this.cursor = i;
+    }
+    if (action === 'drop') this.drop(this.grid[this.cursor]);
     if (action === 'tab') this.tab = el.dataset.tab === 'talents' ? 'talents' : 'gear';
     if (action === 'rankUp' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, 1);
     if (action === 'rankDown' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, -1);
@@ -72,67 +162,77 @@ export class EquipScreen {
     this.render();
   }
 
+  private itemAt(c: Cell): GearItem | null {
+    return c.area === 'bag' ? this.profile.data.bag[c.space] : (this.profile.data.worn[c.slot] ?? null);
+  }
+
   private render(): void {
     const d = this.profile.data;
-    const heroes = STYLES.map((s) => {
+    const levels = STYLES.map((s) => {
       const xp = Math.floor(d.xp[s]);
       const level = levelFor(xp);
       const next = level < maxLevel() ? `Next: ${LEVEL_UNLOCKS[level + 1] ?? 'talent point'}` : 'Max level';
       const points = this.profile.pointsLeft(s);
-      const unlocked = Object.entries(LEVEL_UNLOCKS)
-        .filter(([l]) => Number(l) <= level)
-        .map(([, text]) => `<li>${text}</li>`)
-        .join('');
-      return `<div class="equip-hero">
-        <div class="hero-name">${HERO_NAMES[s]} <span>Lv ${level}</span></div>
+      return `<div class="equip-hero ${this.profile.style === s ? 'in-hand' : ''}">
+        <div class="hero-name">${STYLE_NAMES[s]} <span>Lv ${level}</span></div>
         <div class="hero-xp"><div style="width:${Math.round(levelProgress(xp) * 100)}%"></div></div>
         <div class="hero-next">${next}</div>
         ${points > 0 ? `<div class="hero-points">${points} talent point${points > 1 ? 's' : ''} to spend</div>` : ''}
-        <ul>${unlocked || '<li class="muted">Nothing unlocked yet</li>'}</ul>
       </div>`;
     }).join('');
-
-    const slots = GEAR_SLOTS.map((slot) => {
-      const item = this.profile.item(d.equipped[slot]);
-      return `<div class="equip-slot">
-        <div class="slot-label">${SLOT_LABELS[slot]}</div>
-        <div class="slot-item">${item ? itemHtml(item) : '<div class="muted">Empty</div>'}</div>
-        ${item ? `<button data-action="unequip" data-slot="${slot}">Unequip</button>` : ''}
-      </div>`;
-    }).join('');
-
-    const equippedUids = new Set(Object.values(d.equipped));
-    const items = [...d.inventory].reverse();
-    const inventory = items.length
-      ? items
-          .map(
-            (item) => `<div class="inv-item ${equippedUids.has(item.uid) ? 'equipped' : ''}">
-              <div class="inv-slot">${SLOT_LABELS[item.slot]}</div>
-              ${itemHtml(item)}
-              ${equippedUids.has(item.uid) ? '<div class="inv-tag">Equipped</div>' : `<button data-action="equip" data-uid="${item.uid}">Equip</button>`}
-            </div>`,
-          )
-          .join('')
-      : '<div class="muted">Nothing found yet. Gear drops after waves 2 and 3, and the Warden always drops a rare.</div>';
-
     const unspent = STYLES.reduce((n, s) => n + this.profile.pointsLeft(s), 0);
     const tabs = `<div class="equip-tabs">
-        <button data-action="tab" data-tab="gear" class="${this.tab === 'gear' ? 'on' : ''}">Gear</button>
-        <button data-action="tab" data-tab="talents" class="${this.tab === 'talents' ? 'on' : ''}">Talents${unspent > 0 ? ` <b>${unspent}</b>` : ''}</button>
+        <button data-action="tab" data-tab="gear" class="${this.tab === 'gear' ? 'on' : ''}">1 · Bag and body</button>
+        <button data-action="tab" data-tab="talents" class="${this.tab === 'talents' ? 'on' : ''}">2 · Talents${unspent > 0 ? ` <b>${unspent}</b>` : ''}</button>
       </div>`;
-    const gear = `<div class="equip-cols">
-        <div><h3>Equipped</h3>${slots}</div>
-        <div><h3>Found (${items.length})</h3><div class="inv-list">${inventory}</div></div>
-      </div>`;
-
     this.body.innerHTML = `
-      <div class="equip-heroes">${heroes}</div>
+      <div class="equip-heroes">${levels}</div>
       ${tabs}
-      ${this.tab === 'gear' ? gear : this.talentsHtml()}
+      ${this.tab === 'gear' ? this.gearHtml() : this.talentsHtml()}
       <div class="equip-foot">Runs ${d.runs} · Wins ${d.wins}</div>`;
   }
 
-  /** One board per hero: a level after the first is a point; respec is free between runs. */
+  private cellHtml(c: Cell, i: number): string {
+    const item = this.itemAt(c);
+    const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : '';
+    const at = `grid-column:${c.col + 1};grid-row:${c.row + 1}`;
+    const chosen = i === this.cursor ? ' chosen' : '';
+    if (!item) return `<button class="gear-cell empty ${c.area}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
+    const e = entryOf(item);
+    const swatch = `background:linear-gradient(135deg, ${hex(e.material.colors.base)} 55%, ${hex(e.material.colors.trim)})`;
+    return `<button class="gear-cell ${c.area} ${item.rarity}${chosen}" style="${at}" data-action="cell" data-cell="${i}" title="${nameOf(item)}">
+        <span class="gear-swatch" style="${swatch}"></span><span class="gear-short">${e.shape.name}</span>${label ? `<span class="gear-slot">${label}</span>` : ''}
+      </button>`;
+  }
+
+  private gearHtml(): string {
+    const grid = this.grid.map((c, i) => this.cellHtml(c, i)).join('');
+    const c = this.grid[this.cursor];
+    const item = this.itemAt(c);
+    const style = this.profile.style;
+    const wrong = this.profile.mismatched();
+    const penalty = wrong
+      ? `<div class="gear-warn">${wrong} worn piece${wrong > 1 ? 's' : ''} not ${STYLE_KIND[style]}: -${Math.round(wrong * tuning.gear.mismatchDamagePerPiece * 100)}% damage with your ${STYLE_NAMES[style].toLowerCase()}</div>`
+      : '';
+    const detail = item
+      ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
+         <div class="item-stat">${gearLine(item)}</div>
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop' : c.slot === 'weapon' ? 'Your weapon: pick another from the bag (or 1, 2, 3)' : 'F or A: take off'}</div>`
+      : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
+    const free = this.profile.data.bag.filter((i) => !i).length;
+    return `<div class="gear-layout">
+        <div class="gear-grid">${grid}</div>
+        <div class="gear-detail">
+          <h3>${c.area === 'bag' ? 'Bag' : BODY_SLOT_NAMES[c.slot]}</h3>
+          ${detail}
+          ${penalty}
+          <div class="muted gear-free">${free} of 28 spaces free · move to choose (WASD, arrows, stick)</div>
+          ${c.area === 'bag' && item ? '<button data-action="drop">Drop</button>' : ''}
+        </div>
+      </div>`;
+  }
+
+  /** One board per weapon kind: a level after the first is a point; respec is free between runs. */
   private talentsHtml(): string {
     const cols = STYLES.map((s) => {
       const ranks = this.profile.data.talents[s];
@@ -153,12 +253,12 @@ export class EquipScreen {
         </div>`;
       }).join('');
       return `<div class="talent-col">
-        <div class="talent-head">${HERO_NAMES[s]} <span class="${left > 0 ? 'has' : ''}">${left} point${left === 1 ? '' : 's'}</span></div>
+        <div class="talent-head">${STYLE_NAMES[s]} <span class="${left > 0 ? 'has' : ''}">${left} point${left === 1 ? '' : 's'}</span></div>
         ${rows}
         <button class="talent-respec" data-action="respec" data-style="${s}">Reset</button>
       </div>`;
     }).join('');
     return `<div class="talent-cols">${cols}</div>
-      <div class="muted talent-note">Every level after the first gives that hero a point. Resetting is free between runs.</div>`;
+      <div class="muted talent-note">Every level after the first gives that weapon kind a point. Resetting is free between fights.</div>`;
   }
 }

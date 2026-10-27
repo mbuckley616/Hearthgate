@@ -248,6 +248,27 @@ test("Keeper Wren turns the village's ring to a hand-built dungeon", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("the bag and the body: wear a bow from the bag by keys alone, and 1 takes the sword back", async ({ page }) => {
+  const errors: string[] = [];
+  await page.goto("/?play");
+  await page.evaluate(() => localStorage.clear());
+  await open(page, "play", errors);
+  const style = () => page.evaluate(() => (window as unknown as { game: any }).game.me()?.style as string);
+  await expect.poll(style).toBe("sword");
+  await page.keyboard.press("KeyI");
+  await expect(page.locator(".gear-grid")).toBeVisible();
+  // A new hero carries a shortbow and a staff in the bag; from the head, D goes across to its first space.
+  // Held, as a player holds it: a slow headless frame can miss a tap shorter than itself.
+  const detail = page.locator(".gear-detail .item-name");
+  await holdUntil(page, "KeyD", async () => (await detail.count()) > 0 && (await detail.textContent()) === "Ash shortbow", 5_000);
+  await page.keyboard.press("KeyF");
+  await expect.poll(style).toBe("bow");
+  await page.keyboard.press("KeyI");
+  await page.keyboard.press("Digit1");
+  await expect.poll(style).toBe("sword");
+  expect(errors).toEqual([]);
+});
+
 /** Debug-panel edits through the server (a dev build takes them). */
 async function tune(page: Page, edits: Record<string, number>) {
   await page.evaluate((e) => {

@@ -300,6 +300,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
       state.events.push({ kind: 'block', playerId: p.id, ...at, broke: true });
     }
   }
+  // Worn armour (T5b) takes its share off; the slice's heroes carry none.
+  if (p.mods.armour) damage *= 1 - p.mods.armour;
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
   state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy });
   if (p.hp <= 0) {

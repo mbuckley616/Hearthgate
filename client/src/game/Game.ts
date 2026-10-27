@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { Music, type Mood } from '../audio/Music';
 import { Sfx } from '../audio/Sfx';
 import { OrbitCamera } from '../camera/OrbitCamera';
-import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { DebugPanel } from '../debug/DebugPanel';
 import { HitboxOverlay } from '../debug/HitboxOverlay';
 import { GamepadSource } from '../input/GamepadSource';
 import { InputManager } from '../input/InputManager';
 import { KeyboardMouseSource } from '../input/KeyboardMouseSource';
-import type { ActionFrame } from '../input/actions';
+import { emptyFrame, type ActionFrame } from '../input/actions';
+import { nameOf } from '../ui/gearText';
 import type { World } from '@hearthgate/shared/level/arena';
 import { TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
 import { AmbientView } from '../render/AmbientView';
@@ -26,7 +27,7 @@ import { VillageView } from '../render/VillageView';
 import { setLookMood } from '../render/look';
 import { SceneRenderer } from '../render/SceneRenderer';
 import { TelegraphView } from '../render/TelegraphView';
-import { rollItem } from '@hearthgate/shared/sim/gear';
+import { rollGear } from '@hearthgate/shared/sim/catalogue';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { worldNow } from '@hearthgate/shared/sim/world';
 import { CrtOverlay } from '../ui/CrtOverlay';
@@ -183,7 +184,7 @@ export class Game {
         this.applyProfile(false);
       },
       'Give a rare item': () => {
-        this.profile.addItem(rollItem(Math.random, true));
+        this.profile.addItem(rollGear(Math.random, true));
         this.applyProfile(false);
       },
       'Reset saved progress': () => {
@@ -374,13 +375,18 @@ export class Game {
     const realDt = Math.min(0.1, Math.max(0, (now - this.lastTime) / 1000));
     this.lastTime = now;
 
-    const actions = this.input.poll(realDt);
+    let actions = this.input.poll(realDt);
     if (this.session.levelVersion !== this.shownLevel) this.enterLevel();
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;
     }
     this.handleMetaActions(actions);
+    // The bag and body take the keys and the pad while they are open (T5b): the hero stands still.
+    if (this.equip.visible) {
+      this.equip.handle(actions, realDt);
+      actions = emptyFrame();
+    }
 
     // Slow motion is the server's (debug.slowMo through the panel or backslash); each snapshot says how fast it runs.
     const timeScale = this.session.timeScale;
@@ -406,6 +412,9 @@ export class Game {
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
     const swap = this.requestedStyle(actions);
     if (swap) this.pending.swapTo = swap;
+    // The hero fights with the weapon in hand (T5): after a change in the bag, or on joining, follow it.
+    const meNow = this.me();
+    if (meNow && !this.pending.swapTo && meNow.mode !== 'down' && meNow.style !== this.profile.style) this.pending.swapTo = this.profile.style;
     const cmd = this.buildCommand(actions);
 
     // Run the fight (host) or predict our hero (joiner); collect what happened.
@@ -622,10 +631,10 @@ export class Game {
     let dirty = false;
     for (const ev of events) {
       if (ev.kind === 'pickup' && ev.playerId === localId) {
-        // Found gear is kept; an empty slot equips it straight away.
-        const before = Object.keys(this.profile.data.equipped).length;
-        this.profile.addItem(ev.item);
-        if (Object.keys(this.profile.data.equipped).length !== before) this.applyProfile(false);
+        // Found gear goes in the bag, or on the body if that slot is bare; a full bag leaves it behind.
+        const worn = JSON.stringify(this.profile.data.worn);
+        if (!this.profile.addItem(ev.item)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(ev.item)} was left behind</span>`, 'common');
+        if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
         dirty = true;
       }
       if (ev.kind === 'levelUp' && ev.playerId === localId) dirty = true;
@@ -689,14 +698,29 @@ export class Game {
   }
 
   /** 1/2/3 pick a style; wheel and d-pad cycle from the current one. */
+  /**
+   * 1, 2 and 3 (and the wheel) take the best weapon of that kind from the bag into the hand (T5: one
+   * hero, any weapon); the style follows the weapon. Without one in the bag nothing changes.
+   */
   private requestedStyle(actions: ActionFrame): Style | null {
-    if (actions.pressed.has('style1')) return 'sword';
-    if (actions.pressed.has('style2')) return 'bow';
-    if (actions.pressed.has('style3')) return 'staff';
-    const step = (actions.pressed.has('styleNext') ? 1 : 0) - (actions.pressed.has('stylePrev') ? 1 : 0);
-    if (!step) return null;
-    const current = STYLES.indexOf(this.pending.swapTo ?? this.me()?.style ?? 'sword');
-    return STYLES[(current + step + STYLES.length) % STYLES.length];
+    let want: Style | null = null;
+    if (actions.pressed.has('style1')) want = 'sword';
+    else if (actions.pressed.has('style2')) want = 'bow';
+    else if (actions.pressed.has('style3')) want = 'staff';
+    else {
+      const step = (actions.pressed.has('styleNext') ? 1 : 0) - (actions.pressed.has('stylePrev') ? 1 : 0);
+      if (!step) return null;
+      const carried = this.profile.carriedStyles();
+      const at = carried.indexOf(this.profile.style);
+      want = carried[(at + step + carried.length) % carried.length];
+    }
+    if (want === this.profile.style) return null;
+    if (!this.profile.readyWeapon(want)) {
+      this.hud.toast(`<b>You carry no ${want === 'sword' ? 'sword' : want === 'bow' ? 'bow' : 'staff'}</b><span>Find one, or open the bag (I)</span>`, 'common');
+      return null;
+    }
+    this.applyProfile(false);
+    return want;
   }
 
   private handleMetaActions(actions: ActionFrame): void {

@@ -22,14 +22,18 @@ const api: SimApi = {
 // The hashes were recorded from the combat slice's own code (main 363b726) by `npm run test:parity -- --write`.
 // A change to the fight on purpose re-records them; anything else failing here moved the fight away from the slice.
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
-  // Hearthgate's downs (T5) are its own rule; with them off the rest of the fight is the slice's, to the bit.
-  let bleedOut = true;
+  // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
+  // fight is the slice's, to the bit.
+  const kept = { bleedOut: true, catalogue: true };
   beforeAll(() => {
-    bleedOut = tuning.coop.bleedOut;
+    kept.bleedOut = tuning.coop.bleedOut;
+    kept.catalogue = tuning.gear.catalogue;
     tuning.coop.bleedOut = false;
+    tuning.gear.catalogue = false;
   });
   afterAll(() => {
-    tuning.coop.bleedOut = bleedOut;
+    tuning.coop.bleedOut = kept.bleedOut;
+    tuning.gear.catalogue = kept.catalogue;
   });
 
   for (const sc of SCENARIOS) {

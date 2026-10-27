@@ -22,8 +22,9 @@ import { SCENARIOS, playScenario, type SimApi } from "@hearthgate/shared/parity/
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
-// Hearthgate's downs (T5) are its own rule: with them off, the rest of its fight is compared with the slice's to the bit.
+// Hearthgate's downs and item catalogue (T5) are its own rules: with them off, the rest of its fight is compared with the slice's to the bit.
 tuning.coop.bleedOut = false;
+tuning.gear.catalogue = false;
 const args = process.argv.slice(2);
 const argOf = (k: string) => {
   const i = args.indexOf(k);

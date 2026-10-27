@@ -90,6 +90,11 @@ export function readLoadout(v: unknown): Loadout | null {
   mods.cooldowns = m.cooldowns;
   mods.dodgeRecharge = m.dodgeRecharge;
   mods.perks = [...(m.perks as Perk[])];
+  // Worn armour (T5b): a share of damage taken, never more than the most the catalogue allows.
+  if (m.armour !== undefined) {
+    if (!isNum(m.armour) || m.armour < 0 || m.armour > 0.9) return null;
+    mods.armour = m.armour;
+  }
   return { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
 }
 

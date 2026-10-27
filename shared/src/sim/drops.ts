@@ -1,6 +1,7 @@
 import { tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { nextRandom } from './combat';
+import { rollGear } from './catalogue';
 import { rollItem } from './gear';
 import type { SimState } from './types';
 
@@ -11,7 +12,8 @@ import type { SimState } from './types';
 export function spawnDrop(state: SimState, world: World, x: number, z: number, forceRare: boolean): void {
   const n = state.players.length;
   state.players.forEach((p, i) => {
-    const item = rollItem(() => nextRandom(state), forceRare);
+    const rand = () => nextRandom(state);
+    const item = tuning.gear.catalogue ? rollGear(rand, forceRare) : rollItem(rand, forceRare);
     // Spread a party's drops in a small circle so the beams don't overlap.
     const a = (i / Math.max(1, n)) * Math.PI * 2;
     const dx = n > 1 ? x + Math.cos(a) * 0.9 : x;

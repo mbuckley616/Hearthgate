@@ -561,3 +561,96 @@ body.on-title .run-banner {
   color: var(--gold);
   text-shadow: 0 1px 0 #000;
 }
+
+/* ---- The bag and the body (T5b) ---- */
+.gear-layout {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.gear-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 64px) 14px repeat(4, 64px);
+  grid-auto-rows: 56px;
+  gap: 6px;
+}
+
+.gear-cell {
+  position: relative;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel-solid);
+  border: 2px solid #5a3a20;
+  border-radius: 2px;
+  color: var(--ink);
+  font: 600 9px/1.1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.gear-cell.worn {
+  border-color: #7a5a2a;
+}
+
+.gear-cell.rare {
+  box-shadow: inset 0 0 0 2px rgba(120, 170, 255, 0.6);
+}
+
+.gear-cell.chosen {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.55);
+}
+
+.gear-swatch {
+  position: absolute;
+  inset: 6px 6px 18px;
+  border-radius: 2px;
+}
+
+.gear-short {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 3px;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.gear-cell .gear-slot {
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.gear-cell.empty .gear-slot {
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  text-align: center;
+}
+
+.gear-detail {
+  flex: 1;
+  min-width: 200px;
+}
+
+.gear-hint,
+.gear-free {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.gear-warn {
+  margin-top: 8px;
+  color: #ff9a7a;
+  font-size: 12px;
+}
+
+.equip-hero.in-hand {
+  border-color: var(--gold);
+}

@@ -1,5 +1,6 @@
 import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
+import type { GearItem } from './catalogue';
 import type { FloorRunState } from './floorRun';
 import type { TalentRanks } from './talents';
 
@@ -271,7 +272,8 @@ export interface DropState {
   y: number;
   z: number;
   age: number;
-  item: Item;
+  /** The slice's loot, or (T5b, gear.catalogue) a catalogue item. */
+  item: Item | GearItem;
 }
 
 export type RunPhase = 'ante' | 'intro' | 'wave' | 'rest' | 'won' | 'lost';
@@ -338,7 +340,7 @@ export type SimEvent =
   | { kind: 'bledOut'; playerId: string }
   | { kind: 'playerJoined'; playerId: string; name: string }
   | { kind: 'playerLeft'; playerId: string; name: string }
-  | { kind: 'pickup'; playerId: string; item: Item }
+  | { kind: 'pickup'; playerId: string; item: Item | GearItem }
   | { kind: 'perk'; playerId: string; perk: Perk; x: number; z: number };
 
 export type Combo = 'shatter' | 'skewer' | 'detonate';
