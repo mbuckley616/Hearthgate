@@ -148,6 +148,20 @@ describe('the input slots (T2: each input at its own tick, behind a cushion)', (
     expect(host.ackOf('a')).toBe(31 + cfg.maxGuess);
   });
 
+  it('a stalled player whose missing inputs never come picks up from the first that does', () => {
+    input('a', 1, 4, () => cmd({ moveZ: -1 }));
+    for (let i = 0; i < 6; i++) host.tick();
+    // Silent well past the guesses (a long hitch), then inputs resume with a gap: the ones between never arrive.
+    for (let i = 0; i < cfg.maxGuess + 20; i++) host.tick();
+    const ack = host.ackOf('a');
+    input('a', ack + 30, ack + 33, () => cmd({ moveX: 1 }));
+    const x0 = player('p1').x;
+    for (let i = 0; i < 4; i++) host.tick();
+    expect(host.ackOf('a')).toBe(ack + 33);
+    expect(host.slotsOf('a')!.stats.resynced).toBe(1);
+    expect(player('p1').x).toBeGreaterThan(x0);
+  });
+
   it('narrows the cushion again after a calm spell', () => {
     const s = host.slotsOf('a')!;
     let seq = 0;

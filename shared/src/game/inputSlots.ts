@@ -17,7 +17,8 @@ import { mergePresses, withoutPresses } from './Session';
  * nothing at all. Each such late arrival widens the cushion by a tick, up to `maxCushion`, so a
  * lossy link soon gives its retransmits room; after `calmTicks` without one it narrows again a
  * tick at a time, back to the slice's `coop.inputBufferTicks`. A player silent past `maxGuess`
- * ticks has stalled (a hidden tab): their slots stop advancing until they send again.
+ * ticks has stalled (a hidden tab): their slots stop advancing until they send again, and pick up
+ * from the first input that arrives.
  *
  * Pure and clock-free, so the unit tests can play any arrival pattern through it.
  */
@@ -58,7 +59,7 @@ export interface Slots {
   /** Ticks since a late arrival. */
   calm: number;
   /** Counters for tests and the lab. */
-  stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number };
+  stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number; resynced: number };
 }
 
 export function createSlots(cfg: SlotConfig): Slots {
@@ -73,7 +74,7 @@ export function createSlots(cfg: SlotConfig): Slots {
     carry: null,
     quiet: 0,
     calm: 0,
-    stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0 },
+    stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0, resynced: 0 },
   };
 }
 
@@ -139,6 +140,19 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     s.quiet = 0;
     s.last = withoutPresses(head.cmd);
     s.stats.applied++;
+    return withCarry(s, head.cmd);
+  }
+  if (head && s.quiet >= cfg.maxGuess) {
+    // Stalled, yet newer inputs are here: the ones before them are not coming (skipped, or dropped
+    // because they landed after their tick). Waiting for them would hold the player still for good
+    // (CI found it), so start again from the first that did arrive.
+    s.queue.shift();
+    s.ack = head.seq;
+    s.next = head.seq + 1;
+    s.quiet = 0;
+    s.last = withoutPresses(head.cmd);
+    s.stats.applied++;
+    s.stats.resynced++;
     return withCarry(s, head.cmd);
   }
   // Its input has not arrived. Stand in for it with the held buttons, or, quiet too long, let go.
