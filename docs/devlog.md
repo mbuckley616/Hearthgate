@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T2 begun: where the lab's corrections come from, and the clock back from the shelf
+
+Started on Michael's word ("after this work is finished ... please begin the next step ... I don't want to be a blocker", while T1 waits for its gate), on `auto/local-slice-netcode`, stacked on T1's branch. Nothing here is merged or meant to be before T1's gate.
+
+**What changed**
+
+- `shared/src/net/clock.ts`: Hearthgate's Phase 0 clock, back from the shelf for snapshots only (no pings). The offset is the window's least-delayed snapshot rather than the slice's 5% average, and the interpolation delay follows the longest wait for a snapshot a frame saw: the slice's 80 ms on a clean link, rising on a lossy one up to the lag grace (150 ms), never later, since hits on you wait that long so an on-screen dodge counts. Both slew at 10 ms/s. Its numbers are in `tuning.coop` (`interpDelayMaxMs`, `clockWindowMs`, `clockSlewMsPerS`, `clockSnapMs`). 6 unit tests (check 27).
+- The lab: `--tune path=value` sends a tuning edit through the server before the run, to test one cause at a time; it reports corrections over 10 cm and the draw delay.
+- `decisions.md`: the small corrections in a fight, three options (recommended A, leave them and judge at the gate).
+
+**Lab (local, 60 s a row)**
+
+| Link | Corrections a minute (over 2 cm) | Over 10 cm | Holds a minute | Draw delay |
+| --- | --- | --- | --- | --- |
+| 0 ms | 75 | 10 | 1 | 83 ms |
+| 50 ms | 65 | 5 | 4 | 83 ms |
+| 150 ms | 124 | 3 | 4 | 82 ms |
+| 50 ms ±20, 2% loss | 277 | 170 | 22 (T1: 30) | 150 ms |
+
+**Learned**
+
+- The fight's corrections are the hero's own swings, not hits taken and not the input queue: at 0 ms the count was about the same with enemies that never swing (164 a minute counting every difference), higher with god mode (319, Alpha fights longer), and unchanged with a four-tick input cushion (159). A melee swing's lunge stretches to its soft target and the soft target turns the hero, both measured on the client against the last snapshot's enemy. Over 10 cm they read 10 / 5 / 3 a minute at 0 / 50 / 150 ms, near Hearthgate's old 8 / 3 / 1.
+- With the delay capped at 200 ms the lossy row held only 12 times a minute, but on clean links the delay drifted to 120 to 160 ms after single slow snapshots, later than the lag grace. Capped at the grace: 22 holds, and clean links stay at the slice's 80.
+- The lossy row's 170 big corrections a minute are the slice's input queue under retransmits: a player's inputs held 200 ms, the server repeating their held buttons meanwhile, then folding the late burst into fewer ticks, so a dodge or a turn lands at a different tick than predicted.
+
+**Next**
+
+- Michael: the decision on the fight's corrections (decisions.md); T1's gate first.
+- T2: the input queue under loss (the lossy row's 170 a minute over 10 cm). Candidates: count the ticks the server guessed and drop as many late inputs when they arrive (keeping their presses), so a late burst is neither folded nor replayed; or Hearthgate's old input slots. Measured on the lossy row before and after.
+- T2: bandwidth stays as it is (about 120 KB/s a player); deltas only if the hosted lab or Render's limits ask.
+
 ## 2026-10-27: local session, T1: the combat slice on Hearthgate's server
 
 **What changed**

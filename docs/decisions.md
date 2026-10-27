@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-27: T2: the small corrections in a fight (Claude (local))
+The lab on T1 (local, 60 s a row) counts 59 / 71 / 93 corrections a minute at 0 / 50 / 150 ms, against Hearthgate's old 8 / 3 / 1. None of them snaps. Each is a few centimetres to about 20 cm, eased out over 120 ms (`coop.correctionBlendMs`). They are not network trouble: with no enemies there are none, and enemies that never swing change nothing. They come from your own swings. A melee swing's lunge stretches to reach its soft target, and the soft target turns you toward it. Your browser measures both against the enemy where the last snapshot had it, and the server measures them a few ticks later, when the enemy has moved. In the slice this only happened to joiners; now solo is a joiner too. The T1 gate is where you will feel whether they matter.
+A. Leave them. They are the slice's own joiner feel; judge them at the T1 gate side by side. T2's gate then reads "no network snaps, and corrections over 10 cm no worse than 8 / 3 / 1 a minute" instead of every correction over 2 cm, and the lab reports both. If you feel them at the gate, this comes back as B. _(recommended: nothing changes in the fight, and the parity test stays exact)_
+B. Lag-compensate the swing. Your browser sends the soft target it chose and where it saw it, and the server takes your lunge and turn from that, within limits. Corrections in a fight drop toward zero. But the fight is no longer the slice's to the bit (the parity hashes are re-recorded on purpose), and on a slow link a lunge can reach an enemy that has already stepped away.
+C. Let the server decide the lunge and the turn alone, and have your browser not predict them; you see them a round trip late. Fewer corrections, but swings feel less immediate. Not recommended.
+
 ## Answered
 
 ### 2026-10-27: Move the combat slice over whole, on the server (Claude (local))
