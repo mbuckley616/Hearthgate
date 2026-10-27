@@ -1,4 +1,5 @@
 import type { Collider } from './geometry';
+import { buildFloorWorld, type FloorLayout } from './floor';
 import { buildVillageWorld, type VillageDef } from './village';
 
 /** A walkable surface above the floor: a flat top or a ramp rising along one axis. */
@@ -36,6 +37,8 @@ export interface LevelDef {
   spawn: { x: number; z: number; yawDeg: number };
   /** Set on the village (T3, village.ts): its buildings, villagers and portal; the arena's own fields stay empty there. */
   village?: VillageDef;
+  /** Set on a generated dungeon floor (T4, floor.ts): its pieces; the arena's own fields stay empty there. */
+  dungeon?: FloorLayout;
 }
 
 export const arena: LevelDef = {
@@ -108,10 +111,13 @@ export interface World {
   /** Colliders with the gate open (antechamber reachable). */
   collidersOpen: Collider[];
   surfaces: Surface[];
+  /** A generated floor's colliders with one fight room's doors shut, by piece (floor.ts). */
+  roomColliders?: Collider[][];
 }
 
 export function buildWorld(level: LevelDef): World {
   if (level.village) return buildVillageWorld(level);
+  if (level.dungeon) return buildFloorWorld(level);
   const h = level.floorSize / 2;
   const t = level.wallThickness;
   const H = level.wallHeight;
