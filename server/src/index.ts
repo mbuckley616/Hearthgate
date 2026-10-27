@@ -19,7 +19,8 @@ const gameServer = new Server({
 
 // The client joins the village first; its portal makes a dungeon room a run, and the tests and the lab make one by level.
 gameServer.define("village", VillageRoom);
-gameServer.define("dungeon", DungeonRoom);
+// By level: a page asking for ?level=yard must not land in an open field room another page left behind.
+gameServer.define("dungeon", DungeonRoom).filterBy(["level"]);
 
 gameServer.listen(PORT).then(() => {
   console.log(`Hearthgate server listening on ws://localhost:${PORT}`);
