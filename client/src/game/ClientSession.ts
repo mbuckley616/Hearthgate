@@ -50,6 +50,14 @@ export interface PredictionStats {
   maxCorrection: number;
   /** Corrections over 10 cm, the ones a player might see through the ease (decisions.md, 27 Oct, T2). */
   bigCorrections: number;
+  /**
+   * The same, by what the hero was doing (here or on the server): their own swing or ability (its lunge
+   * and turn toward a target that moved, decision A), taking a hit (a knock the browser could not
+   * foresee), or neither: what is left is the network's.
+   */
+  bigBySwing: number;
+  bigByHit: number;
+  bigOther: number;
   /** Sum of every correction (m), for the mean. */
   sumCorrection: number;
 }
@@ -98,7 +106,7 @@ export class ClientSession implements Session {
   private clockWall = performance.now();
   /** What to draw before the first snapshot: the empty arena. */
   private readonly empty: SimState;
-  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0 };
+  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
 
@@ -319,6 +327,7 @@ export class ClientSession implements Session {
     const mine = base.players.find((p) => p.id === this.localId);
     if (!mine) return;
     const before = this.me ? { x: this.me.x, y: this.me.y, z: this.me.z } : null;
+    const modes = [this.me?.mode, mine.mode];
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
@@ -332,7 +341,12 @@ export class ClientSession implements Session {
       if (size > CORRECTION_M) {
         this.stats.corrections++;
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
-        if (size > 0.1) this.stats.bigCorrections++;
+        if (size > 0.1) {
+          this.stats.bigCorrections++;
+          if (modes.some((m) => m === 'attack' || m === 'ability')) this.stats.bigBySwing++;
+          else if (modes.some((m) => m === 'hurt' || m === 'down')) this.stats.bigByHit++;
+          else this.stats.bigOther++;
+        }
         this.stats.sumCorrection += size;
       }
       this.err.x += d.x;

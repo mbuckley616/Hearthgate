@@ -144,6 +144,24 @@ const PROBE = `(() => {
     },
     other: (id) => lerp(s.view(), id),
     phase: () => s.view().curr.run.phase,
+    /** The nearest enemy still standing, as drawn here. */
+    enemy: () => {
+      const h = s.hero();
+      if (!h) return null;
+      let best = null, bd = Infinity;
+      for (const e of s.view().curr.enemies) {
+        if (e.ai === 'dead' || e.hp <= 0) continue;
+        const d = Math.hypot(e.x - h.curr.x, e.z - h.curr.z);
+        if (d < bd) { bd = d; best = { x: e.x, z: e.z, d }; }
+      }
+      return best;
+    },
+    /** Turn the camera to face a point, so W walks there and a swing goes there (the camera is the browser's own). */
+    aim: (x, z) => {
+      const h = s.hero();
+      if (!h) return;
+      window.game.cam.yaw = Math.atan2(-(x - h.curr.x), -(z - h.curr.z));
+    },
   };
 })()`;
 
@@ -157,7 +175,7 @@ function recorder(watchId: string | null) {
     const s = window.game.session;
     if (id === null) {
       const m = window.__probe.me();
-      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection, s.stats.bigCorrections]);
+      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection, s.stats.bigCorrections, s.stats.bigBySwing, s.stats.bigByHit, s.stats.bigOther]);
     } else {
       const p = window.__probe.other(id);
       if (p) window.__lab.push([Date.now(), p.x, p.z]);
@@ -198,8 +216,11 @@ interface Row {
   /** Mean and largest correction (m): eased over coop.correctionBlendMs, so a few cm do not show. */
   correction_mean_m: number;
   correction_max_m: number;
-  /** Corrections over 10 cm a minute. */
+  /** Corrections over 10 cm a minute, and those by cause: the hero's own swing or ability, a hit taken, or neither (the network's). */
   big_per_min: number;
+  big_swing_per_min: number;
+  big_hit_per_min: number;
+  big_other_per_min: number;
   snaps: number;
   placed_snaps: number;
   walked_m_per_min: number;
@@ -213,6 +234,8 @@ interface Row {
   kb_per_s_per_player: number;
   downs: number;
   runs_started: number;
+  /** Runs the pair finished with the Warden down. */
+  runs_won: number;
   fps_a: number;
   fps_b: number;
   lost_chunks: number;
@@ -274,9 +297,11 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     const end = Date.now() + seconds * 1000;
     let downs = 0;
     let wasDown = false;
+    let won = 0;
     while (Date.now() < end) {
       const phase = (await info(a)).phase;
       if (phase === "won" || phase === "lost") {
+        if (phase === "won") won++;
         await setKeys(a, []);
         await setKeys(b, []);
         await a.keyboard.press("KeyF");
@@ -314,25 +339,21 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       else if (act < 0.5) await a.keyboard.press(rng() < 0.5 ? "KeyQ" : "KeyE");
       else if (act < 0.53) await a.keyboard.press(["Digit1", "Digit2", "Digit3"][Math.floor(rng() * 3)]);
 
-      // Bravo walks to a downed Alpha and holds F (the slice's revive), and otherwise stands still.
-      if (down) {
-        const bv = (await b.evaluate(`({ me: window.__probe.me(), al: window.__probe.other(${JSON.stringify(alphaId)}) })`)) as {
-          me: { x: number; z: number };
-          al: { x: number; z: number } | null;
-        };
-        const want: string[] = [];
-        if (bv.al && bv.me) {
-          const dx = bv.al.x - bv.me.x;
-          const dz = bv.al.z - bv.me.z;
-          if (Math.hypot(dx, dz) < 1.2) want.push("KeyF");
-          else {
-            if (dx > 0.6) want.push("KeyD");
-            else if (dx < -0.6) want.push("KeyA");
-            if (dz > 0.6) want.push("KeyS");
-            else if (dz < -0.6) want.push("KeyW");
-          }
+      // Bravo fights: faces the nearest enemy, closes in and swings; and when Alpha is down, goes to
+      // them and holds F (the slice's revive). Deterministic, so Alpha's seeded schedule is unchanged.
+      const target = down
+        ? ((await b.evaluate(`window.__probe.other(${JSON.stringify(alphaId)})`)) as { x: number; z: number } | null)
+        : ((await b.evaluate("window.__probe.enemy()")) as { x: number; z: number } | null);
+      const bme = (await b.evaluate("window.__probe.me()")) as { x: number; z: number; mode: string } | null;
+      if (target && bme && bme.mode !== "down") {
+        await b.evaluate(`window.__probe.aim(${target.x}, ${target.z})`);
+        const d = Math.hypot(target.x - bme.x, target.z - bme.z);
+        if (down) await setKeys(b, d < 1.2 ? ["KeyF"] : ["KeyW"]);
+        else if (d > 2) await setKeys(b, d > 6 ? ["KeyW", "ShiftLeft"] : ["KeyW"]);
+        else {
+          await setKeys(b, []);
+          for (let i = 0; i < 3; i++) await b.keyboard.press("KeyJ");
         }
-        await setKeys(b, want);
       } else await setKeys(b, []);
       await sleep(250 + rng() * 650);
     }
@@ -433,6 +454,9 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       correction_mean_m: corr > 0 ? Math.round(((last[8] - first[8]) / corr) * 1000) / 1000 : 0,
       correction_max_m: Math.round(last[9] * 100) / 100,
       big_per_min: Math.round(((last[10] - first[10]) / minutes) * 10) / 10,
+      big_swing_per_min: Math.round(((last[11] - first[11]) / minutes) * 10) / 10,
+      big_hit_per_min: Math.round(((last[12] - first[12]) / minutes) * 10) / 10,
+      big_other_per_min: Math.round(((last[13] - first[13]) / minutes) * 10) / 10,
       snaps,
       placed_snaps: placedSnaps,
       walked_m_per_min: Math.round(walked / minutes),
@@ -445,6 +469,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       kb_per_s_per_player: proxy ? Math.round((proxy.bytesDown() - bytes0) / 1024 / 2 / ((Date.now() - wall0) / 1000)) : 0,
       downs,
       runs_started: runs,
+      runs_won: won,
       fps_a: fps(trueTrack),
       fps_b: fps(seen),
       lost_chunks: proxy ? proxy.lost() : 0,
@@ -487,7 +512,7 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}: swing ${row.big_swing_per_min} hit ${row.big_hit_per_min} other ${row.big_other_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started} (won ${row.runs_won})  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
       );
       for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, jumped ${m.jump_m} m`);
       for (const e of row.page_errors.slice(0, 3)) console.log(`  page error: ${e}`);
