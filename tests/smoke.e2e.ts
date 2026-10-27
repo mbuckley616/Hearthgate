@@ -158,7 +158,8 @@ test("the village: talk to the keeper, take the ring into a run, and the antecha
   await open(page, "play", errors);
   const home = (await seen(page)).code;
 
-  // Keeper Wren stands by the shrine; F in reach shows her line.
+  // Keeper Wren stands by the shrine; F in reach shows her line. Round the well first: it stands on the way.
+  await walkTo(page, 3.2, 2, 1.2);
   await walkTo(page, 2.6, -11.6, 1.6);
   await page.keyboard.press("KeyF");
   await expect(page.locator(".talk-box")).toBeVisible();

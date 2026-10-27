@@ -151,6 +151,8 @@ async function main() {
     check(va.kind === "village" && va.state.enemies.length === 0 && va.state.run.phase === "ante", "a village: no enemies, no run", `code ${home}`);
     check(va.snaps[va.snaps.length - 1].portal?.to === "arena", "the village's portal is open and leads to a run");
     const ring = village.village!.portal;
+    // Round the well (it stands between the spawn and the shrine), then into the ring.
+    await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
     await Promise.all([va.walkTo(ring.x - 0.6, ring.z), vb.walkTo(ring.x + 0.6, ring.z)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's hand-off"), vb.until(() => vb.handoff !== null, 5000, "Wren's hand-off")]);
     check(va.handoff?.level === "arena" && vb.handoff?.level === "arena", "two seconds in the ring together hand both on to a run");
