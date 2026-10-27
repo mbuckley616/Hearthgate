@@ -3,6 +3,7 @@ import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { TALENT_IDS, type TalentRanks } from '../sim/talents';
 import type { PlayerCommand } from '../sim/types';
+import { checkDungeon, readDungeon } from '../level/handmade';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
 
 /**
@@ -124,6 +125,12 @@ export function readToHost(v: unknown): ToHost | null {
     }
     case 'cheat':
       return CHEATS.includes(v.cheat as Cheat) ? { k: 'cheat', cheat: v.cheat as Cheat } : null;
+    case 'destination': {
+      if (v.dungeon === null) return { k: 'destination', dungeon: null };
+      // A layout from a browser is checked whole: one that is not a playable floor is dropped.
+      const dungeon = readDungeon(v.dungeon);
+      return dungeon && checkDungeon(dungeon).def ? { k: 'destination', dungeon } : null;
+    }
     default:
       return null;
   }

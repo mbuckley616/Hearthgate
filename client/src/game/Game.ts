@@ -43,6 +43,7 @@ import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
 import { isServerTuning } from '@hearthgate/shared/config/edits';
 import type { Cheat } from '@hearthgate/shared/net/protocol';
 import { ClientSession } from './ClientSession';
+import { findDungeon, playableDungeons } from '../editor/store';
 import { LockOn } from './LockOn';
 import { Profile } from './Profile';
 
@@ -125,7 +126,9 @@ export class Game {
     // ?floor makes a generated floor (T4), ?seed=N&pieces=N picking which: the gate's five floors.
     const create = params.has('floor') ? 'floor' : params.has('dungeon') ? 'dungeon' : 'village';
     const num = (k: string) => (params.has(k) ? Number(params.get(k)) : undefined);
-    const floorOptions = { seed: num('seed') ?? Math.floor(Math.random() * 1e9), pieces: num('pieces'), floors: num('floors'), floor: num('at') };
+    // ?hand=NAME plays a hand-built dungeon from this browser or the game's own (the editor's Play, T4b).
+    const hand = params.has('hand') ? findDungeon(params.get('hand')!) : null;
+    const floorOptions = { seed: num('seed') ?? Math.floor(Math.random() * 1e9), pieces: num('pieces'), floors: num('floors'), floor: num('at'), ...(hand ? { hand } : {}) };
     this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, create, create === 'floor' ? floorOptions : {});
     this.builtWorld = this.world;
     setLookMood(this.session.kind);
@@ -317,6 +320,27 @@ export class Game {
     this.cam.yaw = (level.spawn.yawDeg * Math.PI) / 180 + Math.PI;
   }
 
+  /**
+   * Talking (T3), and Keeper Wren's ring (T4b): asked once she says where the ring opens now; asked
+   * again while she is speaking she turns it to the next dungeon (a new generated one, then the
+   * hand-built ones this browser can play). The server checks the layout and every ring follows.
+   */
+  private talkTo(near: Villager | null, pressed: boolean, dt: number): void {
+    if (!near || near.id !== 'keeper' || !pressed) return this.talk.update(near, pressed, dt);
+    const NEW = 'A new dungeon';
+    const now = this.session.portals[0]?.label ?? NEW;
+    if (!this.talk.showing(near.name)) {
+      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will turn it.`);
+    } else {
+      const options = [null, ...playableDungeons()];
+      const at = options.findIndex((d) => (d?.name ?? NEW) === now);
+      const next = options[(at + 1) % options.length];
+      this.session.request({ k: 'destination', dungeon: next });
+      this.talk.say(near.name, `There: the ring opens on ${next ? next.name : 'a new dungeon, never walked before'}. Ask again for another.`);
+    }
+    this.talk.update(near, false, dt);
+  }
+
   /** The villager the hero can talk to now: the nearest in reach, in the village. */
   private villagerInReach(me: PlayerState | null): Villager | null {
     const v = this.world.level.village;
@@ -406,7 +430,7 @@ export class Game {
     // Run over: anyone's F / A asks the server to start again (the slice's host did it itself); the view follows the snapshot.
     const village = !!this.world.level.village;
     if (!village && (world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
-    this.talk.update(this.villagerInReach(this.me()), actions.pressed.has('interact'), realDt);
+    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact'), realDt);
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 

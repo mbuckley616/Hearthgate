@@ -1,6 +1,7 @@
 import { applyTuningEdit, tuningEdits } from '../config/edits';
 import { tuning } from '../config/tuning';
 import type { World } from '../level/arena';
+import type { HandDungeon } from '../level/handmade';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer } from '../sim/coop';
 import { createEnemy, spawnGroup } from '../sim/enemies';
@@ -50,6 +51,8 @@ export class HostSession {
   private heldRing = -1;
   /** The portal was taken and the room is moving the party; it fires once until reopenPortal(). */
   private portalTaken = false;
+  /** Where the village's ring leads (T4b): a hand-built dungeon Keeper Wren was asked for, or null for a generated run. */
+  destination: HandDungeon | null = null;
 
   constructor(
     private readonly world: World,
@@ -124,6 +127,10 @@ export class HostSession {
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).
         applyTuningEdit(msg.edit.path, msg.edit.value);
+        break;
+      case 'destination':
+        // Anyone in the village may ask Keeper Wren; the whole party's ring follows.
+        if (this.world.level.village) this.destination = msg.dungeon;
         break;
       case 'cheat':
         if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id, !!this.world.level.dungeon);
@@ -236,7 +243,13 @@ export class HostSession {
 
   /** What the snapshot says about the open rings. */
   private portalStates(): PortalState[] {
-    return portalsFor(this.world, this.sim).map((ring, i) => ({ x: ring.x, y: ring.y, z: ring.z, radius: ring.radius, held: i === this.heldRing ? this.portalHeld : 0, to: ring.to }));
+    return portalsFor(this.world, this.sim).map((ring, i) => ({ x: ring.x, y: ring.y, z: ring.z, radius: ring.radius, held: i === this.heldRing ? this.portalHeld : 0, to: ring.to, label: this.ringLabel(ring.to) }));
+  }
+
+  /** The words over a ring: where it leads. */
+  private ringLabel(to: PortalTo): string {
+    if (to === 'dungeon') return this.destination?.name ?? 'A new dungeon';
+    return to === 'deeper' ? 'Deeper' : 'Home';
   }
 
   /** Change the sim between ticks, keeping any events it raises. */

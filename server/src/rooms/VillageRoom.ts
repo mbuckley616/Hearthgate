@@ -39,7 +39,7 @@ export class VillageRoom extends HostRoom {
 
   /** The ring leads into a generated dungeon (T4): a run planned for this party, its first floor a room of its own. */
   protected onPortal() {
-    const plan = planRun(this.host.sim.players, Math.floor(Math.random() * 0xffffffff));
+    const plan = planRun(this.host.sim.players, Math.floor(Math.random() * 0xffffffff), this.host.destination);
     void this.handOff("floor", "floor", null, { ...plan, home: this.roomId, floor: 1 });
   }
 

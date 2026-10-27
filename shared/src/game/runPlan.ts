@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import { floorSeed, MAX_PIECES, MIN_PIECES, type FloorSpec } from '../level/generate';
+import { checkDungeon, readDungeon, type HandDungeon } from '../level/handmade';
 import { levelFor } from '../sim/gear';
 import type { PlayerState } from '../sim/types';
 
@@ -17,6 +18,11 @@ export interface RunPlan {
   level: number;
   /** A fixed size for every floor (10 to 50), or 0 to grow with the run (debug and the gate's floors). */
   pieces: number;
+  /**
+   * A hand-built first floor (T4b), or none. If it ends in the Warden's hall the run is that one
+   * floor; if in a rest room, its deeper ring goes on into generated floors.
+   */
+  hand?: HandDungeon;
 }
 
 /** The party's level for sizing floors: each hero's best style level, averaged over the party. */
@@ -27,20 +33,28 @@ export function partyLevel(players: readonly PlayerState[]): number {
 }
 
 /** A run for this party. `seed` is the server's own pick unless tuning pins one (dungeon.seed). */
-export function planRun(players: readonly PlayerState[], seed: number): RunPlan {
+export function planRun(players: readonly PlayerState[], seed: number, hand: HandDungeon | null = null): RunPlan {
   const d = tuning.dungeon;
   const tier = Math.max(1, Math.min(3, Math.round(d.tier)));
-  return {
+  const plan: RunPlan = {
     seed: d.seed > 0 ? Math.round(d.seed) : seed >>> 0,
     tier,
     floors: Math.max(3, Math.min(5, 2 + tier)),
     level: partyLevel(players),
     pieces: d.pieces > 0 ? clampPieces(d.pieces) : 0,
   };
+  return hand ? withHand(plan, hand) : plan;
+}
+
+/** A run that starts on a hand-built floor: just that floor if it ends at the Warden. */
+function withHand(plan: RunPlan, hand: HandDungeon): RunPlan {
+  const last = hand.pieces.some((p) => p.kind === 'boss');
+  return { ...plan, hand, floors: last ? 1 : plan.floors };
 }
 
 /** Floor `floor` (1-based) of a run. */
 export function floorSpecFor(plan: RunPlan, floor: number): FloorSpec {
+  if (floor === 1 && plan.hand) return { seed: 0, pieces: plan.hand.pieces.length, floor, floors: plan.floors, hand: plan.hand };
   const d = tuning.dungeon;
   const grown = d.basePieces + (floor - 1) * d.piecesPerFloor + (plan.tier - 1) * d.piecesPerTier + Math.max(0, plan.level - 1) * d.piecesPerLevel;
   return { seed: floorSeed(plan.seed, floor), pieces: plan.pieces > 0 ? plan.pieces : clampPieces(grown), floor, floors: plan.floors };
@@ -55,11 +69,14 @@ export function readRunPlan(options: Record<string, unknown>): RunPlan {
   const num = (v: unknown, lo: number, hi: number, fallback: number) =>
     typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : fallback;
   const tier = num(options.tier, 1, 3, Math.round(tuning.dungeon.tier));
-  return {
+  // A hand-built floor from a create option is checked like one from a message; one that fails is ignored.
+  const hand = options.hand === undefined ? null : readDungeon(options.hand);
+  const plan: RunPlan = {
     seed: num(options.seed, 0, 0xffffffff, 1),
     tier,
     floors: num(options.floors, 3, 5, 2 + tier),
     level: typeof options.level === 'number' && Number.isFinite(options.level) ? Math.max(1, Math.min(50, options.level)) : 1,
     pieces: options.pieces === undefined || options.pieces === 0 ? 0 : num(options.pieces, MIN_PIECES, MAX_PIECES, 0),
   };
+  return hand && checkDungeon(hand).def ? withHand(plan, hand) : plan;
 }

@@ -68,6 +68,7 @@ export interface PortalState {
   radius: number;
   /** Seconds the party has held it so far, out of PORTAL_HOLD_S. */
   held: number;
-  /** Where it leads. */
+  /** Where it leads, and the words shown over it (a hand-built dungeon's name, Deeper, Home). */
   to: PortalTo;
+  label: string;
 }

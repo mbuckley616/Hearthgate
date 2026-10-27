@@ -1,3 +1,4 @@
+import type { HandDungeon } from './handmade';
 import { CELL, KIT, OPPOSITE, SIDE_DIR, rotSide, rotSize, rotSocket, type PieceKind, type Side } from './kit';
 
 /**
@@ -19,6 +20,8 @@ export interface FloorSpec {
   /** 1-based floor of the run, and how many the run has: the last ends in the Warden's hall, the others in a rest room. */
   floor: number;
   floors: number;
+  /** A hand-built floor (T4b, handmade.ts): its pieces as laid out in the editor, instead of a seed's. */
+  hand?: HandDungeon;
 }
 
 export interface PlacedSocket {

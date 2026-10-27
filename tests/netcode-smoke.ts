@@ -11,6 +11,8 @@
  *   6. a bot flooding commands is dropped with 4001 and the others keep their snapshots;
  *   7. a tuning edit reaches the other player, and debug slow motion slows the server's clock;
  *   8. the dev cheats: skip to the Warden;
+ *   8c. a hand-built dungeon (T4b): a bot asks Keeper Wren for one, a broken layout is refused, the
+ *      ring is labelled with it and leads onto it, and the pair walk it to its rest room;
  *   9. the real ClientSession (the browser's) runs, sprints and dodges for three seconds with no
  *      snap and ends exactly where the server has it;
  *   9b. the real ClientSession on a generated floor (T4): it builds the floor the server sent, and its
@@ -28,6 +30,7 @@ import { arena } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
 import { floorLevel, insidePiece, walkRoute, type FloorLayout } from "@hearthgate/shared/level/floor";
 import { floorSeed } from "@hearthgate/shared/level/generate";
+import { DUNGEONS } from "@hearthgate/shared/level/dungeons";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
 import { Bot, MSG, TICK_MS, bootServer, command, loadout, sleep, waitForHealth } from "./bots";
@@ -192,6 +195,27 @@ async function main() {
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();
+    bots.length = 0;
+
+    // 8c. Keeper Wren and a hand-built dungeon.
+    const ha = await bot("Hale", null, "village");
+    const hb = await bot("Ivy", ha.code, "village");
+    const cellar = DUNGEONS.find((d) => d.name === "The Old Cellar")!;
+    ha.send({ k: "destination", dungeon: { ...cellar, pieces: cellar.pieces.filter((p) => p.kind !== "entrance") } });
+    await ha.drive(30);
+    check(ha.snaps[ha.snaps.length - 1].portals[0]?.label === "A new dungeon", "a layout with no entrance is refused: the ring still leads to a new dungeon");
+    ha.send({ k: "destination", dungeon: cellar });
+    await ha.until(() => ha.snaps[ha.snaps.length - 1].portals[0]?.label === cellar.name, 3000, "the ring's label");
+    check(hb.snaps[hb.snaps.length - 1].portals[0]?.label === cellar.name, "asking Keeper Wren turns the ring for the whole party", cellar.name);
+    const hRing = village.village!.portal;
+    await Promise.all([ha.walkTo(-3.2, 2, 1), hb.walkTo(3.2, 2, 1)]);
+    await Promise.all([ha.walkTo(hRing.x - 0.6, hRing.z, 1.5), hb.walkTo(hRing.x + 0.6, hRing.z, 1.5)]);
+    await Promise.all([ha.until(() => ha.handoff !== null, 5000, "Hale's hand-off"), hb.until(() => hb.handoff !== null, 5000, "Ivy's hand-off")]);
+    await Promise.all([ha.takeHandoff(), hb.takeHandoff()]);
+    check(ha.kind === "floor" && ha.floor?.hand?.name === cellar.name && ha.floor.floor === 1, "the ring leads onto the hand-built dungeon", JSON.stringify({ floor: ha.floor?.floor, floors: ha.floor?.floors, hand: ha.floor?.hand?.name }));
+    const cellarFloor = floorLevel(ha.floor!).dungeon!;
+    await walkFloor(ha, hb, cellarFloor);
+    for (const x of [ha, hb]) await x.leave();
     bots.length = 0;
 
     // 9. The browser's own ClientSession, solo.

@@ -1,10 +1,11 @@
 import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
+import type { HandDungeon } from '../level/handmade';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -32,7 +33,9 @@ export type ToHost =
   | { k: 'loadout'; loadout: Loadout }
   | { k: 'restart' }
   | { k: 'tune'; edit: TuneEdit }
-  | { k: 'cheat'; cheat: Cheat };
+  | { k: 'cheat'; cheat: Cheat }
+  /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */
+  | { k: 'destination'; dungeon: HandDungeon | null };
 
 /** Server -> players. */
 export type ToPeer =
