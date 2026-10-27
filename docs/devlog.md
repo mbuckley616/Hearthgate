@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T3: the village and the portal
+
+**What changed**
+
+- Michael on T1 and T2 (decisions.md): "Feels good"; lag testing waits, content first. T1's gate passed on his solo play (PR #69); T2 (PR #68) is out of draft, waiting for his approval.
+- His answers for T3: a portal in the arena brings the party home, and the village is a golden afternoon.
+- **The village** (`shared/src/level/village.ts`): a second level kind in the slice's own format. The four starting buildings round a square (Portal Shrine north with the portal before it, General Store east, Storehouse west, Tavern south-west), a villager at each door who answers F (TalkUi), a well, trees inside a palisade and a wood beyond. Its run-start line lies off the map, so the slice's sim runs in it unchanged and no run or enemy ever starts there; the arena's `buildWorld` path is untouched (parity identical).
+- **Rooms** (`server/src/rooms/`): HostRoom (the old FightRoom) under VillageRoom and DungeonRoom. Play makes a village; everyone standing in its ring for 2 s is handed into a fresh dungeon run; once the run is won or lost a ring opens in the antechamber and takes the party back to the same village, which stays open while they are away.
+- **Client**: ServerLink follows a hand-off (a lost seat lands in a village of our own), ClientSession drops the old room's state and builds the new world, Game rebuilds the level's views without a reload (music and the mouse capture survive). The village is drawn in code (VillageView, villageTextures: grass, packed earth, plaster and timber, shingles, planks, fieldstone) under `tuning.villageLook` (a low western sun, gold-to-blue sky dome, bluish shade, dust motes), tunable live in the panel. PortalView draws the ring, its swirl and the fill as the party holds it.
+- **Tests**: portal and village unit tests (check 34); `test:net` takes two bots village -> ring -> one dungeon -> finish -> ring -> the same village; the browser smoke test adds the round trip with Keeper Wren's line (4/4). The lab and the gate test start in a run (`?dungeon`).
+
+**Learned**
+
+- A dungeon room closes as its party leaves it, before they have taken their seats in the village, so a village that closed when its last run closed lost the returning party ("seat reservation expired"). It now waits 30 s.
+- The paths are drawn pulled toward the camera so they never flicker against the grass, which hid a ring lying on them; the ring now sits higher with a stronger pull of its own.
+- The well's roof stood in the camera's way: its collider now reaches the roof and fades like the trees.
+- Bots steering by snapshots overshoot a 2.4 m ring at a run; they ease off near a mark.
+
+**Next**
+
+- Michael: the village and the portal on the hosted build once #68 and this PR are merged (T3's gate is two players village to dungeon and back, nobody stranded, and the village looks like it belongs to the slice).
+- T4, the dungeon generator, from the kit of pieces in decisions.md (27 Oct).
+
 ## 2026-10-27: local session, T2: the clean link's corrections were enemy bodies
 
 **What changed**
