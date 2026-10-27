@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, step 1 played; the slice moves over whole
+
+**What changed**
+
+- Step 1 merged (PR #64) and is live on the hosted build. Michael played it: it felt okay, but the combat is still Hearthgate's and the movement is hard to judge under the old animations and meshes, and he feared the system-by-system port would water the slice down.
+- New plan, `docs/slice-transplant-plan.md`, replacing `combat-port-plan.md` (except its progression section): copy the slice as it is and run its `HostSession` on Hearthgate's server, with every player on the slice's `ClientSession`; then rebuild the village, the portal, generated dungeons and progression on top of it. It lists what Hearthgate keeps (the server, hosting, rooms and hand-off, the 60 Hz pump, the tuning path, the lab, the team, the design) and what goes (`sim.ts` and its tests, the whole client, the schema, the levels, KayKit). Six steps, T1 to T6; the backlog and `decisions.md` follow.
+- Earlier the same day: the port was re-planned once (the slice's look first, a dungeon generator before the gate) and Michael answered the generator's questions; those answers carry into T4. The slice was pushed to the private repo `mbuckley616/combat-slice`.
+
+**Learned**
+
+- The slice's code already has the seam a server needs: `stepSim(state, commands, dt)` is pure and engine-free, `HostSession` is the only thing that runs it, and the view only reads a session. A system-by-system port re-creates what that seam lets us move whole.
+- A step that changes only what the player cannot see (the tick rate, prediction) is hard to judge in a playtest under the old look: Michael could not tell the movement from the animations.
+
+**Next**
+
+- T1, the transplant, in a local session with Michael.
+
 ## 2026-10-27: local session, the combat port's step 1 finished (camera and keys)
 
 **What changed**

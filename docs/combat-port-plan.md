@@ -1,5 +1,7 @@
 # Bringing the combat slice into Hearthgate: the plan
 
+> **Superseded on 27 Oct 2026** by `docs/slice-transplant-plan.md`: after step 1, Michael chose to move the slice over whole, with its `HostSession` on Hearthgate's server, instead of porting it a system at a time. Section 3a (progression to 50 and champion points) still stands and the new plan points to it; the rest is history.
+
 Written 26 Oct 2026 by a local session; Michael approved it the same day (answers below and in `decisions.md`). Hearthgate was read at `main` d83aef0 (Session 50); the combat slice at `363b726`, its handoff doc. The slice lives at `C:\Users\mbuck\OneDrive\Documents\GitHub\combat-slice`, a sibling checkout on Michael's desktop, and since 27 Oct on GitHub as the private repo `mbuckley616/combat-slice` (`main`), which cloud sessions can read. The desktop folder stays the working copy and slice changes are pushed to the repo. Start with its `docs/handoff.md`.
 
 ## In short
