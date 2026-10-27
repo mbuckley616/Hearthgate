@@ -8,6 +8,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client, type Room } from "colyseus.js";
 import { tuning } from "@hearthgate/shared/config/tuning";
+import type { PortalState } from "@hearthgate/shared/game/portal";
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
@@ -56,10 +57,15 @@ export async function waitForHealth(url: string, timeoutMs = 30000) {
 
 export class Bot {
   room!: Room;
+  client!: Client;
   id = "";
   code = "";
   seq = 0;
-  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number }[] = [];
+  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number; portal: PortalState | null }[] = [];
+  /** A portal's hand-off the server sent, not yet taken. */
+  handoff: { reservation: unknown; level: string } | null = null;
+  /** What the room we are in runs. */
+  kind = "";
   messages: ToPeer[] = [];
   closedWith: number | null = null;
 
@@ -68,20 +74,45 @@ export class Bot {
     private readonly endpoint: string,
   ) {}
 
-  /** Make a fight of our own (code null) or join one by code, say hello and wait for the welcome. */
-  async join(code: string | null): Promise<this> {
+  /** Make a room of our own (code null: a dungeon run unless told otherwise) or join one by code, say hello and wait for the welcome. */
+  async join(code: string | null, create: "dungeon" | "village" = "dungeon"): Promise<this> {
     const client = new Client(this.endpoint);
-    this.room = code ? await client.joinById(code) : await client.create("fight");
-    this.code = this.room.roomId;
-    this.room.onMessage(MSG, (m: ToPeer) => {
-      this.messages.push(m);
-      if (m.k === "welcome") this.id = m.id;
-      if (m.k === "snap") this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale });
-    });
-    this.room.onLeave((c) => (this.closedWith = c));
-    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: loadout(this.name) });
+    this.client = client;
+    this.attach(code ? await client.joinById(code) : await client.create(create));
     await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed`);
     return this;
+  }
+
+  /** Take the seat a portal's hand-off reserved: leave this room, join the next, say hello again. */
+  async takeHandoff(): Promise<this> {
+    const h = this.handoff!;
+    this.handoff = null;
+    const old = this.room;
+    this.id = "";
+    this.snaps = [];
+    this.seq = 0;
+    void old.leave();
+    this.attach(await this.client.consumeSeatReservation(h.reservation as Parameters<Client["consumeSeatReservation"]>[0]));
+    await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed after the portal`);
+    return this;
+  }
+
+  private attach(room: Room) {
+    this.room = room;
+    this.kind = room.name;
+    this.code = room.roomId;
+    room.onMessage(MSG, (m: ToPeer) => {
+      // The room we left on a hand-off may still say something on its way out.
+      if (this.room !== room) return;
+      this.messages.push(m);
+      if (m.k === "welcome") this.id = m.id;
+      if (m.k === "snap") this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portal: m.portal });
+      if (m.k === "handoff") this.handoff = { reservation: m.reservation, level: m.level };
+    });
+    room.onLeave((c) => {
+      if (this.room === room) this.closedWith = c;
+    });
+    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: loadout(this.name) });
   }
 
   send(msg: ToHost | Record<string, unknown>) {
@@ -112,6 +143,23 @@ export class Bot {
       if (cmds.length) this.send({ k: "input", cmds });
       if (sent < ticks) await sleep(2);
     }
+  }
+
+  /** Run toward (x, z) until within `tol` metres, steering every tenth of a second. */
+  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 15000) {
+    const start = performance.now();
+    for (;;) {
+      const p = this.me();
+      if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
+      if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z})`);
+      const dx = p ? x - p.x : 0;
+      const dz = p ? z - p.z : -1;
+      const d = Math.hypot(dx, dz) || 1;
+      // Ease off near the mark: the snapshot we steer by is a round trip behind where we really are.
+      const k = Math.min(1, d / 4);
+      await this.drive(6, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
+    }
+    await this.drive(30);
   }
 
   async until(ok: () => boolean, timeoutMs: number, what: string) {

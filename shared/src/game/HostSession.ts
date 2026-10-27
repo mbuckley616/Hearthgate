@@ -1,6 +1,6 @@
 import { applyTuningEdit, tuningEdits } from '../config/edits';
 import { tuning } from '../config/tuning';
-import { arena, type World } from '../level/arena';
+import type { World } from '../level/arena';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer } from '../sim/coop';
 import { createEnemy, spawnGroup } from '../sim/enemies';
@@ -8,6 +8,7 @@ import { restartRun, skipToWave } from '../sim/run';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 import { createSimState, stepSim } from '../sim/world';
 import { createSlots, nextSlotCommand, receiveInputs, type SlotConfig, type Slots } from './inputSlots';
+import { PORTAL_HOLD_S, partyOnPortal, portalFor, type PortalState } from './portal';
 
 /**
  * The input slots' numbers (inputSlots.ts). The cushion starts at the slice's coop.inputBufferTicks;
@@ -43,13 +44,26 @@ export class HostSession {
   private remotes = new Map<string, Remote>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
+  /** Seconds the whole party has stood in the open portal (T3). */
+  private portalHeld = 0;
+  /** The portal was taken and the room is moving the party; it fires once until reopenPortal(). */
+  private portalTaken = false;
+
   constructor(
     private readonly world: World,
     private readonly send: Send,
-    /** Whether the cheat buttons work (a dev build). */
+    /** Whether the cheat buttons work (a dev build; never in the village). */
     private readonly cheats = false,
+    /** Called once when the party has held the open portal long enough: the room hands them on. */
+    private readonly onPortal: () => void = () => {},
   ) {
-    this.sim = createSimState(arena, [], world);
+    this.sim = createSimState(world.level, [], world);
+  }
+
+  /** The hand-off failed (or was refused): the portal can be taken again. */
+  reopenPortal(): void {
+    this.portalTaken = false;
+    this.portalHeld = 0;
   }
 
   get playerCount(): number {
@@ -69,6 +83,7 @@ export class HostSession {
     stepSim(this.sim, commands, step, this.world);
     const events = this.sim.events;
     this.outbox.push(...events);
+    this.stepPortal(step);
     if (this.remotes.size > 0 && this.sim.tick % Math.max(1, Math.round(tuning.coop.snapshotEveryTicks)) === 0) this.sendSnapshot();
     return events;
   }
@@ -107,7 +122,7 @@ export class HostSession {
         applyTuningEdit(msg.edit.path, msg.edit.value);
         break;
       case 'cheat':
-        if (this.cheats) this.cheat(msg.cheat, r.id);
+        if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id);
         break;
     }
   }
@@ -195,6 +210,27 @@ export class HostSession {
     });
   }
 
+  /** The open portal and how long the party has held it; take it once they have held it long enough. */
+  private stepPortal(step: number): void {
+    const portal = portalFor(this.world, this.sim);
+    if (!portal || this.remotes.size === 0 || !partyOnPortal(this.sim, portal)) {
+      this.portalHeld = 0;
+      return;
+    }
+    this.portalHeld = Math.min(PORTAL_HOLD_S, this.portalHeld + step);
+    if (this.portalHeld >= PORTAL_HOLD_S && !this.portalTaken) {
+      this.portalTaken = true;
+      this.onPortal();
+    }
+  }
+
+  /** What the snapshot says about the open portal. */
+  private portalState(): PortalState | null {
+    const portal = portalFor(this.world, this.sim);
+    if (!portal) return null;
+    return { x: portal.x, z: portal.z, radius: portal.radius, held: this.portalHeld, to: this.world.level.village ? 'arena' : 'village' };
+  }
+
   /** Change the sim between ticks, keeping any events it raises. */
   private between(fn: () => void): void {
     const before = this.sim.events.length;
@@ -205,7 +241,7 @@ export class HostSession {
   private sendSnapshot(): void {
     const acks: Record<string, number> = {};
     for (const r of this.remotes.values()) acks[r.id] = r.slots.ack;
-    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale() };
+    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale(), portal: this.portalState() };
     this.send(msg);
     this.outbox = [];
   }

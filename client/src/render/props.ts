@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { activeLook } from './look';
 import { tuning } from '@hearthgate/shared/config/tuning';
 
 /**
@@ -128,8 +129,9 @@ outgoingLight += rimColor * rimF * rimIntensity;
 
   /** Apply live tuning (rim light, metal reflections). Call once per frame. */
   update(): void {
-    this.rim.rimColor.value.setHex(tuning.look.rimColor);
-    this.rim.rimIntensity.value = tuning.look.rimIntensity;
+    const look = activeLook();
+    this.rim.rimColor.value.setHex(look.rimColor);
+    this.rim.rimIntensity.value = look.rimIntensity;
     for (const m of this.metals) m.envMapIntensity = tuning.look.metalEnvIntensity;
   }
 }

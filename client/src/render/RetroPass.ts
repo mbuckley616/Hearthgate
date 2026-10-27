@@ -1,6 +1,6 @@
 import * as THREE from 'three';
+import { activeLook } from './look';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { tuning } from '@hearthgate/shared/config/tuning';
 
 /**
  * The 80s-90s look (Michael's M6 art direction): runs last, on the finished
@@ -83,7 +83,7 @@ export class RetroPass extends ShaderPass {
 
   /** Pull live values from tuning.look (the debug panel and settings change them). */
   sync(width: number, height: number): void {
-    const look = tuning.look;
+    const look = activeLook();
     const u = this.uniforms;
     const on = look.retro;
     u.resolution.value.set(width, height);

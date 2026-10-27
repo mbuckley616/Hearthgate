@@ -1,8 +1,9 @@
 import { applyServerEdits } from '@hearthgate/shared/config/edits';
 import { tuning } from '@hearthgate/shared/config/tuning';
-import type { World } from '@hearthgate/shared/level/arena';
-import { arena } from '@hearthgate/shared/level/arena';
-import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
+import type { PortalState } from '@hearthgate/shared/game/portal';
+import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
+import { village } from '@hearthgate/shared/level/village';
+import { PROTOCOL_VERSION, type LevelKind, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { applyLoadout } from '@hearthgate/shared/sim/coop';
 import { separateBodies } from '@hearthgate/shared/sim/enemies';
@@ -39,6 +40,12 @@ function clockConfig(): ClockConfig {
     // your screen counts, and an enemy drawn later than that would eat the grace (the lab, T2).
     maxMs: Math.max(c.interpDelayMs, Math.min(c.interpDelayMaxMs, c.lagGraceMs)),
   };
+}
+
+/** Each level's world, built once: the village and the arena (T3). */
+const worlds: Partial<Record<LevelKind, World>> = {};
+export function worldFor(kind: LevelKind): World {
+  return (worlds[kind] ??= buildWorld(kind === 'village' ? village : arena));
 }
 
 interface Snapshot {
@@ -83,6 +90,11 @@ export interface PredictionStats {
  * Changed from the slice only where the host moved: the relay is a Colyseus room (ServerLink),
  * the server's tuning edits are applied as they arrive, and the clock that draws and predicts
  * runs at the server's speed, so the debug slow motion (now the server's) slows both.
+ *
+ * Since T3 a session lives through more than one room: the village first, then a dungeon run and
+ * back, each a room of its own on the server. A portal's `handoff` drops everything that was the
+ * old room's (its snapshots, the prediction, the clock: each room counts its own time) and joins the
+ * next; `kind` and `world` follow the room, and `levelVersion` tells the game to rebuild its view.
  */
 export class ClientSession implements Session {
   readonly role = 'client' as const;
@@ -114,8 +126,15 @@ export class ClientSession implements Session {
   /** Seconds of fight time on this machine: wall time at the server's speed. */
   private clock = 0;
   private clockWall = performance.now();
-  /** What to draw before the first snapshot: the empty arena. */
-  private readonly empty: SimState;
+  /** What this room runs, and its world (collision, ground); the village until a room says otherwise. */
+  kind: LevelKind = 'village';
+  world: World = worldFor('village');
+  /** Bumped each time a room is joined (the first, and each portal's), so the game rebuilds its view. */
+  levelVersion = 0;
+  /** The open portal and how full it is, from the latest snapshot. */
+  portal: PortalState | null = null;
+  /** What to draw before the first snapshot: this level, empty. */
+  private empty: SimState;
   readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0, bigPlaced: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
@@ -130,19 +149,20 @@ export class ClientSession implements Session {
   predictBodies = true;
 
   constructor(
-    private readonly world: World,
-    /** A friend's room code, or null to start a fight of our own. */
+    /** A friend's room code, or null to start a village of our own. */
     code: string | null,
     loadout: Loadout,
     /** The server to play on (default: serverUrl(), from the page); the netcode test passes its own. */
     url?: string,
+    /** With no code, the room to make: a village (Play), or a dungeon run straight away (?dungeon, the tests and the lab). */
+    create: 'village' | 'dungeon' = 'village',
   ) {
     this.relay = new ServerLink(url);
     this.code = code ?? '';
     this.loadout = loadout;
-    this.empty = createSimState(arena, [], world);
+    this.empty = createSimState(this.world.level, [], this.world);
     this.relay.onEvent((ev) => this.onRelay(ev));
-    void this.relay.join(code);
+    void this.relay.join(code, create);
   }
 
   get playing(): boolean {
@@ -296,6 +316,10 @@ export class ClientSession implements Session {
     switch (ev.t) {
       case 'joined':
         this.code = ev.code;
+        this.kind = ev.kind;
+        this.world = worldFor(ev.kind);
+        this.empty = createSimState(this.world.level, [], this.world);
+        this.levelVersion++;
         this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout });
         break;
       case 'error':
@@ -323,8 +347,35 @@ export class ClientSession implements Session {
       applyServerEdits(msg.edits);
       this.tuningVersion++;
     } else if (msg.k === 'snap') {
+      this.portal = msg.portal;
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
+    } else if (msg.k === 'handoff') {
+      this.leaveRoom();
+      void this.relay.handoff(msg.reservation);
     }
+  }
+
+  /**
+   * Forget everything that was the old room's: its snapshots, the prediction and the inputs it has
+   * not applied, the server clock (each room counts its own time), events still waiting to be drawn.
+   * The hero reappears where the next room's first snapshot puts it, so a portal is never a
+   * correction.
+   */
+  private leaveRoom(): void {
+    this.state = 'joining';
+    this.localId = '';
+    this.snaps = [];
+    this.pred = null;
+    this.me = null;
+    this.prevMe = null;
+    this.history = [];
+    this.outgoing = [];
+    this.accumulator = 0;
+    this.sync = createClockSync(clockConfig());
+    this.inbox = [];
+    this.err = { x: 0, y: 0, z: 0 };
+    this.portal = null;
+    this.diagPred.clear();
   }
 
   private onSnapshot(s: SimState, acks: Record<string, number>, events: SimEvent[], scale: number): void {

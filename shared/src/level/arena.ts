@@ -1,4 +1,5 @@
 import type { Collider } from './geometry';
+import { buildVillageWorld, type VillageDef } from './village';
 
 /** A walkable surface above the floor: a flat top or a ramp rising along one axis. */
 export type Surface =
@@ -33,6 +34,8 @@ export interface LevelDef {
   /** Hanging cloth banners on wall faces, facing into the room. */
   banners: { x: number; y: number; z: number; facingYawDeg: number }[];
   spawn: { x: number; z: number; yawDeg: number };
+  /** Set on the village (T3, village.ts): its buildings, villagers and portal; the arena's own fields stay empty there. */
+  village?: VillageDef;
 }
 
 export const arena: LevelDef = {
@@ -108,6 +111,7 @@ export interface World {
 }
 
 export function buildWorld(level: LevelDef): World {
+  if (level.village) return buildVillageWorld(level);
   const h = level.floorSize / 2;
   const t = level.wallThickness;
   const H = level.wallHeight;

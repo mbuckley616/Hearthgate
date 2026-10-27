@@ -4,7 +4,7 @@
  *
  * Boots the server and the Vite dev server on spare ports, puts tests/lab/proxy.ts in front of the
  * server, and opens two Chromium pages through it, each in its own browser so neither is a
- * background tab. Alpha makes a fight (`?play`) and Bravo joins it by its code; both walk through
+ * background tab. Alpha makes a fight (`?play&dungeon`) and Bravo joins it by its code; both walk through
  * the antechamber gate, and for `--seconds` per condition Alpha fights by a seeded schedule of held
  * keys, swings (J), dodges (Ctrl), jumps, Q and E and hero swaps, leaning back to where the run
  * started; Bravo stands, revives Alpha when down, and a lost run is restarted (F) and walked into
@@ -271,7 +271,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
   };
   try {
     const server = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}`;
-    await a.goto(`${CLIENT_BASE}/?play&${server}`);
+    await a.goto(`${CLIENT_BASE}/?play&dungeon&${server}`);
     await until(async () => (await info(a)).playing, 20000, "Alpha in a fight");
     const { code, id: alphaId } = await info(a);
     await b.goto(`${CLIENT_BASE}/?join=${code}&${server}`);
