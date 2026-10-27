@@ -145,21 +145,31 @@ export class Bot {
     }
   }
 
-  /** Run toward (x, z) until within `tol` metres, steering every tenth of a second. */
-  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 15000) {
+  /**
+   * Run toward (x, z) until within `tol` metres and settled there. The snapshot we steer by is a round
+   * trip behind where we really are, so a bot coasts past its mark; after stopping it looks again and
+   * corrects, a few times if it must, until the server has it standing on the mark.
+   */
+  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 20000) {
     const start = performance.now();
-    for (;;) {
+    for (let tries = 0; tries < 6; tries++) {
+      for (;;) {
+        const p = this.me();
+        if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
+        if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z})`);
+        const dx = p ? x - p.x : 0;
+        const dz = p ? z - p.z : -1;
+        const d = Math.hypot(dx, dz) || 1;
+        // Ease off near the mark.
+        const k = Math.min(1, Math.max(0.25, d / 4));
+        await this.drive(4, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
+      }
+      await this.drive(40);
+      await sleep(150);
       const p = this.me();
-      if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
-      if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z})`);
-      const dx = p ? x - p.x : 0;
-      const dz = p ? z - p.z : -1;
-      const d = Math.hypot(dx, dz) || 1;
-      // Ease off near the mark: the snapshot we steer by is a round trip behind where we really are.
-      const k = Math.min(1, d / 4);
-      await this.drive(6, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
+      if (p && Math.hypot(p.x - x, p.z - z) <= tol) return;
     }
-    await this.drive(30);
+    throw new Error(`${this.name} would not settle on (${x}, ${z})`);
   }
 
   async until(ok: () => boolean, timeoutMs: number, what: string) {
