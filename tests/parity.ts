@@ -21,6 +21,9 @@ import { createSimState, stepSim } from "@hearthgate/shared/sim/world";
 import { SCENARIOS, playScenario, type SimApi } from "@hearthgate/shared/parity/scenario";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+
+// Hearthgate's downs (T5) are its own rule: with them off, the rest of its fight is compared with the slice's to the bit.
+tuning.coop.bleedOut = false;
 const args = process.argv.slice(2);
 const argOf = (k: string) => {
   const i = args.indexOf(k);

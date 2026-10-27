@@ -182,6 +182,7 @@ export function restartRun(state: SimState, world: World): void {
     fresh.maxHp = p.maxHp;
     fresh.hp = p.maxHp;
     fresh.lagGrace = p.lagGrace;
+    if (tuning.coop.bleedOut) fresh.draughts = Math.round(tuning.coop.draughtsPerFloor);
     fresh.y = groundHeight(world, fresh.x, fresh.z);
     return fresh;
   });

@@ -25,6 +25,8 @@ export class Hud {
   private comboCount = document.createElement('div');
   private vignette = document.createElement('div');
   private down = document.createElement('div');
+  /** Revive Draughts carried on this floor (Hearthgate's downs, T5). */
+  private draught = document.createElement('div');
   private hits = 0;
   private sinceHit = Infinity;
   private hurtFlash = 0;
@@ -46,7 +48,8 @@ export class Hud {
     this.portrait.className = 'pixel-art hud-portrait';
     const bars = document.createElement('div');
     bars.className = 'hud-bars';
-    bars.append(hp, this.pips);
+    this.draught.className = 'hud-draught';
+    bars.append(hp, this.pips, this.draught);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -97,8 +100,12 @@ export class Hud {
       if (ev.kind === 'playerJoined' && ev.playerId !== localId) this.toast(`<b>${ev.name || 'A friend'} joined</b><span>Fight beside them</span>`, 'level');
       if (ev.kind === 'playerLeft' && ev.playerId !== localId) this.toast(`<b>${ev.name || 'A friend'} left</b>`, 'common');
       if (ev.kind === 'revived') {
-        if (ev.playerId === localId) this.toast(`<b>${nameOf(ev.by)} revived you</b>`, 'level');
-        else if (ev.by === localId) this.toast(`<b>You revived ${nameOf(ev.playerId)}</b>`, 'level');
+        const with_ = ev.draught ? ' with a Revive Draught' : '';
+        if (ev.playerId === localId) this.toast(`<b>${nameOf(ev.by)} revived you${with_}</b>`, 'level');
+        else if (ev.by === localId) this.toast(`<b>You revived ${nameOf(ev.playerId)}${with_}</b>`, 'level');
+      }
+      if (ev.kind === 'bledOut' && ev.playerId !== localId) {
+        this.toast(`<b>${nameOf(ev.playerId)} has bled out</b>: out until the room is cleared`, 'level');
       }
       if (ev.kind === 'hit' && ev.attackerId === localId) {
         this.hits = this.sinceHit * 1000 < tuning.combat.comboResetMs ? this.hits + 1 : 1;
@@ -177,10 +184,20 @@ export class Hud {
       slot.wasReady = ready;
     });
 
-    // In a run there's no getting up alone: the party UI shows revive instead.
-    const showDown = p.mode === 'down' && !inRun;
+    // Out of a fight you get back up alone. In one, the slice's downs wait for a friend (the party UI
+    // says so); Hearthgate's (T5) bleed out, and the clock is the thing to watch.
+    const bleeding = p.mode === 'down' && inRun && p.bleed !== undefined;
+    const showDown = p.mode === 'down' && (!inRun || bleeding);
     this.down.style.display = showDown ? 'block' : 'none';
-    if (showDown) this.down.textContent = `Down — back up in ${Math.ceil(p.downTime)}`;
+    if (showDown) {
+      this.down.textContent = !inRun
+        ? `Down — back up in ${Math.ceil(p.downTime)}`
+        : p.bleed! > 0
+          ? `Down — bleeding out in ${Math.ceil(p.bleed!)}  ·  crawl to a friend`
+          : 'Out until the room is cleared';
+    }
+    this.draught.style.display = p.draughts === undefined ? 'none' : 'block';
+    if (p.draughts !== undefined) this.draught.textContent = `Revive Draught ×${p.draughts}`;
   }
 
   /** Short word under the crosshair for a parry or a broken guard. */

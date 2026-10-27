@@ -305,6 +305,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.hp <= 0) {
     p.mode = 'down';
     p.downTime = tuning.combat.downMs / 1000;
+    if (tuning.coop.bleedOut) p.bleed = tuning.coop.bleedOutMs / 1000;
     p.vx = 0;
     p.vz = 0;
     p.attackQueued = false;

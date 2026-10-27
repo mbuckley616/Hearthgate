@@ -46,6 +46,14 @@ export interface PlayerState {
   name: string;
   /** While down: seconds an ally has held revive on them (brief: 3 s brings them back). */
   reviveProgress: number;
+  /**
+   * Hearthgate's downs (T5, coop.bleedOut): while down, seconds of bleed-out left; at 0 the hero is out
+   * until the room is cleared or a Revive Draught brings them back. Absent when up, and always with
+   * the slice's downs, so the slice's state never carries it.
+   */
+  bleed?: number;
+  /** Revive Draughts this hero carries on this floor (T5; absent with the slice's downs). */
+  draughts?: number;
   /** Seconds enemy hits on this hero wait before landing (remote players; see coop.lagGraceMs). */
   lagGrace: number;
   dodgeCharges: number;
@@ -325,7 +333,9 @@ export type SimEvent =
   | { kind: 'levelUp'; playerId: string; style: Style; level: number }
   | { kind: 'dropSpawned'; owner: string; x: number; z: number; rarity: Item['rarity'] }
   | { kind: 'combo'; combo: Combo; playerId: string; x: number; y: number; z: number }
-  | { kind: 'revived'; playerId: string; by: string }
+  | { kind: 'revived'; playerId: string; by: string; draught?: boolean }
+  /** A downed hero's bleed-out ran out: out of the fight until the room is cleared (T5). */
+  | { kind: 'bledOut'; playerId: string }
   | { kind: 'playerJoined'; playerId: string; name: string }
   | { kind: 'playerLeft'; playerId: string; name: string }
   | { kind: 'pickup'; playerId: string; item: Item }

@@ -552,6 +552,18 @@ export const tuning = {
    */
   coop: {
     maxPlayers: 4,
+    /**
+     * Hearthgate's downs (decision 5A, T5): a downed hero crawls and bleeds out over bleedOutMs, then is
+     * out of the fight; a friend holding interact brings back the downed for free and the out with a
+     * Revive Draught; clearing the room brings everyone back. Off is the slice's downs (down until
+     * revived), which the parity test plays so it still compares every other rule with the slice.
+     */
+    bleedOut: true,
+    bleedOutMs: 30000,
+    /** A downed hero drags themselves along this fast (m/s). */
+    crawlSpeed: 1.1,
+    /** Revive Draughts each player starts a floor with: a counter until Phase 3's items (decisions.md, 4 Oct). */
+    draughtsPerFloor: 1,
     /** Hold interact this long next to a downed ally to bring them back (brief: 3 s). */
     reviveMs: 3000,
     reviveRadius: 1.6,
@@ -939,6 +951,10 @@ export type Tuning = typeof tuning;
 /** Slider ranges for the debug panel: "section.key" -> [min, max, step]. */
 export const tuningRanges: Record<string, [number, number, number]> = {
   'sim.tickRate': [20, 120, 1],
+
+  'coop.bleedOutMs': [5000, 90000, 1000],
+  'coop.crawlSpeed': [0, 3, 0.1],
+  'coop.draughtsPerFloor': [0, 5, 1],
 
   'dungeon.tier': [1, 3, 1],
   'dungeon.basePieces': [10, 50, 1],
