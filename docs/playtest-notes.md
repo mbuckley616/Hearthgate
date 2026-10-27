@@ -60,3 +60,32 @@ Other notes
 
 Decisions
 - Michael, 2026-10-04 (in chat): no friend on another network is available and it would stay a blocker, so the human remote playtest is dropped; this run and the critic's daily lab stand in for it. The gate was already passed on 2026-10-03.
+
+## 2026-10-27: T1 gate (the combat slice on the server): Michael solo on the hosted build, and the lag lab against it for two players
+
+Half 1: Michael, solo, side by side with the combat slice on his desktop, on the hosted build (main 9b6c0f2).
+Ping (HUD): not recorded (the slice's HUD has no ping readout)
+Corrections (HUD, after 5 minutes): not recorded (the slice's HUD has no counter)
+Session length: not recorded
+
+Gate questions
+1. Does your own movement feel instant? (yes / mostly / no, and what felt late) — Not answered one by one. Michael, in chat: "Gameplay looks good."
+2. Do hits land where they look like they land, for you and for the other player? — As above.
+3. Did anything teleport, rubber-band, or freeze? When? — As above.
+
+Half 2: the lag lab against the hosted build, two headless Chromium clients on Michael's desktop (Central US) to the Render server over the public internet, GPU rendering at 60 fps; no human. `npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com --seconds 300`, main's lab at 9b6c0f2.
+Ping (HUD): not shown by the slice's HUD; inputs in flight averaged 79 ms (round trip plus the server's two-tick cushion)
+Corrections (lab, 5 minutes): Alpha 350 over 2 cm (70 a minute); Bravo not driven
+Session length: 5 min
+
+Gate questions
+1. Does your own movement feel instant? (yes / mostly / no, and what felt late) — Measured, not felt: 70 corrections a minute over 2 cm, eased over 120 ms. They come from Alpha's own swings (lunge and soft-target turn predicted against the last snapshot's enemy), which Michael chose to keep (decisions.md, 27 Oct, A).
+2. Do hits land where they look like they land, for you and for the other player? — Not judged by this run (no human eyes). Alpha was downed 4 times and revived by Bravo.
+3. Did anything teleport, rubber-band, or freeze? When? — No network snap: 0. The 12 the lab saw were all placements by the server itself (the gate bringing a straggler in, a restart). Bravo's view of Alpha held still 2.8 times a minute; Bravo drew Alpha 125 ms behind, 0.08 m mean gap.
+
+Other notes
+- The lab pair started 13 runs in 5 minutes and finished none: Bravo only stands and revives, so the two lose each run and restart it. This covers "no snap" over five minutes of fighting, not "two players through a whole run", which needs two people or a bot that fights.
+- 0 page errors on either client.
+
+Decisions
+- Michael's call: the T1 gate (solo the same as the slice, then two players through a run with no snap).
