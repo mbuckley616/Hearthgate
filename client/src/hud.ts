@@ -37,6 +37,9 @@ export interface HudData {
   slots: { name: string; readyIn: number }[];
 }
 
+/** The key on each ability slot (decision 10A). No weapon has a third ability yet. */
+const SLOT_KEYS = ["Q", "E", ""];
+
 /** Minimal DOM HUD. Lives in the corners; the centre of the screen stays clear. */
 export class Hud {
   private root: HTMLElement;
@@ -82,18 +85,18 @@ export class Hud {
       <div class="hud-log" id="hud-log"></div>
       <div class="hud-respawn" id="hud-respawn"></div>
       <div class="hud-bottom-right hud-slots" id="hud-slots">
-        ${[1, 2, 3].map((k) => `<div class="hud-slot" data-slot="${k}"><b>${k}</b><span class="hud-slot-name"></span><span class="hud-slot-cd"></span></div>`).join("")}
+        ${[1, 2, 3].map((k) => `<div class="hud-slot" data-slot="${k}"><b>${SLOT_KEYS[k - 1]}</b><span class="hud-slot-name"></span><span class="hud-slot-cd"></span></div>`).join("")}
       </div>
       <div class="hud-panel hud-bottom-left hud-controls">
         <span><b>WASD</b> move, <b>arrows</b> camera</span>
         <span><b>J</b> attack, <b>Space</b> jump</span>
-        <span><b>Shift</b> sprint (hold), <b>K</b> or <b>C</b> dodge</span>
-        <span><b>1 2 3</b> abilities</span>
-        <span><b>L</b> or <b>Q</b> block (hold; just before a hit to parry)</span>
-        <span><b>E</b> talk, revive draught</span>
+        <span><b>Shift</b> sprint (hold), <b>Ctrl</b> dodge</span>
+        <span><b>Q E</b> abilities</span>
+        <span><b>L</b> guard (hold; just before a hit to parry)</span>
+        <span><b>F</b> talk, revive draught</span>
         <span><b>Tab</b> bow lock-on</span>
-        <span class="hud-hint-mouse">Mouse (optional): click to look, <b>left</b> attack, <b>right</b> block; <b>Esc</b> frees it</span>
-        <span>Gamepad: sticks (L3 sprint), X attack, A jump, B dodge; Y RT RB; LB; LT block</span>
+        <span class="hud-hint-mouse">Mouse (optional): click to look, <b>left</b> attack, <b>right</b> guard; <b>Esc</b> frees it</span>
+        <span>Gamepad: sticks (L3 sprint), X attack, Y jump, B dodge; LB RB; A talk; LT guard</span>
       </div>
     `;
     this.status = root.querySelector("#hud-status")!;
@@ -139,12 +142,12 @@ export class Hud {
     this.enemyText.textContent = noEnemy ? d.clearedText : `${d.enemyHp} / ${d.enemyMaxHp}`;
     this.draught.textContent =
       d.draughts > 0 && d.reviveTarget
-        ? `E or LB: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
+        ? `F or A: revive ${d.reviveTarget} (${d.draughts} draught${d.draughts === 1 ? "" : "s"})`
         : `Revive Draughts: ${d.draughts}`;
     this.draught.classList.toggle("is-ready", d.draughts > 0 && !!d.reviveTarget);
     this.draught.setAttribute("data-draughts", String(d.draughts));
     this.enemyRow.style.display = d.village ? "none" : "";
-    const talkText = d.talkTo ? `E or LB: talk to ${d.talkTo}` : "";
+    const talkText = d.talkTo ? `F or A: talk to ${d.talkTo}` : "";
     if (this.talk.textContent !== talkText) this.talk.textContent = talkText;
     this.talk.style.display = talkText ? "block" : "none";
     const speechText = d.speech ? `${d.speech.who}: ${d.speech.line}` : "";

@@ -2,6 +2,47 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, the combat port's step 1 finished (camera and keys)
+
+**What changed**
+
+- The camera is the combat slice's orbit camera (`client/src/orbit.ts`), centred behind the hero. It sphere-casts from a pivot 1.7 m up to the eye against the level's walls, roofs and the ground (`shared/src/geometry.ts`, the slice's cast on boxes), eases in early on a wider probe and on a cast where a fast swing is heading, and when the walls would bring it inside 1.5 m it cranes up over the hero instead. Pitch runs from 30 degrees below the pivot to 60 above, the bow's lock swings it round and pulls the look point toward the target, and a sprint widens the view by 5 degrees. Its numbers are `tuning.camera` and `tuning.lockOn`, so the panel tunes it. Hearthgate's swing in behind the travel is gone: with strafe movement the hero faces the camera, so there is no travel to swing behind. The old camera's helpers left `shared/src/camera.ts`; `CAMERA` keeps only the shot the art tools frame and the wall fade's aim height.
+- Input goes through the slice's action layer (`client/src/input/`, decision 10A): Ctrl dodge, Space jump, Shift sprint, left click or J attack, right click or L guard, Q and E the two ability slots, Tab or the middle button lock-on, F talks and uses the Revive Draught, WASD moves, the arrows turn the camera (Up still raises the eye; the mouse and the right stick tilt the usual way). The gamepad is the slice's: X attack, Y jump, B dodge, A interact, LB and RB the abilities, LT guard, L3 sprint, R3 lock-on. 1, 2 and 3 do nothing until step 3's weapon swap. The HUD's hints and slot keys say so.
+- Ctrl is the dodge and Ctrl+W (dodge while running forward) closes a tab, which no page may stop, so a real join asks before leaving, as the slice did; other Ctrl shortcuts are stopped while playing. Scripted joins (tests, the lab) skip the question.
+
+**Learned**
+
+- Backed flat against a wall the camera cranes nearly overhead (up to 85 degrees), the slice's behaviour, and eases back out as the hero steps away. It never enters a wall: `camera.e2e` backs into the yard's east wall at 20 degrees below the pivot and checks fifty frames that the eye is outside every wall and that no wall stands between it and the head; with the walls left out of the camera the same test fails with the eye inside the wall.
+- The browser pane's page runs about one frame a second while the pane is hidden, so camera feel cannot be judged there; the headless browser suite runs at full rate.
+- Checks: `npm run check` 229 (the old camera's seven tests out, three for the sphere cast in), `test:net` every step, the browser suite 20/20.
+
+**Next**
+
+- Step 1's gate, Michael's: run round the Warrens on the hosted build once the branch is approved and merged; it should feel like the slice, the camera never clips, the panel tunes it live, keyboard-only works, and the lab is no worse. The lab against the hosted build goes with it.
+- Then step 2, the sword's combat.
+
+## 2026-10-26: local session, the combat port begins (step 1, part one)
+
+**What changed**
+
+- Michael's combat slice (a separate repo, M0 to M6 passed today) is now the reference for Hearthgate's combat. `docs/combat-port-plan.md` has the plan: Hearthgate's server and netcode stay, and the slice's simulation, tuning, input, camera, views, effects and sound come across in seven steps, each with a playtest gate. His answers are in `decisions.md`: 1A 2A 3A 4B 5A 7A 8A 9A 10A, and his own progression (the slice's levels to 50 with a talent point a level, then Champion-style points). The steps head Phase 1 in the backlog, all **(Fable)**. A `FREEZE:` issue (#63) keeps the builder idle while the shared sim is rewritten.
+- The server ticks at 60 Hz (1A) and sends a patch every second tick, 30 a second (`PATCH_TICKS`, `PATCH_MS`). A tick is 16.7 ms, not a whole number of ms, so every slot and replay time goes through `onTick` (back onto the grid), and every time in the schema is `float64`: Colyseus sends a `number` as float32 whenever that loses under 1e-4, which moved a swing's end a hair off the grid and would have made the replay end it a tick late.
+- The slice's movement in `applyInput`, with the slice's numbers in the new `shared/src/tuning.ts`: acceleration toward the stick (velocity `vx`, `vz` is synced and rewound), strafe movement facing the camera's aim (`aimX`, `aimZ` in every frame; a frame with no aim turns to run, so the bots still swing where they walk), walk, run 5.5, sprint 8 forward only, the slice's dodge (two charges, an eased roll, a backstep with no direction, i-frames for the first 300 ms in `isUntouchable`, any input ends the tail past 240 ms, it cuts a swing short), the slice's jump arc (still a pure function of the landing time). Combat on top is still Hearthgate's until step 2.
+- The live tuning panel (backtick, lil-gui, `client/src/debug.ts`). An edit goes to the server as `tune`; the server checks it against `tuningRanges`, applies it and every room sends its clients the whole set; a joining client gets it before its first patch.
+- CLAUDE.md: rule 2 reads "time comes from the tick count" (2A), `tuning.ts` is the tuning surface, and the netcode and movement notes are rewritten for 60 Hz.
+
+**Learned**
+
+- The 60 Hz tick first made the lag lab much worse on this desktop (corrections a minute at 0 / 50 / 150 ms: 68 / 234 / 46; the 20 Hz build on the same box: 14 at 0 ms). Counters on the input queue showed why: under the lab's load the server stalled 200 to 450 ms several times a run, past its 200 ms catch-up, and dropped that time; every client's frames then sat up to 25 ticks ahead of their slots, and the drain cleared them one tick a second, each a correction. At 20 Hz the same stall dropped four ticks. Three fixes: the pump catches up 500 ms, the drain moves the slots back by the whole standing backlog in one step, and the lag window is 300 ms, so a frame a TCP retransmit held up (200 ms minimum timeout) still lands in its slot (the lossy row went from 34 corrections a minute to 6 with it). After those and the movement: 8 / 3 / 1 at 0 / 50 / 150 ms and 8 on the lossy link, no snaps, every row ok.
+- More packets mean more lost packets: at 60 Hz the client sends three times the input messages, so a lossy link holds up frames three times as often. Batching frames is the next lever if the hosted build shows it.
+- A Node timer asked for 16.7 ms fires nearer 25 ms on Windows, so the bot harness now paces frames by wall time (`sendPaced`), as the browser's `InputClock` does.
+- An idle enemy kept the first player in the room as its target while asleep; at 60 Hz a tick falls between two joins. Asleep, it now wakes for whoever is nearest.
+- The browser suite: 19/19 after two fixes. A tap of a key is one frame, which with acceleration moves about a centimetre, so `village.e2e` nudges onto its marks with 150 ms holds. And dungeon rooms are now matched by level (`filterBy(["level"])`): a page asking for `?level=yard` had joined a field room an earlier test left open. A browser-pane tab left in the village also stalls that test's portal, which waits for everyone in the room.
+
+**Next**
+
+- Step 1 is not finished: the 10A key layout through the slice's action layer (Ctrl dodge, left click attack, right click guard, Q/E, F; J, L and the arrows for keyboard-only), and the slice's orbit camera. Then Michael's step 1 gate on the hosted build.
+
 ## 2026-10-18: Session 50, a downing blow eases instead of snapping
 
 **What changed**

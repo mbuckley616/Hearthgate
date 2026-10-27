@@ -9,19 +9,12 @@ import {
   PORTAL,
   STAIRS,
   WEAPON_CLASSES,
-  cameraOffset,
-  clearDistance,
-  easeDistance,
-  LOCK_TUNING,
-  lockYaw,
-  swingTarget,
-  turnCamera,
-  mouseTurn,
-  type CameraWall,
+  wallBox,
+  type BoxCollider,
   type Point,
+  type Vec3,
   materialOf,
   nudgeOffset,
-  slewYaw,
   wallHides,
   weaponClassOf,
   type EnemyKind,
@@ -34,6 +27,7 @@ import type { Pose } from "./net";
 import { enemyFigure, newWalkState, poseFigure, stepFigureWalk, type Figure, type WalkState } from "./figures";
 import { dressDungeon, type Dressing } from "./dungeon";
 import { knightFigure, villagerFigure, weaponMesh, weaponModelFor, type RigState, type WeaponModel } from "./models";
+import { OrbitCamera } from "./orbit";
 
 export interface PlayerVisual {
   hp: number;
@@ -108,6 +102,8 @@ const WEAPON_MODELS: readonly WeaponModel[] = ["sword_1handed", "sword_2handed",
 const TELEGRAPH_RIM_M = 0.14;
 const RAIN_RINGS = 4;
 const RAIN_SHOW_MS = 400;
+/** The bow's lock framed at the target's chest, not its feet. */
+const LOCK_CHEST_Y = 0.9;
 /** A combo callout ("Combo x1.5") hangs over the enemy this long, rising CALLOUT_RISE_M. */
 const CALLOUT_MS = 1000;
 const CALLOUT_RISE_M = 0.7;
@@ -426,30 +422,13 @@ export class View {
   private wallMeshes: { meshes: THREE.Mesh[]; rect: WallRect; h: number; mat: THREE.Material; faded: THREE.Material }[] = [];
   /** The kit-dressed level's pieces (dungeon.ts), or null on a greybox level. */
   dressing: Dressing | null = null;
-  /** What the eye may not pass through: every wall and every roof (camera.ts clearDistance). */
-  private camWalls: CameraWall[] = [];
-  private camTarget = new THREE.Vector3();
-  private camPos = new THREE.Vector3();
-  private readonly camOffset = { x: 0, y: 0, z: 0 };
+  /** The combat slice's orbit camera (orbit.ts); `camera` is its. */
+  private orbit: OrbitCamera;
+  /** What the eye may not pass through: every wall and every roof, as boxes. */
+  private camWalls: BoxCollider[] = [];
   private readonly fadeEye = { x: 0, y: 0, z: 0 };
   private readonly fadeAim = { x: 0, y: 0, z: 0 };
-  private readonly camHead = { x: 0, y: 0, z: 0 };
-  private readonly camEyeFull = { x: 0, y: 0, z: 0 };
-  private readonly camLook = new THREE.Vector3();
-  private camStarted = false;
-  /** The camera's turn about the player (camera.ts): 0 is the view from the south. Input reads it. */
-  yaw = 0;
-  /** The eye's pitch above the head, degrees: the player tilts it within CAMERA's clamp. */
-  pitchDeg: number = CAMERA.pitchDeg;
-  /** Eye to head this frame, metres: CAMERA.distanceM unless a wall pulled it in. */
-  camDistance: number = CAMERA.distanceM;
-  /** When the player last turned the camera; the swing in behind waits CAMERA.swingDelayMs after it. */
-  private lastLookAt = -Infinity;
-  /** The drawn player's ground velocity, smoothed, for the swing in behind the travel. */
-  private velX = 0;
-  private velZ = 0;
-  private lastX = NaN;
-  private lastZ = NaN;
+  private readonly heroAt: Vec3 = { x: 0, y: 0, z: 0 };
   // Hit-feedback nudge: added on top of the smoothed camera so it never disturbs the follow.
   private nudgeDir = new THREE.Vector3();
   private nudgeStart = -Infinity;
@@ -506,7 +485,8 @@ export class View {
       this.callouts.push({ sprite, canvas, start: -Infinity, y: 0, text: "" });
     }
 
-    this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    this.orbit = new OrbitCamera(1);
+    this.camera = this.orbit.camera;
 
     this.scene.background = new THREE.Color(PALETTE.sky);
     this.scene.fog = new THREE.Fog(PALETTE.sky, 30, 70);
@@ -599,7 +579,7 @@ export class View {
       this.walls.add(this.dressing.group);
       for (const dw of this.dressing.walls) {
         this.wallMeshes.push({ meshes: dw.meshes, rect: dw.rect, h: dw.h, mat: this.dressing.material, faded: this.dressing.faded });
-        this.camWalls.push({ rect: dw.rect, h: dw.h });
+        this.camWalls.push(wallBox(dw.rect, 0, dw.h));
       }
     }
     for (const w of this.dressing ? [] : level.walls) {
@@ -611,7 +591,7 @@ export class View {
       mesh.receiveShadow = true;
       this.walls.add(mesh);
       this.wallMeshes.push({ meshes: [mesh], rect: w, h, mat: this.wallMat, faded: this.wallFadedMat });
-      this.camWalls.push({ rect: w, h });
+      this.camWalls.push(wallBox(w, 0, h));
     }
     const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9, flatShading: true });
     for (const b of level.buildings ?? []) {
@@ -620,7 +600,7 @@ export class View {
       for (const w of level.walls) if (w.h && Math.abs(w.x - b.x) <= b.hw + 0.5 && Math.abs(w.z - b.z) <= b.hd + 0.5) h = Math.max(h, w.h);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(b.hw * 2 + 0.6, 0.3, b.hd * 2 + 0.6), roofMat);
       roof.position.set(b.x, h + 0.15, b.z);
-      this.camWalls.push({ rect: { x: b.x, z: b.z, hw: b.hw + 0.3, hd: b.hd + 0.3 }, y0: h, h: h + 0.3 });
+      this.camWalls.push(wallBox({ x: b.x, z: b.z, hw: b.hw + 0.3, hd: b.hd + 0.3 }, h, h + 0.3));
       roof.castShadow = true;
       roof.receiveShadow = true;
       this.walls.add(roof);
@@ -666,6 +646,7 @@ export class View {
       ring.castShadow = true;
       this.walls.add(ring);
     }
+    this.orbit.setColliders(this.camWalls);
   }
 
   /** An Arrow rain landed: flash a disc of its radius at (x, z), reusing the oldest ring. */
@@ -778,97 +759,60 @@ export class View {
     return [...this.enemies.keys()];
   }
 
-  /**
-   * The mouse's turn under pointer lock, `mx`, `my` pixels since the last frame. Counts as the
-   * player's own camera input, so the swing in behind waits for a pause after it like the arrows.
-   */
-  turnByMouse(mx: number, my: number) {
-    if (mx === 0 && my === 0) return;
-    const t = mouseTurn(this.yaw, this.pitchDeg, mx, my);
-    this.yaw = t.yaw;
-    this.pitchDeg = t.pitchDeg;
-    this.lastLookAt = performance.now();
+  /** The camera's turn about the player: 0 is the view from the south. Input reads it. */
+  get yaw(): number {
+    return this.orbit.yaw;
+  }
+
+  /** The eye's pitch above the pivot, degrees (negative looks up from below it). */
+  get pitchDeg(): number {
+    return (this.orbit.pitch * 180) / Math.PI;
+  }
+
+  /** Pivot to eye this frame, metres: the tuned distance unless a wall pulled it in. */
+  get camDistance(): number {
+    return this.orbit.currentDistance;
+  }
+
+  /** The player's own turn this frame (Input.look, radians). */
+  look(turn: { x: number; y: number }) {
+    this.orbit.applyLook(turn);
   }
 
   /** Start the follow over at the next frame's position: after a hand-off, the jump to the new spawn is not travel. */
   resetFollow() {
-    this.camStarted = false;
-    this.lastX = NaN;
-    this.lastZ = NaN;
-    this.velX = 0;
-    this.velZ = 0;
+    this.orbit.reset();
   }
 
   /**
-   * Follow the given point with the camera over the player's shoulder. `look` is the player's own
-   * turn this frame (Input.look); with none for CAMERA.swingDelayMs the camera swings in behind the
-   * travel, and while the bow's lock is held (`lock`, the target's drawn position) it keeps the
-   * target framed instead. Reduced motion keeps both of those off; the player's own turning stays.
-   * A wall between the head and the eye pulls the eye in along its ray.
+   * Follow the player at (x, z), `lift` metres off the ground, with the orbit camera. `sprint` is
+   * 0..1 into a sprint (widens the view); `lock` is the bow's target, kept framed. Reduced motion
+   * keeps the camera from moving itself; the player's own turning stays.
    */
-  follow(x: number, z: number, dtMs: number, look: { x: number; y: number }, lock: Point | null) {
-    const now = performance.now();
-    if (dtMs > 0 && Number.isFinite(this.lastX)) {
-      const kv = 1 - Math.exp(-dtMs / 150);
-      this.velX += (((x - this.lastX) * 1000) / dtMs - this.velX) * kv;
-      this.velZ += (((z - this.lastZ) * 1000) / dtMs - this.velZ) * kv;
-    }
-    this.lastX = x;
-    this.lastZ = z;
+  follow(x: number, lift: number, z: number, dtMs: number, sprint: number, lock: Point | null) {
+    if (lock) {
+      this.heroAt.x = lock.x;
+      this.heroAt.y = LOCK_CHEST_Y;
+      this.heroAt.z = lock.z;
+      this.orbit.setLock(this.heroAt);
+    } else this.orbit.setLock(null);
+    this.heroAt.x = x;
+    this.heroAt.y = lift;
+    this.heroAt.z = z;
+    this.orbit.update(dtMs / 1000, this.heroAt, sprint, this.reducedMotion.matches);
 
-    if (look.x !== 0 || look.y !== 0) {
-      const t = turnCamera(this.yaw, this.pitchDeg, look.x, look.y, dtMs);
-      this.yaw = t.yaw;
-      this.pitchDeg = t.pitchDeg;
-      this.lastLookAt = now;
-    } else if (!this.reducedMotion.matches) {
-      if (lock) {
-        this.camHead.x = x;
-        this.camHead.z = z;
-        this.yaw = slewYaw(this.yaw, lockYaw(this.camHead, lock), dtMs, LOCK_TUNING);
-      } else if (now - this.lastLookAt >= CAMERA.swingDelayMs) {
-        this.yaw = slewYaw(this.yaw, swingTarget(this.yaw, this.velX, this.velZ), dtMs);
-      }
-    }
-
-    const k = this.camStarted ? 1 - Math.exp(-dtMs / CAMERA.followMs) : 1;
-    this.camStarted = true;
-    this.camTarget.x += (x - this.camTarget.x) * k;
-    this.camTarget.y = CAMERA.targetY;
-    this.camTarget.z += (z - this.camTarget.z) * k;
-
-    // The full eye: back and up from the head at the yaw and pitch, and out to the right shoulder.
-    const h = this.camHead;
-    h.x = this.camTarget.x;
-    h.y = this.camTarget.y;
-    h.z = this.camTarget.z;
-    const o = cameraOffset(this.yaw, this.pitchDeg, CAMERA.distanceM, this.camOffset);
-    const sx = Math.cos(this.yaw) * CAMERA.shoulderM;
-    const sz = -Math.sin(this.yaw) * CAMERA.shoulderM;
-    const e = this.camEyeFull;
-    e.x = h.x + o.x + sx;
-    e.y = h.y + o.y;
-    e.z = h.z + o.z + sz;
-    const full = Math.hypot(e.x - h.x, e.y - h.y, e.z - h.z);
-    this.camDistance = easeDistance(this.camDistance, clearDistance(h, e, this.camWalls), dtMs);
-    // In along the head-to-eye ray, the shoulder shrinking with it, so a close wall never puts the
-    // eye inside it and the look target stays beside the head.
-    const f = Math.min(1, this.camDistance / full);
-    this.camPos.set(h.x + (e.x - h.x) * f, h.y + (e.y - h.y) * f, h.z + (e.z - h.z) * f);
-    this.camLook.set(h.x + sx * f, h.y, h.z + sz * f);
-
-    const n = nudgeOffset(now - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
+    // The hit nudge slides eye and look point together: the orbit has looked, so move the eye.
+    const n = nudgeOffset(performance.now() - this.nudgeStart, this.nudgeStrength, this.nudgeMs);
+    this.fadeEye.x = this.camera.position.x;
+    this.fadeEye.y = this.camera.position.y;
+    this.fadeEye.z = this.camera.position.z;
     this.nudgeVec.copy(this.nudgeDir).multiplyScalar(n);
-    this.camera.position.copy(this.camPos).add(this.nudgeVec);
-    this.camera.lookAt(this.nudgeVec.add(this.camLook));
+    this.camera.position.add(this.nudgeVec);
     this.fadeWalls(x, z);
   }
 
   /** Fade the walls that stand between the eye and the player; restore the rest. */
   private fadeWalls(x: number, z: number) {
-    this.fadeEye.x = this.camPos.x;
-    this.fadeEye.y = this.camPos.y;
-    this.fadeEye.z = this.camPos.z;
     this.fadeAim.x = x;
     this.fadeAim.y = CAMERA.fadeAimY;
     this.fadeAim.z = z;
@@ -955,8 +899,7 @@ export class View {
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.renderer.setSize(w, h);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.orbit.setAspect(w / h);
   }
 }
 

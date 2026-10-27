@@ -1,4 +1,4 @@
-import { INPUT_TIMING, TICK_MS, applyInput, neutralInput, type InputFrame, type PlayerSim } from "./sim";
+import { INPUT_TIMING, TICK_MS, applyInput, neutralInput, onTick, type InputFrame, type PlayerSim } from "./sim";
 import { OPEN_FIELD, type Level } from "./level";
 
 /**
@@ -30,7 +30,8 @@ export function createInputQueue(): InputQueue {
  *  - A slot later than `now` waits: the client is ahead of the tick, and a frame never acts in
  *    the future. This is also what holds a client to one frame a tick of movement. When ticks
  *    that end with a frame waiting outnumber those that do not by `INPUT_TIMING.drainAfterTicks`,
- *    the slots move a tick earlier: a standing backlog is latency, and a late frame costs nothing.
+ *    the slots move earlier by as many ticks as frames are waiting: a standing backlog is latency,
+ *    and a late frame costs nothing.
  *  - A slot `INPUT_TIMING.maxLagMs` or more before `now` is a stall, not jitter: the frame is
  *    applied at `now` and the slots after it count from there (the client is corrected once).
  *  - A player who sends nothing for longer than that window still has their body moved (a knock,
@@ -40,10 +41,10 @@ export function createInputQueue(): InputQueue {
  *    is coming and will be applied at its own slot.
  */
 export function applyDueInputs(p: PlayerSim, q: InputQueue, now: number, level: Level = OPEN_FIELD): InputFrame[] {
-  const floor = now - INPUT_TIMING.maxLagMs;
+  const floor = onTick(now - INPUT_TIMING.maxLagMs);
   const applied: InputFrame[] = [];
   while (applied.length < INPUT_TIMING.maxPerTick && q.frames.length > 0) {
-    let slot = p.inputAt + TICK_MS;
+    let slot = onTick(p.inputAt + TICK_MS);
     if (slot > now) break;
     if (slot <= floor) slot = now;
     const f = q.frames.shift()!;
@@ -51,16 +52,19 @@ export function applyDueInputs(p: PlayerSim, q: InputQueue, now: number, level: 
     p.inputAt = slot;
     applied.push(f);
   }
-  if (applied.length === 0 && p.inputAt + TICK_MS <= floor) {
+  if (applied.length === 0 && onTick(p.inputAt + TICK_MS) <= floor) {
     applyInput(p, { ...neutralInput(p.lastSeq), block: p.guarding }, floor, TICK_MS, level);
     p.inputAt = floor;
   }
   // Counted up on a tick that ends with a frame waiting and down on one that does not, so a
   // backlog that jitter empties now and then still drains, and one that comes and goes does not.
-  const waiting = q.frames.length > 0 && p.inputAt + TICK_MS > now;
+  const waiting = q.frames.length > 0 && onTick(p.inputAt + TICK_MS) > now;
   q.waitingTicks = Math.max(0, q.waitingTicks + (waiting ? 1 : -1));
   if (q.waitingTicks >= INPUT_TIMING.drainAfterTicks) {
-    p.inputAt -= TICK_MS;
+    // The whole standing backlog at once, one retiming the client corrects for once; never so far
+    // that the oldest waiting frame would land outside the lag window and be placed at the tick.
+    const ahead = Math.min(q.frames.length, Math.round(INPUT_TIMING.maxLagMs / TICK_MS) - 1);
+    p.inputAt = onTick(p.inputAt - TICK_MS * Math.max(1, ahead));
     q.waitingTicks = 0;
   }
   return applied;
@@ -81,7 +85,7 @@ export function createInputClock(now: number): InputClock {
 /**
  * How many frames are due at `now` (the caller makes that many, each sampled in turn), counted
  * by wall time rather than by timer callbacks: a main thread that runs the timer at 10 fps still
- * sends 20 frames a second, two at a time, so a held key covers the same ground at any frame
+ * sends 60 frames a second, six at a time, so a held key covers the same ground at any frame
  * rate. More than `INPUT_TIMING.clientCatchupTicks` behind (a sleeping tab, a long stall) and the
  * rest of the time is dropped instead of sent as a burst of stale movement.
  */

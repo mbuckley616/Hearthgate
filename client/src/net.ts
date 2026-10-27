@@ -6,6 +6,11 @@ import {
   OPEN_FIELD,
   PLAYER,
   TICK_MS,
+  onTick,
+  tuning,
+  applyTuning,
+  resetTuning,
+  type TuningEdit,
   VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
@@ -56,7 +61,7 @@ export const SNAP_DISTANCE = 2.5;
  * first, which we could not see: enemies are drawn 100 to 200 ms behind) would otherwise pop
  * us back. Taken from the dodge's own numbers so it follows their tuning.
  */
-export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.dodgeSpeed * PLAYER.dodgeMs) / 1000;
+export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + tuning.dodge.distance;
 
 /** The longest unconfirmed stretch, ms, a downing blow's correction is eased over rather than snapped. */
 export const DOWNED_EASE_MS = 500;
@@ -68,7 +73,7 @@ export const DOWNED_EASE_MS = 500;
  * once that passes about 420 ms. Sprinting for DOWNED_EASE_MS bounds it, past which a jump
  * is no longer one the blow explains.
  */
-export const DOWNED_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.speed * PLAYER.sprintMult * DOWNED_EASE_MS) / 1000;
+export const DOWNED_SNAP_DISTANCE = SNAP_DISTANCE + (tuning.movement.sprintSpeed * DOWNED_EASE_MS) / 1000;
 
 export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
@@ -189,6 +194,7 @@ export class Net {
   private placed = false;
   private clock = createClockSync();
   private pingsSent = 0;
+  private tuningListeners: (() => void)[] = [];
   private listeners: EventListener[] = [];
   private handoffListeners: HandoffListener[] = [];
   private pingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -305,11 +311,29 @@ export class Net {
       this.rttMs = this.rttMs === 0 ? rtt : this.rttMs * 0.8 + rtt * 0.2;
       addClockSample(this.clock, m.sentAt, now, m.serverTime);
     });
+    // The server's tuning, whole: every value back to its default, then the edits on top, so a
+    // value someone reset reaches us too. Prediction steps these from the next frame.
+    room.onMessage("tuning", (edits: unknown) => {
+      if (!Array.isArray(edits)) return;
+      resetTuning();
+      for (const e of edits) applyTuning(e);
+      for (const l of this.tuningListeners) l();
+    });
     room.onLeave(() => {
       if (this.room === room) this.connected = false;
     });
 
     this.ping();
+  }
+
+  /** Called when the server's tuning arrives (the debug panel redraws its sliders). */
+  onTuning(listener: () => void) {
+    this.tuningListeners.push(listener);
+  }
+
+  /** A debug panel edit: to the server, which checks it and sends it back to everyone. */
+  sendTuning(edit: TuningEdit) {
+    this.room?.send("tune", edit);
   }
 
   /** Pings quickly at first so the clock has a few samples within a second, then once a second. */
@@ -349,7 +373,7 @@ export class Net {
   /** Called once per client tick with the sampled input. Predicts locally and sends. */
   tick(frame: InputFrame) {
     if (!this.room || !this.connected) return;
-    this.predictedTime += TICK_MS;
+    this.predictedTime = onTick(this.predictedTime + TICK_MS);
     applyInput(this.me, frame, this.predictedTime, TICK_MS, this.level);
     this.pending.push(frame);
     if (this.pending.length > 64) this.pending.shift(); // never let a dead link grow unbounded
@@ -500,8 +524,13 @@ export class Net {
     me.dodgeDx = p.dodgeDx;
     me.dodgeDz = p.dodgeDz;
     me.jumpUntil = p.jumpUntil ?? 0;
-    me.jumpVx = p.jumpVx ?? 0;
-    me.jumpVz = p.jumpVz ?? 0;
+    // Velocity and the roll are state the slice's movement integrates, so they rewind like a position.
+    me.vx = p.vx ?? 0;
+    me.vz = p.vz ?? 0;
+    me.dodgeAt = p.dodgeAt ?? 0;
+    me.dodgeDist = p.dodgeDist ?? 0;
+    me.dodgeCharges = p.dodgeCharges ?? me.dodgeCharges;
+    me.dodgeChargeAt = p.dodgeChargeAt ?? 0;
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
     me.abilityUntil = p.abilityUntil;
@@ -531,7 +560,7 @@ export class Net {
     // arrived late was applied in the past, and the ones after it belong one tick apart from it.
     let t = me.inputAt;
     for (const f of this.pending) {
-      t += TICK_MS;
+      t = onTick(t + TICK_MS);
       applyInput(me, f, t, TICK_MS, this.level);
     }
     this.predictedTime = t;

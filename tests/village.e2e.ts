@@ -30,12 +30,14 @@ async function walkTo(page: Page, x: number, z: number, reach: number, timeoutMs
       else if (z - me.z < -0.3) want.push("KeyW");
       if (x - me.x > 0.3) want.push("KeyD");
       else if (x - me.x < -0.3) want.push("KeyA");
-      // Near the mark, taps: a key pressed and let go between two samples is one frame (input.ts),
-      // 0.3 m, however the page's timer stalls. Held, a stalled page sends up to four frames at once
-      // (1.2 m) and walks back and forth over a 0.8 m mark, long enough to stand on the portal.
+      // Near the mark, short nudges: held, a stalled page sends a burst of frames at once and walks back
+      // and forth over a 0.8 m mark. A bare tap no longer works: the hero accelerates (the combat slice's
+      // movement), so one frame moves about a centimetre, and a headless page samples input only a few
+      // times a second; 150 ms of a held key spans a sample and is a step of a few tenths of a metre.
       if (Math.hypot(me.x - x, me.z - z) < 2.5) {
         await set([]);
         for (const k of want) await page.keyboard.down(k);
+        await page.waitForTimeout(150);
         for (const k of want) await page.keyboard.up(k);
         await page.waitForTimeout(120);
         continue;
@@ -48,7 +50,7 @@ async function walkTo(page: Page, x: number, z: number, reach: number, timeoutMs
   }
 }
 
-test("the village: a villager answers E, and the portal hands the party to the Warrens", async ({ page }) => {
+test("the village: a villager answers F, and the portal hands the party to the Warrens", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?name=Villager");
@@ -73,7 +75,7 @@ test("the village: a villager answers E, and the portal hands the party to the W
   await expect(talk).toContainText("talk to Keeper Wren");
   const box = await talk.boundingBox();
   expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(48);
-  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyF");
   await expect(page.locator("#hud-speech")).toContainText("Keeper Wren: The shrine's portal", { timeout: 5_000 });
 
   // Every frame from here: where the own figure is drawn while the hand-off is under way.

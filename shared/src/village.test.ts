@@ -26,6 +26,7 @@ import {
   talkToNpc,
   type SimEvent
 } from "./sim";
+import { tuning } from "./tuning";
 
 const walk = (p: ReturnType<typeof createPlayer>, dx: number, dy: number, from: number, ticks: number) => {
   let t = from;
@@ -61,10 +62,10 @@ describe("a greybox building", () => {
   it("a player walks in through the door and is stopped by the wall beside it", () => {
     const level = { ...VILLAGE, walls: buildingWalls(hut, 3) };
     const inDoor = createPlayer("a", 10, 5);
-    for (let i = 0; i < 30; i++) applyInput(inDoor, { ...neutralInput(i + 1), dy: 1 }, (i + 1) * TICK_MS, TICK_MS, level);
+    for (let i = 0; i < 90; i++) applyInput(inDoor, { ...neutralInput(i + 1), dy: 1 }, (i + 1) * TICK_MS, TICK_MS, level);
     expect(inDoor.z).toBeGreaterThan(9);
     const atWall = createPlayer("b", 12, 5);
-    for (let i = 0; i < 30; i++) applyInput(atWall, { ...neutralInput(i + 1), dy: 1 }, (i + 1) * TICK_MS, TICK_MS, level);
+    for (let i = 0; i < 90; i++) applyInput(atWall, { ...neutralInput(i + 1), dy: 1 }, (i + 1) * TICK_MS, TICK_MS, level);
     expect(atWall.z).toBeCloseTo(8 - 0.2 - PLAYER.radius, 6);
   });
 });
@@ -131,9 +132,13 @@ describe("the village", () => {
     const b = createPlayer("b", SPAWN_POINTS[1].x, SPAWN_POINTS[1].z);
     const players = new Map([["a", a], ["b", b]]);
     const portal = VILLAGE.portal!;
-    // Straight at the portal from the first spawn at 6 m/s (0.3 m a tick), stopping about 0.6 m short of its centre.
+    // Straight at the portal from the first spawn at run speed, stopping about 0.6 m short of its centre
+    // (getting up to speed costs v^2 / 2a of the distance).
     const d = Math.hypot(portal.x - a.x, portal.z - a.z);
-    let t = walk(a, (portal.x - a.x) / d, (portal.z - a.z) / d, 0, Math.floor((d - 0.6) / 0.3));
+    const mv = tuning.movement;
+    const perTick = (mv.runSpeed * TICK_MS) / 1000;
+    const spinUp = (mv.runSpeed * mv.runSpeed) / (2 * mv.acceleration);
+    let t = walk(a, (portal.x - a.x) / d, (portal.z - a.z) / d, 0, Math.floor((d - 0.6 + spinUp) / perTick));
     expect(Math.hypot(a.x - portal.x, a.z - portal.z)).toBeLessThan(1);
     let events: SimEvent[] = [];
     for (let i = 0; i < 60; i++) events.push(...stepEncounter(enc, players, (t += TICK_MS), TICK_MS));
@@ -165,7 +170,7 @@ describe("the village", () => {
     ghost.respawnAt = 1e12;
     const players = new Map([["a", a], ["g", ghost]]);
     for (let i = 0; i < 10; i++) stepPortal(enc, players, TICK_MS);
-    expect(enc.portalMs).toBe(10 * TICK_MS);
+    expect(enc.portalMs).toBeCloseTo(10 * TICK_MS, 9);
     a.x = portal.x + PORTAL.radius + 0.1;
     stepPortal(enc, players, TICK_MS);
     expect(enc.portalMs).toBe(0);

@@ -40,11 +40,26 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
 import { Net } from "../client/src/net.ts";
-import { CELLAR, DOWNS, NPC, PLAYER, PORTAL, STAIRS, TICK_MS, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
+import { CELLAR, DOWNS, NPC, PATCH_MS, PLAYER, PORTAL, STAIRS, TICK_MS, TICK_RATE, VILLAGE, WARRENS, WEAPON_CLASSES, YARD, applyInput, createPlayer, jumpAirMs, onTick, tuning, type InputFrame } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
 const STRESS_MS = Number(process.env.STRESS_MS ?? 5000);
+
+/**
+ * Send `n` frames paced by wall time at the tick rate, every one that is due on each wake-up, as
+ * the browser's InputClock does. A Node timer asked for 16.7 ms fires nearer 25 ms on Windows,
+ * and frames sent one per timer fall behind their slots until the server places them at the tick.
+ */
+async function sendPaced(n: number, send: (k: number) => void) {
+  const start = performance.now();
+  let sent = 0;
+  while (sent < n) {
+    const due = Math.min(n, Math.floor((performance.now() - start) / TICK_MS) + 1);
+    while (sent < due) send(sent++);
+    if (sent < n) await sleep(1);
+  }
+}
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -121,9 +136,11 @@ async function main() {
     let seq = 0;
     const driver = setInterval(() => {
       seq++;
-      a.send("input", { seq, dx: 1, dy: 0, attack: seq % 10 === 0, dodge: false });
+      a.send("input", { seq, dx: 1, dy: 0, attack: seq % TICK_RATE === 0, dodge: false });
     }, TICK_MS);
-    await sleep(1000);
+    // A second of frames, not of wall time: a Windows timer fires a 16.7 ms interval nearer 25 ms.
+    const driveStart = Date.now();
+    while (seq < TICK_RATE && Date.now() - driveStart < 3000) await sleep(5);
     clearInterval(driver);
     await sleep(200);
 
@@ -134,7 +151,7 @@ async function main() {
     if (Math.abs(aOnB.x - aOnA.x) > 0.5) fail(`Bravo sees Alpha at x=${aOnB.x.toFixed(2)} but server says ${aOnA.x.toFixed(2)}`);
     if (aOnA.lastSeq < seq - 3) fail(`server applied seq ${aOnA.lastSeq} of ${seq}`);
     const nearGoblin = nearestEnemy(bState, aOnB.x, aOnB.z);
-    if (!nearGoblin || nearGoblin.phase === "idle") fail("the nearest goblin never aggroed");
+    if (!nearGoblin || nearGoblin.phase === "idle") fail(`the nearest goblin never aggroed (Alpha moved ${moved.toFixed(2)} m to x=${aOnA.x.toFixed(2)}, z=${aOnA.z.toFixed(2)}, seq ${aOnA.lastSeq} of ${seq}; goblin ${nearGoblin?.phase} at ${nearGoblin?.x?.toFixed(2)}, ${nearGoblin?.z?.toFixed(2)}; Bravo at ${bState.players.get(b.sessionId).x}, ${bState.players.get(b.sessionId).z}; tick ${bState.tick})`);
 
     console.log(
       `ok: 2 players synced in ${aState.levelId} with ${bState.enemies.size} enemies, Alpha moved ${moved.toFixed(2)} m, Bravo sees x=${aOnB.x.toFixed(2)}, nearest goblin is ${nearGoblin.phase}, server tick ${aState.tick}`
@@ -410,7 +427,7 @@ async function weaponPick(client: Client) {
   await sleep(300);
   const swung = fState.players.get(f.sessionId);
   const two = WEAPON_CLASSES.twoHand;
-  if (swung.attackUntil - swung.attackHitAt !== two.durationMs - two.windupMs) {
+  if (Math.abs(swung.attackUntil - swung.attackHitAt - (two.durationMs - two.windupMs)) > 1e-6) {
     fail(`weapon pick: Foxtrot's swing recovers in ${swung.attackUntil - swung.attackHitAt} ms, not the two-hander's ${two.durationMs - two.windupMs}`);
   }
   console.log("ok: weapon pick: a Claymore at tier 5 reaches both clients and swings two-handed; an unknown pick is a tier-1 sword");
@@ -435,34 +452,40 @@ async function jumpSprint(client: Client) {
   await sleep(400);
   if (!iState || !jState) fail("jump/sprint: no state received");
   const x0 = iState.players.get(i.sessionId).x;
+  // The same frames through the shared sim here: what the server must have done with them.
+  const model = createPlayer("model", 0, 0);
+  let mt = 0;
+  const step = (f: InputFrame) => applyInput(model, f, (mt = onTick(mt + TICK_MS)), TICK_MS);
   let seq = 0;
-  for (let k = 0; k < 20; k++) {
-    i.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true });
-    await sleep(TICK_MS);
-  }
+  const sprintFrame = () => ({ seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true });
+  await sendPaced(TICK_RATE, () => {
+    const f = sprintFrame();
+    i.send("input", f);
+    step(f);
+  });
   await sleep(300);
   const ran = iState.players.get(i.sessionId);
   const sprintM = ran.x - x0;
-  const want = 20 * PLAYER.speed * PLAYER.sprintMult * (TICK_MS / 1000);
-  if (ran.lastSeq !== seq || Math.abs(sprintM - want) > 0.01) fail(`jump/sprint: 20 sprinting ticks moved India ${sprintM.toFixed(2)} m (seq ${ran.lastSeq} of ${seq}), not ${want.toFixed(2)}`);
+  if (ran.lastSeq !== seq || Math.abs(sprintM - model.x) > 0.01) fail(`jump/sprint: a second of sprinting moved India ${sprintM.toFixed(2)} m (seq ${ran.lastSeq} of ${seq}), not ${model.x.toFixed(2)}`);
+  const sprintV = ran.vx;
+  if (Math.abs(sprintV - tuning.movement.sprintSpeed) > 1e-9) fail(`jump/sprint: India runs at ${sprintV} m/s, not the sprint's ${tuning.movement.sprintSpeed}`);
 
   const xJump = ran.x;
-  i.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true, jump: true });
-  for (let k = 1; k < PLAYER.jumpMs / TICK_MS + 4; k++) {
-    await sleep(TICK_MS);
-    i.send("input", { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false });
-  }
+  const xModel = model.x;
+  await sendPaced(Math.round(jumpAirMs() / TICK_MS) + 4, (k) => {
+    const f = k === 0 ? { ...sprintFrame(), jump: true } : { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false };
+    i.send("input", f);
+    step(f);
+  });
   await sleep(100);
   const seen = jState.players.get(i.sessionId);
   const truth = iState.players.get(i.sessionId);
   if (!(seen.jumpUntil > 0) || seen.jumpUntil !== truth.jumpUntil) fail(`jump/sprint: Juliet sees India's landing at ${seen.jumpUntil}, the server has ${truth.jumpUntil}`);
-  const vx = PLAYER.speed * PLAYER.sprintMult;
-  if (Math.abs(seen.jumpVx - vx) > 1e-9) fail(`jump/sprint: the carried speed is ${seen.jumpVx}, not ${vx}`);
   const hop = truth.x - xJump;
-  // The takeoff frame still holds the stick, so it steers one tick on top of the carried speed.
-  const wantHop = vx * (PLAYER.jumpMs / 1000) + PLAYER.speed * PLAYER.jumpSteer * (TICK_MS / 1000);
+  // The ground speed carries into the air, where letting go of the stick slows it at the air's grip.
+  const wantHop = model.x - xModel;
   if (Math.abs(hop - wantHop) > 0.01) fail(`jump/sprint: the hop from a sprint carried India ${hop.toFixed(2)} m, not ${wantHop.toFixed(2)}`);
-  console.log(`ok: jump/sprint: 20 sprinting ticks ${sprintM.toFixed(2)} m; a sprint jump carried ${hop.toFixed(2)} m and Juliet saw its landing time and speed`);
+  console.log(`ok: jump/sprint: a second of sprinting ${sprintM.toFixed(2)} m at ${sprintV} m/s; a sprint jump carried ${hop.toFixed(2)} m and Juliet saw its landing time`);
   await j.leave();
   await i.leave();
   await sleep(300);
@@ -487,7 +510,7 @@ async function lockOn(client: Client) {
   await sleep(300);
   const far = await press();
   if (far.lockId !== "") fail(`lock-on: Hotel at (${far.x}, ${far.z}) locked "${far.lockId}" with nothing in range`);
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < TICK_RATE; i++) {
     h.send("input", { seq: ++hseq, dx: 0.707, dy: -0.707, attack: false, dodge: false });
     await sleep(TICK_MS);
   }
@@ -784,8 +807,8 @@ async function stress(client: Client) {
   const gaps = windowed.map((t) => t.slice(1).reduce((m, x, k) => Math.max(m, x - t[k]), 0));
   const minRate = Math.min(...rates);
   const maxGap = Math.max(...gaps);
-  if (minRate < 0.9 * (1000 / TICK_MS)) fail(`stress: a client got only ${minRate.toFixed(1)} patches a second`);
-  if (maxGap > 4 * TICK_MS) fail(`stress: a client waited ${maxGap.toFixed(0)} ms between patches`);
+  if (minRate < 0.9 * (1000 / PATCH_MS)) fail(`stress: a client got only ${minRate.toFixed(1)} patches a second`);
+  if (maxGap > 4 * PATCH_MS) fail(`stress: a client waited ${maxGap.toFixed(0)} ms between patches`);
   const tickRate = (ticks * TICK_MS) / wallMs;
   if (Math.abs(tickRate - 1) > 0.05) fail(`stress: the server tick ran at ${tickRate.toFixed(3)} of wall time`);
 

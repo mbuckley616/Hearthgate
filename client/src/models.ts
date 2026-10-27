@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { PLAYER, WEAPON_CLASSES, type WeaponClass } from "@hearthgate/shared";
+import { WEAPON_CLASSES, jumpAirMs, type WeaponClass } from "@hearthgate/shared";
 import type { Figure } from "./figures";
 
 /**
@@ -355,7 +355,7 @@ export class RigAnimator {
       a.death.reset().play();
     } else if (!lying && (w.dead || w.downed)) this.startShot("revive");
     else if (!lying && s.dodging && !w.dodging) this.startShot("dodge");
-    else if (!lying && s.jumping && !w.jumping) this.startShot("jump", PLAYER.jumpMs / 1000);
+    else if (!lying && s.jumping && !w.jumping) this.startShot("jump", jumpAirMs() / 1000);
     else if (!lying && s.attacking && !w.attacking) {
       const fit = (WEAPON_CLASSES[s.cls].durationMs + 300) / 1000;
       this.startShot(s.cls === "bow" ? "shoot" : s.cls === "twoHand" ? "swing2H" : "swing1H", fit);

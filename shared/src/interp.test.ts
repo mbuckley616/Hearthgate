@@ -1,26 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { INTERP, PLAYER, TICK_MS } from "./sim";
+import { INTERP, PLAYER, PATCH_MS } from "./sim";
 import { OPEN_FIELD, type Level } from "./level";
 import { SNAPSHOT_KEEP, createPoseTrack, projectPose, pushPoseSnapshot, samplePoseTrack, type PoseSnapshot } from "./interp";
 
 const R = PLAYER.radius;
-/** A player walking +x at full speed, one snapshot per tick from t = 1000. */
-function walk(n: number, speed: number = PLAYER.speed, from = 1000): PoseSnapshot[] {
+/** A walking speed for the snapshots; the interpolation knows nothing of the sim's movement. */
+const SPEED = 6;
+/** A player walking +x at full speed, one snapshot per patch from t = 1000. */
+function walk(n: number, speed: number = SPEED, from = 1000): PoseSnapshot[] {
   const snaps: PoseSnapshot[] = [];
-  for (let i = 0; i < n; i++) snaps.push({ t: from + i * TICK_MS, x: (speed * i * TICK_MS) / 1000, z: 0, facing: Math.PI / 2 });
+  for (let i = 0; i < n; i++) snaps.push({ t: from + i * PATCH_MS, x: (speed * i * PATCH_MS) / 1000, z: 0, facing: Math.PI / 2 });
   return snaps;
 }
-const perTick = (PLAYER.speed * TICK_MS) / 1000; // 0.3 m
+const perTick = (SPEED * PATCH_MS) / 1000; // 0.2 m
 
 describe("projectPose", () => {
   it("interpolates between snapshots and holds before the first", () => {
     const snaps = walk(4);
     expect(projectPose([], 0, OPEN_FIELD, R)).toBeNull();
     expect(projectPose(snaps, 0, OPEN_FIELD, R)).toEqual({ pose: { x: 0, z: 0, facing: Math.PI / 2 }, aheadMs: 0 });
-    const mid = projectPose(snaps, 1000 + TICK_MS * 1.5, OPEN_FIELD, R)!;
+    const mid = projectPose(snaps, 1000 + PATCH_MS * 1.5, OPEN_FIELD, R)!;
     expect(mid.aheadMs).toBe(0);
     expect(mid.pose.x).toBeCloseTo(perTick * 1.5, 9);
-    const at = projectPose(snaps, 1000 + TICK_MS * 3, OPEN_FIELD, R)!;
+    const at = projectPose(snaps, 1000 + PATCH_MS * 3, OPEN_FIELD, R)!;
     expect(at.pose.x).toBeCloseTo(perTick * 3, 9);
     expect(at.aheadMs).toBe(0);
   });
@@ -30,7 +32,7 @@ describe("projectPose", () => {
     const newest = snaps[3];
     const a = projectPose(snaps, newest.t + 30, OPEN_FIELD, R)!;
     expect(a.aheadMs).toBe(30);
-    expect(a.pose.x).toBeCloseTo(newest.x + (PLAYER.speed * 30) / 1000, 9);
+    expect(a.pose.x).toBeCloseTo(newest.x + (SPEED * 30) / 1000, 9);
     expect(a.pose.z).toBe(0);
     expect(a.pose.facing).toBe(newest.facing);
     const cap = projectPose(snaps, newest.t + INTERP.extrapolateMaxMs, OPEN_FIELD, R)!;
@@ -72,8 +74,8 @@ describe("projectPose", () => {
       { t: 1050, x: OPEN_FIELD.halfW - R - 0.1, z: 0, facing: 0 }
     ];
     expect(projectPose(edge, 1100, OPEN_FIELD, R)!.pose.x).toBeCloseTo(OPEN_FIELD.halfW - R, 9);
-    // With no level the projection is unclamped (the test harness before the first patch).
-    expect(projectPose(snaps, 1100, null, R)!.pose.x).toBeCloseTo(1.5, 9);
+    // With no level the projection is unclamped (the test harness before the first patch), capped at one patch of motion.
+    expect(projectPose(snaps, 1100, null, R)!.pose.x).toBeCloseTo(1.2 + (6 * INTERP.extrapolateMaxMs) / 1000, 9);
   });
 
   it("is deterministic: the same snapshots and time give the same pose", () => {
@@ -101,7 +103,7 @@ describe("pose track", () => {
     const tr = createPoseTrack(R);
     for (const s of walk(SNAPSHOT_KEEP + 5)) pushPoseSnapshot(tr, s, OPEN_FIELD);
     expect(tr.snaps.length).toBe(SNAPSHOT_KEEP);
-    expect(tr.snaps[0].t).toBe(1000 + 5 * TICK_MS);
+    expect(tr.snaps[0].t).toBe(1000 + 5 * PATCH_MS);
     const last = tr.snaps[tr.snaps.length - 1];
     pushPoseSnapshot(tr, { ...last, x: 99 }, OPEN_FIELD);
     expect(tr.snaps.length).toBe(SNAPSHOT_KEEP);
@@ -111,10 +113,10 @@ describe("pose track", () => {
   it("hands out the interpolated pose with no offset while the snapshots are on time", () => {
     const tr = createPoseTrack(R);
     for (const s of walk(6)) pushPoseSnapshot(tr, s, OPEN_FIELD);
-    const p = samplePoseTrack(tr, 1000 + TICK_MS * 2.5, OPEN_FIELD)!;
+    const p = samplePoseTrack(tr, 1000 + PATCH_MS * 2.5, OPEN_FIELD)!;
     expect(p.x).toBeCloseTo(perTick * 2.5, 9);
     expect(tr.errX).toBe(0);
-    pushPoseSnapshot(tr, { t: 1000 + 6 * TICK_MS, x: perTick * 6, z: 0, facing: Math.PI / 2 }, OPEN_FIELD);
+    pushPoseSnapshot(tr, { t: 1000 + 6 * PATCH_MS, x: perTick * 6, z: 0, facing: Math.PI / 2 }, OPEN_FIELD);
     expect(tr.errX).toBe(0); // we were not guessing, so nothing to ease
   });
 
@@ -123,15 +125,15 @@ describe("pose track", () => {
     const snaps = walk(4);
     for (const s of snaps) pushPoseSnapshot(tr, s, OPEN_FIELD);
     const newest = snaps[3];
-    // Frames run 40 ms past the newest snapshot: the player is projected 0.24 m on.
+    // Frames run 40 ms past the newest snapshot: the player is projected to the cap, one patch (0.2 m) on.
     let t = newest.t + 8;
     let last = samplePoseTrack(tr, t, OPEN_FIELD)!;
     for (t = newest.t + 24; t <= newest.t + 40; t += 16) last = samplePoseTrack(tr, t, OPEN_FIELD)!;
-    expect(last.x).toBeCloseTo(newest.x + (PLAYER.speed * 40) / 1000, 9);
+    expect(last.x).toBeCloseTo(newest.x + (SPEED * INTERP.extrapolateMaxMs) / 1000, 9);
     // The late snapshot: the player had stopped dead at the newest.
-    pushPoseSnapshot(tr, { t: newest.t + TICK_MS, x: newest.x, z: 0, facing: newest.facing }, OPEN_FIELD);
+    pushPoseSnapshot(tr, { t: newest.t + PATCH_MS, x: newest.x, z: 0, facing: newest.facing }, OPEN_FIELD);
     expect(tr.errX).toBeCloseTo(last.x - newest.x, 9);
-    // Without the ease the next frame would jump back 0.24 m; with it, it moves a few centimetres.
+    // Without the ease the next frame would jump back 0.2 m; with it, it moves a few centimetres.
     const next = samplePoseTrack(tr, t, OPEN_FIELD)!;
     const step = Math.abs(next.x - last.x);
     expect(step).toBeLessThan(0.05);
@@ -159,7 +161,7 @@ describe("pose track", () => {
     for (t = newest.t + 16; t <= newest.t + 200; t += 16) last = samplePoseTrack(tr, t, OPEN_FIELD)!;
     expect(last.x).toBeCloseTo(newest.x + perTick, 9);
     // The four missing ticks arrive at once: the player kept walking, and is 1.2 m on.
-    for (let i = 1; i <= 4; i++) pushPoseSnapshot(tr, { t: newest.t + i * TICK_MS, x: newest.x + i * perTick, z: 0, facing: newest.facing }, OPEN_FIELD);
+    for (let i = 1; i <= 4; i++) pushPoseSnapshot(tr, { t: newest.t + i * PATCH_MS, x: newest.x + i * perTick, z: 0, facing: newest.facing }, OPEN_FIELD);
     const next = samplePoseTrack(tr, t, OPEN_FIELD)!;
     // A hold ending used to pop the whole gap at once; now the first frame covers walking speed plus a little.
     expect(next.x - last.x).toBeLessThan(perTick);
@@ -172,12 +174,12 @@ describe("pose track", () => {
     for (const s of snaps) pushPoseSnapshot(tr, s, OPEN_FIELD);
     const newest = snaps[3];
     samplePoseTrack(tr, newest.t + 30, OPEN_FIELD);
-    pushPoseSnapshot(tr, { t: newest.t + TICK_MS, x: newest.x + 10, z: 0, facing: 0 }, OPEN_FIELD); // a respawn
+    pushPoseSnapshot(tr, { t: newest.t + PATCH_MS, x: newest.x + 10, z: 0, facing: 0 }, OPEN_FIELD); // a respawn
     expect(tr.errX).toBe(0);
     expect(tr.errZ).toBe(0);
     // And the hand-out is the interpolation toward the new place, offset-free.
     const p = samplePoseTrack(tr, newest.t + 30, OPEN_FIELD)!;
-    expect(p.x).toBeCloseTo(newest.x + (10 * 30) / TICK_MS, 9);
+    expect(p.x).toBeCloseTo(newest.x + (10 * 30) / PATCH_MS, 9);
   });
 
   it("ends every ease the own way the sim does: the projection never leaves a wall behind", () => {

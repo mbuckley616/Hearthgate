@@ -10,6 +10,7 @@ import {
   POSTURE,
   SHIELDBEARER,
   TICK_MS,
+  onTick,
   applyInput,
   createEnemies,
   createEnemy,
@@ -25,6 +26,7 @@ import {
   type PlayerSim,
   type SimEvent
 } from "./sim";
+import { tuning } from "./tuning";
 import { OPEN_FIELD, YARD, collideWalls, type Level } from "./level";
 import { hasState } from "./states";
 
@@ -157,17 +159,18 @@ describe("the Charger", () => {
     expect(e.facing).toBe(0);
   });
 
-  it("runs down the lane and throws the player it meets: double damage and a 3 m slide they cannot act through", () => {
+  it("runs down the lane and throws the player it meets: double damage and a 3.4 m slide they cannot act through", () => {
     const { e, p, players } = lane(8);
     const { events, now } = run(e, players, 1000, 3000, OPEN_FIELD, (ev) => ev.some((x) => x.kind === "playerKnocked"));
     expect(events.map((x) => x.kind)).toEqual(["enemyHit", "playerKnocked"]);
     expect(events[0]).toMatchObject({ damage: c.damage, blocked: false });
     expect(e.phase).toBe("recover");
-    expect(p.knockUntil).toBe(now + KNOCKBACK.ms);
+    expect(p.knockUntil).toBe(onTick(now + KNOCKBACK.ms));
     const z0 = p.z;
     let t = now + TICK_MS;
-    for (; t < now + KNOCKBACK.ms; t += TICK_MS) applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: true, dodge: true }, t, TICK_MS);
-    expect(p.z - z0).toBeCloseTo(3, 6);
+    for (; t < p.knockUntil; t = onTick(t + TICK_MS)) applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: true, dodge: true }, t, TICK_MS);
+    // The slide runs on the ticks after the blow, up to knockUntil: one tick short of the window.
+    expect(p.z - z0).toBeCloseTo((KNOCKBACK.speed * (KNOCKBACK.ms - TICK_MS)) / 1000, 6);
     expect([p.x, p.attackUntil, p.dodgeUntil]).toEqual([0, 0, 0]);
     applyInput(p, { seq: ++seq, dx: -1, dy: 0, attack: false, dodge: false }, t, TICK_MS);
     expect(p.x).toBeLessThan(0); // free again
@@ -176,7 +179,8 @@ describe("the Charger", () => {
   it("a dodge goes through the charge", () => {
     const { e, p, players } = lane(8);
     run(e, players, 1000, c.aimMs + 100); // aimed and just started
-    p.dodgeUntil = 1e9; // dodging for the whole run
+    p.dodgeAt = 1e9 - 1; // inside a roll's i-frames for the whole run
+    p.dodgeUntil = 1e9;
     const { events } = run(e, players, 1000 + c.aimMs + 150, 2000);
     expect(events.some((x) => x.kind === "enemyHit")).toBe(false);
     expect(p.hp).toBe(PLAYER.hp);

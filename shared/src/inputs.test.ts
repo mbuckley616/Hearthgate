@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { INPUT_TIMING, PLAYER, TICK_MS, applyInput, createPlayer, neutralInput, type InputFrame, type PlayerSim } from "./sim";
+import { INPUT_TIMING, PLAYER, TICK_MS, applyInput, createPlayer, neutralInput, onTick, type InputFrame, type PlayerSim } from "./sim";
+import { tuning } from "./tuning";
 import { applyDueInputs, createInputClock, createInputQueue, dueInputTicks, type InputQueue } from "./inputs";
 
 const queueOf = (...frames: InputFrame[]): InputQueue => ({ ...createInputQueue(), frames });
 
 const walk = (seq: number, extra: Partial<InputFrame> = {}): InputFrame => ({ seq, dx: 1, dy: 0, attack: false, dodge: false, ...extra });
+
+/** The server time of tick `n`, as the server computes it. */
+const at = (n: number) => n * TICK_MS;
+/** The tick the tests start from: one second in. */
+const T0 = 60;
 
 /** Frames a client makes holding a key for `holdMs` when its timer runs every `frameMs`. */
 function framesAt(frameMs: number, holdMs: number): number {
@@ -20,61 +26,65 @@ describe("the client's input clock", () => {
     const distances = [1000 / 60, 1000 / 21, 1000 / 10].map((frameMs) => {
       const p = createPlayer("a");
       const n = framesAt(frameMs, holdMs);
-      for (let i = 1; i <= n; i++) applyInput(p, walk(i), i * TICK_MS, TICK_MS);
+      for (let i = 1; i <= n; i++) applyInput(p, walk(i), at(i), TICK_MS);
       return p.x;
     });
-    // 9 m for 1.5 s at 6 m/s; the slowest timer may end up to one of its frames short of the hold.
-    const full = PLAYER.speed * (holdMs / 1000);
-    for (const d of distances) expect(d).toBeGreaterThanOrEqual(full - PLAYER.speed * 0.1 - 1e-9);
+    // Every tick of the 1.5 s held, as a 60 fps timer sends it; the slowest timer may end up to one of its frames short.
+    const ref = createPlayer("r");
+    const ticks = Math.round(holdMs / TICK_MS);
+    for (let i = 1; i <= ticks; i++) applyInput(ref, walk(i), at(i), TICK_MS);
+    const full = ref.x;
+    for (const d of distances) expect(d).toBeGreaterThanOrEqual(full - tuning.movement.runSpeed * 0.1 - 1e-9);
     for (const d of distances) expect(d).toBeLessThanOrEqual(full + 1e-9);
     // Before: one frame per callback, so 10 fps sent 15 frames for the 30 ticks and walked 4.5 m.
   });
 
   it("drops time past the catch-up cap instead of sending a burst of stale movement", () => {
     const clock = createInputClock(0);
-    expect(dueInputTicks(clock, 2000)).toBe(INPUT_TIMING.clientCatchupTicks);
-    expect(dueInputTicks(clock, 2000)).toBe(0);
-    expect(dueInputTicks(clock, 2050)).toBe(1);
+    // Between ticks, so the count does not hang on how 2 s divides by a tick.
+    expect(dueInputTicks(clock, 2005)).toBe(INPUT_TIMING.clientCatchupTicks);
+    expect(dueInputTicks(clock, 2005)).toBe(0);
+    expect(dueInputTicks(clock, 2005 + TICK_MS)).toBe(1);
   });
 });
 
 describe("applyDueInputs", () => {
   it("applies a frame at its slot, one tick after the last, even when it arrives late", () => {
     const p = createPlayer("a");
-    p.inputAt = 1000;
+    p.inputAt = at(T0);
     const q = queueOf();
-    // Nothing arrives for the tick at 1050: inside the window, so nothing happens to the player.
-    expect(applyDueInputs(p, q, 1050)).toHaveLength(0);
-    expect(p.inputAt).toBe(1000);
+    // Nothing arrives for the next tick: inside the window, so nothing happens to the player.
+    expect(applyDueInputs(p, q, at(T0 + 1))).toHaveLength(0);
+    expect(p.inputAt).toBe(at(T0));
     expect(p.x).toBe(0);
-    // Both frames arrive for the tick at 1100: they land at 1050 and 1100, not both at 1100.
+    // Both frames arrive for the tick after: they land a tick apart, not both on the second.
     q.frames.push(walk(1, { dodge: true }), walk(2));
-    expect(applyDueInputs(p, q, 1100)).toHaveLength(2);
-    expect(p.inputAt).toBe(1100);
-    expect(p.dodgeUntil).toBe(1050 + PLAYER.dodgeMs);
+    expect(applyDueInputs(p, q, at(T0 + 2))).toHaveLength(2);
+    expect(p.inputAt).toBe(at(T0 + 2));
+    expect(p.dodgeUntil).toBe(at(T0 + 1) + tuning.dodge.durationMs);
   });
 
   it("never applies a frame ahead of the tick, so a client cannot walk faster by sending faster", () => {
     const p = createPlayer("a");
-    p.inputAt = 1000;
+    p.inputAt = at(T0);
     const q = queueOf(walk(1), walk(2), walk(3));
-    expect(applyDueInputs(p, q, 1050)).toHaveLength(1);
+    expect(applyDueInputs(p, q, at(T0 + 1))).toHaveLength(1);
     expect(q.frames.length).toBe(2);
-    expect(applyDueInputs(p, q, 1100)).toHaveLength(1);
+    expect(applyDueInputs(p, q, at(T0 + 2))).toHaveLength(1);
   });
 
   it("catches up at most maxPerTick frames a tick", () => {
     const p = createPlayer("a");
-    p.inputAt = 1000;
+    p.inputAt = at(T0);
     const q = queueOf(walk(1), walk(2), walk(3), walk(4));
-    expect(applyDueInputs(p, q, 1150)).toHaveLength(INPUT_TIMING.maxPerTick);
-    expect(p.inputAt).toBe(1100);
+    expect(applyDueInputs(p, q, at(T0 + 3))).toHaveLength(INPUT_TIMING.maxPerTick);
+    expect(p.inputAt).toBe(at(T0 + 2));
   });
 
   it("places a frame later than the window at the tick, and the next ones count from there", () => {
     const p = createPlayer("a");
-    p.inputAt = 1000;
-    const now = 1000 + INPUT_TIMING.maxLagMs + TICK_MS;
+    p.inputAt = at(T0);
+    const now = onTick(at(T0) + INPUT_TIMING.maxLagMs + TICK_MS);
     const q = queueOf(walk(1), walk(2));
     expect(applyDueInputs(p, q, now)).toHaveLength(1);
     expect(p.inputAt).toBe(now);
@@ -83,53 +93,76 @@ describe("applyDueInputs", () => {
 
   it("moves a silent player's body past the window with the guard held, and nothing inside it", () => {
     const p = createPlayer("a");
-    applyInput(p, walk(1, { dx: 0, block: true }), 1000, TICK_MS);
-    p.inputAt = 1000;
-    p.knockUntil = 2000;
+    applyInput(p, walk(1, { dx: 0, block: true }), at(T0), TICK_MS);
+    p.inputAt = at(T0);
+    p.knockUntil = at(T0) + 1000;
     p.knockDx = 4;
-    for (let now = 1050; now <= 1000 + INPUT_TIMING.maxLagMs; now += TICK_MS) applyDueInputs(p, queueOf(), now);
+    const lagTicks = Math.round(INPUT_TIMING.maxLagMs / TICK_MS);
+    for (let n = T0 + 1; n <= T0 + lagTicks; n++) applyDueInputs(p, queueOf(), at(n));
     expect(p.x).toBe(0);
-    applyDueInputs(p, queueOf(), 1000 + INPUT_TIMING.maxLagMs + TICK_MS);
+    applyDueInputs(p, queueOf(), at(T0 + lagTicks + 1));
     expect(p.x).toBeCloseTo(4 * (TICK_MS / 1000), 6);
-    expect(p.inputAt).toBe(1000 + TICK_MS);
+    expect(p.inputAt).toBe(at(T0 + 1));
     expect(p.lastSeq).toBe(1);
   });
 
   it("moves the slots a tick earlier when a frame has waited a whole second, not on a passing bunch", () => {
     const p = createPlayer("a");
-    p.inputAt = 1000;
+    p.inputAt = at(T0);
     // A client a tick ahead: every tick one frame arrives and one is already waiting.
     const q = queueOf(walk(1));
     let seq = 1;
-    let now = 1000;
+    let n = T0;
     for (let i = 0; i < INPUT_TIMING.drainAfterTicks - 1; i++) {
       q.frames.push(walk(++seq));
-      now += TICK_MS;
-      applyDueInputs(p, q, now);
-      expect(p.inputAt).toBe(now);
+      n++;
+      applyDueInputs(p, q, at(n));
+      expect(p.inputAt).toBe(at(n));
     }
     q.frames.push(walk(++seq));
-    now += TICK_MS;
-    applyDueInputs(p, q, now);
-    expect(p.inputAt).toBe(now - TICK_MS);
+    n++;
+    applyDueInputs(p, q, at(n));
+    expect(p.inputAt).toBe(at(n - 1));
     // The next tick takes both: the backlog is gone.
     q.frames.push(walk(++seq));
-    now += TICK_MS;
-    expect(applyDueInputs(p, q, now)).toHaveLength(2);
+    n++;
+    expect(applyDueInputs(p, q, at(n))).toHaveLength(2);
     expect(q.frames.length).toBe(0);
+  });
+
+  it("clears a standing backlog of several frames in one retiming, not one tick a second", () => {
+    const p = createPlayer("a");
+    p.inputAt = at(T0);
+    // A client four ticks ahead (the server dropped time in a stall): four frames always waiting.
+    const q = queueOf(walk(1), walk(2), walk(3), walk(4));
+    let seq = 4;
+    let n = T0;
+    for (let i = 0; i < INPUT_TIMING.drainAfterTicks; i++) {
+      q.frames.push(walk(++seq));
+      applyDueInputs(p, q, at(++n));
+    }
+    // The drain tick moved the slots back by the four waiting frames at once.
+    expect(p.inputAt).toBe(at(n - 4));
+    // From here the backlog goes at maxPerTick a tick, every frame in its slot, and stays gone.
+    for (let i = 0; i < 8; i++) {
+      q.frames.push(walk(++seq));
+      applyDueInputs(p, q, at(++n));
+    }
+    expect(q.frames.length).toBeLessThanOrEqual(1);
+    expect(p.inputAt).toBe(at(n));
   });
 
   it("drains a backlog that jitter empties one tick in five, and leaves one that comes and goes", () => {
     const run = (pattern: number[]) => {
       const p = createPlayer("a");
-      p.inputAt = 1000;
+      p.inputAt = at(T0);
       const q = queueOf();
       let seq = 0;
       let drained = false;
-      for (let i = 0, now = 1050; i < 200; i++, now += TICK_MS) {
+      for (let i = 0; i < 600; i++) {
         for (let k = 0; k < pattern[i % pattern.length]; k++) q.frames.push(walk(++seq));
         const before = q.waitingTicks;
-        applyDueInputs(p, q, now);
+        applyDueInputs(p, q, at(T0 + 1 + i));
         if (before === INPUT_TIMING.drainAfterTicks - 1 && q.waitingTicks === 0) drained = true;
       }
       return drained;
@@ -145,10 +178,10 @@ describe("applyDueInputs", () => {
       const p = createPlayer("a");
       const all = Array.from({ length: 30 }, (_, i) => walk(i + 1, { dodge: i % 9 === 0, attack: i % 7 === 3 }));
       const q = queueOf();
-      for (let now = 50; all.length || q.frames.length; now += 50) {
+      for (let n = 1; all.length || q.frames.length; n++) {
         // Arrivals bunch: none every third tick, two on the next.
-        q.frames.push(...all.splice(0, [1, 0, 2][(now / 50) % 3]));
-        applyDueInputs(p, q, now);
+        q.frames.push(...all.splice(0, [1, 0, 2][n % 3]));
+        applyDueInputs(p, q, at(n));
       }
       return p;
     };
@@ -164,12 +197,14 @@ describe("applyDueInputs", () => {
  * for the old way (every queued frame at the tick's now, a neutral frame on a quiet tick).
  */
 function bunchedLink(useSlots: boolean): number {
-  const frames = 200;
+  const frames = 600;
   const oneWay = 60;
+  // Time runs in tenths of a tick: the server ticks on the whole ones, the client half a tick later.
+  const sub = 10;
   // A deterministic jitter: every frame late by 0 to 70 ms in a fixed pattern, order kept (TCP).
   const late = (seq: number) => [0, 10, 70, 0, 30, 0, 55, 5, 0, 20, 65, 0][seq % 12];
   const server = createPlayer("a");
-  server.inputAt = -INPUT_TIMING.maxLagMs;
+  server.inputAt = onTick(-INPUT_TIMING.maxLagMs);
   const client = createPlayer("a");
   let predictedTime = 0;
   let pending: InputFrame[] = [];
@@ -180,28 +215,30 @@ function bunchedLink(useSlots: boolean): number {
   let placed = false;
   let lastArrival = 0;
 
-  for (let t = 0; t <= frames * TICK_MS + 1000; t += 5) {
+  for (let u = 0; u <= (frames + 60) * sub; u++) {
+    const t = (u / sub) * TICK_MS;
     // Client tick: predict at the next slot and send.
-    if (t % TICK_MS === 25 && t < frames * TICK_MS) {
-      const seq = t === 25 ? 1 : pending.length ? pending[pending.length - 1].seq + 1 : client.lastSeq + 1;
-      const f = walk(seq, { dx: Math.cos(seq / 7), dy: Math.sin(seq / 7), dodge: seq % 13 === 0, attack: seq % 17 === 5, block: seq % 29 > 25 });
-      predictedTime += TICK_MS;
+    if (u % sub === sub / 2 && u < frames * sub) {
+      const seq = u === sub / 2 ? 1 : pending.length ? pending[pending.length - 1].seq + 1 : client.lastSeq + 1;
+      const f = walk(seq, { dx: Math.cos(seq / 20), dy: Math.sin(seq / 20), dodge: seq % 39 === 0, attack: seq % 51 === 5, block: seq % 87 > 75 });
+      predictedTime = onTick(predictedTime + TICK_MS);
       applyInput(client, f, predictedTime, TICK_MS);
       pending.push(f);
       lastArrival = Math.max(lastArrival, t + oneWay + late(seq));
       inFlight.push({ at: lastArrival, frame: f });
     }
     // Server tick.
-    if (t % TICK_MS === 0 && t > 0) {
-      while (inFlight.length && inFlight[0].at <= t) queue.frames.push(inFlight.shift()!.frame);
-      if (useSlots) applyDueInputs(server, queue, t);
+    if (u % sub === 0 && u > 0) {
+      const now = at(u / sub);
+      while (inFlight.length && inFlight[0].at <= now) queue.frames.push(inFlight.shift()!.frame);
+      if (useSlots) applyDueInputs(server, queue, now);
       else {
         const due = queue.frames.splice(0, 2);
-        if (due.length === 0) applyInput(server, { ...neutralInput(server.lastSeq), block: server.guarding }, t, TICK_MS);
-        for (const f of due) applyInput(server, f, t, TICK_MS);
-        server.inputAt = t;
+        if (due.length === 0) applyInput(server, { ...neutralInput(server.lastSeq), block: server.guarding }, now, TICK_MS);
+        for (const f of due) applyInput(server, f, now, TICK_MS);
+        server.inputAt = now;
       }
-      patches.push({ at: t + oneWay, state: structuredClone(server), tick: t });
+      patches.push({ at: now + oneWay, state: structuredClone(server), tick: now });
     }
     // Patch arrives: rewind and replay.
     while (patches.length && patches[0].at <= t) {
@@ -211,9 +248,11 @@ function bunchedLink(useSlots: boolean): number {
       Object.assign(client, structuredClone(state));
       pending = pending.filter((f) => f.seq > state.lastSeq);
       let rt = useSlots ? state.inputAt : tick;
-      for (const f of pending) applyInput(client, f, (rt += TICK_MS), TICK_MS);
+      for (const f of pending) applyInput(client, f, (rt = onTick(rt + TICK_MS)), TICK_MS);
       predictedTime = rt;
-      if (placed && Math.hypot(bx - client.x, bz - client.z) > 0.02) corrections++;
+      // Only while the client sends: once it stops, the server coasts the silent body to a halt
+      // with neutral frames, which a client that sends every tick never has to predict.
+      if (placed && u < frames * sub && Math.hypot(bx - client.x, bz - client.z) > 0.02) corrections++;
       placed = placed || state.lastSeq > 0;
     }
   }
@@ -221,7 +260,7 @@ function bunchedLink(useSlots: boolean): number {
 }
 
 describe("prediction against the server on a bunching link", () => {
-  it("agrees on every frame with slots, where the old timing corrected 30 times", () => {
+  it("agrees on every frame with slots, where the old timing corrected many times", () => {
     expect(bunchedLink(false)).toBeGreaterThan(5);
     expect(bunchedLink(true)).toBe(0);
   });

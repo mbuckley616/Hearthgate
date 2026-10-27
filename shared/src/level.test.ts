@@ -7,6 +7,7 @@ import {
   ROOM,
   SPAWN_POINTS,
   TICK_MS,
+  TICK_RATE,
   applyInput,
   createEncounter,
   createPlayer,
@@ -44,10 +45,10 @@ const walk = (p: PlayerSim, dx: number, dy: number, from: number, ticks: number,
 describe("walls", () => {
   it("a player walking into a wall stops at its face and slides along it", () => {
     const p = createPlayer("a", 0, 0);
-    walk(p, 0, 1, 0, 40, PEN); // 2 s north at 6 m/s would be 12 m; the wall's face is at z = 2.6
+    walk(p, 0, 1, 0, 2 * TICK_RATE, PEN); // 2 s north at 6 m/s would be 12 m; the wall's face is at z = 2.6
     expect(p.z).toBeCloseTo(3 - 0.4 - PLAYER.radius, 6);
     expect(p.x).toBeCloseTo(0, 6);
-    walk(p, 1, 1, 2000, 10, PEN); // diagonal into the wall: the x component still moves
+    walk(p, 1, 1, 2000, TICK_RATE, PEN); // diagonal into the wall: the x component still moves
     expect(p.z).toBeCloseTo(3 - 0.4 - PLAYER.radius, 6);
     expect(p.x).toBeGreaterThan(1.5);
   });
@@ -61,13 +62,13 @@ describe("walls", () => {
 
   it("walking round the end of the wall gets past it", () => {
     const p = createPlayer("a", 5, 0);
-    walk(p, 0, 1, 0, 40, PEN);
+    walk(p, 0, 1, 0, 2 * TICK_RATE, PEN);
     expect(p.z).toBeGreaterThan(5);
   });
 
   it("the bounds still hold and the open field matches the old arena", () => {
     const p = createPlayer("a", 0, 0);
-    walk(p, 1, 0, 0, 200, OPEN_FIELD);
+    walk(p, 1, 0, 0, 8 * TICK_RATE, OPEN_FIELD);
     expect(p.x).toBeCloseTo(OPEN_FIELD.halfW - PLAYER.radius, 6);
     const o = { x: 25, z: -25 };
     collideWalls(o, 0.5, OPEN_FIELD);

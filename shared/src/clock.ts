@@ -11,10 +11,10 @@
  *
  * The same window says how big that budget has to be. At every frame the newest patch is
  * some way behind the clock: `now + offset - (its stamp)`, the wait for the next one so far.
- * On a punctual link that peaks at one tick; a late patch makes it peak at a tick plus its
+ * On a punctual link that peaks at one patch interval; a late patch makes it peak at that plus its
  * lateness, and a remote player holds exactly when it exceeds the delay. So each patch
  * sample remembers the longest wait seen while it was the newest, the window's largest is
- * `late` (less the tick), and the delay target is `late` plus a tick, floored at
+ * `late` (less the patch interval), and the delay target is `late` plus a patch interval, floored at
  * INTERP.baseMs and capped at INTERP.maxMs: a clean link draws at the base, a jittery one
  * gets what its worst recent packet needed, and the delay slews like the offset so the drawn
  * remote never skips. The wait is measured at the frames that ran, not at arrival, so a
@@ -23,7 +23,7 @@
  *
  * Every stamped message from the server gives one sample, serverTime - recvAt = (true
  * offset) - (trip from server to client): ping replies, which also measure the round trip
- * for the HUD, and the patches themselves, which arrive twenty times a second stamped with
+ * for the HUD, and the patches themselves, which arrive thirty times a second stamped with
  * their tick. The largest sample in the window is the message with the shortest trip, the
  * one least delayed by queueing, so that is the target. (The lowest round trip is close,
  * but a quick outbound leg can pick a slow return, and the return is what snapshots ride.)
@@ -31,7 +31,7 @@
  * sample can only raise it toward the floor. Neither ever jumps the drawn clock: the
  * applied offset slews at CLOCK_SYNC.slewMsPerS.
  */
-import { CLOCK_SYNC, INTERP, TICK_MS } from "./sim";
+import { CLOCK_SYNC, INTERP, PATCH_MS } from "./sim";
 
 export interface ClockSample {
   /** Round trip for a ping reply; Infinity for a patch, which measures only the trip here. */
@@ -54,9 +54,9 @@ export interface ClockSync {
   lastStepAt: number;
   /** The newest patch, whose wait the frames are measuring. */
   newest: ClockSample | null;
-  /** The longest wait for a patch any frame in the window saw, less the tick it always costs, ms. */
+  /** The longest wait for a patch any frame in the window saw, less the patch interval it always costs, ms. */
   late: number;
-  /** The interpolation delay the window asks for: `late` plus a tick, within INTERP's bounds. */
+  /** The interpolation delay the window asks for: `late` plus a patch interval, within INTERP's bounds. */
   delayTarget: number;
   /** The interpolation delay in use, slewed toward `delayTarget`. */
   delay: number;
@@ -120,8 +120,8 @@ function addSample(c: ClockSync, s: ClockSample): void {
 }
 
 function setLate(c: ClockSync, longestWait: number): void {
-  c.late = Math.max(0, longestWait - TICK_MS);
-  c.delayTarget = Math.min(INTERP.maxMs, Math.max(INTERP.baseMs, c.late + TICK_MS));
+  c.late = Math.max(0, longestWait - PATCH_MS);
+  c.delayTarget = Math.min(INTERP.maxMs, Math.max(INTERP.baseMs, c.late + PATCH_MS));
 }
 
 /**
@@ -150,7 +150,7 @@ export function stepClock(c: ClockSync, now: number): number {
     const wait = now + Math.max(c.offset, c.target) - (newest.at + newest.offset);
     if (wait > newest.stale) {
       newest.stale = wait;
-      if (wait - TICK_MS > c.late) setLate(c, wait);
+      if (wait - PATCH_MS > c.late) setLate(c, wait);
     }
   }
   const dgap = c.delayTarget - c.delay;
