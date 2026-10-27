@@ -2,6 +2,38 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T2: the clean link's corrections were enemy bodies
+
+**What changed**
+
+- The lab splits each correction over 10 cm by what the hero was doing (its own swing or ability, a hit taken, placed by the server, or neither), and `--diag` records, for each, every field where the server's hero at the acked input differs from the browser's prediction of that input. Bravo now fights (it faces the nearest enemy and swings), so a pair can try to finish a run.
+- The diagnosis: the 0 ms row's remaining big corrections differed in position alone, mid-dodge or mid-run. The server pushes heroes out of enemy bodies in the enemy step (`settle`), which a joiner's prediction never runs. `separateBodies()` is that push lifted out unchanged (parity with the slice still identical); `ClientSession` applies it after each predicted step against the enemies as the last snapshot had them.
+
+**Lab (local)**
+
+A/B at 0 ms, 180 s each: 231 corrections a minute over 2 cm without the push predicted, 6 with it; over 10 cm 23.7 against 1.7 (of those 1.3 placements, 0 from the network).
+
+| Link (120 s) | Over 2 cm a minute | Over 10 cm | of which placed | Holds a minute | Inputs in flight |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 14 | 3.5 | 1 | 3.5 | 61 ms |
+| 50 ms | 31 | 2.5 | 1 | 3 | 240 ms |
+| 150 ms | 28 | 6 | 1.5 | 5 | 352 ms |
+| 50 ms ±20, 2% loss | 47.5 | 4.5 | 2 | 25 | 358 ms |
+
+The lab against the hosted build with Bravo fighting (main, before these fixes): 5 minutes, 0 network snaps, 54 corrections a minute over 2 cm, 8 runs started and none won.
+
+**Learned**
+
+- My first reading (the clean link's big corrections were the swing's lunge) was wrong; the split and the field diff found the real cause in one run. Measure the cause before naming it.
+- Over 10 cm, 0 and 50 ms are inside T2's gate (8 / 3); 150 ms is not (6, or 4.5 without placements, against 1). Lossy holds are 25 a minute, over the lab's line of 20.
+- The bots cannot win a run even with Bravo fighting; the T1 gate's two players through a run needs people.
+
+**Next**
+
+- Michael: the T1 gate's two-player run (people), and #68 once he has looked.
+- T2: the 150 ms row's remaining big corrections (the diag), and the lossy row's holds.
+- The lab against the hosted build once #68 ships.
+
 ## 2026-10-27: local session, T2: input slots for the lossy link
 
 **What changed**
