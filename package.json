@@ -2,7 +2,7 @@
   "name": "hearthgate",
   "version": "0.1.0",
   "private": true,
-  "description": "Hearthgate - co-op village-and-portals dungeon crawler. Phase 0: netcode spike.",
+  "description": "Hearthgate - co-op village-and-portals dungeon crawler. Phase 1: the combat slice on the server.",
   "workspaces": [
     "shared",
     "server",
@@ -18,11 +18,9 @@
     "test": "npm run test -w shared",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm test",
-    "test:net": "tsx tests/reconcile-placement.ts && tsx tests/netcode-smoke.ts",
-    "test:clock": "tsx tests/clock-sync.ts",
+    "test:net": "tsx tests/netcode-smoke.ts",
     "lab": "tsx tests/lab/run.ts",
-    "turnaround": "tsx tests/turnaround.ts",
-    "tavern-test": "tsx tests/tavern-test.ts"
+    "test:parity": "tsx tests/parity.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

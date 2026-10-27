@@ -1,0 +1,515 @@
+/* =====================================================================
+   M6 look (Michael's art direction): dark-fantasy panels with bronze
+   frames, gold serif headings and pixel icons, under a CRT. Loaded after
+   style.css, so these rules override the earlier plain ones.
+   ===================================================================== */
+:root {
+  --panel: rgba(20, 11, 30, 0.92);
+  --panel-solid: #140b1e;
+  --frame: #b9782e;
+  --frame-dark: #0a0610;
+  --frame-inner: #3a2050;
+  --gold: #ffcf6a;
+  --ember: #ff8a3a;
+  --ink: #efe3cf;
+  --muted: #a493b8;
+}
+
+html,
+body {
+  background: #0b0712;
+}
+
+.pixel-art {
+  image-rendering: pixelated;
+}
+
+/* A framed panel: dark outline, bronze rim, purple inner bevel. */
+.overlay-card,
+.title-side,
+.equip-card,
+.run-end-card,
+.hud-toast,
+.revive-prompt,
+.party-ended {
+  background: var(--panel);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 2px var(--frame-dark),
+    inset 0 0 0 2px var(--frame-inner),
+    0 8px 30px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+}
+
+.menu-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 9px 16px;
+  background: linear-gradient(#2a1838, #1a0e26);
+  border: 2px solid var(--frame);
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px var(--frame-dark), inset 0 1px 0 rgba(255, 210, 140, 0.25);
+  color: var(--gold);
+  font: 700 15px/1 Georgia, serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 80ms,
+    filter 80ms;
+}
+
+.menu-btn:hover,
+.menu-btn:focus-visible {
+  filter: brightness(1.3);
+  transform: translateX(4px);
+  outline: none;
+}
+
+.menu-btn.small {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* ---- Title screen ---- */
+.title-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 0 7vw;
+  background: linear-gradient(90deg, rgba(8, 4, 14, 0.85) 0%, rgba(8, 4, 14, 0.4) 45%, rgba(8, 4, 14, 0) 70%);
+  z-index: 30;
+}
+
+.title-left {
+  width: min(560px, 60vw);
+}
+
+.title-logo canvas {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 18px rgba(255, 120, 40, 0.35));
+}
+
+.title-tag {
+  margin: -4px 0 26px 6px;
+  font: italic 600 16px Georgia, serif;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.title-menu {
+  width: 280px;
+}
+
+.title-join {
+  gap: 8px;
+  margin: -2px 0 10px;
+}
+
+.title-join input {
+  width: 110px;
+  padding: 6px 10px;
+  background: #0d0714;
+  border: 2px solid var(--frame);
+  color: var(--gold);
+  font: 700 16px ui-monospace, Consolas, monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.title-side {
+  display: none;
+  max-height: 76vh;
+  overflow: auto;
+  padding: 18px 22px;
+}
+
+.title-foot {
+  position: fixed;
+  left: 7vw;
+  bottom: 22px;
+  font: 12px system-ui, sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+body.on-title .hud,
+body.on-title .hud-abilities,
+body.on-title .style-bar,
+body.on-title .run-prompt,
+body.on-title .run-timer,
+body.on-title .party-frames,
+body.on-title .hud-toasts,
+body.on-title .run-banner {
+  display: none !important;
+}
+
+/* ---- Pause menu ---- */
+.overlay {
+  background: radial-gradient(ellipse at center, rgba(20, 8, 30, 0.45), rgba(6, 3, 10, 0.8));
+}
+
+.overlay-card {
+  padding: 22px 26px;
+  width: min(460px, 90vw);
+  max-height: 88vh;
+  overflow: auto;
+  cursor: default;
+}
+
+.overlay-card h1 {
+  margin: 0 0 4px;
+  font: 700 28px Georgia, serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 2px 0 #5a1a4a;
+}
+
+.overlay-card .cta {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pause-drawer:empty {
+  display: none;
+}
+
+.pause-drawer {
+  margin: 4px 0 8px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(185, 120, 46, 0.4);
+}
+
+.controls-panel table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.controls-panel td {
+  padding: 3px 14px 3px 0;
+  color: var(--ink);
+}
+
+.controls-panel td:first-child {
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+/* ---- Settings ---- */
+.settings-panel {
+  min-width: 300px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 44px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.settings-row em {
+  font-style: normal;
+  color: var(--gold);
+  text-align: right;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.settings-row input[type='range'] {
+  accent-color: var(--ember);
+}
+
+.settings-row input[type='checkbox'] {
+  justify-self: start;
+  accent-color: var(--ember);
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- HUD: portrait and bars above a hotbar ---- */
+.hud {
+  left: 24px;
+  bottom: 100px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud-portrait {
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  background: var(--panel-solid);
+  border: 2px solid var(--frame);
+  box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-inner);
+}
+
+.hud-hp {
+  width: 230px;
+  height: 16px;
+  background: #1a0a12;
+  border: 2px solid var(--frame-dark);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px var(--frame);
+}
+
+.hud-hp-fill {
+  background: linear-gradient(#ff6a52 0 30%, #c8302a 30% 75%, #8a1a20 75%);
+}
+
+.hud-hp-text {
+  font: 700 10px/16px ui-monospace, Consolas, monospace;
+  text-shadow: 0 1px 0 #000;
+}
+
+.hud-pips {
+  margin-top: 6px;
+  gap: 4px;
+}
+
+.hud-pip {
+  width: 34px;
+  height: 7px;
+  border-radius: 0;
+  background: #120a24;
+  border: 1px solid var(--frame-dark);
+  box-shadow: 0 0 0 1px rgba(185, 120, 46, 0.6);
+}
+
+.hud-pip.full {
+  background: linear-gradient(#7aa2ff 0 40%, #3157c4 40%);
+}
+
+.style-bar {
+  left: 24px;
+  bottom: 22px;
+  transform: none;
+  gap: 8px;
+}
+
+.style-chip {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--panel-solid);
+  border: 2px solid #5a3a20;
+  box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-inner);
+  color: var(--ink);
+  text-align: center;
+}
+
+.style-chip.active {
+  border-color: var(--gold);
+  background: #2a1838;
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 2px var(--frame-dark),
+    inset 0 0 0 2px var(--frame-inner),
+    0 0 14px rgba(255, 190, 90, 0.45);
+}
+
+.style-icon {
+  width: 32px;
+  height: 32px;
+  margin-top: 9px;
+}
+
+.style-name {
+  display: none;
+}
+
+.style-key {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  margin: 0;
+  font: 700 10px ui-monospace, Consolas, monospace;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+.style-level {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  margin: 0;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.style-xp {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  height: 3px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.hud-abilities {
+  left: 228px;
+  bottom: 22px;
+  transform: none;
+  gap: 8px;
+}
+
+.hud-ability {
+  width: 58px;
+  height: 58px;
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--panel-solid);
+  border: 2px solid #5a3a20;
+  box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-inner);
+  overflow: visible;
+}
+
+.hud-ability.ready {
+  border-color: var(--gold);
+}
+
+.hud-ability-icon {
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  width: 32px;
+  height: 32px;
+}
+
+.hud-ability-key {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--gold);
+}
+
+.hud-ability-name {
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: -17px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-shadow: 0 1px 0 #000;
+}
+
+.hud-ability-time {
+  right: auto;
+  left: 0;
+  width: 100%;
+  top: 19px;
+  font-size: 16px;
+  text-align: center;
+  text-shadow:
+    0 1px 0 #000,
+    0 0 6px #000;
+}
+
+/* ---- Banners, prompts, boss bar, end card in the new palette ---- */
+.run-banner-title,
+.run-end-title {
+  font-family: Georgia, serif;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-shadow:
+    0 3px 0 #5a1a4a,
+    0 0 22px rgba(255, 120, 40, 0.4);
+}
+
+.run-banner-sub,
+.run-prompt,
+.run-timer {
+  color: var(--muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.run-prompt {
+  font: 600 13px system-ui, sans-serif;
+  text-shadow: 0 1px 0 #000;
+}
+
+.boss-track {
+  border-radius: 0;
+  border: 2px solid var(--frame-dark);
+  box-shadow: 0 0 0 1px var(--frame);
+}
+
+.boss-name {
+  font-family: Georgia, serif;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Damage numbers: chunky serif with a hard dark outline, like old arcade text. */
+.damage-number {
+  font: 900 16px/1 Georgia, serif;
+  color: #fff4dc;
+  text-shadow:
+    2px 0 0 #1a0a24,
+    -2px 0 0 #1a0a24,
+    0 2px 0 #1a0a24,
+    0 -2px 0 #1a0a24;
+}
+
+.damage-number.heavy {
+  font-size: 22px;
+  color: var(--gold);
+}
+
+.party-btn {
+  border-radius: 2px;
+  border: 2px solid var(--frame);
+  box-shadow: 0 0 0 2px var(--frame-dark);
+  background: linear-gradient(#2a1838, #1a0e26);
+  color: var(--gold);
+  font-family: Georgia, serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.party-title {
+  font: 700 15px Georgia, serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.party-panel input,
+.party-link input {
+  border-radius: 0;
+  border: 2px solid #5a3a20;
+  background: #0d0714;
+  color: var(--gold);
+}
+
+.party-frame {
+  border-radius: 2px;
+  background: var(--panel);
+  border: 2px solid #5a3a20;
+  box-shadow: 0 0 0 1px var(--frame-dark);
+}

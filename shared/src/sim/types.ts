@@ -1,0 +1,423 @@
+import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
+import type { Item, Mods, Perk } from './gear';
+import type { TalentRanks } from './talents';
+
+/**
+ * Simulation state. Everything here must stay plain, serializable data
+ * (JSON-safe numbers, strings, booleans, arrays, plain objects) so a host can
+ * snapshot it and send it to peers in M5.
+ */
+
+/** Yaw convention: facing direction is (sin yaw, 0, cos yaw); yaw 0 faces +Z. */
+export interface PlayerState {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  yaw: number;
+  grounded: boolean;
+  /** 'down' = at zero health; 'hurt' = interrupted by a heavy enemy attack (or a broken guard). */
+  mode: 'move' | 'dodge' | 'attack' | 'ability' | 'guard' | 'hurt' | 'down';
+  /** Seconds elapsed in the current dodge. */
+  dodgeTime: number;
+  dodgeDirX: number;
+  dodgeDirZ: number;
+  /** Metres this dodge covers; a neutral dodge is a shorter backstep (no roll). */
+  dodgeDist: number;
+  dodgeBackstep: boolean;
+  /** Dodge pressed during hitstop: taken as soon as it ends. */
+  dodgeBuffered: boolean;
+  /** Seconds the guard has been up (mode 'guard'). */
+  guardTime: number;
+  /** Sim time the guard was last raised, for the parry re-arm rule. */
+  guardRaisedAt: number;
+  /** This raise opened a parry window. */
+  parryOpen: boolean;
+  /** Increments per parry / blocked hit, so views can react. */
+  parrySeq: number;
+  blockSeq: number;
+  /** Guard was held last tick (a fresh press can interrupt an attack; holding doesn't). */
+  blockWasHeld: boolean;
+  /** Shown above the hero to other players. */
+  name: string;
+  /** While down: seconds an ally has held revive on them (brief: 3 s brings them back). */
+  reviveProgress: number;
+  /** Seconds enemy hits on this hero wait before landing (remote players; see coop.lagGraceMs). */
+  lagGrace: number;
+  dodgeCharges: number;
+  /** Seconds accumulated toward the next dodge charge. */
+  dodgeRecharge: number;
+  /** Seconds until another dodge is allowed. */
+  dodgeCooldown: number;
+  invulnerable: boolean;
+  /** Active combat style: sword, bow or staff. */
+  style: Style;
+  /** Current attack of the active style's chain (0-based). */
+  attackHit: number;
+  /** Seconds into the current attack. */
+  attackTime: number;
+  /** The projectile or burst for this attack has been spawned. */
+  attackFired: boolean;
+  /** A buffered click waiting for the chain window. */
+  attackQueued: boolean;
+  /** Increments every time a swing starts, so views can tell a re-swing from a continuation. */
+  attackSeq: number;
+  /** Enemies the current swing has already hit (each takes one hit per swing). */
+  attackHitIds: number[];
+  hp: number;
+  /** Seconds frozen by hitstop. */
+  hitstop: number;
+  /** Seconds until getting back up while down. */
+  downTime: number;
+  /** Seconds of invulnerability left after getting up. */
+  invulnTime: number;
+  /** Soft-target enemy id for the current attack, or -1. */
+  attackTarget: number;
+  /** Lunge distance for the current swing (stretched toward a soft target). */
+  attackLunge: number;
+  /** Ability being performed (mode 'ability'). */
+  ability: AbilityKind;
+  abilityTime: number;
+  /** The ability's main effect has fired. */
+  abilityFired: boolean;
+  /** Whirlwind ticks dealt so far. */
+  abilityTicks: number;
+  /** Increments per ability use, so views can restart animations. */
+  abilitySeq: number;
+  /** Enemies the current ability has already hit (charge stops at the first). */
+  abilityHitIds: number[];
+  /** Seconds left on each style's Q and E. */
+  cooldowns: Record<Style, [number, number]>;
+  /** Blink primes the next bolt to crit. */
+  nextBoltCrit: boolean;
+  /** Q/E pressed during a windup: fires as soon as recovery starts (-1 = none). */
+  queuedAbility: number;
+  /** Hero swap pressed mid-attack or mid-ability: applied as soon as it can be. */
+  queuedSwap: Style | null;
+  /** Experience per style (brief: use-based levels). Levels derive from it. */
+  xp: Record<Style, number>;
+  /** Max health, including gear. */
+  maxHp: number;
+  /** What equipped gear adds (stats and perks). The items themselves live in the client's saved profile. */
+  mods: Mods;
+  /** Talent ranks per hero, from the saved profile. */
+  talents: Record<Style, TalentRanks>;
+  /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
+  lastFinisherAt: number;
+  /** Seconds left in a heavy-hit interrupt, and the shove that comes with it. */
+  hurtTime: number;
+  kbx: number;
+  kbz: number;
+}
+
+export type EnemyAi =
+  | 'spawn'
+  | 'chase'
+  | 'windup'
+  | 'slash1'
+  | 'between'
+  | 'slash2'
+  | 'aim'
+  | 'shoot'
+  | 'slamWindup'
+  | 'slam'
+  | 'sweepWindup'
+  | 'sweep'
+  | 'roar'
+  | 'recover'
+  | 'stagger'
+  | 'dead';
+
+/** A telegraphed danger zone on the ground (or an aim line), shared by sim hit checks and the view. */
+export interface Telegraph {
+  shape: 'none' | 'circle' | 'cone' | 'line';
+  x: number;
+  z: number;
+  /** Circle/cone radius; for a line, its length. */
+  radius: number;
+  /** Cone/line direction. */
+  yaw: number;
+  arcDeg: number;
+}
+
+/** Enemy of any kind. Same yaw convention as players. */
+export interface EnemyState {
+  id: number;
+  kind: EnemyKind;
+  x: number;
+  /** Ground height under it (the ledge, ramps). */
+  y: number;
+  z: number;
+  yaw: number;
+  /** Steering velocity. */
+  vx: number;
+  vz: number;
+  /** Knockback velocity, decays with friction. */
+  kbx: number;
+  kbz: number;
+  hp: number;
+  poise: number;
+  ai: EnemyAi;
+  /** Seconds in the current AI state. */
+  aiTime: number;
+  /** Seconds frozen by hitstop. */
+  hitstop: number;
+  /** Seconds of flinch (AI paused) from light hits. */
+  flinch: number;
+  /** Seconds of burst slow left. */
+  slowTime: number;
+  /** Seconds frozen solid (frost ring): no AI, no movement. */
+  frozen: number;
+  /** Bleed perk: ticks left, seconds to the next tick, and who applied it. */
+  bleedTicks: number;
+  bleedTimer: number;
+  bleedOwner: string;
+  /** Holds one of the target's attack tokens (brief: at most two attackers per player). */
+  hasToken: boolean;
+  /** Seconds before this grunt may take a token again. */
+  cooldown: number;
+  /** Seconds before poise starts regenerating. */
+  poiseWait: number;
+  /** Sim time of the last damage taken, or -1. Drives the white flash. */
+  lastHitAt: number;
+  /** +1 or -1: which way it circles while waiting for a token. */
+  strafeDir: number;
+  /** Health at spawn (scaled for party size). */
+  maxHp: number;
+  tele: Telegraph;
+  /** Recovery length for the attack just made (s). */
+  recoverTime: number;
+  /** Warden: 1, or 2 after the roar. */
+  phase: number;
+  /** Warden: has roared and summoned. */
+  summoned: boolean;
+  /** Warden: which attack the current windup is ('sweep' | 'slam' | 'farSlam'). */
+  attack: string;
+  /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
+  shatterUntil: number;
+  skewerUntil: number;
+  detonateUntil: number;
+}
+
+/** Arrows, magic bolts and bursts. Bursts sit still and expand. */
+export interface ProjectileState {
+  id: number;
+  kind: 'arrow' | 'bolt' | 'burst';
+  owner: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  /** Seconds alive. */
+  age: number;
+  /** Seconds until removal. */
+  life: number;
+  /** Arrow embedded in a wall or the floor. */
+  stuck: boolean;
+  /** Power or piercing shot (gold streak; heavier damage from M1). */
+  charged: boolean;
+  /** Burst radius in metres; 0 for arrows and bolts. */
+  radius: number;
+  /** Combat payload from the attack that fired it. */
+  damage: number;
+  poise: number;
+  knockback: number;
+  heavy: boolean;
+  /** Enemies it can still pass through. */
+  pierce: number;
+  /** Enemies already hit (a projectile hits each enemy once). */
+  hitIds: number[];
+  /** Burst only: slow applied to enemies caught in it (seconds). */
+  slowTime: number;
+  /** Burst damage has been applied. */
+  resolved: boolean;
+  /** Bolts: enemy to curve toward, or -1; and how much turning (rad) is left. */
+  targetId: number;
+  homingLeft: number;
+  /** Primed by Blink: shows as a crit. */
+  crit: boolean;
+  /** Fired by an enemy: hits heroes, not enemies. */
+  hostile: boolean;
+  /** The hero style that fired it (XP and damage bonuses). */
+  style: Style;
+  /** A bolt spawned by the chain perk (doesn't chain again). */
+  chained: boolean;
+  /** Volley arrows mark what they hit for Detonate. */
+  marks: boolean;
+  /** Already called out a combo (one callout per projectile). */
+  comboed: boolean;
+}
+
+/** A gear drop on the floor, waiting to be walked over. */
+export interface DropState {
+  id: number;
+  /** Loot is personal: each hero gets their own drop and only they see and take it. */
+  owner: string;
+  x: number;
+  y: number;
+  z: number;
+  age: number;
+  item: Item;
+}
+
+export type RunPhase = 'ante' | 'intro' | 'wave' | 'rest' | 'won' | 'lost';
+
+/** The run (brief: grunts, then grunts and archers, then a brute with a mixed group, then the Warden). */
+export interface RunState {
+  phase: RunPhase;
+  /** Current wave, 1-based; 0 before the first. */
+  wave: number;
+  /** Seconds in the current phase. */
+  timer: number;
+  /** Seconds since the run started. */
+  elapsed: number;
+  /** The antechamber gate is down. */
+  gateClosed: boolean;
+  /** Seconds the gate has been waiting for the rest of the party since the first hero went in (-1 = not waiting). */
+  gateWait: number;
+  /** The Warden's enemy id, or -1. */
+  bossId: number;
+  /** Enemies spawned at the start of the current wave, and whether its second group has come. */
+  waveSize: number;
+  reinforced: boolean;
+  /** Where the latest kill happened (the Warden's spot sticks): drops appear there. */
+  dropX: number;
+  dropZ: number;
+  bossDown: boolean;
+}
+
+/** One-shot things that happened during a tick, for views, sound and (M5) peers. */
+export type SimEvent =
+  | { kind: 'hit'; x: number; y: number; z: number; enemyId: number; attackerId: string; damage: number; heavy: boolean; bonus: boolean; crit: boolean; killed: boolean; dirX: number; dirZ: number; local: boolean }
+  | { kind: 'stagger'; enemyId: number; x: number; z: number }
+  | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean }
+  | { kind: 'heroDown'; playerId: string }
+  | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
+  | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
+  | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
+  | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }
+  | { kind: 'land'; playerId: string; x: number; z: number; radius: number }
+  | { kind: 'enemyTelegraph'; enemyId: number }
+  | { kind: 'enemySwing'; enemyId: number }
+  | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }
+  | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
+  | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number }
+  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number }
+  | { kind: 'whirlTick'; playerId: string }
+  | { kind: 'freeze'; enemyId: number }
+  | { kind: 'enemyShot'; enemyId: number }
+  | { kind: 'enemySlam'; enemyId: number; x: number; z: number; radius: number; boss: boolean }
+  | { kind: 'roar'; enemyId: number }
+  | { kind: 'runStart' }
+  | { kind: 'waveStart'; wave: number; title: string; boss: boolean }
+  | { kind: 'waveCleared'; wave: number }
+  | { kind: 'reinforcements'; wave: number }
+  | { kind: 'runWon'; time: number }
+  | { kind: 'runLost'; wave: number }
+  | { kind: 'levelUp'; playerId: string; style: Style; level: number }
+  | { kind: 'dropSpawned'; owner: string; x: number; z: number; rarity: Item['rarity'] }
+  | { kind: 'combo'; combo: Combo; playerId: string; x: number; y: number; z: number }
+  | { kind: 'revived'; playerId: string; by: string }
+  | { kind: 'playerJoined'; playerId: string; name: string }
+  | { kind: 'playerLeft'; playerId: string; name: string }
+  | { kind: 'pickup'; playerId: string; item: Item }
+  | { kind: 'perk'; playerId: string; perk: Perk; x: number; z: number };
+
+export type Combo = 'shatter' | 'skewer' | 'detonate';
+
+/** An enemy attack reaching a hero. */
+export interface HeroHit {
+  damage: number;
+  /** Heavy hits interrupt the hero and break a guard. */
+  heavy?: boolean;
+  /** Metres of shove on a heavy hit. */
+  push?: number;
+  /** Where it comes from (the enemy, a slam's centre, an arrow's tail): decides blocking and shove direction. */
+  fromX: number;
+  fromZ: number;
+  /** The enemy that dealt it, so a parry can stagger it. */
+  enemyId?: number;
+  /** An enemy arrow: a parry sends one back. */
+  arrow?: boolean;
+  /** Already waited out the remote player's lag grace. */
+  late?: boolean;
+}
+
+/** A hit on a remote player, waiting out their lag grace. */
+export interface PendingHit {
+  playerId: string;
+  at: number;
+  hit: HeroHit;
+}
+
+export interface SimState {
+  tick: number;
+  /** Simulated seconds since start. */
+  time: number;
+  players: PlayerState[];
+  enemies: EnemyState[];
+  projectiles: ProjectileState[];
+  drops: DropState[];
+  pendingHits: PendingHit[];
+  /** Events from the last tick only; cleared at the start of each step. */
+  events: SimEvent[];
+  nextId: number;
+  /** Deterministic RNG state (LCG), so the sim stays reproducible and serializable. */
+  rng: number;
+  run: RunState;
+}
+
+/**
+ * One player's input for one tick, already resolved into world space by the
+ * client (camera-relative movement is a client concern). Serializable so it
+ * can be sent to a host.
+ */
+export interface PlayerCommand {
+  /** Desired move direction in world XZ, magnitude 0..1. */
+  moveX: number;
+  moveZ: number;
+  /** Sprint held. Walking is light analog tilt (move magnitude below the run threshold). */
+  sprint: boolean;
+  /** Dodge pressed since the last tick. */
+  dodge: boolean;
+  /** Attack pressed since the last tick. */
+  attack: boolean;
+  /** Camera forward on the ground plane: attacks face it when there's no move input. */
+  aimX: number;
+  aimZ: number;
+  /** Style to swap to, or null for no swap. */
+  swapTo: Style | null;
+  /** Q / E pressed since the last tick. */
+  ability1: boolean;
+  ability2: boolean;
+  /** Locked-on enemy id, or -1. Soft targeting prefers it. */
+  lockTarget: number;
+  /** Jump pressed since the last tick. */
+  jump: boolean;
+  /** Guard held. */
+  block: boolean;
+  /** Interact held (revive a downed ally). */
+  interact: boolean;
+}
+
+export const idleCommand = (): PlayerCommand => ({
+  moveX: 0,
+  moveZ: 0,
+  sprint: false,
+  dodge: false,
+  attack: false,
+  aimX: 0,
+  aimZ: 1,
+  swapTo: null,
+  ability1: false,
+  ability2: false,
+  lockTarget: -1,
+  jump: false,
+  block: false,
+  interact: false,
+});
