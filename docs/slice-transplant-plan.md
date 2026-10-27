@@ -70,7 +70,13 @@ Each step ends in Michael's playtest on the hosted build and does not start befo
 *Gate:* five floors from five seeds, small and large, each a different shape with a climb or drop, none broken, readable, the minimap showing where you are.
 **T4b. A dungeon editor:** a page where Michael lays out the kit's pieces by hand and saves a dungeon the portal can offer.
 
-**T5. Party rules and the Phase 1 gate.** The questions the slice answers differently from Hearthgate's design, settled by Michael with the real thing in hand: three heroes swapped live (the slice) or one character carrying three weapons (decision 4B); the slice's revives and wipe or Hearthgate's downs and bleed-out (5A); enemy scaling for 4 to 8 players (the slice was built for 2 to 4); hirelings later (9A).
+**T5. Party rules and the Phase 1 gate.** Michael's answers (decisions.md, 27 Oct, T5):
+- **One hero, any weapon.** The weapon in hand sets the style (sword, bow, staff), and its abilities and levels are that weapon's, as the slice's style levels already are. The hero keeps one look.
+- **A bag and a body.** A bag with a fixed number of free spaces, as RuneScape's, and gear worn on a body silhouette (the slice's weapon and body slots fold in). Armour leans melee, ranged or magic; worn with a weapon of another kind it makes the hero less effective, never forbidden. Changing weapon from the bag is allowed anywhere, so the gear, not a rule, is what keeps a role in a dungeon. Items stay in the browser's save until Phase 3's ledger (rule 3, the accepted risk above); drops stay the slice's.
+- **Hearthgate's downs (5A):** crawl, 30 s bleed-out, out until the room is cleared, hold F for 3 s to revive, a Revive Draught per floor.
+- **A party of 4** for Phase 1, with the slice's scaling; 8 waits for Phase 2's measurement. Hirelings later (9A).
+- **Mixed levels:** nothing extra; the gate shows whether it is enough.
+Order: the downs first (small, in the sim, re-recording parity on purpose), then the hero's one look and the bag and body.
 *Gate:* **the Phase 1 gate** (design doc), filed in `playtest-notes.md`: a mixed-level party clears a generated floor and a combo bonus is visible.
 
 **T6. Progression to 50, then champion points** (`combat-port-plan.md` section 3a, decision 6): style levels to 50 with a talent point a level, the milestone rows, then three constellations of champion points under one ceiling.
