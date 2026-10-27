@@ -19,6 +19,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # The debug panel's cheats (skip a wave, spawn, kill all) work on the hosted build through Phase 1, for
+      # side-by-side testing among friends. Remove this to turn them off; tuning edits stay either way.
+      - key: HEARTHGATE_DEV
+        value: "1"
 
   - type: web
     name: hearthgate-client
