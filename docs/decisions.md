@@ -19,7 +19,7 @@ Michael (2026-10-27, in chat):
 `docs/combat-port-plan.md` section 4 has the new order.
 Michael, on step 6's questions (2026-10-27, in chat):
 - **Staircases** go up or down and connect to another room at a different height: "just to prevent a single dungeon from feeling flat." A staircase is a connector piece within the floor, not the way to the next floor.
-- **Size:** a floor (Michael: "I guess AKA a Dungeon") is 10 to 50 distinct rooms and pieces, growing with the dungeon's difficulty and level. The design doc's run of 3 to 5 floors with a rest room between stands unless Michael says otherwise.
+- **Size:** a floor (Michael: "I guess AKA a Dungeon") is 10 to 50 distinct rooms and pieces, growing with the dungeon's difficulty and level. The design doc's run of 3 to 5 floors with a rest room between stands: each floor is one generated layout of 10 to 50 pieces (Michael, confirmed the same day: "Let's stick to that").
 - **Unexplored rooms are not hidden.** A minimap is wanted instead.
 - **Pieces are authored in code**, and a small editor where Michael can build a dungeon by hand "would be awesome."
 
