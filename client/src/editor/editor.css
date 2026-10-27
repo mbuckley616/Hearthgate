@@ -1,4 +1,20 @@
-/* The dungeon editor (T4b): a grid on the left, a framed panel on the right, in the game's colours. */
+/*
+ * The dungeon editor (T4b): a grid on the left, a framed panel on the right, in the game's colours.
+ * Its own copy of theme.css's tokens: a stylesheet both pages import lands in a shared chunk that the
+ * built game loads before style.css, which then overrides the theme (the HUD overlapped on the hosted build).
+ */
+:root {
+  --panel: rgba(20, 11, 30, 0.92);
+  --panel-solid: #140b1e;
+  --frame: #b9782e;
+  --frame-dark: #0a0610;
+  --frame-inner: #3a2050;
+  --gold: #ffcf6a;
+  --ember: #ff8a3a;
+  --ink: #efe3cf;
+  --muted: #a493b8;
+}
+
 html,
 body {
   margin: 0;
