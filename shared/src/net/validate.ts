@@ -115,6 +115,8 @@ export function readToHost(v: unknown): ToHost | null {
       const loadout = readLoadout(v.loadout);
       return loadout ? { k: 'loadout', loadout } : null;
     }
+    case 'restart':
+      return { k: 'restart' };
     case 'tune': {
       const e = v.edit;
       if (!isObj(e) || typeof e.path !== 'string' || !(isNum(e.value) || isBool(e.value))) return null;

@@ -26,6 +26,8 @@ export interface PredictionStats {
   snaps: number;
   /** Largest correction so far (m). */
   maxCorrection: number;
+  /** Sum of every correction (m), for the mean. */
+  sumCorrection: number;
 }
 
 /**
@@ -72,7 +74,7 @@ export class ClientSession implements Session {
   private clockWall = performance.now();
   /** What to draw before the first snapshot: the empty arena. */
   private readonly empty: SimState;
-  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0 };
+  readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0 };
   /** Bumped when the server's tuning edits arrive, so the debug panel can show them. */
   tuningVersion = 0;
 
@@ -125,8 +127,8 @@ export class ClientSession implements Session {
     if (this.state === 'playing') this.send({ k: 'loadout', loadout });
   }
 
-  /** Ask the server for something the slice's host did itself (a tuning edit, a cheat). */
-  request(msg: Extract<ToHost, { k: 'tune' | 'cheat' }>): void {
+  /** Ask the server for something the slice's host did itself (a restart, a tuning edit, a cheat). */
+  request(msg: Extract<ToHost, { k: 'restart' | 'tune' | 'cheat' }>): void {
     if (this.state === 'playing') this.send(msg);
   }
 
@@ -303,6 +305,7 @@ export class ClientSession implements Session {
       if (size > 1e-4) {
         this.stats.corrections++;
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
+        this.stats.sumCorrection += size;
       }
       this.err.x += d.x;
       this.err.y += d.y;

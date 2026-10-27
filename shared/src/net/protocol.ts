@@ -22,12 +22,13 @@ export type Cheat = (typeof CHEATS)[number];
 
 /**
  * Player -> server. The slice's three (hello, input, loadout), plus what the slice's host did
- * from its own debug panel and now asks the server for: a tuning edit, a cheat.
+ * itself and now asks the server for: a restart once the run is over, a tuning edit, a cheat.
  */
 export type ToHost =
   | { k: 'hello'; version: number; loadout: Loadout }
   | { k: 'input'; cmds: SeqCommand[] }
   | { k: 'loadout'; loadout: Loadout }
+  | { k: 'restart' }
   | { k: 'tune'; edit: TuneEdit }
   | { k: 'cheat'; cheat: Cheat };
 

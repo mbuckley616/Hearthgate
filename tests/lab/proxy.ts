@@ -40,6 +40,8 @@ export interface LabProxy {
   server: net.Server;
   /** Chunks that took the retransmission path, both directions. */
   lost: () => number;
+  /** Bytes the server sent toward the browsers, every connection together. */
+  bytesDown: () => number;
   close: () => Promise<void>;
 }
 
@@ -47,6 +49,7 @@ export function startProxy(listenPort: number, targetPort: number, link: Link, s
   const rng = mulberry32(seed);
   const rto = link.rtoMs ?? 200;
   let lost = 0;
+  let bytesDown = 0;
   const sockets = new Set<net.Socket>();
 
   const server = net.createServer((down) => {
@@ -56,7 +59,7 @@ export function startProxy(listenPort: number, targetPort: number, link: Link, s
     up.setNoDelay(true);
     sockets.add(down);
     sockets.add(up);
-    const relay = (from: net.Socket, to: net.Socket) => {
+    const relay = (from: net.Socket, to: net.Socket, count: (n: number) => void) => {
       const queue: { due: number; chunk: Buffer }[] = [];
       let timer: ReturnType<typeof setTimeout> | null = null;
       let closeAfterDrain = false;
@@ -71,6 +74,7 @@ export function startProxy(listenPort: number, targetPort: number, link: Link, s
         else if (closeAfterDrain) to.destroy();
       };
       from.on("data", (chunk: Buffer) => {
+        count(chunk.length);
         let delay = Math.max(0, link.oneWayMs + (rng() * 2 - 1) * link.jitterMs);
         if (link.loss > 0 && rng() < link.loss) {
           delay += rto;
@@ -86,8 +90,8 @@ export function startProxy(listenPort: number, targetPort: number, link: Link, s
       });
       from.on("error", () => to.destroy());
     };
-    relay(down, up);
-    relay(up, down);
+    relay(down, up, () => {});
+    relay(up, down, (n) => (bytesDown += n));
     down.on("close", () => sockets.delete(down));
     up.on("close", () => sockets.delete(up));
   });
@@ -97,6 +101,7 @@ export function startProxy(listenPort: number, targetPort: number, link: Link, s
       resolve({
         server,
         lost: () => lost,
+        bytesDown: () => bytesDown,
         close: () =>
           new Promise<void>((r) => {
             for (const s of sockets) s.destroy();

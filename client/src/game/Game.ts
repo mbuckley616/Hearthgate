@@ -310,7 +310,8 @@ export class Game {
     this.hud.handle(events, localId, world);
     this.runUi.handle(events);
     this.progress(events, realDt);
-    // Run over: anyone's F / A (held interact in the command) makes the server start again; here the view follows.
+    // Run over: anyone's F / A asks the server to start again (the slice's host did it itself); the view follows the snapshot.
+    if ((world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 

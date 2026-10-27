@@ -37,18 +37,14 @@ interface Remote {
  * the room's 60 Hz pump calls tick() instead of a browser frame calling advance(). The input
  * queue, acks, folding and staleness are the slice's, line for line.
  *
- * What the slice's host did from its own keyboard and debug panel arrives as input or messages:
- * a fresh interact press once the run is over restarts it, tuning edits, and (in a dev build) the
- * cheat buttons.
+ * What the slice's host did from its own keyboard and debug panel arrives as messages: a restart
+ * once the run is over (anyone's F), tuning edits, and (in a dev build) the cheat buttons.
  */
 export class HostSession {
   sim: SimState;
   private remotes = new Map<string, Remote>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
-  /** Interact held last tick per player: a restart needs a fresh press, as the slice's `pressed` was. */
-  private interactHeld = new Set<string>();
-
   constructor(
     private readonly world: World,
     private readonly send: Send,
@@ -75,7 +71,6 @@ export class HostSession {
     stepSim(this.sim, commands, step, this.world);
     const events = this.sim.events;
     this.outbox.push(...events);
-    this.restartOnInteract(commands);
     if (this.remotes.size > 0 && this.sim.tick % Math.max(1, Math.round(tuning.coop.snapshotEveryTicks)) === 0) this.sendSnapshot();
     return events;
   }
@@ -105,6 +100,10 @@ export class HostSession {
         if (p) applyLoadout(p, msg.loadout, this.sim.run.phase === 'ante');
         break;
       }
+      case 'restart':
+        // The slice's host started again on its own F (or A) once a run was over; now anyone's does.
+        if (this.sim.run.phase === 'won' || this.sim.run.phase === 'lost') this.restart();
+        break;
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).
         applyTuningEdit(msg.edit.path, msg.edit.value);
@@ -120,7 +119,6 @@ export class HostSession {
     const r = this.remotes.get(peer);
     if (r) this.between(() => removePlayer(this.sim, r.id));
     this.remotes.delete(peer);
-    if (r) this.interactHeld.delete(r.id);
   }
 
   /** The last input seq applied for a peer (0 before any), for tests and the lab. */
@@ -159,21 +157,6 @@ export class HostSession {
     r.ack = next.seq;
     r.last = withoutPresses(next.cmd);
     return next.cmd;
-  }
-
-  /**
-   * The slice's host started again on its own F (or A) once a run was won or lost; with every
-   * player a joiner, anyone's fresh press of interact does.
-   */
-  private restartOnInteract(commands: Record<string, PlayerCommand>): void {
-    const over = this.sim.run.phase === 'won' || this.sim.run.phase === 'lost';
-    let pressed = false;
-    for (const [id, cmd] of Object.entries(commands)) {
-      if (cmd.interact && !this.interactHeld.has(id)) pressed = true;
-      if (cmd.interact) this.interactHeld.add(id);
-      else this.interactHeld.delete(id);
-    }
-    if (over && pressed) this.restart();
   }
 
   /** Back to the antechamber with a fresh run (everyone keeps their heroes, at full health). */

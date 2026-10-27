@@ -193,13 +193,13 @@ describe('what the slice’s host did itself', () => {
     expect(dev.sim.enemies.some((e) => e.kind === 'warden')).toBe(true);
   });
 
-  it('a fresh interact press restarts a run that is over, and only then', () => {
+  it('a restart starts a run that is over afresh, and does nothing mid-run', () => {
+    host.sim.run.phase = 'wave';
+    host.onMessage('a', { k: 'restart' });
+    expect(host.sim.run.phase).toBe('wave');
     host.sim.run.phase = 'lost';
-    input('a', 1, 4, (seq) => cmd({ interact: seq >= 3 }));
-    host.tick();
-    host.tick();
-    expect(host.sim.run.phase).toBe('lost');
-    host.tick();
+    player('p1').hp = 1;
+    host.onMessage('a', { k: 'restart' });
     expect(host.sim.run.phase).toBe('ante');
     expect(player('p1').hp).toBe(player('p1').maxHp);
   });
