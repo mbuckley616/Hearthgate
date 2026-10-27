@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Client, type Room } from "colyseus.js";
 import { tuning } from "@hearthgate/shared/config/tuning";
 import type { PortalState } from "@hearthgate/shared/game/portal";
+import type { FloorSpec } from "@hearthgate/shared/level/generate";
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
@@ -61,11 +62,12 @@ export class Bot {
   id = "";
   code = "";
   seq = 0;
-  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number; portal: PortalState | null }[] = [];
+  snaps: { s: SimState; acks: Record<string, number>; at: number; scale: number; portals: PortalState[] }[] = [];
   /** A portal's hand-off the server sent, not yet taken. */
   handoff: { reservation: unknown; level: string } | null = null;
-  /** What the room we are in runs. */
+  /** What the room we are in runs, and a generated floor's spec (T4). */
   kind = "";
+  floor: FloorSpec | null = null;
   messages: ToPeer[] = [];
   closedWith: number | null = null;
   /** Every quarter second: tick, position, mode, ack and inputs sent, for a walk that fails on a slow machine. */
@@ -77,10 +79,10 @@ export class Bot {
   ) {}
 
   /** Make a room of our own (code null: a dungeon run unless told otherwise) or join one by code, say hello and wait for the welcome. */
-  async join(code: string | null, create: "dungeon" | "village" = "dungeon"): Promise<this> {
+  async join(code: string | null, create: "dungeon" | "village" | "floor" = "dungeon", options: Record<string, unknown> = {}): Promise<this> {
     const client = new Client(this.endpoint);
     this.client = client;
-    this.attach(code ? await client.joinById(code) : await client.create(create));
+    this.attach(code ? await client.joinById(code) : await client.create(create, options));
     await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed`);
     return this;
   }
@@ -107,9 +109,12 @@ export class Bot {
       // The room we left on a hand-off may still say something on its way out.
       if (this.room !== room) return;
       this.messages.push(m);
-      if (m.k === "welcome") this.id = m.id;
+      if (m.k === "welcome") {
+        this.id = m.id;
+        this.floor = m.floor ?? null;
+      }
       if (m.k === "snap") {
-        this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portal: m.portal });
+        this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portals: m.portals });
         const p = m.s.players.find((q) => q.id === this.id);
         if (p && m.s.tick % 15 === 0) this.trace.push(`t${m.s.tick} (${p.x.toFixed(1)},${p.z.toFixed(1)}) ${p.mode} ack${m.acks[this.id] ?? 0} seq${this.seq}`);
         if (this.trace.length > 80) this.trace.shift();
@@ -157,7 +162,7 @@ export class Bot {
    * trip behind where we really are, so a bot coasts past its mark; after stopping it looks again and
    * corrects, a few times if it must, until the server has it standing on the mark.
    */
-  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 30000) {
+  async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 30000, settle = true) {
     const start = performance.now();
     for (let tries = 0; tries < 6; tries++) {
       for (;;) {
@@ -174,6 +179,8 @@ export class Bot {
         const k = Math.min(1, Math.max(0.2, (d - tol * 0.5) / 5));
         await this.drive(4, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
       }
+      // A waypoint on a route only needs passing near.
+      if (!settle) return;
       // Stand still (sending, not silent: the server reads silence as lateness) and look again.
       await this.drive(50);
       const p = this.me();

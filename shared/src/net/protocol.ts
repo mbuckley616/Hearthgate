@@ -1,9 +1,10 @@
 import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
+import type { FloorSpec } from '../level/generate';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -35,14 +36,15 @@ export type ToHost =
 
 /** Server -> players. */
 export type ToPeer =
-  | { k: 'welcome'; id: string }
+  /** A generated floor (T4) comes with its spec: the browser builds the same floor from it. */
+  | { k: 'welcome'; id: string; floor?: FloorSpec }
   | { k: 'refused'; reason: string }
   /**
    * The whole sim (it's plain data by design), the last input tick applied
    * for each joiner, every event since the previous snapshot, and how fast
    * the server is running the fight (1, or the debug slow motion's scale).
    */
-  | { k: 'snap'; s: SimState; acks: Record<string, number>; ev: SimEvent[]; scale: number; portal: PortalState | null }
+  | { k: 'snap'; s: SimState; acks: Record<string, number>; ev: SimEvent[]; scale: number; portals: PortalState[] }
   /** Every tuning edit the server has applied since it started (path -> value). */
   | { k: 'tuning'; edits: Record<string, number | boolean> }
   /**
@@ -52,8 +54,8 @@ export type ToPeer =
    */
   | { k: 'handoff'; reservation: unknown; level: LevelKind };
 
-/** The two kinds of room: the host's village and a dungeon run (the slice's arena, for now). */
-export type LevelKind = 'village' | 'arena';
+/** The kinds of room: the host's village, the slice's arena (the tests and the lab), and a generated dungeon floor (T4). */
+export type LevelKind = 'village' | 'arena' | 'floor';
 
 /** Player id for a party slot (slot 0 is p1, as the slice's host was). */
 export function slotPlayerId(slot: number): string {

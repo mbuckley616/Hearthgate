@@ -4,7 +4,7 @@ import { createPlayer, stepPlayer } from '../sim/player';
 import { idleCommand, type SimState } from '../sim/types';
 import { createSimState } from '../sim/world';
 import { buildWorld, groundHeight, type World } from './arena';
-import { floorLevel, insidePiece, type PieceInfo } from './floor';
+import { floorLevel, insidePiece, walkRoute } from './floor';
 import { generateFloor, loopCount, type FloorDef, type FloorSpec } from './generate';
 import type { Collider } from './geometry';
 import { resolveCircle } from './geometry';
@@ -164,22 +164,7 @@ describe('the dungeon generator (T4)', () => {
       const hero = createPlayer('p1', level.spawn.x, level.spawn.z, 0);
       hero.y = groundHeight(world, hero.x, hero.z);
       state.players.push(hero);
-      // The pieces from the entrance to the exit, then the waypoints through each doorway.
-      const dist = distances(def, def.exit);
-      const route = [def.entrance];
-      while (route[route.length - 1] !== def.exit) {
-        const at = route[route.length - 1];
-        route.push(def.pieces[at].sockets.filter((sk) => sk.link >= 0).sort((a, b) => dist[a.link] - dist[b.link])[0].link);
-      }
-      const points: { x: number; z: number }[] = [];
-      route.forEach((id, i) => {
-        if (i > 0) points.push(middleOf(pieces[id]));
-        const next = route[i + 1];
-        if (next === undefined) return;
-        const door = pieces[id].doors[def.pieces[id].sockets.findIndex((sk) => sk.link === next)];
-        const dir = SIDE_DIR[door.side];
-        points.push({ x: door.x - dir.x * 1.2, z: door.z - dir.z * 1.2 }, { x: door.x + dir.x * 1.8, z: door.z + dir.z * 1.8 });
-      });
+      const points = walkRoute(level.dungeon!, def.entrance, def.exit);
       let climbed = 0;
       let dropped = 0;
       for (const pt of points) {
@@ -202,9 +187,3 @@ describe('the dungeon generator (T4)', () => {
   });
 });
 
-/** A clear point in the middle of a piece: its centre, or the spawn spot nearest it when a pillar stands there. */
-function middleOf(p: PieceInfo): { x: number; z: number } {
-  const c = { x: (p.inner.minX + p.inner.maxX) / 2, z: (p.inner.minZ + p.inner.maxZ) / 2 };
-  if (!p.pillars.some((pl) => Math.hypot(pl.x - c.x, pl.z - c.z) < pl.radius + 1.2) && !p.braziers.some((b) => Math.hypot(b.x - c.x, b.z - c.z) < 1.6)) return c;
-  return [...p.spots].sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z))[0];
-}

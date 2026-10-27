@@ -1,4 +1,5 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
+import type { FloorSpec } from '@hearthgate/shared/level/generate';
 import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
 import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
 
@@ -12,7 +13,8 @@ function formatTime(s: number): string {
 
 /**
  * Run UI: wave banners, the Warden's health bar, the run timer, the
- * antechamber prompt and the victory / defeat card.
+ * antechamber prompt and the victory / defeat card. On a generated floor (T4)
+ * the same pieces speak of rooms and floors instead of waves.
  */
 export class RunUi {
   private banner = document.createElement('div');
@@ -29,6 +31,9 @@ export class RunUi {
   private endBody = document.createElement('div');
   private again = document.createElement('div');
   private now = 0;
+  /** The generated floor this run is on, or null in the arena; and when it was entered (the prompt shows a while). */
+  private floor: FloorSpec | null = null;
+  private floorSince = 0;
 
   constructor() {
     this.banner.className = 'run-banner';
@@ -69,7 +74,13 @@ export class RunUi {
     for (const el of [this.boss, this.timer, this.prompt, this.end]) el.style.display = 'none';
   }
 
+  setFloor(spec: FloorSpec | null): void {
+    this.floor = spec;
+    this.floorSince = this.now;
+  }
+
   handle(events: SimEvent[]): void {
+    if (this.floor) return this.handleFloor(events);
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'Final wave' : `Wave ${ev.wave} of ${FINAL_WAVE}`, ev.title);
       else if (ev.kind === 'waveCleared' && ev.wave < FINAL_WAVE) this.showBanner('Wave cleared', `Catch your breath  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
@@ -78,8 +89,19 @@ export class RunUi {
     }
   }
 
+  private handleFloor(events: SimEvent[]): void {
+    for (const ev of events) {
+      if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : `Room ${ev.wave}  ·  the doors are shut`, ev.title);
+      else if (ev.kind === 'waveCleared') this.showBanner('Room cleared', `The doors open  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
+      else if (ev.kind === 'rested') this.showBanner('Your finds are safe', 'Violet ring deeper  ·  gold ring home');
+      else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
+      else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
+    }
+  }
+
   update(sim: SimState, dt: number, role: 'host' | 'client'): void {
     this.now += dt;
+    if (this.floor) return this.updateFloor(sim, this.floor);
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
 
@@ -113,6 +135,35 @@ export class RunUi {
       this.endTitle.className = `run-end-title ${r.phase}`;
       this.endBody.textContent =
         r.phase === 'won' ? `The Warden falls. Run time ${formatTime(r.elapsed)}.` : `Fell on wave ${r.wave} of ${FINAL_WAVE} after ${formatTime(r.elapsed)}.`;
+    }
+  }
+
+  private updateFloor(sim: SimState, spec: FloorSpec): void {
+    const r = sim.run;
+    this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
+    const boss = sim.enemies.find((e) => e.id === r.bossId && e.ai !== 'dead');
+    this.boss.style.display = boss && r.phase === 'wave' ? 'block' : 'none';
+    if (boss) {
+      this.bossFill.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+      this.bossFill.classList.toggle('staggered', boss.ai === 'stagger');
+      this.bossName.textContent = boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden';
+    }
+    const where = `floor ${spec.floor} of ${spec.floors}`;
+    this.timer.style.display = 'block';
+    this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}`;
+    // The way on, for a while after arriving; the doors' wait whenever one is holding for the party.
+    const waiting = r.phase === 'ante' && r.gateWait >= 0;
+    const arriving = r.phase === 'ante' && this.now - this.floorSince < 8;
+    this.prompt.style.display = waiting || arriving ? 'block' : 'none';
+    if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
+    else if (arriving) this.prompt.textContent = `${where[0].toUpperCase()}${where.slice(1)}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
+    const over = r.phase === 'won' || r.phase === 'lost';
+    this.end.style.display = over ? 'flex' : 'none';
+    if (over) {
+      this.endTitle.textContent = r.phase === 'won' ? 'Victory' : 'Defeated';
+      this.endTitle.className = `run-end-title ${r.phase}`;
+      this.endBody.textContent = r.phase === 'won' ? `The Warden falls. Run time ${formatTime(r.elapsed)}.` : `Fell on ${where} after ${formatTime(r.elapsed)}.`;
+      this.again.textContent = 'Step into the gold ring to go home  ·  I for gear';
     }
   }
 

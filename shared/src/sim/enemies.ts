@@ -40,12 +40,21 @@ function healthScale(state: SimState): number {
  * level it was asked for (floor or ledge), and not inside a wall or pillar?
  */
 function isOpen(world: World, x: number, z: number, radius: number, wantLedge: boolean): boolean {
+  if (world.level.dungeon) return isOpenOnFloor(world, x, z, radius);
   const h = world.level.floorSize / 2 - radius - 0.2;
   if (Math.abs(x) > h || Math.abs(z) > h) return false;
   const g = groundHeight(world, x, z);
   if (wantLedge ? g < world.level.ledge.height - 0.05 : g > 0.05) return false;
   const pos = { x, z };
   resolveCircle(pos, radius, (wantLedge ? g : 0) + 0.3, 3, world.colliders);
+  return Math.hypot(pos.x - x, pos.z - z) < 0.05;
+}
+
+/** On a generated floor (T4) rooms stand at many heights: open means clear of walls at whatever height the ground is. */
+function isOpenOnFloor(world: World, x: number, z: number, radius: number): boolean {
+  const g = groundHeight(world, x, z);
+  const pos = { x, z };
+  resolveCircle(pos, radius, g + 0.3, g + 3, world.colliders);
   return Math.hypot(pos.x - x, pos.z - z) < 0.05;
 }
 
@@ -146,6 +155,8 @@ function tokenHolders(state: SimState): number {
 function navGoal(world: World, e: EnemyState, target: PlayerState): { x: number; z: number } {
   if (Math.abs(target.y - e.y) < LEVEL_GAP) return { x: target.x, z: target.z };
   const paths = rampPaths(world.level);
+  // A generated floor has no ledge ramps; its fights stay in one flat room behind shut doors.
+  if (paths.length === 0) return { x: target.x, z: target.z };
   const climbing = target.y > e.y;
   const ramp = [...paths].sort(
     (a, b) => Math.hypot(a.bottom.x - e.x, a.bottom.z - e.z) - Math.hypot(b.bottom.x - e.x, b.bottom.z - e.z),

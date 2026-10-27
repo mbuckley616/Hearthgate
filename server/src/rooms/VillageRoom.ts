@@ -1,3 +1,4 @@
+import { planRun } from "@hearthgate/shared/game/runPlan";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
 import { HostRoom } from "./HostRoom.js";
@@ -9,13 +10,13 @@ const RETURN_WAIT_MS = 30_000;
 
 /**
  * The host's village (T3): where Play and an invite code put you, with the four starting buildings,
- * their villagers and the portal. When the party takes the portal, a fresh dungeon room is made
- * and everyone is handed to it. The village stays open while its party is away, so the arena's
- * portal brings them back to this same village (and its code), and closes once it is empty and no
- * run it sent out is still going.
+ * their villagers and the portal. When the party takes the portal, a generated run's first floor
+ * is made (T4) and everyone is handed to it. The village stays open while its party is away, so a
+ * ring home brings them back to this same village (and its code), and closes once it is empty and
+ * no floor of a run it sent out is still open.
  */
 export class VillageRoom extends HostRoom {
-  /** Dungeon rooms this village has sent a party into that are still open. */
+  /** Floor rooms of this village's runs that are still open. */
   private away = 0;
 
   protected get kind() {
@@ -36,12 +37,16 @@ export class VillageRoom extends HostRoom {
     super.onDispose();
   }
 
+  /** The ring leads into a generated dungeon (T4): a run planned for this party, its first floor a room of its own. */
   protected onPortal() {
-    void this.handOff("dungeon", "arena", null, { home: this.roomId }).then((dungeon) => {
-      if (!dungeon) return;
-      this.away++;
-      this.autoDispose = false;
-    });
+    const plan = planRun(this.host.sim.players, Math.floor(Math.random() * 0xffffffff));
+    void this.handOff("floor", "floor", null, { ...plan, home: this.roomId, floor: 1 });
+  }
+
+  /** A floor of a run this village sent out has opened (FloorRoom): stay open until the party is home. */
+  runOpened() {
+    this.away++;
+    this.autoDispose = false;
   }
 
   /**

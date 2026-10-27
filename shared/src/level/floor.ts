@@ -50,6 +50,8 @@ export interface PieceInfo {
   braziers: { x: number; z: number }[];
   /** A staircase's ramp: its rect and the side it climbs toward. */
   ramp: (Rect & { up: Side }) | null;
+  /** The rest room's two rings: deeper, then home (game/portal.ts). */
+  rings: { x: number; z: number }[];
 }
 
 export interface FloorLayout {
@@ -128,7 +130,9 @@ function pieceInfo(p: Piece): PieceInfo {
     const c = at(CELL - WALL_T, def.d * CELL - LANDING);
     ramp = { minX: Math.min(a.x, c.x), maxX: Math.max(a.x, c.x), minZ: Math.min(a.z, c.z), maxZ: Math.max(a.z, c.z), up: rotSide('n', p.rot) };
   }
-  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp };
+  // Either side of the rest room's fire, facing its one door.
+  const rings = p.kind === 'rest' ? [at(4.5, 7), at(13.5, 7)] : [];
+  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings };
   if (def.room || p.kind === 'rest' || p.kind === 'entrance') info.spots = spotsFor(info);
   return info;
 }
@@ -262,8 +266,47 @@ export function pieceAt(layout: FloorLayout, x: number, z: number): number {
   return -1;
 }
 
+/** A clear point in the middle of a piece: its centre, or the spot nearest it when a pillar or a fire stands there. */
+export function openMiddle(p: PieceInfo): { x: number; z: number } {
+  const c = { x: (p.inner.minX + p.inner.maxX) / 2, z: (p.inner.minZ + p.inner.maxZ) / 2 };
+  const blocked = p.pillars.some((pl) => Math.hypot(pl.x - c.x, pl.z - c.z) < pl.radius + 1.2) || p.braziers.some((b) => Math.hypot(b.x - c.x, b.z - c.z) < 1.6);
+  if (!blocked || p.spots.length === 0) return c;
+  return [...p.spots].sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z))[0];
+}
+
 /** Is the point inside the piece's walls (by a margin)? */
 export function insidePiece(info: PieceInfo, x: number, z: number, margin = 0): boolean {
   const i = info.inner;
   return x >= i.minX + margin && x <= i.maxX - margin && z >= i.minZ + margin && z <= i.maxZ - margin;
+}
+
+/**
+ * Waypoints from one piece to another through the doorways on the way (fewest pieces): the middle
+ * of each piece, and a point either side of each doorway. Straight lines between them stay clear of
+ * walls and pillars, so a bot (or a later hireling) can walk them.
+ */
+export function walkRoute(layout: FloorLayout, from: number, to: number): { x: number; z: number }[] {
+  const pieces = layout.def.pieces;
+  const prev = new Map<number, number>([[from, -1]]);
+  const queue = [from];
+  while (queue.length && !prev.has(to)) {
+    const at = queue.shift()!;
+    for (const sk of pieces[at].sockets) {
+      if (sk.link < 0 || prev.has(sk.link)) continue;
+      prev.set(sk.link, at);
+      queue.push(sk.link);
+    }
+  }
+  const chain: number[] = [];
+  for (let at = to; at !== -1; at = prev.get(at)!) chain.unshift(at);
+  const points: { x: number; z: number }[] = [];
+  chain.forEach((id, i) => {
+    if (i > 0) points.push(openMiddle(layout.pieces[id]));
+    const next = chain[i + 1];
+    if (next === undefined) return;
+    const door = layout.pieces[id].doors[pieces[id].sockets.findIndex((sk) => sk.link === next)];
+    const dir = { n: { x: 0, z: -1 }, s: { x: 0, z: 1 }, e: { x: 1, z: 0 }, w: { x: -1, z: 0 } }[door.side];
+    points.push({ x: door.x - dir.x * 1.2, z: door.z - dir.z * 1.2 }, { x: door.x + dir.x * 1.8, z: door.z + dir.z * 1.8 });
+  });
+  return points;
 }

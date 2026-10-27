@@ -3,9 +3,10 @@ import { chromium, expect, test, type Page } from "@playwright/test";
 /**
  * The browser smoke test: the combat slice's client against Hearthgate's server. Solo and two players
  * in a village (T3), walking through the antechamber gate to start a run (`?dungeon` makes a run
- * straight away), and the village's round trip: talk to the keeper, take the ring into a run, finish
- * it (the dev server's cheats) and take the antechamber's ring home. `?play` skips the title screen
- * as a join link does; the slice's `window.game` handle reads the state.
+ * straight away), and the village's round trip: talk to the keeper, take the ring onto a generated
+ * floor (T4), walk it to the rest room (the dev server's cheats clear the rooms that shut on the way)
+ * and take the rest room's gold ring home. `?play` skips the title screen as a join link does; the
+ * slice's `window.game` handle reads the state.
  *
  * Each player gets a browser of their own: headless Chromium throttles a second page's timers,
  * which starves its frames and inputs (the lesson of the old two-players test).
@@ -153,7 +154,8 @@ test("the run's gate: walking through it starts the run and wave 1 comes", async
   expect(errors).toEqual([]);
 });
 
-test("the village: talk to the keeper, take the ring into a run, and the antechamber's ring home", async ({ page }) => {
+test("the village: talk to the keeper, take the ring onto a generated floor, walk it, and the rest room's ring home", async ({ page }) => {
+  test.setTimeout(120_000);
   const errors: string[] = [];
   await open(page, "play", errors);
   const home = (await seen(page)).code;
@@ -165,22 +167,107 @@ test("the village: talk to the keeper, take the ring into a run, and the antecha
   await expect(page.locator(".talk-box")).toBeVisible();
   await expect(page.locator(".talk-name")).toHaveText("Keeper Wren");
 
-  // Into the ring and hold still: two seconds later the party is handed to a run.
-  await walkTo(page, 0, -10.5, 0.8);
-  await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("arena");
-  const run = await seen(page);
-  expect(run.code).not.toBe(home);
-  await expect.poll(async () => (await seen(page)).players.length).toBe(1);
+  // Small floors from one seed (the dev server takes the panel's edits), so the walk is short.
+  await tune(page, { "dungeon.pieces": 10, "dungeon.seed": 4242 });
+  try {
+    // Into the ring and hold still: two seconds later the party is handed onto a generated floor.
+    await walkTo(page, 0, -10.5, 0.8);
+    await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
+    const run = await seen(page);
+    expect(run.code).not.toBe(home);
+    await expect(page.locator(".minimap")).toBeVisible();
 
-  // Finish it (the dev server's cheats), then the ring that opens in the antechamber, where we stand, takes us home.
-  await page.evaluate(() => (window as unknown as { game: any }).game.session.request({ k: "cheat", cheat: "warden" }));
-  await expect.poll(async () => (await seen(page)).wave, { timeout: 5_000 }).toBe(4);
-  await page.evaluate(() => (window as unknown as { game: any }).game.session.request({ k: "cheat", cheat: "killAll" }));
-  await expect.poll(async () => (await seen(page)).phase, { timeout: 8_000 }).toBe("won");
-  await walkTo(page, 0, 19.4, 0.8);
-  await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("village");
-  const back = await seen(page);
-  expect(back.code).toBe(home);
-  expect(back.stats.snaps).toBe(0);
-  expect(errors).toEqual([]);
+    // Along the doorways to the rest room; a room that shuts on the way is cleared by the cheats.
+    await steer(page, "exit");
+    await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals.map((p: any) => p.to).join(",")), { timeout: 5_000 }).toBe("deeper,village");
+    await steer(page, "home");
+    await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("village");
+    const back = await seen(page);
+    expect(back.code).toBe(home);
+    expect(back.stats.snaps).toBe(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await tune(page, { "dungeon.pieces": 0, "dungeon.seed": 0 });
+  }
 });
+
+/** Debug-panel edits through the server (a dev build takes them). */
+async function tune(page: Page, edits: Record<string, number>) {
+  await page.evaluate((e) => {
+    const g = (window as unknown as { game: any }).game;
+    for (const [path, value] of Object.entries(e)) g.session.request({ k: "tune", edit: { path, value } });
+  }, edits);
+}
+
+/**
+ * Walk the hero on a generated floor: to its exit along the doorways ("exit"), or onto the open ring
+ * home ("home"). Steering goes through the game's own commands (each frame's move points at the next
+ * waypoint), so prediction, the server and the views all run as they do for a player.
+ */
+async function steer(page: Page, to: "exit" | "home") {
+  await page.evaluate((dest) => {
+    const g = (window as unknown as { game: any }).game;
+    const w = window as unknown as { route: { x: number; z: number }[]; wp: number; orig?: (a: unknown) => any };
+    const L = g.session.world.level.dungeon;
+    const P = L.def.pieces;
+    const me = g.session.hero().curr;
+    if (dest === "home") {
+      const ring = g.session.portals.find((p: any) => p.to === "village");
+      w.route = [{ x: ring.x, z: ring.z }];
+    } else {
+      const from = L.pieces.find((p: any) => me.x >= p.bounds.minX && me.x < p.bounds.maxX && me.z >= p.bounds.minZ && me.z < p.bounds.maxZ).id;
+      const prev = new Map<number, number>([[from, -1]]);
+      const queue = [from];
+      while (queue.length) {
+        const at = queue.shift()!;
+        for (const sk of P[at].sockets) if (sk.link >= 0 && !prev.has(sk.link)) prev.set(sk.link, at), queue.push(sk.link);
+      }
+      const chain: number[] = [];
+      for (let at = L.def.exit; at !== -1; at = prev.get(at)!) chain.unshift(at);
+      const D: Record<string, number[]> = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
+      w.route = [];
+      chain.forEach((id, i) => {
+        const info = L.pieces[id];
+        // The middle of each piece on the way, or the open spot nearest it when a pillar or a fire stands there.
+        const c = { x: (info.inner.minX + info.inner.maxX) / 2, z: (info.inner.minZ + info.inner.maxZ) / 2 };
+        const blocked = [...info.pillars, ...info.braziers.map((b: any) => ({ ...b, radius: 0.45 }))].some((o: any) => Math.hypot(o.x - c.x, o.z - c.z) < o.radius + 1.2);
+        const mid = blocked ? [...info.spots].sort((p: any, q: any) => Math.hypot(p.x - c.x, p.z - c.z) - Math.hypot(q.x - c.x, q.z - c.z))[0] : c;
+        if (i > 0) w.route.push(mid);
+        const next = chain[i + 1];
+        if (next === undefined) return;
+        const door = info.doors[P[id].sockets.findIndex((sk: any) => sk.link === next)];
+        const d = D[door.side];
+        w.route.push({ x: door.x - d[0] * 1.2, z: door.z - d[1] * 1.2 }, { x: door.x + d[0] * 1.8, z: door.z + d[1] * 1.8 });
+      });
+    }
+    w.wp = 0;
+    if (!w.orig) {
+      w.orig = g.buildCommand.bind(g);
+      g.buildCommand = (a: unknown) => {
+        const c = w.orig!(a);
+        const p = g.session.hero()?.curr;
+        const t = w.route[w.wp];
+        if (!p || !t) return c;
+        const dx = t.x - p.x;
+        const dz = t.z - p.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 0.7) {
+          w.wp++;
+          return c;
+        }
+        return { ...c, moveX: dx / dist, moveZ: dz / dist };
+      };
+    }
+  }, to);
+  const start = Date.now();
+  for (;;) {
+    const state = await page.evaluate(() => {
+      const w = window as unknown as { route: unknown[]; wp: number; game: any };
+      return { done: w.wp >= w.route.length, phase: JSON.parse(w.game.snapshot()).run.phase as string, kind: w.game.session.kind as string };
+    });
+    if (state.done || state.kind !== "floor") return;
+    if (state.phase === "wave") await page.evaluate(() => (window as unknown as { game: any }).game.session.request({ k: "cheat", cheat: "killAll" }));
+    if (Date.now() - start > 90_000) throw new Error(`never reached the ${to}`);
+    await page.waitForTimeout(250);
+  }
+}

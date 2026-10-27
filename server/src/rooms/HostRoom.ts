@@ -2,6 +2,7 @@ import { Room, matchMaker, type Client } from "@colyseus/core";
 import { tuningEdits } from "@hearthgate/shared/config/edits";
 import { tuning } from "@hearthgate/shared/config/tuning";
 import { HostSession } from "@hearthgate/shared/game/HostSession";
+import type { PortalTo } from "@hearthgate/shared/game/portal";
 import { buildWorld, type LevelDef } from "@hearthgate/shared/level/arena";
 import type { LevelKind, ToPeer } from "@hearthgate/shared/net/protocol";
 import { readToHost } from "@hearthgate/shared/net/validate";
@@ -55,8 +56,8 @@ export abstract class HostRoom extends Room {
 
   protected abstract get kind(): LevelKind;
   protected abstract levelFor(options: Record<string, unknown>): LevelDef;
-  /** The party took the open portal: move them on (handOff). */
-  protected abstract onPortal(): void;
+  /** The party took an open ring (to where it leads): move them on (handOff). */
+  protected abstract onPortal(to: PortalTo): void;
 
   onCreate(options: Record<string, unknown> = {}) {
     this.roomId = newCode();
@@ -68,7 +69,7 @@ export abstract class HostRoom extends Room {
         else this.clients.getById(peer)?.send(MSG, msg);
       },
       CHEATS,
-      () => this.onPortal(),
+      (to) => this.onPortal(to),
     );
     // The snapshot is sent by the session at the end of its tick; Colyseus has no state to patch.
     this.patchRate = 0;

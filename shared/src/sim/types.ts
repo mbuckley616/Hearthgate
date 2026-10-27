@@ -1,5 +1,6 @@
 import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
+import type { FloorRunState } from './floorRun';
 import type { TalentRanks } from './talents';
 
 /**
@@ -314,6 +315,8 @@ export type SimEvent =
   | { kind: 'enemySlam'; enemyId: number; x: number; z: number; radius: number; boss: boolean }
   | { kind: 'roar'; enemyId: number }
   | { kind: 'runStart' }
+  /** A generated floor's party reached its rest room together: their drops are banked (T4). */
+  | { kind: 'rested' }
   | { kind: 'waveStart'; wave: number; title: string; boss: boolean }
   | { kind: 'waveCleared'; wave: number }
   | { kind: 'reinforcements'; wave: number }
@@ -370,6 +373,8 @@ export interface SimState {
   /** Deterministic RNG state (LCG), so the sim stays reproducible and serializable. */
   rng: number;
   run: RunState;
+  /** A generated floor's run (T4, floorRun.ts); never set in the arena, so its state is the slice's to the byte. */
+  floor?: FloorRunState;
 }
 
 /**

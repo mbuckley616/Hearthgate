@@ -7,8 +7,9 @@ const MOTES = 48;
 /**
  * A portal on the ground (T3): a glowing violet ring with a slow swirl inside and motes rising, and
  * a bright arc that fills as the party holds it (PORTAL_HOLD_S). Draws whatever the latest snapshot
- * says is open (ClientSession.portal): the village's ring always, the arena's once the run is over.
- * Draw-only; the server decides when it is taken.
+ * says is open (ClientSession.portals): the village's ring always, the arena's once the run is over,
+ * a rest room's two (T4). A ring that leads home burns gold, any other violet. Draw-only; the server
+ * decides when it is taken.
  */
 export class PortalView {
   readonly group = new THREE.Group();
@@ -22,6 +23,7 @@ export class PortalView {
   private motePos = new Float32Array(MOTES * 3);
   private moteSeed = new Float32Array(MOTES);
   private time = 0;
+  private shownTo = '';
 
   constructor() {
     const glow = (color: number, opacity: number) =>
@@ -59,7 +61,14 @@ export class PortalView {
     this.group.visible = !!portal;
     if (!portal) return;
     this.time += dt;
-    this.group.position.set(portal.x, 0, portal.z);
+    this.group.position.set(portal.x, portal.y, portal.z);
+    if (portal.to !== this.shownTo) {
+      this.shownTo = portal.to;
+      const home = portal.to === 'village';
+      (this.ring.material as THREE.MeshBasicMaterial).color.set(home ? 0xffc864 : 0x9a6cff).multiplyScalar(2.2);
+      (this.motes.material as THREE.PointsMaterial).color.set(home ? 0xffe2a0 : 0xc4a4ff).multiplyScalar(2.5);
+      (this.swirl.material as THREE.MeshBasicMaterial).color.set(home ? 0xffd890 : 0xffffff);
+    }
     if (portal.radius !== this.shownRadius) {
       this.shownRadius = portal.radius;
       this.group.scale.set(portal.radius, 1, portal.radius);

@@ -8,7 +8,7 @@ import { restartRun, skipToWave } from '../sim/run';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 import { createSimState, stepSim } from '../sim/world';
 import { createSlots, nextSlotCommand, receiveInputs, type SlotConfig, type Slots } from './inputSlots';
-import { PORTAL_HOLD_S, partyOnPortal, portalFor, type PortalState } from './portal';
+import { PORTAL_HOLD_S, partyOnPortal, portalsFor, type PortalState, type PortalTo } from './portal';
 
 /**
  * The input slots' numbers (inputSlots.ts). The cushion starts at the slice's coop.inputBufferTicks;
@@ -45,8 +45,9 @@ export class HostSession {
   private remotes = new Map<string, Remote>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
-  /** Seconds the whole party has stood in the open portal (T3). */
+  /** Seconds the whole party has stood in one open ring (T3), and which ring (the rest room has two, T4). */
   private portalHeld = 0;
+  private heldRing = -1;
   /** The portal was taken and the room is moving the party; it fires once until reopenPortal(). */
   private portalTaken = false;
 
@@ -56,7 +57,7 @@ export class HostSession {
     /** Whether the cheat buttons work (a dev build; never in the village). */
     private readonly cheats = false,
     /** Called once when the party has held the open portal long enough: the room hands them on. */
-    private readonly onPortal: () => void = () => {},
+    private readonly onPortal: (to: PortalTo) => void = () => {},
   ) {
     this.sim = createSimState(world.level, [], world);
   }
@@ -98,7 +99,8 @@ export class HostSession {
       const id = this.freeId();
       this.between(() => addPlayer(this.sim, this.world, id, msg.loadout, true));
       this.remotes.set(peer, { id, slots: createSlots(slotConfig()) });
-      send({ k: 'welcome', id });
+      // A generated floor's browsers build it from its spec (T4); the layout never travels.
+      send({ k: 'welcome', id, floor: this.world.level.dungeon?.def.spec });
       send({ k: 'tuning', edits: tuningEdits() });
       this.sendSnapshot();
       return;
@@ -116,14 +118,15 @@ export class HostSession {
       }
       case 'restart':
         // The slice's host started again on its own F (or A) once a run was over; now anyone's does.
-        if (this.sim.run.phase === 'won' || this.sim.run.phase === 'lost') this.restart();
+        // A generated floor is never run again in place: its rings lead on or home (T4).
+        if ((this.sim.run.phase === 'won' || this.sim.run.phase === 'lost') && !this.world.level.dungeon) this.restart();
         break;
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).
         applyTuningEdit(msg.edit.path, msg.edit.value);
         break;
       case 'cheat':
-        if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id);
+        if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id, !!this.world.level.dungeon);
         break;
     }
   }
@@ -169,9 +172,15 @@ export class HostSession {
   }
 
   /** The slice's debug buttons that change the fight (Game's onHost tools). */
-  private cheat(cheat: Cheat, playerId: string): void {
+  private cheat(cheat: Cheat, playerId: string, floor: boolean): void {
     const sim = this.sim;
     const me = sim.players.find((p) => p.id === playerId) ?? sim.players[0];
+    // A generated floor has no waves to skip to and no ledge for archers: its archers come in front of you, as the brute does.
+    if (floor && (cheat === 'restart' || cheat === 'wave2' || cheat === 'wave3' || cheat === 'warden')) return;
+    if (floor && cheat === 'spawnArcher' && me) {
+      this.between(() => createEnemy(sim, this.world, 'archer', me.x + Math.sin(me.yaw) * 8, me.z + Math.cos(me.yaw) * 8, me.yaw + Math.PI));
+      return;
+    }
     this.between(() => {
       switch (cheat) {
         case 'restart':
@@ -211,25 +220,23 @@ export class HostSession {
     });
   }
 
-  /** The open portal and how long the party has held it; take it once they have held it long enough. */
+  /** The open rings and how long the party has held one; take it once they have held it long enough. */
   private stepPortal(step: number): void {
-    const portal = portalFor(this.world, this.sim);
-    if (!portal || this.remotes.size === 0 || !partyOnPortal(this.sim, portal)) {
-      this.portalHeld = 0;
-      return;
-    }
+    const rings = portalsFor(this.world, this.sim);
+    const on = this.remotes.size === 0 ? -1 : rings.findIndex((ring) => partyOnPortal(this.sim, ring));
+    if (on !== this.heldRing) this.portalHeld = 0;
+    this.heldRing = on;
+    if (on < 0) return;
     this.portalHeld = Math.min(PORTAL_HOLD_S, this.portalHeld + step);
     if (this.portalHeld >= PORTAL_HOLD_S && !this.portalTaken) {
       this.portalTaken = true;
-      this.onPortal();
+      this.onPortal(rings[on].to);
     }
   }
 
-  /** What the snapshot says about the open portal. */
-  private portalState(): PortalState | null {
-    const portal = portalFor(this.world, this.sim);
-    if (!portal) return null;
-    return { x: portal.x, z: portal.z, radius: portal.radius, held: this.portalHeld, to: this.world.level.village ? 'arena' : 'village' };
+  /** What the snapshot says about the open rings. */
+  private portalStates(): PortalState[] {
+    return portalsFor(this.world, this.sim).map((ring, i) => ({ x: ring.x, y: ring.y, z: ring.z, radius: ring.radius, held: i === this.heldRing ? this.portalHeld : 0, to: ring.to }));
   }
 
   /** Change the sim between ticks, keeping any events it raises. */
@@ -242,7 +249,7 @@ export class HostSession {
   private sendSnapshot(): void {
     const acks: Record<string, number> = {};
     for (const r of this.remotes.values()) acks[r.id] = r.slots.ack;
-    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale(), portal: this.portalState() };
+    const msg: ToPeer = { k: 'snap', s: { ...this.sim, events: [] }, acks, ev: this.outbox, scale: this.timeScale(), portals: this.portalStates() };
     this.send(msg);
     this.outbox = [];
   }

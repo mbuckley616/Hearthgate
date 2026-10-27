@@ -21,6 +21,7 @@ export const BUTTON_ACTIONS = [
   'slowMo',
   'hitboxes',
   'inventory',
+  'map',
   'menuBack',
 ] as const;
 
