@@ -154,7 +154,7 @@ async function main() {
     // Round the well (it stands between the spawn and the shrine), then into the ring.
     await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
     // Anywhere well inside the 2.4 m ring will do: a looser mark than a spot, so a slow runner settles on it.
-    await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.2), vb.walkTo(ring.x + 0.6, ring.z, 1.2)]);
+    await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.5), vb.walkTo(ring.x + 0.6, ring.z, 1.5)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's hand-off"), vb.until(() => vb.handoff !== null, 5000, "Wren's hand-off")]);
     check(va.handoff?.level === "arena" && vb.handoff?.level === "arena", "two seconds in the ring together hand both on to a run");
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);

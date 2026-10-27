@@ -68,6 +68,8 @@ export class Bot {
   kind = "";
   messages: ToPeer[] = [];
   closedWith: number | null = null;
+  /** Every quarter second: tick, position, mode, ack and inputs sent, for a walk that fails on a slow machine. */
+  trace: string[] = [];
 
   constructor(
     readonly name: string,
@@ -106,7 +108,12 @@ export class Bot {
       if (this.room !== room) return;
       this.messages.push(m);
       if (m.k === "welcome") this.id = m.id;
-      if (m.k === "snap") this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portal: m.portal });
+      if (m.k === "snap") {
+        this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portal: m.portal });
+        const p = m.s.players.find((q) => q.id === this.id);
+        if (p && m.s.tick % 15 === 0) this.trace.push(`t${m.s.tick} (${p.x.toFixed(1)},${p.z.toFixed(1)}) ${p.mode} ack${m.acks[this.id] ?? 0} seq${this.seq}`);
+        if (this.trace.length > 80) this.trace.shift();
+      }
       if (m.k === "handoff") this.handoff = { reservation: m.reservation, level: m.level };
     });
     room.onLeave((c) => {
@@ -156,7 +163,10 @@ export class Bot {
       for (;;) {
         const p = this.me();
         if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
-        if (performance.now() - start > timeoutMs) throw new Error(`${this.name} never reached (${x}, ${z}): at ${p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere"}`);
+        if (performance.now() - start > timeoutMs) {
+          const at = p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere";
+          throw new Error(`${this.name} never reached (${x}, ${z}): at ${at}\n  ${this.trace.join("\n  ")}`);
+        }
         const dx = p ? x - p.x : 0;
         const dz = p ? z - p.z : -1;
         const d = Math.hypot(dx, dz) || 1;
@@ -170,7 +180,8 @@ export class Bot {
       if (p && Math.hypot(p.x - x, p.z - z) <= tol) return;
     }
     const p = this.me();
-    throw new Error(`${this.name} would not settle on (${x}, ${z}): at ${p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere"}`);
+    const at = p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere";
+    throw new Error(`${this.name} would not settle on (${x}, ${z}): at ${at}\n  ${this.trace.join("\n  ")}`);
   }
 
   async until(ok: () => boolean, timeoutMs: number, what: string) {
