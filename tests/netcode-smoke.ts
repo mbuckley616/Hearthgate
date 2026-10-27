@@ -40,7 +40,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "colyseus.js";
 import { Net } from "../client/src/net.ts";
-import { CELLAR, DOWNS, NPC, PATCH_MS, PLAYER, PORTAL, STAIRS, TICK_MS, TICK_RATE, VILLAGE, WARRENS, WEAPON_CLASSES, YARD } from "@hearthgate/shared";
+import { CELLAR, DOWNS, NPC, PATCH_MS, PLAYER, PORTAL, STAIRS, TICK_MS, TICK_RATE, VILLAGE, WARRENS, WEAPON_CLASSES, YARD, applyInput, createPlayer, jumpAirMs, onTick, tuning, type InputFrame } from "@hearthgate/shared";
 
 const PORT = 2599;
 const STRESS_BOTS = Number(process.env.STRESS_BOTS ?? 4);
@@ -452,29 +452,40 @@ async function jumpSprint(client: Client) {
   await sleep(400);
   if (!iState || !jState) fail("jump/sprint: no state received");
   const x0 = iState.players.get(i.sessionId).x;
+  // The same frames through the shared sim here: what the server must have done with them.
+  const model = createPlayer("model", 0, 0);
+  let mt = 0;
+  const step = (f: InputFrame) => applyInput(model, f, (mt = onTick(mt + TICK_MS)), TICK_MS);
   let seq = 0;
-  await sendPaced(20, () => i.send("input", { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true }));
+  const sprintFrame = () => ({ seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true });
+  await sendPaced(TICK_RATE, () => {
+    const f = sprintFrame();
+    i.send("input", f);
+    step(f);
+  });
   await sleep(300);
   const ran = iState.players.get(i.sessionId);
   const sprintM = ran.x - x0;
-  const want = 20 * PLAYER.speed * PLAYER.sprintMult * (TICK_MS / 1000);
-  if (ran.lastSeq !== seq || Math.abs(sprintM - want) > 0.01) fail(`jump/sprint: 20 sprinting ticks moved India ${sprintM.toFixed(2)} m (seq ${ran.lastSeq} of ${seq}), not ${want.toFixed(2)}`);
+  if (ran.lastSeq !== seq || Math.abs(sprintM - model.x) > 0.01) fail(`jump/sprint: a second of sprinting moved India ${sprintM.toFixed(2)} m (seq ${ran.lastSeq} of ${seq}), not ${model.x.toFixed(2)}`);
+  const sprintV = ran.vx;
+  if (Math.abs(sprintV - tuning.movement.sprintSpeed) > 1e-9) fail(`jump/sprint: India runs at ${sprintV} m/s, not the sprint's ${tuning.movement.sprintSpeed}`);
 
   const xJump = ran.x;
-  await sendPaced(Math.round(PLAYER.jumpMs / TICK_MS) + 4, (k) =>
-    i.send("input", k === 0 ? { seq: ++seq, dx: 1, dy: 0, attack: false, dodge: false, sprint: true, jump: true } : { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false })
-  );
+  const xModel = model.x;
+  await sendPaced(Math.round(jumpAirMs() / TICK_MS) + 4, (k) => {
+    const f = k === 0 ? { ...sprintFrame(), jump: true } : { seq: ++seq, dx: 0, dy: 0, attack: false, dodge: false };
+    i.send("input", f);
+    step(f);
+  });
   await sleep(100);
   const seen = jState.players.get(i.sessionId);
   const truth = iState.players.get(i.sessionId);
   if (!(seen.jumpUntil > 0) || seen.jumpUntil !== truth.jumpUntil) fail(`jump/sprint: Juliet sees India's landing at ${seen.jumpUntil}, the server has ${truth.jumpUntil}`);
-  const vx = PLAYER.speed * PLAYER.sprintMult;
-  if (Math.abs(seen.jumpVx - vx) > 1e-9) fail(`jump/sprint: the carried speed is ${seen.jumpVx}, not ${vx}`);
   const hop = truth.x - xJump;
-  // The takeoff frame still holds the stick, so it steers one tick on top of the carried speed.
-  const wantHop = vx * (PLAYER.jumpMs / 1000) + PLAYER.speed * PLAYER.jumpSteer * (TICK_MS / 1000);
+  // The ground speed carries into the air, where letting go of the stick slows it at the air's grip.
+  const wantHop = model.x - xModel;
   if (Math.abs(hop - wantHop) > 0.01) fail(`jump/sprint: the hop from a sprint carried India ${hop.toFixed(2)} m, not ${wantHop.toFixed(2)}`);
-  console.log(`ok: jump/sprint: 20 sprinting ticks ${sprintM.toFixed(2)} m; a sprint jump carried ${hop.toFixed(2)} m and Juliet saw its landing time and speed`);
+  console.log(`ok: jump/sprint: a second of sprinting ${sprintM.toFixed(2)} m at ${sprintV} m/s; a sprint jump carried ${hop.toFixed(2)} m and Juliet saw its landing time`);
   await j.leave();
   await i.leave();
   await sleep(300);

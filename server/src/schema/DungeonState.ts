@@ -22,12 +22,16 @@ export class PlayerState extends Schema {
   @type("float64") inputAt = 0;
   @type("float64") dodgeUntil = 0;
   @type("float64") dodgeCooldownUntil = 0;
-  @type("number") dodgeDx = 0;
-  @type("number") dodgeDz = 0;
+  @type("float64") vx = 0;
+  @type("float64") vz = 0;
+  @type("float64") dodgeAt = 0;
+  @type("float64") dodgeDx = 0;
+  @type("float64") dodgeDz = 0;
+  @type("number") dodgeDist = 0;
+  @type("number") dodgeCharges = 0;
+  @type("float64") dodgeChargeAt = 0;
   /** A jump in progress: everyone draws the hop from its landing time, and the client replays it. */
   @type("float64") jumpUntil = 0;
-  @type("number") jumpVx = 0;
-  @type("number") jumpVz = 0;
   @type("float64") attackUntil = 0;
   @type("float64") attackHitAt = 0;
   @type("float64") abilityUntil = 0;

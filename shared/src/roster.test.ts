@@ -26,6 +26,7 @@ import {
   type PlayerSim,
   type SimEvent
 } from "./sim";
+import { tuning } from "./tuning";
 import { OPEN_FIELD, YARD, collideWalls, type Level } from "./level";
 import { hasState } from "./states";
 
@@ -178,7 +179,8 @@ describe("the Charger", () => {
   it("a dodge goes through the charge", () => {
     const { e, p, players } = lane(8);
     run(e, players, 1000, c.aimMs + 100); // aimed and just started
-    p.dodgeUntil = 1e9; // dodging for the whole run
+    p.dodgeAt = 1e9 - 1; // inside a roll's i-frames for the whole run
+    p.dodgeUntil = 1e9;
     const { events } = run(e, players, 1000 + c.aimMs + 150, 2000);
     expect(events.some((x) => x.kind === "enemyHit")).toBe(false);
     expect(p.hp).toBe(PLAYER.hp);

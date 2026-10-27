@@ -15,6 +15,7 @@
 import { applyState, comboMultiplier, expireStates, hasState, resolveHit, type ComboEffect, type HitResult, type HitTag, type StateSet } from "./states";
 import { ARENA_HALF, OPEN_FIELD, collideWalls, lineClear, roomAt, steerToward, type Level, type Npc } from "./level";
 import { STARTER_WEAPON, WEAPON_TYPES, weaponClassOf, weaponStats, type WeaponGear } from "./gear";
+import { tuning } from "./tuning";
 
 export { ARENA_HALF };
 
@@ -39,32 +40,16 @@ export function onTick(t: number): number {
   return Math.round(t / TICK_MS) * TICK_MS;
 }
 
+/** Run, sprint, dodge and jump are the combat slice's, in `tuning.movement`, `tuning.dodge` and `tuning.jump`. */
 export const PLAYER = {
   hp: 100,
   radius: 0.5,
-  speed: 6, // m/s
   attackRange: 2.4,
   attackArc: Math.PI * 0.6, // total cone width, 108 degrees
   attackWindupMs: 150, // time from pressing attack until the hit resolves
   attackDurationMs: 450, // total time the player is committed to the swing
   attackDamage: 20,
-  dodgeSpeed: 16,
-  dodgeMs: 220,
-  dodgeCooldownMs: 900,
-  respawnMs: 3000,
-  /** Held sprint (Michael, 2026-10-15, 2A): free, 9 m/s; a swing, a block or an ability stops it. */
-  sprintMult: 1.5,
-  /**
-   * The jump (1A): a hop for feel, 0.6 m at the top and 500 ms in the air (thirty ticks exactly, so
-   * it lands on a slot), carrying the ground speed it took off with: 3 m walking, 4.5 m sprinting.
-   * It clears no wall and dodges no blow; no swing, dodge or guard while in the air. Its height
-   * is a function of time since takeoff (`jumpHeight`), not an integrated speed, so the server,
-   * the prediction and the replay agree on it to the bit.
-   */
-  jumpMs: 500,
-  jumpHeight: 0.6,
-  /** In the air the stick steers at this fraction of walking speed, on top of the takeoff speed. */
-  jumpSteer: 0.25
+  respawnMs: 3000
 } as const;
 
 /**
@@ -699,6 +684,13 @@ export interface InputFrame {
   jump?: boolean;
   /** Sprint held this tick; absent means no. */
   sprint?: boolean;
+  /**
+   * Where the camera looks, on the ground (a unit vector in world x and z); absent means no change.
+   * With strafe movement (`tuning.movement.faceCamera`) the hero turns to face it, so a swing goes
+   * where the player is looking.
+   */
+  aimX?: number;
+  aimZ?: number;
 }
 
 export interface PlayerSim {
@@ -715,15 +707,24 @@ export interface PlayerSim {
    * replay puts it too. Server-kept; the client copies it and never advances it itself.
    */
   inputAt: number;
+  /** Ground velocity, m/s: the hero accelerates toward the stick (`tuning.movement`), so it is state, rewound and replayed. */
+  vx: number;
+  vz: number;
+  /** When the current or last dodge started; the roll's distance is a curve in the time since. */
+  dodgeAt: number;
   dodgeUntil: number;
+  /** No new dodge before this (`tuning.dodge.minGapMs` after the last); also how the client spots a refused one. */
   dodgeCooldownUntil: number;
   dodgeDx: number;
   dodgeDz: number;
+  /** This roll's length: a backstep (no direction held) is shorter. */
+  dodgeDist: number;
+  /** Dodges in hand, up to `tuning.dodge.charges`; they come back one at a time. */
+  dodgeCharges: number;
+  /** When the next charge comes back (meaningless while full). */
+  dodgeChargeAt: number;
   /** Landing time of the current jump (0, or in the past, when on the ground). */
   jumpUntil: number;
-  /** The takeoff ground velocity, m/s, carried through the jump. */
-  jumpVx: number;
-  jumpVz: number;
   /** Time the current swing finishes (0 when not attacking). */
   attackUntil: number;
   /** Time the current swing's hit resolves (0 when already resolved or not attacking). */
@@ -870,13 +871,17 @@ export function createPlayer(id: string, x = 0, z = 0): PlayerSim {
     hp: PLAYER.hp,
     lastSeq: 0,
     inputAt: 0,
+    vx: 0,
+    vz: 0,
+    dodgeAt: 0,
     dodgeUntil: 0,
     dodgeCooldownUntil: 0,
     dodgeDx: 0,
     dodgeDz: 0,
+    dodgeDist: 0,
+    dodgeCharges: tuning.dodge.charges,
+    dodgeChargeAt: 0,
     jumpUntil: 0,
-    jumpVx: 0,
-    jumpVz: 0,
     attackUntil: 0,
     attackHitAt: 0,
     abilityUntil: 0,
@@ -994,6 +999,8 @@ export function isValidInput(v: unknown): v is InputFrame {
     Math.abs(f.dy) <= 1.0001 &&
     typeof f.attack === "boolean" &&
     typeof f.dodge === "boolean" &&
+    (f.aimX === undefined || (typeof f.aimX === "number" && Math.abs(f.aimX) <= 1.0001)) &&
+    (f.aimZ === undefined || (typeof f.aimZ === "number" && Math.abs(f.aimZ) <= 1.0001)) &&
     (f.ability === undefined || (Number.isInteger(f.ability) && (f.ability as number) >= 0 && (f.ability as number) <= ABILITY_SLOTS)) &&
     (f.use === undefined || typeof f.use === "boolean") &&
     (f.block === undefined || typeof f.block === "boolean") &&
@@ -1034,22 +1041,85 @@ export function isDodging(p: PlayerSim, now: number): boolean {
   return now < p.dodgeUntil;
 }
 
+/** Inside the roll's i-frames: the first `tuning.dodge.iframesMs` of it. Blows pass through. */
+export function isUntouchable(p: PlayerSim, now: number): boolean {
+  return isDodging(p, now) && now - p.dodgeAt < tuning.dodge.iframesMs;
+}
+
+/** Time in the air, ms: up and down under `tuning.jump`'s gravity to its apex height. */
+export function jumpAirMs(): number {
+  const j = tuning.jump;
+  return 2000 * Math.sqrt((2 * j.height) / j.gravity);
+}
+
 /** In the air: from takeoff until `jumpUntil`. */
 export function isAirborne(p: { jumpUntil: number }, now: number): boolean {
   return now < p.jumpUntil;
 }
 
 /**
- * Height of the feet above the ground at `now`, m: a parabola from takeoff to landing. Pure in
- * `jumpUntil` and `now`, so a remote player's hop is drawn at remoteNow from the synced landing
- * time alone, with no height in the snapshots.
+ * Height of the feet above the ground at `now`, m: the slice's jump (launched at the speed that
+ * reaches `tuning.jump.height`, pulled down by its gravity) is a parabola on flat ground, so it is
+ * a function of time to landing, never integrated. Pure in `jumpUntil` and `now`, so a remote
+ * player's hop is drawn at remoteNow from the synced landing time alone, with no height in the
+ * snapshots, and prediction and replay agree on it to the bit.
  */
 export function jumpHeight(p: { jumpUntil: number }, now: number): number {
   if (now >= p.jumpUntil) return 0;
-  const t = now - (p.jumpUntil - PLAYER.jumpMs);
+  const T = jumpAirMs();
+  const t = now - (p.jumpUntil - T);
   if (t <= 0) return 0;
-  const T = PLAYER.jumpMs;
-  return (4 * PLAYER.jumpHeight * t * (T - t)) / (T * T);
+  return (4 * tuning.jump.height * t * (T - t)) / (T * T);
+}
+
+/** Fraction of a roll's distance covered at normalised time u (0..1): a burst that eases out. */
+function dodgeCurve(u: number): number {
+  return 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 1 + tuning.dodge.easeOutPower);
+}
+
+function turnToward(current: number, target: number, maxStep: number): number {
+  const diff = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  if (Math.abs(diff) <= maxStep) return target;
+  return current + Math.sign(diff) * maxStep;
+}
+
+/** Charges come back one at a time, `chargeRechargeMs` apart. */
+function rechargeDodges(p: PlayerSim, now: number): void {
+  const dg = tuning.dodge;
+  while (p.dodgeCharges < dg.charges && now >= p.dodgeChargeAt) {
+    p.dodgeCharges++;
+    p.dodgeChargeAt += dg.chargeRechargeMs;
+  }
+  if (p.dodgeCharges > dg.charges) p.dodgeCharges = dg.charges;
+}
+
+/** Out of the roll, carrying a little of its speed so it flows into running (the slice's endDodge). */
+function endDodge(p: PlayerSim, now: number): void {
+  p.dodgeUntil = Math.min(p.dodgeUntil, now);
+  const carry = Math.min(Math.hypot(p.vx, p.vz), tuning.movement.runSpeed * 0.5);
+  p.vx = p.dodgeDx * carry;
+  p.vz = p.dodgeDz * carry;
+}
+
+/** Accelerate toward the stick's velocity at `maxSpeed` (decelerate when it asks for less), then move. */
+function steer(p: PlayerSim, ux: number, uz: number, maxSpeed: number, dt: number, control: number): void {
+  const mv = tuning.movement;
+  const tx = ux * maxSpeed;
+  const tz = uz * maxSpeed;
+  const dvx = tx - p.vx;
+  const dvz = tz - p.vz;
+  const dvLen = Math.hypot(dvx, dvz);
+  const speeding = Math.hypot(tx, tz) >= Math.hypot(p.vx, p.vz);
+  const maxDv = (speeding ? mv.acceleration : mv.deceleration) * control * dt;
+  if (dvLen <= maxDv) {
+    p.vx = tx;
+    p.vz = tz;
+  } else {
+    p.vx += (dvx / dvLen) * maxDv;
+    p.vz += (dvz / dvLen) * maxDv;
+  }
+  p.x += p.vx * dt;
+  p.z += p.vz * dt;
 }
 
 /** Committed to a sword swing or an ability: no walking, no new swing. */
@@ -1160,6 +1230,10 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
   }
   const moving = len > 0.001;
 
+  if (downed || now < p.knockUntil || isPlayerStaggered(p, now)) {
+    p.vx = 0;
+    p.vz = 0;
+  }
   if (downed) {
     // A crawl: slow movement, no swing, no dodge.
     if (moving) {
@@ -1187,61 +1261,104 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     return;
   }
 
-  const attacking = isAttacking(p, now);
-  const dodging = isDodging(p, now);
+  // Movement is the combat slice's (player.ts there): accelerated, strafing to face the camera,
+  // a sprint, dodge charges and an eased roll, the slice's jump. Combat below is still Hearthgate's.
+  const mv = tuning.movement;
+  const dg = tuning.dodge;
+  const DEG = Math.PI / 180;
+  rechargeDodges(p, now);
   const airborne = isAirborne(p, now);
 
-  // Start a dodge: in the input direction, or forward if standing still. Not from the air.
-  if (input.dodge && !dodging && !attacking && !airborne && now >= p.dodgeCooldownUntil) {
-    if (moving) {
-      const n = Math.max(len, 1);
-      p.dodgeDx = dx / n;
-      p.dodgeDz = dz / n;
-      const l2 = Math.hypot(p.dodgeDx, p.dodgeDz);
-      p.dodgeDx /= l2;
-      p.dodgeDz /= l2;
-    } else {
-      p.dodgeDx = Math.sin(p.facing);
-      p.dodgeDz = Math.cos(p.facing);
-    }
-    p.facing = Math.atan2(p.dodgeDx, p.dodgeDz);
-    p.dodgeUntil = now + PLAYER.dodgeMs;
-    p.dodgeCooldownUntil = now + PLAYER.dodgeCooldownMs;
+  // The roll's tail: past cancelAfterMs anything else the player asks for ends it at once (no dodge recovery).
+  if (isDodging(p, now) && now - p.dodgeAt >= dg.cancelAfterMs) {
+    if (moving || input.attack || (input.ability ?? 0) > 0 || input.dodge || input.jump || input.block) endDodge(p, now);
   }
 
-  // Take off: on the ground, not committed to a swing or a dodge (a dodge pressed on the same
-  // tick wins). The ground speed of this tick goes with you, sprint included.
-  const sprinting = input.sprint === true;
+  // Start a dodge: along the stick, or a short hop backward with none held. On the ground, never
+  // mid-ability; it interrupts a swing at any point (the slice's dodge.cancelsAttacks).
+  const swinging = now < p.attackUntil;
+  if (
+    input.dodge &&
+    !isDodging(p, now) &&
+    !airborne &&
+    now >= p.abilityUntil &&
+    (!swinging || dg.cancelsAttacks) &&
+    p.dodgeCharges > 0 &&
+    now >= p.dodgeCooldownUntil
+  ) {
+    if (swinging) {
+      p.attackUntil = now;
+      p.attackHitAt = 0;
+    }
+    if (p.dodgeCharges >= dg.charges) p.dodgeChargeAt = now + dg.chargeRechargeMs;
+    p.dodgeCharges--;
+    const backstep = !moving;
+    p.dodgeDx = backstep ? -Math.sin(p.facing) : dx / Math.min(1, len);
+    p.dodgeDz = backstep ? -Math.cos(p.facing) : dz / Math.min(1, len);
+    p.dodgeDist = dg.distance * (backstep ? dg.backstepDistanceFrac : 1);
+    p.dodgeAt = now;
+    p.dodgeUntil = now + dg.durationMs;
+    p.dodgeCooldownUntil = now + dg.minGapMs;
+    if (!(mv.faceCamera && Math.hypot(input.aimX ?? 0, input.aimZ ?? 0) > 0.01) && !backstep) p.facing = Math.atan2(p.dodgeDx, p.dodgeDz);
+  }
+
+  // Take off: on the ground, not committed to a swing or a roll (a dodge pressed on the same tick
+  // wins). The ground speed carries; in the air the stick has `tuning.jump.airControl` of its grip.
+  const attacking = isAttacking(p, now);
   if (input.jump && !airborne && !attacking && !isDodging(p, now)) {
-    const speed = moving ? PLAYER.speed * (sprinting ? PLAYER.sprintMult : 1) : 0;
-    p.jumpVx = dx * speed;
-    p.jumpVz = dz * speed;
-    p.jumpUntil = onTick(now + PLAYER.jumpMs);
-    if (moving) p.facing = Math.atan2(dx, dz);
+    p.jumpUntil = onTick(now + jumpAirMs());
   }
   const inAir = isAirborne(p, now);
+  const control = inAir ? tuning.jump.airControl : 1;
 
   // The guard: up while block is held and nothing else is committed. A dodge or a jump drops it.
   const guard = input.block === true && !attacking && !isDodging(p, now) && !inAir;
   if (guard && !p.guarding) p.blockSince = now;
   p.guarding = guard;
 
-  if (inAir) {
-    // The takeoff speed carries; the stick steers a little.
-    p.x += (p.jumpVx + dx * PLAYER.speed * PLAYER.jumpSteer) * dt;
-    p.z += (p.jumpVz + dz * PLAYER.speed * PLAYER.jumpSteer) * dt;
-  } else if (isDodging(p, now)) {
-    p.x += p.dodgeDx * PLAYER.dodgeSpeed * dt;
-    p.z += p.dodgeDz * PLAYER.dodgeSpeed * dt;
-  } else if (p.guarding && moving) {
+  // dx, dz are clamped to length 1 above; mag is the stick's tilt, (ux, uz) its direction.
+  const mag = Math.min(1, len);
+  const ux = moving ? dx / mag : 0;
+  const uz = moving ? dz / mag : 0;
+  // Strafing needs a camera to face: a frame with no aim (a bot, a neutral frame) turns to run.
+  const aimLen = Math.hypot(input.aimX ?? 0, input.aimZ ?? 0);
+  const strafe = mv.faceCamera && aimLen > 0.01;
+  if (isDodging(p, now)) {
+    // The roll covers its distance along an ease-out curve in the time since it started.
+    const T = dg.durationMs;
+    const e0 = now - p.dodgeAt;
+    const e1 = e0 + dtMs;
+    const step = p.dodgeDist * (dodgeCurve(e1 / T) - dodgeCurve(e0 / T));
+    p.x += p.dodgeDx * step;
+    p.z += p.dodgeDz * step;
+    p.vx = (p.dodgeDx * step) / dt;
+    p.vz = (p.dodgeDz * step) / dt;
+    if (e1 >= T) endDodge(p, now + dtMs);
+  } else if (attacking) {
+    // Rooted for the swing (its lunge arrives with the slice's chains in step 2).
+    p.vx = 0;
+    p.vz = 0;
+  } else if (p.guarding) {
     // Shuffle behind the guard, still facing the threat.
-    p.x += dx * PLAYER.speed * GUARD.moveMult * dt;
-    p.z += dz * PLAYER.speed * GUARD.moveMult * dt;
-  } else if (!attacking && moving) {
-    const speed = PLAYER.speed * (sprinting ? PLAYER.sprintMult : 1);
-    p.x += dx * speed * dt;
-    p.z += dz * speed * dt;
-    p.facing = Math.atan2(dx, dz);
+    steer(p, ux, uz, mv.runSpeed * GUARD.moveMult, dt, 1);
+  } else {
+    // How much of the move is forward relative to facing (1 forward, 0 sideways, -1 back).
+    const fwd = moving ? ux * Math.sin(p.facing) + uz * Math.cos(p.facing) : 1;
+    let dirScale = 1;
+    if (strafe) {
+      dirScale = fwd >= 0 ? mv.strafeSpeedFrac + (1 - mv.strafeSpeedFrac) * fwd : mv.strafeSpeedFrac + (mv.backpedalSpeedFrac - mv.strafeSpeedFrac) * -fwd;
+    }
+    // Sprint is a forward run on the ground only.
+    const sprinting = input.sprint === true && !inAir && (!strafe || fwd > 0.5);
+    const run = mag >= mv.runThreshold;
+    const speed = (run ? (sprinting ? mv.sprintSpeed : mv.runSpeed) : mv.walkSpeed * Math.min(1, mag / mv.runThreshold)) * dirScale;
+    steer(p, ux, uz, speed, dt, control);
+    if (!strafe && moving) p.facing = turnToward(p.facing, Math.atan2(ux, uz), mv.turnRateDeg * DEG * dt * control);
+  }
+  // Strafe movement: the body turns to where the camera looks, so a swing goes there too. Not
+  // mid-roll or mid-swing: those keep the facing they started with.
+  if (strafe && !isDodging(p, now) && !attacking) {
+    p.facing = turnToward(p.facing, Math.atan2(input.aimX!, input.aimZ!), mv.faceTurnRateDeg * DEG * dt * Math.max(control, 0.6));
   }
 
   // Start an ability, or else a swing. Both hits resolve later in resolvePlayerAttacks.
@@ -1261,7 +1378,20 @@ export function applyInput(p: PlayerSim, input: InputFrame, now: number, dtMs: n
     p.attackHitAt = now + swing.windupMs;
   }
 
+  // Walls stop the body, and the velocity into them goes too, so the hero slides instead of grinding.
+  const bx = p.x;
+  const bz = p.z;
   collideWalls(p, PLAYER.radius, level);
+  const px = p.x - bx;
+  const pz = p.z - bz;
+  const push = Math.hypot(px, pz);
+  if (push > 1e-9) {
+    const into = (p.vx * px + p.vz * pz) / push;
+    if (into < 0) {
+      p.vx -= (into * px) / push;
+      p.vz -= (into * pz) / push;
+    }
+  }
 }
 
 /** True when `target` is inside a cone in front of `from`. */
@@ -1544,6 +1674,8 @@ export function downPlayer(p: PlayerSim, now: number): void {
   p.abilityUntil = 0;
   p.abilityHitAt = 0;
   p.dodgeUntil = 0;
+  p.vx = 0;
+  p.vz = 0;
   p.jumpUntil = 0;
   p.guarding = false;
   p.staggerUntil = 0;
@@ -1743,7 +1875,7 @@ export function stepEnemy(
       // The swing lands. Facing was locked at windup start, so a dodge sideways escapes it.
       enemy.phase = "recover";
       enemy.phaseUntil = now + def.recoverMs;
-      if (target && isAlive(target) && !isDodging(target, now)) {
+      if (target && isAlive(target) && !isUntouchable(target, now)) {
         if (inCone(enemy, target, def.attackRange * 1.15, def.attackArc, PLAYER.radius)) {
           const blow = enemy.rallied ? Math.round(def.damage * rallyOf(enemy).damageMult) : def.damage;
           events.push(...strikePlayer(enemy, target, blow, now));
@@ -1786,7 +1918,7 @@ function stepCharge(enemy: EnemySim, def: EnemyDef, players: Map<string, PlayerS
   let victim: PlayerSim | null = null;
   let victimT = Infinity;
   for (const p of [...players.values()].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-    if (!isAlive(p) || isDodging(p, now)) continue;
+    if (!isAlive(p) || isUntouchable(p, now)) continue;
     const t = (p.x - fromX) * fx + (p.z - fromZ) * fz;
     if (t < -reach || t > step + reach) continue;
     const side = Math.abs((p.x - fromX) * fz - (p.z - fromZ) * fx);
@@ -2003,6 +2135,9 @@ export function stepRespawns(players: Iterable<PlayerSim>, now: number): SimEven
     p.pickupMs = 0;
     p.pickupBy = "";
     p.dodgeUntil = 0;
+    p.vx = 0;
+    p.vz = 0;
+    p.dodgeCharges = tuning.dodge.charges;
     p.jumpUntil = 0;
     p.attackUntil = 0;
     p.attackHitAt = 0;

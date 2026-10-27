@@ -7,6 +7,7 @@ import {
   PLAYER,
   TICK_MS,
   onTick,
+  tuning,
   VILLAGE_LEVEL_ID,
   addArrivalSample,
   addClockSample,
@@ -57,7 +58,7 @@ export const SNAP_DISTANCE = 2.5;
  * first, which we could not see: enemies are drawn 100 to 200 ms behind) would otherwise pop
  * us back. Taken from the dodge's own numbers so it follows their tuning.
  */
-export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.dodgeSpeed * PLAYER.dodgeMs) / 1000;
+export const DODGE_SNAP_DISTANCE = SNAP_DISTANCE + tuning.dodge.distance;
 
 /** The longest unconfirmed stretch, ms, a downing blow's correction is eased over rather than snapped. */
 export const DOWNED_EASE_MS = 500;
@@ -69,7 +70,7 @@ export const DOWNED_EASE_MS = 500;
  * once that passes about 420 ms. Sprinting for DOWNED_EASE_MS bounds it, past which a jump
  * is no longer one the blow explains.
  */
-export const DOWNED_SNAP_DISTANCE = SNAP_DISTANCE + (PLAYER.speed * PLAYER.sprintMult * DOWNED_EASE_MS) / 1000;
+export const DOWNED_SNAP_DISTANCE = SNAP_DISTANCE + (tuning.movement.sprintSpeed * DOWNED_EASE_MS) / 1000;
 
 export interface Snapshot extends PoseSnapshot {
   /** Client time it arrived (performance.now()); the clock harness reads the delivery floor from it. */
@@ -501,8 +502,13 @@ export class Net {
     me.dodgeDx = p.dodgeDx;
     me.dodgeDz = p.dodgeDz;
     me.jumpUntil = p.jumpUntil ?? 0;
-    me.jumpVx = p.jumpVx ?? 0;
-    me.jumpVz = p.jumpVz ?? 0;
+    // Velocity and the roll are state the slice's movement integrates, so they rewind like a position.
+    me.vx = p.vx ?? 0;
+    me.vz = p.vz ?? 0;
+    me.dodgeAt = p.dodgeAt ?? 0;
+    me.dodgeDist = p.dodgeDist ?? 0;
+    me.dodgeCharges = p.dodgeCharges ?? me.dodgeCharges;
+    me.dodgeChargeAt = p.dodgeChargeAt ?? 0;
     me.attackUntil = p.attackUntil;
     me.attackHitAt = p.attackHitAt;
     me.abilityUntil = p.abilityUntil;

@@ -127,20 +127,21 @@ const beforeJump = net.snaps;
 patch(net, { x: dodged, z: 0, hp: PLAYER.hp - 20, lastSeq: lastDodgeSeq });
 if (net.snaps !== beforeJump + 1) fail(`a ${dodged.toFixed(2)} m error with no dodge in it did not snap`);
 
-// 6. Running east with thirty-three frames unconfirmed (a 550 ms round trip); the server applied the
-// first of them on the tick a blow downed us at the origin, and the thirty-two after it replay as a crawl.
+// 6. Running east with forty-five frames unconfirmed (a 750 ms round trip, long enough to be over the snap
+// limit once getting up to speed is paid for); the server applied the
+// first of them on the tick a blow downed us at the origin, and the forty-four after it replay as a crawl.
 patch(net, { x: 0, z: 0, hp: PLAYER.hp, lastSeq: 40 });
 const beforeDown = { snaps: net.snaps, corrections: net.corrections };
 net.predictedTime = tick * TICK_MS;
-for (let seq = 41; seq <= 73; seq++) {
+for (let seq = 41; seq <= 85; seq++) {
   const f: InputFrame = { seq, dx: 1, dy: 0, attack: false, dodge: false, ability: 0, use: false };
   net.predictedTime = onTick(net.predictedTime + TICK_MS);
   applyInput(net.me, f, net.predictedTime, TICK_MS, net.level);
   net.pending.push(f);
 }
 const ran = net.me.x;
-if (ran < SNAP_DISTANCE) fail(`550 ms of running only went ${ran} m, not past SNAP_DISTANCE`);
-if (ran >= DOWNED_SNAP_DISTANCE) fail(`550 ms of running went ${ran} m, past DOWNED_SNAP_DISTANCE`);
+if (ran < SNAP_DISTANCE) fail(`750 ms of running only went ${ran} m, not past SNAP_DISTANCE`);
+if (ran >= DOWNED_SNAP_DISTANCE) fail(`750 ms of running went ${ran} m, past DOWNED_SNAP_DISTANCE`);
 const downedAt = tick * TICK_MS;
 patch(net, { x: 0, z: 0, hp: 0, lastSeq: 41, downedUntil: downedAt + 30_000 });
 const downErr = ran - net.me.x;
@@ -149,9 +150,9 @@ if (net.snaps !== beforeDown.snaps) fail(`a ${downErr.toFixed(2)} m downing blow
 if (net.corrections !== beforeDown.corrections + 1) fail("a downing blow was not counted as a correction");
 if (Math.abs(net.visualErrX - downErr) > 1e-9) fail(`the eased offset is ${net.visualErrX} m, not the ${downErr} m we were drawn ahead`);
 // Already down, the same error is a snap: the wider limit is the blow's alone.
-patch(net, { x: 0, z: 0, hp: 0, lastSeq: 73, downedUntil: downedAt + 30_000 });
+patch(net, { x: 0, z: 0, hp: 0, lastSeq: 85, downedUntil: downedAt + 30_000 });
 const beforeDownJump = net.snaps;
-patch(net, { x: downErr, z: 0, hp: 0, lastSeq: 73, downedUntil: downedAt + 30_000 });
+patch(net, { x: downErr, z: 0, hp: 0, lastSeq: 85, downedUntil: downedAt + 30_000 });
 if (net.snaps !== beforeDownJump + 1) fail(`a ${downErr.toFixed(2)} m error while already down did not snap`);
 
 console.log(

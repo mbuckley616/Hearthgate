@@ -254,8 +254,11 @@ export class Input {
     }
     if (yaw !== 0) ({ dx, dy } = cameraRelativeMove(dx, dy, yaw));
 
+    // Where the camera looks, on the ground: with strafe movement the hero faces it, so a swing goes there.
+    const aim = cameraRelativeMove(0, -1, yaw);
+
     this.seq++;
-    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle, jump, sprint };
+    return { seq: this.seq, dx: round(dx), dy: round(dy), attack, dodge, ability, use, block, cycle, jump, sprint, aimX: round(aim.dx), aimZ: round(aim.dy) };
   }
 }
 

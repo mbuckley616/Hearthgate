@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { INPUT_TIMING, PLAYER, TICK_MS, applyInput, createPlayer, neutralInput, onTick, type InputFrame, type PlayerSim } from "./sim";
+import { tuning } from "./tuning";
 import { applyDueInputs, createInputClock, createInputQueue, dueInputTicks, type InputQueue } from "./inputs";
 
 const queueOf = (...frames: InputFrame[]): InputQueue => ({ ...createInputQueue(), frames });
@@ -28,9 +29,12 @@ describe("the client's input clock", () => {
       for (let i = 1; i <= n; i++) applyInput(p, walk(i), at(i), TICK_MS);
       return p.x;
     });
-    // 9 m for 1.5 s at 6 m/s; the slowest timer may end up to one of its frames short of the hold.
-    const full = PLAYER.speed * (holdMs / 1000);
-    for (const d of distances) expect(d).toBeGreaterThanOrEqual(full - PLAYER.speed * 0.1 - 1e-9);
+    // Every tick of the 1.5 s held, as a 60 fps timer sends it; the slowest timer may end up to one of its frames short.
+    const ref = createPlayer("r");
+    const ticks = Math.round(holdMs / TICK_MS);
+    for (let i = 1; i <= ticks; i++) applyInput(ref, walk(i), at(i), TICK_MS);
+    const full = ref.x;
+    for (const d of distances) expect(d).toBeGreaterThanOrEqual(full - tuning.movement.runSpeed * 0.1 - 1e-9);
     for (const d of distances) expect(d).toBeLessThanOrEqual(full + 1e-9);
     // Before: one frame per callback, so 10 fps sent 15 frames for the 30 ticks and walked 4.5 m.
   });
@@ -57,7 +61,7 @@ describe("applyDueInputs", () => {
     q.frames.push(walk(1, { dodge: true }), walk(2));
     expect(applyDueInputs(p, q, at(T0 + 2))).toHaveLength(2);
     expect(p.inputAt).toBe(at(T0 + 2));
-    expect(p.dodgeUntil).toBe(at(T0 + 1) + PLAYER.dodgeMs);
+    expect(p.dodgeUntil).toBe(at(T0 + 1) + tuning.dodge.durationMs);
   });
 
   it("never applies a frame ahead of the tick, so a client cannot walk faster by sending faster", () => {
@@ -246,7 +250,9 @@ function bunchedLink(useSlots: boolean): number {
       let rt = useSlots ? state.inputAt : tick;
       for (const f of pending) applyInput(client, f, (rt = onTick(rt + TICK_MS)), TICK_MS);
       predictedTime = rt;
-      if (placed && Math.hypot(bx - client.x, bz - client.z) > 0.02) corrections++;
+      // Only while the client sends: once it stops, the server coasts the silent body to a halt
+      // with neutral frames, which a client that sends every tick never has to predict.
+      if (placed && u < frames * sub && Math.hypot(bx - client.x, bz - client.z) > 0.02) corrections++;
       placed = placed || state.lastSeq > 0;
     }
   }

@@ -42,7 +42,7 @@
 import { spawn } from "node:child_process";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { CLOCK_SYNC, INTERP, PLAYER, TICK_MS, projectPose, type PoseSnapshot } from "@hearthgate/shared";
+import { CLOCK_SYNC, INTERP, PLAYER, TICK_MS, projectPose, tuning, type PoseSnapshot } from "@hearthgate/shared";
 import { Net } from "../client/src/net";
 
 const SERVER_PORT = 2598;
@@ -343,7 +343,7 @@ async function main() {
       if (s.vsFloorMax > 3) failures.push(`${lag.name}: clock sat ${s.vsFloorMax.toFixed(1)} ms ahead of the delivery floor (limit 3)`);
       if (lag.name !== "150 ms" && s.heldShare > 0.01) failures.push(`${lag.name}: remote player held on ${(100 * s.heldShare).toFixed(2)}% of frames (limit 1%)`);
       if (lag.name === "150 ms" && s.heldShare > 0.0002) failures.push(`${lag.name}: remote player held past the projection on ${(100 * s.heldShare).toFixed(2)}% of frames (limit 0.02%, a tenth of the adaptive delay's holds)`);
-      const tickOfTravel = (PLAYER.speed * INTERP.extrapolateMaxMs) / 1000;
+      const tickOfTravel = (tuning.movement.runSpeed * INTERP.extrapolateMaxMs) / 1000;
       const aheadLimit = (INTERP.extrapolateMaxMps * INTERP.extrapolateMaxMs) / 1000;
       if (s.aheadMax > aheadLimit + 0.01) failures.push(`${lag.name}: a projection ran ${s.aheadMax.toFixed(3)} m past the newest snapshot (limit one tick at ${INTERP.extrapolateMaxMps} m/s, ${aheadLimit.toFixed(2)} m)`);
       if (s.popMax > tickOfTravel / 4) failures.push(`${lag.name}: the drawn remote player popped ${s.popMax.toFixed(3)} m in one frame (limit ${(tickOfTravel / 4).toFixed(3)} m)`);

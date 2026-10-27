@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ENEMY_KINDS, PLAYER, cameraRelativeMove } from "@hearthgate/shared";
+import { ENEMY_KINDS, PLAYER, cameraRelativeMove, tuning } from "@hearthgate/shared";
 
 /** The eight key combinations and their screen vectors (input.ts: W is dy -1, D is dx +1). */
 const DIRECTIONS: [string[], number, number][] = [
@@ -69,11 +69,11 @@ test("Cleave then Execute shows the callout over the goblin", async ({ page }) =
         if (s.callouts > 0) return s.callouts;
         if (s.d > 2.2) {
           // Close in, stopping about 1.5 m short; it is walking at us too.
-          await hold(await toward(), Math.min(300, ((s.d - 1.5) / (PLAYER.speed + ENEMY_KINDS.goblin.speed)) * 1000));
+          await hold(await toward(), Math.min(300, ((s.d - 1.5) / (tuning.movement.runSpeed + ENEMY_KINDS.goblin.speed)) * 1000));
           return s.callouts;
         }
         if (s.d < 1) {
-          await hold(await toward(true), ((1.5 - s.d) / PLAYER.speed) * 1000);
+          await hold(await toward(true), ((1.5 - s.d) / tuning.movement.runSpeed) * 1000);
           return s.callouts;
         }
         await hold(await toward(), 40);

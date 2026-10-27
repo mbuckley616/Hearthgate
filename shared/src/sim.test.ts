@@ -14,27 +14,41 @@ import {
   inCone,
   isValidInput,
   neutralInput,
+  isAttacking,
+  isDodging,
   resolvePlayerAttacks,
   stepEnemy,
   stepDowns,
   stepRespawns,
   takeInputToken
 } from "./sim";
+import { tuning } from "./tuning";
 
 describe("applyInput", () => {
-  it("moves at PLAYER.speed and faces the move direction", () => {
+  it("accelerates to runSpeed and, with no camera aim, turns to face the move direction", () => {
     const p = createPlayer("a");
-    applyInput(p, { seq: 1, dx: 1, dy: 0, attack: false, dodge: false }, 50, TICK_MS);
-    expect(p.x).toBeCloseTo(PLAYER.speed * (TICK_MS / 1000), 5);
+    applyInput(p, { seq: 1, dx: 1, dy: 0, attack: false, dodge: false }, TICK_MS, TICK_MS);
+    const dt = TICK_MS / 1000;
+    expect(p.vx).toBeCloseTo(tuning.movement.acceleration * dt, 9);
+    expect(p.x).toBeCloseTo(tuning.movement.acceleration * dt * dt, 9);
+    for (let i = 2; i <= 60; i++) applyInput(p, { seq: i, dx: 1, dy: 0, attack: false, dodge: false }, i * TICK_MS, TICK_MS);
+    expect(p.vx).toBeCloseTo(tuning.movement.runSpeed, 9);
     expect(p.z).toBeCloseTo(0, 5);
     expect(p.facing).toBeCloseTo(Math.PI / 2, 5);
-    expect(p.lastSeq).toBe(1);
+    expect(p.lastSeq).toBe(60);
+  });
+
+  it("faces the camera's aim instead when the frame carries one (strafe movement)", () => {
+    const p = createPlayer("a");
+    for (let i = 1; i <= 30; i++) applyInput(p, { seq: i, dx: 1, dy: 0, attack: false, dodge: false, aimX: 0, aimZ: -1 }, i * TICK_MS, TICK_MS);
+    expect(p.facing).toBeCloseTo(Math.PI, 5);
+    expect(p.vx).toBeCloseTo(tuning.movement.runSpeed * tuning.movement.strafeSpeedFrac, 9);
   });
 
   it("normalises diagonal input so it is not faster", () => {
     const p = createPlayer("a");
-    applyInput(p, { seq: 1, dx: 1, dy: 1, attack: false, dodge: false }, 50, TICK_MS);
-    expect(Math.hypot(p.x, p.z)).toBeCloseTo(PLAYER.speed * (TICK_MS / 1000), 5);
+    for (let i = 1; i <= 60; i++) applyInput(p, { seq: i, dx: 1, dy: 1, attack: false, dodge: false }, i * TICK_MS, TICK_MS);
+    expect(Math.hypot(p.vx, p.vz)).toBeCloseTo(tuning.movement.runSpeed, 9);
   });
 
   it("is deterministic: the same inputs give the same state", () => {
@@ -69,19 +83,45 @@ describe("applyInput", () => {
     expect(p.x).toBe(0);
   });
 
-  it("dodges forward when standing still and respects the cooldown", () => {
+  it("backsteps when standing still, has two charges, and they come back one at a time", () => {
     const p = createPlayer("a");
-    applyInput(p, { seq: 1, dx: 0, dy: 0, attack: false, dodge: true }, 100, TICK_MS);
-    expect(p.dodgeUntil).toBe(100 + PLAYER.dodgeMs);
-    expect(p.z).toBeGreaterThan(0);
+    const dg = tuning.dodge;
+    const press = (seq: number, t: number) => applyInput(p, { seq, dx: 0, dy: 0, attack: false, dodge: true }, t, TICK_MS);
+    press(1, 100);
+    expect(p.dodgeUntil).toBe(100 + dg.durationMs);
+    expect(p.z).toBeLessThan(0); // facing +z, so back is -z
+    expect(p.dodgeCharges).toBe(dg.charges - 1);
     const zAfterFirst = p.z;
-    // Still dodging: a second press does nothing new, but we keep moving.
-    applyInput(p, { seq: 2, dx: 0, dy: 0, attack: false, dodge: true }, 150, TICK_MS);
-    expect(p.dodgeUntil).toBe(100 + PLAYER.dodgeMs);
-    expect(p.z).toBeGreaterThan(zAfterFirst);
-    // After the dodge but inside the cooldown: no new dodge.
-    applyInput(p, { seq: 3, dx: 0, dy: 0, attack: false, dodge: true }, 500, TICK_MS);
-    expect(p.dodgeUntil).toBe(100 + PLAYER.dodgeMs);
+    // Early in the roll a second press is not a new dodge, and the roll goes on.
+    press(2, 100 + TICK_MS);
+    expect(p.dodgeUntil).toBe(100 + dg.durationMs);
+    expect(p.z).toBeLessThan(zAfterFirst);
+    // The whole roll covers the backstep's distance.
+    for (let i = 2; i * TICK_MS < dg.durationMs + TICK_MS; i++) applyInput(p, neutralInput(10 + i), 100 + i * TICK_MS, TICK_MS);
+    expect(p.z).toBeCloseTo(-dg.distance * dg.backstepDistanceFrac, 6);
+    // The second charge.
+    press(40, 600);
+    expect(p.dodgeUntil).toBe(600 + dg.durationMs);
+    expect(p.dodgeCharges).toBe(0);
+    // None left until the first comes back, chargeRechargeMs after it went.
+    press(41, 1200);
+    expect(p.dodgeUntil).toBe(600 + dg.durationMs);
+    press(42, 100 + dg.chargeRechargeMs);
+    expect(p.dodgeUntil).toBe(100 + dg.chargeRechargeMs + dg.durationMs);
+  });
+
+  it("a dodge cuts a swing short at any point, and the roll's tail ends at the next input", () => {
+    const p = createPlayer("a");
+    applyInput(p, { seq: 1, dx: 0, dy: 0, attack: true, dodge: false }, 100, TICK_MS);
+    expect(isAttacking(p, 100 + TICK_MS)).toBe(true);
+    applyInput(p, { seq: 2, dx: 1, dy: 0, attack: false, dodge: true }, 100 + TICK_MS, TICK_MS);
+    expect(p.attackUntil).toBe(100 + TICK_MS);
+    expect(p.attackHitAt).toBe(0);
+    expect(isDodging(p, 100 + 2 * TICK_MS)).toBe(true);
+    // Past cancelAfterMs a move press ends the roll at once.
+    const late = 100 + TICK_MS + tuning.dodge.cancelAfterMs + TICK_MS;
+    applyInput(p, { seq: 3, dx: 0, dy: 1, attack: false, dodge: false }, late, TICK_MS);
+    expect(p.dodgeUntil).toBe(late);
   });
 
   it("ignores movement while dead but still records the sequence", () => {
@@ -137,7 +177,8 @@ describe("combat", () => {
     until(() => e.phase === "windup");
     expect(e.phase).toBe("windup");
     // Player dodges just before the swing lands.
-    p.dodgeUntil = e.phaseUntil + 100;
+    p.dodgeAt = e.phaseUntil - 100;
+    p.dodgeUntil = p.dodgeAt + tuning.dodge.durationMs;
     until(() => e.phase === "recover");
     expect(p.hp).toBe(PLAYER.hp);
   });

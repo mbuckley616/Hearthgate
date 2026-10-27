@@ -4,13 +4,15 @@ import { OPEN_FIELD, type Level } from "./level";
 import { SNAPSHOT_KEEP, createPoseTrack, projectPose, pushPoseSnapshot, samplePoseTrack, type PoseSnapshot } from "./interp";
 
 const R = PLAYER.radius;
+/** A walking speed for the snapshots; the interpolation knows nothing of the sim's movement. */
+const SPEED = 6;
 /** A player walking +x at full speed, one snapshot per patch from t = 1000. */
-function walk(n: number, speed: number = PLAYER.speed, from = 1000): PoseSnapshot[] {
+function walk(n: number, speed: number = SPEED, from = 1000): PoseSnapshot[] {
   const snaps: PoseSnapshot[] = [];
   for (let i = 0; i < n; i++) snaps.push({ t: from + i * PATCH_MS, x: (speed * i * PATCH_MS) / 1000, z: 0, facing: Math.PI / 2 });
   return snaps;
 }
-const perTick = (PLAYER.speed * PATCH_MS) / 1000; // 0.2 m
+const perTick = (SPEED * PATCH_MS) / 1000; // 0.2 m
 
 describe("projectPose", () => {
   it("interpolates between snapshots and holds before the first", () => {
@@ -30,7 +32,7 @@ describe("projectPose", () => {
     const newest = snaps[3];
     const a = projectPose(snaps, newest.t + 30, OPEN_FIELD, R)!;
     expect(a.aheadMs).toBe(30);
-    expect(a.pose.x).toBeCloseTo(newest.x + (PLAYER.speed * 30) / 1000, 9);
+    expect(a.pose.x).toBeCloseTo(newest.x + (SPEED * 30) / 1000, 9);
     expect(a.pose.z).toBe(0);
     expect(a.pose.facing).toBe(newest.facing);
     const cap = projectPose(snaps, newest.t + INTERP.extrapolateMaxMs, OPEN_FIELD, R)!;
@@ -127,7 +129,7 @@ describe("pose track", () => {
     let t = newest.t + 8;
     let last = samplePoseTrack(tr, t, OPEN_FIELD)!;
     for (t = newest.t + 24; t <= newest.t + 40; t += 16) last = samplePoseTrack(tr, t, OPEN_FIELD)!;
-    expect(last.x).toBeCloseTo(newest.x + (PLAYER.speed * INTERP.extrapolateMaxMs) / 1000, 9);
+    expect(last.x).toBeCloseTo(newest.x + (SPEED * INTERP.extrapolateMaxMs) / 1000, 9);
     // The late snapshot: the player had stopped dead at the newest.
     pushPoseSnapshot(tr, { t: newest.t + PATCH_MS, x: newest.x, z: 0, facing: newest.facing }, OPEN_FIELD);
     expect(tr.errX).toBeCloseTo(last.x - newest.x, 9);

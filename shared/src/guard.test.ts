@@ -20,6 +20,7 @@ import {
   type InputFrame,
   type PlayerSim
 } from "./sim";
+import { tuning } from "./tuning";
 import { hasState } from "./states";
 
 let seq = 0;
@@ -55,7 +56,8 @@ describe("block, parry and posture", () => {
     expect(p.blockSince).toBe(1000);
     applyInput(p, frame({ block: true, dx: 1, attack: true }), 1050, TICK_MS);
     expect(p.blockSince).toBe(1000); // held, not re-raised
-    expect(p.x).toBeCloseTo(PLAYER.speed * GUARD.moveMult * (TICK_MS / 1000), 9);
+    const dt = TICK_MS / 1000;
+    expect(p.x).toBeCloseTo(Math.min(tuning.movement.acceleration * dt, tuning.movement.runSpeed * GUARD.moveMult) * dt, 9);
     expect(p.facing).toBe(0);
     expect(p.attackUntil).toBe(0);
     applyInput(p, frame({ block: true, ability: 1 }), 1100, TICK_MS);
@@ -70,8 +72,8 @@ describe("block, parry and posture", () => {
     applyInput(p, frame({ block: true }), 0, TICK_MS);
     applyInput(p, frame({ block: true, dodge: true }), 50, TICK_MS);
     expect(p.guarding).toBe(false);
-    applyInput(p, frame({ block: true }), 50 + PLAYER.dodgeMs + 50, TICK_MS);
-    expect(p.blockSince).toBe(50 + PLAYER.dodgeMs + 50);
+    applyInput(p, frame({ block: true }), 50 + tuning.dodge.durationMs + 50, TICK_MS);
+    expect(p.blockSince).toBe(50 + tuning.dodge.durationMs + 50);
   });
 
   it("a guard raised just before the blow parries it: no damage, the goblin staggered and slowed", () => {
