@@ -15,8 +15,13 @@ Michael (2026-10-27, in chat):
 - **The server stays as designed.** The fight runs on the server; trading as the design doc has it.
 - **The slice's look and gameplay feel replace Hearthgate's**: that is what he disliked. The look moves from the port's last step to step 2, all at once, with the KayKit packs and the old figures deleted.
 - **The village and the portal into various dungeons stay.**
-- **Dungeons are not single rooms or one long corridor:** "a dungeon builder / generator that makes unique dungeon configurations based on a set of pre built components (i.e. dungeon hallway, dungeon staircase, dungeon small room, dungeon medium room, etc.)", with open rooms like the slice's arena among them. Step 6 of the re-planned port; its detail questions are asked when it starts.
+- **Dungeons are not single rooms or one long corridor:** "a dungeon builder / generator that makes unique dungeon configurations based on a set of pre built components (i.e. dungeon hallway, dungeon staircase, dungeon small room, dungeon medium room, etc.)", with open rooms like the slice's arena among them. Step 6 of the re-planned port.
 `docs/combat-port-plan.md` section 4 has the new order.
+Michael, on step 6's questions (2026-10-27, in chat):
+- **Staircases** go up or down and connect to another room at a different height: "just to prevent a single dungeon from feeling flat." A staircase is a connector piece within the floor, not the way to the next floor.
+- **Size:** a floor (Michael: "I guess AKA a Dungeon") is 10 to 50 distinct rooms and pieces, growing with the dungeon's difficulty and level. The design doc's run of 3 to 5 floors with a rest room between stands unless Michael says otherwise.
+- **Unexplored rooms are not hidden.** A minimap is wanted instead.
+- **Pieces are authored in code**, and a small editor where Michael can build a dungeon by hand "would be awesome."
 
 ### 2026-10-26: Bringing the combat slice into Hearthgate (Claude (local))
 Michael's combat slice (a separate repo, M0 to M6 passed on 26 Oct) is the reference for Hearthgate's combat. `docs/combat-port-plan.md` has the plan, ten questions with the options as asked, and the porting order. In short: Hearthgate's server and netcode stay, and the slice's simulation, tuning file, debug panel, input layer, camera, views, effects and sound come across in seven steps, each with a playtest gate.
