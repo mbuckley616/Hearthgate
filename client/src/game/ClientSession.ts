@@ -11,6 +11,12 @@ import { createSimState } from '@hearthgate/shared/sim/world';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
 import { isPredictedFor, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
 
+/**
+ * A replay that moves the hero further than this counts as a correction: Hearthgate's lab has counted
+ * from 2 cm since Phase 0, so the numbers compare across the transplant. Smaller ones still ease out.
+ */
+const CORRECTION_M = 0.02;
+
 interface Snapshot {
   s: SimState;
   /** The local clock (s) when it arrived. */
@@ -20,7 +26,7 @@ interface Snapshot {
 /** Corrections and snaps so far, for the debug readout, the lab and the tests. */
 export interface PredictionStats {
   snapshots: number;
-  /** Snapshots whose replay moved the hero (eased out). */
+  /** Snapshots whose replay moved the hero over CORRECTION_M (eased out). */
   corrections: number;
   /** Corrections too big to ease (over 2.5 m), drawn as a jump. */
   snaps: number;
@@ -302,7 +308,7 @@ export class ClientSession implements Session {
     if (before && this.prevMe) {
       const d = { x: before.x - mine.x, y: before.y - mine.y, z: before.z - mine.z };
       const size = Math.hypot(d.x, d.y, d.z);
-      if (size > 1e-4) {
+      if (size > CORRECTION_M) {
         this.stats.corrections++;
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
         this.stats.sumCorrection += size;
