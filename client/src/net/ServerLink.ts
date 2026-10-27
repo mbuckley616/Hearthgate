@@ -31,7 +31,7 @@ export function serverUrl(): string {
 
 /** What a room runs, from the name the server registered it under. */
 function kindOf(room: Room): LevelKind {
-  return room.name === 'dungeon' ? 'arena' : 'village';
+  return room.name === 'dungeon' ? 'arena' : room.name === 'floor' ? 'floor' : 'village';
 }
 
 /**
@@ -59,9 +59,9 @@ export class ServerLink {
   }
 
   /** Join a friend's room by code, or start one of our own when there is none: a village (Play), or a dungeon run straight away (the tests and the lab). */
-  async join(code: string | null, create: 'village' | 'dungeon' = 'village'): Promise<void> {
+  async join(code: string | null, create: 'village' | 'dungeon' | 'floor' = 'village', options: Record<string, unknown> = {}): Promise<void> {
     try {
-      this.attach(code ? await this.client.joinById(code) : await this.client.create(create));
+      this.attach(code ? await this.client.joinById(code) : await this.client.create(create, options));
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
       this.emit({ t: 'error', reason: code && /not found|locked|full/i.test(text) ? 'No game with that code, or it is full' : `Could not reach the server (${text})` });

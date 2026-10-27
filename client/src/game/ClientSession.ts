@@ -2,6 +2,8 @@ import { applyServerEdits } from '@hearthgate/shared/config/edits';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import type { PortalState } from '@hearthgate/shared/game/portal';
 import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
+import { floorLevel } from '@hearthgate/shared/level/floor';
+import type { FloorSpec } from '@hearthgate/shared/level/generate';
 import { village } from '@hearthgate/shared/level/village';
 import { PROTOCOL_VERSION, type LevelKind, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
@@ -9,7 +11,7 @@ import { applyLoadout } from '@hearthgate/shared/sim/coop';
 import { separateBodies } from '@hearthgate/shared/sim/enemies';
 import { stepPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
-import { createSimState } from '@hearthgate/shared/sim/world';
+import { createSimState, worldNow } from '@hearthgate/shared/sim/world';
 import { addArrivalSample, createClockSync, remoteTimeAt, type ClockConfig, type ClockSync } from '@hearthgate/shared/net/clock';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
 import { isPredictedFor, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
@@ -44,8 +46,16 @@ function clockConfig(): ClockConfig {
 
 /** Each level's world, built once: the village and the arena (T3). */
 const worlds: Partial<Record<LevelKind, World>> = {};
-export function worldFor(kind: LevelKind): World {
+export function worldFor(kind: Exclude<LevelKind, 'floor'>): World {
   return (worlds[kind] ??= buildWorld(kind === 'village' ? village : arena));
+}
+
+/** A generated floor's world, from the spec its room sent (T4); the same spec is the same floor, so the last one is kept. */
+let lastFloor: { key: string; world: World } | null = null;
+export function floorWorldFor(spec: FloorSpec): World {
+  const key = JSON.stringify(spec);
+  if (lastFloor?.key !== key) lastFloor = { key, world: buildWorld(floorLevel(spec)) };
+  return lastFloor.world;
 }
 
 interface Snapshot {
@@ -131,8 +141,8 @@ export class ClientSession implements Session {
   world: World = worldFor('village');
   /** Bumped each time a room is joined (the first, and each portal's), so the game rebuilds its view. */
   levelVersion = 0;
-  /** The open portal and how full it is, from the latest snapshot. */
-  portal: PortalState | null = null;
+  /** The open rings and how full each is, from the latest snapshot. */
+  portals: PortalState[] = [];
   /** What to draw before the first snapshot: this level, empty. */
   private empty: SimState;
   readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0, bigPlaced: 0 };
@@ -154,15 +164,17 @@ export class ClientSession implements Session {
     loadout: Loadout,
     /** The server to play on (default: serverUrl(), from the page); the netcode test passes its own. */
     url?: string,
-    /** With no code, the room to make: a village (Play), or a dungeon run straight away (?dungeon, the tests and the lab). */
-    create: 'village' | 'dungeon' = 'village',
+    /** With no code, the room to make: a village (Play), the slice's arena (?dungeon, the tests and the lab), or a generated floor (?floor). */
+    create: 'village' | 'dungeon' | 'floor' = 'village',
+    /** What to make it with: a floor's seed and size (?floor&seed=N&pieces=N). */
+    createOptions: Record<string, unknown> = {},
   ) {
     this.relay = new ServerLink(url);
     this.code = code ?? '';
     this.loadout = loadout;
     this.empty = createSimState(this.world.level, [], this.world);
     this.relay.onEvent((ev) => this.onRelay(ev));
-    void this.relay.join(code, create);
+    void this.relay.join(code, create, createOptions);
   }
 
   get playing(): boolean {
@@ -276,7 +288,7 @@ export class ClientSession implements Session {
   private predictTick(cmd: PlayerCommand, step: number): void {
     const pred = this.pred!;
     pred.events = [];
-    const w = pred.run.gateClosed ? this.world : { ...this.world, colliders: this.world.collidersOpen };
+    const w = worldNow(this.world, pred);
     stepPlayer(this.me!, cmd, step, w, pred);
     // The server pushes heroes out of enemy bodies in the enemy step, which prediction never runs:
     // push against the enemies as the last snapshot had them, or every brush with one is a correction (T2).
@@ -316,10 +328,8 @@ export class ClientSession implements Session {
     switch (ev.t) {
       case 'joined':
         this.code = ev.code;
-        this.kind = ev.kind;
-        this.world = worldFor(ev.kind);
-        this.empty = createSimState(this.world.level, [], this.world);
-        this.levelVersion++;
+        // A floor is built when its welcome brings the spec; until then the old room's stays drawn.
+        if (ev.kind !== 'floor') this.enterWorld(ev.kind, worldFor(ev.kind));
         this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout });
         break;
       case 'error':
@@ -339,6 +349,7 @@ export class ClientSession implements Session {
     if (msg.k === 'welcome') {
       this.localId = msg.id;
       this.state = 'playing';
+      if (msg.floor) this.enterWorld('floor', floorWorldFor(msg.floor));
     } else if (msg.k === 'refused') {
       this.state = 'refused';
       this.message = msg.reason;
@@ -347,7 +358,7 @@ export class ClientSession implements Session {
       applyServerEdits(msg.edits);
       this.tuningVersion++;
     } else if (msg.k === 'snap') {
-      this.portal = msg.portal;
+      this.portals = msg.portals;
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
     } else if (msg.k === 'handoff') {
       this.leaveRoom();
@@ -374,8 +385,16 @@ export class ClientSession implements Session {
     this.sync = createClockSync(clockConfig());
     this.inbox = [];
     this.err = { x: 0, y: 0, z: 0 };
-    this.portal = null;
+    this.portals = [];
     this.diagPred.clear();
+  }
+
+  /** This room runs that level: build its empty state and tell the game to rebuild its views. */
+  private enterWorld(kind: LevelKind, world: World): void {
+    this.kind = kind;
+    this.world = world;
+    this.empty = createSimState(world.level, [], world);
+    this.levelVersion++;
   }
 
   private onSnapshot(s: SimState, acks: Record<string, number>, events: SimEvent[], scale: number): void {

@@ -108,6 +108,12 @@ export class SceneRenderer {
     s.camera.updateProjectionMatrix();
   }
 
+  /** Centre the moon's shadow area on (x, z): a generated floor's shadows follow the hero (T4); every other level keeps it at the origin. */
+  followShadow(x: number, z: number): void {
+    this.moon.position.set(x - 8, 22, z + 6);
+    this.moon.target.position.set(x, 0, z);
+  }
+
   resize(width: number, height: number): void {
     this.renderer.setPixelRatio(pixelRatio());
     this.renderer.setSize(width, height);

@@ -79,9 +79,9 @@ describe('the arena’s way home', () => {
     host.sim.run.phase = 'wave';
     expect(portalFor(world, host.sim)).toBeNull();
     host.sim.run.phase = 'won';
-    expect(portalFor(world, host.sim)).toEqual(ARENA_EXIT_PORTAL);
+    expect(portalFor(world, host.sim)).toMatchObject({ ...ARENA_EXIT_PORTAL, to: 'village' });
     host.sim.run.phase = 'lost';
-    expect(portalFor(world, host.sim)).toEqual(ARENA_EXIT_PORTAL);
+    expect(portalFor(world, host.sim)).toMatchObject({ ...ARENA_EXIT_PORTAL, to: 'village' });
   });
 
   it('a downed player does not hold the party back, and nobody standing does not take it', () => {

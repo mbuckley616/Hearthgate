@@ -3,6 +3,7 @@ import { groundHeight, type World } from '../level/arena';
 import { nextRandom } from './combat';
 import { collectAllDrops, spawnDrop } from './drops';
 import { createEnemy } from './enemies';
+import { stepFloorRun } from './floorRun';
 import { createPlayer } from './player';
 import type { RunState, SimState } from './types';
 
@@ -35,6 +36,7 @@ const active = (r: RunState) => r.phase === 'intro' || r.phase === 'wave' || r.p
  * is the Warden, and a full wipe ends the run (brief: "A full wipe restarts the room").
  */
 export function stepRun(state: SimState, dt: number, world: World): void {
+  if (world.level.dungeon) return stepFloorRun(state, dt, world);
   const r = state.run;
   r.timer += dt;
   if (active(r)) r.elapsed += dt;

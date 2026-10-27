@@ -11,7 +11,6 @@ import { KeyboardMouseSource } from '../input/KeyboardMouseSource';
 import type { ActionFrame } from '../input/actions';
 import type { World } from '@hearthgate/shared/level/arena';
 import { TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
-import type { LevelKind } from '@hearthgate/shared/net/protocol';
 import { AmbientView } from '../render/AmbientView';
 import { DropView } from '../render/DropView';
 import { EnemiesView } from '../render/EnemyView';
@@ -20,6 +19,7 @@ import { HeroView } from '../render/HeroView';
 import { Nameplate } from '../render/Nameplate';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
+import { FloorView } from '../render/FloorView';
 import { RoomView } from '../render/RoomView';
 import { PortalView } from '../render/PortalView';
 import { VillageView } from '../render/VillageView';
@@ -28,9 +28,11 @@ import { SceneRenderer } from '../render/SceneRenderer';
 import { TelegraphView } from '../render/TelegraphView';
 import { rollItem } from '@hearthgate/shared/sim/gear';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
+import { worldNow } from '@hearthgate/shared/sim/world';
 import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
 import { Hud } from '../ui/Hud';
+import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { Settings } from '../ui/Settings';
@@ -78,12 +80,14 @@ export class Game {
   private readonly kbm: KeyboardMouseSource;
   private readonly cam: OrbitCamera;
   private readonly gfx: SceneRenderer;
-  private room: RoomView | VillageView;
+  private room: RoomView | VillageView | FloorView;
   private ambient: AmbientView;
-  /** Which level the views were built for, and the session's room count they last followed. */
-  private builtKind: LevelKind;
+  /** Which level's world the views were built for (a new floor is a new world), and the session's room count they last followed. */
+  private builtWorld: World;
   private shownLevel = 0;
-  private readonly portal = new PortalView();
+  /** The open rings: one in the village or the arena, two in a rest room (T4). */
+  private readonly portals = [new PortalView(), new PortalView()];
+  private readonly minimap = new Minimap();
   private readonly talk = new TalkUi();
   private readonly hero: HeroView;
   private readonly remoteHeroes = new Map<string, RemoteHero>();
@@ -117,10 +121,14 @@ export class Game {
     // A ?join=CODE link joins a friend's room; anything else makes a village of our own on the server (solo until someone joins).
     const params = new URLSearchParams(location.search);
     const join = params.get('join');
-    // ?dungeon (with ?play) makes a dungeon run straight away: the lab and the browser tests start in a fight.
-    this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, params.has('dungeon') ? 'dungeon' : 'village');
-    this.builtKind = this.session.kind;
-    setLookMood(this.builtKind);
+    // ?dungeon (with ?play) makes the slice's arena straight away: the lab and the browser tests start in a fight.
+    // ?floor makes a generated floor (T4), ?seed=N&pieces=N picking which: the gate's five floors.
+    const create = params.has('floor') ? 'floor' : params.has('dungeon') ? 'dungeon' : 'village';
+    const num = (k: string) => (params.has(k) ? Number(params.get(k)) : undefined);
+    const floorOptions = { seed: num('seed') ?? Math.floor(Math.random() * 1e9), pieces: num('pieces'), floors: num('floors'), floor: num('at') };
+    this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, create, create === 'floor' ? floorOptions : {});
+    this.builtWorld = this.world;
+    setLookMood(this.session.kind);
 
     const level = this.world.level;
     this.cam = new OrbitCamera(window.innerWidth / window.innerHeight, this.world.colliders, (level.spawn.yawDeg * Math.PI) / 180);
@@ -145,7 +153,7 @@ export class Game {
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
-      this.portal.group,
+      ...this.portals.map((p) => p.group),
     );
 
     const canvas = this.gfx.renderer.domElement;
@@ -266,8 +274,9 @@ export class Game {
     return this.session.world;
   }
 
-  private buildRoomView(): RoomView | VillageView {
-    return this.world.level.village ? new VillageView(this.world, this.palette) : new RoomView(this.world);
+  private buildRoomView(): RoomView | VillageView | FloorView {
+    if (this.world.level.village) return new VillageView(this.world, this.palette);
+    return this.world.level.dungeon ? new FloorView(this.world) : new RoomView(this.world);
   }
 
   /**
@@ -279,17 +288,21 @@ export class Game {
     this.shownLevel = this.session.levelVersion;
     const kind = this.session.kind;
     const level = this.world.level;
-    if (kind !== this.builtKind) {
-      this.builtKind = kind;
+    if (this.world !== this.builtWorld) {
+      this.builtWorld = this.world;
       this.gfx.scene.remove(this.room.group, this.ambient.group, this.telegraphs.group);
       for (const g of [this.room.group, this.ambient.group, this.telegraphs.group]) disposeTree(g);
       this.room = this.buildRoomView();
       this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
       this.telegraphs = new TelegraphView(this.world);
       this.gfx.scene.add(this.room.group, this.ambient.group, this.telegraphs.group);
-      this.gfx.setLevel(level.floorSize / 2);
+      // A generated floor is too big for one shadow map: the shadows follow the hero over a room's width instead.
+      this.gfx.setLevel(level.dungeon ? 26 : level.floorSize / 2);
+      if (!level.dungeon) this.gfx.followShadow(0, 0);
       setLookMood(kind);
     }
+    this.minimap.setFloor(level.dungeon ?? null);
+    this.runUi.setFloor(level.dungeon?.def.spec ?? null);
     for (const [id, r] of this.remoteHeroes) {
       this.gfx.scene.remove(r.view.root, r.view.effects);
       r.plate.dispose();
@@ -414,7 +427,9 @@ export class Game {
     );
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host');
-    this.portal.update(this.session.portal, dt);
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
+    if (actions.pressed.has('map')) this.minimap.toggle();
+    this.minimap.update(world, curr, localId, this.session.portals, realDt);
     this.lockOn.updateMarker(world, dt);
     const ended = this.session.ended;
     this.party.update(this.session.status(), world, curr, localId, ended);
@@ -428,8 +443,12 @@ export class Game {
       this.hud.update(curr, realDt, inRun);
       const mv = tuning.movement;
       const sprint = Math.min(1, Math.max(0, (Math.hypot(curr.vx, curr.vz) - mv.runSpeed) / Math.max(0.1, mv.sprintSpeed - mv.runSpeed)));
-      this.cam.setColliders(world.run.gateClosed ? this.world.colliders : this.world.collidersOpen);
+      this.cam.setColliders(worldNow(this.world, world).colliders);
       this.cam.update(realDt, this.hero.root.position, sprint);
+    }
+    if (this.room instanceof FloorView) {
+      this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
+      this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
     }
     this.room.update(realDt, this.presentTime, this.cam.occluders, world.run.gateClosed);
     if (draw) this.gfx.render();
@@ -469,13 +488,18 @@ export class Game {
     this.enemies.update(view.prev.enemies, view.curr.enemies, view.alpha, realDt, view.curr.time);
     this.ambient.update(realDt);
     this.fx.update(realDt);
-    this.portal.update(this.session.portal, realDt);
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, realDt));
     const sway = Math.sin(this.titleTime * 0.08);
     const cam = this.cam.camera;
     if (this.world.level.village) {
       // Over the square from the south, looking up the path to the shrine and its ring.
       cam.position.set(sway * 5, 4.6 + Math.sin(this.titleTime * 0.13) * 0.3, 19);
       cam.lookAt(sway * 2, 2.4, -12);
+    } else if (this.world.level.dungeon) {
+      // A generated floor: from behind the way in, looking north into it.
+      const sp = this.world.level.spawn;
+      cam.position.set(sp.x + sway * 2, 4.5, sp.z + 3);
+      cam.lookAt(sp.x, 1.5, sp.z - 10);
     } else {
       // A slow sway just inside the entrance, looking up the arena past the braziers.
       cam.position.set(sway * 3.2, 3.4 + Math.sin(this.titleTime * 0.13) * 0.3, 11.2);
@@ -736,6 +760,7 @@ export class Game {
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
           <tr><td>Slow motion</td><td>\\ (backslash)</td></tr>
           <tr><td>Gear &amp; talents</td><td>I · View (between runs)</td></tr>
+          <tr><td>Map: corner or whole floor</td><td>M · Menu / Start (in a dungeon)</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
           <tr><td>Release mouse / pause</td><td>Esc</td></tr>
         </table>`;

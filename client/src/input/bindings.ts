@@ -26,6 +26,8 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   slowMo: ['Backslash'],
   hitboxes: ['KeyH'],
   inventory: ['KeyI'],
+  // The minimap: the corner or the whole floor (T4).
+  map: ['KeyM'],
   menuBack: ['Escape'],
 };
 
@@ -53,6 +55,7 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   jump: [3], // Y / Triangle
   interact: [0], // A / Cross
   inventory: [8], // View / Select
+  map: [9], // Menu / Start
   ability1: [4], // LB
   ability2: [5], // RB
   lockOn: [11], // right stick click

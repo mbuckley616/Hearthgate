@@ -649,6 +649,34 @@ export const tuning = {
   },
 
   /**
+   * Generated dungeons (T4, decisions.md 27 Oct): a run of 3 to 5 floors, each 10 to 50 pieces,
+   * growing with the floor, the dungeon's tier and the party's level. The server reads these when
+   * it makes a floor; the layout itself comes from the seed, so browsers never need them.
+   */
+  dungeon: {
+    /** The dungeon's difficulty until the portal offers a choice: floors per run are 2 + tier (3 to 5). */
+    tier: 1,
+    /** Pieces on a tier-1 run's first floor with new heroes. */
+    basePieces: 14,
+    piecesPerFloor: 6,
+    piecesPerTier: 8,
+    /** Per style level of the party's best hero, averaged over the party. */
+    piecesPerLevel: 0.5,
+    /** A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor. */
+    budgetPerCell: 0.45,
+    /** Each floor deeper adds this fraction of the budget. */
+    budgetPerFloor: 0.25,
+    /** Each player past the first adds this much budget (the slice: one grunt a wave). */
+    budgetPerExtraPlayer: 1.5,
+    /** The rest comes as reinforcements once the first group is mostly down. */
+    firstGroupShare: 0.6,
+    /** Debug: 0 = a fresh seed each run; anything else pins the run's seed (the gate's five floors). */
+    seed: 0,
+    /** Debug: 0 = pieces from the tier, floor and level; 10 to 50 forces every floor's size. */
+    pieces: 0,
+  },
+
+  /**
    * Style abilities (brief: "Abilities"): Q / E, LB / RB, cooldowns only.
    * The second ability per style unlocks at style level 2 once levels exist
    * (M4); until then all six are available. Damage is x combat.baseDamage.
@@ -911,6 +939,18 @@ export type Tuning = typeof tuning;
 /** Slider ranges for the debug panel: "section.key" -> [min, max, step]. */
 export const tuningRanges: Record<string, [number, number, number]> = {
   'sim.tickRate': [20, 120, 1],
+
+  'dungeon.tier': [1, 3, 1],
+  'dungeon.basePieces': [10, 50, 1],
+  'dungeon.piecesPerFloor': [0, 15, 1],
+  'dungeon.piecesPerTier': [0, 20, 1],
+  'dungeon.piecesPerLevel': [0, 3, 0.1],
+  'dungeon.budgetPerCell': [0.1, 1.5, 0.05],
+  'dungeon.budgetPerFloor': [0, 1, 0.05],
+  'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
+  'dungeon.firstGroupShare': [0.2, 1, 0.05],
+  'dungeon.seed': [0, 99999, 1],
+  'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 16, 1],
 
   'movement.walkSpeed': [0.5, 5, 0.1],

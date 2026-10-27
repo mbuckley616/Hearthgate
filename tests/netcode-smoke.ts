@@ -13,9 +13,12 @@
  *   8. the dev cheats: skip to the Warden;
  *   9. the real ClientSession (the browser's) runs, sprints and dodges for three seconds with no
  *      snap and ends exactly where the server has it;
- *   8b. the village and the portal (T3): two bots make a village and walk into its ring together, are
- *      handed into one dungeon run, finish it (the dev cheats), stand in the ring that opens in the
- *      antechamber and are handed back to the same village;
+ *   9b. the real ClientSession on a generated floor (T4): it builds the floor the server sent, and its
+ *      predicted hero walks to a room at another height, up or down a staircase, with no snap;
+ *   8b. the village, the portal and a generated run (T3, T4): two bots make a village and walk into its
+ *      ring together, are handed onto floor 1 of a generated run, walk it from the entrance to the rest
+ *      room (clearing each fight room that shuts behind them with the dev cheats), bank their drops,
+ *      take the deeper ring onto floor 2, walk that one too and take its ring home to the same village;
  *  10. stress: four bots fight in a fresh room for STRESS_MS; every input is applied, nobody is
  *      dropped, snapshots keep coming at 30 a second and the fight keeps wall time.
  *
@@ -23,6 +26,8 @@
  */
 import { arena } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
+import { floorLevel, insidePiece, walkRoute, type FloorLayout } from "@hearthgate/shared/level/floor";
+import { floorSeed } from "@hearthgate/shared/level/generate";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
 import { Bot, MSG, TICK_MS, bootServer, command, loadout, sleep, waitForHealth } from "./bots";
@@ -144,33 +149,48 @@ async function main() {
     for (const x of bots) await x.leave();
     bots.length = 0;
 
-    // 8b. The village and the portal.
+    // 8b. The village, its ring into a generated run, two floors walked, and home.
     const va = await bot("Vale", null, "village");
     const vb = await bot("Wren", va.code, "village");
     const home = va.code;
     check(va.kind === "village" && va.state.enemies.length === 0 && va.state.run.phase === "ante", "a village: no enemies, no run", `code ${home}`);
-    check(va.snaps[va.snaps.length - 1].portal?.to === "arena", "the village's portal is open and leads to a run");
+    check(va.snaps[va.snaps.length - 1].portals[0]?.to === "dungeon", "the village's ring is open and leads into a dungeon");
+    // Small floors from a fixed seed, so the walk is short and the same every time.
+    va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 12 } });
+    va.send({ k: "tune", edit: { path: "dungeon.seed", value: 4242 } });
     const ring = village.village!.portal;
     // Round the well (it stands between the spawn and the shrine), then into the ring.
     await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
     // Anywhere well inside the 2.4 m ring will do: a looser mark than a spot, so a slow runner settles on it.
     await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.5), vb.walkTo(ring.x + 0.6, ring.z, 1.5)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's hand-off"), vb.until(() => vb.handoff !== null, 5000, "Wren's hand-off")]);
-    check(va.handoff?.level === "arena" && vb.handoff?.level === "arena", "two seconds in the ring together hand both on to a run");
+    check(va.handoff?.level === "floor" && vb.handoff?.level === "floor", "two seconds in the ring together hand both on to a generated floor");
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
-    check(va.kind === "dungeon" && va.code === vb.code && va.code !== home, "both arrive in the same dungeon room", va.code);
-    check(va.state.players.length === 2 && va.me()!.z > arena.arenaEntryZ, "the party stands in the antechamber", `z ${va.me()!.z.toFixed(1)}`);
-    va.send({ k: "cheat", cheat: "warden" });
-    await va.until(() => va.state.run.wave === 4 && va.state.enemies.length > 0, 3000, "the Warden");
-    va.send({ k: "cheat", cheat: "killAll" });
-    await va.until(() => va.state.run.phase === "won", 5000, "the run won");
-    const exit = va.snaps[va.snaps.length - 1].portal;
-    check(exit?.to === "village", "a ring opens in the antechamber when the run is over", exit ? `(${exit.x}, ${exit.z})` : "none");
-    await Promise.all([va.walkTo(exit!.x - 0.5, exit!.z, 1.1), vb.walkTo(exit!.x + 0.5, exit!.z, 1.1)]);
+    const spec1 = va.floor;
+    check(va.kind === "floor" && va.code === vb.code && va.code !== home && spec1?.floor === 1 && spec1.pieces === 12 && spec1.floors === 3, "both arrive on floor 1 of 3 of one run", `${va.code}, ${JSON.stringify(spec1)}`);
+    const floor1 = floorLevel(spec1!).dungeon!;
+    check(insidePiece(floor1.pieces[floor1.def.entrance], va.me()!.x, va.me()!.z), "the party stands in the floor's entrance");
+    const fights1 = await walkFloor(va, vb, floor1);
+    check(va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "rested")), "reaching the rest room together banks the party's drops");
+    const rings = va.snaps[va.snaps.length - 1].portals;
+    check(rings.map((r) => r.to).join(",") === "deeper,village", "the rest room has a ring deeper and a ring home", rings.map((r) => r.to).join(","));
+    const deeper = rings[0];
+    await Promise.all([va.walkTo(deeper.x - 0.5, deeper.z, 1.1), vb.walkTo(deeper.x + 0.5, deeper.z, 1.1)]);
+    await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way deeper"), vb.until(() => vb.handoff !== null, 5000, "Wren's way deeper")]);
+    await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
+    const spec2 = va.floor;
+    check(va.kind === "floor" && va.code === vb.code && spec2?.floor === 2 && spec2.seed !== spec1!.seed, "the deeper ring takes both onto floor 2, a different floor", JSON.stringify(spec2));
+    const floor2 = floorLevel(spec2!).dungeon!;
+    const fights2 = await walkFloor(va, vb, floor2);
+    check(fights1 + fights2 > 0, "fight rooms on the way shut behind the party and open once cleared", `${fights1} + ${fights2} rooms`);
+    const homeRing = va.snaps[va.snaps.length - 1].portals.find((r) => r.to === "village")!;
+    await Promise.all([va.walkTo(homeRing.x - 0.5, homeRing.z, 1.1), vb.walkTo(homeRing.x + 0.5, homeRing.z, 1.1)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way home"), vb.until(() => vb.handoff !== null, 5000, "Wren's way home")]);
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
-    check(va.kind === "village" && va.code === home && vb.code === home, "the ring takes both home to the same village", va.code);
+    check(va.kind === "village" && va.code === home && vb.code === home, "the ring home takes both to the same village", va.code);
     check(va.state.players.length === 2, "both stand in the village again");
+    va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
+    va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();
     bots.length = 0;
 
@@ -199,6 +219,56 @@ async function main() {
     const lastSnap = cs.view().curr.players.find((p) => p.id === cs.localId)!;
     check(cs.stats.snaps === 0, "the ClientSession never snapped", `${cs.stats.snapshots} snapshots, ${cs.stats.corrections} corrections, largest ${cs.stats.maxCorrection.toFixed(3)} m`);
     check(Math.hypot(hero.x - lastSnap.x, hero.z - lastSnap.z) < 1e-6, "standing still, it is drawn exactly where the server has it", `${hero.x.toFixed(3)}, ${hero.z.toFixed(3)}`);
+
+    // 9b. The browser's ClientSession on a generated floor, up or down a staircase. No enemies: this is about the floor.
+    const fc = new ClientSession(null, loadout("Echo"), ENDPOINT, "floor", { seed: 777, pieces: 16 });
+    const fStart = performance.now();
+    while (!fc.playing || !fc.world.level.dungeon) {
+      if (performance.now() - fStart > 5000) throw new Error("ClientSession never reached the floor");
+      await sleep(5);
+    }
+    fc.request({ k: "tune", edit: { path: "debug.enemiesEnabled", value: false } });
+    const layout = fc.world.level.dungeon;
+    check(layout.def.spec.seed === floorSeed(777, 1) && layout.def.spec.pieces === 16, "the ClientSession builds the floor its room sent", JSON.stringify(layout.def.spec));
+    const entrance = layout.pieces[layout.def.entrance];
+    const hops = (id: number) => walkRoute(layout, layout.def.entrance, id).length;
+    const target = layout.pieces.filter((p) => p.y !== entrance.y && p.kind !== "stair").sort((p, q) => hops(p.id) - hops(q.id))[0];
+    const route = walkRoute(layout, layout.def.entrance, target.id);
+    let fLast = performance.now();
+    let wp = 0;
+    const fT = performance.now();
+    while (wp < route.length && performance.now() - fT < 40000) {
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - fLast) / 1000);
+      fLast = now;
+      const me = fc.hero()?.curr;
+      let mx = 0;
+      let mz = 0;
+      if (me) {
+        const dx = route[wp].x - me.x;
+        const dz = route[wp].z - me.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.8) wp++;
+        else {
+          mx = dx / d;
+          mz = dz / d;
+        }
+      }
+      fc.advance(command({ moveX: mx, moveZ: mz, aimX: mx, aimZ: mx || mz ? mz : -1 }), dt);
+      await sleep(Math.max(1, TICK_MS / 2));
+    }
+    const settleAt = performance.now();
+    while (performance.now() - settleAt < 700) {
+      const now = performance.now();
+      fc.advance(command(), Math.min(0.1, (now - fLast) / 1000));
+      fLast = now;
+      await sleep(Math.max(1, TICK_MS / 2));
+    }
+    const fHero = fc.hero()!.curr;
+    check(wp === route.length && insidePiece(target, fHero.x, fHero.z), "the predicted hero walks the floor to a room at another height", `${target.kind} at ${target.y.toFixed(1)} m from ${entrance.y.toFixed(1)} m, waypoint ${wp}/${route.length}`);
+    check(Math.abs(fHero.y - target.y) < 0.05, "and stands on its floor", `y ${fHero.y.toFixed(2)}`);
+    check(fc.stats.snaps === 0, "the ClientSession never snapped on the floor", `${fc.stats.snapshots} snapshots, ${fc.stats.corrections} corrections, largest ${fc.stats.maxCorrection.toFixed(3)} m`);
+    fc.request({ k: "tune", edit: { path: "debug.enemiesEnabled", value: true } });
 
     // 10. Stress.
     const s1 = await bot("S1", null);
@@ -232,6 +302,32 @@ async function main() {
   }
   console.log(failures ? `\n${failures} failed` : "\nall passed");
   process.exit(failures ? 1 : 0);
+}
+
+/**
+ * Walk a pair of bots from a floor's entrance to its exit along the doorways. A fight room shuts once
+ * both are inside it; the dev cheats clear it (killing everything until the doors open) before they
+ * walk on.
+ */
+async function walkFloor(a: Bot, b: Bot, layout: FloorLayout): Promise<number> {
+  const route = walkRoute(layout, layout.def.entrance, layout.def.exit);
+  let fights = 0;
+  for (const pt of route) {
+    await Promise.all([a.walkTo(pt.x, pt.z, 1.2, 30000, false), b.walkTo(pt.x, pt.z, 1.2, 30000, false)]);
+    if (a.state.run.phase !== "intro" && a.state.run.phase !== "wave") continue;
+    fights++;
+    await a.until(() => a.state.run.phase === "wave", 5000, "the room's fight");
+    const phase = (): string => a.state.run.phase;
+    for (let k = 0; k < 20 && phase() !== "ante"; k++) {
+      a.send({ k: "cheat", cheat: "killAll" });
+      await Promise.all([a.drive(15), b.drive(15)]);
+    }
+    if (phase() !== "ante") throw new Error(`a fight room never opened: ${a.state.run.phase}`);
+  }
+  check(a.state.floor!.cleared.length === fights, "walking the floor, every room that shut opened again", `${fights} on the way`);
+  const exit = layout.pieces[layout.def.exit];
+  check(insidePiece(exit, a.me()!.x, a.me()!.z) && insidePiece(exit, b.me()!.x, b.me()!.z), `both reach the far end (${exit.kind}), ${route.length} waypoints`);
+  return fights;
 }
 
 void main();

@@ -2,6 +2,31 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T4: the dungeon generator
+
+**What changed**
+
+- **The kit** (`shared/src/level/kit.ts`): 13 pieces in code on a 6 m grid (entrance, hall, long hall, corner, junction, crossing, staircase, small, medium and large rooms, the slice-sized arena, rest room, the Warden's hall), each with doorway sockets in the middle of a cell edge, pillars and braziers. Walls stand inside a piece's own cells, so neighbours meet back to back and never overlap.
+- **The generator** (`generate.ts`): seeded and pure. A floor grows from its entrance, more than half the time from the newest doorways (paths run on) and otherwise from any doorway (branches); it puts the exit (a rest room, or the Warden's hall on the last floor) at the doorway farthest from the entrance, closes loops with short halls and corners between open doorways at one height that are four or more pieces apart, fills to the piece count with side rooms, and tidies away any hall that leads nowhere. Staircases climb or drop 2.4 m. A try that comes out without a joined staircase, a loop (14 pieces and up) or its exit moves to the next seed, so a spec always gives the same floor. About 2 ms for 50 pieces.
+- **Floors as levels** (`floor.ts`): the slice's `LevelDef` and `World`, like the village: walls, lintels, a gate per doorway of each fight room (`World.roomColliders`), raised rooms as flat surfaces, staircases as the slice's ramps between landings.
+- **The run, room by room** (`sim/floorRun.ts`): the slice's gate wait, intro, budgeted group (size, floor, party; grunts, archers and brutes), reinforcements and heal, per room; a wipe ends the run where it happens; the rest room banks drops. In `SimState.floor`, never set in the arena. The enemy code's only changes: a floor's open-ground check, and a guard for a level without ledge ramps.
+- **Rings** are a list (the rest room's violet deeper and gold home), at their floor's height. **Protocol 4**: `welcome` carries a floor's spec, `snap` the rings.
+- **Server**: `FloorRoom` per floor, carrying the run's plan (`runPlan.ts`, `tuning.dungeon`: 3 floors at tier 1, 15 pieces on the first floor growing 6 a floor, more with tier and level). The village's ring starts a run; the arena stays for the tests and the lab.
+- **Client**: `FloorView` (pieces at their heights, staircases drawn as steps over the ramp, fading walls, portcullises, ten torch lights following the hero, shadows following the hero), the **minimap** (bottom right, every piece shaded by height, stairs arrowed, fight rooms dotted until cleared, the shut room in red, rings, party and your arrow; M or Start for the whole floor), floor texts in the run UI, `?floor&seed=N&pieces=N`.
+- **Tests**: 9 generator tests on five seeds from 10 to 50 pieces (deterministic, distinct shapes, reachable, doorways face to face, no overlapping colliders even shut, branching and loops, a joined staircase, open doorways and spawn spots, a hero walking entrance to exit in the sim); 6 floor-run tests (check 51). `test:net`: two bots village → floor 1 → rest room → deeper → floor 2 → home, and the browser's ClientSession up a staircase with no snap. Browser smoke 4/4 with the round trip now through a floor. Parity identical.
+
+**Learned**
+
+- Growing only from the newest doorway makes one corridor; only from random ones makes a blob. A mix, plus loop-closing paths through empty cells, gives floors that branch and loop.
+- A smooth ramp reads as flat floor from behind the hero; drawing steps over it (the sim still walks the ramp, feet within 10 cm) makes a climb obvious.
+- One shadow map cannot cover a 150 m floor; the moon's shadow area follows the hero instead.
+- A floor carries its corpses in every snapshot unless they go: the dead of the last room are dropped when the next room starts.
+
+**Next**
+
+- Michael: the T4 gate on the hosted build once merged: `?floor&play&seed=101&pieces=10`, `seed=202&pieces=18`, `seed=303&pieces=28&at=2`, `seed=404&pieces=40&floors=5`, `seed=505&pieces=50&floors=5&at=5` (M for the whole floor). Then decisions.md's question on clearing a floor.
+- T4b, the dungeon editor; the builder can take kit pieces (archer ledges in the arena piece, more room shapes) and the minimap's polish.
+
 ## 2026-10-27: local session, T3: the village and the portal
 
 **What changed**
