@@ -178,3 +178,15 @@ body {
   transition: opacity 0.3s;
   pointer-events: none;
 }
+
+.editor-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.editor-tab {
+  flex: 0 0 auto;
+  min-width: 96px;
+}

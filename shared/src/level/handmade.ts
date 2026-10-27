@@ -2,13 +2,14 @@ import { MAX_PIECES, type FloorDef, type FloorSpec, type Piece } from './generat
 import { KIT, OPPOSITE, SIDE_DIR, rotSize, rotSocket, type PieceKind } from './kit';
 
 /**
- * Hand-built dungeons (T4b, decisions.md 27 Oct): a floor laid out piece by piece in the editor
- * instead of grown by the generator. Only the placements are stored (which piece, where, which way,
+ * Hand-built dungeons (T4b, decisions.md 27 Oct): floors laid out piece by piece in the editor
+ * instead of grown by the generator, one to five of them a dungeon, and a run through it is exactly
+ * those floors (Michael's playtest, 27 Oct: a hand-built dungeon has floors of its own). Only the placements are stored (which piece, where, which way,
  * how high); doorways join wherever two face each other at one height, exactly as the generator
  * joins them, so a hand-built floor is the same FloorDef and plays through the same code.
  *
  * Saved in the browser and exported as a file; a file committed to `dungeons/` ships to everyone.
- * The server checks every one it is sent (checkDungeon) before a room is made from it.
+ * The server checks every one it is sent (checkHandDungeon) before a room is made from it.
  */
 export interface HandPiece {
   kind: PieceKind;
@@ -19,10 +20,20 @@ export interface HandPiece {
   level: number;
 }
 
-export interface HandDungeon {
+/** One floor as a FloorSpec carries it: the dungeon's name and that floor's pieces. */
+export interface HandFloor {
   name: string;
   pieces: HandPiece[];
 }
+
+/** A hand-built dungeon: its floors in order, the first where the party arrives. */
+export interface HandDungeon {
+  name: string;
+  floors: { pieces: HandPiece[] }[];
+}
+
+/** A run is 3 to 5 floors (decisions.md, 27 Oct); a hand-built one may be shorter. */
+export const HAND_MAX_FLOORS = 5;
 
 /** The editor's grid runs this many cells each way from the origin. */
 export const HAND_EXTENT = 30;
@@ -45,13 +56,10 @@ export interface DungeonCheck {
 
 const where = (p: HandPiece) => `${KIT[p.kind].title.toLowerCase()} at ${p.gx}, ${p.gz}`;
 
-/** A clean copy of a layout from anywhere (a file, a message), or null if it is not one. Numbers are whole, names short. */
-export function readDungeon(v: unknown): HandDungeon | null {
-  if (typeof v !== 'object' || v === null) return null;
-  const o = v as Record<string, unknown>;
-  if (typeof o.name !== 'string' || !Array.isArray(o.pieces) || o.pieces.length > MAX_PIECES) return null;
+function readPieces(list: unknown): HandPiece[] | null {
+  if (!Array.isArray(list) || list.length > MAX_PIECES) return null;
   const pieces: HandPiece[] = [];
-  for (const raw of o.pieces) {
+  for (const raw of list) {
     if (typeof raw !== 'object' || raw === null) return null;
     const p = raw as Record<string, unknown>;
     if (!HAND_KINDS.includes(p.kind as PieceKind)) return null;
@@ -61,8 +69,54 @@ export function readDungeon(v: unknown): HandDungeon | null {
     if (Math.abs(gx) > HAND_EXTENT || Math.abs(gz) > HAND_EXTENT || rot < 0 || rot > 3 || level < 0 || level > HAND_MAX_LEVEL) return null;
     pieces.push({ kind: p.kind as PieceKind, gx, gz, rot, level });
   }
+  return pieces;
+}
+
+/**
+ * A clean copy of a dungeon from anywhere (a file, a message), or null if it is not one. Numbers are
+ * whole, names short. A one-floor file from before floors (`{ name, pieces }`) reads as one floor.
+ */
+export function readDungeon(v: unknown): HandDungeon | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.name !== 'string') return null;
+  const lists = Array.isArray(o.floors) ? o.floors.map((fl) => (typeof fl === 'object' && fl !== null ? (fl as Record<string, unknown>).pieces : null)) : [o.pieces];
+  if (lists.length < 1 || lists.length > HAND_MAX_FLOORS) return null;
+  const floors: { pieces: HandPiece[] }[] = [];
+  for (const list of lists) {
+    const pieces = readPieces(list);
+    if (!pieces) return null;
+    floors.push({ pieces });
+  }
   const name = o.name.replace(/[^\w \-',.!?]/g, '').trim().slice(0, HAND_NAME_MAX);
-  return { name: name || 'Unnamed', pieces };
+  return { name: name || 'Unnamed', floors };
+}
+
+/** Floor `n` (1-based) of a dungeon, as a FloorSpec carries it. */
+export function handFloor(d: HandDungeon, n: number): HandFloor {
+  return { name: d.name, pieces: d.floors[n - 1].pieces };
+}
+
+/** Every floor checked, and what keeps the dungeon as a whole from play. */
+export interface HandDungeonCheck {
+  floors: DungeonCheck[];
+  errors: string[];
+  playable: boolean;
+}
+
+/**
+ * Check a whole dungeon: each floor on its own (checkDungeon), and every floor but the last ending
+ * in a rest room, whose violet ring leads to the next. The last ends in the Warden's hall, or in a
+ * rest room with only the ring home.
+ */
+export function checkHandDungeon(d: HandDungeon): HandDungeonCheck {
+  const n = d.floors.length;
+  const floors = d.floors.map((_, i) => checkDungeon(handFloor(d, i + 1), i + 1, n));
+  const errors: string[] = [];
+  d.floors.forEach((fl, i) => {
+    if (i < n - 1 && fl.pieces.some((p) => p.kind === 'boss')) errors.push(`Floor ${i + 1} ends at the Warden’s hall, so nothing comes after it: only the last floor can. A rest room leads on.`);
+  });
+  return { floors, errors, playable: errors.length === 0 && floors.every((c) => c.def !== null) };
 }
 
 /**
@@ -70,7 +124,7 @@ export function readDungeon(v: unknown): HandDungeon | null {
  * the Warden's hall to end the run), no two pieces in one cell, every piece reachable from the
  * entrance. Returns the floor, or the reasons it is not one yet.
  */
-export function checkDungeon(hand: HandDungeon, floor = 1, floors = 1): DungeonCheck {
+export function checkDungeon(hand: HandFloor, floor = 1, floors = 1): DungeonCheck {
   const errors: string[] = [];
   const notes: string[] = [];
   const cells = new Map<string, number>();

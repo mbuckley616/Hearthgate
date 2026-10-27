@@ -12,7 +12,8 @@
  *   7. a tuning edit reaches the other player, and debug slow motion slows the server's clock;
  *   8. the dev cheats: skip to the Warden;
  *   8c. a hand-built dungeon (T4b): a bot asks Keeper Wren for one, a broken layout is refused, the
- *      ring is labelled with it and leads onto it, and the pair walk it to its rest room;
+ *      ring is labelled with it and leads onto its first floor, the pair walk it to its rest room, and
+ *      the deeper ring takes them onto its own second floor, not a generated one;
  *   9. the real ClientSession (the browser's) runs, sprints and dodges for three seconds with no
  *      snap and ends exactly where the server has it;
  *   9b. the real ClientSession on a generated floor (T4): it builds the floor the server sent, and its
@@ -201,7 +202,8 @@ async function main() {
     const ha = await bot("Hale", null, "village");
     const hb = await bot("Ivy", ha.code, "village");
     const cellar = DUNGEONS.find((d) => d.name === "The Old Cellar")!;
-    ha.send({ k: "destination", dungeon: { ...cellar, pieces: cellar.pieces.filter((p) => p.kind !== "entrance") } });
+    const broken = { ...cellar, floors: [{ pieces: cellar.floors[0].pieces.filter((p) => p.kind !== "entrance") }, ...cellar.floors.slice(1)] };
+    ha.send({ k: "destination", dungeon: broken });
     await ha.drive(30);
     check(ha.snaps[ha.snaps.length - 1].portals[0]?.label === "A new dungeon", "a layout with no entrance is refused: the ring still leads to a new dungeon");
     ha.send({ k: "destination", dungeon: cellar });
@@ -212,9 +214,18 @@ async function main() {
     await Promise.all([ha.walkTo(hRing.x - 0.6, hRing.z, 1.5), hb.walkTo(hRing.x + 0.6, hRing.z, 1.5)]);
     await Promise.all([ha.until(() => ha.handoff !== null, 5000, "Hale's hand-off"), hb.until(() => hb.handoff !== null, 5000, "Ivy's hand-off")]);
     await Promise.all([ha.takeHandoff(), hb.takeHandoff()]);
-    check(ha.kind === "floor" && ha.floor?.hand?.name === cellar.name && ha.floor.floor === 1, "the ring leads onto the hand-built dungeon", JSON.stringify({ floor: ha.floor?.floor, floors: ha.floor?.floors, hand: ha.floor?.hand?.name }));
+    check(ha.kind === "floor" && ha.floor?.hand?.name === cellar.name && ha.floor.floor === 1 && ha.floor.floors === 2, "the ring leads onto the hand-built dungeon's first floor", JSON.stringify({ floor: ha.floor?.floor, floors: ha.floor?.floors, hand: ha.floor?.hand?.name }));
     const cellarFloor = floorLevel(ha.floor!).dungeon!;
     await walkFloor(ha, hb, cellarFloor);
+    const cDeeper = ha.snaps[ha.snaps.length - 1].portals.find((r) => r.to === "deeper")!;
+    await Promise.all([ha.walkTo(cDeeper.x - 0.5, cDeeper.z, 1.1), hb.walkTo(cDeeper.x + 0.5, cDeeper.z, 1.1)]);
+    await Promise.all([ha.until(() => ha.handoff !== null, 5000, "Hale's way deeper"), hb.until(() => hb.handoff !== null, 5000, "Ivy's way deeper")]);
+    await Promise.all([ha.takeHandoff(), hb.takeHandoff()]);
+    check(
+      ha.floor?.floor === 2 && JSON.stringify(ha.floor.hand?.pieces) === JSON.stringify(cellar.floors[1].pieces),
+      "its deeper ring leads onto its own second floor, as laid out",
+      JSON.stringify({ floor: ha.floor?.floor, pieces: ha.floor?.hand?.pieces.length }),
+    );
     for (const x of [ha, hb]) await x.leave();
     bots.length = 0;
 

@@ -192,7 +192,7 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   }
 });
 
-test("the dungeon editor: a dungeon laid out by keys alone, saved and played", async ({ page }) => {
+test("the dungeon editor: a dungeon of two floors laid out by keys alone, saved and played", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/editor.html");
@@ -204,7 +204,17 @@ test("the dungeon editor: a dungeon laid out by keys alone, saved and played", a
   await page.keyboard.press("Space");
   // Three steps back through the palette is the rest room; its one doorway is in the middle of its south side.
   for (const key of ["KeyQ", "KeyQ", "KeyQ", "ArrowLeft", "ArrowUp", "ArrowUp", "ArrowUp", "Space"]) await page.keyboard.press(key);
-  await expect(status).toContainText("Ready to play: 3 pieces");
+  await expect(status).toContainText("Ready to play: 1 floor, 3 pieces");
+  // A second floor (N): an entrance alone, the Warden's hall north of it ends the run.
+  await page.keyboard.press("KeyN");
+  await expect(page.locator(".editor-tab")).toHaveCount(2);
+  await expect(status).toContainText("Floor 2 of 2");
+  for (const key of ["KeyE", "ArrowLeft", "ArrowLeft", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Space"]) await page.keyboard.press(key);
+  await expect(status).toContainText("Ready to play: 2 floors, 5 pieces");
+  // [ goes back to the first floor and ] forward again.
+  await page.keyboard.press("BracketLeft");
+  await expect(status).toContainText("Floor 1 of 2");
+  await page.keyboard.press("BracketRight");
   await page.locator(".editor-name").fill("Keys Only");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+KeyS");
@@ -212,9 +222,11 @@ test("the dungeon editor: a dungeon laid out by keys alone, saved and played", a
   await page.keyboard.press("KeyP");
   await page.waitForURL(/hand=Keys%20Only/);
   await expect.poll(async () => (await seen(page)).kind, { timeout: 20_000 }).toBe("floor");
+  // Play starts on the floor being edited: the second, the Warden's.
   const spec = await page.evaluate(() => (window as unknown as { game: any }).game.session.world.level.dungeon.def.spec);
   expect(spec.hand.name).toBe("Keys Only");
-  expect(spec.hand.pieces).toHaveLength(3);
+  expect([spec.floor, spec.floors]).toEqual([2, 2]);
+  expect(spec.hand.pieces).toHaveLength(2);
   expect(errors).toEqual([]);
 });
 
