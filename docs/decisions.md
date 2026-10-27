@@ -9,6 +9,20 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-26: Bringing the combat slice into Hearthgate (Claude (local))
+Michael's combat slice (a separate repo, M0 to M6 passed on 26 Oct) is the reference for Hearthgate's combat. `docs/combat-port-plan.md` has the plan, ten questions with the options as asked, and the porting order. In short: Hearthgate's server and netcode stay, and the slice's simulation, tuning file, debug panel, input layer, camera, views, effects and sound come across in seven steps, each with a playtest gate.
+Michael: **1A 2A 3A 4B 5A 7A 8A 9A 10A** (2026-10-26, in chat), and his own answer to 6. Spelled out:
+1. The server runs the slice's sim at 60 Hz and sends 30 patches a second; inputs are sent at 60 Hz and the lag lab re-baselines.
+2. CLAUDE.md rule 2 becomes "time comes from the tick count; no wall clock in the sim", so the slice's `dt` steps and seconds come across as they are.
+3. The port is Phase 1's remaining work, one **(Fable)** item per step, run in interactive local sessions on `auto/local-combat-<step>`. A `FREEZE:` issue is open while the shared sim is replaced. The Phase 1 gate is played at the end of step 5, on the ported combat.
+4. One character of your own carries three weapons (sword, bow, staff) and swaps them live (1/2/3). The style follows the weapon, the slice's two abilities belong to each weapon, and there are no classes.
+5. Hearthgate's downs stay (crawl, 30 s bleed-out, dead until the room clears, the Revive Draught), and the pickup becomes the slice's hold-to-revive: hold the interact key or A for 3 s.
+6. The slice's progression as built (style levels from damage dealt, unlocks, talent boards with free respec), with style levels going to **50**, not 5, and a talent point every level. From level 50, champion points in the style of Elder Scrolls Online: three constellations (Offence, Defence, Utility) with ranked passive perks, slotted build-defining perks, small gains under one overall ceiling, working with gear's own perks. Michael: "it should be a way to slightly improve your character over time." Plan section 3a. Two details wait for step 6: points per character or shared across characters, and the ceiling's size.
+7. No drops until the Phase 3 item ledger; the slice's gear slots and perks fold into `shared/src/gear.ts`, and the debug panel equips gear for testing.
+8. The slice's look everywhere, home-made only: the pixel and CRT pipeline, the village graded warm and bright, the KayKit packs taken out. Supersedes the 14 Oct art answers below; the design doc's art section and the style guide are rewritten when step 7 lands.
+9. Hirelings, when they come, are heroes driven by a server-side brain writing the same per-tick commands, counting as party members for attack tokens, revives and scaling.
+10. The slice's controls (Ctrl dodge, Space jump, Shift sprint, left click attack, right click guard, Q/E abilities, 1/2/3 weapons, Tab lock-on, F interact), plus keyboard-only keys: J attack, L guard, arrows turn the camera.
+
 ### 2026-10-15: "Stuck after the portal": what did the HUD read? (the critic)
 Your report (backlog, Found in play) is not reproduced: in three two-player runs today, both players arrived in the Warrens and could move, including with a key held through the hand-off. What I did see on this box: the Warrens draw at 2 to 5 frames a second here, the player moves in 1.2 m lurches at about a quarter of run speed, and the HUD's ping reads 0.8 to 1.6 s on a perfect link. When it happened to you, what did the top-right panel say: the ping, and "N unconfirmed"? Also, did the player move at all after a few seconds of holding a key, and was this the hosted build or `npm run dev`?
 A. The ping read high (half a second or more), and the player crept or lurched: slow frames. The frame-budget proposal in proposals.md fixes it.
