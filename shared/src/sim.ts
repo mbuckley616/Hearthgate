@@ -302,57 +302,21 @@ export const EVENT_LOG = {
 } as const;
 
 /**
- * The raised third-person camera (design doc, Combat: 30 to 40 degrees, auto-rotation toward the
- * party's centre of fight). Draw-only: the client turns the move vector by the yaw before it goes
- * in an InputFrame, so the server and replay only ever see world vectors.
+ * The over-the-shoulder shot the art tools frame (`npm run turnaround`, `npm run tavern-test`),
+ * and the height the wall fade aims at. The game's own camera is the combat slice's orbit camera,
+ * tuned in `tuning.camera` (Michael, 2026-10-26, the combat port).
  */
 export const CAMERA = {
-  /** Over the shoulder (Michael, 2026-10-13: like RuneScape: Dragonwilds). Starting pitch of the
-   * eye above the look target, degrees; the player tilts it between minPitchDeg and maxPitchDeg. */
+  /** Pitch of the eye above the look target, degrees. */
   pitchDeg: 14,
-  minPitchDeg: 5,
-  maxPitchDeg: 45,
-  /** Eye to look target, metres, before a wall pulls it in. */
+  /** Eye to look target, metres. */
   distanceM: 5.5,
-  /** Look target height above the ground: the player's head, so the horizon sits ahead, not the floor. */
+  /** Look target height above the ground: the player's head. */
   targetY: 1.6,
-  /** The look target sits this far to the camera's right, so the player stands left of centre
-   * and the way ahead is clear. */
+  /** The look target sits this far to the camera's right. */
   shoulderM: 0.55,
-  /** Follow smoothing time constant for the look target. */
-  followMs: 120,
-  /** The player's own turning: arrows or the right stick at full deflection. */
-  yawRateDegPerS: 150,
-  pitchRateDegPerS: 75,
-  /** Stick deflection below this is drift, not a turn. */
-  stickDeadzone: 0.2,
-  /** Mouse look under pointer lock (Michael, 2026-10-14, A): degrees of yaw and pitch per pixel
-   * of mouse travel. 0.15 is a 2400 px sweep for a full turn, near the usual third-person default. */
-  mouseDegPerPx: 0.15,
-  /** After this long with no camera input, the camera swings in behind the player's travel. */
-  swingDelayMs: 1200,
-  /** Only travel at least this fast (m/s, the drawn motion) swings it: standing still holds. */
-  swingMinSpeed: 1.5,
-  /** Only travel within this angle of the view swings it. The move keys are camera-relative, so
-   * swinging behind a sideways or backward walk would wheel the player round in a circle. */
-  swingWindowDeg: 75,
-  /** The swing: ignores this much error, eases with turnMs, never faster than maxTurnDegPerS.
-   * Slow on purpose: the move keys turn with the camera, so a fast swing bends the path. */
-  deadbandDeg: 8,
-  turnMs: 900,
-  maxTurnDegPerS: 45,
-  /** With the bow's lock held, the camera keeps the target within this angle of straight ahead. */
-  lockFrameDeg: 15,
-  lockTurnMs: 300,
-  lockMaxTurnDegPerS: 120,
-  /** A wall between the head and the eye pulls the eye in to this short of the wall, never closer
-   * to the head than minDistanceM. It comes in at once and eases back out over pullOutMs, so
-   * walking past a pillar does not pump the view. */
-  wallPadM: 0.3,
-  minDistanceM: 0.9,
-  pullOutMs: 350,
-  /** Height on the player the wall-fade ray aims at (mid-body), metres. The pull-in keeps walls off
-   * the head ray; the fade still catches a pillar the shoulder offset leaves across the body. */
+  /** Height on the player the wall-fade ray aims at (mid-body), metres: a wall the eye's sphere
+   * cast does not stop at can still hide the body, and that wall fades. */
   fadeAimY: 0.9
 } as const;
 

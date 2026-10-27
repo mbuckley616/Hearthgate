@@ -36,9 +36,11 @@ import {
   clearedBarText,
   expireLogLines,
   pushLogLine,
+  tuning,
   type LogLine
 } from "@hearthgate/shared";
 import { Input } from "./input";
+import { keyboardBindings } from "./input/bindings";
 import { pickWeapon } from "./join";
 import { loadModels } from "./models";
 import { Net, type Pose } from "./net";
@@ -78,7 +80,7 @@ const sound = new Sound();
 const panel = new DebugPanel((edit) => net.sendTuning(edit));
 net.onTuning(() => panel.refresh());
 window.addEventListener("keydown", (e) => {
-  if (e.code === "Backquote" && !e.repeat) panel.toggle();
+  if (keyboardBindings.debugPanel.includes(e.code) && !e.repeat) panel.toggle();
 });
 // The villager prompt is a button too (a tap, for the touch layout to come): the same press as E.
 const hud = new Hud(document.getElementById("hud")!, () => input.pressUse());
@@ -177,6 +179,14 @@ const models = loadModels();
 function startLoops() {
   // Mouse look from here on, not on the join screen: a click on the game view takes the lock.
   input.attachMouse(view.renderer.domElement);
+  // Ctrl is the dodge, and Ctrl+W (dodge while running forward) closes the tab, a shortcut no page
+  // may stop: ask before leaving instead, as the slice did. Scripted joins (tests, the lab) skip it.
+  if (!scriptedJoin) {
+    window.addEventListener("beforeunload", (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    });
+  }
   // One input frame per tick of wall time, not per timer callback: a busy main thread runs the
   // timer late, and each frame it missed is sent when it does run (up to a cap), so a held key
   // covers the same ground at 10 fps as at 60. Self-scheduled to the next due tick, like the server's pump.
@@ -199,7 +209,12 @@ function startLoops() {
 }
 
 const lookNow = { x: 0, y: 0 };
-const mouseNow = { x: 0, y: 0 };
+
+/** How far into a sprint the player is, 0..1, from their predicted speed: the camera widens with it. */
+function sprintAmount(p: PlayerSim): number {
+  const m = tuning.movement;
+  return clamp01((Math.hypot(p.vx, p.vz) - m.runSpeed) / Math.max(0.1, m.sprintSpeed - m.runSpeed));
+}
 
 function draw(dt: number) {
   const now = net.predictedTime;
@@ -281,10 +296,9 @@ function draw(dt: number) {
   }
   for (const id of view.enemyIds()) if (!liveEnemies.has(id)) view.removeEnemy(id);
 
-  // The camera: the player's own turn, else the bow's lock framed, else a swing in behind the travel.
-  input.takeMouse(mouseNow);
-  view.turnByMouse(mouseNow.x, mouseNow.y);
-  if (placed) view.follow(myPose.x, myPose.z, dt, input.look(lookNow), lockedPose());
+  // The camera: the player's own turn, and the bow's lock framed.
+  view.look(input.look(dt, lookNow));
+  if (placed) view.follow(myPose.x, jumpHeight(me, now), myPose.z, dt, sprintAmount(me), lockedPose());
 
   view.render();
 
@@ -347,7 +361,7 @@ function draw(dt: number) {
   // Debug handle for Playwright and the browser console.
   (window as any).__hg = {
     sessionId: net.sessionId,
-    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId, jumpUntil: me.jumpUntil, attackUntil: me.attackUntil, guarding: me.guarding },
+    me: { x: me.x, z: me.z, hp: me.hp, lastSeq: me.lastSeq, weapon: { type: me.weapon.type, tier: me.weapon.tier }, lockId: me.lockId, jumpUntil: me.jumpUntil, attackUntil: me.attackUntil, guarding: me.guarding, dodgeAt: me.dodgeAt, readyAt: [...me.readyAt] },
     players: Object.fromEntries([...net.remotes.values()].map((r) => [r.id, { name: r.name, hp: r.hp, pose: net.remotePose(r) }])),
     /** The nearest living enemy (what the HUD shows), kept for the older tests. */
     enemy: nearest ? { id: nearest.view.id, hp: nearest.view.hp, phase: nearest.view.phase } : { id: "", hp: 0, phase: "dead" },
@@ -373,6 +387,7 @@ function draw(dt: number) {
     camPitch: view.pitchDeg,
     mouseLocked: input.mouseLocked,
     camDistance: view.camDistance,
+    camEye: { x: view.camera.position.x, y: view.camera.position.y, z: view.camera.position.z },
     fadedWalls: view.fadedWalls(),
     figures: () => view.figureStats(),
     dressing: view.dressing?.counts ?? null,

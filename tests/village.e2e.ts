@@ -50,7 +50,7 @@ async function walkTo(page: Page, x: number, z: number, reach: number, timeoutMs
   }
 }
 
-test("the village: a villager answers E, and the portal hands the party to the Warrens", async ({ page }) => {
+test("the village: a villager answers F, and the portal hands the party to the Warrens", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?name=Villager");
@@ -75,7 +75,7 @@ test("the village: a villager answers E, and the portal hands the party to the W
   await expect(talk).toContainText("talk to Keeper Wren");
   const box = await talk.boundingBox();
   expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(48);
-  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyF");
   await expect(page.locator("#hud-speech")).toContainText("Keeper Wren: The shrine's portal", { timeout: 5_000 });
 
   // Every frame from here: where the own figure is drawn while the hand-off is under way.

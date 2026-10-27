@@ -77,10 +77,10 @@ test("Cleave then Execute shows the callout over the goblin", async ({ page }) =
           return s.callouts;
         }
         await hold(await toward(), 40);
-        await page.keyboard.press("Digit1");
+        await page.keyboard.press("KeyQ");
         await page.waitForTimeout(700);
         await hold(await toward(), 40);
-        await page.keyboard.press("Digit2");
+        await page.keyboard.press("KeyE");
         await page.waitForTimeout(600);
         return (await state()).callouts;
       },

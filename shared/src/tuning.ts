@@ -64,6 +64,58 @@ export const tuning = {
     airControl: 0.45
   },
 
+  /** The slice's orbit camera (`client/src/orbit.ts`). Draw-only: the server keeps these but never reads them. */
+  camera: {
+    distance: 5.5,
+    pivotHeight: 1.7,
+    fovDeg: 60,
+    /** Field of view widens this much at full sprint. */
+    sprintFovBoostDeg: 5,
+    fovBlendRate: 6,
+    pitchMinDeg: -30,
+    pitchMaxDeg: 60,
+    /** Pitch the camera starts at. Positive = camera above the pivot looking down. */
+    startPitchDeg: 15,
+    minDistance: 1.5,
+    /** Radius of the sphere cast that stops the camera at walls and the floor. */
+    collisionRadius: 0.25,
+    /** Extra radius for the "soft" cast so the camera starts easing in before it touches anything. */
+    softMargin: 0.35,
+    /** Exponential rate (1/s) when pulling in toward an obstruction. */
+    pullInRate: 14,
+    /** Exponential rate (1/s) when easing back out after an obstruction clears. */
+    pushOutRate: 3,
+    /** When walls force the camera closer than minDistance, it cranes upward instead (max extra pitch). */
+    craneMaxDeg: 85,
+    craneRate: 8,
+    /** Collision also checks where the orbit will be this far ahead (s), so fast swings into walls ease in early. */
+    anticipationSec: 0.15,
+    /** Smoothing (1/s) on the orbit speed estimate used for anticipation. */
+    orbitVelocitySmoothing: 20,
+    /** How tightly the pivot tracks the hero (1/s). Higher = stiffer. */
+    followRate: 25,
+    /** Separate, softer vertical tracking so jumps don't yank the camera. */
+    verticalFollowRate: 7,
+    /** Degrees of turn per pixel of mouse travel under pointer lock. */
+    mouseSensitivity: 0.12,
+    invertY: false,
+    gamepadYawDegPerSec: 220,
+    gamepadPitchDegPerSec: 150,
+    /** Hearthgate's keyboard-only turning (decision 10A): the arrows at full rate. */
+    arrowYawDegPerSec: 150,
+    arrowPitchDegPerSec: 75,
+    nearPlane: 0.1,
+    farPlane: 200
+  },
+
+  /** The camera's half of the lock-on; the rest of the slice's lock-on comes with step 3. */
+  lockOn: {
+    /** How quickly the camera swings to keep the target framed (1/s). */
+    cameraYawRate: 8,
+    /** How far the camera's look point moves from the hero toward the target (0..1). */
+    framing: 0.35
+  },
+
   input: {
     stickDeadzone: 0.18,
     /** Exponent on look-stick magnitude; >1 gives finer control near centre. */
@@ -102,6 +154,36 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   "jump.height": [0.2, 3, 0.05],
   "jump.gravity": [5, 60, 0.5],
   "jump.airControl": [0, 1, 0.05],
+
+  "camera.distance": [1, 15, 0.1],
+  "camera.pivotHeight": [0.5, 3, 0.05],
+  "camera.fovDeg": [30, 110, 1],
+  "camera.sprintFovBoostDeg": [0, 20, 0.5],
+  "camera.fovBlendRate": [0.5, 30, 0.5],
+  "camera.pitchMinDeg": [-80, 0, 1],
+  "camera.pitchMaxDeg": [0, 89, 1],
+  "camera.startPitchDeg": [-30, 60, 1],
+  "camera.minDistance": [0.3, 5, 0.1],
+  "camera.collisionRadius": [0.05, 1, 0.01],
+  "camera.softMargin": [0, 2, 0.05],
+  "camera.pullInRate": [1, 60, 1],
+  "camera.pushOutRate": [0.5, 30, 0.5],
+  "camera.craneMaxDeg": [0, 89, 1],
+  "camera.craneRate": [0.5, 30, 0.5],
+  "camera.anticipationSec": [0, 0.5, 0.01],
+  "camera.orbitVelocitySmoothing": [1, 60, 1],
+  "camera.followRate": [1, 60, 1],
+  "camera.verticalFollowRate": [0.5, 60, 0.5],
+  "camera.mouseSensitivity": [0.01, 1, 0.01],
+  "camera.gamepadYawDegPerSec": [30, 720, 5],
+  "camera.gamepadPitchDegPerSec": [30, 720, 5],
+  "camera.arrowYawDegPerSec": [30, 720, 5],
+  "camera.arrowPitchDegPerSec": [15, 360, 5],
+  "camera.nearPlane": [0.01, 1, 0.01],
+  "camera.farPlane": [50, 1000, 10],
+
+  "lockOn.cameraYawRate": [0.5, 30, 0.5],
+  "lockOn.framing": [0, 1, 0.05],
 
   "input.stickDeadzone": [0, 0.5, 0.01],
   "input.lookStickCurve": [1, 4, 0.1]

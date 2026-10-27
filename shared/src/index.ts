@@ -6,5 +6,6 @@ export * from "./level";
 export * from "./gear";
 export * from "./interp";
 export * from "./camera";
+export * from "./geometry";
 export * from "./inputs";
 export * from "./tuning";
