@@ -19,6 +19,8 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 - The paths are drawn pulled toward the camera so they never flicker against the grass, which hid a ring lying on them; the ring now sits higher with a stronger pull of its own.
 - The well's roof stood in the camera's way: its collider now reaches the roof and fades like the trees.
 - Bots steering by snapshots overshoot a 2.4 m ring at a run; they ease off near a mark.
+- CI found two bugs in T2's input slots, both fixed here (#68 as approved has them): a player stalled past 300 ms whose next input never came was held still for good, and a server ticking slower than wall time (CI's runner at about three quarters speed; a busy free host could do the same) let a player's backlog grow without bound, so inputs landed 0.6 s late. A stalled player now picks up from the first input that arrives, and more than four beyond the cushion are used at once, as the slice folded them. The lossy lab row afterwards, one 120 s run: 57.5 corrections a minute over 2 cm, 13.5 over 10 cm; too noisy against T2's single run to call.
+- Bots that fall silent read to the slots as late, which widens the cushion; the test bots keep sending while they stand.
 
 **Next**
 
