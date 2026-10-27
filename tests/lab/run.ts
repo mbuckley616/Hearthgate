@@ -1,33 +1,32 @@
 /**
- * The lag lab (owned by the critic): two real browser clients fight through a bad link.
+ * The lag lab (owned by the critic): two real browser clients fight the combat slice's run on
+ * Hearthgate's server through a bad link.
  *
- * Boots the server and the Vite dev server on spare ports, puts tests/lab/proxy.ts in front
- * of the server, and opens two Chromium pages through it, each in its own browser so neither
- * is a background tab (headless Chromium throttles a second tab's input timer, which is why
- * tests/two-players.e2e.ts barely moves). Alpha is driven for `--seconds` per condition by a
- * seeded schedule of held keys, swings, dodges and Cleave; Bravo watches, and walks over to
- * pick Alpha up if Alpha goes down so the run keeps moving. Per condition it reports:
+ * Boots the server and the Vite dev server on spare ports, puts tests/lab/proxy.ts in front of the
+ * server, and opens two Chromium pages through it, each in its own browser so neither is a
+ * background tab. Alpha makes a fight (`?play`) and Bravo joins it by its code; both walk through
+ * the antechamber gate, and for `--seconds` per condition Alpha fights by a seeded schedule of held
+ * keys, swings (J), dodges (Ctrl), jumps, Q and E and hero swaps, leaning back to where the run
+ * started; Bravo stands, revives Alpha when down, and a lost run is restarted (F) and walked into
+ * again. Per condition it reports:
  *
- *   corr/min   Alpha's reconciliation corrections a minute, read from the HUD text
- *   snaps      Alpha's corrections too big to smooth (window.__hg.snaps), less the ones a respawn
- *              or wipe caused (the server moved the player; no network did), which are shown apart
+ *   corr/min   Alpha's reconciliation corrections a minute (the slice's ClientSession, counted)
+ *   snaps      corrections too big to ease (over 2.5 m), less those within a second of the server
+ *              moving the player itself (the gate bringing stragglers in, a restart, a revive)
  *   holds/min  times Bravo's drawn Alpha stood still for 4+ frames while Alpha really moved
- *
- * Verdict: "snaps" if any network snap, "rough" over 30 corrections or 20 holds a minute, else "ok".
  *   view lag   how far behind Bravo draws Alpha: the shift that best lines the two tracks up (ms),
  *              and the mean distance left at that shift (m)
- *   rtt        Alpha's HUD round trip
+ *   in flight  Alpha's inputs sent and not yet acked, on average, as ms of ticks
+ *   KB/s       what the server sends one player (the proxy counts it; local runs only)
  *
- * Run: npm run lab [-- --seconds 60 --only 150 --level field --warmup 10 --cpu-throttle 4 --jumps]. Writes tests/tmp/lab-result.json.
+ * Verdict: "snaps" if any network snap, "rough" over 30 corrections or 20 holds a minute, else "ok".
  *
- * The level is pinned (`--level`, default `field`: the Phase 0 arena with one goblin, the ground the
- * first runs measured) because the client's default level changes as the floor is built, and a
- * hall where nothing wakes would lower the numbers for a reason that is not the network.
+ * Run: npm run lab [-- --seconds 60 --only "150 ms" --warmup 10 --cpu-throttle 4]. Writes tests/tmp/lab-result.json.
  *
  * A hosted build instead of a local one: `--server wss://host --client https://host` boots nothing
  * and puts no proxy in the way, so the two browsers reach the real server over the real network
  * (the machine stand-in for the "two people on different networks" playtest). One condition, named
- * after the host; `lost_chunks` is 0 because no proxy counted them.
+ * after the host; `lost_chunks` and KB/s are 0 because no proxy counted them.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -38,12 +37,13 @@ import { mulberry32, startProxy, type Link } from "./proxy";
 const SERVER_PORT = 2621;
 const VITE_PORT = 5191;
 const PROXY_BASE = 2630;
-const SETTLE_MS = 2500;
-// Small on purpose: these sandboxes render WebGL in software (SwiftShader), and at 960 x 600 two
-// pages draw at 11 fps, which starves the input timer and the socket and makes the netcode look
-// worse than it is. At 320 x 200 both hold about 58 fps. The lab measures the network, not the GPU.
+const SETTLE_MS = 1500;
+// Small on purpose: software WebGL at full size starves the input timer and the socket and makes the
+// netcode look worse than it is. The lab measures the network, not the GPU.
 const LAB_VIEWPORT = { width: 320, height: 200 };
 const HOLD_MOVED_M = 0.25;
+/** A snap this close to the server moving the player itself (gate, restart, revive) is not the network's. */
+const PLACED_MS = 1000;
 
 interface Condition extends Link {
   name: string;
@@ -53,7 +53,7 @@ const CONDITIONS: Condition[] = [
   { name: "0 ms", oneWayMs: 0, jitterMs: 0, loss: 0 },
   { name: "50 ms", oneWayMs: 50, jitterMs: 0, loss: 0 },
   { name: "150 ms", oneWayMs: 150, jitterMs: 0, loss: 0 },
-  { name: "50 ms +-20, 2% loss", oneWayMs: 50, jitterMs: 20, loss: 0.02 }
+  { name: "50 ms +-20, 2% loss", oneWayMs: 50, jitterMs: 20, loss: 0.02 },
 ];
 
 const args = process.argv.slice(2);
@@ -67,16 +67,9 @@ const ONLY = argOf("--only") ?? "";
 const REMOTE_SERVER = argOf("--server") ?? "";
 const REMOTE_CLIENT = argOf("--client") ?? "";
 const CLIENT_BASE = REMOTE_CLIENT || `http://127.0.0.1:${VITE_PORT}`;
-const LEVEL = argOf("--level") ?? "field";
 const WARMUP_S = Number(argOf("--warmup") ?? 10);
 /** Slows Alpha's page by this factor (CDP CPU throttling) to see what a low frame rate does to the numbers. */
 const CPU_THROTTLE = Number(argOf("--cpu-throttle") ?? 1);
-/**
- * Adds jumps (Space) and sprints (Shift held) to Alpha's schedule, for builds with jump and sprint
- * (Session 45). Off by default: on older builds Space attacks and Shift dodges, and the rows must
- * stay comparable from day to day. Its own seed, so the base schedule is the same either way.
- */
-const JUMPS = args.includes("--jumps");
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -94,29 +87,32 @@ async function waitFor(url: string, timeoutMs = 30000) {
   throw new Error(`nothing at ${url}`);
 }
 
+/** node directly, never npx: a .cmd shim spawn() cannot run on Windows, and killing a shell leaves its child. */
 function boot(): { server: ChildProcess | null; vite: ChildProcess | null } {
+  const tsx = `${root}node_modules/tsx/dist/cli.mjs`;
   const server = REMOTE_SERVER
     ? null
-    : spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
-        cwd: `${root}server`,
-        env: { ...process.env, PORT: String(SERVER_PORT) },
-        stdio: "ignore"
-      });
+    : spawn(process.execPath, [tsx, "src/index.ts"], { cwd: `${root}server`, env: { ...process.env, PORT: String(SERVER_PORT) }, stdio: "ignore" });
   const vite = REMOTE_CLIENT
     ? null
-    : spawn("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host", "127.0.0.1"], {
+    : spawn(process.execPath, [`${root}node_modules/vite/bin/vite.js`, "--port", String(VITE_PORT), "--strictPort", "--host", "127.0.0.1"], {
         cwd: `${root}client`,
         stdio: "ignore",
-        detached: true,
-        shell: process.platform === "win32"
       });
   return { server, vite };
 }
 
+/**
+ * Headless Chromium draws WebGL in software unless told to use the GPU, and the slice's look at
+ * software speed runs the pages near 25 fps, where every frame carries two or three ticks. --cpu
+ * keeps the software path (a machine with no GPU, CI).
+ */
+const GPU_ARGS = args.includes("--cpu") ? [] : ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"];
+
 async function launch(): Promise<Browser> {
   const opts = {
     headless: true,
-    args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"]
+    args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", ...GPU_ARGS],
   };
   try {
     return await chromium.launch(opts);
@@ -125,34 +121,66 @@ async function launch(): Promise<Browser> {
   }
 }
 
-/** Starts an in-page recorder: one sample per animation frame, wall-clock stamped so pages line up. */
-async function record(page: Page, watchId: string | null) {
-  // A string, not a function: tsx's keepNames would inject a __name helper the page lacks.
-  await page.evaluate(`(() => {
-    const id = ${JSON.stringify(watchId)};
-    window.__lab = [];
-    const tick = () => {
-      const hg = window.__hg;
-      if (hg) {
-        if (id === null) window.__lab.push([Date.now(), hg.me.x, hg.me.z, hg.me.hp, hg.snaps]);
-        else {
-          const p = hg.players[id] && hg.players[id].pose;
-          if (p) window.__lab.push([Date.now(), p.x, p.z]);
-        }
-      }
-      if (window.__labOn !== false) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  })()`);
+// In-page probes, as strings: tsx's keepNames would inject a __name helper the page lacks.
+const PROBE = `(() => {
+  const g = window.game, s = g.session;
+  const lerp = (b, id) => {
+    const c = b.curr.players.find((p) => p.id === id);
+    if (!c) return null;
+    const p = b.prev.players.find((q) => q.id === id) || c;
+    return { x: p.x + (c.x - p.x) * b.alpha, z: p.z + (c.z - p.z) * b.alpha, hp: c.hp, mode: c.mode };
+  };
+  window.__probe = {
+    me: () => {
+      const h = s.hero();
+      if (!h) return null;
+      const a = h.alpha;
+      return { x: h.prev.x + (h.curr.x - h.prev.x) * a, z: h.prev.z + (h.curr.z - h.prev.z) * a, hp: h.curr.hp, mode: h.curr.mode };
+    },
+    other: (id) => lerp(s.view(), id),
+    phase: () => s.view().curr.run.phase,
+  };
+})()`;
+
+/** One sample per animation frame, wall-clock stamped so the two pages line up. */
+function recorder(watchId: string | null) {
+  return `(() => {
+  const id = ${JSON.stringify(watchId)};
+  const phases = { ante: 0, intro: 1, wave: 2, rest: 3, won: 4, lost: 5 };
+  window.__lab = [];
+  const tick = () => {
+    const s = window.game.session;
+    if (id === null) {
+      const m = window.__probe.me();
+      if (m) window.__lab.push([Date.now(), m.x, m.z, m.hp, s.stats.snaps, s.stats.corrections, phases[window.__probe.phase()], s.unacked, s.stats.sumCorrection, s.stats.maxCorrection]);
+    } else {
+      const p = window.__probe.other(id);
+      if (p) window.__lab.push([Date.now(), p.x, p.z]);
+    }
+    if (window.__labOn !== false) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+})()`;
 }
 
-const corrections = async (page: Page) => {
-  const m = /(\d+) corrections/.exec((await page.locator("#hud").textContent()) ?? "");
-  return m ? Number(m[1]) : NaN;
-};
+const info = (p: Page) =>
+  p.evaluate(`(() => { const s = window.game.session; return { id: s.localId, code: s.code, playing: s.playing, players: s.view().curr.players.length, phase: s.view().curr.run.phase }; })()`) as Promise<{
+    id: string;
+    code: string;
+    playing: boolean;
+    players: number;
+    phase: string;
+  }>;
+
+async function until(ok: () => Promise<boolean>, timeoutMs: number, what: string) {
+  const start = Date.now();
+  while (!(await ok())) {
+    if (Date.now() - start > timeoutMs) throw new Error(`timed out: ${what}`);
+    await sleep(100);
+  }
+}
 
 interface Row {
-  level: string;
   condition: string;
   /** "local" or the hosted server's URL. */
   target: string;
@@ -162,17 +190,20 @@ interface Row {
   seconds: number;
   corrections: number;
   corrections_per_min: number;
+  /** Mean and largest correction (m): eased over coop.correctionBlendMs, so a few cm do not show. */
+  correction_mean_m: number;
+  correction_max_m: number;
   snaps: number;
-  respawn_snaps: number;
+  placed_snaps: number;
   walked_m_per_min: number;
-  snap_moments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number; since_hit_ms: number; jump_m: number }[];
+  snap_moments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; jump_m: number }[];
   holds_per_min: number;
   view_lag_ms: number;
   view_gap_m: number;
-  rtt: number;
+  in_flight_ms: number;
+  kb_per_s_per_player: number;
   downs: number;
-  /** Jumps the server confirmed for Alpha (distinct `jumpUntil`), with --jumps; undefined on builds without one. */
-  jumps?: number;
+  runs_started: number;
   fps_a: number;
   fps_b: number;
   lost_chunks: number;
@@ -192,84 +223,115 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE });
   }
   for (const [n, p] of [["Alpha", a], ["Bravo", b]] as const) p.on("pageerror", (e) => errors.push(`${n}: ${e.message}`));
+  const held = new Map<Page, Set<string>>([
+    [a, new Set()],
+    [b, new Set()],
+  ]);
+  const setKeys = async (p: Page, want: string[]) => {
+    const have = held.get(p)!;
+    for (const k of [...have]) if (!want.includes(k)) (await p.keyboard.up(k), have.delete(k));
+    for (const k of want) if (!have.has(k)) (await p.keyboard.down(k), have.add(k));
+  };
   try {
-    const q = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}&level=${LEVEL}`;
-    await a.goto(`${CLIENT_BASE}/?${q}&name=Alpha`);
-    await b.goto(`${CLIENT_BASE}/?${q}&name=Bravo`);
-    for (const p of [a, b]) await p.locator("#hud-party[data-players='2']").waitFor({ timeout: 20000 });
+    const server = `server=${REMOTE_SERVER || `ws://127.0.0.1:${port}`}`;
+    await a.goto(`${CLIENT_BASE}/?play&${server}`);
+    await until(async () => (await info(a)).playing, 20000, "Alpha in a fight");
+    const { code, id: alphaId } = await info(a);
+    await b.goto(`${CLIENT_BASE}/?join=${code}&${server}`);
+    await until(async () => (await info(b)).playing && (await info(a)).players === 2, 20000, "Bravo joined");
+    for (const p of [a, b]) await p.evaluate(PROBE);
+
+    // Into the arena together: the run starts when both are through the gate.
+    let runs = 0;
+    const enterRun = async () => {
+      runs++;
+      await setKeys(a, ["KeyW"]);
+      await setKeys(b, ["KeyW"]);
+      await until(async () => (await info(a)).phase !== "ante", 30000, "the run starts");
+      await setKeys(a, []);
+      await setKeys(b, []);
+    };
+    await enterRun();
     await sleep(SETTLE_MS);
-    const alphaId: string = await a.evaluate(() => (window as any).__hg.sessionId);
-    const corr0 = await corrections(a);
-    const snaps0: number = await a.evaluate(() => (window as any).__hg.snaps);
-    await record(a, null);
-    await record(b, alphaId);
+    await a.evaluate(recorder(null));
+    await b.evaluate(recorder(alphaId));
+    const home = (await a.evaluate("window.__probe.me()")) as { x: number; z: number };
+    const bytes0 = proxy?.bytesDown() ?? 0;
+    const wall0 = Date.now();
 
     // Alpha's schedule: seeded, so every condition and every day plays the same game.
     const rng = mulberry32(7);
-    const jrng = mulberry32(11);
-    const home = await a.evaluate(() => ({ x: (window as any).__hg.me.x, z: (window as any).__hg.me.z }));
     const end = Date.now() + seconds * 1000;
     let downs = 0;
-    const jumpEnds = new Set<number>();
     let wasDown = false;
-    const held = new Set<string>();
-    const setKeys = async (p: Page, want: string[], have: Set<string>) => {
-      for (const k of [...have]) if (!want.includes(k)) (await p.keyboard.up(k), have.delete(k));
-      for (const k of want) if (!have.has(k)) (await p.keyboard.down(k), have.add(k));
-    };
-    const bHeld = new Set<string>();
     while (Date.now() < end) {
-      const me = await a.evaluate(() => (window as any).__hg.me);
-      const down = me.hp <= 0;
-      if (down && !wasDown) downs++;
-      if (typeof me.jumpUntil === "number" && me.jumpUntil > 0) jumpEnds.add(me.jumpUntil);
-      wasDown = down;
-      // Wander, but lean home when far so Alpha stays in the goblin's yard.
-      const far = Math.hypot(me.x - home.x, me.z - home.z) > 7;
-      const keys: string[] = [];
-      if (far) {
-        if (me.x > home.x + 2) keys.push("KeyA");
-        else if (me.x < home.x - 2) keys.push("KeyD");
-        if (me.z > home.z + 2) keys.push("KeyW");
-        else if (me.z < home.z - 2) keys.push("KeyS");
-      } else {
-        const r = rng();
-        if (r < 0.25) keys.push("KeyD");
-        else if (r < 0.5) keys.push("KeyA");
-        if (rng() < 0.5) keys.push(rng() < 0.5 ? "KeyW" : "KeyS");
+      const phase = (await info(a)).phase;
+      if (phase === "won" || phase === "lost") {
+        await setKeys(a, []);
+        await setKeys(b, []);
+        await a.keyboard.press("KeyF");
+        await until(async () => (await info(a)).phase === "ante", 5000, "the restart");
+        await enterRun();
+        continue;
       }
-      if (JUMPS && keys.length > 0 && jrng() < 0.4) keys.push("ShiftLeft");
-      await setKeys(a, keys, held);
-      if (JUMPS && jrng() < 0.12) await a.keyboard.press("Space");
-      const act = rng();
-      if (act < 0.25) await a.keyboard.press("KeyJ");
-      else if (act < 0.32) await a.keyboard.press("KeyK");
-      else if (act < 0.36) await a.keyboard.press("Digit1");
-
-      // Bravo walks to a downed Alpha (a proximity pickup) and otherwise stands still.
-      if (down) {
-        const bv = await b.evaluate((id) => ({ me: (window as any).__hg.me, al: (window as any).__hg.players[id]?.pose }), alphaId);
-        const want: string[] = [];
-        if (bv.al) {
-          if (bv.al.x - bv.me.x > 0.8) want.push("KeyD");
-          else if (bv.al.x - bv.me.x < -0.8) want.push("KeyA");
-          if (bv.al.z - bv.me.z > 0.8) want.push("KeyS");
-          else if (bv.al.z - bv.me.z < -0.8) want.push("KeyW");
+      const me = (await a.evaluate("window.__probe.me()")) as { x: number; z: number; mode: string };
+      const down = me.mode === "down";
+      if (down && !wasDown) downs++;
+      wasDown = down;
+      // Wander, but lean home when far, so Alpha stays in the fight in the arena.
+      const far = Math.hypot(me.x - home.x, me.z - home.z) > 6;
+      const keys: string[] = [];
+      if (!down) {
+        if (far) {
+          // The camera has not turned: W is north (-z), D is east (+x).
+          if (me.x > home.x + 2) keys.push("KeyA");
+          else if (me.x < home.x - 2) keys.push("KeyD");
+          if (me.z > home.z + 2) keys.push("KeyW");
+          else if (me.z < home.z - 2) keys.push("KeyS");
+        } else {
+          const r = rng();
+          if (r < 0.25) keys.push("KeyD");
+          else if (r < 0.5) keys.push("KeyA");
+          if (rng() < 0.5) keys.push(rng() < 0.5 ? "KeyW" : "KeyS");
         }
-        await setKeys(b, want, bHeld);
-      } else await setKeys(b, [], bHeld);
+        if (keys.length > 0 && rng() < 0.3) keys.push("ShiftLeft");
+      }
+      await setKeys(a, keys);
+      const act = rng();
+      if (act < 0.3) await a.keyboard.press("KeyJ");
+      else if (act < 0.38) await a.keyboard.press("ControlLeft");
+      else if (act < 0.46) await a.keyboard.press("Space");
+      else if (act < 0.5) await a.keyboard.press(rng() < 0.5 ? "KeyQ" : "KeyE");
+      else if (act < 0.53) await a.keyboard.press(["Digit1", "Digit2", "Digit3"][Math.floor(rng() * 3)]);
+
+      // Bravo walks to a downed Alpha and holds F (the slice's revive), and otherwise stands still.
+      if (down) {
+        const bv = (await b.evaluate(`({ me: window.__probe.me(), al: window.__probe.other(${JSON.stringify(alphaId)}) })`)) as {
+          me: { x: number; z: number };
+          al: { x: number; z: number } | null;
+        };
+        const want: string[] = [];
+        if (bv.al && bv.me) {
+          const dx = bv.al.x - bv.me.x;
+          const dz = bv.al.z - bv.me.z;
+          if (Math.hypot(dx, dz) < 1.2) want.push("KeyF");
+          else {
+            if (dx > 0.6) want.push("KeyD");
+            else if (dx < -0.6) want.push("KeyA");
+            if (dz > 0.6) want.push("KeyS");
+            else if (dz < -0.6) want.push("KeyW");
+          }
+        }
+        await setKeys(b, want);
+      } else await setKeys(b, []);
       await sleep(250 + rng() * 650);
     }
-    await setKeys(a, [], held);
-    await setKeys(b, [], bHeld);
+    await setKeys(a, []);
+    await setKeys(b, []);
 
-    const corr1 = await corrections(a);
-    const snaps1: number = await a.evaluate(() => (window as any).__hg.snaps);
-    const rtt: number = await a.evaluate(() => (window as any).__hg.rtt);
-    const fps = (track: number[][]) =>
-      track.length > 1 ? Math.round(((track.length - 1) / ((track[track.length - 1][0] - track[0][0]) / 1000)) * 10) / 10 : 0;
-    const trueTrack: number[][] = await a.evaluate(() => ((window as any).__labOn = false, (window as any).__lab));
-    const seen: number[][] = await b.evaluate(() => ((window as any).__labOn = false, (window as any).__lab));
+    const fps = (track: number[][]) => (track.length > 1 ? Math.round(((track.length - 1) / ((track[track.length - 1][0] - track[0][0]) / 1000)) * 10) / 10 : 0);
+    const trueTrack = (await a.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
+    const seen = (await b.evaluate("(window.__labOn = false, window.__lab)")) as number[][];
 
     // How far behind does Bravo draw Alpha? The lag that best lines the two tracks up.
     const trueAt = (t: number) => {
@@ -296,9 +358,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       const g = gapAt(lag);
       if (g < bestGap) (bestGap = g), (viewLag = lag);
     }
-    // Holds: Bravo's Alpha frozen for 4+ frames while the real Alpha, shifted by that lag, moved
-    // over HOLD_MOVED_M. Inputs go out at 20 Hz, so a start or stop lands up to a tick off the
-    // average lag; 0.25 m is 40 ms at full speed, past that quantisation.
+    // Holds: Bravo's Alpha frozen for 4+ frames while the real Alpha, shifted by that lag, moved.
     let holds = 0;
     let run = 1;
     for (let i = 1; i < seen.length; i++) {
@@ -313,53 +373,45 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
         run = 1;
       }
     }
-    // A respawn or a wipe moves the player on the server, so the client counts a snap that no
-    // network caused. Split those out: a snap within 500 ms of Alpha's hp coming back from 0.
-    let respawnSnaps = 0;
-    // How long since Alpha last went from 0 hp to standing (a pickup or a respawn), or -1.
-    const sinceUp = (i: number) => {
-      for (let j = i; j > 0; j--) if (trueTrack[j - 1][3] <= 0 && trueTrack[j][3] > 0) return trueTrack[i][0] - trueTrack[j][0];
-      return -1;
-    };
-    // How long since Alpha's hp last fell (a hit, and with it any throw), or -1: a snap that follows
-    // a hit is the knock, one that does not is the link or the page.
-    const sinceHit = (i: number) => {
-      for (let j = i; j > 0; j--) if (trueTrack[j][3] < trueTrack[j - 1][3]) return trueTrack[i][0] - trueTrack[j][0];
-      return -1;
-    };
-    const snapMoments: { at_s: number; x: number; z: number; hp: number; frame_gap_ms: number; since_up_ms: number; since_hit_ms: number; jump_m: number }[] = [];
+    // The server moves the player itself when the gate brings stragglers in, at a restart and at a
+    // revive: a snap within PLACED_MS of a phase change or of hp coming back from 0 is not the link's.
+    const placedAt: number[] = [];
     for (let i = 1; i < trueTrack.length; i++) {
-      if (trueTrack[i][4] <= trueTrack[i - 1][4]) continue;
+      if (trueTrack[i][6] !== trueTrack[i - 1][6] || (trueTrack[i - 1][3] <= 0 && trueTrack[i][3] > 0)) placedAt.push(trueTrack[i][0]);
+    }
+    let placedSnaps = 0;
+    const snapMoments: Row["snap_moments"] = [];
+    for (let i = 1; i < trueTrack.length; i++) {
+      const n = trueTrack[i][4] - trueTrack[i - 1][4];
+      if (n <= 0) continue;
       const t = trueTrack[i][0];
-      const back = trueTrack.some((r, j) => j > 0 && trueTrack[j - 1][3] <= 0 && r[3] > 0 && Math.abs(r[0] - t) < 500);
-      if (back) respawnSnaps += trueTrack[i][4] - trueTrack[i - 1][4];
-      // Where and when a network snap fell, and the frame gap before it: a long gap is the page
-      // stalling, a short one is the link.
-      else snapMoments.push({
-        at_s: Math.round((t - trueTrack[0][0]) / 100) / 10,
-        x: Math.round(trueTrack[i][1] * 10) / 10,
-        z: Math.round(trueTrack[i][2] * 10) / 10,
-        hp: trueTrack[i][3],
-        frame_gap_ms: t - trueTrack[i - 1][0],
-        since_up_ms: sinceUp(i),
-        since_hit_ms: sinceHit(i),
-        jump_m: Math.round(Math.hypot(trueTrack[i][1] - trueTrack[i - 1][1], trueTrack[i][2] - trueTrack[i - 1][2]) * 100) / 100
-      });
+      if (placedAt.some((p) => Math.abs(p - t) < PLACED_MS)) placedSnaps += n;
+      else
+        snapMoments.push({
+          at_s: Math.round((t - trueTrack[0][0]) / 100) / 10,
+          x: Math.round(trueTrack[i][1] * 10) / 10,
+          z: Math.round(trueTrack[i][2] * 10) / 10,
+          hp: trueTrack[i][3],
+          frame_gap_ms: t - trueTrack[i - 1][0],
+          jump_m: Math.round(Math.hypot(trueTrack[i][1] - trueTrack[i - 1][1], trueTrack[i][2] - trueTrack[i - 1][2]) * 100) / 100,
+        });
     }
     const minutes = seconds / 60;
-    // Path length of Alpha's drawn track; a respawn jump (over 2 m in a frame) is not walking.
     let walked = 0;
+    let inFlight = 0;
     for (let i = 1; i < trueTrack.length; i++) {
       const d = Math.hypot(trueTrack[i][1] - trueTrack[i - 1][1], trueTrack[i][2] - trueTrack[i - 1][2]);
       if (d < 2) walked += d;
+      inFlight += trueTrack[i][7];
     }
-    const corr = corr1 - corr0;
-    const snaps = snaps1 - snaps0 - respawnSnaps;
+    const first = trueTrack[0];
+    const last = trueTrack[trueTrack.length - 1];
+    const corr = last[5] - first[5];
+    const snaps = last[4] - first[4] - placedSnaps;
     const cpm = corr / minutes;
     const verdict = snaps > 0 ? "snaps" : cpm > 30 || holds / minutes > 20 ? "rough" : "ok";
     return {
       condition: c.name,
-      level: LEVEL,
       target: REMOTE_SERVER || "local",
       latency: c.oneWayMs,
       jitter: c.jitterMs,
@@ -367,27 +419,30 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       seconds,
       corrections: corr,
       corrections_per_min: Math.round(cpm * 10) / 10,
+      correction_mean_m: corr > 0 ? Math.round(((last[8] - first[8]) / corr) * 1000) / 1000 : 0,
+      correction_max_m: Math.round(last[9] * 100) / 100,
       snaps,
-      respawn_snaps: respawnSnaps,
+      placed_snaps: placedSnaps,
       walked_m_per_min: Math.round(walked / minutes),
       snap_moments: snapMoments,
       holds_per_min: Math.round((holds / minutes) * 10) / 10,
       view_lag_ms: viewLag,
       view_gap_m: Math.round(bestGap * 100) / 100,
-      rtt: Math.round(rtt),
+      in_flight_ms: Math.round(((inFlight / Math.max(1, trueTrack.length - 1)) * 1000) / 60),
+      kb_per_s_per_player: proxy ? Math.round((proxy.bytesDown() - bytes0) / 1024 / 2 / ((Date.now() - wall0) / 1000)) : 0,
       downs,
-      jumps: JUMPS ? jumpEnds.size : undefined,
+      runs_started: runs,
       fps_a: fps(trueTrack),
       fps_b: fps(seen),
       lost_chunks: proxy ? proxy.lost() : 0,
       page_errors: errors,
-      verdict
+      verdict,
     };
   } finally {
     await ctxA.close();
     await ctxB.close();
     await proxy?.close();
-    await sleep(800); // let the empty room dispose so the next condition gets a fresh goblin
+    await sleep(800); // let the empty room dispose
   }
 }
 
@@ -406,12 +461,9 @@ async function main() {
     bb = await launch();
     const rows: Row[] = [];
     let i = 0;
-    const conditions: Condition[] = REMOTE_SERVER
-      ? [{ name: `remote ${new URL(REMOTE_SERVER).host}`, oneWayMs: 0, jitterMs: 0, loss: 0 }]
-      : CONDITIONS;
-    // A fresh VM's first condition ran slow once (19 holds a minute at 0 ms that never came back:
-    // JIT, Vite's first transform, SwiftShader's shader cache), so a short clean run goes first and
-    // is thrown away. Local only: a hosted run's wake-up is already behind the health wait.
+    const conditions: Condition[] = REMOTE_SERVER ? [{ name: `remote ${new URL(REMOTE_SERVER).host}`, oneWayMs: 0, jitterMs: 0, loss: 0 }] : CONDITIONS;
+    // A fresh machine's first condition runs slow (JIT, Vite's first transform, the shader cache),
+    // so a short clean run goes first and is thrown away. Local only.
     if (!REMOTE_SERVER && WARMUP_S > 0) {
       const w = await runCondition(ba, bb, { name: "warm-up", oneWayMs: 0, jitterMs: 0, loss: 0 }, PROXY_BASE + 9, WARMUP_S);
       console.log(`warm-up (${WARMUP_S} s, discarded): corr/min ${w.corrections_per_min}, holds/min ${w.holds_per_min}, fps ${w.fps_a}/${w.fps_b}`);
@@ -422,9 +474,10 @@ async function main() {
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)}  snaps ${row.snaps} (+${row.respawn_snaps} respawn)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  rtt ${row.rtt} ms  downs ${row.downs}${row.jumps === undefined ? "" : `  jumps ${row.jumps}`}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (mean ${row.correction_mean_m} m, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started}  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
       );
-      for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, ${m.since_up_ms} ms after standing up, ${m.since_hit_ms} ms after a hit, jumped ${m.jump_m} m`);
+      for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, jumped ${m.jump_m} m`);
+      for (const e of row.page_errors.slice(0, 3)) console.log(`  page error: ${e}`);
     }
     mkdirSync(`${root}tests/tmp`, { recursive: true });
     writeFileSync(`${root}tests/tmp/lab-result.json`, JSON.stringify({ at: new Date().toISOString(), rows }, null, 2));
@@ -432,13 +485,7 @@ async function main() {
     await ba?.close();
     await bb?.close();
     procs.server?.kill();
-    if (procs.vite) {
-      try {
-        process.kill(-procs.vite.pid!, "SIGTERM");
-      } catch {
-        procs.vite.kill();
-      }
-    }
+    procs.vite?.kill();
   }
 }
 
@@ -447,5 +494,5 @@ main().then(
   (e) => {
     console.error(e);
     process.exit(1);
-  }
+  },
 );

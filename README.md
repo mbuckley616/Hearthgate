@@ -2,7 +2,7 @@
 
 A browser-based co-op fantasy game: a village you own, portals into short dungeon runs, and an economy that rewards visiting and trading with other players. Playable solo with hirelings, better with friends at any level.
 
-This repository is at **Phase 1: the combat slice**. Phase 0 (two or more browsers in one room, one goblin, an authoritative server with client-side prediction) passed on 3 Oct 2026. Now a party fights a handful of goblins in a yard with walls, with downs and pickups, three ability slots and Cleave; gear, weapon classes, posture and parry, the enemy roster and the first Goblin Warrens floor are the open work (see `docs/backlog.md`).
+This repository is at **Phase 1: the combat slice**. Phase 0 (an authoritative server with client-side prediction) passed on 3 Oct 2026. Since 27 Oct the fight is Michael's combat slice moved over whole (`docs/slice-transplant-plan.md`): its knight, archer and mage, the antechamber, three waves and the Warden, its look and sound, running on Hearthgate's server with every player predicting their own hero. The village, the portal and generated dungeons are rebuilt on top of it next (see `docs/backlog.md`).
 
 The design doc lives in `docs/design-doc.md`. Session history is in `docs/devlog.md`, what to build next in `docs/backlog.md`.
 
@@ -23,11 +23,9 @@ npm install
 npm run dev
 ```
 
-This starts the game server on port 2567 and the client on port 5173. Open **http://localhost:5173** in a browser tab. Open it again in a second tab (or a second browser). Both tabs are in the same room.
+This starts the game server on port 2567 and the client on port 5173. Open **http://localhost:5173** and press Play: that is a fight of your own on the server. For a second player, open the pause menu (Esc), press Invite friends and open the link in another tab, or type its four-letter code under Join a party.
 
-Controls: **WASD** to move, **arrows** to turn and tilt the camera, **J** or **Space** to attack, **Shift** to dodge. A gamepad works too: left stick moves, right stick turns the camera, X to attack, A to dodge.
-
-Add `?name=Yourname` to the URL to pick a name, for example `http://localhost:5173/?name=Michael`.
+Controls: **WASD** to move, the mouse or the **arrows** to turn the camera, left click or **J** to attack, right click or **L** to guard, **Ctrl** to dodge, **Space** to jump, **Shift** to sprint, **Q** and **E** for abilities, **1 2 3** to swap hero, **F** to revive or start again. The full list, and the gamepad's, is under Controls on the title screen. Your name is in the pause menu.
 
 ## Playing with a friend on another network
 
@@ -60,9 +58,11 @@ Merging to `main` ships. Render runs both halves from `render.yaml` on its free 
 | --- | --- |
 | `npm run dev` | Server and client together with live reload |
 | `npm run dev:server` / `npm run dev:client` | Each on its own |
-| `npm test` | Unit tests for the shared simulation |
-| `npm run test:net` | Boots a server, joins two headless clients, checks they sync. No browser needed |
-| `npm run test:e2e` | Browser test with Playwright (first time: `npx playwright install chromium`) |
+| `npm test` | Unit tests: the server's input queue and message checks, and parity with the slice's recorded fight |
+| `npm run test:parity` | The same scripted fights through the slice's own code (its repo beside this one) and Hearthgate's copy, compared tick by tick |
+| `npm run test:net` | Boots a server, plays bots and the real client session against it. No browser needed |
+| `npm run test:e2e` | Browser smoke test with Playwright: solo, two players, the gate (first time: `npx playwright install chromium`) |
+| `npm run lab` | The lag lab: two browsers through a delayed, lossy link, corrections and snaps a minute |
 | `npm run typecheck` | TypeScript across all three packages |
 | `npm run check` | Typecheck plus unit tests, the pre-commit minimum |
 | `npm run build` | Production client build into `client/dist` |
@@ -70,15 +70,15 @@ Merging to `main` ships. Render runs both halves from `render.yaml` on its free 
 ## Layout
 
 ```
-shared/   @hearthgate/shared   the deterministic simulation both sides run
+shared/   @hearthgate/shared   the slice's fight (sim, tuning, level), its protocol and the server's HostSession
 server/   @hearthgate/server   Colyseus room: the only place game truth lives
-client/   @hearthgate/client   Vite + Three.js: render, input, prediction, HUD
-tests/                         netcode smoke test and the Playwright e2e test
+client/   @hearthgate/client   the slice's client: render, camera, input, prediction, UI, sound
+tests/                         parity, netcode smoke test, the lag lab and the Playwright smoke test
 docs/                          design doc, devlog, backlog, playtest notes
 ```
 
 The rule that shapes everything: **the browser never decides anything.** It sends inputs and draws what the server says, predicting its own movement only so it feels instant. See `CLAUDE.md` for the working conventions.
 
-## Phase 0 exit gate
+## The current gate
 
-Two people on different networks fight the goblin together and both say it feels responsive: movement is instant, hits land where they look like they land, and nothing teleports. Record the session in `docs/playtest-notes.md`. Only then does Phase 1 (the combat slice) start.
+T1 of the slice transplant: side by side with the slice, solo on the hosted build feels the same (movement, the chains at 0.25x, hit feel, the look, the sound), then two players get through a run with no snap. Then the village and the portal return (T3) and the Phase 1 gate in the design doc follows (T5).
