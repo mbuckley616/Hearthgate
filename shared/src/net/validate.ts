@@ -1,4 +1,4 @@
-import { OFFHAND_ABILITY, STYLES, type OffhandKind, type Style } from '../config/tuning';
+import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
@@ -102,6 +102,10 @@ export function readLoadout(v: unknown): Loadout | null {
   if (m.offhand !== undefined) {
     if (!Object.keys(OFFHAND_ABILITY).includes(m.offhand as string)) return null;
     mods.offhand = m.offhand as OffhandKind;
+  }
+  if (m.family !== undefined) {
+    if (!Object.keys(FAMILY_STYLE).includes(m.family as string)) return null;
+    mods.family = m.family as WeaponFamily;
   }
   if (m.ammo !== undefined) {
     if (m.ammo !== 'frost' && m.ammo !== 'barbed') return null;

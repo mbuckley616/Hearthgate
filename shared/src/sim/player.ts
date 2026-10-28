@@ -1,4 +1,4 @@
-import { abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, type Collider } from '../level/geometry';
 import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -6,7 +6,7 @@ import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
-import { dodgeRechargeCut, emptyTalents, heroHit, moveSpeedMult } from './talents';
+import { dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -116,6 +116,12 @@ function setStringMove(p: PlayerState, s: string, heavy: boolean): void {
 function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number, prior = ''): void {
   p.mode = 'attack';
   p.attackHit = hitIndex;
+  // A weapon family (C5) borrows a pose for each step of its own chain.
+  const family = familyOf(p);
+  if (family) {
+    p.attackStep = hitIndex;
+    p.attackHit = FAMILY_ANIM[family][Math.min(hitIndex, FAMILY_ANIM[family].length - 1)];
+  } else if (p.attackStep !== undefined) delete p.attackStep;
   p.attackTime = 0;
   p.attackFired = false;
   p.attackQueued = false;
@@ -599,13 +605,14 @@ export function stepPlayer(
       p.mode = 'move';
     } else if (p.attackQueued && p.attackTime >= chainOpen) {
       // Chains are 3 hits until levels unlock steps 4 and 5.
-      const length = chainLengthFor(levelFor(p.xp[p.style]));
+      const fam = familyOf(p);
+      const length = Math.min(chainLengthFor(levelFor(p.xp[p.style])), fam ? FAMILY_ANIM[fam].length : 5);
       if (tuning.combo.heavies) {
         // The next light is the step after the string so far; a string as long as the chain starts again.
         const s = p.attackString ?? '';
         const prior = s.length >= length ? '' : s;
         startAttack(state, p, prior.length, cmd, moveMag, prior);
-      } else startAttack(state, p, (p.attackHit + 1) % length, cmd, moveMag);
+      } else startAttack(state, p, ((p.attackStep ?? p.attackHit) + 1) % length, cmd, moveMag);
     } else if (p.attackTime >= chainOpen + hit.recovery) {
       p.mode = 'move';
       p.attackQueued = false;

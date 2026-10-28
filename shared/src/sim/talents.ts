@@ -1,4 +1,4 @@
-import { ABILITIES, ABILITY_NAMES, comboHit, stringHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
+import { ABILITIES, ABILITY_NAMES, FAMILY_STYLE, comboHit, familyHit, stringHit, tuning, type WeaponFamily, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
 import { championArmour, championCooldown, championRecharge, championSpeed } from './champion';
 import { flowSpeed } from './flow';
 import { levelFor } from './gear';
@@ -129,6 +129,9 @@ export function talentText(style: Style, id: TalentId): string {
     case 'blink':
       return `+${t.blinkDistancePerRank} m distance, +${pct(t.blinkCritPerRank)} crit damage`;
     case 'bash':
+    case 'ward':
+    case 'deflect':
+    case 'quickShot':
       // The off-hand's ability (C4) has no talent ranks: the Q and E rows are the weapon's two.
       return '';
   }
@@ -175,10 +178,19 @@ export function attackSpeed(p: PlayerState): number {
   return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p);
 }
 
+/** The weapon family the hero fights with (C5), if the one in hand is not its style's first. */
+export function familyOf(p: PlayerState): WeaponFamily | undefined {
+  const f = p.mods.family;
+  return f && FAMILY_STYLE[f] === p.style ? f : undefined;
+}
+
 /** The current hero's chain hit i, sped up by haste. */
 export function heroHit(p: PlayerState, i: number): ComboHit {
   // A string move (C1) stands in for the chain step it borrows.
-  if (p.attackMove) return stringHit(p.style, p.attackMove, attackSpeed(p), p.attackCharge ?? 1);
+  const family = familyOf(p);
+  if (p.attackMove) return stringHit(p.style, p.attackMove, attackSpeed(p), p.attackCharge ?? 1, family);
+  // A weapon family (C5) has its own chain; attackHit is the borrowed pose, attackStep the step.
+  if (family) return familyHit(family, p.attackStep ?? 0, attackSpeed(p));
   return comboHit(p.style, i, attackSpeed(p));
 }
 

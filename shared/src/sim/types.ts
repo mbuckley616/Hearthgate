@@ -94,6 +94,10 @@ export interface PlayerState {
   flow?: FlowState;
   /** Seconds until the off-hand's ability is ready again (C4). */
   offhandCooldown?: number;
+  /** The step of a weapon family's chain (C5); attackHit is then the style's step whose pose it borrows. */
+  attackStep?: number;
+  /** A tome's ward on this hero (C5): hits it will absorb, until sim time. */
+  ward?: { hits: number; until: number };
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;

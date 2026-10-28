@@ -100,7 +100,7 @@ describe('the off-hand, two hands and the ammo slot (C4)', () => {
   it('takes an off-hand and ammo from a browser only of kinds there are, and carries the press across a late input', () => {
     const base = { name: 'Ann', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), maxHp: 100 };
     expect(readLoadout({ ...base, mods: { ...emptyMods(), offhand: 'shield', ammo: 'frost' } })?.mods).toMatchObject({ offhand: 'shield', ammo: 'frost' });
-    expect(readLoadout({ ...base, mods: { ...emptyMods(), offhand: 'tome' } })).toBeNull();
+    expect(readLoadout({ ...base, mods: { ...emptyMods(), offhand: 'cauldron' } })).toBeNull();
     expect(readLoadout({ ...base, mods: { ...emptyMods(), ammo: 'fire' } })).toBeNull();
     const pressed: PlayerCommand = { ...idleCommand(), ability3: true };
     expect(mergePresses(pressed, idleCommand()).ability3).toBe(true);

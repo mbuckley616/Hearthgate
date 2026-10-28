@@ -1,4 +1,4 @@
-import { enemyStats, tuning, type Style } from '../config/tuning';
+import { abilityTiming, enemyStats, tuning, type Style } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor } from './gear';
@@ -318,6 +318,25 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.lagGrace > 0 && !hit.late) {
     state.pendingHits.push({ playerId: p.id, at: state.time, hit });
     return 'pending';
+  }
+  // The buckler's deflect (C5): while it is up, every hit is parried.
+  if (p.mode === 'ability' && p.ability === 'deflect') {
+    const t = abilityTiming('deflect');
+    if (p.abilityTime >= t.windup && p.abilityTime < t.windup + t.active) {
+      parry(state, p, hit);
+      return 'parried';
+    }
+  }
+  // The tome's ward (C5): the next hit is absorbed whole.
+  if (p.ward) {
+    const ward = p.ward;
+    if (state.time > ward.until) delete p.ward;
+    else {
+      ward.hits--;
+      if (ward.hits <= 0) delete p.ward;
+      state.events.push({ kind: 'block', playerId: p.id, x: p.x, y: p.y + 1.1, z: p.z, broke: false });
+      return 'blocked';
+    }
   }
   const g = tuning.guard;
   const dx = p.x - hit.fromX;

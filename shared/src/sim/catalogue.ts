@@ -1,4 +1,4 @@
-import { tuning, type AmmoKind, type OffhandKind, type Style } from '../config/tuning';
+import { tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
 /**
@@ -99,6 +99,8 @@ export interface Shape {
   twoHanded?: boolean;
   /** An off-hand's kind (C4): what its ability on 3 is. */
   offhand?: OffhandKind;
+  /** A weapon's family (C5), when it is not its style's first. */
+  family?: WeaponFamily;
 }
 
 export const SHAPES: readonly Shape[] = [
@@ -128,6 +130,14 @@ export const SHAPES: readonly Shape[] = [
   { id: 'sword', slot: 'weapon', name: 'sword', families: ['metal'], weight: 0, kind: 'melee', style: 'sword' },
   { id: 'shortbow', slot: 'weapon', name: 'shortbow', families: ['wood'], weight: 0, kind: 'ranged', style: 'bow', twoHanded: true },
   { id: 'staff', slot: 'weapon', name: 'staff', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', twoHanded: true },
+  // Weapon families (C5): each fights its style's fight with a chain of its own.
+  { id: 'warhammer', slot: 'weapon', name: 'warhammer', families: ['metal'], weight: 0, kind: 'melee', style: 'sword', twoHanded: true, family: 'warhammer' },
+  { id: 'crossbow', slot: 'weapon', name: 'crossbow', families: ['wood'], weight: 0, kind: 'ranged', style: 'bow', family: 'crossbow' },
+  { id: 'wand', slot: 'weapon', name: 'wand', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', family: 'wand' },
+  // Off-hands for them (C5): a tome with the wand, a buckler or a second crossbow with the crossbow.
+  { id: 'tome', slot: 'shield', name: 'tome', families: ['cloth'], weight: 0, offhand: 'tome' },
+  { id: 'buckler', slot: 'shield', name: 'buckler', families: ['hide'], weight: 0.5, offhand: 'buckler' },
+  { id: 'handCrossbow', slot: 'shield', name: 'hand crossbow', families: ['wood'], weight: 0, kind: 'ranged', offhand: 'handCrossbow' },
 ];
 
 /** One kind of item: what an id in the catalogue stands for. */
@@ -261,6 +271,7 @@ export function wornMods(worn: Worn): Mods {
   if (weapon && style && twoHanded) m.damage[style] += g.twoHandDamage;
   const off = worn.shield ? entryOf(worn.shield) : null;
   if (weapon && !twoHanded && off?.shape.offhand && off.kind === weapon.kind) m.offhand = off.shape.offhand;
+  if (weapon?.shape.family) m.family = weapon.shape.family;
   const ammo = worn.ammo ? entryOf(worn.ammo) : null;
   if (ammo && style === 'bow') m.ammo = ammo.material.id as AmmoKind;
   // Only set when worn: a hero in the slice's gear (or none) never carries the field.

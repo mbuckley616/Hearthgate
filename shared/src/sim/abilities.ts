@@ -159,6 +159,21 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
   const rank = abilityRank(p, kind);
   const base = tuning.combat.baseDamage;
   switch (kind) {
+    case 'ward': {
+      // The tome's ward (C5): the next hit on this hero and every ally near is absorbed, for a while.
+      for (const o of state.players) {
+        if (o.mode === 'down' || Math.hypot(o.x - p.x, o.z - p.z) > a.wardRadiusM) continue;
+        o.ward = { hits: 1, until: state.time + a.wardSeconds };
+      }
+      break;
+    }
+    case 'quickShot': {
+      // The hand crossbow (C5): two bolts from the off hand, a little apart.
+      state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: false });
+      const payload = { damage: a.quickShotDamage * base, poise: 1, knockback: 0, heavy: false };
+      for (const u of [-0.04, 0.04]) spawnArrow(state, p, payload, u, tuning.rangedCombo.arrowSpeed, false);
+      break;
+    }
     case 'bash': {
       // The shield's bash (C4): the nearest enemy in front is knocked off its feet.
       const fx = Math.sin(p.yaw);

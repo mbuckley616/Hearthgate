@@ -199,6 +199,133 @@ export const tuning = {
     hit5ArcDeg: 360,
   },
 
+  /** Warhammer (C5): two hands, three slow heavy blows a chain, huge stagger. Borrows the sword's sweep, spin and slam. */
+  warhammerCombo: {
+    // 1 · sweeping blow
+    hit1WindupMs: 260,
+    hit1ActiveMs: 160,
+    hit1RecoveryMs: 460,
+    hit1LungeM: 0.8,
+    hit1Damage: 2.2,
+    hit1Poise: 6,
+    hit1KnockbackM: 3,
+    hit1Heavy: 1,
+    hit1RangeM: 2.6,
+    hit1ArcDeg: 160,
+    // 2 · wheeling blow
+    hit2WindupMs: 200,
+    hit2ActiveMs: 340,
+    hit2RecoveryMs: 420,
+    hit2LungeM: 1,
+    hit2Damage: 1.8,
+    hit2Poise: 4,
+    hit2KnockbackM: 2,
+    hit2Heavy: 1,
+    hit2RangeM: 2.6,
+    hit2ArcDeg: 360,
+    // 3 · crushing slam
+    hit3WindupMs: 240,
+    hit3ActiveMs: 360,
+    hit3RecoveryMs: 380,
+    hit3LungeM: 1.6,
+    hit3Damage: 3.2,
+    hit3Poise: 9,
+    hit3KnockbackM: 3.5,
+    hit3Heavy: 1,
+    hit3RangeM: 3,
+    hit3ArcDeg: 360,
+  },
+
+  /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
+  crossbowCombo: {
+    // 1 · quick bolt
+    hit1WindupMs: 140,
+    hit1ActiveMs: 60,
+    hit1RecoveryMs: 180,
+    hit1LungeM: 0,
+    hit1Damage: 1.3,
+    hit1Poise: 1.2,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    // 2 · quick bolt
+    hit2WindupMs: 140,
+    hit2ActiveMs: 60,
+    hit2RecoveryMs: 180,
+    hit2LungeM: 0,
+    hit2Damage: 1.3,
+    hit2Poise: 1.2,
+    hit2KnockbackM: 0,
+    hit2Heavy: 0,
+    // 3 · piercing bolt, then the reload
+    hit3WindupMs: 120,
+    hit3ActiveMs: 60,
+    hit3RecoveryMs: 620,
+    hit3LungeM: 0,
+    hit3Damage: 2,
+    hit3Poise: 2.5,
+    hit3KnockbackM: 0.5,
+    hit3Heavy: 1,
+  },
+
+  /** Wand (C5): one hand, five fast small bolts, walking all the while. Borrows the staff's bolts. */
+  wandCombo: {
+    // 1 · bolt
+    hit1WindupMs: 90,
+    hit1ActiveMs: 50,
+    hit1RecoveryMs: 140,
+    hit1LungeM: 0,
+    hit1Damage: 0.55,
+    hit1Poise: 0.4,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    // 2 · bolt
+    hit2WindupMs: 90,
+    hit2ActiveMs: 50,
+    hit2RecoveryMs: 140,
+    hit2LungeM: 0,
+    hit2Damage: 0.55,
+    hit2Poise: 0.4,
+    hit2KnockbackM: 0,
+    hit2Heavy: 0,
+    // 3 · bolt
+    hit3WindupMs: 90,
+    hit3ActiveMs: 50,
+    hit3RecoveryMs: 140,
+    hit3LungeM: 0,
+    hit3Damage: 0.6,
+    hit3Poise: 0.4,
+    hit3KnockbackM: 0,
+    hit3Heavy: 0,
+    // 4 · bolt
+    hit4WindupMs: 90,
+    hit4ActiveMs: 50,
+    hit4RecoveryMs: 140,
+    hit4LungeM: 0,
+    hit4Damage: 0.6,
+    hit4Poise: 0.4,
+    hit4KnockbackM: 0,
+    hit4Heavy: 0,
+    // 5 · bolt
+    hit5WindupMs: 90,
+    hit5ActiveMs: 50,
+    hit5RecoveryMs: 220,
+    hit5LungeM: 0,
+    hit5Damage: 0.8,
+    hit5Poise: 0.8,
+    hit5KnockbackM: 0,
+    hit5Heavy: 0,
+  },
+
+  /** A family's string moves (C1) are its style's, scaled: a warhammer's heavies hit harder and come slower. */
+  families: {
+    warhammerHeavyDamage: 1.4,
+    warhammerHeavyWindup: 1.3,
+    crossbowHeavyDamage: 1.15,
+    crossbowHeavyWindup: 1,
+    wandHeavyDamage: 0.8,
+    wandHeavyWindup: 0.7,
+  },
+
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
   rangedCombo: {
     // 1 · quick shot
@@ -1058,6 +1185,24 @@ export const tuning = {
     bashArcDeg: 100,
     bashDamage: 0.8,
     bashKnockbackM: 2,
+    // The tome's ward (C5): the next hit on you and every ally near you is absorbed, for a while.
+    wardWindupMs: 200,
+    wardDurationMs: 100,
+    wardRecoveryMs: 300,
+    wardCooldownMs: 12000,
+    wardRadiusM: 5,
+    wardSeconds: 8,
+    // The buckler's deflect (C5): for a moment every hit on you is parried.
+    deflectWindupMs: 0,
+    deflectDurationMs: 450,
+    deflectRecoveryMs: 150,
+    deflectCooldownMs: 5000,
+    // The hand crossbow's quick shot (C5): two bolts from the off hand.
+    quickShotWindupMs: 100,
+    quickShotDurationMs: 60,
+    quickShotRecoveryMs: 250,
+    quickShotCooldownMs: 4000,
+    quickShotDamage: 0.9,
   },
 
   /** Soft targeting (brief: "Camera and controls"). */
@@ -1574,6 +1719,19 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.bashArcDeg': [10, 360, 5],
   'abilities.bashDamage': [0, 5, 0.05],
   'abilities.bashKnockbackM': [0, 6, 0.1],
+  'abilities.wardCooldownMs': [0, 30000, 100],
+  'abilities.wardRadiusM': [0, 15, 0.5],
+  'abilities.wardSeconds': [0, 30, 0.5],
+  'abilities.deflectDurationMs': [0, 1500, 10],
+  'abilities.deflectCooldownMs': [0, 20000, 100],
+  'abilities.quickShotCooldownMs': [0, 20000, 100],
+  'abilities.quickShotDamage': [0, 5, 0.05],
+  'families.warhammerHeavyDamage': [0.5, 3, 0.05],
+  'families.warhammerHeavyWindup': [0.5, 3, 0.05],
+  'families.crossbowHeavyDamage': [0.5, 3, 0.05],
+  'families.crossbowHeavyWindup': [0.5, 3, 0.05],
+  'families.wandHeavyDamage': [0.5, 3, 0.05],
+  'families.wandHeavyWindup': [0.3, 3, 0.05],
   'gear.twoHandDamage': [0, 1, 0.05],
   'gear.frostArrowSlowS': [0, 5, 0.1],
   'abilities.whirlwindWindupMs': [0, 4000, 10],
@@ -1938,7 +2096,34 @@ export function stringMoveFor(style: Style, s: string): string | undefined {
 }
 
 /** A string move's attack (C1): the chain step it borrows, with its own windup, damage, poise and knockback; charge 2 hits harder. */
-export function stringHit(style: Style, key: string, speed = 1, charge = 1): ComboHit {
+const FAMILY_TABLES: Record<WeaponFamily, object> = {
+  warhammer: tuning.warhammerCombo,
+  crossbow: tuning.crossbowCombo,
+  wand: tuning.wandCombo,
+};
+
+/** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
+export function familyHit(family: WeaponFamily, i: number, speed = 1): ComboHit {
+  const c = FAMILY_TABLES[family] as Record<string, number>;
+  const step = Math.max(0, Math.min(FAMILY_ANIM[family].length - 1, i));
+  const k = `hit${step + 1}`;
+  const scale = tuning.combo.durationScale / 1000 / speed;
+  const borrowed = comboHit(FAMILY_STYLE[family], FAMILY_ANIM[family][step], speed);
+  return {
+    windup: c[`${k}WindupMs`] * scale,
+    active: c[`${k}ActiveMs`] * scale,
+    recovery: c[`${k}RecoveryMs`] * scale,
+    lunge: c[`${k}LungeM`],
+    damage: c[`${k}Damage`] * tuning.combat.baseDamage,
+    poise: c[`${k}Poise`],
+    knockback: c[`${k}KnockbackM`],
+    heavy: c[`${k}Heavy`] >= 1,
+    range: c[`${k}RangeM`] ?? borrowed.range,
+    arcDeg: c[`${k}ArcDeg`] ?? borrowed.arcDeg,
+  };
+}
+
+export function stringHit(style: Style, key: string, speed = 1, charge = 1, family?: WeaponFamily): ComboHit {
   const t = STRING_TABLES[style] as Record<string, number>;
   const k = key.toLowerCase();
   const base = comboHit(style, Math.max(0, Math.min(4, Math.round(t[`${k}Anim`]))), speed);
@@ -1952,6 +2137,19 @@ export function stringHit(style: Style, key: string, speed = 1, charge = 1): Com
     poise: t[`${k}Poise`] * (two ? c.charge2Poise : 1),
     knockback: t[`${k}KnockbackM`],
     heavy: t[`${k}Heavy`] >= 1,
+    ...(family ? familyHeavy(family, t[`${k}WindupMs`], t[`${k}Damage`], t[`${k}Poise`], speed, charge) : {}),
+  };
+}
+
+/** A family's take on its style's string move (C5): its damage, poise and windup scaled. */
+function familyHeavy(family: WeaponFamily, windupMs: number, damage: number, poise: number, speed: number, charge: number): Partial<ComboHit> {
+  const f = tuning.families as Record<string, number>;
+  const c = tuning.combo;
+  const dmg = f[`${family}HeavyDamage`];
+  return {
+    windup: (windupMs * f[`${family}HeavyWindup`] * c.durationScale) / 1000 / speed,
+    damage: damage * dmg * tuning.combat.baseDamage * (charge >= 2 ? c.charge2Damage : 1) * (charge >= 3 ? tuning.flow.crescendoDamage : 1),
+    poise: poise * dmg * (charge >= 2 ? c.charge2Poise : 1),
   };
 }
 
@@ -1979,11 +2177,20 @@ export function comboHit(style: Style, i: number, speed = 1): ComboHit {
   };
 }
 
-export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink' | 'bash';
+export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink' | 'bash' | 'ward' | 'deflect' | 'quickShot';
 
-/** What an off-hand is (C4): the shield's bash on 3. The tome and the buckler come with the one-handed wand and crossbow (C5). */
-export type OffhandKind = 'shield';
-export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash' };
+/** What an off-hand is (C4, C5): its ability is the third, on 3. */
+export type OffhandKind = 'shield' | 'tome' | 'buckler' | 'handCrossbow';
+export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash', tome: 'ward', buckler: 'deflect', handCrossbow: 'quickShot' };
+
+/**
+ * Weapon families (C5; Michael, 28 Oct): more than one weapon to a style. A family fights its style's
+ * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
+ * the projectiles of one of its style's chain steps (FAMILY_ANIM).
+ */
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -2002,6 +2209,9 @@ export const ABILITY_NAMES: Record<AbilityKind, string> = {
   frostRing: 'Frost ring',
   blink: 'Blink',
   bash: 'Shield bash',
+  ward: 'Ward',
+  deflect: 'Deflect',
+  quickShot: 'Quick shot',
 };
 
 /** An ability's phases in seconds: the effect fires at the end of the windup, then active, then recovery. */
