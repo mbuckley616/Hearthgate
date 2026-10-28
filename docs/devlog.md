@@ -2,6 +2,32 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C4: the off-hand slot
+
+**What changed**
+
+- **The shield slot is the off-hand.** A one-handed weapon takes an off-hand of its kind, and the off-hand brings the third ability.
+- **The shield's bash** goes on 3 (or R, or RT). It knocks the nearest enemy in front off its feet and has its own cooldown (`PlayerState.offhandCooldown`).
+- **Two-handed weapons** take no off-hand and hit 20% harder (`gear.twoHandDamage`).
+- **RuneScape's eleventh slot holds arrows.** With a bow, frost arrows slow what they hit, and a barbed charged shot opens a bleed.
+- **What travels and what is checked.** `Mods.offhand` and `Mods.ammo` go in the loadout, and the server checks them against the kinds there are. `PlayerCommand.ability3` is an optional press that a late input carries.
+- **On screen:**
+  - The HUD shows the third slot only while an off-hand is in use.
+  - The hero screen has the ammo cell beside the neck.
+  - Item text names the bash, the two-hand bonus and what arrows do.
+- **Parity identical.**
+- **test:net's flake is fixed.** The netcode test's walk onto floor 2's ring home failed CI four times since 28 Oct (main included, and #89). Both bots stood inside the ring's 2.2 m before the second reached its exact mark, the ring handed the party on, and the bot's walk waited on a room that had stopped sending. A walk now ends once a hand-off arrives.
+
+**Learned**
+
+- **Today's bow and staff take both hands,** so the off-hands for ranged and magic had nothing to go with. The tome, the buckler and the dual hand crossbow moved to C5, beside the one-handed wand and crossbow.
+- **The new ammo cell caught the hero screen's cursor.** Right from the head went down to it rather than across to the bag (a tie the ammo cell won). The smoke test walks that route and failed. The cursor now weighs a row change at three steps, so it keeps to its row.
+- **One flaky test can hide behind another.** A deterministic floor (`dungeon.seed` pinned) failing only sometimes pointed to timing, not geometry. Checking every CI failure's message found the same waypoint four times.
+
+**Next**
+
+- C5: the warhammer, the one-handed crossbow and the wand, with the tome, the buckler and the dual hand crossbow.
+
 ## 2026-10-28: local session, C3: one weapon set per outing
 
 **What changed**
