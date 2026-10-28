@@ -551,6 +551,31 @@ export const tuning = {
     masteryDamagePerRank: 0.03,
   },
 
+  /**
+   * Champion points (T6b, plan 3a; Michael, 27 Oct): past the top level, XP from any weapon buys
+   * points, each pointXpGrowth dearer than the last. Small ranked perks in three constellations;
+   * all of them together give at most the ceilings' damage and health (Michael: +15% each).
+   */
+  champion: {
+    pointXp: 20000,
+    pointXpGrowth: 250,
+    ceilingDamage: 0.15,
+    ceilingHealth: 0.15,
+    /** Most perks take five ranks; Precision and Vitality take enough to reach their ceiling. */
+    smallMaxRanks: 5,
+    precisionDamagePerRank: 0.01,
+    precisionMaxRanks: 15,
+    heftPoisePerRank: 0.03,
+    exploitComboPerRank: 0.03,
+    vitalityHealthPerRank: 0.015,
+    vitalityMaxRanks: 10,
+    toughnessReductionPerRank: 0.01,
+    steadyReviveCutPerRank: 0.06,
+    willCooldownPerRank: 0.015,
+    lightstepRechargePerRank: 0.03,
+    strideSpeedPerRank: 0.01,
+  },
+
   /** Gear drops (brief: three per run, one guaranteed from the Warden). */
   gear: {
     rareChance: 0.3,
@@ -1436,6 +1461,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'progression.glowLevel': [2, 50, 1],
   'talents.pointsPerLevel': [0, 5, 1],
   'talents.mightDamagePerRank': [0, 0.3, 0.01],
+  'champion.pointXp': [1000, 200000, 1000],
+  'champion.pointXpGrowth': [0, 5000, 50],
+  'champion.ceilingDamage': [0, 0.5, 0.01],
+  'champion.ceilingHealth': [0, 0.5, 0.01],
+  'champion.precisionDamagePerRank': [0, 0.05, 0.005],
+  'champion.vitalityHealthPerRank': [0, 0.05, 0.005],
   'talents.weightPoisePerRank': [0, 0.5, 0.01],
   'talents.finisherDamagePerRank': [0, 0.5, 0.01],
   'talents.riposteParryMsPerRank': [0, 100, 5],

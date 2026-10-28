@@ -5,6 +5,7 @@ import type { Mods } from './gear';
 import { createPlayer } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
+import { championHealth, championRevive, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 /**
@@ -22,6 +23,8 @@ export interface Loadout {
   maxHp: number;
   /** The catalogue ids of what the hero wears (T5c), so every player draws it. Absent in the slice. */
   look?: string[];
+  /** The player's champion points (T6b). Absent in the slice. */
+  champion?: ChampionState;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -30,9 +33,12 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   p.xp = { ...l.xp };
   p.talents = structuredClone(l.talents);
   p.mods = structuredClone(l.mods);
-  p.maxHp = l.maxHp;
+  // Vitality is applied here, on the server's numbers, so its ceiling holds whatever the browser sends.
+  p.maxHp = l.champion ? Math.round(l.maxHp * (1 + championHealth(l.champion))) : l.maxHp;
   if (l.look) p.look = [...l.look];
   else delete p.look;
+  if (l.champion) p.champion = structuredClone(l.champion);
+  else delete p.champion;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 
@@ -88,7 +94,7 @@ export function stepRevives(state: SimState, commands: Record<string, PlayerComm
       continue;
     }
     down.reviveProgress += dt;
-    if (down.reviveProgress * 1000 >= c.reviveMs) {
+    if (down.reviveProgress * 1000 >= c.reviveMs * (1 - championRevive(helper))) {
       const draught = down.bleed !== undefined && down.bleed <= 0;
       if (draught) helper.draughts = (helper.draughts ?? 1) - 1;
       delete down.bleed;

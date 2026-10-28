@@ -824,6 +824,20 @@ canvas {
   box-shadow: 0 0 0 1px #ffcf5a inset;
 }
 
+.talent.champion {
+  border-color: rgba(190, 150, 255, 0.2);
+}
+
+.champion-status {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #a8a2ae;
+}
+
+.champion-status.has {
+  color: #ffcf5a;
+}
+
 .talent-level {
   font-weight: 600;
   font-size: 11px;
