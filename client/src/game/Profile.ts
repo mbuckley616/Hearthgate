@@ -14,9 +14,9 @@ import {
   type GearItem,
   type Worn,
 } from '@hearthgate/shared/sim/catalogue';
-import type { Item } from '@hearthgate/shared/sim/gear';
+import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
-import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
+import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 
 const STORAGE_KEY = 'hearthgate.profile.v2';
@@ -225,7 +225,7 @@ export class Profile {
   changeRank(style: Style, id: TalentId, delta: 1 | -1): void {
     const ranks = this.data.talents[style];
     const rank = ranks[id] ?? 0;
-    if (delta > 0 && (rank >= maxRanks(id) || this.pointsLeft(style) <= 0)) return;
+    if (delta > 0 && (rank >= maxRanks(id) || this.pointsLeft(style) <= 0 || levelFor(this.data.xp[style]) < talentLevel(id))) return;
     if (delta < 0 && rank <= 0) return;
     ranks[id] = rank + delta;
     this.save();

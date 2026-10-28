@@ -20,6 +20,7 @@
     "check": "npm run typecheck && npm test",
     "test:net": "tsx tests/netcode-smoke.ts",
     "lab": "tsx tests/lab/run.ts",
+    "gate:party": "tsx tests/gate-party.ts",
     "test:parity": "tsx tests/parity.ts"
   },
   "devDependencies": {

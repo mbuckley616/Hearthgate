@@ -14,7 +14,7 @@ import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@he
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
 import { emptyTalents } from "@hearthgate/shared/sim/talents";
-import { idleCommand, type PlayerCommand, type SimState } from "@hearthgate/shared/sim/types";
+import { idleCommand, type PlayerCommand, type SimEvent, type SimState } from "@hearthgate/shared/sim/types";
 
 export const MSG = "m";
 export const TICK_MS = 1000 / tuning.sim.tickRate;
@@ -73,9 +73,14 @@ export class Bot {
   /** Every quarter second: tick, position, mode, ack and inputs sent, for a walk that fails on a slow machine. */
   trace: string[] = [];
 
+  /** Every event the server sent, in order (the Phase 1 gate counts combos, downs and revives from it). */
+  events: SimEvent[] = [];
+
   constructor(
     readonly name: string,
     private readonly endpoint: string,
+    /** What this player brings: a plain level-1 hero unless a test gives levels and gear. */
+    readonly kit: Loadout = loadout(name),
   ) {}
 
   /** Make a room of our own (code null: a dungeon run unless told otherwise) or join one by code, say hello and wait for the welcome. */
@@ -97,6 +102,8 @@ export class Bot {
     this.seq = 0;
     void old.leave();
     this.attach(await this.client.consumeSeatReservation(h.reservation as Parameters<Client["consumeSeatReservation"]>[0]));
+    // The room we left can say goodbye before the new seat is taken: that close was ours, not a kick.
+    this.closedWith = null;
     await this.until(() => this.id !== "" && this.snaps.length > 0, 5000, `${this.name} welcomed after the portal`);
     return this;
   }
@@ -115,6 +122,7 @@ export class Bot {
       }
       if (m.k === "snap") {
         this.snaps.push({ s: m.s, acks: m.acks, at: performance.now(), scale: m.scale, portals: m.portals });
+        this.events.push(...m.ev);
         const p = m.s.players.find((q) => q.id === this.id);
         if (p && m.s.tick % 15 === 0) this.trace.push(`t${m.s.tick} (${p.x.toFixed(1)},${p.z.toFixed(1)}) ${p.mode} ack${m.acks[this.id] ?? 0} seq${this.seq}`);
         if (this.trace.length > 80) this.trace.shift();
@@ -124,7 +132,7 @@ export class Bot {
     room.onLeave((c) => {
       if (this.room === room) this.closedWith = c;
     });
-    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: loadout(this.name) });
+    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: this.kit });
   }
 
   send(msg: ToHost | Record<string, unknown>) {

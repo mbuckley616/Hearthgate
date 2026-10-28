@@ -1,7 +1,7 @@
 import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
-import { LEVEL_UNLOCKS, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
-import { TALENT_IDS, maxRanks, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
+import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
+import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
 import type { ActionFrame } from '../input/actions';
 import type { Profile } from '../game/Profile';
 import { gearLine, nameOf } from './gearText';
@@ -47,6 +47,9 @@ export class EquipScreen {
   private root = document.createElement('div');
   private body = document.createElement('div');
   private tab: 'gear' | 'talents' = 'gear';
+  /** The talent board's cursor: a weapon kind's column and a talent in it. */
+  private tCol = 0;
+  private tRow = 0;
   private readonly grid = cells();
   private cursor = 0;
   /** Seconds until a held direction moves the cursor again. */
@@ -84,23 +87,42 @@ export class EquipScreen {
   /**
    * Keys and pad while the screen is up (Game hands it the frame's actions and keeps the hero
    * still): move to choose, interact to wear or take off, ability 1 to drop, the style keys for tabs.
+   * On the talents: move to choose, interact adds a rank, ability 1 takes one off, ability 2 resets the board.
    */
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
     if (actions.pressed.has('style1')) this.setTab('gear');
     if (actions.pressed.has('style2')) this.setTab('talents');
-    if (this.tab !== 'gear') return;
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
-      this.step(dir);
+      if (this.tab === 'gear') this.step(dir);
+      else this.stepTalent(dir);
       this.repeat = dir === this.lastDir ? 0.12 : 0.35;
     }
     this.repeat -= dt;
     this.lastDir = dir;
+    if (this.tab === 'talents') {
+      const style = STYLES[this.tCol];
+      const id = TALENT_IDS[this.tRow];
+      if (actions.pressed.has('interact')) this.profile.changeRank(style, id, 1);
+      else if (actions.pressed.has('ability1')) this.profile.changeRank(style, id, -1);
+      else if (actions.pressed.has('ability2')) this.profile.resetTalents(style);
+      else return;
+      this.onChange();
+      this.render();
+      return;
+    }
     if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
     if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+  }
+
+  private stepTalent(dir: string): void {
+    if (dir === 'left' || dir === 'right') this.tCol = (this.tCol + (dir === 'right' ? 1 : STYLES.length - 1)) % STYLES.length;
+    else this.tRow = Math.max(0, Math.min(TALENT_IDS.length - 1, this.tRow + (dir === 'down' ? 1 : -1)));
+    this.render();
+    this.body.querySelector('.talent.chosen')?.scrollIntoView({ block: 'nearest' });
   }
 
   private setTab(tab: 'gear' | 'talents'): void {
@@ -171,7 +193,7 @@ export class EquipScreen {
     const levels = STYLES.map((s) => {
       const xp = Math.floor(d.xp[s]);
       const level = levelFor(xp);
-      const next = level < maxLevel() ? `Next: ${LEVEL_UNLOCKS[level + 1] ?? 'talent point'}` : 'Max level';
+      const next = level < maxLevel() ? `Next: ${levelUnlock(level + 1) ?? 'talent point'}` : 'Max level';
       const points = this.profile.pointsLeft(s);
       return `<div class="equip-hero ${this.profile.style === s ? 'in-hand' : ''}">
         <div class="hero-name">${STYLE_NAMES[s]} <span>Lv ${level}</span></div>
@@ -234,21 +256,25 @@ export class EquipScreen {
 
   /** One board per weapon kind: a level after the first is a point; respec is free between runs. */
   private talentsHtml(): string {
-    const cols = STYLES.map((s) => {
+    const cols = STYLES.map((s, col) => {
       const ranks = this.profile.data.talents[s];
       const left = this.profile.pointsLeft(s);
-      const rows = TALENT_IDS.map((id) => {
+      const level = levelFor(this.profile.data.xp[s]);
+      const rows = TALENT_IDS.map((id, row) => {
         const rank = ranks[id] ?? 0;
         const max = maxRanks(id);
         const pips = Array.from({ length: max }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
         const ability = id === 'q' || id === 'e';
-        return `<div class="talent ${ability ? 'ability' : ''}">
-          <div class="talent-name">${talentName(s, id)}</div>
-          <div class="talent-text">${talentText(s, id)} per rank</div>
+        const opens = talentLevel(id);
+        const locked = level < opens;
+        const kind = `${ability ? 'ability' : ''}${opens > 1 ? ' milestone' : ''}${locked ? ' locked' : ''}${this.tab === 'talents' && col === this.tCol && row === this.tRow ? ' chosen' : ''}`;
+        return `<div class="talent ${kind}">
+          <div class="talent-name">${talentName(s, id)}${opens > 1 ? ` <span class="talent-level">Lv ${opens}</span>` : ''}</div>
+          <div class="talent-text">${locked ? `Opens at level ${opens}: ` : ''}${talentText(s, id)} per rank</div>
           <div class="talent-pips">${pips}</div>
           <div class="talent-btns">
             <button data-action="rankDown" data-style="${s}" data-talent="${id}" ${rank <= 0 ? 'disabled' : ''}>−</button>
-            <button data-action="rankUp" data-style="${s}" data-talent="${id}" ${rank >= max || left <= 0 ? 'disabled' : ''}>+</button>
+            <button data-action="rankUp" data-style="${s}" data-talent="${id}" ${rank >= max || left <= 0 || locked ? 'disabled' : ''}>+</button>
           </div>
         </div>`;
       }).join('');
@@ -259,6 +285,6 @@ export class EquipScreen {
       </div>`;
     }).join('');
     return `<div class="talent-cols">${cols}</div>
-      <div class="muted talent-note">Every level after the first gives that weapon kind a point. Resetting is free between fights.</div>`;
+      <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or LB: take off · E or RB: reset</div>`;
   }
 }

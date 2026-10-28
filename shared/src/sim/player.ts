@@ -5,7 +5,7 @@ import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
-import { emptyTalents, heroHit, moveSpeedMult } from './talents';
+import { dodgeRechargeCut, emptyTalents, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -347,7 +347,7 @@ export function stepPlayer(
   // Dodge charges recharge one at a time.
   if (p.dodgeCharges < dg.charges) {
     p.dodgeRecharge += dt;
-    if (p.dodgeRecharge >= (dg.chargeRechargeMs / 1000) * (1 - p.mods.dodgeRecharge)) {
+    if (p.dodgeRecharge >= (dg.chargeRechargeMs / 1000) * (1 - dodgeRechargeCut(p))) {
       p.dodgeRecharge = 0;
       p.dodgeCharges++;
     }

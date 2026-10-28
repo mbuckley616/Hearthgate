@@ -2,7 +2,7 @@ import { STYLES, type Style } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
-import { TALENT_IDS, type TalentRanks } from '../sim/talents';
+import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
@@ -76,6 +76,8 @@ export function readLoadout(v: unknown): Loadout | null {
       if (!TALENT_IDS.includes(id as never) || !isNum(n) || n < 0 || n > 100) return null;
       ranks[id as keyof TalentRanks] = Math.trunc(n);
     }
+    // The board must be one the XP could have bought (plan 3a: the browser keeps it until Phase 2's saves).
+    if (boardProblem(xp[s], ranks)) return null;
     talents[s] = ranks;
   }
   const m = v.mods;
