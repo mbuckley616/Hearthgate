@@ -98,7 +98,7 @@ Other notes
 - **Screenshots:** sent to Michael in the session (a Shatter, a Detonate and a Skewer callout, a guard room fight, the rest room).
 
 Decisions
-- Gate: met by the stand-in (2026-10-27). Moving to Phase 2 is Michael's word.
+- Gate: met by the stand-in (2026-10-27). Michael closed Phase 1 on it the same day: "I'm good to close it and move on!"
 
 ## 2026-10-27: T3, T4 and T4b gates (the village and portal, generated dungeons, the dungeon editor): Michael on the hosted build
 

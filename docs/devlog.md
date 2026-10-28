@@ -24,8 +24,8 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- Michael: call the Phase 1 gate (the phase moves on his word).
-- T6, progression to 50, when Phase 1 is closed.
+- Michael closed Phase 1 on these runs the same day ("I'm good to close it and move on!"). Phase 2, village and loop, is current.
+- T6, progression to 50, carried over as Phase 2's first item. Phase 2's own items still need planning from the design doc.
 
 ## 2026-10-27: local session, T5c: every piece drawn on the hero as itself
 

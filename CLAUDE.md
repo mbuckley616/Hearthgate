@@ -4,7 +4,7 @@ Read this first in every session. The design doc is `docs/design-doc.md`; the cu
 
 ## What this project is
 
-A browser co-op dungeon crawler with a host-owned village, portals into short runs, and region-based trading. Phase 0 (the netcode spike) passed on 3 Oct 2026; Phase 1 (the combat slice) is current. Build phases in order; each has an exit gate in the design doc's Milestones section. Do not start the next phase's content before the current gate is met and recorded in `docs/playtest-notes.md`.
+A browser co-op dungeon crawler with a host-owned village, portals into short runs, and region-based trading. Phase 0 (the netcode spike) passed on 3 Oct 2026 and Phase 1 (the combat slice) on 27 Oct 2026 (a bot party standing in for the second player); Phase 2 (village and loop) is current, starting with T6 carried over. Build phases in order; each has an exit gate in the design doc's Milestones section. Do not start the next phase's content before the current gate is met and recorded in `docs/playtest-notes.md`.
 
 ## Architecture rules (never bend these)
 
