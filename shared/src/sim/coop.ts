@@ -20,6 +20,8 @@ export interface Loadout {
   talents: Record<Style, TalentRanks>;
   mods: Mods;
   maxHp: number;
+  /** The catalogue ids of what the hero wears (T5c), so every player draws it. Absent in the slice. */
+  look?: string[];
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -29,6 +31,8 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   p.talents = structuredClone(l.talents);
   p.mods = structuredClone(l.mods);
   p.maxHp = l.maxHp;
+  if (l.look) p.look = [...l.look];
+  else delete p.look;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 

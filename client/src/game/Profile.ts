@@ -7,6 +7,7 @@ import {
   fromSliceItem,
   isGearItem,
   starterGear,
+  lookOf,
   wornMods,
   wornStyle,
   type BodySlot,
@@ -241,7 +242,7 @@ export class Profile {
     // Ranks past a lowered cap (tuning changes) simply don't count.
     for (const s of Object.keys(talents) as Style[]) for (const id of TALENT_IDS) if ((talents[s][id] ?? 0) > maxRanks(id)) talents[s][id] = maxRanks(id);
     const mods = wornMods(this.data.worn);
-    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp };
+    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn) };
   }
 
   /** Pull XP earned in the sim back into the profile. */

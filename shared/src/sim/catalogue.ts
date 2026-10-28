@@ -185,6 +185,21 @@ export function armourOf(entry: CatalogueEntry): number {
 /** Worn gear, by slot. */
 export type Worn = Partial<Record<BodySlot, GearItem>>;
 
+/** What the hero wears as every player draws it (T5c): the worn catalogue ids, in the body's order. */
+export function lookOf(worn: Worn): string[] {
+  return BODY_SLOTS.flatMap((slot) => (worn[slot] ? [worn[slot]!.id] : []));
+}
+
+/** The worn pieces a look names, by slot (unknown ids are skipped). */
+export function lookSlots(look: readonly string[]): Partial<Record<BodySlot, CatalogueEntry>> {
+  const out: Partial<Record<BodySlot, CatalogueEntry>> = {};
+  for (const id of look) {
+    const e = CATALOGUE.get(id);
+    if (e) out[e.slot] = e;
+  }
+  return out;
+}
+
 /** The style the weapon in hand fights with (the sword, with nothing in hand). */
 export function wornStyle(worn: Worn): Style {
   return worn.weapon ? (entryOf(worn.weapon).shape.style ?? 'sword') : 'sword';

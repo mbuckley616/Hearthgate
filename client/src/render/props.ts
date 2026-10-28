@@ -217,6 +217,8 @@ export class Bow {
   readonly topTip = new THREE.Vector3(0, 0.74, -0.13);
   readonly bottomTip = new THREE.Vector3(0, -0.74, -0.13);
   readonly limbs: THREE.Mesh;
+  /** The tips' caps, drawn in the wood's trim colour when the bow is a catalogue piece (T5c). */
+  readonly caps: THREE.Mesh[];
   private stringTop: THREE.Mesh;
   private stringBottom: THREE.Mesh;
 
@@ -235,6 +237,7 @@ export class Bow {
     const grip = mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.13, 8), p.leather, 0, 0, 0.02);
     const capTop = mesh(new THREE.SphereGeometry(0.02, 6, 4), p.gold, this.topTip.x, this.topTip.y, this.topTip.z);
     const capBottom = mesh(new THREE.SphereGeometry(0.02, 6, 4), p.gold, this.bottomTip.x, this.bottomTip.y, this.bottomTip.z);
+    this.caps = [capTop, capBottom];
     this.stringTop = mesh(segmentGeo(0.004, 0.004, 1, 4), p.bowString);
     this.stringBottom = mesh(segmentGeo(0.004, 0.004, 1, 4), p.bowString);
     this.group.add(limbs, grip, capTop, capBottom, this.stringTop, this.stringBottom);
@@ -263,6 +266,9 @@ export class Staff {
   readonly group = new THREE.Group();
   readonly crystal: THREE.MeshStandardMaterial;
   readonly topY = 0.98;
+  /** The shaft, and the gold fittings round the crystal: a catalogue staff's wood and trim (T5c). */
+  readonly shaft: THREE.Mesh;
+  readonly fittings: THREE.Mesh[] = [];
 
   constructor(p: Palette) {
     this.crystal = new THREE.MeshStandardMaterial({
@@ -273,6 +279,7 @@ export class Staff {
       metalness: 0.1,
     });
     const shaft = mesh(segmentGeo(0.022, 0.03, 1.65, 8), p.darkWood, 0, -0.75, 0);
+    this.shaft = shaft;
     const ferrule = mesh(new THREE.ConeGeometry(0.03, 0.08, 8), p.darkSteel, 0, -0.79, 0);
     ferrule.rotation.x = Math.PI;
     const wrap = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.16, 8), p.leather);
@@ -281,12 +288,14 @@ export class Staff {
     gem.scale.y = 1.5;
     const halo = mesh(new THREE.SphereGeometry(0.13, 12, 8), glowMaterial(FROST, 0.18), 0, this.topY, 0);
     this.group.add(shaft, ferrule, wrap, collar, gem, halo);
+    this.fittings.push(collar);
     // Gold claw prongs around the crystal.
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
       const prong = mesh(new THREE.BoxGeometry(0.014, 0.16, 0.014), p.gold, Math.cos(a) * 0.05, 0.98, Math.sin(a) * 0.05);
       prong.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
       this.group.add(prong);
+      this.fittings.push(prong);
     }
   }
 }

@@ -37,28 +37,28 @@ export interface Outfit {
   accent: number;
 }
 
-function mesh(geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {
+export function mesh(geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {
   const o = new THREE.Mesh(geo, m);
   o.position.set(x, y, z);
   return o;
 }
 
-function arms(make: () => Arm): Record<'R' | 'L', Arm> {
+export function arms(make: () => Arm): Record<'R' | 'L', Arm> {
   return { R: make(), L: make() };
 }
 
-function legs(make: () => Leg): Record<'R' | 'L', Leg> {
+export function legs(make: () => Leg): Record<'R' | 'L', Leg> {
   return { R: make(), L: make() };
 }
 
 /** Breastplate-style torso: tapered, flattened front to back. */
-function torso(m: THREE.Material, top = 0.21, bottom = 0.17): THREE.Mesh {
+export function torso(m: THREE.Material, top = 0.21, bottom = 0.17): THREE.Mesh {
   const t = mesh(new THREE.CylinderGeometry(top, bottom, 0.44, 14), m, 0, 0.2, 0);
   t.scale.z = 0.75;
   return t;
 }
 
-function shoulderCaps(group: THREE.Group, m: THREE.Material, radius = 0.11, scaleY = 0.8): void {
+export function shoulderCaps(group: THREE.Group, m: THREE.Material, radius = 0.11, scaleY = 0.8): void {
   for (const side of [-1, 1]) {
     const cap = mesh(
       new THREE.SphereGeometry(radius, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -73,7 +73,7 @@ function shoulderCaps(group: THREE.Group, m: THREE.Material, radius = 0.11, scal
   }
 }
 
-function capeCard(m: THREE.Material, width: number, length: number, z: number): THREE.Mesh {
+export function capeCard(m: THREE.Material, width: number, length: number, z: number): THREE.Mesh {
   return mesh(new THREE.PlaneGeometry(width, length, 1, 4).translate(0, -length / 2, 0), m, 0, 0.44, z);
 }
 
