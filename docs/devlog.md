@@ -2,6 +2,31 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, the Phase 1 gate played by a bot party
+
+**What changed**
+
+- **`npm run gate:party`** (`tests/gate-party.ts`): the gate's machine stand-in, as Michael asked (decisions.md, 27 Oct).
+  - **The party:** four of mixed levels and gear (sword 10 in steel, bow 4 in leather, staff 1 in linen, sword 1 in bronze). They take the village's ring together and clear floor 1 to its rest room with no cheats.
+  - **How the bots play:** they follow the floor's doorways, all take the enemy nearest the veteran, and close in or keep their range by weapon. They press their abilities now and then, roll from a wind-up beside them, and pick up a friend who is down.
+  - **The browser:** with `--client` the squire is a real browser on the client, steered through the game's own commands, and its screen is saved at every combo and every few seconds of a fight.
+  - **The numbers:** counted from the server's events: rooms cleared, combos by kind and finisher, damage share, kills, downs, bleed-outs, revives.
+- **`tests/bots.ts`:** a bot can bring its own loadout, keeps the events it was sent, and no longer counts the old room's goodbye after a portal as being kicked (a race that showed up only when the goodbye beat the new seat).
+- **Filed:** three runs of three on the hosted build cleared floor 1 with 6 to 12 combos each, numbers in `playtest-notes.md`.
+
+**Learned**
+
+- **Mixed levels hardly matter on floor 1.** The two level-1s did as much damage as the level-10 veteran or more in every run. A style level gives little until its talents are spent.
+- **Floor 1 is easy for four.** Nobody went down in any hosted run, so the downs went unexercised here.
+- **Two traps for anyone steering the client from a test:**
+  - The game lays its pending presses over the command `buildCommand` returns, so attack and ability presses have to go there, not in the command.
+  - tsx compiles functions handed to `page.evaluate` with a `__name` helper the page lacks, so the page needs a one-line stand-in.
+
+**Next**
+
+- Michael: call the Phase 1 gate (the phase moves on his word).
+- T6, progression to 50, when Phase 1 is closed.
+
 ## 2026-10-27: local session, T5c: every piece drawn on the hero as itself
 
 **What changed**

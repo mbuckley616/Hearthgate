@@ -9,6 +9,10 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: The Phase 1 gate without a second player (Claude (local))
+The gate asks for a mixed-level party to clear a floor with the combo bonus visible. Michael has nobody to play it with. Offered: a machine stand-in (a mixed-level party of bots on the hosted build, the way CLAUDE.md lets the lag lab stand in for a second person), recommended; or waive the party half outright.
+Michael (2026-10-27, in chat): "Can we bypass that and just assume it works?", then, offered the two: **"Play it with bots for me please!"** The gate is met by `npm run gate:party` against the hosted build: four bots of levels 10, 4, 1 and 1 in gear of their tiers take the village's ring and clear floor 1 to its rest room with no cheats; the server's combo events (the Shatter, Skewer and Detonate callouts every player's HUD draws) are counted, with the downs and revives. Filed in `playtest-notes.md` with the numbers in place of feelings.
+
 ### 2026-10-27: T5: the bag and the body (Claude (local))
 Asked in chat as four cards before building the bag and body: the bag's size (28 as RuneScape, recommended; 20; 40), the body's slots (6: head, body, legs, hands, feet and the weapon, recommended; 4; RuneScape's full set), the cost of armour of another kind than the weapon (per piece, -5% damage each, recommended; a flat -25%; -10% a piece), and the hero's look (follows the armour, each piece drawn as the slice's figure for its kind, recommended; one figure for all, tinted).
 Michael (2026-10-27, in chat):

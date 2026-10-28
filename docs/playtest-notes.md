@@ -61,6 +61,45 @@ Other notes
 Decisions
 - Michael, 2026-10-04 (in chat): no friend on another network is available and it would stay a blocker, so the human remote playtest is dropped; this run and the critic's daily lab stand in for it. The gate was already passed on 2026-10-03.
 
+## 2026-10-27: Phase 1 gate (a mixed-level party clears a generated floor, the combo bonus visible): a bot party and one browser on the hosted build
+
+The machine stand-in Michael asked for ("Play it with bots for me please!", decisions.md, 27 Oct): no second person was available.
+- **The party:** three bots and one real browser, all from Michael's desktop (Central US) to the Render server over the public internet, on hosted main f24ea00 (T5 complete).
+  - Veteran: sword, level 10, steel plate.
+  - Hunter: bow, level 4, leather.
+  - Novice: staff, level 1, linen.
+  - Squire: sword, level 1, bronze. A headless Chromium on the hosted client, steered by an autopilot through the game's own commands. Its screen was captured.
+- **How they got there:** the party took the village's ring together into a planned run. On floor 1 they followed the doorways to the rest room and fought every room that shut on the way. No cheats; every command was one a keyboard could send.
+- **Command:** `npm run gate:party -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com`
+
+Ping (HUD): not shown by the slice's HUD
+Corrections (HUD, after 5 minutes): not measured by this run (the lab measures them)
+Session length: three runs of 23 to 45 s on floor 1, plus the village and the ring
+
+| Run | Floor 1 (seed) | Rooms fought and cleared | Time | Combos (Shatter / Skewer / Detonate) | Damage share: Veteran / Hunter / Novice / Squire* | Downs |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 16 pieces (1698453946) | 1 of 1 | 37 s | 7 (6 / 1 / 0) | 18 / 22 / 31 / 28 % | 0 |
+| 2 | 16 pieces (3638544713) | 2 of 2 | 45 s | 12 (7 / 3 / 2) | 20 / 24 / 26 / 31 % | 0 |
+| 3 | 16 pieces (2102951595) | 1 of 1 | 23 s | 6 (5 / 1 / 0) | 15 / 26 / 25 / 34 % | 0 |
+
+Gate questions
+1. Does your own movement feel instant? (yes / mostly / no, and what felt late) — Not felt (no human). The browser player moved, fought and followed the party with no page errors.
+2. Do hits land where they look like they land, for you and for the other player? — Not judged by eye. On the browser player's screen, hits, numbers and combo bursts drew on the enemies being struck (screenshots).
+3. Did anything teleport, rubber-band, or freeze? When? — Nothing seen in the 30 screenshots. No disconnects.
+
+The Phase 1 gate itself
+- **A mixed-level party clears a generated floor:** yes, three runs of three on the hosted build. Levels 10, 4, 1 and 1 cleared floor 1 to its rest room and banked their finds.
+- **The combo bonus is visible:** yes, 6 to 12 combos a run. Every player's HUD draws them with the burst and the chime: SHATTER! (staff freeze, then a sword finisher), SKEWER! (a sword stagger, then a charged arrow) and DETONATE! (volley marks, then a magic burst). The browser player's screenshots show the callouts.
+
+Other notes
+- **The low levels pull their weight.** The level-1s did as much damage as the level-10 veteran or more in every run. The veteran had the smallest share in all three, and the two level-1 sword users finished most of the combos. A style level adds little until talents are spent, and the bots spend none. "Nothing extra for mixed levels" holds on floor 1.
+- **Floor 1 was easy.** Nobody went down in any run (the lowest was the veteran at 79 HP), so the downs, bleed-out and Revive Draughts were not exercised here; their unit tests and `test:net` cover them. The run plan gave this party a 16-piece floor with one or two fight rooms on the way.
+- **Local runs while building it:** the stand-in ran about a dozen times against a local server. Three faults found in it were fixed: the party waiting on each other forever, a ranged bot walking into a wall back to the route, and the harness reading a portal's own goodbye as a kick. One run after the fixes stalled before its first fight, cause not found.
+- **Screenshots:** sent to Michael in the session (a Shatter, a Detonate and a Skewer callout, a guard room fight, the rest room).
+
+Decisions
+- Gate: met by the stand-in (2026-10-27). Moving to Phase 2 is Michael's word.
+
 ## 2026-10-27: T3, T4 and T4b gates (the village and portal, generated dungeons, the dungeon editor): Michael on the hosted build
 
 Played on the hosted build after #71 and #72 merged (main b9811c5). Who else joined and over what connection was not said.
