@@ -1,11 +1,12 @@
-import { abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, type Collider } from '../level/geometry';
 import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
-import { dodgeRechargeCut, emptyTalents, heroHit, moveSpeedMult } from './talents';
+import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
+import { dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -115,11 +116,23 @@ function setStringMove(p: PlayerState, s: string, heavy: boolean): void {
 function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number, prior = ''): void {
   p.mode = 'attack';
   p.attackHit = hitIndex;
+  // A weapon family (C5) borrows a pose for each step of its own chain.
+  const family = familyOf(p);
+  if (family) {
+    p.attackStep = hitIndex;
+    p.attackHit = FAMILY_ANIM[family][Math.min(hitIndex, FAMILY_ANIM[family].length - 1)];
+  } else if (p.attackStep !== undefined) delete p.attackStep;
   p.attackTime = 0;
   p.attackFired = false;
   p.attackQueued = false;
   p.attackSeq++;
   p.attackHitIds = [];
+  if (p.flow) {
+    // A fresh chain closes the last one; the press behind this swing was on the beat or it was not.
+    if (!prior) chainEnded(p, p.attackString);
+    p.flow.onBeat = p.flow.nextOnBeat;
+    p.flow.nextOnBeat = false;
+  }
   if (tuning.combo.heavies) {
     setStringMove(p, prior + 'L', false);
     delete p.attackHoldNext;
@@ -159,6 +172,7 @@ function startDodge(state: SimState, p: PlayerState, cmd: PlayerCommand, moveMag
   p.mode = 'dodge';
   p.dodgeTime = 0;
   p.attackQueued = false;
+  if (p.flow) p.flow.dodged = false;
   // Dodge-refund perk: a dodge right after a finisher is free.
   const refund = p.mods.perks.includes('dodgeRefund') && p.lastFinisherAt >= 0 && state.time - p.lastFinisherAt <= tuning.gear.dodgeRefundWindowMs / 1000;
   if (refund) {
@@ -309,6 +323,12 @@ function waitingOnHold(p: PlayerState, cmd: PlayerCommand): boolean {
   return p.attackCharge === 1 && hold < c.heavyHoldMs + c.chargeMs;
 }
 
+/** A fight is on: the doors are shut on a room, or the arena's waves are running. */
+export function fightOn(state: SimState): boolean {
+  const phase = state.run.phase;
+  return phase === 'intro' || phase === 'wave' || phase === 'rest';
+}
+
 /** Accelerate toward the commanded velocity, capped at maxSpeed; optionally turn to face it. */
 function steer(p: PlayerState, cmd: PlayerCommand, moveMag: number, maxSpeed: number, dt: number, turn: boolean): void {
   const mv = tuning.movement;
@@ -363,6 +383,10 @@ export function stepPlayer(
     return;
   }
 
+  if (tuning.flow.enabled) {
+    p.flow ??= newFlow();
+    stepFlow(p, dt);
+  }
   // How long attack has been held (C1): a hold long enough turns the step into a heavy.
   if (tuning.combo.heavies) {
     p.attackHold = cmd.attackHeld ? (p.attackHold ?? 0) + dt : 0;
@@ -393,7 +417,14 @@ export function stepPlayer(
   // Hitstop: frozen in place; clicks and dodges still buffer so nothing gets eaten.
   if (p.hitstop > 0) {
     p.hitstop = Math.max(0, p.hitstop - dt);
-    if (cmd.attack && p.mode === 'attack') p.attackQueued = true;
+    if (cmd.attack && p.mode === 'attack') {
+      p.attackQueued = true;
+      // A press in a hit's freeze can still be on the beat (C2).
+      if (p.flow) {
+        const h = heroHit(p, p.attackHit);
+        p.flow.nextOnBeat = onBeat(p.attackTime, h.windup + h.active);
+      }
+    }
     if (cmd.dodge) p.dodgeBuffered = true;
     if (p.mode === 'guard') p.guardTime += dt;
     return;
@@ -420,8 +451,10 @@ export function stepPlayer(
     cds[0] = Math.max(0, cds[0] - dt);
     cds[1] = Math.max(0, cds[1] - dt);
   }
-  const abilitySlot: 0 | 1 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : null;
-  if (cmd.swapTo && cmd.swapTo !== p.style) p.queuedSwap = cmd.swapTo;
+  if (p.offhandCooldown !== undefined) p.offhandCooldown = Math.max(0, p.offhandCooldown - dt);
+  const abilitySlot: 0 | 1 | 2 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : cmd.ability3 ? 2 : null;
+  // One weapon set per outing (C3): a change of weapon waits until no fight is on.
+  if (cmd.swapTo && cmd.swapTo !== p.style && (tuning.combo.swapInFight || !fightOn(state))) p.queuedSwap = cmd.swapTo;
 
   const moveMag = Math.min(1, Math.hypot(cmd.moveX, cmd.moveZ));
   const canDodge = p.grounded && p.dodgeCharges > 0 && p.dodgeCooldown <= 0;
@@ -441,7 +474,7 @@ export function stepPlayer(
     const inRecovery = p.attackTime >= chainOpen;
     // Q/E during a windup are held until recovery, like the attack buffer.
     if (abilitySlot !== null && !inRecovery) p.queuedAbility = abilitySlot;
-    const slot = abilitySlot ?? (p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null);
+    const slot = abilitySlot ?? (p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null);
     if (wantDodge && canDodge && (inRecovery || tuning.dodge.cancelsAttacks)) {
       // Dodge interrupts the attack (any time, Michael's call; the brief allowed recovery only).
       p.queuedAbility = -1;
@@ -464,6 +497,8 @@ export function stepPlayer(
       p.attackQueued = false;
     } else if (cmd.attack && p.attackTime >= chainOpen - tuning.combo.inputBufferMs / 1000) {
       p.attackQueued = true;
+      // Flow (C2): the beat is the moment the chain's next step opens, judged on the tick of the press.
+      if (p.flow) p.flow.nextOnBeat = onBeat(p.attackTime, chainOpen);
     }
   } else if (p.mode === 'ability') {
     // Dodge can cancel an ability's recovery.
@@ -477,7 +512,7 @@ export function stepPlayer(
       p.style = p.queuedSwap;
       p.queuedSwap = null;
     }
-    const queued = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null;
+    const queued = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null;
     p.queuedAbility = -1;
     const slot = abilitySlot ?? queued;
     if (wantDodge && canDodge) startDodge(state, p, cmd, moveMag);
@@ -525,6 +560,12 @@ export function stepPlayer(
 
     const windup = hit.windup;
     if (!p.attackFired && p.attackTime >= windup) {
+      // A charged heavy at a full meter is a Crescendo (C2): it spends the meter and hits much harder.
+      if (p.flow && p.attackCharge === 2 && p.flow.v >= tuning.flow.max) {
+        p.attackCharge = 3;
+        p.flow.v = 0;
+      }
+      armFlow(p);
       fireAttack(p, state, colliders);
       p.attackFired = true;
       if (p.attackMove) state.events.push({ kind: 'stringMove', playerId: p.id, move: p.attackMove, charge: p.attackCharge ?? 0 });
@@ -550,7 +591,7 @@ export function stepPlayer(
     }
 
     const chainOpen = windup + hit.active;
-    const heldSlot = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null;
+    const heldSlot = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null;
     if (p.attackTime >= chainOpen && heldSlot !== null && abilityReady(p, heldSlot)) {
       // A held Q/E beats the next swing in the chain.
       p.queuedAbility = -1;
@@ -564,13 +605,14 @@ export function stepPlayer(
       p.mode = 'move';
     } else if (p.attackQueued && p.attackTime >= chainOpen) {
       // Chains are 3 hits until levels unlock steps 4 and 5.
-      const length = chainLengthFor(levelFor(p.xp[p.style]));
+      const fam = familyOf(p);
+      const length = Math.min(chainLengthFor(levelFor(p.xp[p.style])), fam ? FAMILY_ANIM[fam].length : 5);
       if (tuning.combo.heavies) {
         // The next light is the step after the string so far; a string as long as the chain starts again.
         const s = p.attackString ?? '';
         const prior = s.length >= length ? '' : s;
         startAttack(state, p, prior.length, cmd, moveMag, prior);
-      } else startAttack(state, p, (p.attackHit + 1) % length, cmd, moveMag);
+      } else startAttack(state, p, ((p.attackStep ?? p.attackHit) + 1) % length, cmd, moveMag);
     } else if (p.attackTime >= chainOpen + hit.recovery) {
       p.mode = 'move';
       p.attackQueued = false;

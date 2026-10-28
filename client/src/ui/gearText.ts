@@ -1,4 +1,4 @@
-import { tuning } from '@hearthgate/shared/config/tuning';
+import { ABILITY_NAMES, OFFHAND_ABILITY, tuning } from '@hearthgate/shared/config/tuning';
 import { armourOf, entryOf, isGearItem, itemName, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { PERK_TEXT, statText, type Item } from '@hearthgate/shared/sim/gear';
 
@@ -23,6 +23,10 @@ export function gearLine(item: Item | GearItem): string {
     const dmg = (e.tier - 1) * tuning.gear.weaponDamagePerTier;
     parts.push(`fights as ${STYLE_WORDS[e.shape.style]}${dmg > 0 ? `, +${Math.round(dmg * 100)}% damage` : ''}${e.shape.twoHanded ? ', two hands' : ''}`);
   }
+  // C4: the off-hand's ability, two hands' bonus, and what arrows do.
+  if (e.shape.offhand) parts.push(`${ABILITY_NAMES[OFFHAND_ABILITY[e.shape.offhand]]} on 3, with a one-handed ${KIND_WORDS[e.kind].toLowerCase()} weapon`);
+  if (e.shape.twoHanded) parts.push(`+${Math.round(tuning.gear.twoHandDamage * 100)}% damage for two hands`);
+  if (e.slot === 'ammo') parts.push(e.material.id === 'frost' ? `with a bow: hits slow for ${tuning.gear.frostArrowSlowS} s` : `with a bow: charged shots bleed`);
   if (e.slot === 'neck') parts.push(`+${e.tier * tuning.gear.amuletHpPerTier} max health`);
   if (e.slot === 'ring') parts.push(`-${Math.round(e.tier * tuning.gear.ringCooldownPerTier * 100)}% ability cooldowns`);
   if (e.slot === 'cape') parts.push(`-${Math.round(e.tier * tuning.gear.capeDodgePerTier * 100)}% dodge recharge`);

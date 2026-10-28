@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { abilityTiming, tuning, type AbilityKind, type Style } from '@hearthgate/shared/config/tuning';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
+import { flowTier } from '@hearthgate/shared/sim/flow';
 import { BODY, buildArcher, buildKnight, buildMage, type Outfit } from './outfits';
 import { ARROW_LENGTH, Bow, FORWARD, FROST, Palette, Staff, UP, buildArrow, buildQuiver, buildShield, buildSword, glowMaterial } from './props';
-import { buildGearShield, dress, outfitParts, undress, weaponMaterial, type Look } from './wardrobe';
+import { buildFamilyWeapon, buildGearShield, dress, outfitParts, undress, weaponMaterial, type Look } from './wardrobe';
 import { lookSlots } from '@hearthgate/shared/sim/catalogue';
 import {
   DEG,
@@ -196,6 +197,30 @@ const ABILITY_POSES: Record<AbilityKind, { windup: UpperPose; strike: UpperPose;
     strike: pose(SWORD_GUARD, { crouch: 0.14, lean: 32, offYaw: 8, offHeight: 0.26, offReach: 0.46, handYaw: -60, handHeight: 0, handReach: 0.3, bladeYaw: -170, bladePitch: 10 }),
     hop: 0,
   },
+  // The shield bash (C4): the off arm drives the shield out, the sword held back.
+  bash: {
+    windup: pose(SWORD_GUARD, { crouch: 0.16, lean: 6, offYaw: 30, offHeight: 0.24, offReach: 0.2, twist: 20 }),
+    strike: pose(SWORD_GUARD, { crouch: 0.1, lean: 22, offYaw: 0, offHeight: 0.3, offReach: 0.62, twist: -15, handYaw: -40 }),
+    hop: 0,
+  },
+  // The tome's ward (C5): the book raised, the wand held high.
+  ward: {
+    windup: pose(STAFF_GUARD, { crouch: 0.1, offHeight: 0.3, offReach: 0.4, handHeight: 0.4 }),
+    strike: pose(STAFF_GUARD, { crouch: 0.06, offHeight: 0.42, offReach: 0.5, handHeight: 0.5, lean: -6 }),
+    hop: 0,
+  },
+  // The buckler's deflect (C5): the small shield snapped up in front.
+  deflect: {
+    windup: pose(BOW_GUARD, { offYaw: 6, offHeight: 0.3, offReach: 0.44, crouch: 0.12 }),
+    strike: pose(BOW_GUARD, { offYaw: 4, offHeight: 0.34, offReach: 0.5, crouch: 0.14, lean: 8 }),
+    hop: 0,
+  },
+  // The hand crossbow (C5): the off arm thrown out to aim.
+  quickShot: {
+    windup: pose(BOW_GUARD, { offYaw: 0, offHeight: 0.36, offReach: 0.5 }),
+    strike: pose(BOW_GUARD, { offYaw: 0, offHeight: 0.38, offReach: 0.56, lean: -4 }),
+    hop: 0,
+  },
   // Coil, then spin with the blade held straight out.
   whirlwind: {
     windup: pose(SWORD_GUARD, { handYaw: -95, handHeight: 0.1, handReach: 0.3, bladeYaw: -160, bladePitch: 5, offYaw: 75, twist: 45, lean: 10, crouch: 0.14 }),
@@ -276,6 +301,9 @@ export class HeroView {
   private readonly palette: Palette;
 
   private sword: THREE.Group;
+  /** A weapon family's weapon (C5), held instead of the style's own; empty when none. */
+  private familyWeapon = new THREE.Group();
+  private familyModel: THREE.Group | null = null;
   /** Holds the shield model: the slice's heater, or the worn one. */
   private shield = new THREE.Group();
   private sliceShield: THREE.Group;
@@ -356,7 +384,7 @@ export class HeroView {
     this.arrowHead = p.make({ color: 0x40444a, emissive: 0xffb347, emissiveIntensity: 0, metalness: 0.6, roughness: 0.4 });
     this.nockedArrow = buildArrow(p, this.arrowHead);
     this.bow.group.add(this.nockedArrow);
-    this.chest.add(this.sword, this.shield, this.staff.group, this.bow.group);
+    this.chest.add(this.sword, this.shield, this.staff.group, this.bow.group, this.familyWeapon);
 
     // A catalogue weapon is the slice's, coloured as its material: the blade and the wood in its base, fittings in its trim.
     const [, pommel, guard, blade, tip] = this.sword.children as THREE.Mesh[];
@@ -434,6 +462,20 @@ export class HeroView {
     this.shieldModel = this.dressed && shield ? buildGearShield(this.palette, shield) : this.sliceShield;
     this.shield.add(this.shieldModel);
 
+    // A weapon family's own weapon (C5).
+    if (this.familyModel) {
+      this.familyWeapon.remove(this.familyModel);
+      this.familyModel.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.geometry.dispose();
+      });
+      this.familyModel = null;
+    }
+    const held = this.dressed ? this.worn.weapon : undefined;
+    if (held?.shape.family) {
+      this.familyModel = buildFamilyWeapon(this.palette, held);
+      this.familyWeapon.add(this.familyModel);
+    }
+
     const weapon = this.dressed ? this.worn.weapon : undefined;
     for (const t of this.tintable) t.mesh.material = weapon && weapon.shape.style === t.style ? weaponMaterial(this.palette, weapon.material, t.part) : t.slice;
   }
@@ -447,14 +489,16 @@ export class HeroView {
     }
     this.outfit = dressed ?? this.outfits[style];
     // A dressed hero holds only the weapon they wear: with none in hand they fight bare-handed.
-    const held = (s: Style) => style === s && (!dressed || this.worn.weapon?.shape.style === s);
+    const family = dressed ? this.worn.weapon?.shape.family : undefined;
+    const held = (s: Style) => style === s && !family && (!dressed || this.worn.weapon?.shape.style === s);
     this.sword.visible = held('sword');
     this.bow.group.visible = held('bow');
     this.staff.group.visible = held('staff');
+    this.familyWeapon.visible = !!family && this.worn.weapon?.shape.style === style;
     this.quiver.visible = !!dressed && style === 'bow';
     this.shield.visible = dressed ? !!this.worn.shield : style === 'sword';
-    if (dressed && style !== 'sword') {
-      // A bow or staff takes both hands: the shield is slung on the back (and does nothing, T5b).
+    if (dressed && (style !== 'sword' || this.worn.weapon?.shape.twoHanded) && !(this.worn.weapon && !this.worn.weapon.shape.twoHanded)) {
+      // A two-handed weapon (bow, staff, warhammer) leaves the off-hand slung on the back (T5b, C4).
       this.shield.position.set(0, 0.2, -0.23);
       this.shield.rotation.set(0, Math.PI, 0);
     }
@@ -680,7 +724,8 @@ export class HeroView {
     const u = clamp01((t - t1) / hit.active);
     this.attackHop = set.hop[p.attackHit] * Math.sin(Math.PI * u) * (t < t2 ? 1 : 0);
     // Weapon trails emit from late windup to just after the active phase.
-    this.trailStrength = t > t1 * 0.7 && t < t2 + 0.05 ? (hit.heavy ? 1 : 0.75) : 0;
+    // Flow (C2) runs the trail hotter, a step a tier.
+    this.trailStrength = t > t1 * 0.7 && t < t2 + 0.05 ? (hit.heavy ? 1 : 0.75) * (1 + 0.2 * flowTier(p)) : 0;
     // Power and piercing shots glow as they draw.
     this.arrowGlow = p.style === 'bow' && (p.attackHit === 2 || p.attackHit === 4) && !p.attackFired ? clamp01(t / t1) : 0;
   }
@@ -745,6 +790,19 @@ export class HeroView {
     const { hand, offHand } = poseArms(p, BODY, this.outfit.arms);
 
     const weaponDir = direction(p.bladeYaw, p.bladePitch);
+
+    // A weapon family (C5) in the right hand along the weapon's line; a crossbow points along the aim.
+    if (this.familyWeapon.visible) {
+      this.familyWeapon.position.copy(hand);
+      const along = this.worn.weapon?.shape.family === 'crossbow' ? direction(p.offYaw, 0) : weaponDir;
+      this.familyWeapon.quaternion.setFromUnitVectors(UP, along);
+    }
+    // A one-handed weapon's off-hand in the left hand, whatever the style (C4, C5).
+    const oneHanded = !!this.dressed && !!this.worn.weapon && !this.worn.weapon.shape.twoHanded;
+    if (oneHanded && style !== 'sword') {
+      this.shield.position.copy(offHand).addScaledVector(direction(p.offYaw, 0), 0.06);
+      this.shield.rotation.set(0, p.offYaw * DEG * 0.8, 0);
+    }
 
     // Knight: sword in the right hand, shield on the left arm.
     if (style === 'sword') {

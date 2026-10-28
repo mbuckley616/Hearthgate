@@ -30,6 +30,8 @@ const BODY_AT: Record<BodySlot, [number, number]> = {
   head: [1, 0],
   cape: [0, 1],
   neck: [1, 1],
+  // RuneScape's ammo slot, right of the neck (C4).
+  ammo: [2, 1],
   weapon: [0, 2],
   body: [1, 2],
   shield: [2, 2],
@@ -113,9 +115,12 @@ export class EquipScreen {
    */
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
-    if (actions.pressed.has('style1')) this.setTab('gear');
-    if (actions.pressed.has('style2')) this.setTab('talents');
-    if (actions.pressed.has('style3')) this.setTab('champion');
+    // 1, 2 and 3 are also the abilities (C3): on this screen they only change tab.
+    const tab = actions.pressed.has('tab1') ? 'gear' : actions.pressed.has('tab2') ? 'talents' : actions.pressed.has('tab3') ? 'champion' : null;
+    if (tab) {
+      this.setTab(tab);
+      return;
+    }
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
@@ -201,7 +206,8 @@ export class EquipScreen {
       const oy = c.row - at.row;
       const along = ox * dx + oy * dy;
       if (along <= 0) return;
-      const score = along + Math.abs(dx ? oy : ox) * 2;
+      // Staying in line weighs three steps a row, so right from the head reaches the bag, not the ammo slot below it (C4).
+      const score = along + Math.abs(dx ? oy : ox) * 3;
       if (score < bestScore) {
         bestScore = score;
         best = i;
@@ -304,7 +310,7 @@ export class EquipScreen {
     const detail = item
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop' : c.slot === 'weapon' ? 'Your weapon: pick another from the bag (or 1, 2, 3)' : 'F or A: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: take off'}</div>`
       : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
     const free = this.profile.data.bag.filter((i) => !i).length;
     return `<div class="gear-layout">

@@ -372,7 +372,17 @@ export function buildGearShield(p: Palette, e: CatalogueEntry): THREE.Group {
   const base = s.of(e.material, 'base');
   const trim = s.of(e.material, 'trim');
   const g = new THREE.Group();
-  if (e.shape.id === 'kiteshield') {
+  if (e.shape.id === 'buckler') {
+    // A small round hide shield with a metal boss (C5).
+    const disc = mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 20).rotateX(Math.PI / 2), base);
+    g.add(disc, mesh(new THREE.SphereGeometry(0.045, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), trim, 0, 0, 0.015));
+  } else if (e.shape.id === 'tome') {
+    // A tome held open-handed (C5): covers in the cloth's colour, the page block pale.
+    g.add(mesh(new THREE.BoxGeometry(0.2, 0.27, 0.06), base), mesh(new THREE.BoxGeometry(0.18, 0.25, 0.064), s.plain('hair'), 0.012, 0, 0), mesh(new THREE.BoxGeometry(0.02, 0.27, 0.066), trim, -0.095, 0, 0));
+  } else if (e.shape.id === 'handCrossbow') {
+    // A small crossbow for the off hand (C5), pointing ahead.
+    g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.26), base, 0, 0, 0.05), mesh(new THREE.BoxGeometry(0.26, 0.02, 0.03), trim, 0, 0, 0.15));
+  } else if (e.shape.id === 'kiteshield') {
     const outline = new THREE.Shape();
     outline.moveTo(0, 0.27);
     outline.lineTo(0.2, 0.17);
@@ -396,6 +406,30 @@ export function buildGearShield(p: Palette, e: CatalogueEntry): THREE.Group {
       [0.03, 0.42, -0.18, 0],
     ])
       g.add(mesh(new THREE.BoxGeometry(w, h, 0.012), trim, x, y, 0.022));
+  }
+  g.traverse((o) => {
+    if (o instanceof THREE.Mesh) o.castShadow = true;
+  });
+  return g;
+}
+
+/**
+ * A weapon family's weapon (C5), in its material, built along +Y (the hand to the head or the muzzle)
+ * so the hero view holds it as it holds the sword.
+ */
+export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
+  const s = swatches(p);
+  const base = s.of(e.material, 'base');
+  const trim = s.of(e.material, 'trim');
+  const wood = p.leather;
+  const g = new THREE.Group();
+  if (e.shape.family === 'warhammer') {
+    g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.95, 8), wood, 0, 0.3, 0), mesh(new THREE.BoxGeometry(0.3, 0.14, 0.14), base, 0, 0.8, 0), mesh(new THREE.BoxGeometry(0.32, 0.03, 0.15), trim, 0, 0.8, 0));
+  } else if (e.shape.family === 'crossbow') {
+    g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
+  } else {
+    // The wand: a short rod and a gem.
+    g.add(mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.34, 8), base, 0, 0.12, 0), mesh(new THREE.OctahedronGeometry(0.035), trim, 0, 0.31, 0));
   }
   g.traverse((o) => {
     if (o instanceof THREE.Mesh) o.castShadow = true;

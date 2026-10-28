@@ -37,6 +37,8 @@ export class Music {
   private nextTime = 0;
   private timer = 0;
   private fade = 1;
+  /** The local hero's Flow tier (C2): each adds a layer to the fight's music. */
+  private flow = 0;
 
   /** Called once audio is unlocked (Sfx owns the context). */
   attach(ctx: AudioContext, noise: AudioBuffer): void {
@@ -67,6 +69,10 @@ export class Music {
     if (mood === this.mood && this.pending === null) return;
     if (mood === this.pending) return;
     this.pending = mood;
+  }
+
+  setFlow(tier: number): void {
+    this.flow = tier;
   }
 
   /** Keep the volume in step with settings (call per frame). */
@@ -138,6 +144,10 @@ export class Music {
     if (bar % 4 >= 2 || m === 'boss') this.lead(t, chord.root + 12 + arp[i % arp.length], s * 0.8, m === 'boss' ? 0.07 : 0.05);
     if (i === 0) this.pad(t, chord.root, chord.third, s * 16, 0.05);
     if (m === 'boss' && (i === 14 || i === 15)) this.tom(t, i === 14 ? 120 : 90);
+    // Flow (C2): I fills the hats in, II keeps the lead going every bar, III adds a bell on the off-beats.
+    if (this.flow >= 1 && i % 2 === 1) this.hat(t, 0.03);
+    if (this.flow >= 2 && bar % 4 < 2 && m !== 'boss') this.lead(t, chord.root + 12 + arp[i % arp.length], s * 0.8, 0.04);
+    if (this.flow >= 3 && i % 4 === 2) this.bell(t, chord.root + 24 + arp[(i / 2) % arp.length]);
   }
 
   // --- Voices ---

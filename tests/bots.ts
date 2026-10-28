@@ -174,6 +174,9 @@ export class Bot {
     const start = performance.now();
     for (let tries = 0; tries < 6; tries++) {
       for (;;) {
+        // A ring can hand the party on before the last of us is on our mark (both inside its 2.2 m):
+        // the room we were walking in is gone, so there is nowhere left to walk to.
+        if (this.handoff !== null) return;
         const p = this.me();
         if (p && Math.hypot(p.x - x, p.z - z) <= tol) break;
         if (performance.now() - start > timeoutMs) {

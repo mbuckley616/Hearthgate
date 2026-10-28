@@ -13,13 +13,14 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   attack: ['Mouse0', 'KeyJ'],
   // Not in the brief's table; added with the guard after M4.
   block: ['Mouse2', 'KeyL'],
-  ability1: ['KeyQ'],
-  ability2: ['KeyE'],
-  style1: ['Digit1'],
-  style2: ['Digit2'],
-  style3: ['Digit3'],
-  styleNext: ['WheelDown'],
-  stylePrev: ['WheelUp'],
+  // One weapon set per outing (C3; Michael, 28 Oct): 1 and 2 are the abilities, beside Q and E; 3 waits for the off-hand's.
+  ability1: ['KeyQ', 'Digit1'],
+  ability2: ['KeyE', 'Digit2'],
+  // The off-hand's ability (C4): 3, or R beside Q and E.
+  ability3: ['KeyR', 'Digit3'],
+  tab1: ['Digit1'],
+  tab2: ['Digit2'],
+  tab3: ['Digit3'],
   lockOn: ['Tab', 'Mouse1'],
   interact: ['KeyF'],
   debugPanel: ['Backquote'],
@@ -58,11 +59,11 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   map: [9], // Menu / Start
   ability1: [4], // LB
   ability2: [5], // RB
+  ability3: [7], // RT / R2, the off-hand's
   lockOn: [11], // right stick click
-  style1: [14], // d-pad left
-  style2: [12], // d-pad up
-  style3: [15], // d-pad right
-  styleNext: [13], // d-pad down cycles
+  tab1: [14], // d-pad left, on the hero screen
+  tab2: [12], // d-pad up
+  tab3: [15], // d-pad right
 };
 
 export const gamepadAxes = { moveX: 0, moveY: 1, lookX: 2, lookY: 3 };
