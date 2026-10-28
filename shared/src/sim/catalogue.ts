@@ -1,4 +1,4 @@
-import { tuning, type Style } from '../config/tuning';
+import { tuning, type AmmoKind, type OffhandKind, type Style } from '../config/tuning';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
 /**
@@ -13,9 +13,9 @@ import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind 
  * the catalogue id plus what makes this one different (rarity, a perk, a bonus).
  */
 
-export type BodySlot = 'head' | 'cape' | 'neck' | 'body' | 'legs' | 'hands' | 'feet' | 'ring' | 'shield' | 'weapon';
-/** RuneScape's body, in the order the equip screen lays it out. */
-export const BODY_SLOTS: readonly BodySlot[] = ['head', 'cape', 'neck', 'weapon', 'body', 'shield', 'legs', 'hands', 'feet', 'ring'];
+export type BodySlot = 'head' | 'cape' | 'neck' | 'body' | 'legs' | 'hands' | 'feet' | 'ring' | 'shield' | 'weapon' | 'ammo';
+/** RuneScape's body, in the order the equip screen lays it out; the ammo slot is RuneScape's eleventh (C4). */
+export const BODY_SLOTS: readonly BodySlot[] = ['head', 'cape', 'neck', 'ammo', 'weapon', 'body', 'shield', 'legs', 'hands', 'feet', 'ring'];
 export const BODY_SLOT_NAMES: Record<BodySlot, string> = {
   head: 'Head',
   cape: 'Cape',
@@ -25,8 +25,10 @@ export const BODY_SLOT_NAMES: Record<BodySlot, string> = {
   hands: 'Hands',
   feet: 'Feet',
   ring: 'Ring',
-  shield: 'Shield',
+  // The shield slot is the off-hand (C4; Michael, 28 Oct).
+  shield: 'Off-hand',
   weapon: 'Weapon',
+  ammo: 'Ammo',
 };
 /** Free spaces in the bag (Michael: 28, as RuneScape). Worn gear takes none. */
 export const BAG_SIZE = 28;
@@ -35,7 +37,7 @@ export type GearKind = 'melee' | 'ranged' | 'magic' | 'none';
 /** The kind of fighting each of the slice's styles is. */
 export const STYLE_KIND: Record<Style, GearKind> = { sword: 'melee', bow: 'ranged', staff: 'magic' };
 
-type Family = 'metal' | 'hide' | 'cloth' | 'wood' | 'trinket' | 'dye';
+type Family = 'metal' | 'hide' | 'cloth' | 'wood' | 'trinket' | 'dye' | 'fletch';
 
 /** What a piece is made of: its tier, and the colours T5c draws it in. */
 export interface Material {
@@ -46,7 +48,7 @@ export interface Material {
   colors: { base: number; trim: number };
 }
 
-const FAMILY_KIND: Record<Family, GearKind> = { metal: 'melee', hide: 'ranged', cloth: 'magic', wood: 'none', trinket: 'none', dye: 'none' };
+const FAMILY_KIND: Record<Family, GearKind> = { metal: 'melee', hide: 'ranged', cloth: 'magic', wood: 'none', trinket: 'none', dye: 'none', fletch: 'none' };
 
 export const MATERIALS: readonly Material[] = [
   { id: 'bronze', name: 'Bronze', family: 'metal', tier: 1, colors: { base: 0xb07a3c, trim: 0x6e4a22 } },
@@ -76,6 +78,9 @@ export const MATERIALS: readonly Material[] = [
   { id: 'blue', name: 'Blue', family: 'dye', tier: 1, colors: { base: 0x2a4a9a, trim: 0x10204a } },
   { id: 'green', name: 'Green', family: 'dye', tier: 1, colors: { base: 0x2f6a34, trim: 0x123a16 } },
   { id: 'warden', name: 'Warden’s', family: 'dye', tier: 3, colors: { base: 0x1a1a24, trim: 0xd8b25a } },
+  // Arrows for the ammo slot (C4): what they do is in the material (AmmoKind).
+  { id: 'frost', name: 'Frost', family: 'fletch', tier: 2, colors: { base: 0x9fd8ff, trim: 0x3a6c9a } },
+  { id: 'barbed', name: 'Barbed', family: 'fletch', tier: 2, colors: { base: 0x8a3a24, trim: 0x2a1a10 } },
 ];
 
 /** A kind of piece in a slot, the materials it comes in, and its share of a tier's armour. */
@@ -92,6 +97,8 @@ export interface Shape {
   style?: Style;
   /** Bows and staves take both hands: a shield is slung on the back and does nothing. */
   twoHanded?: boolean;
+  /** An off-hand's kind (C4): what its ability on 3 is. */
+  offhand?: OffhandKind;
 }
 
 export const SHAPES: readonly Shape[] = [
@@ -111,8 +118,10 @@ export const SHAPES: readonly Shape[] = [
   { id: 'vambraces', slot: 'hands', name: 'vambraces', families: ['hide'], weight: 0.6 },
   { id: 'gloves', slot: 'hands', name: 'gloves', families: ['cloth'], weight: 0.6 },
   { id: 'boots', slot: 'feet', name: 'boots', families: ['metal', 'hide', 'cloth'], weight: 0.6 },
-  { id: 'squareShield', slot: 'shield', name: 'square shield', families: ['metal'], weight: 1 },
-  { id: 'kiteshield', slot: 'shield', name: 'kiteshield', families: ['metal'], weight: 1.2 },
+  { id: 'squareShield', slot: 'shield', name: 'square shield', families: ['metal'], weight: 1, offhand: 'shield' },
+  { id: 'kiteshield', slot: 'shield', name: 'kiteshield', families: ['metal'], weight: 1.2, offhand: 'shield' },
+  // Arrows count for no kind: worn with a sword they do nothing, and cost nothing.
+  { id: 'arrows', slot: 'ammo', name: 'arrows', families: ['fletch'], weight: 0, kind: 'none' },
   { id: 'cape', slot: 'cape', name: 'cape', families: ['dye'], weight: 0 },
   { id: 'amulet', slot: 'neck', name: 'amulet', families: ['trinket'], weight: 0 },
   { id: 'ring', slot: 'ring', name: 'ring', families: ['trinket'], weight: 0 },
@@ -246,6 +255,14 @@ export function wornMods(worn: Worn): Mods {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;
     m.damage[s] -= wrong * g.mismatchDamagePerPiece;
   }
+  // Off-hand and two hands (C4): a one-handed weapon takes an off-hand of its kind, whose ability is the
+  // third; a two-handed one takes none and hits harder for it.
+  const style = weapon?.shape.style;
+  if (weapon && style && twoHanded) m.damage[style] += g.twoHandDamage;
+  const off = worn.shield ? entryOf(worn.shield) : null;
+  if (weapon && !twoHanded && off?.shape.offhand && off.kind === weapon.kind) m.offhand = off.shape.offhand;
+  const ammo = worn.ammo ? entryOf(worn.ammo) : null;
+  if (ammo && style === 'bow') m.ammo = ammo.material.id as AmmoKind;
   // Only set when worn: a hero in the slice's gear (or none) never carries the field.
   if (armour > 0) m.armour = Math.min(g.armourCap, Math.round(armour * 1000) / 1000);
   return m;

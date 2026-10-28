@@ -92,6 +92,8 @@ export interface PlayerState {
   attackHoldNext?: boolean;
   /** The Flow meter (C2), absent in the slice. */
   flow?: FlowState;
+  /** Seconds until the off-hand's ability is ready again (C4). */
+  offhandCooldown?: number;
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -452,6 +454,8 @@ export interface PlayerCommand {
   /** Q / E pressed since the last tick. */
   ability1: boolean;
   ability2: boolean;
+  /** The off-hand's ability pressed (C4: 3, R or RT). Absent in the slice. */
+  ability3?: boolean;
   /** Locked-on enemy id, or -1. Soft targeting prefers it. */
   lockTarget: number;
   /** Jump pressed since the last tick. */

@@ -197,6 +197,12 @@ const ABILITY_POSES: Record<AbilityKind, { windup: UpperPose; strike: UpperPose;
     strike: pose(SWORD_GUARD, { crouch: 0.14, lean: 32, offYaw: 8, offHeight: 0.26, offReach: 0.46, handYaw: -60, handHeight: 0, handReach: 0.3, bladeYaw: -170, bladePitch: 10 }),
     hop: 0,
   },
+  // The shield bash (C4): the off arm drives the shield out, the sword held back.
+  bash: {
+    windup: pose(SWORD_GUARD, { crouch: 0.16, lean: 6, offYaw: 30, offHeight: 0.24, offReach: 0.2, twist: 20 }),
+    strike: pose(SWORD_GUARD, { crouch: 0.1, lean: 22, offYaw: 0, offHeight: 0.3, offReach: 0.62, twist: -15, handYaw: -40 }),
+    hop: 0,
+  },
   // Coil, then spin with the blade held straight out.
   whirlwind: {
     windup: pose(SWORD_GUARD, { handYaw: -95, handHeight: 0.1, handReach: 0.3, bladeYaw: -160, bladePitch: 5, offYaw: 75, twist: 45, lean: 10, crouch: 0.14 }),

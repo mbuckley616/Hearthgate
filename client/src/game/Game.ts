@@ -452,6 +452,7 @@ export class Game {
     if (actions.pressed.has('jump')) this.pending.jump = true;
     if (actions.pressed.has('ability1')) this.pending.ability1 = true;
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
+    if (actions.pressed.has('ability3')) this.pending.ability3 = true;
     // The hero fights with the weapon in hand (T5): after a change on the hero screen, or on joining, follow it.
     // Mid-fight the server holds the change until the fight is over (C3), so it is asked for again each tick.
     const meNow = this.me();
@@ -762,8 +763,8 @@ export class Game {
     };
   }
 
-  private static noPresses(): Pick<PlayerCommand, 'dodge' | 'attack' | 'jump' | 'swapTo' | 'ability1' | 'ability2'> {
-    return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false };
+  private static noPresses(): Pick<PlayerCommand, 'dodge' | 'attack' | 'jump' | 'swapTo' | 'ability1' | 'ability2' | 'ability3'> {
+    return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false, ability3: false };
   }
 
   private handleMetaActions(actions: ActionFrame): void {
@@ -841,7 +842,7 @@ export class Game {
           <tr><td>Walk</td><td>light stick tilt</td></tr>
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
           <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
-          <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB</td></tr>
+          <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB; the off-hand's: 3 (or R) · RT</td></tr>
           <tr><td>Lock on</td><td>Tab · middle click · right stick click (flick to switch)</td></tr>
           <tr><td>Weapon</td><td>one for the outing: choose it under I, outside a fight</td></tr>
           <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>

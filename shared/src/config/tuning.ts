@@ -798,6 +798,10 @@ export const tuning = {
     // Perks.
     bleedTicks: 4,
     bleedTickMs: 500,
+    /** A two-handed weapon (C4) takes no off-hand and hits this much harder for it. */
+    twoHandDamage: 0.2,
+    /** Frost arrows (C4, the ammo slot) slow what they hit this long. */
+    frostArrowSlowS: 1.5,
     bleedDamage: 3,
     chainBoltRange: 8,
     chainBoltDamageFrac: 0.6,
@@ -1045,6 +1049,15 @@ export const tuning = {
     blinkDistance: 7,
     blinkCritMultiplier: 2,
     blinkCooldownMs: 10000,
+    // Off-hand (C4): the shield's bash on 3, knocking the nearest enemy in front off its feet.
+    bashWindupMs: 100,
+    bashDurationMs: 120,
+    bashRecoveryMs: 300,
+    bashCooldownMs: 6000,
+    bashRangeM: 2.2,
+    bashArcDeg: 100,
+    bashDamage: 0.8,
+    bashKnockbackM: 2,
   },
 
   /** Soft targeting (brief: "Camera and controls"). */
@@ -1553,6 +1566,16 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],
+  'abilities.bashWindupMs': [0, 1000, 10],
+  'abilities.bashDurationMs': [0, 1000, 10],
+  'abilities.bashRecoveryMs': [0, 1500, 10],
+  'abilities.bashCooldownMs': [0, 24000, 100],
+  'abilities.bashRangeM': [0.5, 5, 0.1],
+  'abilities.bashArcDeg': [10, 360, 5],
+  'abilities.bashDamage': [0, 5, 0.05],
+  'abilities.bashKnockbackM': [0, 6, 0.1],
+  'gear.twoHandDamage': [0, 1, 0.05],
+  'gear.frostArrowSlowS': [0, 5, 0.1],
   'abilities.whirlwindWindupMs': [0, 4000, 10],
   'abilities.whirlwindDurationMs': [0, 4000, 10],
   'abilities.whirlwindRecoveryMs': [0, 4000, 10],
@@ -1956,7 +1979,13 @@ export function comboHit(style: Style, i: number, speed = 1): ComboHit {
   };
 }
 
-export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink';
+export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink' | 'bash';
+
+/** What an off-hand is (C4): the shield's bash on 3. The tome and the buckler come with the one-handed wand and crossbow (C5). */
+export type OffhandKind = 'shield';
+export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash' };
+/** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
+export type AmmoKind = 'frost' | 'barbed';
 
 /** Q and E for each hero (brief: "Abilities"). */
 export const ABILITIES: Record<Style, [AbilityKind, AbilityKind]> = {
@@ -1972,6 +2001,7 @@ export const ABILITY_NAMES: Record<AbilityKind, string> = {
   disengage: 'Disengage',
   frostRing: 'Frost ring',
   blink: 'Blink',
+  bash: 'Shield bash',
 };
 
 /** An ability's phases in seconds: the effect fires at the end of the windup, then active, then recovery. */

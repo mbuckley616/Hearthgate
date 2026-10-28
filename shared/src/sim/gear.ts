@@ -1,4 +1,4 @@
-import { STYLES, tuning, type Style } from '../config/tuning';
+import { STYLES, tuning, type AmmoKind, type OffhandKind, type Style } from '../config/tuning';
 
 /**
  * Gear and levels: plain data and pure functions shared by the sim (effects),
@@ -65,6 +65,10 @@ export interface Mods {
    * worn, so the slice's heroes never carry the field.
    */
   armour?: number;
+  /** The off-hand in use (C4): its ability is the third, on 3. Only with a one-handed weapon of its kind. */
+  offhand?: OffhandKind;
+  /** The arrows in the ammo slot (C4), with a bow in hand. */
+  ammo?: AmmoKind;
 }
 
 export function emptyMods(): Mods {
@@ -148,7 +152,7 @@ export function levelProgress(xp: number): number {
 /** What a level unlocks (for toasts and the equip screen), or undefined: only a talent point. */
 export function levelUnlock(level: number): string | undefined {
   const p = tuning.progression;
-  if (level === 2) return 'Second ability (E)';
+  if (level === 2) return 'Second ability (2)';
   if (level === 3) return 'Combo step 4';
   if (level === 4) return p.level4DamageBonus > 0 ? `Combo step 5 and +${Math.round(p.level4DamageBonus * 100)}% damage` : 'Combo step 5';
   const parts: string[] = [];

@@ -1,4 +1,4 @@
-import { STYLES, type Style } from '../config/tuning';
+import { OFFHAND_ABILITY, STYLES, type OffhandKind, type Style } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
@@ -31,6 +31,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
   for (const k of ['sprint', 'dodge', 'attack', 'ability1', 'ability2', 'jump', 'block', 'interact'] as const) if (!isBool(v[k])) return null;
   if (swapTo !== null && !STYLES.includes(swapTo as Style)) return null;
   if (v.attackHeld !== undefined && !isBool(v.attackHeld)) return null;
+  if (v.ability3 !== undefined && !isBool(v.ability3)) return null;
   const len = Math.hypot(moveX, moveZ);
   const s = len > 1 ? 1 / len : 1;
   return {
@@ -49,6 +50,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
     block: v.block as boolean,
     interact: v.interact as boolean,
     ...(v.attackHeld === true ? { attackHeld: true } : {}),
+    ...(v.ability3 === true ? { ability3: true } : {}),
   };
 }
 
@@ -96,6 +98,15 @@ export function readLoadout(v: unknown): Loadout | null {
   mods.cooldowns = m.cooldowns;
   mods.dodgeRecharge = m.dodgeRecharge;
   mods.perks = [...(m.perks as Perk[])];
+  // The off-hand and the ammo in use (C4): only kinds there are.
+  if (m.offhand !== undefined) {
+    if (!Object.keys(OFFHAND_ABILITY).includes(m.offhand as string)) return null;
+    mods.offhand = m.offhand as OffhandKind;
+  }
+  if (m.ammo !== undefined) {
+    if (m.ammo !== 'frost' && m.ammo !== 'barbed') return null;
+    mods.ammo = m.ammo;
+  }
   // Worn armour (T5b): a share of damage taken, never more than the most the catalogue allows.
   if (m.armour !== undefined) {
     if (!isNum(m.armour) || m.armour < 0 || m.armour > 0.9) return null;

@@ -445,7 +445,8 @@ export function stepPlayer(
     cds[0] = Math.max(0, cds[0] - dt);
     cds[1] = Math.max(0, cds[1] - dt);
   }
-  const abilitySlot: 0 | 1 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : null;
+  if (p.offhandCooldown !== undefined) p.offhandCooldown = Math.max(0, p.offhandCooldown - dt);
+  const abilitySlot: 0 | 1 | 2 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : cmd.ability3 ? 2 : null;
   // One weapon set per outing (C3): a change of weapon waits until no fight is on.
   if (cmd.swapTo && cmd.swapTo !== p.style && (tuning.combo.swapInFight || !fightOn(state))) p.queuedSwap = cmd.swapTo;
 
@@ -467,7 +468,7 @@ export function stepPlayer(
     const inRecovery = p.attackTime >= chainOpen;
     // Q/E during a windup are held until recovery, like the attack buffer.
     if (abilitySlot !== null && !inRecovery) p.queuedAbility = abilitySlot;
-    const slot = abilitySlot ?? (p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null);
+    const slot = abilitySlot ?? (p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null);
     if (wantDodge && canDodge && (inRecovery || tuning.dodge.cancelsAttacks)) {
       // Dodge interrupts the attack (any time, Michael's call; the brief allowed recovery only).
       p.queuedAbility = -1;
@@ -505,7 +506,7 @@ export function stepPlayer(
       p.style = p.queuedSwap;
       p.queuedSwap = null;
     }
-    const queued = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null;
+    const queued = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null;
     p.queuedAbility = -1;
     const slot = abilitySlot ?? queued;
     if (wantDodge && canDodge) startDodge(state, p, cmd, moveMag);
@@ -584,7 +585,7 @@ export function stepPlayer(
     }
 
     const chainOpen = windup + hit.active;
-    const heldSlot = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1) : null;
+    const heldSlot = p.queuedAbility >= 0 ? (p.queuedAbility as 0 | 1 | 2) : null;
     if (p.attackTime >= chainOpen && heldSlot !== null && abilityReady(p, heldSlot)) {
       // A held Q/E beats the next swing in the chain.
       p.queuedAbility = -1;

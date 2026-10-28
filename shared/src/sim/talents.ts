@@ -128,6 +128,9 @@ export function talentText(style: Style, id: TalentId): string {
       return `+${t.frostRingRadiusPerRank} m radius, +${t.frostFreezeMsPerRank / 1000} s freeze`;
     case 'blink':
       return `+${t.blinkDistancePerRank} m distance, +${pct(t.blinkCritPerRank)} crit damage`;
+    case 'bash':
+      // The off-hand's ability (C4) has no talent ranks: the Q and E rows are the weapon's two.
+      return '';
   }
 }
 

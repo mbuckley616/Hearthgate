@@ -16,6 +16,8 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   // One weapon set per outing (C3; Michael, 28 Oct): 1 and 2 are the abilities, beside Q and E; 3 waits for the off-hand's.
   ability1: ['KeyQ', 'Digit1'],
   ability2: ['KeyE', 'Digit2'],
+  // The off-hand's ability (C4): 3, or R beside Q and E.
+  ability3: ['KeyR', 'Digit3'],
   tab1: ['Digit1'],
   tab2: ['Digit2'],
   tab3: ['Digit3'],
@@ -57,6 +59,7 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   map: [9], // Menu / Start
   ability1: [4], // LB
   ability2: [5], // RB
+  ability3: [7], // RT / R2, the off-hand's
   lockOn: [11], // right stick click
   tab1: [14], // d-pad left, on the hero screen
   tab2: [12], // d-pad up

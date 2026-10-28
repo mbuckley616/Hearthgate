@@ -1,4 +1,4 @@
-import { ABILITIES, ABILITY_NAMES, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult } from '@hearthgate/shared/sim/talents';
@@ -73,7 +73,7 @@ export class Hud {
     this.combo.append(this.comboCount, label);
 
     this.abilityRoot.className = 'hud-abilities';
-    for (const key of ['1', '2']) {
+    for (const key of ['1', '2', '3']) {
       const root = document.createElement('div');
       root.className = 'hud-ability';
       const keyEl = document.createElement('div');
@@ -220,6 +220,29 @@ export class Hud {
       }
       slot.wasReady = ready;
     });
+    // The off-hand's ability on 3 (C4), shown only while one is in use.
+    const third = this.slots[2];
+    const off = p.mods.offhand;
+    third.root.style.display = off ? '' : 'none';
+    if (off) {
+      const kind = OFFHAND_ABILITY[off];
+      if (third.name.textContent !== ABILITY_NAMES[kind]) {
+        third.name.textContent = ABILITY_NAMES[kind];
+        third.icon.src = iconUrl(ICONS[kind]);
+      }
+      const left = p.offhandCooldown ?? 0;
+      const total = abilityTiming(kind).cooldown * cooldownMult(p);
+      third.sweep.style.background = `conic-gradient(rgba(0,0,0,0.65) ${(total > 0 ? Math.min(1, left / total) : 0) * 360}deg, transparent 0deg)`;
+      third.time.textContent = left > 0 ? Math.ceil(left).toString() : '';
+      const ready = left <= 0;
+      third.root.classList.toggle('ready', ready);
+      if (ready && !third.wasReady) {
+        third.root.classList.remove('flash');
+        void third.root.offsetWidth;
+        third.root.classList.add('flash');
+      }
+      third.wasReady = ready;
+    }
 
     // Out of a fight you get back up alone. In one, the slice's downs wait for a friend (the party UI
     // says so); Hearthgate's (T5) bleed out, and the clock is the thing to watch.

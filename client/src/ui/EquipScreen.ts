@@ -30,6 +30,8 @@ const BODY_AT: Record<BodySlot, [number, number]> = {
   head: [1, 0],
   cape: [0, 1],
   neck: [1, 1],
+  // RuneScape's ammo slot, right of the neck (C4).
+  ammo: [2, 1],
   weapon: [0, 2],
   body: [1, 2],
   shield: [2, 2],
@@ -204,7 +206,8 @@ export class EquipScreen {
       const oy = c.row - at.row;
       const along = ox * dx + oy * dy;
       if (along <= 0) return;
-      const score = along + Math.abs(dx ? oy : ox) * 2;
+      // Staying in line weighs three steps a row, so right from the head reaches the bag, not the ammo slot below it (C4).
+      const score = along + Math.abs(dx ? oy : ox) * 3;
       if (score < bestScore) {
         bestScore = score;
         best = i;
