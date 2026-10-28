@@ -85,7 +85,7 @@ Order:
 
 **T6. Progression to 50, then champion points** (`combat-port-plan.md` section 3a, decision 6): style levels to 50 with a talent point a level, the milestone rows, then three constellations of champion points under one ceiling.
 *Gate:* you want to start a second run right away; with a character past 50, you can plan a build and feel it, and a lower-level friend still pulls their weight.
-*Steps* (Michael, 27 Oct): **T6a** levels to 50 with a milestone row every ten levels (built); **T6b** champion points' passive perks under a +15% damage and +15% health ceiling, shared across characters; **T6c** the four slotted perks.
+*Steps* (Michael, 27 Oct): **T6a** levels to 50 with a milestone row every ten levels (built); **T6b** champion points' passive perks under a +15% damage and +15% health ceiling, shared across characters (built); **T6c** the four slotted perks, nine to choose from, opened by points in their constellation and changed in the village or a rest room (built).
 
 The slice already brings its look, sound and music, so the old port's "look" and "music" steps are gone.
 

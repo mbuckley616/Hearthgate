@@ -1,4 +1,5 @@
-import { ABILITIES, ABILITY_NAMES, comboHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
+import { ABILITIES, ABILITY_NAMES, comboHit, stringHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
+import { championArmour, championCooldown, championRecharge, championSpeed } from './champion';
 import { levelFor } from './gear';
 import type { PlayerState } from './types';
 
@@ -172,6 +173,8 @@ export function attackSpeed(p: PlayerState): number {
 
 /** The current hero's chain hit i, sped up by haste. */
 export function heroHit(p: PlayerState, i: number): ComboHit {
+  // A string move (C1) stands in for the chain step it borrows.
+  if (p.attackMove) return stringHit(p.style, p.attackMove, attackSpeed(p), p.attackCharge ?? 1);
   return comboHit(p.style, i, attackSpeed(p));
 }
 
@@ -195,18 +198,18 @@ export function parryWindowMs(p: PlayerState): number {
 
 /** The share taken off a dodge charge's recharge by gear and Second wind. */
 export function dodgeRechargeCut(p: PlayerState): number {
-  return p.mods.dodgeRecharge + rankOf(p, 'wind') * tuning.talents.windRechargePerRank;
+  return p.mods.dodgeRecharge + rankOf(p, 'wind') * tuning.talents.windRechargePerRank + championRecharge(p);
 }
 
 export function damageTakenMult(p: PlayerState): number {
-  return Math.max(0.2, 1 - rankOf(p, 'armour') * tuning.talents.armourReductionPerRank);
+  return Math.max(0.2, 1 - rankOf(p, 'armour') * tuning.talents.armourReductionPerRank - championArmour(p));
 }
 
 export function moveSpeedMult(p: PlayerState): number {
-  return 1 + rankOf(p, 'fleet') * tuning.talents.fleetSpeedPerRank;
+  return 1 + rankOf(p, 'fleet') * tuning.talents.fleetSpeedPerRank + championSpeed(p);
 }
 
 /** Cooldown multiplier from gear and the focus talent. */
 export function cooldownMult(p: PlayerState): number {
-  return Math.max(0.2, 1 - p.mods.cooldowns - rankOf(p, 'focus') * tuning.talents.focusCooldownPerRank);
+  return Math.max(0.2, 1 - p.mods.cooldowns - rankOf(p, 'focus') * tuning.talents.focusCooldownPerRank - championCooldown(p));
 }

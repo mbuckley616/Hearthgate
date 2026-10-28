@@ -2,12 +2,29 @@ import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
+import {
+  CONSTELLATIONS,
+  championMaxRanks,
+  championName,
+  championOpen,
+  championPointsEarned,
+  championText,
+  championXpFor,
+  slotCount,
+  slottedName,
+  slottedText,
+  slottedUnlockAt,
+  slottedUnlocked,
+  type ChampionId,
+  type SlottedId,
+} from '@hearthgate/shared/sim/champion';
 import type { ActionFrame } from '../input/actions';
 import type { Profile } from '../game/Profile';
 import { gearLine, nameOf } from './gearText';
 
 /** The weapon kinds, by the style each fights with (one hero, any weapon: T5). */
 const STYLE_NAMES: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
+type Tab = 'gear' | 'talents' | 'champion';
 /** Where each worn slot sits on the silhouette (column, row), as RuneScape lays out its body. */
 const BODY_AT: Record<BodySlot, [number, number]> = {
   head: [1, 0],
@@ -46,10 +63,13 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
 export class EquipScreen {
   private root = document.createElement('div');
   private body = document.createElement('div');
-  private tab: 'gear' | 'talents' = 'gear';
+  private tab: Tab = 'gear';
   /** The talent board's cursor: a weapon kind's column and a talent in it. */
   private tCol = 0;
   private tRow = 0;
+  /** The champion board's cursor: a constellation and a perk in it. */
+  private cCol = 0;
+  private cRow = 0;
   private readonly grid = cells();
   private cursor = 0;
   /** Seconds until a held direction moves the cursor again. */
@@ -60,6 +80,8 @@ export class EquipScreen {
   constructor(
     private profile: Profile,
     private onChange: () => void,
+    /** Whether slotted perks may change here (the village or a rest room, T6c): the server keeps them elsewhere. */
+    private canReslot: () => boolean = () => true,
   ) {
     this.root.className = 'equip';
     const card = document.createElement('div');
@@ -93,12 +115,14 @@ export class EquipScreen {
     if (!this.visible) return;
     if (actions.pressed.has('style1')) this.setTab('gear');
     if (actions.pressed.has('style2')) this.setTab('talents');
+    if (actions.pressed.has('style3')) this.setTab('champion');
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
       if (this.tab === 'gear') this.step(dir);
-      else this.stepTalent(dir);
+      else if (this.tab === 'talents') this.stepTalent(dir);
+      else this.stepChampion(dir);
       this.repeat = dir === this.lastDir ? 0.12 : 0.35;
     }
     this.repeat -= dt;
@@ -114,8 +138,44 @@ export class EquipScreen {
       this.render();
       return;
     }
+    if (this.tab === 'champion') {
+      const con = CONSTELLATIONS[this.cCol];
+      // Below the ranked perks, the constellation's slotted ones: F or A slots or unslots, Q or LB unslots.
+      if (this.cRow >= con.perks.length) {
+        const sid = con.slotted[this.cRow - con.perks.length];
+        const isIn = this.profile.champion.slots?.includes(sid) ?? false;
+        if (actions.pressed.has('interact') || (actions.pressed.has('ability1') && isIn)) this.slot(sid);
+        else return;
+        this.render();
+        return;
+      }
+      const id = con.perks[this.cRow];
+      if (actions.pressed.has('interact')) this.profile.changeChampion(id, 1);
+      else if (actions.pressed.has('ability1')) this.profile.changeChampion(id, -1);
+      else if (actions.pressed.has('ability2')) this.profile.resetChampion();
+      else return;
+      this.onChange();
+      this.render();
+      return;
+    }
     if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
     if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+  }
+
+  private stepChampion(dir: string): void {
+    const n = CONSTELLATIONS.length;
+    if (dir === 'left' || dir === 'right') this.cCol = (this.cCol + (dir === 'right' ? 1 : n - 1)) % n;
+    else this.cRow += dir === 'down' ? 1 : -1;
+    const con = CONSTELLATIONS[this.cCol];
+    this.cRow = Math.max(0, Math.min(con.perks.length + con.slotted.length - 1, this.cRow));
+    this.render();
+    this.body.querySelector('.talent.chosen')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  private slot(id: SlottedId): void {
+    if (!this.canReslot()) return;
+    this.profile.toggleSlot(id);
+    this.onChange();
   }
 
   private stepTalent(dir: string): void {
@@ -125,7 +185,7 @@ export class EquipScreen {
     this.body.querySelector('.talent.chosen')?.scrollIntoView({ block: 'nearest' });
   }
 
-  private setTab(tab: 'gear' | 'talents'): void {
+  private setTab(tab: Tab): void {
     this.tab = tab;
     this.render();
   }
@@ -176,7 +236,11 @@ export class EquipScreen {
       this.cursor = i;
     }
     if (action === 'drop') this.drop(this.grid[this.cursor]);
-    if (action === 'tab') this.tab = el.dataset.tab === 'talents' ? 'talents' : 'gear';
+    if (action === 'tab') this.tab = el.dataset.tab === 'talents' || el.dataset.tab === 'champion' ? el.dataset.tab : 'gear';
+    if (action === 'cpUp' && talent) this.profile.changeChampion(talent as ChampionId, 1);
+    if (action === 'cpDown' && talent) this.profile.changeChampion(talent as ChampionId, -1);
+    if (action === 'cpReset') this.profile.resetChampion();
+    if (action === 'cpSlot' && talent) this.slot(talent as SlottedId);
     if (action === 'rankUp' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, 1);
     if (action === 'rankDown' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, -1);
     if (action === 'respec' && style) this.profile.resetTalents(style as Style);
@@ -206,12 +270,13 @@ export class EquipScreen {
     const tabs = `<div class="equip-tabs">
         <button data-action="tab" data-tab="gear" class="${this.tab === 'gear' ? 'on' : ''}">1 · Bag and body</button>
         <button data-action="tab" data-tab="talents" class="${this.tab === 'talents' ? 'on' : ''}">2 · Talents${unspent > 0 ? ` <b>${unspent}</b>` : ''}</button>
+        <button data-action="tab" data-tab="champion" class="${this.tab === 'champion' ? 'on' : ''}">3 · Champion${this.profile.championLeft() > 0 ? ` <b>${this.profile.championLeft()}</b>` : ''}</button>
       </div>`;
     this.body.innerHTML = `
       <div class="equip-heroes">${levels}</div>
       ${tabs}
-      ${this.tab === 'gear' ? this.gearHtml() : this.talentsHtml()}
-      <div class="equip-foot">Runs ${d.runs} · Wins ${d.wins}</div>`;
+      ${this.tab === 'gear' ? this.gearHtml() : this.tab === 'talents' ? this.talentsHtml() : this.championHtml()}
+      <div class="equip-foot">${d.coin.toLocaleString()} coin · Runs ${d.runs} · Wins ${d.wins}</div>`;
   }
 
   private cellHtml(c: Cell, i: number): string {
@@ -286,5 +351,67 @@ export class EquipScreen {
     }).join('');
     return `<div class="talent-cols">${cols}</div>
       <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or LB: take off · E or RB: reset</div>`;
+  }
+
+  /** The three constellations (T6b): points from XP past the top level, free to move between runs until coin. */
+  private championHtml(): string {
+    const c = this.profile.champion;
+    const earned = championPointsEarned(c.xp);
+    const left = this.profile.championLeft();
+    const open = championOpen(this.profile.data.xp);
+    const toNext = Math.max(0, Math.ceil(championXpFor(earned + 1) - c.xp));
+    const status = open
+      ? `${left} of ${earned} point${earned === 1 ? '' : 's'} to spend · next in ${toNext.toLocaleString()} XP`
+      : `Champion points begin when a weapon reaches level ${maxLevel()}${earned > 0 ? ` · ${left} of ${earned} to spend` : ''}`;
+    const reslot = this.canReslot();
+    const full = c.slots?.length ?? 0;
+    const cols = CONSTELLATIONS.map((con, col) => {
+      const rows = con.perks
+        .map((id, row) => {
+          const rank = c.ranks[id] ?? 0;
+          const max = championMaxRanks(id);
+          const pips = Array.from({ length: max }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
+          const chosen = this.tab === 'champion' && col === this.cCol && row === this.cRow ? ' chosen' : '';
+          return `<div class="talent champion${chosen}">
+          <div class="talent-name">${championName(id)}</div>
+          <div class="talent-text">${championText(id)} per rank</div>
+          <div class="talent-pips">${pips}</div>
+          <div class="talent-btns">
+            <button data-action="cpDown" data-talent="${id}" ${rank <= 0 ? 'disabled' : ''}>−</button>
+            <button data-action="cpUp" data-talent="${id}" ${rank >= max || left <= 0 ? 'disabled' : ''}>+</button>
+          </div>
+        </div>`;
+        })
+        .join('');
+      const slottable = con.slotted
+        .map((id, i) => {
+          const row = con.perks.length + i;
+          const isIn = c.slots?.includes(id) ?? false;
+          const open = slottedUnlocked(c.ranks, id);
+          const chosen = this.tab === 'champion' && col === this.cCol && row === this.cRow ? ' chosen' : '';
+          const state = !open ? `opens at ${slottedUnlockAt(id)} in ${con.name}` : isIn ? 'slotted' : '';
+          const can = reslot && (isIn || (open && full < slotCount()));
+          return `<div class="talent slottable${isIn ? ' in' : ''}${open ? '' : ' locked'}${chosen}">
+          <div class="talent-name">${slottedName(id)} <span class="talent-level">${state}</span></div>
+          <div class="talent-text">${slottedText(id)}</div>
+          <div class="talent-btns">
+            <button data-action="cpSlot" data-talent="${id}" ${can ? '' : 'disabled'}>${isIn ? '−' : '+'}</button>
+          </div>
+        </div>`;
+        })
+        .join('');
+      return `<div class="talent-col"><div class="talent-head">${con.name}</div>${rows}<div class="talent-sub">Slotted</div>${slottable}</div>`;
+    }).join('');
+    const names = Array.from({ length: slotCount() }, (_, i) => {
+      const id = c.slots?.[i];
+      if (!id) return '<span class="slot empty">empty</span>';
+      return `<span class="slot${slottedUnlocked(c.ranks, id) ? '' : ' off'}">${slottedName(id)}</span>`;
+    }).join('');
+    const slotBar = `<div class="slot-bar"><b>Slots</b>${names}<em>${reslot ? 'Change them here' : 'Change them in the village or a rest room'}</em></div>`;
+    return `<div class="champion-status ${left > 0 ? 'has' : ''}">${status}</div>
+      ${slotBar}
+      <div class="talent-cols">${cols}</div>
+      <button class="talent-respec" data-action="cpReset">Reset all</button>
+      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. Resetting is free between fights. Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
   }
 }

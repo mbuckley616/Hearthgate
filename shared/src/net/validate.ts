@@ -3,6 +3,7 @@ import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
+import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
@@ -29,6 +30,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
   if (!isNum(moveX) || !isNum(moveZ) || !isNum(aimX) || !isNum(aimZ) || !isNum(lockTarget)) return null;
   for (const k of ['sprint', 'dodge', 'attack', 'ability1', 'ability2', 'jump', 'block', 'interact'] as const) if (!isBool(v[k])) return null;
   if (swapTo !== null && !STYLES.includes(swapTo as Style)) return null;
+  if (v.attackHeld !== undefined && !isBool(v.attackHeld)) return null;
   const len = Math.hypot(moveX, moveZ);
   const s = len > 1 ? 1 / len : 1;
   return {
@@ -46,6 +48,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
     jump: v.jump as boolean,
     block: v.block as boolean,
     interact: v.interact as boolean,
+    ...(v.attackHeld === true ? { attackHeld: true } : {}),
   };
 }
 
@@ -99,6 +102,24 @@ export function readLoadout(v: unknown): Loadout | null {
     mods.armour = m.armour;
   }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
+  // Champion points (T6b): the banked XP must have bought every rank.
+  if (v.champion !== undefined) {
+    const c = v.champion;
+    if (!isObj(c) || !isNum(c.xp) || c.xp < 0 || c.xp > 1e12 || !isObj(c.ranks)) return null;
+    const ranks: ChampionRanks = {};
+    for (const [id, n] of Object.entries(c.ranks)) {
+      if (!CHAMPION_IDS.includes(id as never) || !isNum(n) || n < 0) return null;
+      ranks[id as keyof ChampionRanks] = Math.trunc(n);
+    }
+    const champion: ChampionState = { xp: c.xp, ranks };
+    // Slotted perks (T6c): known ids; championProblem counts them.
+    if (c.slots !== undefined) {
+      if (!Array.isArray(c.slots) || c.slots.length > SLOTTED_IDS.length || !c.slots.every((id) => SLOTTED_IDS.includes(id as never))) return null;
+      champion.slots = [...(c.slots as SlottedId[])];
+    }
+    if (championProblem(champion)) return null;
+    loadout.champion = champion;
+  }
   // What the hero wears (T5c): catalogue ids, at most one a slot. Only drawn, never fought with.
   if (v.look !== undefined) {
     if (!Array.isArray(v.look) || v.look.length > BODY_SLOTS.length) return null;

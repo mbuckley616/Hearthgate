@@ -2,6 +2,149 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C1: light and heavy strings
+
+**What changed**
+
+- **Hold to go heavy.** Holding attack turns a step into a heavy (`combo.heavyHoldMs`, 250 ms), and holding 450 ms more reaches charge level 2. It is the same on mouse, keyboard and pad: `attackHeld` is a held field on the command, so prediction and the server step it alike.
+- **A tap is the slice's light, exactly.** A test compares every tick of the five taps with heavies on and off.
+- **Each weapon's string moves** are keyed by the presses that lead to them:
+  - Sword: H overhead cleave, LH rising cut, LLH sweeping arc, LLLH pommel break, LLLLH blade spin, HH ground slam, HHH earthsplitter, and HLL whirling counter (Michael's heavy-light-light example).
+  - Bow and staff have their own seven.
+  - A heavy string without its own move plays H.
+- **Each move borrows a chain step's pose, reach and projectiles** (`stringAnim`), so the views follow without knowing about strings until the moves get poses of their own. The numbers are in `tuning` with slider ranges.
+- **The HUD names each move** as it fires, so the strings are learned by playing.
+- **Behind `combo.heavies`,** which the parity test turns off: parity identical.
+
+**Learned**
+
+- **A hold has to belong to the swing its press started.** The bow's buffer window opens inside the next shot's windup, so pressing and holding for the next heavy turned the *current* light into it. A press made mid-swing now marks its hold as the next swing's (`attackHoldNext`). A test covers it.
+- **Heavies add next to no corrections.** In a browser run, the five taps gave 3 to 4 corrections (the known lunge ease); the three heavy moves after them gave 0 to 1 more, and none were snaps.
+
+**Next**
+
+- C2, Flow.
+- The heavies need poses of their own: today the overhead cleave is the leaping slam's pose.
+
+## 2026-10-28: local session, P1: the loop's stakes and rewards
+
+**What changed**
+
+- **Carried finds.** On a generated floor a pickup is carried (`SimState.floor.carried`) instead of going straight into the bag.
+- **Banking.** The rest room, or the Warden's fall, banks every player's finds in a `banked` event. The event also carries:
+  - the coin for the fight rooms cleared on that floor
+  - the village's lumber and stone
+- **Pay** is `tuning.loop`: 12 coin, 4 lumber and 3 stone for each room cleared, more for the Warden's hall, and 30% more for each floor deeper. Rare drops get likelier deeper too.
+- **Losing finds.** A wipe loses what was carried (`findsLost`). A player who leaves mid-floor gives up theirs.
+- **The browser saves what the server gives it.**
+  - Items go into the bag and coin into the profile.
+  - Lumber and stone go into `hearthgate.village.v1`, but only in the browser that opened the village the run set out from. That holds until P2 makes it a real village save.
+- **On screen:**
+  - The timer line shows what is carried.
+  - A summary card greets the party home. F, A or Escape closes it.
+  - The equip screen shows coin.
+- **Protocol 8.**
+- **The slice's arena keeps its own loot**, so parity is identical.
+
+**Learned**
+
+- Banking pays only for rooms actually fought. Since the deeper ring opens on arrival (decisions.md, 27 Oct), skipping rooms is now a real trade: a faster floor for less pay.
+- **The summary was hidden at first.** It sat under the Paused card, which shows whenever the mouse is not locked (the critic's open bug). It now sits above that card and below the hero screen.
+- The smoke walk's route to the rest room can cross no fight room, so the scratch check steered through one first. One room cleared on floor 1 banked 12 coin, 4 lumber and 3 stone.
+
+**Next**
+
+- C1, light and heavy strings.
+
+## 2026-10-28: local session, combat depth designed with Michael
+
+**What changed**
+
+- A design conversation about combat, drawn up as an interactive page ("Hearthgate Combat Builds") with a Keep, Unsure or Cut on every piece. Michael marked all 43; four conflicts were settled in chat. All of it is in `decisions.md` ("Combat depth").
+- **The design doc's Combat section** gains a Builds block, and its Loadout paragraph now says one weapon set per outing. Layer 1 now names the specialization trees.
+- **The backlog's Phase 2** gains the feel pass, C1 to C5, after P1: strings, Flow, one weapon set per outing, the off-hand slot, three new families. The builds pass waits as a **(design)** item.
+
+**Learned**
+
+- Michael chose no weapon swap mid-fight. One player can no longer set up and pay off a cross-style combo alone, so combos become party play. That fits pillar 1, and makes the henchmen's combo awareness matter more.
+- The slice's parity scenario swaps weapons mid-fight, so the no-swap rule must sit behind a switch the parity test turns back on.
+
+**Next**
+
+- P1 (the loop's stakes), then C1 (light and heavy strings).
+
+## 2026-10-28: local session, Phase 2 planned
+
+**What changed**
+
+- **Phase 2's items** are in the backlog, P1 to P10 and the gate, planned from the design doc with Michael's four answers (`decisions.md`, "Phase 2's shape").
+  - The loop's stakes and rewards.
+  - The village in the host's browser save.
+  - The four starting buildings at tiers 1 to 4.
+  - Coin, the General Store and the stash.
+  - A portal board with tiers and two modifiers.
+  - Three henchmen in three steps.
+- The backlog also lists what is not in Phase 2, and three draft gate questions for the producer.
+
+**Learned**
+
+- Nothing in a run is at risk today: a pickup goes straight into the bag, so going deeper costs nothing. P1 fixes that first, because the gate's "holds up" depends on the loop having stakes.
+- The fight needs nothing new for henchmen: a henchman is a `PlayerState` whose `PlayerCommand` comes from a brain in `shared/` instead of a browser. Prediction and snapshots carry it as they carry any hero.
+
+**Next**
+
+- The critic's two open bugs, then P1 and P3 (deep work) beside P4 (the builder).
+
+## 2026-10-28: local session, T6c: the slotted perks
+
+**What changed**
+
+- **Nine slotted perks** (`shared/src/sim/champion.ts`), three per constellation, with Michael's answers (`decisions.md`, 28 Oct):
+  - Offence: Wide shatter, Teamwork, Deep wounds.
+  - Defence: Counterstep, Bulwark, Lifeline.
+  - Utility: Long fuse, Momentum, Magnet.
+- **Opening and slotting:** a constellation's slotted perks open at 5, 10 and 15 points spent in it; four are slotted at once. They travel as `ChampionState.slots`.
+- **Where they change:** `slotsOpen` (coop.ts) allows the village, a floor's rest room once the party has reached it, and the arena's antechamber. Elsewhere `HostSession` keeps the hero's four whatever the browser sends, and the tab says where to change them.
+- **The effects** sit where the fight already decides those things: the Shatter splash, the payoff damage, the bleed, the parry, the block, the revive, the combo windows, a new `payCombo` beside the three combo callouts, and the pickup radius.
+- **The Champion tab** lists each constellation's slotted perks under its ranked ones, with a slot bar. F or A slots, Q or LB takes one out.
+- **Parity identical:** each effect is a branch a hero without champion points never takes. Combo setters (`shatterBy`, `skewerBy`, `detonateBy`, for Teamwork) are recorded only for heroes with champion points.
+
+**Learned**
+
+- A slotted perk whose constellation loses its points stays slotted and does nothing, on both sides. Refusing it instead would make the server drop the whole loadout after a respec on a floor, where the slots are fixed.
+- Momentum hooks the combo callout, not the payoff hit, because a Detonate burst lands on every enemy it catches and would otherwise refund once per enemy.
+
+**Next**
+
+- T6 is built. Its gate wants a play past level 50, which today takes a seeded save or the debug panel; the pace of the XP curve is still unjudged.
+
+## 2026-10-28: local session, T6b: champion points
+
+**What changed**
+
+- **Earning** (`shared/src/sim/champion.ts`): once any weapon is at level 50, every weapon's XP also banks toward champion points. The first costs 20,000 XP and each costs 250 more than the last, without end (`tuning.champion`).
+- **Nine ranked perks in three constellations:**
+  - Offence: Precision (damage), Heft (poise damage), Exploit (combo payoffs).
+  - Defence: Vitality (max health), Toughness (damage taken), Steady hands (time to revive a friend).
+  - Utility: Will (cooldowns), Light step (dodge recharge), Stride (move speed).
+- **The ceiling:** Precision and Vitality stop at +15% damage and +15% health (Michael), and the code holds the ceiling even if the per-rank values are tuned up.
+- **The player's, not the hero's:**
+  - They are saved under their own key (`hearthgate.champion.v1`), so a second character will share them.
+  - They travel in the loadout and `PlayerState.champion`.
+  - The server refuses ranks the banked XP could not buy, and applies Vitality to max health itself, so the ceiling holds whatever a browser sends.
+- **Parity identical:** the state is optional, and a hero without it (the slice, the parity test) gains exact zeros.
+- **The equip screen's third tab, 3 Champion,** works by keys and pad like the talents. Resetting is free between fights until coin. A toast marks each point.
+- **The design doc's Layer 1** now says the player moves a little, and chooses how.
+
+**Learned**
+
+- Points come from a closed form (the cost's quadratic, settled to whole points), not a loop: banked XP never stops growing, and the sim asks on every XP grant past 50.
+- Health is the one champion number not stepped per tick: it is set when a loadout is applied, so the server applies it rather than taking the browser's max health.
+
+**Next**
+
+- T6c: the four slotted perks, which make a build. They are chosen in the village or a rest room.
+
 ## 2026-10-27: local session, T6a: style levels to 50
 
 **What changed**

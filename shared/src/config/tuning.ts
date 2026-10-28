@@ -119,6 +119,16 @@ export const tuning = {
     maxTurnDeg: 90,
     /** Ranged and magic allow walking during attacks at this fraction of run speed. */
     castMoveSpeedFrac: 0.6,
+    /**
+     * Light and heavy strings (C1; Michael, 28 Oct). A tap is the chain's light hit as ever; holding
+     * attack this long turns the step into the heavy for the string so far, and holding chargeMs more
+     * reaches charge level 2. Off in the parity test: the slice's chain has no heavies.
+     */
+    heavies: true,
+    heavyHoldMs: 250,
+    chargeMs: 450,
+    charge2Damage: 1.5,
+    charge2Poise: 1.5,
   },
 
   /**
@@ -303,6 +313,172 @@ export const tuning = {
     /** Bursts slow enemies (brief: 40% for 2 s). */
     burstSlowFrac: 0.4,
     burstSlowMs: 2000,
+  },
+
+  /**
+   * Each weapon's string moves (C1): a key is the string of light (L) and heavy (H) presses that ends
+   * in it. Anim is the chain step whose pose, reach and projectiles it borrows until it has its own;
+   * the rest overrides that step. A heavy string with no entry plays H.
+   */
+  swordStrings: {
+    // H · Overhead cleave
+    hAnim: 4,
+    hWindupMs: 120,
+    hDamage: 2.2,
+    hPoise: 5,
+    hKnockbackM: 1.5,
+    hHeavy: 1,
+    // L H · Rising cut
+    lhAnim: 2,
+    lhWindupMs: 110,
+    lhDamage: 1.6,
+    lhPoise: 6,
+    lhKnockbackM: 0.5,
+    lhHeavy: 1,
+    // L L H · Sweeping arc
+    llhAnim: 2,
+    llhWindupMs: 140,
+    llhDamage: 1.8,
+    llhPoise: 3,
+    llhKnockbackM: 3.5,
+    llhHeavy: 1,
+    // L L L H · Pommel break
+    lllhAnim: 0,
+    lllhWindupMs: 100,
+    lllhDamage: 1.2,
+    lllhPoise: 9,
+    lllhKnockbackM: 1,
+    lllhHeavy: 1,
+    // L L L L H · Blade spin
+    llllhAnim: 3,
+    llllhWindupMs: 120,
+    llllhDamage: 2,
+    llllhPoise: 3,
+    llllhKnockbackM: 1.5,
+    llllhHeavy: 1,
+    // H H · Ground slam
+    hhAnim: 4,
+    hhWindupMs: 160,
+    hhDamage: 2.8,
+    hhPoise: 7,
+    hhKnockbackM: 3,
+    hhHeavy: 1,
+    // H H H · Earthsplitter
+    hhhAnim: 4,
+    hhhWindupMs: 200,
+    hhhDamage: 3.6,
+    hhhPoise: 9,
+    hhhKnockbackM: 4,
+    hhhHeavy: 1,
+    // H L L · Whirling counter
+    hllAnim: 3,
+    hllWindupMs: 100,
+    hllDamage: 1.6,
+    hllPoise: 2,
+    hllKnockbackM: 1,
+    hllHeavy: 0,
+  },
+  bowStrings: {
+    // H · Charged shot
+    hAnim: 2,
+    hWindupMs: 160,
+    hDamage: 2,
+    hPoise: 2.5,
+    hKnockbackM: 0.5,
+    hHeavy: 1,
+    // L H · Pinning shot
+    lhAnim: 4,
+    lhWindupMs: 140,
+    lhDamage: 1.6,
+    lhPoise: 4,
+    lhKnockbackM: 0,
+    lhHeavy: 1,
+    // L L H · Fan
+    llhAnim: 3,
+    llhWindupMs: 150,
+    llhDamage: 1.3,
+    llhPoise: 1.5,
+    llhKnockbackM: 0.5,
+    llhHeavy: 1,
+    // L L L H · Point blank
+    lllhAnim: 2,
+    lllhWindupMs: 90,
+    lllhDamage: 1.8,
+    lllhPoise: 3,
+    lllhKnockbackM: 3,
+    lllhHeavy: 1,
+    // H H · Longshot
+    hhAnim: 4,
+    hhWindupMs: 220,
+    hhDamage: 2.6,
+    hhPoise: 3,
+    hhKnockbackM: 0.5,
+    hhHeavy: 1,
+    // H H H · Deadeye
+    hhhAnim: 4,
+    hhhWindupMs: 260,
+    hhhDamage: 3.4,
+    hhhPoise: 4,
+    hhhKnockbackM: 0.5,
+    hhhHeavy: 1,
+    // H L L · Quick volley
+    hllAnim: 3,
+    hllWindupMs: 100,
+    hllDamage: 1,
+    hllPoise: 1,
+    hllKnockbackM: 0,
+    hllHeavy: 0,
+  },
+  staffStrings: {
+    // H · Charged orb
+    hAnim: 2,
+    hWindupMs: 160,
+    hDamage: 2,
+    hPoise: 2.5,
+    hKnockbackM: 1.5,
+    hHeavy: 1,
+    // L H · Nova
+    lhAnim: 3,
+    lhWindupMs: 120,
+    lhDamage: 1,
+    lhPoise: 2,
+    lhKnockbackM: 1.5,
+    lhHeavy: 1,
+    // L L H · Great burst
+    llhAnim: 4,
+    llhWindupMs: 150,
+    llhDamage: 2.2,
+    llhPoise: 3,
+    llhKnockbackM: 2,
+    llhHeavy: 1,
+    // L L L H · Twin nova
+    lllhAnim: 3,
+    lllhWindupMs: 110,
+    lllhDamage: 1.3,
+    lllhPoise: 2.5,
+    lllhKnockbackM: 2,
+    lllhHeavy: 1,
+    // H H · Elemental storm
+    hhAnim: 4,
+    hhWindupMs: 220,
+    hhDamage: 2.8,
+    hhPoise: 4,
+    hhKnockbackM: 2.5,
+    hhHeavy: 1,
+    // H H H · Cataclysm
+    hhhAnim: 4,
+    hhhWindupMs: 260,
+    hhhDamage: 3.6,
+    hhhPoise: 5,
+    hhhKnockbackM: 3,
+    hhhHeavy: 1,
+    // H L L · Arcane flurry
+    hllAnim: 3,
+    hllWindupMs: 100,
+    hllDamage: 0.9,
+    hllPoise: 1,
+    hllKnockbackM: 0.5,
+    hllHeavy: 0,
   },
 
   /** Shared combat numbers (brief: "Hit feel", "Enemies and the room"). */
@@ -551,6 +727,45 @@ export const tuning = {
     masteryDamagePerRank: 0.03,
   },
 
+  /**
+   * Champion points (T6b, plan 3a; Michael, 27 Oct): past the top level, XP from any weapon buys
+   * points, each pointXpGrowth dearer than the last. Small ranked perks in three constellations;
+   * all of them together give at most the ceilings' damage and health (Michael: +15% each).
+   */
+  champion: {
+    pointXp: 20000,
+    pointXpGrowth: 250,
+    ceilingDamage: 0.15,
+    ceilingHealth: 0.15,
+    /** Most perks take five ranks; Precision and Vitality take enough to reach their ceiling. */
+    smallMaxRanks: 5,
+    precisionDamagePerRank: 0.01,
+    precisionMaxRanks: 15,
+    heftPoisePerRank: 0.03,
+    exploitComboPerRank: 0.03,
+    vitalityHealthPerRank: 0.015,
+    vitalityMaxRanks: 10,
+    toughnessReductionPerRank: 0.01,
+    steadyReviveCutPerRank: 0.06,
+    willCooldownPerRank: 0.015,
+    lightstepRechargePerRank: 0.03,
+    strideSpeedPerRank: 0.01,
+    /**
+     * Slotted perks (T6c; Michael, 28 Oct): four active at once, changed in the village or a rest room.
+     * A constellation's slotted perks open in turn at this many, twice and three times as many points spent in it.
+     */
+    slots: 4,
+    slotUnlockStep: 5,
+    wideShatterRadiusMult: 2,
+    teamworkBonus: 0.2,
+    deepWoundsTicksMult: 2,
+    bulwarkChipMult: 0.5,
+    lifelineHpMult: 2,
+    longFuseWindowMult: 1.5,
+    momentumCooldownMs: 2000,
+    magnetRadiusMult: 2,
+  },
+
   /** Gear drops (brief: three per run, one guaranteed from the Warden). */
   gear: {
     rareChance: 0.3,
@@ -662,6 +877,23 @@ export const tuning = {
     /** Detonate: volley marks, then a magic burst. */
     detonateRadiusBonus: 0.5,
     detonateDamageBonus: 0.3,
+  },
+
+  /**
+   * The loop's stakes and rewards (P1; design doc: Core loop, Rest rooms). On a generated floor finds
+   * are carried until a rest room or the Warden's fall banks them, and a wipe loses them. Banking pays
+   * for the fight rooms cleared on that floor: coin to each player, lumber and stone to the village
+   * the run set out from. Each floor deeper pays depthBonus more, and makes a rare drop that much likelier.
+   */
+  loop: {
+    depthBonus: 0.3,
+    coinPerRoom: 12,
+    lumberPerRoom: 4,
+    stonePerRoom: 3,
+    /** The Warden's hall pays this on top of its room. */
+    bossCoin: 60,
+    bossLumber: 12,
+    bossStone: 12,
   },
 
   /** The run (brief: "A run"): antechamber, then waves, then the Warden. */
@@ -1071,6 +1303,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'combo.durationScale': [0.5, 3, 0.05],
   'combo.inputBufferMs': [0, 500, 10],
+  'combo.heavyHoldMs': [100, 600, 10],
+  'combo.chargeMs': [100, 1500, 10],
+  'combo.charge2Damage': [1, 3, 0.05],
+  'combo.charge2Poise': [1, 3, 0.05],
   'combo.maxTurnDeg': [0, 180, 5],
   'combo.castMoveSpeedFrac': [0, 1, 0.05],
 
@@ -1400,6 +1636,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'warden.spawnMs': [0, 4500, 10],
   'warden.deathMs': [0, 9000, 10],
   'warden.knockbackTaken': [0, 2, 0.01],
+  'loop.depthBonus': [0, 1, 0.05],
+  'loop.coinPerRoom': [0, 100, 1],
+  'loop.lumberPerRoom': [0, 40, 1],
+  'loop.stonePerRoom': [0, 40, 1],
+  'loop.bossCoin': [0, 500, 5],
+  'loop.bossLumber': [0, 100, 1],
+  'loop.bossStone': [0, 100, 1],
   'run.introMs': [0, 4500, 10],
   'run.gateWaitMs': [0, 30000, 500],
   'run.restMs': [0, 15000, 10],
@@ -1436,6 +1679,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'progression.glowLevel': [2, 50, 1],
   'talents.pointsPerLevel': [0, 5, 1],
   'talents.mightDamagePerRank': [0, 0.3, 0.01],
+  'champion.pointXp': [1000, 200000, 1000],
+  'champion.pointXpGrowth': [0, 5000, 50],
+  'champion.ceilingDamage': [0, 0.5, 0.01],
+  'champion.ceilingHealth': [0, 0.5, 0.01],
+  'champion.precisionDamagePerRank': [0, 0.05, 0.005],
+  'champion.vitalityHealthPerRank': [0, 0.05, 0.005],
+  'champion.slotUnlockStep': [0, 10, 1],
+  'champion.wideShatterRadiusMult': [1, 4, 0.1],
+  'champion.teamworkBonus': [0, 1, 0.05],
+  'champion.deepWoundsTicksMult': [1, 4, 0.5],
+  'champion.bulwarkChipMult': [0, 1, 0.05],
+  'champion.lifelineHpMult': [1, 3, 0.1],
+  'champion.longFuseWindowMult': [1, 3, 0.1],
+  'champion.momentumCooldownMs': [0, 6000, 250],
+  'champion.magnetRadiusMult': [1, 4, 0.1],
   'talents.weightPoisePerRank': [0, 0.5, 0.01],
   'talents.finisherDamagePerRank': [0, 0.5, 0.01],
   'talents.riposteParryMsPerRank': [0, 100, 5],
@@ -1588,6 +1846,47 @@ const COMBO_TABLES: Record<Style, object> = {
   staff: tuning.magicCombo,
 };
 
+const STRING_TABLES: Record<Style, object> = {
+  sword: tuning.swordStrings,
+  bow: tuning.bowStrings,
+  staff: tuning.staffStrings,
+};
+
+/** The string moves each weapon has (C1), by key, and what they are called. */
+export const STRING_MOVES: Record<Style, Record<string, string>> = {
+  sword: { H: 'Overhead cleave', LH: 'Rising cut', LLH: 'Sweeping arc', LLLH: 'Pommel break', LLLLH: 'Blade spin', HH: 'Ground slam', HHH: 'Earthsplitter', HLL: 'Whirling counter' },
+  bow: { H: 'Charged shot', LH: 'Pinning shot', LLH: 'Fan', LLLH: 'Point blank', HH: 'Longshot', HHH: 'Deadeye', HLL: 'Quick volley' },
+  staff: { H: 'Charged orb', LH: 'Nova', LLH: 'Great burst', LLLH: 'Twin nova', HH: 'Elemental storm', HHH: 'Cataclysm', HLL: 'Arcane flurry' },
+};
+
+/** The move a string of presses plays: its own entry, H for a heavy string without one, or none (the chain's light). */
+export function stringMoveFor(style: Style, s: string): string | undefined {
+  if (STRING_MOVES[style][s]) return s;
+  return s.endsWith('H') ? 'H' : undefined;
+}
+
+/** A string move's attack (C1): the chain step it borrows, with its own windup, damage, poise and knockback; charge 2 hits harder. */
+export function stringHit(style: Style, key: string, speed = 1, charge = 1): ComboHit {
+  const t = STRING_TABLES[style] as Record<string, number>;
+  const k = key.toLowerCase();
+  const base = comboHit(style, Math.max(0, Math.min(4, Math.round(t[`${k}Anim`]))), speed);
+  const c = tuning.combo;
+  const two = charge >= 2;
+  return {
+    ...base,
+    windup: (t[`${k}WindupMs`] * c.durationScale) / 1000 / speed,
+    damage: t[`${k}Damage`] * tuning.combat.baseDamage * (two ? c.charge2Damage : 1),
+    poise: t[`${k}Poise`] * (two ? c.charge2Poise : 1),
+    knockback: t[`${k}KnockbackM`],
+    heavy: t[`${k}Heavy`] >= 1,
+  };
+}
+
+/** The chain step a string move borrows its pose and projectiles from. */
+export function stringAnim(style: Style, key: string): number {
+  return Math.max(0, Math.min(4, Math.round((STRING_TABLES[style] as Record<string, number>)[`${key.toLowerCase()}Anim`])));
+}
+
 /** Read hit i (0-based) of a style's chain from tuning. speed > 1 shortens every phase (haste talent). */
 export function comboHit(style: Style, i: number, speed = 1): ComboHit {
   const c = COMBO_TABLES[style] as Record<string, number>;
@@ -1650,4 +1949,16 @@ export interface EnemyStats {
 
 export function enemyStats(kind: EnemyKind): EnemyStats {
   return tuning[kind];
+}
+
+for (const section of ['swordStrings', 'bowStrings', 'staffStrings'] as const) {
+  for (const key of Object.keys(tuning[section])) {
+    const path = `${section}.${key}`;
+    if (key.endsWith('Anim')) tuningRanges[path] = [0, 4, 1];
+    else if (key.endsWith('WindupMs')) tuningRanges[path] = [0, 1000, 10];
+    else if (key.endsWith('Damage')) tuningRanges[path] = [0, 6, 0.05];
+    else if (key.endsWith('Poise')) tuningRanges[path] = [0, 15, 0.1];
+    else if (key.endsWith('KnockbackM')) tuningRanges[path] = [0, 8, 0.1];
+    else if (key.endsWith('Heavy')) tuningRanges[path] = [0, 1, 1];
+  }
 }

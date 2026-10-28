@@ -1,6 +1,6 @@
 import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
-import { damageEnemy, heroInvulnerable, hurtHero, isTargetable } from './combat';
+import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
 
@@ -235,7 +235,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   const skewer = pr.kind === 'arrow' && pr.charged && e.skewerUntil >= state.time;
   if (skewer && !pr.comboed) {
     pr.comboed = true;
-    state.events.push({ kind: 'combo', combo: 'skewer', playerId: pr.owner, x: e.x, y: e.y + 1.2, z: e.z });
+    payCombo(state, 'skewer', pr.owner, e.x, e.y + 1.2, e.z);
   }
   damageEnemy(state, e, {
     projectile: true,
@@ -256,7 +256,11 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   });
   pr.hitIds.push(e.id);
   // Detonate setup: volley arrows mark.
-  if (pr.marks) e.detonateUntil = state.time + tuning.combos.windowMs / 1000;
+  if (pr.marks) {
+    const hero = state.players.find((p) => p.id === pr.owner);
+    e.detonateUntil = state.time + comboWindow(hero);
+    if (hero?.champion) e.detonateBy = hero.id;
+  }
   if (!skewer) pr.pierce--;
   if (pr.kind === 'bolt' && !pr.chained) chainBolt(state, pr, e);
 }
@@ -278,7 +282,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
         if (marked && pr.owner[0] !== 'e') {
           pr.radius *= 1 + cb.detonateRadiusBonus;
           pr.damage *= 1 + cb.detonateDamageBonus;
-          state.events.push({ kind: 'combo', combo: 'detonate', playerId: pr.owner, x: pr.x, y: pr.y + 1, z: pr.z });
+          payCombo(state, 'detonate', pr.owner, pr.x, pr.y + 1, pr.z);
         }
         for (const e of state.enemies) {
           if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.2) continue;

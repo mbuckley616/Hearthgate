@@ -1,4 +1,4 @@
-import { ABILITIES, ABILITY_NAMES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { ABILITIES, ABILITY_NAMES, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult } from '@hearthgate/shared/sim/talents';
@@ -118,14 +118,30 @@ export class Hud {
       }
       if (ev.kind === 'heroHurt' && ev.playerId === localId) this.hurtFlash = 1;
       if (ev.kind === 'parry' && ev.playerId === localId) this.guardPop('Parry', 'parry');
+      // A string move (C1) names itself, so the strings can be learned by playing.
+      if (ev.kind === 'stringMove' && ev.playerId === localId) {
+        const style = sim.players.find((pl) => pl.id === localId)?.style;
+        const name = style ? STRING_MOVES[style][ev.move] : undefined;
+        if (name) this.guardPop(ev.charge >= 2 ? `${name} · charged` : name, ev.charge >= 2 ? 'heavy charged' : 'heavy');
+      }
       if (ev.kind === 'block' && ev.playerId === localId && ev.broke) this.guardPop('Guard broken', 'broke');
       if (ev.kind === 'levelUp' && ev.playerId === localId) {
         const unlock = levelUnlock(ev.level) ? `${levelUnlock(ev.level)} unlocked · ` : '';
         this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point</span>`, 'level');
       }
+      if (ev.kind === 'championPoint' && ev.playerId === localId) {
+        this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under I · 3 Champion</span>`, 'level');
+      }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
-        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}</span>`, i.rarity);
+        const held = ev.carried ? '  ·  carried until you bank it' : '';
+        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}${held}</span>`, i.rarity);
+      }
+      if (ev.kind === 'banked' && ev.playerId === localId && (ev.items.length > 0 || ev.coin > 0)) {
+        this.toast(`<b>Banked ${ev.items.length} find${ev.items.length === 1 ? '' : 's'}</b><span>+${ev.coin} coin  ·  floor ${ev.floor}</span>`, 'level');
+      }
+      if (ev.kind === 'findsLost' && ev.playerId === localId) {
+        this.toast(`<b>Lost ${ev.count} unbanked find${ev.count === 1 ? '' : 's'}</b><span>Bank them in a rest room next time</span>`, 'common');
       }
     }
   }
