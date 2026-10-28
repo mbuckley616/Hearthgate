@@ -128,7 +128,14 @@ export class Hud {
       }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
-        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}</span>`, i.rarity);
+        const held = ev.carried ? '  ·  carried until you bank it' : '';
+        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}${held}</span>`, i.rarity);
+      }
+      if (ev.kind === 'banked' && ev.playerId === localId && (ev.items.length > 0 || ev.coin > 0)) {
+        this.toast(`<b>Banked ${ev.items.length} find${ev.items.length === 1 ? '' : 's'}</b><span>+${ev.coin} coin  ·  floor ${ev.floor}</span>`, 'level');
+      }
+      if (ev.kind === 'findsLost' && ev.playerId === localId) {
+        this.toast(`<b>Lost ${ev.count} unbanked find${ev.count === 1 ? '' : 's'}</b><span>Bank them in a rest room next time</span>`, 'common');
       }
     }
   }

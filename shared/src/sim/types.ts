@@ -353,7 +353,16 @@ export type SimEvent =
   | { kind: 'bledOut'; playerId: string }
   | { kind: 'playerJoined'; playerId: string; name: string }
   | { kind: 'playerLeft'; playerId: string; name: string }
-  | { kind: 'pickup'; playerId: string; item: Item | GearItem }
+  /** Walked over, or handed over when a run ends. On a generated floor it is only carried until banked (P1). */
+  | { kind: 'pickup'; playerId: string; item: Item | GearItem; carried?: boolean }
+  /**
+   * A rest room or the Warden's fall banked a player's finds (P1): the items, their coin, and the
+   * village's lumber and stone for the run (the same in every player's event; the browser that opened
+   * the village keeps them).
+   */
+  | { kind: 'banked'; playerId: string; items: (Item | GearItem)[]; coin: number; lumber: number; stone: number; floor: number }
+  /** A wipe lost a player's unbanked finds (P1). */
+  | { kind: 'findsLost'; playerId: string; count: number }
   | { kind: 'perk'; playerId: string; perk: Perk; x: number; z: number };
 
 export type Combo = 'shatter' | 'skewer' | 'detonate';

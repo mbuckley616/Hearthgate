@@ -108,7 +108,7 @@ describe('a generated floor’s run (T4)', () => {
     f.put('p2', openMiddle(rest), rest);
     f.tick(1);
     expect(f.events.some((ev) => ev.kind === 'rested')).toBe(true);
-    expect(f.events.some((ev) => ev.kind === 'pickup')).toBe(true);
+    expect(f.events.some((ev) => ev.kind === 'banked' && ev.playerId === 'p1' && ev.items.length === 1)).toBe(true);
     const rings = portalsFor(f.world, f.host.sim);
     expect(rings.map((r) => r.to)).toEqual(['deeper', 'village']);
     for (const r of rings) expect(insidePiece(rest, r.x, r.z, r.radius)).toBe(true);

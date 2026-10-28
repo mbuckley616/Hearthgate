@@ -74,6 +74,8 @@ export function removePlayer(state: SimState, id: string): void {
   if (!p) return;
   state.players = state.players.filter((pl) => pl.id !== id);
   state.drops = state.drops.filter((d) => d.owner !== id);
+  // Leaving mid-floor gives up what was not banked; the next to take this id starts with nothing.
+  if (state.floor) delete state.floor.carried[id];
   state.pendingHits = state.pendingHits.filter((h) => h.playerId !== id);
   state.events.push({ kind: 'playerLeft', playerId: id, name: p.name });
 }

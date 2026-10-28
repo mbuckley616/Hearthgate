@@ -3,9 +3,11 @@ import { groundHeight, type World } from '../level/arena';
 import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
-import { collectAllDrops, spawnDrop } from './drops';
+import { spawnDrop, unbanked } from './drops';
 import { createEnemy } from './enemies';
 import type { EnemyKind } from '../config/tuning';
+import type { GearItem } from './catalogue';
+import type { Item } from './gear';
 import type { SimState } from './types';
 
 /**
@@ -30,10 +32,12 @@ export interface FloorRunState {
   fights: number;
   /** The party has reached the rest room and banked its drops. */
   rested: boolean;
+  /** Finds picked up on this floor and not yet banked, by player (P1): a wipe loses them. */
+  carried: Record<string, (Item | GearItem)[]>;
 }
 
 export function initialFloorRun(): FloorRunState {
-  return { room: -1, cleared: [], fights: 0, rested: false };
+  return { room: -1, cleared: [], fights: 0, rested: false, carried: {} };
 }
 
 const active = (phase: string) => phase === 'intro' || phase === 'wave' || phase === 'rest';
@@ -59,7 +63,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       const rest = layout.pieces[layout.def.exit];
       if (!f.rested && rest.kind === 'rest' && standing.length > 0 && standing.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
-        collectAllDrops(state);
+        bank(state, world, f);
         state.events.push({ kind: 'rested' });
       }
       const room = tuning.debug.enemiesEnabled ? roomEntered(state, layout.pieces, f) : null;
@@ -99,11 +103,11 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       f.room = -1;
       r.gateClosed = false;
       // The big rooms drop loot where the last enemy fell; the Warden's is rare.
-      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'boss') spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss');
+      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'boss') spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
       if (room.kind === 'boss') {
         r.phase = 'won';
         r.timer = 0;
-        collectAllDrops(state);
+        bank(state, world, f);
         state.events.push({ kind: 'runWon', time: r.elapsed });
       } else {
         r.phase = 'ante';
@@ -117,9 +121,45 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
     r.phase = 'lost';
     r.timer = 0;
     r.gateClosed = false;
-    collectAllDrops(state);
+    loseUnbanked(state, f);
     state.events.push({ kind: 'runLost', wave: r.wave });
   }
+}
+
+/** What a floor pays over the first: depthBonus more for each floor deeper (P1). */
+export function depthMult(world: World): number {
+  const floor = world.level.dungeon?.def.spec.floor ?? 1;
+  return 1 + tuning.loop.depthBonus * (floor - 1);
+}
+
+/**
+ * Bank the floor (P1): every player's carried finds and any still on the ground for them go home
+ * with them, with coin for the fight rooms cleared here, and the village's lumber and stone.
+ */
+function bank(state: SimState, world: World, f: FloorRunState): void {
+  const l = tuning.loop;
+  const pieces = world.level.dungeon!.pieces;
+  const rooms = f.cleared.length;
+  const boss = f.cleared.some((id) => pieces[id]?.kind === 'boss') ? 1 : 0;
+  const mult = depthMult(world);
+  const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
+  const coin = pay(l.coinPerRoom, l.bossCoin);
+  const lumber = pay(l.lumberPerRoom, l.bossLumber);
+  const stone = pay(l.stonePerRoom, l.bossStone);
+  const floor = world.level.dungeon!.def.spec.floor;
+  for (const p of state.players) state.events.push({ kind: 'banked', playerId: p.id, items: unbanked(state, p.id), coin, lumber, stone, floor });
+  f.carried = {};
+  state.drops = [];
+}
+
+/** A wipe (P1): what was carried since the last bank, and what still lay on the ground, is gone. */
+function loseUnbanked(state: SimState, f: FloorRunState): void {
+  for (const p of state.players) {
+    const count = unbanked(state, p.id).length;
+    if (count > 0) state.events.push({ kind: 'findsLost', playerId: p.id, count });
+  }
+  f.carried = {};
+  state.drops = [];
 }
 
 /** The uncleared fight room a standing hero has stepped into (a little past its doorway), or null. */

@@ -37,6 +37,13 @@ const STORAGE_KEY = 'hearthgate.profile.v2';
 const SLICE_KEY = 'combat-slice.profile.v1';
 /** Champion points are the player's, not the hero's (shared across characters, decisions.md 27 Oct), so they keep a key of their own. */
 const CHAMPION_KEY = 'hearthgate.champion.v1';
+/** The village this browser opens (P1): its lumber and stone until P2 makes it a village save of its own. */
+const VILLAGE_KEY = 'hearthgate.village.v1';
+
+export interface VillageStore {
+  lumber: number;
+  stone: number;
+}
 
 /**
  * What persists between runs (brief: "levels and gear persist in the browser"; T5b: a 28-space bag
@@ -53,6 +60,8 @@ export interface ProfileData {
   talents: Record<Style, TalentRanks>;
   runs: number;
   wins: number;
+  /** Earned by banking a floor (P1). */
+  coin: number;
   /** Shown to other players in co-op. */
   name: string;
 }
@@ -65,7 +74,7 @@ function fresh(): ProfileData {
   const start = starterGear();
   const bag = emptyBag();
   start.bag.forEach((item, i) => (bag[i] = item));
-  return { version: 2, xp: { sword: 0, bow: 0, staff: 0 }, bag, worn: start.worn, talents: emptyTalents(), runs: 0, wins: 0, name: '' };
+  return { version: 2, xp: { sword: 0, bow: 0, staff: 0 }, bag, worn: start.worn, talents: emptyTalents(), runs: 0, wins: 0, coin: 0, name: '' };
 }
 
 function newUid(): string {
@@ -114,10 +123,22 @@ function placeInBag(bag: (GearItem | null)[], item: GearItem): boolean {
 export class Profile {
   data: ProfileData;
   champion: ChampionState;
+  village: VillageStore;
 
   constructor() {
     this.data = Profile.load();
     this.champion = Profile.loadChampion();
+    this.village = Profile.loadVillage();
+  }
+
+  private static loadVillage(): VillageStore {
+    try {
+      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<VillageStore>;
+      const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
+      return { lumber: n(v.lumber), stone: n(v.stone) };
+    } catch {
+      return { lumber: 0, stone: 0 };
+    }
   }
 
   private static loadChampion(): ChampionState {
@@ -158,6 +179,7 @@ export class Profile {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
       localStorage.setItem(CHAMPION_KEY, JSON.stringify(this.champion));
+      localStorage.setItem(VILLAGE_KEY, JSON.stringify(this.village));
     } catch {
       // Storage can be unavailable (private windows); progress just won't persist.
     }
@@ -166,6 +188,7 @@ export class Profile {
   reset(): void {
     this.data = fresh();
     this.champion = emptyChampion();
+    this.village = { lumber: 0, stone: 0 };
     this.save();
   }
 

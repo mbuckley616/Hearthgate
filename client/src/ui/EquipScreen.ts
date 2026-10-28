@@ -276,7 +276,7 @@ export class EquipScreen {
       <div class="equip-heroes">${levels}</div>
       ${tabs}
       ${this.tab === 'gear' ? this.gearHtml() : this.tab === 'talents' ? this.talentsHtml() : this.championHtml()}
-      <div class="equip-foot">Runs ${d.runs} · Wins ${d.wins}</div>`;
+      <div class="equip-foot">${d.coin.toLocaleString()} coin · Runs ${d.runs} · Wins ${d.wins}</div>`;
   }
 
   private cellHtml(c: Cell, i: number): string {
