@@ -1258,6 +1258,8 @@ export const tuning = {
     flickDeg: 7,
     flickWindowMs: 250,
     breakDistance: 30,
+    /** How fast the aim mark (D11) glides to a new target or point (1/s). */
+    reticleRate: 22,
   },
 
   camera: {
@@ -1816,6 +1818,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'lockOn.flickDeg': [1, 45, 0.5],
   'lockOn.flickWindowMs': [50, 1000, 10],
   'lockOn.breakDistance': [5, 80, 0.5],
+  'lockOn.reticleRate': [1, 60, 1],
 
   'combat.heroHurtMs': [0, 2000, 10],
   'combat.stepHeight': [0, 1, 0.01],
