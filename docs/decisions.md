@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-28: D9, what shortens the dodge further? (Claude (local), carded by the producer)
+The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170, i-frames kept when the roll is cut short. Michael's notes asked for recovery to shorten further with levels and perks.
+- **A** (recommended): Second wind's level-40 milestone also trims recovery, plus a ranked champion perk, Nimble, under the +15% ceilings.
+- **B**: only the Nimble champion perk.
+- **C**: leave it at 170 ms for everyone for now.
+
 ## Answered
 
 ### 2026-10-28: Combat depth: builds, strings, Flow, weapons (Claude (local))
