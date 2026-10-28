@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C5: warhammer, crossbow and wand
+
+**What changed**
+
+- **Weapon families.** A family fights its style's fight (its levels, talents and strings) with a chain of its own (`tuning.warhammerCombo`, `crossbowCombo`, `wandCombo`).
+- **Each step borrows a pose.** `FAMILY_ANIM` gives each step the pose and projectiles of one of its style's steps, so the views and the shots need nothing new:
+  - Warhammer: the sword's sweep, spin and slam.
+  - Crossbow: the bow's two quick shots, then the power shot with a long reload. The power shot still sets up Skewer.
+  - Wand: the staff's single bolts, five of them, fast.
+- **State and checks.** `PlayerState.attackStep` holds the family's step. `Mods.family` travels in the loadout, the server checks it, and it counts only with its own style.
+- **A family's heavies** are its style's strings, scaled by `tuning.families`: the warhammer's hit 40% harder and come 30% slower.
+- **The warhammer takes both hands** (+20%).
+- **The off-hands C4 held back,** each on 3:
+  - the tome's **Ward**: the next hit on you and on every ally within 5 m is absorbed, for 8 s
+  - the buckler's **Deflect**: every hit is parried for 450 ms
+  - the hand crossbow's **Quick shot**: two bolts
+- **Drawn as simple meshes in their materials,** on the borrowed poses. The off-hand sits in the off hand with any one-handed weapon. The three abilities have icons.
+- **Parity identical.**
+
+**Learned**
+
+- **Borrowing a step's pose made a family cheap.** It carries the slice's swing, its projectiles and its hit timing with it; only the numbers are new. Poses of their own can come later without touching the sim.
+- **From behind, the crossbow and the off-hands are hard to see** on the borrowed bow poses. They read in the bag and on the HUD, not yet on the figure.
+
+**Next**
+
+- The feel pass (C1 to C5) is built. It wants a hand on it: heavies, Flow, one weapon per outing, the off-hands and the families.
+- Then P2, the village save, or the henchmen (P3).
+
 ## 2026-10-28: local session, C4: the off-hand slot
 
 **What changed**
