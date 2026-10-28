@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T6a: style levels to 50
+
+**What changed**
+
+- **Michael's T6 answers** (decisions.md): a +15% damage and +15% health ceiling on champion points' passive perks, shared across characters, free respec until coin, built in three steps.
+- **Levels to 50** on the slice's curve. Levels 2 to 5 are where they were; 10 takes 33,000 XP, 20 takes 120,500, 50 takes 683,000, all on the panel's sliders.
+- **Every raw gain is a point.** The slice's flat +10% at level 4 is now Might's top two ranks (7, not 5).
+- **Milestone rows** (`talents.ts`): one talent opens at each of 10, 20, 30, 40 and 50, four ranks each.
+  - Weight: poise damage.
+  - Finisher: this weapon's combo payoff (Shatter, Skewer or Detonate).
+  - Riposte: parry window.
+  - Second wind: dodge recharge.
+  - Mastery: damage.
+  - The slice's 29 ranks and these 20 make 49, a point for every level after the first.
+- **Checks:** a row below its level is shut in the sim, whatever a save says, and the server refuses a loadout whose board its XP could not have bought (`boardProblem`).
+- **The talent tab by keys and pad:** move to choose, F or A adds, Q or LB takes off, E or RB resets that column. It had none: only the mouse worked there.
+- **The weapon glow** lights at 25 (was 5) and burns gold at 50.
+- **Parity identical:** the parity test sets the slice's level-4 bonus and level cap back, and the new talents add exact zeros (the parry check keeps the slice's milliseconds).
+
+**Learned**
+
+- The curve is long for "about 10 after an evening". A floor-1 clear gave each bot 230 to 380 XP, so 33,000 for level 10 is many evenings. The early gaps (3,500 from 4 to 5) set it, and they are the slice's; T6's gate playtest should judge it before the numbers move.
+- `levelFor` built a fresh 50-entry table on every call, and the sim now asks it every tick (rows, dodge recharge). It is cached by the six numbers that shape it.
+
+**Next**
+
+- T6b, champion points: earned past 50 from any style, three constellations of passive perks under the +15% ceiling, shared across characters in the save.
+- T6c, the four slotted perks.
+
 ## 2026-10-27: local session, the Phase 1 gate played by a bot party
 
 **What changed**
