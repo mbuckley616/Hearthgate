@@ -124,7 +124,9 @@ export class PartyUi {
       .map((p) => {
         const frac = Math.max(0, p.hp / p.maxHp);
         const down = p.mode === 'down';
-        return `<div class="party-frame ${down ? 'down' : ''}"><div class="party-frame-name">${esc(p.name || 'Player')}${down ? ' · down' : ''}</div><div class="party-frame-hp"><div style="width:${Math.round(frac * 100)}%"></div></div></div>`;
+        // Hearthgate's downs (T5): the bleed-out left, or out until the room is cleared.
+        const state = !down ? '' : p.bleed === undefined ? ' · down' : p.bleed > 0 ? ` · down ${Math.ceil(p.bleed)}s` : ' · out';
+        return `<div class="party-frame ${down ? 'down' : ''}"><div class="party-frame-name">${esc(p.name || 'Player')}${state}</div><div class="party-frame-hp"><div style="width:${Math.round(frac * 100)}%"></div></div></div>`;
       })
       .join('');
     if (html !== this.shownFrames) {
@@ -137,12 +139,23 @@ export class PartyUi {
     let text = '';
     let progress = 0;
     if (me && me.mode === 'down' && others.some((p) => p.mode !== 'down')) {
-      text = me.reviveProgress > 0 ? 'Being revived…' : 'You are down. An ally can revive you (hold F next to you).';
+      const out = me.bleed !== undefined && me.bleed <= 0;
+      text =
+        me.reviveProgress > 0
+          ? 'Being revived…'
+          : out
+            ? 'You are out until the room is cleared. An ally with a Revive Draught can bring you back (hold F next to you).'
+            : 'You are down. An ally can revive you (hold F next to you).';
       progress = me.reviveProgress;
     } else if (me && me.mode !== 'down') {
       const near = others.find((p) => p.mode === 'down' && Math.hypot(p.x - me.x, p.z - me.z) <= c.reviveRadius && Math.abs(p.y - me.y) < 1.2);
       if (near) {
-        text = `Hold F (or A) to revive ${esc(near.name || 'your ally')}`;
+        const who = esc(near.name || 'your ally');
+        const out = near.bleed !== undefined && near.bleed <= 0;
+        const left = me.draughts ?? 0;
+        if (!out) text = `Hold F (or A) to revive ${who}`;
+        else if (left > 0) text = `Hold F (or A) to use your Revive Draught on ${who} (${left} left)`;
+        else text = `${who} is out until the room is cleared, and you have no Revive Draught`;
         progress = near.reviveProgress;
       }
     }

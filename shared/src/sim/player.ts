@@ -294,7 +294,9 @@ export function stepPlayer(
   const dg = tuning.dodge;
   p.invulnTime = Math.max(0, p.invulnTime - dt);
 
-  // Down: outside a run, get back up after a while. In a run you stay down (a wipe ends it; revives arrive in M5).
+  // Down: outside a run, get back up after a while; on a generated floor that is once the room is
+  // cleared. In a run you stay down: the slice's downs wait for a revive, Hearthgate's (T5) crawl
+  // and bleed out.
   if (p.mode === 'down') {
     const inRun = state.run.phase === 'intro' || state.run.phase === 'wave' || state.run.phase === 'rest';
     p.downTime -= dt;
@@ -302,7 +304,10 @@ export function stepPlayer(
       p.mode = 'move';
       p.hp = p.maxHp;
       p.invulnTime = tuning.combat.reviveInvulnMs / 1000;
+      delete p.bleed;
+      return;
     }
+    if (p.bleed !== undefined && inRun) bleedAndCrawl(p, cmd, dt, world, state);
     return;
   }
 
@@ -557,6 +562,37 @@ export function stepPlayer(
       p.vz -= into * nz;
     }
   }
+}
+
+/**
+ * A downed hero in a fight (Hearthgate's downs, T5): the bleed-out runs down, and until it does
+ * they drag themselves along at coop.crawlSpeed, toward a friend or out of harm's way. Once it is
+ * out they lie still until the room is cleared or a Revive Draught brings them back.
+ */
+function bleedAndCrawl(p: PlayerState, cmd: PlayerCommand, dt: number, world: World, state: SimState): void {
+  if (p.bleed! <= 0) return;
+  p.bleed! -= dt;
+  if (p.bleed! <= 0) {
+    p.bleed = 0;
+    p.reviveProgress = 0;
+    state.events.push({ kind: 'bledOut', playerId: p.id });
+    return;
+  }
+  const mag = Math.min(1, Math.hypot(cmd.moveX, cmd.moveZ));
+  if (mag < 0.05) return;
+  const dirX = cmd.moveX / mag;
+  const dirZ = cmd.moveZ / mag;
+  const startX = p.x;
+  const startZ = p.z;
+  p.x += dirX * mag * tuning.coop.crawlSpeed * dt;
+  p.z += dirZ * mag * tuning.coop.crawlSpeed * dt;
+  p.yaw = turnToward(p.yaw, Math.atan2(dirX, dirZ), tuning.movement.turnRateDeg * DEG * 0.25 * dt);
+  if (groundHeight(world, p.x, p.z) > p.y + tuning.combat.stepHeight) {
+    p.x = startX;
+    p.z = startZ;
+  }
+  settleVertical(p, world, dt);
+  resolveCircle(p, tuning.movement.radius, p.y + 0.3, p.y + tuning.movement.height, world.colliders);
 }
 
 /** Out of the roll, carrying a little momentum so it flows into running. */

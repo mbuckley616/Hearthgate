@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T5a: Hearthgate's downs
+
+**What changed**
+
+- **Hearthgate's downs (5A)** behind one switch, `coop.bleedOut` (on). A hero downed in a fight crawls (`coop.crawlSpeed`, 1.1 m/s) and bleeds out over 30 s; then they are out until the room is cleared. A friend holding F for 3 s picks up the downed for free; the out need the helper's Revive Draught (`coop.draughtsPerFloor`, one per player per floor, a counter until Phase 3's items), used when the revive completes. Out of a fight everyone gets back up (the slice's `downMs`), so a cleared room on a generated floor brings the party back; a party all down or out is wiped.
+- New state is optional (`PlayerState.bleed`, `draughts`) and never set with the switch off, so the slice's state never carries it.
+- **Parity:** the parity test (and `tests/parity.ts`) plays with the switch off, so it still proves every other rule is the slice's to the bit; identical.
+- HUD: the bleed-out clock and "Out until the room is cleared", the draughts under the dodge pips, party frames with the bleed-out left or "out", a revive prompt that knows a draught is needed and how many you carry, toasts for a bleed-out and a draught revive.
+- Michael's bag-and-body answers recorded (decisions.md): 28 spaces, RuneScape's ten slots, -5% damage per mismatched piece, every piece drawn as itself. Planned as T5b and T5c.
+- Tests: 8 downs unit tests (check 67); `test:net` and browser smoke 6/6 with the downs on in every fight.
+
+**Learned**
+
+- A rule the slice does not have can still be checked against the slice: put it behind a switch the parity test turns off, and keep its state optional so the slice's JSON never grows.
+- Solo, going down is a wipe straight away (nobody is left standing), so the bleed-out only shows with a party; the bot harness joins a browser's room by its code for a check like this.
+
+**Next**
+
+- Michael: the downs with a friend on the hosted build once merged.
+- T5b, the bag and the body; then T5c, the look.
+
 ## 2026-10-27: local session, the T3 / T4 / T4b playtest and its follow-ups
 
 **What changed**

@@ -553,3 +553,11 @@ body.on-title .run-banner {
   font-size: 16px;
   line-height: 1.4;
 }
+
+/* Revive Draughts carried on this floor (Hearthgate's downs, T5), under the dodge pips. */
+.hud-draught {
+  margin-top: 6px;
+  font: 600 11px/1 ui-monospace, Consolas, monospace;
+  color: var(--gold);
+  text-shadow: 0 1px 0 #000;
+}

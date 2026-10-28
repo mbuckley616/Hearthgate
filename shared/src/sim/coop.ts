@@ -43,6 +43,7 @@ export function addPlayer(state: SimState, world: World, id: string, loadout: Lo
   applyLoadout(p, loadout, true);
   p.invulnTime = tuning.coop.joinInvulnMs / 1000;
   p.lagGrace = remote ? tuning.coop.lagGraceMs / 1000 : 0;
+  if (tuning.coop.bleedOut) p.draughts = Math.round(tuning.coop.draughtsPerFloor);
   state.players.push(p);
   state.events.push({ kind: 'playerJoined', playerId: id, name: p.name });
   return p;
@@ -57,7 +58,10 @@ export function removePlayer(state: SimState, id: string): void {
   state.events.push({ kind: 'playerLeft', playerId: id, name: p.name });
 }
 
-/** Hold interact next to a downed ally for coop.reviveMs to bring them back. */
+/**
+ * Hold interact next to a downed ally for coop.reviveMs to bring them back. With Hearthgate's downs
+ * (T5) an ally who has bled out needs the helper's Revive Draught, used when the revive completes.
+ */
 export function stepRevives(state: SimState, commands: Record<string, PlayerCommand>, dt: number): void {
   const c = tuning.coop;
   for (const down of state.players) {
@@ -70,6 +74,7 @@ export function stepRevives(state: SimState, commands: Record<string, PlayerComm
         p !== down &&
         (p.mode === 'move' || p.mode === 'guard') &&
         commands[p.id]?.interact &&
+        (down.bleed === undefined || down.bleed > 0 || (p.draughts ?? 0) > 0) &&
         Math.hypot(p.x - down.x, p.z - down.z) <= c.reviveRadius &&
         Math.abs(p.y - down.y) < 1.2,
     );
@@ -80,12 +85,15 @@ export function stepRevives(state: SimState, commands: Record<string, PlayerComm
     }
     down.reviveProgress += dt;
     if (down.reviveProgress * 1000 >= c.reviveMs) {
+      const draught = down.bleed !== undefined && down.bleed <= 0;
+      if (draught) helper.draughts = (helper.draughts ?? 1) - 1;
+      delete down.bleed;
       down.mode = 'move';
       down.hp = Math.max(1, down.maxHp * c.reviveHpFrac);
       down.invulnTime = tuning.combat.reviveInvulnMs / 1000;
       down.reviveProgress = 0;
       down.downTime = 0;
-      state.events.push({ kind: 'revived', playerId: down.id, by: helper.id });
+      state.events.push(draught ? { kind: 'revived', playerId: down.id, by: helper.id, draught } : { kind: 'revived', playerId: down.id, by: helper.id });
     }
   }
 }

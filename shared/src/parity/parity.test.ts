@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer, removePlayer } from '../sim/coop';
@@ -22,6 +22,16 @@ const api: SimApi = {
 // The hashes were recorded from the combat slice's own code (main 363b726) by `npm run test:parity -- --write`.
 // A change to the fight on purpose re-records them; anything else failing here moved the fight away from the slice.
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
+  // Hearthgate's downs (T5) are its own rule; with them off the rest of the fight is the slice's, to the bit.
+  let bleedOut = true;
+  beforeAll(() => {
+    bleedOut = tuning.coop.bleedOut;
+    tuning.coop.bleedOut = false;
+  });
+  afterAll(() => {
+    tuning.coop.bleedOut = bleedOut;
+  });
+
   for (const sc of SCENARIOS) {
     it(sc.name, () => {
       const want = (golden as Record<string, { checkpoints: number[]; all: number }>)[sc.name];
