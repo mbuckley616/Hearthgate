@@ -1,5 +1,6 @@
 import { ABILITIES, ABILITY_NAMES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
-import { LEVEL_UNLOCKS, PERK_TEXT, levelFor, statText } from '@hearthgate/shared/sim/gear';
+import { LEVEL_UNLOCKS, levelFor } from '@hearthgate/shared/sim/gear';
+import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult } from '@hearthgate/shared/sim/talents';
 import { ICONS, iconUrl } from './pixelArt';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
@@ -124,8 +125,7 @@ export class Hud {
       }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
-        const perk = i.perk ? ` · ${PERK_TEXT[i.perk]}` : '';
-        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${i.name}</b><span>${statText(i.stat, i.slot)}${perk}</span>`, i.rarity);
+        this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}</span>`, i.rarity);
       }
     }
   }
@@ -209,7 +209,7 @@ export class Hud {
   }
 
   /** Stacking notice for level-ups and loot. */
-  private toast(html: string, kind: string): void {
+  toast(html: string, kind: string): void {
     const el = document.createElement('div');
     el.className = `hud-toast ${kind}`;
     el.innerHTML = html;

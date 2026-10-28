@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T5b: the bag and the body
+
+**What changed**
+
+- **The item catalogue** (`shared/src/sim/catalogue.ts`): every piece is a shape in a slot (med and full helms, chainbody, platebody, jerkin, robe top, platelegs, plateskirt, chaps, robe skirt, gauntlets, vambraces, gloves, boots, square and kite shields, cape, amulet, ring, sword, shortbow, staff) made of a material in a family: metal for melee (bronze, iron, steel, black, wardensteel), hide for ranged (leather, hard leather, studded, wyvernhide, stormhide), cloth for magic (linen, wool, silk, starweave, duskweave), wood for bows and staves (ash, oak, elm, yew, heartwood), trinkets for necks and rings (copper, silver, gold), dyes for capes. The pair gives the name ("Iron full helm", "Black platebody"), the kind, the tier and the stats. Past iron, steel and black the tier names are Hearthgate's own, not RuneScape's.
+- **What it does in the fight:** armour cuts damage taken (`Mods.armour`, a piece's tier times its shape's weight, hide and cloth less than metal, capped at 60%); a weapon adds 5% damage a tier; rares carry the slice's bonus stats and perks; each worn armour piece of another kind than the weapon costs that weapon 5% damage (Michael: per piece). A shield does nothing while a bow or staff takes both hands. Capes, necks and rings have no kind and never count against you. All of it travels in the loadout the server already takes, so no fight code changed but the armour line in `hurtHero`.
+- **Drops** roll from the catalogue behind `gear.catalogue`; the parity test keeps it off with the downs, since loot is rolled in the fight (identical).
+- **The save (v2):** a 28-space bag and RuneScape's ten worn slots. The slice's save carries over: its weapons and body armour become catalogue pieces and its rares keep their names, stats and perks. A new hero holds a bronze sword with an ash shortbow and an ash staff in the bag, and no armour. 1, 2, 3 and the wheel take the best weapon of that kind from the bag; the hero fights with the weapon in hand, whatever changed it.
+- **The equip screen:** the body laid out as RuneScape's, the bag beside it, what the chosen piece does and what a mismatch costs now. Keys and pad first (move to choose, F or A to wear or take off, Q or LB to drop, 1 and 2 for the tabs), clicks too; the hero stands still while it is open, and it opens on a floor between rooms as well.
+- **Tests:** 9 catalogue tests (check 76); browser smoke 7/7, a bow worn from the bag by keys alone and the sword back on 1; `test:net` passes; parity identical.
+
+**Learned**
+
+- The slice's per-style damage in `Mods` already had room for the mismatch rule: armour of another kind lowers the other styles' numbers, so the weapon in hand picks the right one with no new rule in the fight.
+- A key tapped faster than a slow headless frame is never seen by the action layer's held axes; the browser test holds keys as a player does.
+
+**Next**
+
+- Michael: the bag and body on the hosted build once merged.
+- T5c, every piece drawn on the hero as itself.
+
 ## 2026-10-27: local session, T5a: Hearthgate's downs
 
 **What changed**

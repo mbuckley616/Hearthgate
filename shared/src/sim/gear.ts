@@ -60,6 +60,11 @@ export interface Mods {
   cooldowns: number;
   dodgeRecharge: number;
   perks: Perk[];
+  /**
+   * Damage taken is cut by this fraction (T5b: worn armour from the catalogue). Only set when some is
+   * worn, so the slice's heroes never carry the field.
+   */
+  armour?: number;
 }
 
 export function emptyMods(): Mods {

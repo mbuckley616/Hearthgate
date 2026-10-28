@@ -533,6 +533,25 @@ export const tuning = {
   /** Gear drops (brief: three per run, one guaranteed from the Warden). */
   gear: {
     rareChance: 0.3,
+    /**
+     * Drops come from the item catalogue (T5b: a bag and a body). Off is the slice's loot, which the
+     * parity test plays (loot is rolled in the fight, so it must be the slice's there).
+     */
+    catalogue: true,
+    /** Armour a piece gives per tier and per unit of its shape's weight (a platebody weighs 2). */
+    armourPerTierWeight: 0.012,
+    /** Hide and cloth give less armour than metal. */
+    hideArmourFactor: 0.75,
+    clothArmourFactor: 0.5,
+    /** No amount of armour takes off more than this. */
+    armourCap: 0.6,
+    /** Each worn armour piece of another kind than the weapon in hand costs this much damage (Michael: per piece). */
+    mismatchDamagePerPiece: 0.05,
+    /** A weapon adds this much damage per tier above the first. */
+    weaponDamagePerTier: 0.05,
+    amuletHpPerTier: 5,
+    ringCooldownPerTier: 0.02,
+    capeDodgePerTier: 0.02,
     /** Walk within this distance of a drop to pick it up. */
     pickupRadius: 1.4,
     // Perks.
@@ -1400,6 +1419,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'talents.fleetSpeedPerRank': [0, 0.2, 0.01],
   'talents.focusCooldownPerRank': [0, 0.2, 0.01],
   'gear.rareChance': [0, 1, 0.05],
+  'gear.armourPerTierWeight': [0, 0.05, 0.001],
+  'gear.hideArmourFactor': [0, 1, 0.05],
+  'gear.clothArmourFactor': [0, 1, 0.05],
+  'gear.armourCap': [0, 0.9, 0.05],
+  'gear.mismatchDamagePerPiece': [0, 0.2, 0.01],
+  'gear.weaponDamagePerTier': [0, 0.2, 0.01],
+  'gear.amuletHpPerTier': [0, 30, 1],
+  'gear.ringCooldownPerTier': [0, 0.1, 0.01],
+  'gear.capeDodgePerTier': [0, 0.1, 0.01],
   'gear.pickupRadius': [0.3, 4, 0.1],
   'gear.bleedTicks': [1, 20, 1],
   'gear.bleedTickMs': [50, 2000, 10],
