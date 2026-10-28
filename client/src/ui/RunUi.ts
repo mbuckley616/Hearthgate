@@ -93,7 +93,7 @@ export class RunUi {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : `Room ${ev.wave}  ·  the doors are shut`, ev.title);
       else if (ev.kind === 'waveCleared') this.showBanner('Room cleared', `The doors open  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
-      else if (ev.kind === 'rested') this.showBanner('Your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
+      else if (ev.kind === 'rested') this.showBanner('Healed, and your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
       else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }

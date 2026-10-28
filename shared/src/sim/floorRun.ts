@@ -15,7 +15,8 @@ import type { SimState } from './types';
  * when a standing hero steps into a fight room not yet cleared, its doors wait for the rest of the
  * party (the slice's gate wait), then close behind them, bringing in anyone still outside. The
  * room's group comes from a budget (its size, the floor, the party), with the slice's
- * reinforcements once it is mostly down; clearing it opens the doors and gives the slice's heal.
+ * reinforcements once it is mostly down; clearing it opens the doors. Health comes back only in
+ * the rest room (D7), not after every room as the slice's waves gave it.
  * The last floor's Warden ends the run; a wipe ends it anywhere. The rest room at the end of every
  * other floor banks the party's drops; its rings (game/portal.ts) lead deeper or home.
  *
@@ -63,6 +64,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       const rest = layout.pieces[layout.def.exit];
       if (!f.rested && rest.kind === 'rest' && standing.length > 0 && standing.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
+        for (const p of standing) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.restHeal);
         bank(state, world, f);
         state.events.push({ kind: 'rested' });
       }
@@ -98,7 +100,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       }
       if (alive > 0) break;
       state.events.push({ kind: 'waveCleared', wave: r.wave });
-      for (const p of state.players) if (p.mode !== 'down') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.run.healOnWaveClear);
+      for (const p of state.players) if (p.mode !== 'down') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.healOnClear);
       f.cleared.push(room.id);
       f.room = -1;
       r.gateClosed = false;

@@ -1128,6 +1128,13 @@ export const tuning = {
      * slice's grunt.maxAttackers (two). With rooms this full, two at a time left the rest circling.
      */
     attackersPerHero: 3,
+    /**
+     * A cleared fight room's heal, of max health, on a generated floor (D7, Michael 28 Oct: not
+     * after every encounter). The arena keeps run.healOnWaveClear. The rest room heals instead.
+     */
+    healOnClear: 0,
+    /** Of max health, given to every standing hero as the rest room banks the floor. */
+    restHeal: 1,
     /** Debug: 0 = a fresh seed each run; anything else pins the run's seed (the gate's five floors). */
     seed: 0,
     /** Debug: 0 = pieces from the tier, floor and level; 10 to 50 forces every floor's size. */
@@ -1446,6 +1453,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
   'dungeon.attackersPerHero': [1, 6, 1],
+  'dungeon.healOnClear': [0, 1, 0.05],
+  'dungeon.restHeal': [0, 1, 0.05],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 16, 1],

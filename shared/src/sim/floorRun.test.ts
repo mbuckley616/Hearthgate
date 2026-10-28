@@ -158,6 +158,31 @@ describe('a generated floor’s run (T4)', () => {
   });
 });
 
+describe('healing on a floor (D7)', () => {
+  const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+
+  it('heals nothing when a room is cleared, and fully in the rest room', () => {
+    const f = floorSession(spec);
+    const room = f.pieces.find((p) => p.fight)!;
+    f.put('p1', openMiddle(room), room);
+    f.put('p2', openMiddle(room), room);
+    f.tick(Math.ceil((tuning.run.introMs / 1000) * 60) + 2);
+    for (const p of f.host.sim.players) p.hp = 30;
+    for (let k = 0; k < 3 && f.host.sim.run.phase === 'wave'; k++) {
+      killAll(f.host);
+      f.tick(2);
+    }
+    expect(f.host.sim.run.phase).toBe('ante');
+    for (const p of f.host.sim.players) expect(p.hp).toBe(30);
+
+    const rest = f.pieces[f.level.dungeon!.def.exit];
+    f.put('p1', openMiddle(rest), rest);
+    f.put('p2', openMiddle(rest), rest);
+    f.tick(1);
+    for (const p of f.host.sim.players) expect(p.hp).toBe(p.maxHp);
+  });
+});
+
 describe('denser fights (D1)', () => {
   /** One hero at a fight room's middle, through the intro to the wave. */
   function soloFight(kind: PieceInfo['kind'], floor = 1) {
