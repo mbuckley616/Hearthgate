@@ -5,7 +5,7 @@ import type { HandDungeon } from '../level/handmade';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 9;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -32,6 +32,8 @@ export type ToHost =
   | { k: 'input'; cmds: SeqCommand[] }
   | { k: 'loadout'; loadout: Loadout }
   | { k: 'restart' }
+  /** Back to the village from a generated floor's end card (D10): only once the run is won or lost. */
+  | { k: 'home' }
   | { k: 'tune'; edit: TuneEdit }
   | { k: 'cheat'; cheat: Cheat }
   /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */

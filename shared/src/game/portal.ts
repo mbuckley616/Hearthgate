@@ -8,7 +8,8 @@ import type { SimState } from '../sim/types';
  * and leads into a dungeon; in the arena a ring opens in the antechamber once the run is won or
  * lost and takes the party home (Michael, 27 Oct: a portal in the arena, not the end screen's F).
  * On a generated floor the rest room holds two, one deeper and one home, and a ring home opens
- * where the run ended (the Warden's hall, or the room the party fell in). Either way every standing
+ * where the Warden fell. A wipe opens none (D10): the party lies where it fell and each player goes
+ * home from the end card's button (the 'home' message). Either way every standing
  * player must be inside one ring, together, for PORTAL_HOLD_S. The server decides this; browsers
  * only draw the rings and how full they are.
  */
@@ -35,8 +36,9 @@ export function portalsFor(world: World, state: SimState): Ring[] {
   const over = state.run.phase === 'won' || state.run.phase === 'lost';
   const layout = level.dungeon;
   if (!layout) return over ? [{ ...ARENA_EXIT_PORTAL, y: 0, to: 'village' }] : [];
+  if (state.run.phase === 'lost') return [];
   if (over) {
-    // Home from where the run ended: the Warden's hall, or the room the party fell in.
+    // Home from the Warden's hall.
     const room = layout.pieces[state.floor && state.floor.room >= 0 ? state.floor.room : layout.def.exit];
     return [{ ...openMiddle(room), y: room.y, radius: FLOOR_RING_RADIUS, to: 'village' }];
   }

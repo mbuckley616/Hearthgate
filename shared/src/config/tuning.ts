@@ -954,8 +954,8 @@ export const tuning = {
      */
     bleedOut: true,
     bleedOutMs: 30000,
-    /** A downed hero drags themselves along this fast (m/s). */
-    crawlSpeed: 1.1,
+    /** A downed hero drags themselves along this fast (m/s). 0 since D10 (Michael 28 Oct: down is still); T5 had 1.1. */
+    crawlSpeed: 0,
     /** Revive Draughts each player starts a floor with: a counter until Phase 3's items (decisions.md, 4 Oct). */
     draughtsPerFloor: 1,
     /** Hold interact this long next to a downed ally to bring them back (brief: 3 s). */

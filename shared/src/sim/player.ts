@@ -367,12 +367,13 @@ export function stepPlayer(
   p.invulnTime = Math.max(0, p.invulnTime - dt);
 
   // Down: outside a run, get back up after a while; on a generated floor that is once the room is
-  // cleared. In a run you stay down: the slice's downs wait for a revive, Hearthgate's (T5) crawl
-  // and bleed out.
+  // cleared. In a run you stay down: the slice's downs wait for a revive, Hearthgate's (T5) bleed
+  // out. A wiped floor's party stays down (D10): the end card takes each home.
   if (p.mode === 'down') {
     const inRun = state.run.phase === 'intro' || state.run.phase === 'wave' || state.run.phase === 'rest';
     p.downTime -= dt;
-    if (p.downTime <= 0 && !inRun) {
+    const wiped = !!state.floor && state.run.phase === 'lost';
+    if (p.downTime <= 0 && !inRun && !wiped) {
       p.mode = 'move';
       p.hp = p.maxHp;
       p.invulnTime = tuning.combat.reviveInvulnMs / 1000;

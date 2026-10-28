@@ -1,3 +1,4 @@
+import type { Client } from "@colyseus/core";
 import type { PortalTo } from "@hearthgate/shared/game/portal";
 import { floorSpecFor, readRunPlan, type RunPlan } from "@hearthgate/shared/game/runPlan";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
@@ -48,5 +49,11 @@ export class FloorRoom extends HostRoom {
     }
     const home = VillageRoom.byCode(this.home);
     void this.handOff("village", "village", home ? home.roomId : null, {});
+  }
+
+  /** The end card's button (D10): this player alone goes back to the village the run left from. */
+  protected onHome(client: Client) {
+    const home = VillageRoom.byCode(this.home);
+    void this.handOne(client, home ? home.roomId : null);
   }
 }

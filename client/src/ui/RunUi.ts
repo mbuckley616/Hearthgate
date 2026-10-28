@@ -30,6 +30,10 @@ export class RunUi {
   private endTitle = document.createElement('div');
   private endBody = document.createElement('div');
   private again = document.createElement('div');
+  /** The end card's way home on a generated floor (D10): a button, F or A. */
+  private home = document.createElement('button');
+  /** What the home button (and F, A) asks for; Game sends the server a 'home' message. */
+  onHome: () => void = () => {};
   private now = 0;
   /** The generated floor this run is on, or null in the arena; and when it was entered (the prompt shows a while). */
   private floor: FloorSpec | null = null;
@@ -62,7 +66,11 @@ export class RunUi {
     this.endTitle.className = 'run-end-title';
     this.endBody.className = 'run-end-body';
     this.again.className = 'run-end-again';
-    card.append(this.endTitle, this.endBody, this.again);
+    this.home.className = 'run-end-home';
+    this.home.type = 'button';
+    this.home.innerHTML = 'Return to the village <kbd>F</kbd>';
+    this.home.addEventListener('click', () => this.onHome());
+    card.append(this.endTitle, this.endBody, this.again, this.home);
     this.end.appendChild(card);
 
     document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end);
@@ -130,6 +138,7 @@ export class RunUi {
 
     const over = r.phase === 'won' || r.phase === 'lost';
     this.end.style.display = over ? 'flex' : 'none';
+    this.home.style.display = 'none';
     if (over) {
       this.endTitle.textContent = r.phase === 'won' ? 'Victory' : 'Defeated';
       this.endTitle.className = `run-end-title ${r.phase}`;
@@ -160,11 +169,14 @@ export class RunUi {
     else if (arriving) this.prompt.textContent = `${where[0].toUpperCase()}${where.slice(1)}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
     const over = r.phase === 'won' || r.phase === 'lost';
     this.end.style.display = over ? 'flex' : 'none';
+    this.home.style.display = over ? '' : 'none';
     if (over) {
-      this.endTitle.textContent = r.phase === 'won' ? 'Victory' : 'Defeated';
+      // A wipe (D10): the party lies where it fell, and each player goes home from here.
+      const solo = sim.players.length <= 1;
+      this.endTitle.textContent = r.phase === 'won' ? 'Victory' : solo ? 'You died' : 'Your party was defeated';
       this.endTitle.className = `run-end-title ${r.phase}`;
       this.endBody.textContent = r.phase === 'won' ? `The Warden falls. Run time ${formatTime(r.elapsed)}.` : `Fell on ${where} after ${formatTime(r.elapsed)}.`;
-      this.again.textContent = 'Step into the gold ring to go home  ·  I for gear';
+      this.again.textContent = r.phase === 'won' ? 'Step into the gold ring to go home together, or' : '';
     }
   }
 

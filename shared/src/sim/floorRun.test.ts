@@ -20,8 +20,9 @@ function floorSession(spec: FloorSpec) {
   const level = floorLevel(spec);
   const world = buildWorld(level);
   const taken: PortalTo[] = [];
+  const home: string[] = [];
   const events: SimEvent[] = [];
-  const host = new HostSession(world, () => {}, true, (to) => taken.push(to));
+  const host = new HostSession(world, () => {}, true, (to) => taken.push(to), (peer) => home.push(peer));
   host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
   host.onMessage('b', { k: 'hello', version: PROTOCOL_VERSION, loadout });
   const pieces = level.dungeon!.pieces;
@@ -34,7 +35,7 @@ function floorSession(spec: FloorSpec) {
     p.z = at.z;
     p.y = room.y;
   };
-  return { level, world, host, pieces, taken, events, tick, put };
+  return { level, world, host, pieces, taken, home, events, tick, put };
 }
 
 const killAll = (host: HostSession) => host.onMessage('a', { k: 'cheat', cheat: 'killAll' });
@@ -145,18 +146,25 @@ describe('a generated floor’s run (T4)', () => {
     expect(insidePiece(boss, rings[0].x, rings[0].z)).toBe(true);
   });
 
-  it('ends the run where the party wipes, with a ring home in that room', () => {
+  it('ends the run where the party wipes: it stays down, no ring, and each goes home by the end card (D10)', () => {
     const f = floorSession(spec);
     const room = f.pieces.find((p) => p.fight)!;
     f.put('p1', openMiddle(room), room);
     f.put('p2', openMiddle(room), room);
     f.tick(Math.ceil((tuning.run.introMs / 1000) * 60) + 4);
-    for (const p of f.host.sim.players) p.mode = 'down';
+    f.host.onMessage('a', { k: 'home' });
+    expect(f.home).toEqual([]);
+    for (const p of f.host.sim.players) {
+      p.mode = 'down';
+      p.downTime = 0.5;
+    }
     f.tick(1);
     expect(f.host.sim.run.phase).toBe('lost');
-    const [ring] = portalsFor(f.world, f.host.sim);
-    expect(ring.to).toBe('village');
-    expect(insidePiece(room, ring.x, ring.z)).toBe(true);
+    expect(portalsFor(f.world, f.host.sim)).toEqual([]);
+    f.tick(120);
+    for (const p of f.host.sim.players) expect(p.mode).toBe('down');
+    f.host.onMessage('b', { k: 'home' });
+    expect(f.home).toEqual(['b']);
   });
 
   it('leaves the arena’s state as the slice’s: no floor in it', () => {
