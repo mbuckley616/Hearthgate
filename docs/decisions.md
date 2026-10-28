@@ -9,6 +9,14 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-28: Phase 2's shape (Claude (local))
+Asked in chat as four cards when planning Phase 2 from the design doc. Recommendations were: keep saves in the browser until Phase 3's item ledger brings the server database; henchmen only (Tavern tiers 1 to 3, fixed kits); the four starting buildings at tiers 1 to 4, with new buildings left for Phase 3's materials; and a portal board with tiers and two modifiers.
+Michael (2026-10-28, in chat): all four as recommended.
+- **Saves: the browser until Phase 3.** The village joins the hero in the browser's save; the host's browser sends it and the server checks it, as with the loadout. The server database arrives with the ledger. It is free, where a hosted database is about $7 a month.
+- **Hirelings: henchmen only.** Three with fixed kits (sword, bow, staff), run by the server, topping a party up to four, clearly worse than a friend. Heroes and Companions come later.
+- **Village: the four starting buildings, tiers 1 to 4.** Runs bring home lumber, stone and coin. Coin also pays champion respecs. The Forge, Apothecary and the rest wait for Phase 3's materials.
+- **Portal: tiers plus two modifiers.** A board of three portals, each with a tier (1 to 5, capped by the shrine) and sometimes Cursed (no revives, double loot) or Haunted (enemies get up once). The other modifiers need states the slice lacks.
+
 ### 2026-10-28: T6c: the slotted perks (Claude (local))
 Asked in chat as three cards before building T6c (plan 3a gave four slots, chosen in the village or a rest room, and three example perks). Recommendations were: a slotted perk opens by points spent in its constellation, as in ESO, at 5, 10 and 15; nine perks, three per constellation, drawn from the plan's examples and the fight's existing mechanics; and slots changed only in the village and rest rooms, enforced by the server.
 Michael (2026-10-28, in chat): all three as recommended.
