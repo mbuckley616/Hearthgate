@@ -1,6 +1,7 @@
 import { tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { nextRandom } from './combat';
+import { slotted } from './champion';
 import { rollGear } from './catalogue';
 import { rollItem } from './gear';
 import type { SimState } from './types';
@@ -29,7 +30,9 @@ export function stepDrops(state: SimState, dt: number): void {
   for (const d of state.drops) d.age += dt;
   state.drops = state.drops.filter((d) => {
     if (d.age < 0.6) return true;
-    const p = state.players.find((pl) => pl.id === d.owner && pl.mode !== 'down' && Math.hypot(pl.x - d.x, pl.z - d.z) <= r && Math.abs(pl.y - d.y) < 1.2);
+    const p = state.players.find(
+      (pl) => pl.id === d.owner && pl.mode !== 'down' && Math.hypot(pl.x - d.x, pl.z - d.z) <= (slotted(pl, 'magnet') ? r * tuning.champion.magnetRadiusMult : r) && Math.abs(pl.y - d.y) < 1.2,
+    );
     if (!p) return true;
     state.events.push({ kind: 'pickup', playerId: p.id, item: d.item });
     return false;

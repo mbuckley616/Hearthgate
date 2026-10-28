@@ -5,7 +5,7 @@ import type { Mods } from './gear';
 import { createPlayer } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
-import { championHealth, championRevive, type ChampionState } from './champion';
+import { championHealth, championRevive, slotted, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 /**
@@ -40,6 +40,16 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   if (l.champion) p.champion = structuredClone(l.champion);
   else delete p.champion;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
+}
+
+/**
+ * Whether slotted perks may change here (plan 3a; Michael, 28 Oct): in the village, in a floor's rest
+ * room once the party has reached it, and in the arena's antechamber. Elsewhere a hero keeps its four.
+ */
+export function slotsOpen(state: SimState, village: boolean): boolean {
+  if (village) return true;
+  if (state.floor) return state.floor.rested;
+  return state.run.phase === 'ante';
 }
 
 /** A friend joins: beside the first standing hero, briefly invulnerable (brief: 2 s). */
@@ -99,7 +109,7 @@ export function stepRevives(state: SimState, commands: Record<string, PlayerComm
       if (draught) helper.draughts = (helper.draughts ?? 1) - 1;
       delete down.bleed;
       down.mode = 'move';
-      down.hp = Math.max(1, down.maxHp * c.reviveHpFrac);
+      down.hp = Math.max(1, down.maxHp * (slotted(helper, 'lifeline') ? Math.min(1, c.reviveHpFrac * tuning.champion.lifelineHpMult) : c.reviveHpFrac));
       down.invulnTime = tuning.combat.reviveInvulnMs / 1000;
       down.reviveProgress = 0;
       down.downTime = 0;

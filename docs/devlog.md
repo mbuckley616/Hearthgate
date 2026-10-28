@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, T6c: the slotted perks
+
+**What changed**
+
+- **Nine slotted perks** (`shared/src/sim/champion.ts`), three per constellation, with Michael's answers (`decisions.md`, 28 Oct):
+  - Offence: Wide shatter, Teamwork, Deep wounds.
+  - Defence: Counterstep, Bulwark, Lifeline.
+  - Utility: Long fuse, Momentum, Magnet.
+- **Opening and slotting:** a constellation's slotted perks open at 5, 10 and 15 points spent in it; four are slotted at once. They travel as `ChampionState.slots`.
+- **Where they change:** `slotsOpen` (coop.ts) allows the village, a floor's rest room once the party has reached it, and the arena's antechamber. Elsewhere `HostSession` keeps the hero's four whatever the browser sends, and the tab says where to change them.
+- **The effects** sit where the fight already decides those things: the Shatter splash, the payoff damage, the bleed, the parry, the block, the revive, the combo windows, a new `payCombo` beside the three combo callouts, and the pickup radius.
+- **The Champion tab** lists each constellation's slotted perks under its ranked ones, with a slot bar. F or A slots, Q or LB takes one out.
+- **Parity identical:** each effect is a branch a hero without champion points never takes. Combo setters (`shatterBy`, `skewerBy`, `detonateBy`, for Teamwork) are recorded only for heroes with champion points.
+
+**Learned**
+
+- A slotted perk whose constellation loses its points stays slotted and does nothing, on both sides. Refusing it instead would make the server drop the whole loadout after a respec on a floor, where the slots are fixed.
+- Momentum hooks the combo callout, not the payoff hit, because a Detonate burst lands on every enemy it catches and would otherwise refund once per enemy.
+
+**Next**
+
+- T6 is built. Its gate wants a play past level 50, which today takes a seeded save or the debug panel; the pace of the XP curve is still unjudged.
+
 ## 2026-10-28: local session, T6b: champion points
 
 **What changed**

@@ -1,8 +1,23 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
-import { championCombo, championDamage, championOpen, championPointsEarned, championPoise } from './champion';
+import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { levelFor } from './gear';
 import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
+
+/** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
+export function comboWindow(hero: PlayerState | undefined): number {
+  const cb = tuning.combos;
+  return slotted(hero, 'longFuse') ? (cb.windowMs / 1000) * tuning.champion.longFuseWindowMult : cb.windowMs / 1000;
+}
+
+/** A combo paid off: the callout, and Momentum's cut to the payer's cooldowns (T6c). */
+export function payCombo(state: SimState, combo: 'shatter' | 'skewer' | 'detonate', playerId: string, x: number, y: number, z: number): void {
+  state.events.push({ kind: 'combo', combo, playerId, x, y, z });
+  const p = state.players.find((pl) => pl.id === playerId);
+  if (!p || !slotted(p, 'momentum')) return;
+  const cut = tuning.champion.momentumCooldownMs / 1000;
+  for (const cds of Object.values(p.cooldowns)) for (let i = 0; i < cds.length; i++) cds[i] = Math.max(0, cds[i] - cut);
+}
 
 /** What a single hit carries (from a swing, projectile or burst). */
 export interface HitSpec {
@@ -90,7 +105,10 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const cb = tuning.combos;
   const shatter = hit.style === 'sword' && hit.heavy && !hit.dot && e.shatterUntil >= state.time;
   if (shatter) e.shatterUntil = -1;
-  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) : 0;
+  // Teamwork (T6c): a payoff on a setup an ally made.
+  const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
+  const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
+  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork : 0;
   const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
@@ -107,7 +125,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     hero.lastFinisherAt = state.time;
     // Bleed perk: finishers with the sword open a wound.
     if (hit.style === 'sword' && hero.mods.perks.includes('bleed')) {
-      e.bleedTicks = tuning.gear.bleedTicks;
+      e.bleedTicks = slotted(hero, 'deepWounds') ? Math.round(tuning.gear.bleedTicks * tuning.champion.deepWoundsTicksMult) : tuning.gear.bleedTicks;
       e.bleedTimer = tuning.gear.bleedTickMs / 1000;
       e.bleedOwner = hero.id;
       state.events.push({ kind: 'perk', playerId: hero.id, perk: 'bleed', x: e.x, z: e.z });
@@ -115,7 +133,10 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   }
   if (hit.slowTime) e.slowTime = Math.max(e.slowTime, hit.slowTime);
   // Shatter setup: magic that slows or freezes.
-  if (hit.style === 'staff' && (hit.slowTime || hit.freezeTime)) e.shatterUntil = state.time + cb.windowMs / 1000;
+  if (hit.style === 'staff' && (hit.slowTime || hit.freezeTime)) {
+    e.shatterUntil = state.time + comboWindow(hero);
+    if (hero?.champion) e.shatterBy = hero.id;
+  }
   if (hit.freezeTime) {
     e.frozen = Math.max(e.frozen, hit.freezeTime * (isLight(e) ? 1 : 0.5));
     state.events.push({ kind: 'freeze', enemyId: e.id });
@@ -132,7 +153,10 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     if (e.poise <= 0 && e.ai !== 'roar') {
       staggerEnemy(state, e);
       // Skewer setup: a melee stagger.
-      if (hit.style === 'sword') e.skewerUntil = state.time + cb.windowMs / 1000;
+      if (hit.style === 'sword') {
+        e.skewerUntil = state.time + comboWindow(hero);
+        if (hero?.champion) e.skewerBy = hero.id;
+      }
     } else if (isLight(e) && (push > 0.2 || hit.freezeTime) && ATTACKING.has(e.ai)) {
       // Knockback breaks a light enemy's attack and gives the player an opening.
       e.ai = 'recover';
@@ -173,13 +197,15 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
 /** Shatter payoff: the finisher bursts out into the enemies around. */
 function shatterAround(state: SimState, e: EnemyState, hit: HitSpec): void {
   const cb = tuning.combos;
-  state.events.push({ kind: 'combo', combo: 'shatter', playerId: hit.attackerId, x: e.x, y: e.y + 1, z: e.z });
+  payCombo(state, 'shatter', hit.attackerId, e.x, e.y + 1, e.z);
+  const hero = state.players.find((p) => p.id === hit.attackerId);
+  const radius = slotted(hero, 'wideShatter') ? cb.shatterRadius * tuning.champion.wideShatterRadiusMult : cb.shatterRadius;
   for (const o of state.enemies) {
     if (o === e || !isTargetable(o) || Math.abs(o.y - e.y) > 1.2) continue;
     const dx = o.x - e.x;
     const dz = o.z - e.z;
     const d = Math.hypot(dx, dz);
-    if (d > cb.shatterRadius + enemyStats(o.kind).radius) continue;
+    if (d > radius + enemyStats(o.kind).radius) continue;
     damageEnemy(state, o, {
       attackerId: hit.attackerId,
       damage: hit.damage * cb.shatterSplashFrac,
@@ -247,6 +273,7 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   // A successful parry re-arms straight away, so a rhythm of parries is possible.
   p.guardRaisedAt = -1000;
   p.hitstop = Math.max(p.hitstop, g.parryHitstopMs / 1000);
+  if (slotted(p, 'counterstep') && p.dodgeCharges < tuning.dodge.charges) p.dodgeCharges++;
   const e = hit.enemyId !== undefined ? state.enemies.find((en) => en.id === hit.enemyId && isTargetable(en)) : undefined;
   if (e) {
     e.hitstop = Math.max(e.hitstop, g.parryHitstopMs / 1000);
@@ -298,6 +325,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     if (!heavy) {
       // Blocked: chip damage and a small shove, the guard holds.
       damage *= g.blockDamageFrac;
+      if (slotted(p, 'bulwark')) damage *= tuning.champion.bulwarkChipMult;
       p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
       p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
       state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });

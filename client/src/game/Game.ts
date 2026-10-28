@@ -29,6 +29,7 @@ import { SceneRenderer } from '../render/SceneRenderer';
 import { TelegraphView } from '../render/TelegraphView';
 import { rollGear } from '@hearthgate/shared/sim/catalogue';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
+import { slotsOpen } from '@hearthgate/shared/sim/coop';
 import { worldNow } from '@hearthgate/shared/sim/world';
 import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
@@ -193,7 +194,11 @@ export class Game {
       },
       'Kill all enemies': cheat('killAll'),
     }, (path, value) => this.tune(path, value));
-    this.equip = new EquipScreen(this.profile, () => this.applyProfile(this.session.view().curr.run.phase === 'ante'));
+    this.equip = new EquipScreen(
+      this.profile,
+      () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
+      () => slotsOpen(this.session.view().curr, !!this.world.level.village),
+    );
     // Every player may invite: the room is the server's, not one player's.
     this.party = new PartyUi(this.profile.data.name, {
       invite: () => (this.session.code ? Promise.resolve(this.session.code) : Promise.reject(new Error('not connected yet'))),

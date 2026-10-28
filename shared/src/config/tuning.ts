@@ -574,6 +574,20 @@ export const tuning = {
     willCooldownPerRank: 0.015,
     lightstepRechargePerRank: 0.03,
     strideSpeedPerRank: 0.01,
+    /**
+     * Slotted perks (T6c; Michael, 28 Oct): four active at once, changed in the village or a rest room.
+     * A constellation's slotted perks open in turn at this many, twice and three times as many points spent in it.
+     */
+    slots: 4,
+    slotUnlockStep: 5,
+    wideShatterRadiusMult: 2,
+    teamworkBonus: 0.2,
+    deepWoundsTicksMult: 2,
+    bulwarkChipMult: 0.5,
+    lifelineHpMult: 2,
+    longFuseWindowMult: 1.5,
+    momentumCooldownMs: 2000,
+    magnetRadiusMult: 2,
   },
 
   /** Gear drops (brief: three per run, one guaranteed from the Warden). */
@@ -1467,6 +1481,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'champion.ceilingHealth': [0, 0.5, 0.01],
   'champion.precisionDamagePerRank': [0, 0.05, 0.005],
   'champion.vitalityHealthPerRank': [0, 0.05, 0.005],
+  'champion.slotUnlockStep': [0, 10, 1],
+  'champion.wideShatterRadiusMult': [1, 4, 0.1],
+  'champion.teamworkBonus': [0, 1, 0.05],
+  'champion.deepWoundsTicksMult': [1, 4, 0.5],
+  'champion.bulwarkChipMult': [0, 1, 0.05],
+  'champion.lifelineHpMult': [1, 3, 0.1],
+  'champion.longFuseWindowMult': [1, 3, 0.1],
+  'champion.momentumCooldownMs': [0, 6000, 250],
+  'champion.magnetRadiusMult': [1, 4, 0.1],
   'talents.weightPoisePerRank': [0, 0.5, 0.01],
   'talents.finisherDamagePerRank': [0, 0.5, 0.01],
   'talents.riposteParryMsPerRank': [0, 100, 5],
