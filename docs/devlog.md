@@ -2,6 +2,45 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, combat depth designed with Michael
+
+**What changed**
+
+- A design conversation about combat, drawn up as an interactive page ("Hearthgate Combat Builds") with a Keep, Unsure or Cut on every piece. Michael marked all 43; four conflicts were settled in chat. All of it is in `decisions.md` ("Combat depth").
+- **The design doc's Combat section** gains a Builds block, and its Loadout paragraph now says one weapon set per outing. Layer 1 now names the specialization trees.
+- **The backlog's Phase 2** gains the feel pass, C1 to C5, after P1: strings, Flow, one weapon set per outing, the off-hand slot, three new families. The builds pass waits as a **(design)** item.
+
+**Learned**
+
+- Michael chose no weapon swap mid-fight. One player can no longer set up and pay off a cross-style combo alone, so combos become party play. That fits pillar 1, and makes the henchmen's combo awareness matter more.
+- The slice's parity scenario swaps weapons mid-fight, so the no-swap rule must sit behind a switch the parity test turns back on.
+
+**Next**
+
+- P1 (the loop's stakes), then C1 (light and heavy strings).
+
+## 2026-10-28: local session, Phase 2 planned
+
+**What changed**
+
+- **Phase 2's items** are in the backlog, P1 to P10 and the gate, planned from the design doc with Michael's four answers (`decisions.md`, "Phase 2's shape").
+  - The loop's stakes and rewards.
+  - The village in the host's browser save.
+  - The four starting buildings at tiers 1 to 4.
+  - Coin, the General Store and the stash.
+  - A portal board with tiers and two modifiers.
+  - Three henchmen in three steps.
+- The backlog also lists what is not in Phase 2, and three draft gate questions for the producer.
+
+**Learned**
+
+- Nothing in a run is at risk today: a pickup goes straight into the bag, so going deeper costs nothing. P1 fixes that first, because the gate's "holds up" depends on the loop having stakes.
+- The fight needs nothing new for henchmen: a henchman is a `PlayerState` whose `PlayerCommand` comes from a brain in `shared/` instead of a browser. Prediction and snapshots carry it as they carry any hero.
+
+**Next**
+
+- The critic's two open bugs, then P1 and P3 (deep work) beside P4 (the builder).
+
 ## 2026-10-28: local session, T6c: the slotted perks
 
 **What changed**
