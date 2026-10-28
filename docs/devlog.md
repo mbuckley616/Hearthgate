@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, combat depth designed with Michael
+
+**What changed**
+
+- A design conversation about combat, drawn up as an interactive page ("Hearthgate Combat Builds") with a Keep, Unsure or Cut on every piece. Michael marked all 43; four conflicts were settled in chat. All of it is in `decisions.md` ("Combat depth").
+- **The design doc's Combat section** gains a Builds block, and its Loadout paragraph now says one weapon set per outing. Layer 1 now names the specialization trees.
+- **The backlog's Phase 2** gains the feel pass, C1 to C5, after P1: strings, Flow, one weapon set per outing, the off-hand slot, three new families. The builds pass waits as a **(design)** item.
+
+**Learned**
+
+- Michael chose no weapon swap mid-fight. One player can no longer set up and pay off a cross-style combo alone, so combos become party play. That fits pillar 1, and makes the henchmen's combo awareness matter more.
+- The slice's parity scenario swaps weapons mid-fight, so the no-swap rule must sit behind a switch the parity test turns back on.
+
+**Next**
+
+- P1 (the loop's stakes), then C1 (light and heavy strings).
+
 ## 2026-10-28: local session, Phase 2 planned
 
 **What changed**
