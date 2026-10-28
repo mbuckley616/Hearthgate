@@ -9,6 +9,16 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-28: T6c: the slotted perks (Claude (local))
+Asked in chat as three cards before building T6c (plan 3a gave four slots, chosen in the village or a rest room, and three example perks). Recommendations were: a slotted perk opens by points spent in its constellation, as in ESO, at 5, 10 and 15; nine perks, three per constellation, drawn from the plan's examples and the fight's existing mechanics; and slots changed only in the village and rest rooms, enforced by the server.
+Michael (2026-10-28, in chat): all three as recommended.
+- **Unlock: points in the constellation.** Its three slotted perks open at 5, 10 and 15 points spent there (`champion.slotUnlockStep`). No extra cost.
+- **The nine:**
+  - Offence: Wide shatter (Shatter splashes twice as far), Teamwork (a combo an ally set up hits 20% harder), Deep wounds (bleeds last twice as long).
+  - Defence: Counterstep (a parry gives back a dodge charge), Bulwark (blocked hits chip half as much), Lifeline (a friend you revive gets up with twice the health).
+  - Utility: Long fuse (combos you set up stay open 50% longer), Momentum (a combo payoff takes 2 s off your ability cooldowns), Magnet (pick up drops from twice as far).
+- **Changing them:** in the village, a rest room the party has reached, and the arena's antechamber. Elsewhere the server keeps the hero's four.
+
 ### 2026-10-27: T6: champion points' two details, and how to build it (Claude (local))
 Asked in chat as four cards before building T6 (plan section 3a left two details for this step). Recommendations were: a ceiling of about +15% damage and +15% health on all passive perks together, and no tier cap on perks; champion points shared across a player's characters, as in ESO; resetting them free until Phase 2 brings coin; and three steps, each a PR to try.
 Michael (2026-10-27, in chat): all four as recommended.
