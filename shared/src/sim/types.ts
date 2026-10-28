@@ -113,6 +113,11 @@ export interface PlayerState {
   maxHp: number;
   /** What equipped gear adds (stats and perks). The items themselves live in the client's saved profile. */
   mods: Mods;
+  /**
+   * What the hero wears (T5c): catalogue ids, one a slot, from the loadout. Only the views read it;
+   * absent in the slice, so its state never carries it.
+   */
+  look?: string[];
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */

@@ -1,6 +1,7 @@
 import { STYLES, type Style } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
+import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
 import { TALENT_IDS, type TalentRanks } from '../sim/talents';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
@@ -95,7 +96,19 @@ export function readLoadout(v: unknown): Loadout | null {
     if (!isNum(m.armour) || m.armour < 0 || m.armour > 0.9) return null;
     mods.armour = m.armour;
   }
-  return { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
+  const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
+  // What the hero wears (T5c): catalogue ids, at most one a slot. Only drawn, never fought with.
+  if (v.look !== undefined) {
+    if (!Array.isArray(v.look) || v.look.length > BODY_SLOTS.length) return null;
+    const slots = new Set<string>();
+    for (const id of v.look) {
+      const entry = typeof id === 'string' ? CATALOGUE.get(id) : undefined;
+      if (!entry || slots.has(entry.slot)) return null;
+      slots.add(entry.slot);
+    }
+    loadout.look = [...(v.look as string[])];
+  }
+  return loadout;
 }
 
 /** One message from a player, checked, or null. */

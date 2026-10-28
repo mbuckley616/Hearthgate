@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { abilityTiming, tuning, type AbilityKind, type Style } from '@hearthgate/shared/config/tuning';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { BODY, buildArcher, buildKnight, buildMage, type Outfit } from './outfits';
-import { ARROW_LENGTH, Bow, FORWARD, FROST, Palette, Staff, UP, buildArrow, buildShield, buildSword, glowMaterial } from './props';
+import { ARROW_LENGTH, Bow, FORWARD, FROST, Palette, Staff, UP, buildArrow, buildQuiver, buildShield, buildSword, glowMaterial } from './props';
+import { buildGearShield, dress, outfitParts, undress, weaponMaterial, type Look } from './wardrobe';
+import { lookSlots } from '@hearthgate/shared/sim/catalogue';
 import {
   DEG,
   clamp01,
@@ -232,6 +234,9 @@ const GUARD_POSES: Record<Style, UpperPose> = {
   staff: pose(STAFF_GUARD, { handYaw: -32, handHeight: 0.32, handReach: 0.42, bladeYaw: 88, bladePitch: 12, offYaw: 20, offHeight: 0.34, offReach: 0.44, crouch: 0.13, lean: 8 }),
 };
 
+/** The swap flash per weapon on a dressed hero (the slice's figures carry their own). */
+const WEAPON_ACCENTS: Record<Style, number> = { sword: 0xffc35a, bow: 0x9be27a, staff: 0xffd27a };
+
 /** Guard ward colour per hero. */
 const WARD_COLORS: Record<Style, number> = { sword: 0xffe0a0, bow: 0xb8f08a, staff: 0x8fdcff };
 
@@ -257,9 +262,24 @@ export class HeroView {
   private head = new THREE.Group();
   private outfits: Record<Style, Outfit>;
   private outfit: Outfit;
+  /**
+   * The hero in what they wear (T5c), built from PlayerState.look and rebuilt when it changes; null
+   * for a hero with no look (the slice's figures by style).
+   */
+  private dressed: Outfit | null = null;
+  private worn: Look = {};
+  private lookKey: string | null = null;
+  private readonly palette: Palette;
 
   private sword: THREE.Group;
-  private shield: THREE.Group;
+  /** Holds the shield model: the slice's heater, or the worn one. */
+  private shield = new THREE.Group();
+  private sliceShield: THREE.Group;
+  private shieldModel: THREE.Group;
+  /** Carried on a dressed archer's back (the slice's archer has one of her own). */
+  private quiver: THREE.Group;
+  /** The weapons' parts a catalogue material colours, with the slice's materials to go back to. */
+  private tintable: { mesh: THREE.Mesh; style: Style; part: 'base' | 'trim'; slice: THREE.Material }[] = [];
   private bow: Bow;
   private nockedArrow: THREE.Group;
   private arrowHead: THREE.MeshStandardMaterial;
@@ -299,6 +319,7 @@ export class HeroView {
 
   constructor(palette: Palette) {
     const p = palette;
+    this.palette = palette;
 
     // Hierarchy: root (world) > rollPivot (dodge roll) > rig > pelvis > chest > head.
     this.root.add(this.spinGroup);
@@ -314,18 +335,18 @@ export class HeroView {
 
     // Every outfit hangs on the same joints; only the active one is visible.
     this.outfits = { sword: buildKnight(p), bow: buildArcher(p), staff: buildMage(p) };
-    for (const o of Object.values(this.outfits)) {
-      this.pelvis.add(o.pelvis);
-      this.chest.add(o.chest);
-      this.head.add(o.head);
-      for (const a of Object.values(o.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
-      for (const l of Object.values(o.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
-    }
+    for (const o of Object.values(this.outfits)) this.attach(o);
     this.outfit = this.outfits.sword;
 
     // Each hero's weapon; only the active one is shown.
     this.sword = buildSword(p);
-    this.shield = buildShield(p);
+    this.sliceShield = this.shieldModel = buildShield(p);
+    this.shield.add(this.sliceShield);
+    this.quiver = buildQuiver(p);
+    this.quiver.position.set(-0.05, 0.02, -0.19);
+    this.quiver.rotation.set(-0.2, 0, 0.45);
+    this.quiver.visible = false;
+    this.chest.add(this.quiver);
     this.staff = new Staff(p);
     this.bow = new Bow(p);
     this.arrowHead = p.make({ color: 0x40444a, emissive: 0xffb347, emissiveIntensity: 0, metalness: 0.6, roughness: 0.4 });
@@ -333,8 +354,19 @@ export class HeroView {
     this.bow.group.add(this.nockedArrow);
     this.chest.add(this.sword, this.shield, this.staff.group, this.bow.group);
 
+    // A catalogue weapon is the slice's, coloured as its material: the blade and the wood in its base, fittings in its trim.
+    const [, pommel, guard, blade, tip] = this.sword.children as THREE.Mesh[];
+    const tint = (mesh: THREE.Mesh, style: Style, part: 'base' | 'trim') => this.tintable.push({ mesh, style, part, slice: mesh.material as THREE.Material });
+    tint(blade, 'sword', 'base');
+    tint(tip, 'sword', 'base');
+    tint(pommel, 'sword', 'trim');
+    tint(guard, 'sword', 'trim');
+    tint(this.bow.limbs, 'bow', 'base');
+    for (const c of this.bow.caps) tint(c, 'bow', 'trim');
+    tint(this.staff.shaft, 'staff', 'base');
+    for (const f of this.staff.fittings) tint(f, 'staff', 'trim');
+
     // Additive copies of each weapon's main mesh, shown at level 5.
-    const blade = this.sword.children[3] as THREE.Mesh;
     const swordGlow = new THREE.Mesh(blade.geometry, glowMaterial(0xffc35a, 0.55));
     swordGlow.position.copy(blade.position);
     swordGlow.scale.set(1.5, 1.04, 2.5);
@@ -369,21 +401,62 @@ export class HeroView {
     this.root.add(this.ward);
   }
 
+  /** Hang an outfit's pieces on the rig's joints. */
+  private attach(o: Outfit): void {
+    this.pelvis.add(o.pelvis);
+    this.chest.add(o.chest);
+    this.head.add(o.head);
+    for (const a of Object.values(o.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
+    for (const l of Object.values(o.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
+  }
+
+  /**
+   * Dress the hero in what they wear (T5c), or back in the slice's figures with no look. Rare (a
+   * change in the bag, a join), so it builds and frees meshes here rather than in the frame.
+   */
+  private setLook(look: readonly string[] | undefined, key: string | null): void {
+    this.lookKey = key;
+    if (this.dressed) undress(this.dressed);
+    this.worn = look ? lookSlots(look) : {};
+    this.dressed = look ? dress(this.palette, this.worn) : null;
+    if (this.dressed) this.attach(this.dressed);
+
+    const shield = this.worn.shield;
+    if (this.shieldModel !== this.sliceShield)
+      this.shieldModel.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.geometry.dispose();
+      });
+    this.shield.remove(this.shieldModel);
+    this.shieldModel = this.dressed && shield ? buildGearShield(this.palette, shield) : this.sliceShield;
+    this.shield.add(this.shieldModel);
+
+    const weapon = this.dressed ? this.worn.weapon : undefined;
+    for (const t of this.tintable) t.mesh.material = weapon && weapon.shape.style === t.style ? weaponMaterial(this.palette, weapon.material, t.part) : t.slice;
+  }
+
   /** Show one hero's outfit and weapons, hide the others. */
   private showStyle(style: Style): void {
+    const dressed = this.dressed;
     for (const [s, o] of Object.entries(this.outfits) as [Style, Outfit][]) {
-      const on = s === style;
-      o.pelvis.visible = o.chest.visible = o.head.visible = on;
-      for (const a of Object.values(o.arms)) a.upper.visible = a.fore.visible = a.elbow.visible = a.hand.visible = on;
-      for (const l of Object.values(o.legs)) l.thigh.visible = l.shin.visible = l.knee.visible = l.foot.visible = on;
+      const on = !dressed && s === style;
+      for (const part of outfitParts(o)) part.visible = on;
     }
-    this.outfit = this.outfits[style];
-    this.sword.visible = this.shield.visible = style === 'sword';
-    this.bow.group.visible = style === 'bow';
-    this.staff.group.visible = style === 'staff';
+    this.outfit = dressed ?? this.outfits[style];
+    // A dressed hero holds only the weapon they wear: with none in hand they fight bare-handed.
+    const held = (s: Style) => style === s && (!dressed || this.worn.weapon?.shape.style === s);
+    this.sword.visible = held('sword');
+    this.bow.group.visible = held('bow');
+    this.staff.group.visible = held('staff');
+    this.quiver.visible = !!dressed && style === 'bow';
+    this.shield.visible = dressed ? !!this.worn.shield : style === 'sword';
+    if (dressed && style !== 'sword') {
+      // A bow or staff takes both hands: the shield is slung on the back (and does nothing, T5b).
+      this.shield.position.set(0, 0.2, -0.23);
+      this.shield.rotation.set(0, Math.PI, 0);
+    }
     if (this.shownStyle !== null) {
       this.swapFxAge = 0;
-      (this.swapFx.material as THREE.MeshBasicMaterial).color.setHex(this.outfit.accent);
+      (this.swapFx.material as THREE.MeshBasicMaterial).color.setHex(dressed ? WEAPON_ACCENTS[style] : this.outfit.accent);
     }
     this.shownStyle = style;
   }
@@ -391,7 +464,10 @@ export class HeroView {
   update(prev: PlayerState, curr: PlayerState, alpha: number, dt: number): void {
     const anim = tuning.heroAnim;
     this.time += dt;
-    if (curr.style !== this.shownStyle) this.showStyle(curr.style);
+    const lookKey = curr.look ? curr.look.join(',') : null;
+    const relook = lookKey !== this.lookKey;
+    if (relook) this.setLook(curr.look, lookKey);
+    if (relook || curr.style !== this.shownStyle) this.showStyle(curr.style);
     for (const [s, g] of Object.entries(this.glows) as [Style, THREE.Mesh][]) {
       g.visible = levelFor(curr.xp[s]) >= 5;
       (g.material as THREE.MeshBasicMaterial).opacity = (s === 'staff' ? 0.25 : 0.5) * (0.75 + 0.25 * Math.sin(this.time * 4));

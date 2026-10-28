@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { readLoadout } from '../net/validate';
-import { CATALOGUE, armourOf, entryOf, fromSliceItem, itemName, rollGear, starterGear, wornMods, wornStyle, type GearItem, type Worn } from './catalogue';
+import { CATALOGUE, armourOf, entryOf, fromSliceItem, itemName, lookOf, lookSlots, rollGear, starterGear, wornMods, wornStyle, type GearItem, type Worn } from './catalogue';
+import { applyLoadout } from './coop';
 import { arena, buildWorld } from '../level/arena';
 import { hurtHero } from './combat';
 import { emptyMods, rollItem } from './gear';
@@ -107,6 +108,30 @@ describe('the item catalogue (T5b)', () => {
     for (const p of s.players) hurtHero(s, p, { damage: 40, fromX: p.x + 1, fromZ: p.z, late: true });
     expect(bare.maxHp - bare.hp).toBeCloseTo(40, 6);
     expect(armoured.maxHp - armoured.hp).toBeCloseTo(30, 6);
+  });
+
+  it('sends what a hero wears as catalogue ids, one a slot, and every player draws it (T5c)', () => {
+    const worn: Worn = { weapon: item('iron-sword'), head: item('iron-fullHelm'), body: item('black-platebody'), cape: item('red-cape') };
+    const look = lookOf(worn);
+    expect(look).toEqual(['iron-fullHelm', 'red-cape', 'iron-sword', 'black-platebody']);
+    expect(lookSlots(look).body?.name).toBe('Black platebody');
+    expect(lookSlots(look).head?.name).toBe('Iron full helm');
+
+    const loadout = (look: unknown) => ({ name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100, look });
+    expect(readLoadout(loadout(look))?.look).toEqual(look);
+    expect(readLoadout(loadout(['iron-fullHelm', 'steel-medHelm']))).toBeNull();
+    expect(readLoadout(loadout(['mithril-platebody']))).toBeNull();
+    expect(readLoadout(loadout('iron-fullHelm'))).toBeNull();
+    expect('look' in readLoadout(loadout(undefined))!).toBe(false);
+
+    // On the hero it travels in every snapshot; a loadout without one takes it off again.
+    const world = buildWorld(arena);
+    const s = createSimState(arena, ['a'], world);
+    const p = s.players[0];
+    applyLoadout(p, readLoadout(loadout(look))!, false);
+    expect(p.look).toEqual(look);
+    applyLoadout(p, readLoadout(loadout(undefined))!, false);
+    expect('look' in p).toBe(false);
   });
 
   it('lets the server take worn armour, but no more than the most there is', () => {

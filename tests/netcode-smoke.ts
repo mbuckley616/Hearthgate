@@ -146,6 +146,15 @@ async function main() {
     a.send({ k: "tune", edit: { path: "debug.slowMo", value: false } });
     await a.until(() => a.snaps[a.snaps.length - 1].scale === 1, 2000, "full speed");
 
+    // 7b. What a hero wears reaches every player (T5c), and a look the catalogue does not know is dropped.
+    const look = ["iron-fullHelm", "black-platebody", "steel-sword"];
+    a.send({ k: "loadout", loadout: { ...loadout("Alpha"), look } });
+    await b.until(() => b.me(a.id)?.look?.join() === look.join(), 2000, "Bravo sees Alpha's gear");
+    check(true, "a worn look reaches the other player in the snapshot", look.join(", "));
+    a.send({ k: "loadout", loadout: { ...loadout("Alpha"), look: ["mithril-platebody"] } });
+    await sleep(300);
+    check(b.me(a.id)?.look?.join() === look.join(), "a look the catalogue does not know is dropped whole");
+
     // 8. The dev cheats.
     a.send({ k: "cheat", cheat: "warden" });
     await a.until(() => a.state.run.wave === 4, 2000, "the Warden");

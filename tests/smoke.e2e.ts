@@ -263,6 +263,13 @@ test("the bag and the body: wear a bow from the bag by keys alone, and 1 takes t
   await holdUntil(page, "KeyD", async () => (await detail.count()) > 0 && (await detail.textContent()) === "Ash shortbow", 5_000);
   await page.keyboard.press("KeyF");
   await expect.poll(style).toBe("bow");
+  // The hero is drawn in what they wear (T5c): the server has the look, and the view holds the ash bow.
+  const drawn = () =>
+    page.evaluate(() => {
+      const g = (window as unknown as { game: any }).game;
+      return { look: (g.me()?.look ?? []).join(), dressed: !!g.hero.dressed, bow: g.hero.bow.group.visible, sword: g.hero.sword.visible };
+    });
+  await expect.poll(drawn).toEqual({ look: "ash-shortbow", dressed: true, bow: true, sword: false });
   await page.keyboard.press("KeyI");
   await page.keyboard.press("Digit1");
   await expect.poll(style).toBe("sword");
