@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C3: one weapon set per outing
+
+**What changed**
+
+- **The weapon changes only outside a fight** (Michael chose inventory only). The sim holds a requested swap until no fight is on: no doors shut, no waves running. It sits behind `combo.swapInFight`, which the parity test turns on because the slice's scripted parties swap. Parity identical.
+- **1 and 2 are the abilities**, beside Q and E; the pad keeps LB and RB. 3 waits for C4's off-hand.
+- **The hero screen keeps 1, 2, 3 and the d-pad for its tabs.** New `tab1`, `tab2` and `tab3` actions take the press there before anything else, so a tab change never casts.
+- **Gone or changed:**
+  - the wheel and d-pad weapon swaps
+  - the key numbers on the style bar
+  - the HUD's ability keys now read 1 and 2
+  - the controls table says how to choose a weapon
+- The smoke test that pressed 1 to take the sword back now checks that 1 no longer swaps.
+
+**Learned**
+
+- **The backlog's "move the tabs to free keys" was not needed.** The hero screen already stands the hero still and only opens between fights, so 1, 2 and 3 can mean tabs there and abilities everywhere else, as long as the tab actions are read first.
+- **A new hero's 2 does nothing** until the second ability unlocks at level 2. That is the slice's unlock, not a binding fault, and worth knowing when testing keys.
+
+**Next**
+
+- C4, the off-hand slot and its third ability on 3.
+
 ## 2026-10-28: local session, C2: Flow
 
 **What changed**
