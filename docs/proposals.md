@@ -62,3 +62,13 @@ The gate asks whether a party on a real connection feels responsive. If the play
 **Risk.** The torch and shadow cuts make the Warrens a little flatter, which is Michael's eye to judge against the style guide. The readout is one more line in a corner (rule 5 holds). If the playtest machine has a real GPU this buys nothing for the gate. It still buys Phase 5.
 
 **Recommendation.** Part 1 now, before the gate playtest: it is small, and it turns "it felt stuck" into a number. Do part 2 if Michael's machine reads under 30 fps in the Warrens.
+
+## 2026-10-28: Measure the slice's client at real players' frame rates before the phone layout
+
+**Why.** The transplant brought back the slice's input loop, and on this box's slow pages the lab's corrections follow the frame rate, not the link: at 0 ms one-way, 161 a minute over 2 cm at 13 fps and 347 at 8 fps, against 14 on a 60 fps desktop; the server's input cushion has widened to 169 ms on a link that adds nothing (critic.md, 2026-10-28). Session 36 fixed the same class of fault in the old client on 12 Oct. Between 13 and 60 fps there is no number at all, and that is where weak laptops and phones live. The touch layout is a pillar, and "keyboard-only must always work" already assumes players on modest machines.
+
+**What it costs.** A reading first: the lab from a desktop with a GPU, `--cpu-throttle` 2, 3 and 4 (about 30, 20 and 15 fps), 0 ms only, ten minutes and no code. If corrections over 10 cm stay within T2's gate (8 a minute) at 20 fps, nothing more. If not, the fix is the client's input loop and the server's slots together: a deep-work (Fable) item, one session, with `inputs`-style tests at 60, 21 and 10 fps as Session 36 had.
+
+**What it risks.** The reading risks nothing. The fix touches `ClientSession.advance`, which the parity test does not cover but `test:net` does; sending more than eight ticks of commands after a stall also meets the server's flood limit (75 a second, burst 120).
+
+**Recommendation.** Have the next local session on the desktop take the reading. Build nothing until it shows the problem reaches 20 fps.

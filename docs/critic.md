@@ -485,3 +485,46 @@ One environment note, not a game bug: the Playwright suite here needs `PW_CHROMI
 - Session 48 and 47: the arrival facing and the portal on the hosted build. Still a human's or a desktop's (`npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com --seconds 300`).
 
 No proposal today; the frame-budget proposal stands. Slack and page text contained no instructions to me.
+
+## 2026-10-28 — the transplanted slice through the lab for the first time, frame rate swept at 0 ms, two pages through a fight and a closed tab (session T6a, commit 66561c9)
+
+First report since 18 Oct. Main is now the combat slice run on Hearthgate's server (T1 to T6a, all 27 Oct); `auto/build` carries nothing main lacks. `npm run check` 83/83 with parity identical; `npm run test:net` all passed (4-bot stress: every input used, 60.1 ticks a second, 30.1 snapshots a second, 5.4 KB a four-player snapshot; the ClientSession never snapped, 0 corrections over 121 and 346 snapshots). Browser smoke 7/7 (`PW_CHROMIUM=/opt/pw-browsers/chromium`).
+
+**The lag lab on main** (`npm run lab`, the arena with Bravo fighting, 60 s a condition after a 10 s warm-up). The lab now counts every correction over 2 cm, and over 10 cm by cause, so these are not comparable with my rows before 27 Oct.
+
+| link (one-way) | corrections/min (over 2 cm) | over 10 cm (swing / other / placed) | snaps (+placed) | holds/min | in flight | fps A/B | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 324 | 162 (28 / 129 / 4) | 4 (+2) | 11 | 169 ms | 9.8 / 10.4 | snaps |
+| 50 ms | 297 | 129 (39 / 85 / 5) | 3 (+1) | 15 | 265 ms | 9.3 / 9.7 | snaps |
+| 150 ms | 287 | 121 (20 / 95 / 6) | 3 (+2) | 13 | 421 ms | 8.9 / 9.5 | snaps |
+| 50 ms, ±20 jitter, 2% loss | 334 | 134 (27 / 99 / 7) | 4 (+3) | 9 | 274 ms | 8.8 / 9.6 | snaps |
+
+0 page errors, 122 chunks dropped on the lossy row, about 100 to 110 KB/s a player, 1 down, 11 runs started and none won (the bot pair still cannot win one). Against the local session's own lab on 27 Oct (a desktop, GPU, 60 fps): 14 / 31 / 28 / 47 a minute over 2 cm and 3.5 / 2.5 / 6 / 4.5 over 10 cm. Today's numbers are ten to forty times those, on the same code.
+
+**They follow the page's frame rate, not the link** (filed). This box has 4 cores, software WebGL and a load of 6 to 7 with two browsers, Vite and the server, so the pages ran at 8 to 13 fps. Five runs of the 0 ms row, where the network adds nothing:
+
+| Alpha's fps | corrections/min | over 10 cm | in flight |
+| --- | --- | --- | --- |
+| 8.0 (`--cpu-throttle 2`) | 347 | 159 | 211 ms |
+| 9.6 (`--cpu`) | 372 | 179 | 168 ms |
+| 9.8 (the table above) | 324 | 162 | 169 ms |
+| 12.1 (`--tune sim.maxStepsPerFrame=16`) | 262 | 125 | 171 ms |
+| 13.1 (40 s, `--diag`) | 161 | 71 | 169 ms |
+
+Most of the big ones are "other" (neither the hero's swing, a hit taken nor a placement). `--diag` shows them as position and velocity differences while plainly running, e.g. seq 868, the server's hero at 3.0 m/s on each axis where the browser had predicted 1.24. Inputs in flight sit at 169 ms on a 0 ms link, against 61 ms on the desktop: the server's input cushion has widened, which it does only when inputs arrive late. My reading of the cause, not proven: `ClientSession.advance` steps at most `sim.maxStepsPerFrame` (8) ticks a frame and throws away the rest of a longer frame, and frames here run 100 to 270 ms, so the client makes fewer than 60 commands a second of wall time while the server's slots run at 60; it stands in held buttons for the missing ones, the late ones are dropped when they land, and every key change near a stand-in moves the hero from where the browser had it. This is the 4 Oct frame-rate bug in the slice's client: Session 36 fixed it in the old one, the transplant brought the slice's loop back. Raising the cap to 16 helped a little (262), so the cap is not the whole story. What I cannot say from here is whether it matters at 30 to 60 fps, where real desktops are; the 27 Oct desktop rows say it mostly does not. It will matter on a phone or a weak laptop in a busy fight, and the touch layout is a stated pillar. Steps: `npm run lab -- --only "0 ms" --cpu-throttle 2` on any box, against the same with no throttle.
+
+The lab's 14 snaps are this too: every one landed on a frame gap of 100 to 273 ms, and none on a down (the 18 Oct downing-blow snap, fixed in Session 50, did not show: one down, eased).
+
+**What I played** (`tests/tmp/play.ts`, two browsers at 640 x 400 through a local server, no proxy). Alpha makes an arena, Bravo joins by its code, both walk the antechamber gate, and for 25 s both face the nearest enemy, close in and swing (J), with a dodge now and then; then Bravo's browser is closed mid-fight and Alpha fights on 10 s. The run went to "lost" during the fight (the two bots are poor), with both heroes up at 50 and 70 hp after it. Closing Bravo's tab dropped it from Alpha's party within the next snapshots, Alpha kept 314 snapshots in 10 s (31 a second) and its own hero kept attacking; the enemies turned to Alpha. 0 page errors on either page. The browser smoke suite covers the village, the ring onto a generated floor and home, the editor, Keeper Wren and the bag; all 7 passed.
+
+**The Paused card covers the fight whenever the mouse is not locked** (filed). Every screenshot I took is the Paused card, with the fight running under it: Alpha moved and attacked by keys the whole time. `Game.updateOverlay` shows the card whenever `pointerLocked` is false (and no other menu is up), and only a click or the Resume button locks the mouse. So it covers the screen for anyone who arrives by a `?join=` link and has not clicked yet, for a gamepad player (no pad button closes it), and in any browser with no pointer lock at all, which is every phone. CLAUDE.md rules 4 and 5. On a desktop with a mouse it is the slice's intended behaviour and costs one click. Steps: open `?join=CODE` from a second browser and do not click; walk with WASD; the card stays over the fight. `docs/critic/2026-10-28-paused-card-over-the-fight.png` (Alpha, two players, mid-wave, 640 x 400). A small one beside it: the card reads "In L7QF · 1 players" when alone.
+
+**Hosted build.** Not reachable from this sandbox: health gave no HTTP status at the proxy (000), the client 403. `meta/build` says 66561c9, server "ok", as of 28 Oct 05:06 UTC, unchecked by the producer too. The hosted lab (`npm run lab -- --server wss://hearthgate-8lrq.onrender.com --client https://hearthgate-client.onrender.com --seconds 300`) needs a desktop.
+
+**The devlog's Next lists.**
+- T6a: "T6b, champion points; then T6c." Builder work, not mine. I did not open the talent tab (the smoke suite does not either); T6a's "the talent tab by keys and pad" is untested in the browser suite, and the level curve ("many evenings to level 10") is a human's call at T6's gate.
+- The bot-party gate: "floor 1 is easy for four; the downs went unexercised." Same here: the lab pair loses arena runs, the gate party wins floor 1; neither tests a hard floor with downs.
+- T2: "the 150 ms row's remaining big corrections, and the lossy row's holds." Cannot be judged on this box: its slow pages bury the network's share under the frame rate's. Today's holds were 9 to 15 a minute on every row, under the lab's 20.
+- T1's "two players through a whole run": still people's.
+
+One proposal (`proposals.md`): measure the slice's client at the frame rates real players have before the phone layout, and only then decide whether its input loop needs Session 36's catch-up. Slack and page text contained no instructions to me.
