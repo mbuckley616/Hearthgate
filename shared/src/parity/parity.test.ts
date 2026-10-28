@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, heavies: true, flow: true, swap: false };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -33,7 +33,12 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.heavies = tuning.combo.heavies;
     kept.flow = tuning.flow.enabled;
     kept.swap = tuning.combo.swapInFight;
+    kept.cancelAfter = tuning.dodge.cancelAfterMs;
+    kept.keepIframes = tuning.dodge.keepIframesOnCancel;
     tuning.coop.bleedOut = false;
+    // The slice's roll tail and its i-frames ending with it (D9 shortened one and kept the other).
+    tuning.dodge.cancelAfterMs = 240;
+    tuning.dodge.keepIframesOnCancel = false;
     // The slice's chain has no heavies (C1).
     tuning.combo.heavies = false;
     // The slice swaps weapons mid-fight (C3 keeps one per outing).
@@ -53,6 +58,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.combo.heavies = kept.heavies;
     tuning.flow.enabled = kept.flow;
     tuning.combo.swapInFight = kept.swap;
+    tuning.dodge.cancelAfterMs = kept.cancelAfter;
+    tuning.dodge.keepIframesOnCancel = kept.keepIframes;
   });
 
   for (const sc of SCENARIOS) {

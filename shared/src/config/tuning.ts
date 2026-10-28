@@ -60,8 +60,11 @@ export const tuning = {
      * From this point the roll's slow tail can be cut short: moving, attacking,
      * an ability, guard, jump or another dodge ends it at once (Michael: no
      * dodge recovery). Attacks and Q/E pressed earlier in the roll are kept and fire here.
+     * 240 in the slice; 170 since D9 (Michael 28 Oct: recovery too long).
      */
-    cancelAfterMs: 240,
+    cancelAfterMs: 170,
+    /** A roll cut short keeps the rest of its i-frames (D9); the slice ended them with the roll. */
+    keepIframesOnCancel: true,
   },
 
   /**
