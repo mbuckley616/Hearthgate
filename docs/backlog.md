@@ -8,7 +8,7 @@ Marks: **(Fable)** is a cross-cutting item for the Fable session (the builder sk
 
 Gate: a full solo evening of runs with hirelings holds up. Michael closed Phase 1 on 27 Oct 2026 ("I'm good to close it and move on!", decisions.md). Phase 2's own items are still to be planned from the design doc; T6 carries over from the slice transplant plan and comes first.
 
-- [ ] **(Fable)** T6, progression to 50 and champion points (`combat-port-plan.md` section 3a). Gate: you want a second run right away; past 50 you can plan a build, and a lower-level friend still pulls their weight.
+- [ ] **(Fable)** T6, progression to 50 and champion points (`combat-port-plan.md` section 3a). Gate: you want a second run right away; past 50 you can plan a build, and a lower-level friend still pulls their weight. Michael (27 Oct, decisions.md): a +15% damage and +15% health ceiling on passive perks, champion points shared across characters, free respec until coin, three steps. T6a built (`auto/local-t6-progression`): style levels to 50, the flat level-4 bonus moved into Might, a milestone row at 10/20/30/40/50 (Weight, Finisher, Riposte, Second wind, Mastery), the server checks a board against its XP, keys and pad on the talent tab, the glow at 25 and gold at 50. Next T6b, champion points' passive perks under the ceiling; then T6c, four slotted perks.
 
 ## Phase 0: netcode spike (passed 3 Oct 2026; open items carry over)
 

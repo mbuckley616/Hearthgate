@@ -1,5 +1,5 @@
 import { ABILITIES, ABILITY_NAMES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
-import { LEVEL_UNLOCKS, levelFor } from '@hearthgate/shared/sim/gear';
+import { levelUnlock, levelFor } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult } from '@hearthgate/shared/sim/talents';
 import { ICONS, iconUrl } from './pixelArt';
@@ -120,7 +120,7 @@ export class Hud {
       if (ev.kind === 'parry' && ev.playerId === localId) this.guardPop('Parry', 'parry');
       if (ev.kind === 'block' && ev.playerId === localId && ev.broke) this.guardPop('Guard broken', 'broke');
       if (ev.kind === 'levelUp' && ev.playerId === localId) {
-        const unlock = LEVEL_UNLOCKS[ev.level] ? `${LEVEL_UNLOCKS[ev.level]} unlocked · ` : '';
+        const unlock = levelUnlock(ev.level) ? `${levelUnlock(ev.level)} unlocked · ` : '';
         this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point</span>`, 'level');
       }
       if (ev.kind === 'pickup' && ev.playerId === localId) {

@@ -1,6 +1,6 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
 import { levelFor } from './gear';
-import { damageTakenMult, talentDamage } from './talents';
+import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 
 /** What a single hit carries (from a swing, projectile or burst). */
@@ -30,6 +30,8 @@ export interface HitSpec {
   dot?: boolean;
   /** Dealt by a projectile or burst (the host's call); otherwise a joiner predicts it locally. */
   projectile?: boolean;
+  /** A Skewer or Detonate payoff (Shatter is found here), for the Finisher talent. */
+  combo?: boolean;
 }
 
 /** Damage multiplier for a hero's style: level 4 bonus, gear and the might talent. */
@@ -75,12 +77,13 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const staggered = e.ai === 'stagger';
   const hero = state.players.find((p) => p.id === hit.attackerId);
   const bonus = hero && hit.style ? styleDamageBonus(hero, hit.style) : 0;
-  const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] : 0;
+  const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) : 0;
   // Shatter: a melee finisher on a slowed or frozen enemy (brief: cross-style combos).
   const cb = tuning.combos;
   const shatter = hit.style === 'sword' && hit.heavy && !hit.dot && e.shatterUntil >= state.time;
   if (shatter) e.shatterUntil = -1;
-  const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1);
+  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) : 0;
+  const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   if (hero && hit.style) grantXp(state, hero, hit.style, Math.min(damage, damage + e.hp) * tuning.progression.xpPerDamage);
@@ -276,7 +279,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
   if (p.mode === 'guard' && guardCovers(p, hit.fromX, hit.fromZ)) {
-    if (p.parryOpen && p.guardTime * 1000 <= g.parryWindowMs) {
+    if (p.parryOpen && p.guardTime * 1000 <= parryWindowMs(p)) {
       parry(state, p, hit);
       return 'parried';
     }

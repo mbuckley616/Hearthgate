@@ -252,6 +252,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     slowTime: pr.slowTime,
     crit: pr.crit,
     style: pr.style,
+    combo: skewer || undefined,
   });
   pr.hitIds.push(e.id);
   // Detonate setup: volley arrows mark.
@@ -300,6 +301,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
             z: e.z,
             slowTime: pr.slowTime,
             style: pr.style,
+            combo: marked || undefined,
           });
         }
       }

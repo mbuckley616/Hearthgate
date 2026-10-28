@@ -100,21 +100,34 @@ export function computeMods(equipped: (Item | null | undefined)[]): Mods {
 
 // --- Levels ---
 
-/** Levels carry on past 5 for talent points, up to this. */
+/** Levels carry on past 5 for talent points, up to this (50 since T6). */
 export function maxLevel(): number {
   return Math.max(5, Math.round(tuning.progression.maxLevel));
 }
 
 /** Cumulative XP per level: the tuned 2-5, then gaps that grow by levelGapGrowthXp. */
+let cached: { key: string; t: number[] } | null = null;
+
 function thresholds(): number[] {
   const p = tuning.progression;
+  // The sim asks for levels inside every step (rows opening, the dodge recharge); the table only
+  // changes when the panel moves one of these numbers.
+  const key = `${p.level2Xp},${p.level3Xp},${p.level4Xp},${p.level5Xp},${p.levelGapGrowthXp},${maxLevel()}`;
+  if (cached && cached.key === key) return cached.t;
   const t = [0, p.level2Xp, p.level3Xp, p.level4Xp, p.level5Xp];
   let gap = p.level5Xp - p.level4Xp;
   while (t.length < maxLevel()) {
     gap += p.levelGapGrowthXp;
     t.push(t[t.length - 1] + gap);
   }
+  cached = { key, t };
   return t;
+}
+
+/** XP needed to reach a level. */
+export function xpForLevel(level: number): number {
+  const t = thresholds();
+  return t[Math.max(0, Math.min(t.length, level) - 1)];
 }
 
 export function levelFor(xp: number): number {
@@ -132,13 +145,22 @@ export function levelProgress(xp: number): number {
   return Math.min(1, (xp - t[level - 1]) / Math.max(1, t[level] - t[level - 1]));
 }
 
-/** What each level unlocks (for toasts and the equip screen). */
-export const LEVEL_UNLOCKS: Record<number, string> = {
-  2: 'Second ability (E)',
-  3: 'Combo step 4',
-  4: 'Combo step 5 and +10% damage',
-  5: 'Weapon glow',
-};
+/** What a level unlocks (for toasts and the equip screen), or undefined: only a talent point. */
+export function levelUnlock(level: number): string | undefined {
+  const p = tuning.progression;
+  if (level === 2) return 'Second ability (E)';
+  if (level === 3) return 'Combo step 4';
+  if (level === 4) return p.level4DamageBonus > 0 ? `Combo step 5 and +${Math.round(p.level4DamageBonus * 100)}% damage` : 'Combo step 5';
+  const parts: string[] = [];
+  const row = ROW_NAMES[level];
+  if (row) parts.push(`Talent row: ${row}`);
+  if (level === Math.round(p.glowLevel)) parts.push('Weapon glow');
+  if (level === maxLevel()) parts.push('Gold glow');
+  return parts.length ? parts.join(' and ') : undefined;
+}
+
+/** The milestone rows' names by level (talents.ts has their rules; it imports this file, so not the other way). */
+const ROW_NAMES: Record<number, string> = { 10: 'Weight', 20: 'Finisher', 30: 'Riposte', 40: 'Second wind', 50: 'Mastery' };
 
 /** Chain length for a hero at a level: the brief's 3 hits, steps 4 and 5 unlocked at levels 3 and 4. */
 export function chainLengthFor(level: number): number {
