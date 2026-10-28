@@ -1,3 +1,4 @@
+import type { ChampionState } from './champion';
 import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
@@ -118,6 +119,8 @@ export interface PlayerState {
    * absent in the slice, so its state never carries it.
    */
   look?: string[];
+  /** The player's champion points (T6b), shared by their characters; absent in the slice. */
+  champion?: ChampionState;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
@@ -338,6 +341,7 @@ export type SimEvent =
   | { kind: 'runWon'; time: number }
   | { kind: 'runLost'; wave: number }
   | { kind: 'levelUp'; playerId: string; style: Style; level: number }
+  | { kind: 'championPoint'; playerId: string; points: number }
   | { kind: 'dropSpawned'; owner: string; x: number; z: number; rarity: Item['rarity'] }
   | { kind: 'combo'; combo: Combo; playerId: string; x: number; y: number; z: number }
   | { kind: 'revived'; playerId: string; by: string; draught?: boolean }

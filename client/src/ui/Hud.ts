@@ -123,6 +123,9 @@ export class Hud {
         const unlock = levelUnlock(ev.level) ? `${levelUnlock(ev.level)} unlocked · ` : '';
         this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point</span>`, 'level');
       }
+      if (ev.kind === 'championPoint' && ev.playerId === localId) {
+        this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under I · 3 Champion</span>`, 'level');
+      }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
         this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}</span>`, i.rarity);

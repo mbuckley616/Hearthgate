@@ -1,4 +1,5 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
+import { championCombo, championDamage, championOpen, championPointsEarned, championPoise } from './champion';
 import { levelFor } from './gear';
 import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
@@ -36,7 +37,7 @@ export interface HitSpec {
 
 /** Damage multiplier for a hero's style: level 4 bonus, gear and the might talent. */
 export function styleDamageBonus(p: PlayerState, style: Style): number {
-  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style);
+  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p);
 }
 
 /** Add XP to a hero's style, announcing any level crossed. */
@@ -45,6 +46,13 @@ export function grantXp(state: SimState, p: PlayerState, style: Style, amount: n
   p.xp[style] += amount;
   const after = levelFor(p.xp[style]);
   for (let l = before + 1; l <= after; l++) state.events.push({ kind: 'levelUp', playerId: p.id, style, level: l });
+  // Past the top level in any weapon, every weapon's XP also banks toward champion points.
+  if (p.champion && championOpen(p.xp)) {
+    const had = championPointsEarned(p.champion.xp);
+    p.champion.xp += amount;
+    const now = championPointsEarned(p.champion.xp);
+    if (now > had) state.events.push({ kind: 'championPoint', playerId: p.id, points: now });
+  }
 }
 
 const ATTACKING = new Set(['windup', 'slash1', 'between', 'slash2', 'aim', 'shoot']);
@@ -77,12 +85,12 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const staggered = e.ai === 'stagger';
   const hero = state.players.find((p) => p.id === hit.attackerId);
   const bonus = hero && hit.style ? styleDamageBonus(hero, hit.style) : 0;
-  const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) : 0;
+  const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) + championPoise(hero) : 0;
   // Shatter: a melee finisher on a slowed or frozen enemy (brief: cross-style combos).
   const cb = tuning.combos;
   const shatter = hit.style === 'sword' && hit.heavy && !hit.dot && e.shatterUntil >= state.time;
   if (shatter) e.shatterUntil = -1;
-  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) : 0;
+  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) : 0;
   const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;

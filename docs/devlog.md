@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, T6b: champion points
+
+**What changed**
+
+- **Earning** (`shared/src/sim/champion.ts`): once any weapon is at level 50, every weapon's XP also banks toward champion points. The first costs 20,000 XP and each costs 250 more than the last, without end (`tuning.champion`).
+- **Nine ranked perks in three constellations:**
+  - Offence: Precision (damage), Heft (poise damage), Exploit (combo payoffs).
+  - Defence: Vitality (max health), Toughness (damage taken), Steady hands (time to revive a friend).
+  - Utility: Will (cooldowns), Light step (dodge recharge), Stride (move speed).
+- **The ceiling:** Precision and Vitality stop at +15% damage and +15% health (Michael), and the code holds the ceiling even if the per-rank values are tuned up.
+- **The player's, not the hero's:**
+  - They are saved under their own key (`hearthgate.champion.v1`), so a second character will share them.
+  - They travel in the loadout and `PlayerState.champion`.
+  - The server refuses ranks the banked XP could not buy, and applies Vitality to max health itself, so the ceiling holds whatever a browser sends.
+- **Parity identical:** the state is optional, and a hero without it (the slice, the parity test) gains exact zeros.
+- **The equip screen's third tab, 3 Champion,** works by keys and pad like the talents. Resetting is free between fights until coin. A toast marks each point.
+- **The design doc's Layer 1** now says the player moves a little, and chooses how.
+
+**Learned**
+
+- Points come from a closed form (the cost's quadratic, settled to whole points), not a loop: banked XP never stops growing, and the sim asks on every XP grant past 50.
+- Health is the one champion number not stepped per tick: it is set when a loadout is applied, so the server applies it rather than taking the browser's max health.
+
+**Next**
+
+- T6c: the four slotted perks, which make a build. They are chosen in the village or a rest room.
+
 ## 2026-10-27: local session, T6a: style levels to 50
 
 **What changed**

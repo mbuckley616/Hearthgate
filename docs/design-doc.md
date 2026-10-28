@@ -50,7 +50,7 @@ Below Tavern tier 10, hirelings are noticeably worse than a competent human: slo
 
 Progression runs on three layers that never let a high-level player trivialise a low-level friend's run: the player grows sideways, gear is capped by the portal, and the village grows for everyone.
 
-**Layer 1: the player (sideways).** Character level unlocks options, not stats. Health and base damage barely move between level 1 and the cap. Each level grants one of: a weapon proficiency, a loadout slot, or a passive that changes how an existing ability behaves; the abilities themselves come from the Melee, Ranged and Magic skill trees. A level-50 player wins through knowledge and toolkit, not numbers.
+**Layer 1: the player (sideways, and a little up).** Character level unlocks options first. Stats move a little, and only through points the player chooses (Michael, 26 Oct, plan 3a): a talent point per weapon level to 50, a new talent row every ten levels, then champion points without end, all of them together capped at +15% damage and +15% health. Each level grants one of: a weapon proficiency, a loadout slot, or a passive that changes how an existing ability behaves; the abilities themselves come from the Melee, Ranged and Magic skill trees. A level-50 player wins through knowledge and toolkit, not numbers.
 
 - **Skills by use (RuneScape-style).** Melee, Ranged and Magic are the three combat skills and level by use; each unlocks that style's ability tree. Gathering, Crafting, Alchemy, Rune-crafting and Cooking level the same way. Skills gate recipes, abilities and village jobs, not dungeon access.
 - **Mastery.** Each dungeon type has a mastery track (clears, no-death clears, depth reached). Mastery unlocks the Guide role for that dungeon type and cosmetic titles.

@@ -18,10 +18,13 @@ import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
+import { CHAMPION_IDS, championMaxRanks, championPointsEarned, championPointsSpent, emptyChampion, type ChampionId, type ChampionState } from '@hearthgate/shared/sim/champion';
 
 const STORAGE_KEY = 'hearthgate.profile.v2';
 /** The slice's save, read once and carried into the bag and body (T5b). */
 const SLICE_KEY = 'combat-slice.profile.v1';
+/** Champion points are the player's, not the hero's (shared across characters, decisions.md 27 Oct), so they keep a key of their own. */
+const CHAMPION_KEY = 'hearthgate.champion.v1';
 
 /**
  * What persists between runs (brief: "levels and gear persist in the browser"; T5b: a 28-space bag
@@ -98,9 +101,24 @@ function placeInBag(bag: (GearItem | null)[], item: GearItem): boolean {
  */
 export class Profile {
   data: ProfileData;
+  champion: ChampionState;
 
   constructor() {
     this.data = Profile.load();
+    this.champion = Profile.loadChampion();
+  }
+
+  private static loadChampion(): ChampionState {
+    try {
+      const raw = localStorage.getItem(CHAMPION_KEY);
+      if (!raw) return emptyChampion();
+      const parsed = JSON.parse(raw) as ChampionState;
+      const ranks: ChampionState['ranks'] = {};
+      for (const id of CHAMPION_IDS) if (Number.isFinite(parsed.ranks?.[id])) ranks[id] = parsed.ranks[id];
+      return { xp: Number.isFinite(parsed.xp) ? Math.max(0, parsed.xp) : 0, ranks };
+    } catch {
+      return emptyChampion();
+    }
   }
 
   private static load(): ProfileData {
@@ -126,6 +144,7 @@ export class Profile {
   save(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+      localStorage.setItem(CHAMPION_KEY, JSON.stringify(this.champion));
     } catch {
       // Storage can be unavailable (private windows); progress just won't persist.
     }
@@ -133,6 +152,7 @@ export class Profile {
 
   reset(): void {
     this.data = fresh();
+    this.champion = emptyChampion();
     this.save();
   }
 
@@ -236,17 +256,39 @@ export class Profile {
     this.save();
   }
 
+  /** Unspent champion points. */
+  championLeft(): number {
+    return championPointsEarned(this.champion.xp) - championPointsSpent(this.champion.ranks);
+  }
+
+  /** Spend (+1) or refund (-1) a champion point; free to move between runs until Phase 2 brings coin. */
+  changeChampion(id: ChampionId, delta: 1 | -1): void {
+    const rank = this.champion.ranks[id] ?? 0;
+    if (delta > 0 && (rank >= championMaxRanks(id) || this.championLeft() <= 0)) return;
+    if (delta < 0 && rank <= 0) return;
+    this.champion.ranks[id] = rank + delta;
+    this.save();
+  }
+
+  resetChampion(): void {
+    this.champion.ranks = {};
+    this.save();
+  }
+
   /** What this player brings into a fight (their own, also in co-op): levels, talents, worn gear and name. */
   loadout(): Loadout {
     const talents = structuredClone(this.data.talents);
     // Ranks past a lowered cap (tuning changes) simply don't count.
     for (const s of Object.keys(talents) as Style[]) for (const id of TALENT_IDS) if ((talents[s][id] ?? 0) > maxRanks(id)) talents[s][id] = maxRanks(id);
     const mods = wornMods(this.data.worn);
-    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn) };
+    const ranks = { ...this.champion.ranks };
+    for (const id of CHAMPION_IDS) if ((ranks[id] ?? 0) > championMaxRanks(id)) ranks[id] = championMaxRanks(id);
+    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn), champion: { xp: this.champion.xp, ranks } };
   }
 
   /** Pull XP earned in the sim back into the profile. */
   syncFrom(p: PlayerState): void {
     this.data.xp = { ...p.xp };
+    if (p.champion) this.champion.xp = p.champion.xp;
   }
 }
