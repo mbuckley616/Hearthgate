@@ -703,6 +703,23 @@ export const tuning = {
     detonateDamageBonus: 0.3,
   },
 
+  /**
+   * The loop's stakes and rewards (P1; design doc: Core loop, Rest rooms). On a generated floor finds
+   * are carried until a rest room or the Warden's fall banks them, and a wipe loses them. Banking pays
+   * for the fight rooms cleared on that floor: coin to each player, lumber and stone to the village
+   * the run set out from. Each floor deeper pays depthBonus more, and makes a rare drop that much likelier.
+   */
+  loop: {
+    depthBonus: 0.3,
+    coinPerRoom: 12,
+    lumberPerRoom: 4,
+    stonePerRoom: 3,
+    /** The Warden's hall pays this on top of its room. */
+    bossCoin: 60,
+    bossLumber: 12,
+    bossStone: 12,
+  },
+
   /** The run (brief: "A run"): antechamber, then waves, then the Warden. */
   run: {
     introMs: 1500,
@@ -1439,6 +1456,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'warden.spawnMs': [0, 4500, 10],
   'warden.deathMs': [0, 9000, 10],
   'warden.knockbackTaken': [0, 2, 0.01],
+  'loop.depthBonus': [0, 1, 0.05],
+  'loop.coinPerRoom': [0, 100, 1],
+  'loop.lumberPerRoom': [0, 40, 1],
+  'loop.stonePerRoom': [0, 40, 1],
+  'loop.bossCoin': [0, 500, 5],
+  'loop.bossLumber': [0, 100, 1],
+  'loop.bossStone': [0, 100, 1],
   'run.introMs': [0, 4500, 10],
   'run.gateWaitMs': [0, 30000, 500],
   'run.restMs': [0, 15000, 10],

@@ -37,6 +37,7 @@ import { Hud } from '../ui/Hud';
 import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
+import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { Settings } from '../ui/Settings';
 import { StyleBar } from '../ui/StyleBar';
 import { TitleScreen } from '../ui/TitleScreen';
@@ -99,6 +100,15 @@ export class Game {
   private readonly enemies: EnemiesView;
   private telegraphs: TelegraphView;
   private readonly runUi = new RunUi();
+  private readonly summary = new RunSummary();
+  /** Whether this browser opened its first room as a village of its own (Play), not a friend's by code. */
+  private readonly opensVillage: boolean;
+  /** That village's code once joined: lumber and stone banked on its runs are kept here (P1). */
+  private ownVillage: string | null = null;
+  /** The village the current run set out from, and the run's tally so far; null outside a run. */
+  private runHome: string | null = null;
+  private tally: RunTally | null = null;
+  private lastKind = '';
   private readonly drops = new DropView();
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
@@ -131,6 +141,7 @@ export class Game {
     // ?hand=NAME plays a hand-built dungeon from this browser or the game's own (the editor's Play, T4b).
     const hand = params.has('hand') ? findDungeon(params.get('hand')!) : null;
     const floorOptions = { seed: num('seed') ?? Math.floor(Math.random() * 1e9), pieces: num('pieces'), floors: num('floors'), floor: num('at'), ...(hand ? { hand } : {}) };
+    this.opensVillage = !join && create === 'village';
     this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, create, create === 'floor' ? floorOptions : {});
     this.builtWorld = this.world;
     setLookMood(this.session.kind);
@@ -312,6 +323,7 @@ export class Game {
     }
     this.minimap.setFloor(level.dungeon ?? null);
     this.runUi.setFloor(level.dungeon?.def.spec ?? null);
+    this.runTally(kind);
     for (const [id, r] of this.remoteHeroes) {
       this.gfx.scene.remove(r.view.root, r.view.effects);
       r.plate.dispose();
@@ -324,6 +336,30 @@ export class Game {
     this.pending = Game.noPresses();
     this.cam.setColliders(this.world.colliders);
     this.cam.yaw = (level.spawn.yawDeg * Math.PI) / 180 + Math.PI;
+  }
+
+  /**
+   * A run is village to village (P1): leaving a village for a floor starts its tally, and the first
+   * village after it shows the summary. The village we opened ourselves is where our lumber goes.
+   */
+  private runTally(kind: string): void {
+    if (kind === 'village') {
+      if (this.opensVillage && this.ownVillage === null) this.ownVillage = this.session.code;
+      if (this.tally && (this.tally.banked > 0 || this.tally.lost > 0 || this.tally.deepest > 0)) this.summary.show(this.tally);
+      this.tally = null;
+      this.runHome = this.session.code;
+    } else if (kind === 'floor') {
+      if (this.lastKind === 'village' || !this.tally) {
+        this.tally = newTally();
+        this.tally.ownVillage = this.runHome !== null && this.runHome === this.ownVillage;
+      }
+      const spec = this.world.level.dungeon?.def.spec;
+      if (spec) {
+        this.tally.deepest = Math.max(this.tally.deepest, spec.floor);
+        this.tally.floors = spec.floors;
+      }
+    }
+    this.lastKind = kind;
   }
 
   /**
@@ -444,7 +480,10 @@ export class Game {
     // Run over: anyone's F / A asks the server to start again (the slice's host did it itself); the view follows the snapshot.
     const village = !!this.world.level.village;
     if (!village && (world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
-    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact'), realDt);
+    // The run's summary takes the first F (or A, or Escape) home, before any villager does.
+    const closeSummary = this.summary.visible && (actions.pressed.has('interact') || actions.pressed.has('menuBack'));
+    if (closeSummary) this.summary.hide();
+    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact') && !closeSummary, realDt);
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 
@@ -464,7 +503,7 @@ export class Game {
       this.presentTime,
     );
     if (village) this.runUi.hide();
-    else this.runUi.update(world, realDt, 'host');
+    else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
     if (actions.pressed.has('map')) this.minimap.toggle();
     this.minimap.update(world, curr, localId, this.session.portals, realDt);
@@ -635,6 +674,28 @@ export class Game {
     const localId = this.session.localId;
     let dirty = false;
     for (const ev of events) {
+      // On a floor a find is only carried until the rest room banks it (P1); the banked event hands it over.
+      if (ev.kind === 'pickup' && ev.playerId === localId && ev.carried) continue;
+      if (ev.kind === 'banked' && ev.playerId === localId) {
+        let left = 0;
+        for (const item of ev.items) if (!this.profile.addItem(item)) left++;
+        if (left > 0) this.hud.toast(`<b>Your bag is full</b><span>${left} banked find${left === 1 ? ' was' : 's were'} left behind</span>`, 'common');
+        this.profile.data.coin += ev.coin;
+        const own = this.tally ? this.tally.ownVillage : false;
+        if (own) {
+          this.profile.village.lumber += ev.lumber;
+          this.profile.village.stone += ev.stone;
+        }
+        if (this.tally) {
+          this.tally.banked += ev.items.length;
+          this.tally.coin += ev.coin;
+          this.tally.lumber += ev.lumber;
+          this.tally.stone += ev.stone;
+        }
+        this.applyProfile(false);
+        dirty = true;
+      }
+      if (ev.kind === 'findsLost' && ev.playerId === localId && this.tally) this.tally.lost += ev.count;
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         // Found gear goes in the bag, or on the body if that slot is bare; a full bag leaves it behind.
         const worn = JSON.stringify(this.profile.data.worn);

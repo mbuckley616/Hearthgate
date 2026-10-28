@@ -93,15 +93,15 @@ export class RunUi {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : `Room ${ev.wave}  ·  the doors are shut`, ev.title);
       else if (ev.kind === 'waveCleared') this.showBanner('Room cleared', `The doors open  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
-      else if (ev.kind === 'rested') this.showBanner('Your finds are safe', 'Violet ring deeper  ·  gold ring home');
+      else if (ev.kind === 'rested') this.showBanner('Your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
       else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
 
-  update(sim: SimState, dt: number, role: 'host' | 'client'): void {
+  update(sim: SimState, dt: number, role: 'host' | 'client', carried = 0): void {
     this.now += dt;
-    if (this.floor) return this.updateFloor(sim, this.floor);
+    if (this.floor) return this.updateFloor(sim, this.floor, carried);
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
 
@@ -138,7 +138,7 @@ export class RunUi {
     }
   }
 
-  private updateFloor(sim: SimState, spec: FloorSpec): void {
+  private updateFloor(sim: SimState, spec: FloorSpec, carried: number): void {
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
     const boss = sim.enemies.find((e) => e.id === r.bossId && e.ai !== 'dead');
@@ -150,7 +150,8 @@ export class RunUi {
     }
     const where = `floor ${spec.floor} of ${spec.floors}`;
     this.timer.style.display = 'block';
-    this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}`;
+    // What a wipe would cost (P1): finds carried since the last rest room.
+    this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${carried > 0 ? `  ·  carrying ${carried} unbanked` : ''}`;
     // The way on, for a while after arriving; the doors' wait whenever one is holding for the party.
     const waiting = r.phase === 'ante' && r.gateWait >= 0;
     const arriving = r.phase === 'ante' && this.now - this.floorSince < 8;
