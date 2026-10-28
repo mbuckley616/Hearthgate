@@ -248,7 +248,7 @@ test("Keeper Wren turns the village's ring to a hand-built dungeon", async ({ pa
   expect(errors).toEqual([]);
 });
 
-test("the bag and the body: wear a bow from the bag by keys alone, and 1 takes the sword back", async ({ page }) => {
+test("the bag and the body: wear a bow from the bag by keys alone, and 1 is an ability, not a swap", async ({ page }) => {
   const errors: string[] = [];
   await page.goto("/?play");
   await page.evaluate(() => localStorage.clear());
@@ -271,8 +271,10 @@ test("the bag and the body: wear a bow from the bag by keys alone, and 1 takes t
     });
   await expect.poll(drawn).toEqual({ look: "ash-shortbow", dressed: true, bow: true, sword: false });
   await page.keyboard.press("KeyI");
+  // 1 is an ability now (C3): it no longer takes the sword back mid-outing.
   await page.keyboard.press("Digit1");
-  await expect.poll(style).toBe("sword");
+  await page.waitForTimeout(500);
+  expect(await style()).toBe("bow");
   expect(errors).toEqual([]);
 });
 

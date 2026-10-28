@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Music, type Mood } from '../audio/Music';
 import { Sfx } from '../audio/Sfx';
 import { OrbitCamera } from '../camera/OrbitCamera';
-import { tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { tuning } from '@hearthgate/shared/config/tuning';
 import { DebugPanel } from '../debug/DebugPanel';
 import { HitboxOverlay } from '../debug/HitboxOverlay';
 import { GamepadSource } from '../input/GamepadSource';
@@ -452,9 +452,8 @@ export class Game {
     if (actions.pressed.has('jump')) this.pending.jump = true;
     if (actions.pressed.has('ability1')) this.pending.ability1 = true;
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
-    const swap = this.requestedStyle(actions);
-    if (swap) this.pending.swapTo = swap;
-    // The hero fights with the weapon in hand (T5): after a change in the bag, or on joining, follow it.
+    // The hero fights with the weapon in hand (T5): after a change on the hero screen, or on joining, follow it.
+    // Mid-fight the server holds the change until the fight is over (C3), so it is asked for again each tick.
     const meNow = this.me();
     if (meNow && !this.pending.swapTo && meNow.mode !== 'down' && meNow.style !== this.profile.style) this.pending.swapTo = this.profile.style;
     const cmd = this.buildCommand(actions);
@@ -767,32 +766,6 @@ export class Game {
     return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false };
   }
 
-  /** 1/2/3 pick a style; wheel and d-pad cycle from the current one. */
-  /**
-   * 1, 2 and 3 (and the wheel) take the best weapon of that kind from the bag into the hand (T5: one
-   * hero, any weapon); the style follows the weapon. Without one in the bag nothing changes.
-   */
-  private requestedStyle(actions: ActionFrame): Style | null {
-    let want: Style | null = null;
-    if (actions.pressed.has('style1')) want = 'sword';
-    else if (actions.pressed.has('style2')) want = 'bow';
-    else if (actions.pressed.has('style3')) want = 'staff';
-    else {
-      const step = (actions.pressed.has('styleNext') ? 1 : 0) - (actions.pressed.has('stylePrev') ? 1 : 0);
-      if (!step) return null;
-      const carried = this.profile.carriedStyles();
-      const at = carried.indexOf(this.profile.style);
-      want = carried[(at + step + carried.length) % carried.length];
-    }
-    if (want === this.profile.style) return null;
-    if (!this.profile.readyWeapon(want)) {
-      this.hud.toast(`<b>You carry no ${want === 'sword' ? 'sword' : want === 'bow' ? 'bow' : 'staff'}</b><span>Find one, or open the bag (I)</span>`, 'common');
-      return null;
-    }
-    this.applyProfile(false);
-    return want;
-  }
-
   private handleMetaActions(actions: ActionFrame): void {
     if (actions.pressed.has('debugPanel')) {
       this.debug.toggle();
@@ -868,9 +841,9 @@ export class Game {
           <tr><td>Walk</td><td>light stick tilt</td></tr>
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
           <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
-          <tr><td>Abilities</td><td>Q, E · LB, RB</td></tr>
+          <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB</td></tr>
           <tr><td>Lock on</td><td>Tab · middle click · right stick click (flick to switch)</td></tr>
-          <tr><td>Swap hero</td><td>1 knight · 2 archer · 3 mage · wheel · D-pad</td></tr>
+          <tr><td>Weapon</td><td>one for the outing: choose it under I, outside a fight</td></tr>
           <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
           <tr><td>Guard</td><td>hold right click · hold L · LT / L2 (raise it just before a hit to parry)</td></tr>
           <tr><td>Jump</td><td>Space · Y / Triangle</td></tr>

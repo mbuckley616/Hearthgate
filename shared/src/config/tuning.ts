@@ -124,6 +124,11 @@ export const tuning = {
      * attack this long turns the step into the heavy for the string so far, and holding chargeMs more
      * reaches charge level 2. Off in the parity test: the slice's chain has no heavies.
      */
+    /**
+     * One weapon set per outing (C3; Michael, 28 Oct): the weapon changes on the hero screen, and only
+     * outside a fight. The slice swapped mid-fight with 1, 2 and 3; the parity test turns this back on.
+     */
+    swapInFight: false,
     heavies: true,
     heavyHoldMs: 250,
     chargeMs: 450,

@@ -73,7 +73,7 @@ export class Hud {
     this.combo.append(this.comboCount, label);
 
     this.abilityRoot.className = 'hud-abilities';
-    for (const key of ['Q', 'E']) {
+    for (const key of ['1', '2']) {
       const root = document.createElement('div');
       root.className = 'hud-ability';
       const keyEl = document.createElement('div');

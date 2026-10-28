@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, heavies: true, flow: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, heavies: true, flow: true, swap: false };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -32,9 +32,12 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.maxLevel = tuning.progression.maxLevel;
     kept.heavies = tuning.combo.heavies;
     kept.flow = tuning.flow.enabled;
+    kept.swap = tuning.combo.swapInFight;
     tuning.coop.bleedOut = false;
     // The slice's chain has no heavies (C1).
     tuning.combo.heavies = false;
+    // The slice swaps weapons mid-fight (C3 keeps one per outing).
+    tuning.combo.swapInFight = true;
     // Nor a Flow meter (C2).
     tuning.flow.enabled = false;
     tuning.gear.catalogue = false;
@@ -49,6 +52,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.progression.maxLevel = kept.maxLevel;
     tuning.combo.heavies = kept.heavies;
     tuning.flow.enabled = kept.flow;
+    tuning.combo.swapInFight = kept.swap;
   });
 
   for (const sc of SCENARIOS) {

@@ -317,6 +317,12 @@ function waitingOnHold(p: PlayerState, cmd: PlayerCommand): boolean {
   return p.attackCharge === 1 && hold < c.heavyHoldMs + c.chargeMs;
 }
 
+/** A fight is on: the doors are shut on a room, or the arena's waves are running. */
+export function fightOn(state: SimState): boolean {
+  const phase = state.run.phase;
+  return phase === 'intro' || phase === 'wave' || phase === 'rest';
+}
+
 /** Accelerate toward the commanded velocity, capped at maxSpeed; optionally turn to face it. */
 function steer(p: PlayerState, cmd: PlayerCommand, moveMag: number, maxSpeed: number, dt: number, turn: boolean): void {
   const mv = tuning.movement;
@@ -440,7 +446,8 @@ export function stepPlayer(
     cds[1] = Math.max(0, cds[1] - dt);
   }
   const abilitySlot: 0 | 1 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : null;
-  if (cmd.swapTo && cmd.swapTo !== p.style) p.queuedSwap = cmd.swapTo;
+  // One weapon set per outing (C3): a change of weapon waits until no fight is on.
+  if (cmd.swapTo && cmd.swapTo !== p.style && (tuning.combo.swapInFight || !fightOn(state))) p.queuedSwap = cmd.swapTo;
 
   const moveMag = Math.min(1, Math.hypot(cmd.moveX, cmd.moveZ));
   const canDodge = p.grounded && p.dodgeCharges > 0 && p.dodgeCooldown <= 0;

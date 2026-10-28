@@ -13,10 +13,11 @@ export class StyleBar {
 
   constructor() {
     this.root.className = 'style-bar';
-    STYLES.forEach((style, i) => {
+    STYLES.forEach((style) => {
       const chip = document.createElement('div');
       chip.className = 'style-chip';
-      chip.innerHTML = `<span class="style-key">${i + 1}</span><img class="pixel-art style-icon" src="${iconUrl(ICONS[style])}" alt=""><span class="style-name">${LABELS[style]}</span>`;
+      // No key on the chip (C3): the weapon is chosen on the hero screen, not swapped mid-fight.
+      chip.innerHTML = `<img class="pixel-art style-icon" src="${iconUrl(ICONS[style])}" alt=""><span class="style-name">${LABELS[style]}</span>`;
       chip.title = LABELS[style];
       const level = document.createElement('span');
       level.className = 'style-level';
