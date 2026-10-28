@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C2: Flow
+
+**What changed**
+
+- **A rhythm meter on the hero** (`PlayerState.flow`, `sim/flow.ts`, `tuning.flow`).
+- **The beat.** A press as the chain's next step opens (120 ms before to 160 ms after) is on the beat. It is judged on the tick the press was made for, presses during a hit's freeze included, so the server and the prediction agree.
+- **What fills it.** An attack's earnings land with its first hit, so swings at the air earn nothing:
+  - a light: 8 on the beat, 3 off it
+  - a heavy: 14 on the beat, 5 off it
+  - the same chain a third time running: half
+  - a perfect parry, or a dodge that slips a hit (once a dodge): 20
+  - a combo payoff: a whole tier
+- **What empties it.** A hit taken costs a tier, and the meter drains after 2.5 s without fighting.
+- **The tiers:**
+  - I: attacks 5% faster.
+  - II: the trail runs hotter.
+  - III: a heavy hit lands but does not interrupt.
+  - Full: a charged heavy becomes a Crescendo (charge 3, twice the damage) and spends the meter.
+- **Harmony:** the payer and another player both at Flow III add 20% to a combo payoff.
+- **On screen and in the music.** A thin meter sits under the health bar with tier ticks and a label ("Crescendo: charge a heavy" when full). The fight music adds a layer a tier: hats, then the lead every bar, then bells.
+- **Off in the parity test:** parity identical.
+
+**Learned**
+
+- **The first press of a chain from standing is never on the beat;** there is no beat to keep yet. A press that starts a new chain from the last hit's recovery is, so a player who keeps chaining keeps the rhythm.
+- **Corrections in a brute fight swing from 11 to 49** over twelve seconds with Flow on or off alike. Flow moves the hero only from tier I (5% faster attacks), so it is not the cause.
+- **One smoke failure came from my own scratch runs.** God mode and a Flow switch left on a shared local server failed a test; on fresh servers it was 7/7. Scratch runs should restore what they tune, or use their own server.
+
+**Next**
+
+- C3, one weapon set per outing.
+- Flow needs a hand on it: whether the beat window feels like a rhythm, and whether III is reachable in a real fight.
+
 ## 2026-10-28: local session, C1: light and heavy strings
 
 **What changed**
