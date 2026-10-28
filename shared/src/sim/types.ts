@@ -218,6 +218,10 @@ export interface EnemyState {
   shatterUntil: number;
   skewerUntil: number;
   detonateUntil: number;
+  /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
+  shatterBy?: string;
+  skewerBy?: string;
+  detonateBy?: string;
 }
 
 /** Arrows, magic bolts and bursts. Bursts sit still and expand. */

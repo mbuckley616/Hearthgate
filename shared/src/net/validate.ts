@@ -3,7 +3,7 @@ import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
-import { CHAMPION_IDS, championProblem, type ChampionRanks } from '../sim/champion';
+import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
@@ -109,7 +109,12 @@ export function readLoadout(v: unknown): Loadout | null {
       if (!CHAMPION_IDS.includes(id as never) || !isNum(n) || n < 0) return null;
       ranks[id as keyof ChampionRanks] = Math.trunc(n);
     }
-    const champion = { xp: c.xp, ranks };
+    const champion: ChampionState = { xp: c.xp, ranks };
+    // Slotted perks (T6c): known ids; championProblem counts them.
+    if (c.slots !== undefined) {
+      if (!Array.isArray(c.slots) || c.slots.length > SLOTTED_IDS.length || !c.slots.every((id) => SLOTTED_IDS.includes(id as never))) return null;
+      champion.slots = [...(c.slots as SlottedId[])];
+    }
     if (championProblem(champion)) return null;
     loadout.champion = champion;
   }

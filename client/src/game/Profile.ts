@@ -18,7 +18,19 @@ import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
-import { CHAMPION_IDS, championMaxRanks, championPointsEarned, championPointsSpent, emptyChampion, type ChampionId, type ChampionState } from '@hearthgate/shared/sim/champion';
+import {
+  CHAMPION_IDS,
+  SLOTTED_IDS,
+  championMaxRanks,
+  championPointsEarned,
+  championPointsSpent,
+  emptyChampion,
+  slotCount,
+  slottedUnlocked,
+  type ChampionId,
+  type ChampionState,
+  type SlottedId,
+} from '@hearthgate/shared/sim/champion';
 
 const STORAGE_KEY = 'hearthgate.profile.v2';
 /** The slice's save, read once and carried into the bag and body (T5b). */
@@ -115,7 +127,8 @@ export class Profile {
       const parsed = JSON.parse(raw) as ChampionState;
       const ranks: ChampionState['ranks'] = {};
       for (const id of CHAMPION_IDS) if (Number.isFinite(parsed.ranks?.[id])) ranks[id] = parsed.ranks[id];
-      return { xp: Number.isFinite(parsed.xp) ? Math.max(0, parsed.xp) : 0, ranks };
+      const slots = Array.isArray(parsed.slots) ? [...new Set(parsed.slots.filter((id) => SLOTTED_IDS.includes(id)))].slice(0, slotCount()) : [];
+      return { xp: Number.isFinite(parsed.xp) ? Math.max(0, parsed.xp) : 0, ranks, slots };
     } catch {
       return emptyChampion();
     }
@@ -275,6 +288,19 @@ export class Profile {
     this.save();
   }
 
+  /**
+   * Slot an open perk into a free slot, or take it out (T6c). A slotted perk whose constellation later
+   * loses the points stays slotted and does nothing until they are back, as on the server.
+   */
+  toggleSlot(id: SlottedId): void {
+    const slots = (this.champion.slots ??= []);
+    const at = slots.indexOf(id);
+    if (at >= 0) slots.splice(at, 1);
+    else if (slots.length < slotCount() && slottedUnlocked(this.champion.ranks, id)) slots.push(id);
+    else return;
+    this.save();
+  }
+
   /** What this player brings into a fight (their own, also in co-op): levels, talents, worn gear and name. */
   loadout(): Loadout {
     const talents = structuredClone(this.data.talents);
@@ -283,7 +309,7 @@ export class Profile {
     const mods = wornMods(this.data.worn);
     const ranks = { ...this.champion.ranks };
     for (const id of CHAMPION_IDS) if ((ranks[id] ?? 0) > championMaxRanks(id)) ranks[id] = championMaxRanks(id);
-    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn), champion: { xp: this.champion.xp, ranks } };
+    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn), champion: { xp: this.champion.xp, ranks, slots: (this.champion.slots ?? []).slice(0, slotCount()) } };
   }
 
   /** Pull XP earned in the sim back into the profile. */
