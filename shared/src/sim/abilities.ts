@@ -33,7 +33,8 @@ export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, c
   p.vx = 0;
   p.vz = 0;
   // Face the soft target (or the locked one, or the aim) for directional abilities; shots also pitch toward it.
-  const target = pickSoftTarget(state, p, cmd, targetingRange(p));
+  // Free aim (D12): the reticle, as for an attack.
+  const target = freeAim(p, cmd) ? null : pickSoftTarget(state, p, cmd, targetingRange(p));
   p.attackTarget = target ? target.id : -1;
   const yaw = target ? Math.atan2(target.x - p.x, target.z - p.z) : Math.atan2(cmd.aimX, cmd.aimZ);
   if (kind !== 'blink' && (target || Math.hypot(cmd.aimX, cmd.aimZ) > 0.01)) p.yaw = yaw;
@@ -275,6 +276,14 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
  * Soft targeting (brief): the best enemy in a cone around the aim, within the
  * style's range. A locked target wins if it's in range.
  */
+/**
+ * Free aim (D12): a ranged weapon, no lock-on, and the browser sent a pitch. Shots go exactly through
+ * the reticle, with no soft target to turn them; lock-on keeps the slice's aim.
+ */
+export function freeAim(p: PlayerState, cmd: PlayerCommand): boolean {
+  return cmd.aimPitch !== undefined && cmd.lockTarget < 0 && p.style !== 'sword' && Math.hypot(cmd.aimX, cmd.aimZ) > 0.01;
+}
+
 export function pickSoftTarget(state: SimState, p: PlayerState, cmd: PlayerCommand, range: number): EnemyState | null {
   const tg = tuning.targeting;
   const lock = state.enemies.find((e) => e.id === cmd.lockTarget && isTargetable(e));

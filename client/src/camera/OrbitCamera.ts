@@ -60,6 +60,9 @@ export class OrbitCamera {
   /** The player's zoom, a multiple of tuning.camera.distance, and the one drawn as it eases there. */
   private zoom = loadZoom();
   private shownZoom = this.zoom;
+  /** Over the right shoulder (D12): wanted, and how far there it has eased (0 to 1). */
+  private shoulderOn = false;
+  private shoulder = 0;
 
   constructor(
     aspect: number,
@@ -87,7 +90,13 @@ export class OrbitCamera {
 
   /** How far behind the pivot the camera wants to sit, with the player's zoom. */
   private get reach(): number {
-    return tuning.camera.distance * this.shownZoom;
+    const c = tuning.camera;
+    return c.distance * this.shownZoom * (1 + (c.shoulderZoom - 1) * this.shoulder);
+  }
+
+  /** Over the shoulder while free aiming with a ranged weapon (D12); centred otherwise. */
+  setShoulder(on: boolean): void {
+    this.shoulderOn = on;
   }
 
   private hardCast(pivot: Vec3, yaw: number, pitch: number): number {
@@ -156,6 +165,18 @@ export class OrbitCamera {
       this.pivot.z += (pivotTarget.z - this.pivot.z) * kxz;
     }
     const pivot: Vec3 = { x: this.pivot.x, y: this.pivot.y, z: this.pivot.z };
+    // Over the shoulder (D12): the pivot moves right of the hero, short of any wall there, so the
+    // hero sits left of the reticle instead of under it.
+    this.shoulder += ((this.shoulderOn ? 1 : 0) - this.shoulder) * (1 - Math.exp(-c.shoulderRate * dt));
+    const side = c.shoulderOffset * this.shoulder;
+    if (side > 0.01) {
+      const b = this.basis();
+      const right = { x: b.rx, y: 0, z: b.rz };
+      const room = sphereCast(pivot, right, side + c.collisionRadius, c.collisionRadius, this.colliders, blocksCamera) - c.collisionRadius;
+      const off = Math.max(0, Math.min(side, room));
+      pivot.x += right.x * off;
+      pivot.z += right.z * off;
+    }
 
     // Orbit velocity, so collision can react to where the camera is about to swing.
     if (dt > 0) {
@@ -204,7 +225,7 @@ export class OrbitCamera {
     const cam = this.camera.position;
     cam.set(pivot.x + dir.x * this.dist, pivot.y + dir.y * this.dist, pivot.z + dir.z * this.dist);
     // Frame hero and target together while locked on.
-    this.lookPoint.copy(this.pivot);
+    this.lookPoint.set(pivot.x, pivot.y, pivot.z);
     if (this.lockPoint) this.lookPoint.lerp(this.lockPoint, tuning.lockOn.framing);
     this.camera.lookAt(this.lookPoint);
 

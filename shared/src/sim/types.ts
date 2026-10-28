@@ -107,6 +107,8 @@ export interface PlayerState {
   invulnTime: number;
   /** Soft-target enemy id for the current attack, or -1. */
   attackTarget: number;
+  /** The last command's free-aim pitch (D12), for the shot that leaves later in the attack; absent without free aim. */
+  aimPitch?: number;
   /** Lunge distance for the current swing (stretched toward a soft target). */
   attackLunge: number;
   /** Ability being performed (mode 'ability'). */
@@ -457,6 +459,12 @@ export interface PlayerCommand {
   /** Camera forward on the ground plane: attacks face it when there's no move input. */
   aimX: number;
   aimZ: number;
+  /**
+   * Free aim (D12): the shot's pitch through the reticle, radians up from level, with aimX/aimZ the
+   * heading from the hand to the aim point. Sent only with a ranged weapon out and no lock-on; a
+   * ranged attack then skips soft targeting and flies along it. Absent in the slice.
+   */
+  aimPitch?: number;
   /** Style to swap to, or null for no swap. */
   swapTo: Style | null;
   /** Q / E pressed since the last tick. */

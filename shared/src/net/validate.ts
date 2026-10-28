@@ -32,6 +32,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
   if (swapTo !== null && !STYLES.includes(swapTo as Style)) return null;
   if (v.attackHeld !== undefined && !isBool(v.attackHeld)) return null;
   if (v.ability3 !== undefined && !isBool(v.ability3)) return null;
+  if (v.aimPitch !== undefined && !isNum(v.aimPitch)) return null;
   const len = Math.hypot(moveX, moveZ);
   const s = len > 1 ? 1 / len : 1;
   return {
@@ -51,6 +52,8 @@ export function readCommand(v: unknown): PlayerCommand | null {
     interact: v.interact as boolean,
     ...(v.attackHeld === true ? { attackHeld: true } : {}),
     ...(v.ability3 === true ? { ability3: true } : {}),
+    // Straight up or down is as far as a shot can point.
+    ...(v.aimPitch !== undefined ? { aimPitch: Math.max(-Math.PI / 2, Math.min(Math.PI / 2, v.aimPitch as number)) } : {}),
   };
 }
 

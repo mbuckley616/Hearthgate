@@ -156,11 +156,12 @@ export function spawnBolt(state: SimState, p: PlayerState, payload: Payload, yaw
 
 /**
  * Vertical aim toward the soft target's chest, so shots reach archers on the
- * ledge (or heroes on it can shoot down). Level when there's no target.
+ * ledge (or heroes on it can shoot down). Level when there's no target, or
+ * through the reticle with free aim (D12).
  */
 function aimPitch(state: SimState, p: PlayerState, originY: number): number {
   const t = state.enemies.find((e) => e.id === p.attackTarget && isTargetable(e));
-  if (!t) return 0;
+  if (!t) return p.aimPitch ?? 0;
   const dy = t.y + enemyStats(t.kind).height * 0.6 - originY;
   const d = Math.max(0.5, Math.hypot(t.x - p.x, t.z - p.z));
   return Math.atan2(dy, d);
