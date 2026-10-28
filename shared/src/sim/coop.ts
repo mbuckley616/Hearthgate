@@ -5,6 +5,7 @@ import type { Mods } from './gear';
 import { createPlayer } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
+import { championHealth, championRevive, slotted, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 /**
@@ -22,6 +23,8 @@ export interface Loadout {
   maxHp: number;
   /** The catalogue ids of what the hero wears (T5c), so every player draws it. Absent in the slice. */
   look?: string[];
+  /** The player's champion points (T6b). Absent in the slice. */
+  champion?: ChampionState;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -30,10 +33,23 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   p.xp = { ...l.xp };
   p.talents = structuredClone(l.talents);
   p.mods = structuredClone(l.mods);
-  p.maxHp = l.maxHp;
+  // Vitality is applied here, on the server's numbers, so its ceiling holds whatever the browser sends.
+  p.maxHp = l.champion ? Math.round(l.maxHp * (1 + championHealth(l.champion))) : l.maxHp;
   if (l.look) p.look = [...l.look];
   else delete p.look;
+  if (l.champion) p.champion = structuredClone(l.champion);
+  else delete p.champion;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
+}
+
+/**
+ * Whether slotted perks may change here (plan 3a; Michael, 28 Oct): in the village, in a floor's rest
+ * room once the party has reached it, and in the arena's antechamber. Elsewhere a hero keeps its four.
+ */
+export function slotsOpen(state: SimState, village: boolean): boolean {
+  if (village) return true;
+  if (state.floor) return state.floor.rested;
+  return state.run.phase === 'ante';
 }
 
 /** A friend joins: beside the first standing hero, briefly invulnerable (brief: 2 s). */
@@ -58,6 +74,8 @@ export function removePlayer(state: SimState, id: string): void {
   if (!p) return;
   state.players = state.players.filter((pl) => pl.id !== id);
   state.drops = state.drops.filter((d) => d.owner !== id);
+  // Leaving mid-floor gives up what was not banked; the next to take this id starts with nothing.
+  if (state.floor) delete state.floor.carried[id];
   state.pendingHits = state.pendingHits.filter((h) => h.playerId !== id);
   state.events.push({ kind: 'playerLeft', playerId: id, name: p.name });
 }
@@ -88,12 +106,12 @@ export function stepRevives(state: SimState, commands: Record<string, PlayerComm
       continue;
     }
     down.reviveProgress += dt;
-    if (down.reviveProgress * 1000 >= c.reviveMs) {
+    if (down.reviveProgress * 1000 >= c.reviveMs * (1 - championRevive(helper))) {
       const draught = down.bleed !== undefined && down.bleed <= 0;
       if (draught) helper.draughts = (helper.draughts ?? 1) - 1;
       delete down.bleed;
       down.mode = 'move';
-      down.hp = Math.max(1, down.maxHp * c.reviveHpFrac);
+      down.hp = Math.max(1, down.maxHp * (slotted(helper, 'lifeline') ? Math.min(1, c.reviveHpFrac * tuning.champion.lifelineHpMult) : c.reviveHpFrac));
       down.invulnTime = tuning.combat.reviveInvulnMs / 1000;
       down.reviveProgress = 0;
       down.downTime = 0;

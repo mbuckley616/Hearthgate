@@ -3,7 +3,7 @@ import { tuning } from '../config/tuning';
 import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
-import { addPlayer, applyLoadout, removePlayer } from '../sim/coop';
+import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
@@ -116,7 +116,14 @@ export class HostSession {
         break;
       case 'loadout': {
         const p = this.sim.players.find((pl) => pl.id === r.id);
-        if (p) applyLoadout(p, msg.loadout, this.sim.run.phase === 'ante');
+        if (!p) break;
+        // Slotted perks change only in the village or a rest room (T6c); elsewhere the hero keeps its four.
+        const l = msg.loadout;
+        if (l.champion && !slotsOpen(this.sim, !!this.world.level.village)) {
+          const kept = p.champion?.slots;
+          l.champion = { xp: l.champion.xp, ranks: l.champion.ranks, ...(kept ? { slots: [...kept] } : {}) };
+        }
+        applyLoadout(p, l, this.sim.run.phase === 'ante');
         break;
       }
       case 'restart':
