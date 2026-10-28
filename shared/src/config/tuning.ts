@@ -1237,6 +1237,13 @@ export const tuning = {
 
   camera: {
     distance: 5.5,
+    /** The player's zoom (the wheel, - and =, the d-pad): a multiple of distance, kept in the browser. */
+    zoomMin: 0.5,
+    zoomMax: 2,
+    /** Each wheel notch or press multiplies or divides the zoom by this. */
+    zoomStep: 1.12,
+    /** How fast the camera eases to a new zoom (1/s). */
+    zoomRate: 12,
     pivotHeight: 1.7,
     fovDeg: 60,
     /** Field of view widens this much at full sprint. */
@@ -1953,6 +1960,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gear.hunterSlowMs': [0, 6000, 100],
 
   'camera.distance': [2, 12, 0.1],
+  'camera.zoomMin': [0.2, 1, 0.05],
+  'camera.zoomMax': [1, 4, 0.05],
+  'camera.zoomStep': [1.01, 1.5, 0.01],
+  'camera.zoomRate': [1, 40, 0.5],
   'camera.pivotHeight': [0.5, 3, 0.05],
   'camera.fovDeg': [30, 100, 1],
   'camera.sprintFovBoostDeg': [0, 20, 0.5],

@@ -255,8 +255,12 @@ test("the bag and the body: wear a bow from the bag by keys alone, and 1 is an a
   await open(page, "play", errors);
   const style = () => page.evaluate(() => (window as unknown as { game: any }).game.me()?.style as string);
   await expect.poll(style).toBe("sword");
-  await page.keyboard.press("KeyI");
+  await page.keyboard.press("Tab");
   await expect(page.locator(".gear-grid")).toBeVisible();
+  // Every item has its icon, the hero is drawn beside the bag, and the levels wait on the Talents tab.
+  await expect(page.locator(".gear-cell.bag .gear-icon")).toHaveCount(2);
+  await expect(page.locator(".gear-detail canvas.hero-preview")).toBeVisible();
+  await expect(page.locator(".equip-heroes")).toHaveCount(0);
   // A new hero carries a shortbow and a staff in the bag; from the head, D goes across to its first space.
   // Held, as a player holds it: a slow headless frame can miss a tap shorter than itself.
   const detail = page.locator(".gear-detail .item-name");
@@ -270,7 +274,10 @@ test("the bag and the body: wear a bow from the bag by keys alone, and 1 is an a
       return { look: (g.me()?.look ?? []).join(), dressed: !!g.hero.dressed, bow: g.hero.bow.group.visible, sword: g.hero.sword.visible };
     });
   await expect.poll(drawn).toEqual({ look: "ash-shortbow", dressed: true, bow: true, sword: false });
-  await page.keyboard.press("KeyI");
+  await page.keyboard.press("Digit2");
+  await expect(page.locator(".equip-heroes .equip-hero")).toHaveCount(3);
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".gear-grid")).toBeHidden();
   // 1 is an ability now (C3): it no longer takes the sword back mid-outing.
   await page.keyboard.press("Digit1");
   await page.waitForTimeout(500);

@@ -40,7 +40,6 @@ import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { Settings } from '../ui/Settings';
-import { StyleBar } from '../ui/StyleBar';
 import { TitleScreen } from '../ui/TitleScreen';
 import { TalkUi } from '../ui/TalkUi';
 import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
@@ -120,7 +119,6 @@ export class Game {
   private readonly sfx = new Sfx();
   private readonly hud = new Hud();
   private readonly crt = new CrtOverlay();
-  private readonly styleBar = new StyleBar();
   private readonly lockOn = new LockOn();
   private readonly debug: DebugPanel;
   private readonly overlay: HTMLElement;
@@ -447,6 +445,8 @@ export class Game {
     }
     this.cam.setLock(this.lockOn.lookPoint(world));
     this.cam.applyLook(actions.look);
+    if (actions.pressed.has('zoomIn')) this.cam.zoomBy(1);
+    if (actions.pressed.has('zoomOut')) this.cam.zoomBy(-1);
     if (actions.pressed.has('dodge')) this.pending.dodge = true;
     if (actions.pressed.has('attack')) this.pending.attack = true;
     if (actions.pressed.has('jump')) this.pending.jump = true;
@@ -516,7 +516,6 @@ export class Game {
       this.kbm.exitPointerLock();
     }
     if (curr) {
-      this.styleBar.update(curr.style, curr.xp, curr.talents);
       const inRun = world.run.phase === 'intro' || world.run.phase === 'wave' || world.run.phase === 'rest';
       this.hud.update(curr, realDt, inRun);
       const mv = tuning.movement;
@@ -843,15 +842,16 @@ export class Game {
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
           <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
           <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB; the off-hand's: 3 (or R) · RT</td></tr>
-          <tr><td>Lock on</td><td>Tab · middle click · right stick click (flick to switch)</td></tr>
-          <tr><td>Weapon</td><td>one for the outing: choose it under I, outside a fight</td></tr>
+          <tr><td>Zoom</td><td>mouse wheel · - and = · d-pad up and down</td></tr>
+          <tr><td>Lock on</td><td>T · middle click · right stick click (flick to switch)</td></tr>
+          <tr><td>Weapon</td><td>one for the outing: choose it under Tab, outside a fight</td></tr>
           <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
           <tr><td>Guard</td><td>hold right click · hold L · LT / L2 (raise it just before a hit to parry)</td></tr>
           <tr><td>Jump</td><td>Space · Y / Triangle</td></tr>
           <tr><td>Revive an ally</td><td>hold F · hold A / Cross</td></tr>
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
           <tr><td>Slow motion</td><td>\\ (backslash)</td></tr>
-          <tr><td>Gear &amp; talents</td><td>I · View (between runs)</td></tr>
+          <tr><td>Gear &amp; talents</td><td>Tab · View (between runs)</td></tr>
           <tr><td>Map: corner or whole floor</td><td>M · Menu / Start (in a dungeon)</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
           <tr><td>Release mouse / pause</td><td>Esc</td></tr>

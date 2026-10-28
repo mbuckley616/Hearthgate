@@ -21,6 +21,8 @@ import {
 import type { ActionFrame } from '../input/actions';
 import type { Profile } from '../game/Profile';
 import { gearLine, nameOf } from './gearText';
+import { gearIconUrl } from './gearIcons';
+import { HeroPreview } from './HeroPreview';
 
 /** The weapon kinds, by the style each fights with (one hero, any weapon: T5). */
 const STYLE_NAMES: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
@@ -60,7 +62,8 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
  * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
  * wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
- * between fights (I, or View on a pad), on a floor between rooms as well.
+ * between fights (Tab, or View on a pad), on a floor between rooms as well. Each weapon kind's level
+ * shows on the Talents tab, and the bag and body tab shows the hero as dressed (Michael, 28 Oct).
  */
 export class EquipScreen {
   private root = document.createElement('div');
@@ -77,6 +80,7 @@ export class EquipScreen {
   /** Seconds until a held direction moves the cursor again. */
   private repeat = 0;
   private lastDir = '';
+  private readonly preview = new HeroPreview();
   visible = false;
 
   constructor(
@@ -90,7 +94,7 @@ export class EquipScreen {
     card.className = 'equip-card';
     const head = document.createElement('div');
     head.className = 'equip-head';
-    head.innerHTML = '<h2>Your hero</h2><span>I, Esc or View to close</span>';
+    head.innerHTML = '<h2>Your hero</h2><span>Tab, Esc or View to close</span>';
     card.append(head, this.body);
     this.root.appendChild(card);
     this.root.addEventListener('click', (e) => this.onClick(e));
@@ -115,6 +119,7 @@ export class EquipScreen {
    */
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
+    if (this.tab === 'gear') this.preview.frame(dt);
     // 1, 2 and 3 are also the abilities (C3): on this screen they only change tab.
     const tab = actions.pressed.has('tab1') ? 'gear' : actions.pressed.has('tab2') ? 'talents' : actions.pressed.has('tab3') ? 'champion' : null;
     if (tab) {
@@ -279,10 +284,16 @@ export class EquipScreen {
         <button data-action="tab" data-tab="champion" class="${this.tab === 'champion' ? 'on' : ''}">3 · Champion${this.profile.championLeft() > 0 ? ` <b>${this.profile.championLeft()}</b>` : ''}</button>
       </div>`;
     this.body.innerHTML = `
-      <div class="equip-heroes">${levels}</div>
       ${tabs}
+      ${this.tab === 'talents' ? `<div class="equip-heroes">${levels}</div>` : ''}
       ${this.tab === 'gear' ? this.gearHtml() : this.tab === 'talents' ? this.talentsHtml() : this.championHtml()}
       <div class="equip-foot">${d.coin.toLocaleString()} coin · Runs ${d.runs} · Wins ${d.wins}</div>`;
+    // The figure's canvas outlives each redraw: put it back in its place and dress it again.
+    const slot = this.body.querySelector('.hero-preview-slot');
+    if (slot) {
+      slot.appendChild(this.preview.canvas);
+      this.preview.show(this.profile.loadout(), this.profile.style);
+    }
   }
 
   private cellHtml(c: Cell, i: number): string {
@@ -292,9 +303,12 @@ export class EquipScreen {
     const chosen = i === this.cursor ? ' chosen' : '';
     if (!item) return `<button class="gear-cell empty ${c.area}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
     const e = entryOf(item);
-    const swatch = `background:linear-gradient(135deg, ${hex(e.material.colors.base)} 55%, ${hex(e.material.colors.trim)})`;
+    const icon = gearIconUrl(e);
+    const picture = icon
+      ? `<img class="pixel-art gear-icon" src="${icon}" alt="">`
+      : `<span class="gear-swatch" style="background:linear-gradient(135deg, ${hex(e.material.colors.base)} 55%, ${hex(e.material.colors.trim)})"></span>`;
     return `<button class="gear-cell ${c.area} ${item.rarity}${chosen}" style="${at}" data-action="cell" data-cell="${i}" title="${nameOf(item)}">
-        <span class="gear-swatch" style="${swatch}"></span><span class="gear-short">${e.shape.name}</span>${label ? `<span class="gear-slot">${label}</span>` : ''}
+        ${picture}<span class="gear-short">${e.shape.name}</span>
       </button>`;
   }
 
@@ -316,6 +330,7 @@ export class EquipScreen {
     return `<div class="gear-layout">
         <div class="gear-grid">${grid}</div>
         <div class="gear-detail">
+          <div class="hero-preview-slot"></div>
           <h3>${c.area === 'bag' ? 'Bag' : BODY_SLOT_NAMES[c.slot]}</h3>
           ${detail}
           ${penalty}
