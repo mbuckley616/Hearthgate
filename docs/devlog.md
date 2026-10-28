@@ -2,6 +2,30 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C1: light and heavy strings
+
+**What changed**
+
+- **Hold to go heavy.** Holding attack turns a step into a heavy (`combo.heavyHoldMs`, 250 ms), and holding 450 ms more reaches charge level 2. It is the same on mouse, keyboard and pad: `attackHeld` is a held field on the command, so prediction and the server step it alike.
+- **A tap is the slice's light, exactly.** A test compares every tick of the five taps with heavies on and off.
+- **Each weapon's string moves** are keyed by the presses that lead to them:
+  - Sword: H overhead cleave, LH rising cut, LLH sweeping arc, LLLH pommel break, LLLLH blade spin, HH ground slam, HHH earthsplitter, and HLL whirling counter (Michael's heavy-light-light example).
+  - Bow and staff have their own seven.
+  - A heavy string without its own move plays H.
+- **Each move borrows a chain step's pose, reach and projectiles** (`stringAnim`), so the views follow without knowing about strings until the moves get poses of their own. The numbers are in `tuning` with slider ranges.
+- **The HUD names each move** as it fires, so the strings are learned by playing.
+- **Behind `combo.heavies`,** which the parity test turns off: parity identical.
+
+**Learned**
+
+- **A hold has to belong to the swing its press started.** The bow's buffer window opens inside the next shot's windup, so pressing and holding for the next heavy turned the *current* light into it. A press made mid-swing now marks its hold as the next swing's (`attackHoldNext`). A test covers it.
+- **Heavies add next to no corrections.** In a browser run, the five taps gave 3 to 4 corrections (the known lunge ease); the three heavy moves after them gave 0 to 1 more, and none were snaps.
+
+**Next**
+
+- C2, Flow.
+- The heavies need poses of their own: today the overhead cleave is the leaping slam's pose.
+
 ## 2026-10-28: local session, P1: the loop's stakes and rewards
 
 **What changed**
