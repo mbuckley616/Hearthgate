@@ -925,6 +925,8 @@ export const tuning = {
     capeDodgePerTier: 0.02,
     /** Walk within this distance of a drop to pick it up. */
     pickupRadius: 1.4,
+    /** Items one player may leave on the floor of a room at once (D13); past it the oldest goes. */
+    maxDropped: 12,
     // Perks.
     bleedTicks: 4,
     bleedTickMs: 500,
@@ -1982,6 +1984,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gear.ringCooldownPerTier': [0, 0.1, 0.01],
   'gear.capeDodgePerTier': [0, 0.1, 0.01],
   'gear.pickupRadius': [0.3, 4, 0.1],
+  'gear.maxDropped': [1, 28, 1],
   'gear.bleedTicks': [1, 20, 1],
   'gear.bleedTickMs': [50, 2000, 10],
   'gear.bleedDamage': [0, 30, 0.5],

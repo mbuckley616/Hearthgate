@@ -1,7 +1,7 @@
 import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
-import { emptyMods, type Perk } from '../sim/gear';
-import { BODY_SLOTS, CATALOGUE } from '../sim/catalogue';
+import { emptyMods, type Perk, type StatKind } from '../sim/gear';
+import { BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
@@ -149,6 +149,32 @@ export function readLoadout(v: unknown): Loadout | null {
   return loadout;
 }
 
+const STAT_KINDS: readonly StatKind[] = ['damage', 'poise', 'maxHp', 'cooldowns', 'dodgeRecharge'];
+
+/**
+ * An item from a player's bag (D13), or null: a catalogue id, a rarity, a known perk, and a bonus no
+ * bigger than a roll could give (catalogue.ts: up to 20 health, or 11%; the slice's rares up to 25%).
+ */
+export function readGearItem(v: unknown): GearItem | null {
+  if (!isObj(v)) return null;
+  if (typeof v.uid !== 'string' || v.uid.length > 40 || typeof v.id !== 'string' || !CATALOGUE.has(v.id)) return null;
+  if (v.rarity !== 'common' && v.rarity !== 'rare') return null;
+  if (v.perk !== null && !PERKS.includes(v.perk as Perk)) return null;
+  let bonus: GearItem['bonus'] = null;
+  if (v.bonus !== null) {
+    const b = v.bonus;
+    if (!isObj(b) || !STAT_KINDS.includes(b.kind as StatKind) || !isNum(b.value)) return null;
+    if (b.value < 0 || b.value > (b.kind === 'maxHp' ? 40 : 0.5)) return null;
+    bonus = { kind: b.kind as StatKind, value: b.value };
+  }
+  const item: GearItem = { uid: v.uid, id: v.id, rarity: v.rarity, perk: v.perk as Perk | null, bonus };
+  if (v.name !== undefined) {
+    if (typeof v.name !== 'string' || v.name.length > 40) return null;
+    item.name = v.name;
+  }
+  return item;
+}
+
 /** One message from a player, checked, or null. */
 export function readToHost(v: unknown): ToHost | null {
   if (!isObj(v)) return null;
@@ -176,6 +202,10 @@ export function readToHost(v: unknown): ToHost | null {
       return { k: 'restart' };
     case 'home':
       return { k: 'home' };
+    case 'drop': {
+      const item = readGearItem(v.item);
+      return item ? { k: 'drop', item } : null;
+    }
     case 'tune': {
       const e = v.edit;
       if (!isObj(e) || typeof e.path !== 'string' || !(isNum(e.value) || isBool(e.value))) return null;

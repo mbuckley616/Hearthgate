@@ -4,6 +4,7 @@ import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
+import { dropFromBag } from '../sim/drops';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
@@ -137,6 +138,9 @@ export class HostSession {
         // The end card's button (D10): a wipe leaves the party down where it fell, so each goes home
         // when they choose; a win's ring still takes the party together.
         if (this.world.level.dungeon && (this.sim.run.phase === 'won' || this.sim.run.phase === 'lost')) this.onHome(peer);
+        break;
+      case 'drop':
+        this.between(() => dropFromBag(this.sim, this.world, r.id, msg.item));
         break;
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).

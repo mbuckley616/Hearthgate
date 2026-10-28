@@ -212,6 +212,7 @@ export class Game {
       this.profile,
       () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
       () => slotsOpen(this.session.view().curr, !!this.world.level.village),
+      (item) => this.session.request({ k: 'drop', item }),
     );
     // Every player may invite: the room is the server's, not one player's.
     this.party = new PartyUi(this.profile.data.name, {

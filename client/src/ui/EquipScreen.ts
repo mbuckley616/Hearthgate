@@ -88,6 +88,8 @@ export class EquipScreen {
     private onChange: () => void,
     /** Whether slotted perks may change here (the village or a rest room, T6c): the server keeps them elsewhere. */
     private canReslot: () => boolean = () => true,
+    /** An item put down from the bag (D13): Game asks the server to lay it at the hero's feet. */
+    private onDrop: (item: GearItem) => void = () => {},
   ) {
     this.root.className = 'equip';
     const card = document.createElement('div');
@@ -232,7 +234,10 @@ export class EquipScreen {
   }
 
   private drop(c: Cell): void {
-    if (c.area !== 'bag' || !this.profile.data.bag[c.space]) return;
+    if (c.area !== 'bag') return;
+    const item = this.profile.data.bag[c.space];
+    if (!item) return;
+    this.onDrop(item);
     this.profile.drop(c.space);
     this.render();
   }
@@ -324,7 +329,7 @@ export class EquipScreen {
     const detail = item
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: take off'}</div>`
       : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
     const free = this.profile.data.bag.filter((i) => !i).length;
     return `<div class="gear-layout">

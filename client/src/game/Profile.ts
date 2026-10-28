@@ -227,7 +227,7 @@ export class Profile {
     return true;
   }
 
-  /** Throw away what is in a bag space (the editor of a full bag). */
+  /** Take what is in a bag space out of the bag: the hero screen's Drop lays it on the floor (D13). */
   drop(space: number): void {
     this.data.bag[space] = null;
     this.save();
