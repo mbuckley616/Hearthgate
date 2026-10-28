@@ -1111,14 +1111,23 @@ export const tuning = {
     piecesPerTier: 8,
     /** Per style level of the party's best hero, averaged over the party. */
     piecesPerLevel: 0.5,
-    /** A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor. */
-    budgetPerCell: 0.45,
+    /**
+     * A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor.
+     * Doubled and more after the feel pass (D1, Michael 28 Oct: three or four a room was easy):
+     * a guard room is four or so, a large room eight to ten, an arena a dozen and more.
+     */
+    budgetPerCell: 1,
     /** Each floor deeper adds this fraction of the budget. */
-    budgetPerFloor: 0.25,
+    budgetPerFloor: 0.35,
     /** Each player past the first adds this much budget (the slice: one grunt a wave). */
-    budgetPerExtraPlayer: 1.5,
+    budgetPerExtraPlayer: 2,
     /** The rest comes as reinforcements once the first group is mostly down. */
-    firstGroupShare: 0.6,
+    firstGroupShare: 0.7,
+    /**
+     * Enemies that may attack each standing hero at once on a generated floor; the arena keeps the
+     * slice's grunt.maxAttackers (two). With rooms this full, two at a time left the rest circling.
+     */
+    attackersPerHero: 3,
     /** Debug: 0 = a fresh seed each run; anything else pins the run's seed (the gate's five floors). */
     seed: 0,
     /** Debug: 0 = pieces from the tier, floor and level; 10 to 50 forces every floor's size. */
@@ -1432,10 +1441,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.piecesPerFloor': [0, 15, 1],
   'dungeon.piecesPerTier': [0, 20, 1],
   'dungeon.piecesPerLevel': [0, 3, 0.1],
-  'dungeon.budgetPerCell': [0.1, 1.5, 0.05],
+  'dungeon.budgetPerCell': [0.1, 3, 0.05],
   'dungeon.budgetPerFloor': [0, 1, 0.05],
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
+  'dungeon.attackersPerHero': [1, 6, 1],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 16, 1],

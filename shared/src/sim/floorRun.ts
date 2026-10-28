@@ -223,14 +223,16 @@ export function roomBudget(room: PieceInfo, floor: number, players: number): num
 
 /**
  * Spend part of the room's budget on enemies at its spots farthest from the heroes, as the slice
- * spawns a wave on the far side of the arena. Small rooms get grunts; archers and brutes come in
- * the bigger ones. Returns how many spawned.
+ * spawns a wave on the far side of the arena. Any room mixes grunts and archers (D1: a guard room of
+ * grunts alone was a queue); brutes come in the bigger ones. Returns how many spawned.
  */
 function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'first' | 'reinforce'): number {
   const spec = world.level.dungeon!.def.spec;
   const share = part === 'first' ? tuning.dungeon.firstGroupShare : 1 - tuning.dungeon.firstGroupShare;
   let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share));
   const big = room.kind !== 'small';
+  // A guard room keeps at least two blades for every bow, so its archers have someone to hide behind.
+  let archers = 0;
   const avgX = state.players.reduce((s, p) => s + p.x, 0) / Math.max(1, state.players.length);
   const avgZ = state.players.reduce((s, p) => s + p.z, 0) / Math.max(1, state.players.length);
   const spots = [...room.spots].sort((a, b) => Math.hypot(b.x - avgX, b.z - avgZ) - Math.hypot(a.x - avgX, a.z - avgZ));
@@ -241,8 +243,9 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
     const roll = nextRandom(state);
     let kind: 'grunt' | 'archer' | 'brute' = 'grunt';
     if (big && budget >= COST.brute && brutes < 1 + Math.floor(spec.floor / 2) && roll < 0.18) kind = 'brute';
-    else if (big && budget >= COST.archer && roll < 0.45) kind = 'archer';
+    else if (budget >= COST.archer && roll < 0.45 && (big || archers * 2 < kinds.length)) kind = 'archer';
     if (kind === 'brute') brutes++;
+    if (kind === 'archer') archers++;
     kinds.push(kind);
     budget -= COST[kind];
   }
