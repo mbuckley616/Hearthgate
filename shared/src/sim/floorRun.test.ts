@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { HostSession } from '../game/HostSession';
 import { PORTAL_HOLD_S, portalsFor, type PortalTo } from '../game/portal';
@@ -11,6 +11,7 @@ import { emptyMods } from './gear';
 import { stepPlayer } from './player';
 import { emptyTalents } from './talents';
 import { idleCommand, type SimEvent } from './types';
+import { floorWorldNow } from './floorRun';
 import { createSimState } from './world';
 
 const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
@@ -41,6 +42,13 @@ const alive = (host: HostSession) => host.sim.enemies.filter((e) => e.ai !== 'de
 
 describe('a generated floor’s run (T4)', () => {
   const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+  // T4's shut doors, kept behind a switch since D8 opened them.
+  beforeAll(() => {
+    tuning.dungeon.shutDoors = true;
+  });
+  afterAll(() => {
+    tuning.dungeon.shutDoors = false;
+  });
 
   it('shuts a fight room behind the party, spawns its group inside, and opens it once cleared', () => {
     const f = floorSession(spec);
@@ -155,6 +163,37 @@ describe('a generated floor’s run (T4)', () => {
     const world = buildWorld(arena);
     const state = createSimState(arena, ['p1'], world);
     expect('floor' in state).toBe(false);
+  });
+});
+
+describe('open doors (D8)', () => {
+  const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+
+  it('starts the fight on the first hero in, never walls the room or pulls the straggler in', () => {
+    const f = floorSession(spec);
+    const room = f.pieces.find((p) => p.fight)!;
+    const entrance = f.pieces[f.level.dungeon!.def.entrance];
+    f.put('p1', openMiddle(room), room);
+    f.put('p2', openMiddle(entrance), entrance);
+    f.tick(1);
+    expect(f.host.sim.run.phase).toBe('intro');
+    expect(f.host.sim.run.gateClosed).toBe(false);
+    expect(f.host.sim.run.gateWait).toBe(-1);
+    f.tick(Math.ceil((tuning.run.introMs / 1000) * 60) + 2);
+    expect(f.host.sim.run.phase).toBe('wave');
+    const p2 = f.host.sim.players[1];
+    expect(insidePiece(room, p2.x, p2.z)).toBe(false);
+    expect(insidePiece(entrance, p2.x, p2.z)).toBe(true);
+
+    // A hero runs out through a doorway mid-fight.
+    const door = room.doors.find((d) => d.open)!;
+    const dir = SIDE_DIR[door.side];
+    const p = f.host.sim.players[0];
+    p.x = door.x - dir.x * 1.5;
+    p.z = door.z - dir.z * 1.5;
+    const world = floorWorldNow(f.world, f.host.sim);
+    for (let i = 0; i < 90; i++) stepPlayer(p, { ...idleCommand(), moveX: dir.x, moveZ: dir.z }, 1 / 60, world, f.host.sim);
+    expect(insidePiece(room, p.x, p.z)).toBe(false);
   });
 });
 

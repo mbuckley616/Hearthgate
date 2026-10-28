@@ -12,8 +12,9 @@ import type { SimState } from './types';
 
 /**
  * A generated floor's run (T4): the slice's arena run, room by room. The party explores freely;
- * when a standing hero steps into a fight room not yet cleared, its doors wait for the rest of the
- * party (the slice's gate wait), then close behind them, bringing in anyone still outside. The
+ * when a standing hero steps into a fight room not yet cleared, its fight starts and the rest of the
+ * party walk in when they like (D8). With dungeon.shutDoors (T4's way) its doors wait for the rest
+ * of the party (the slice's gate wait), then close behind them, bringing in anyone outside. The
  * room's group comes from a budget (its size, the floor, the party), with the slice's
  * reinforcements once it is mostly down; clearing it opens the doors. Health comes back only in
  * the rest room (D7), not after every room as the slice's waves gave it.
@@ -73,16 +74,20 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
         r.gateWait = -1;
         break;
       }
-      r.gateWait = r.gateWait < 0 ? 0 : r.gateWait + dt;
-      const inside = standing.filter((p) => insidePiece(room, p.x, p.z));
-      if (inside.length < standing.length && r.gateWait * 1000 < tuning.run.gateWaitMs) break;
-      bringStragglersIn(state, world, room);
+      // Open doors (D8): the fight starts on the first hero in, and the rest walk in when they like.
+      const shut = tuning.dungeon.shutDoors;
+      if (shut) {
+        r.gateWait = r.gateWait < 0 ? 0 : r.gateWait + dt;
+        const inside = standing.filter((p) => insidePiece(room, p.x, p.z));
+        if (inside.length < standing.length && r.gateWait * 1000 < tuning.run.gateWaitMs) break;
+        bringStragglersIn(state, world, room);
+      }
       f.room = room.id;
       f.fights++;
       r.phase = 'intro';
       r.timer = 0;
       r.gateWait = -1;
-      r.gateClosed = true;
+      r.gateClosed = shut;
       r.reinforced = false;
       if (f.fights === 1) state.events.push({ kind: 'runStart' });
       break;

@@ -1135,6 +1135,12 @@ export const tuning = {
     healOnClear: 0,
     /** Of max health, given to every standing hero as the rest room banks the floor. */
     restHeal: 1,
+    /**
+     * Shut a fight room's doors behind the party, waiting for them and pulling in stragglers (T4).
+     * Off since D8 (Michael 28 Oct: locking a party in is annoying with several players); the
+     * kit keeps its gates for a room that wants them.
+     */
+    shutDoors: false,
     /** Debug: 0 = a fresh seed each run; anything else pins the run's seed (the gate's five floors). */
     seed: 0,
     /** Debug: 0 = pieces from the tier, floor and level; 10 to 50 forces every floor's size. */
