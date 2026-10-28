@@ -9,6 +9,20 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-27: T6: champion points' two details, and how to build it (Claude (local))
+Asked in chat as four cards before building T6 (plan section 3a left two details for this step). Recommendations were: a ceiling of about +15% damage and +15% health on all passive perks together, and no tier cap on perks; champion points shared across a player's characters, as in ESO; resetting them free until Phase 2 brings coin; and three steps, each a PR to try.
+Michael (2026-10-27, in chat): all four as recommended.
+- **Ceiling: +15% damage and +15% health** from all passive perks together. One rule; a portal's tier caps gear only.
+- **Shared** across a player's characters. A browser has one hero today, so this changes nothing until a second character exists; the points sit beside the hero in the save, not inside it.
+- **Respec: free for now**, between runs. In Phase 2 it costs coin at the village shrine, as planned.
+- **Three steps:** T6a, levels to 50 with milestone rows on the talent boards; T6b, champion points' passive perks; T6c, the four slotted perks.
+
+### 2026-10-27: The Phase 1 gate without a second player (Claude (local))
+The gate asks for a mixed-level party to clear a floor with the combo bonus visible. Michael has nobody to play it with. Offered: a machine stand-in (a mixed-level party of bots on the hosted build, the way CLAUDE.md lets the lag lab stand in for a second person), recommended; or waive the party half outright.
+Michael (2026-10-27, in chat): "Can we bypass that and just assume it works?", then, offered the two: **"Play it with bots for me please!"** The gate is met by `npm run gate:party` against the hosted build: four bots of levels 10, 4, 1 and 1 in gear of their tiers take the village's ring and clear floor 1 to its rest room with no cheats; the server's combo events (the Shatter, Skewer and Detonate callouts every player's HUD draws) are counted, with the downs and revives. Filed in `playtest-notes.md` with the numbers in place of feelings.
+
+Michael (2026-10-27, in chat), shown the three hosted runs: **"I'm good to close it and move on!"** Phase 1 is closed on the stand-in. Phase 2 (village and loop) is current, and T6 (progression to 50) carries over as its first item. Going down and reviving were not exercised by the runs (nobody went down); Michael closed the phase without a harder floor.
+
 ### 2026-10-27: T5: the bag and the body (Claude (local))
 Asked in chat as four cards before building the bag and body: the bag's size (28 as RuneScape, recommended; 20; 40), the body's slots (6: head, body, legs, hands, feet and the weapon, recommended; 4; RuneScape's full set), the cost of armour of another kind than the weapon (per piece, -5% damage each, recommended; a flat -25%; -10% a piece), and the hero's look (follows the armour, each piece drawn as the slice's figure for its kind, recommended; one figure for all, tinted).
 Michael (2026-10-27, in chat):

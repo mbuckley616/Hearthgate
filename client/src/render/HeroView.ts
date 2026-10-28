@@ -20,8 +20,12 @@ import {
   type UpperPose,
 } from './rig';
 import { WeaponTrail } from './WeaponTrail';
-import { levelFor } from '@hearthgate/shared/sim/gear';
+import { levelFor, maxLevel } from '@hearthgate/shared/sim/gear';
 import { heroHit } from '@hearthgate/shared/sim/talents';
+
+const GLOW_COLORS: Record<Style, number> = { sword: 0xffc35a, bow: 0x9be27a, staff: 0x7fd8ff };
+/** Every weapon's glow at the top level (T6: level 50's own cosmetic). */
+const GOLD_GLOW = 0xffe27a;
 
 type PoseSet = {
   guard: UpperPose;
@@ -290,7 +294,7 @@ export class HeroView {
   private swordTrail = new WeaponTrail(0xfff1d6);
   private staffTrail = new WeaponTrail(FROST);
   private trailStrength = 0;
-  /** Level 5 weapon glow overlays (brief: "cosmetic weapon glow"). */
+  /** Weapon glow overlays (brief: "cosmetic weapon glow"): lit at progression.glowLevel, gold at the top level (T6). */
   private glows: Record<Style, THREE.Mesh>;
   private swapFxAge = SWAP_FX_LIFE;
   /** Faint curved ward in front while guarding; flares on a parry or block. */
@@ -367,14 +371,14 @@ export class HeroView {
     for (const f of this.staff.fittings) tint(f, 'staff', 'trim');
 
     // Additive copies of each weapon's main mesh, shown at level 5.
-    const swordGlow = new THREE.Mesh(blade.geometry, glowMaterial(0xffc35a, 0.55));
+    const swordGlow = new THREE.Mesh(blade.geometry, glowMaterial(GLOW_COLORS.sword, 0.55));
     swordGlow.position.copy(blade.position);
     swordGlow.scale.set(1.5, 1.04, 2.5);
     this.sword.add(swordGlow);
-    const bowGlow = new THREE.Mesh(this.bow.limbs.geometry, glowMaterial(0x9be27a, 0.6));
+    const bowGlow = new THREE.Mesh(this.bow.limbs.geometry, glowMaterial(GLOW_COLORS.bow, 0.6));
     bowGlow.scale.set(1.6, 1.01, 1.6);
     this.bow.group.add(bowGlow);
-    const staffGlow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 10), glowMaterial(0x7fd8ff, 0.25));
+    const staffGlow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 10), glowMaterial(GLOW_COLORS.staff, 0.25));
     staffGlow.position.y = this.staff.topY;
     this.staff.group.add(staffGlow);
     this.glows = { sword: swordGlow, bow: bowGlow, staff: staffGlow };
@@ -469,8 +473,11 @@ export class HeroView {
     if (relook) this.setLook(curr.look, lookKey);
     if (relook || curr.style !== this.shownStyle) this.showStyle(curr.style);
     for (const [s, g] of Object.entries(this.glows) as [Style, THREE.Mesh][]) {
-      g.visible = levelFor(curr.xp[s]) >= 5;
-      (g.material as THREE.MeshBasicMaterial).opacity = (s === 'staff' ? 0.25 : 0.5) * (0.75 + 0.25 * Math.sin(this.time * 4));
+      const level = levelFor(curr.xp[s]);
+      g.visible = level >= tuning.progression.glowLevel;
+      const m = g.material as THREE.MeshBasicMaterial;
+      m.color.setHex(level >= maxLevel() ? GOLD_GLOW : GLOW_COLORS[s]);
+      m.opacity = (s === 'staff' ? 0.25 : 0.5) * (0.75 + 0.25 * Math.sin(this.time * 4));
     }
 
     // Root transform, interpolated between sim ticks.

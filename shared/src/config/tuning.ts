@@ -483,6 +483,8 @@ export const tuning = {
    * that hero XP. Cumulative XP per level; level 3 in one hero should take
    * about one run (a run is roughly 4,000 damage in total).
    *   2: second ability (E)   3: combo step 4   4: combo step 5 and +10% damage   5: weapon glow
+   * Hearthgate (T6, plan 3a): levels run to 50; the flat bonus at 4 became two ranks of Might, so
+   * every raw gain is a point the player chose; the glow moves to 25 and turns gold at 50.
    */
   progression: {
     xpPerDamage: 1,
@@ -490,10 +492,13 @@ export const tuning = {
     level3Xp: 2000,
     level4Xp: 4500,
     level5Xp: 8000,
-    level4DamageBonus: 0.1,
+    /** The slice's +10% at level 4 (0 here: it is Might's top two ranks; the parity test sets 0.1). */
+    level4DamageBonus: 0,
     /** Levels carry on past 5 (each one is a talent point). Each level after 5 costs this much more than the one before. */
     levelGapGrowthXp: 500,
-    maxLevel: 20,
+    maxLevel: 50,
+    /** The weapon glow lights at this level (the slice's was 5); at maxLevel it burns gold. */
+    glowLevel: 25,
   },
 
   /**
@@ -504,7 +509,8 @@ export const tuning = {
   talents: {
     pointsPerLevel: 1,
     mightDamagePerRank: 0.05,
-    mightMaxRanks: 5,
+    /** Seven, not the slice's five: the top two are its old flat +10% at level 4. */
+    mightMaxRanks: 7,
     /** Attack speed: every attack's windup, active and recovery shrink by this per rank. */
     hasteSpeedPerRank: 0.04,
     hasteMaxRanks: 5,
@@ -528,6 +534,21 @@ export const tuning = {
     frostFreezeMsPerRank: 300,
     blinkDistancePerRank: 1,
     blinkCritPerRank: 0.25,
+    /**
+     * Milestone rows (T6, plan 3a): one talent opens at each of levels 10, 20, 30, 40 and 50, so the
+     * slice's 29 ranks and these 20 make 49, a point for every level after the first.
+     */
+    rowMaxRanks: 4,
+    /** Weight (10): more poise damage, so staggers come sooner. */
+    weightPoisePerRank: 0.1,
+    /** Finisher (20): more damage on this weapon's combo payoffs (Shatter, Skewer, Detonate). */
+    finisherDamagePerRank: 0.1,
+    /** Riposte (30): a longer parry window while this weapon is in hand. */
+    riposteParryMsPerRank: 25,
+    /** Second wind (40): dodge charges come back sooner. */
+    windRechargePerRank: 0.08,
+    /** Mastery (50): a little more damage. */
+    masteryDamagePerRank: 0.03,
   },
 
   /** Gear drops (brief: three per run, one guaranteed from the Warden). */
@@ -1412,8 +1433,14 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'progression.level4DamageBonus': [0, 1, 0.01],
   'progression.levelGapGrowthXp': [0, 5000, 50],
   'progression.maxLevel': [5, 50, 1],
+  'progression.glowLevel': [2, 50, 1],
   'talents.pointsPerLevel': [0, 5, 1],
   'talents.mightDamagePerRank': [0, 0.3, 0.01],
+  'talents.weightPoisePerRank': [0, 0.5, 0.01],
+  'talents.finisherDamagePerRank': [0, 0.5, 0.01],
+  'talents.riposteParryMsPerRank': [0, 100, 5],
+  'talents.windRechargePerRank': [0, 0.2, 0.01],
+  'talents.masteryDamagePerRank': [0, 0.1, 0.005],
   'talents.hasteSpeedPerRank': [0, 0.2, 0.01],
   'talents.armourReductionPerRank': [0, 0.2, 0.01],
   'talents.fleetSpeedPerRank': [0, 0.2, 0.01],

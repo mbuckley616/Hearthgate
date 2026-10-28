@@ -811,6 +811,25 @@ canvas {
   border-color: rgba(127, 216, 255, 0.18);
 }
 
+.talent.milestone {
+  border-color: rgba(255, 207, 90, 0.2);
+}
+
+.talent.locked {
+  opacity: 0.45;
+}
+
+.talent.chosen {
+  border-color: #ffcf5a;
+  box-shadow: 0 0 0 1px #ffcf5a inset;
+}
+
+.talent-level {
+  font-weight: 600;
+  font-size: 11px;
+  color: #ffcf5a;
+}
+
 .talent-name {
   font-weight: 700;
   font-size: 13px;
