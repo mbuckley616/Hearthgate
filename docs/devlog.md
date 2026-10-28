@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-27: local session, T5c: every piece drawn on the hero as itself
+
+**What changed**
+
+- **The look travels.** The loadout carries what the hero wears as catalogue ids (`look`), and `applyLoadout` puts it on `PlayerState.look`, so the snapshot gives every player everyone's gear. The server checks each id is in the catalogue and that there is one a slot; a look that fails drops the message whole. Optional, so the slice's state never carries it (parity identical). `PROTOCOL_VERSION` 7. It costs a dressed hero about 100 bytes a snapshot.
+- **The wardrobe** (`client/src/render/wardrobe.ts`): every shape in the catalogue has its own build on the slice's skeleton, drawn in its material's base and trim colours.
+  - Heads: an open med helm with a nasal bar, the closed full helm with its slit and crest, a hide coif tipped back off the face, a wizard's hat.
+  - Bodies: chainbody (a mail texture), platebody (pauldrons, a ridge, a gorget), jerkin (a panel and a strap), robe top (wide sleeves).
+  - Legs: platelegs, a flared plateskirt, chaps, a robe skirt to the floor.
+  - Hands, feet and the rest: gauntlets, vambraces and gloves; boots (metal ones with a toe cap); capes (the Warden's carries his cross); an amulet; a ring.
+  - Square and kite shields.
+- **Weapons and shields.** The weapons are the slice's, tinted by their material. A bow or staff in hand slings the shield on the back, and a bow carries a quiver. Nothing worn shows a plain tunic, trousers and shoes. A hero with no look (villagers, the test bots) keeps the slice's three figures.
+- **Tests:**
+  - A catalogue test for the look and its checks (check 77).
+  - A `test:net` step: a look reaches the other player, and an unknown id is dropped.
+  - The browser bag test asserts the drawn bow (7/7).
+  - Parity identical.
+
+**Learned**
+
+- The look is the views' alone, but the snapshot is the one way a player hears about another, and `PlayerState` already carried the name and the mods: an optional field there was simpler than a message of its own.
+- A test page talking to the dev client's default server reaches whatever runs on 2567, another session's included. The local client for these tests now gets `VITE_SERVER_URL` pointing at this session's own server.
+
+**Next**
+
+- Michael: try T5 on the hosted build once merged (#75, #76, this).
+- The Phase 1 gate on a generated floor.
+
 ## 2026-10-27: local session, T5b: the bag and the body
 
 **What changed**
