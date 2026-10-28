@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, D10, D13, D12, D2: death and home, drop to the floor, free aim, bigger rooms
+
+**What changed**
+
+Four stacked branches on `auto/local-dungeon-rules`, one commit each (and the docs): `auto/local-death-home`, `auto/local-drop-to-floor`, `auto/local-free-aim`, `auto/local-bigger-rooms`. Protocol 9.
+- **D10, death and going home.** A downed hero lies still (`coop.crawlSpeed` 0; T5's 1.1 is a slider away). A wiped floor's party stays down and no ring opens. The card reads "You died" solo or "Your party was defeated", with a 48 px Return to the village button (F, A). The button sends a new `home` message and `FloorRoom` hands that player alone (`HostRoom.handOne`) to the village the run left from. A win keeps its ring and gains the button. The mouse is freed for the button and the pause card stays away.
+- **D13, drop to the floor.** Drop on the hero screen sends the bag's item in a `drop` message, checked as a catalogue item with a bonus a roll could give (`readGearItem`). The server lays it at the hero's feet as a drop only its owner sees, marked `dropped`: taken back only once the owner has stepped away, never banked, carried or lost, and kept when a rest room banks. At most `gear.maxDropped` (12) a player in a room. Handing items over waits for Phase 3.
+- **D12, free aim over the shoulder.** With a bow, staff, crossbow or wand out and no lock-on, the camera moves 0.85 m right of the hero (short of any wall) and comes in to 80%, and the reticle pins to the centre. The browser casts from the camera through it against walls, the floor and enemies' bodies (`client/src/game/aim.ts`) and sends the heading and pitch from the hand to what it met (`PlayerCommand.aimPitch`, optional, clamped). A ranged attack or ability with free aim skips soft targeting, tracks the aim while drawn, and leaves along it; lock-on keeps the slice's aim. In the browser, the server's arrow left at pitch 0.154 for an aim of 0.157, on the same heading.
+- **D2, rooms a size up.** Four new kit rooms the generator fights in: a 3x3 guard room, a 4x4 hall of pillars, a 6x5 great hall, a 7x7 pit (18 to 42 m across, was 12 to 30). The old four stay in the kit and the editor, so the Old Cellar and any saved hand-built dungeon are unchanged. `dungeon.budgetPerCell` 1 to 0.6. Solo, every enemy a room sends, over 30 seeds:
+
+| Room | Floor 1 | Floor 3 | D1's room, floor 1 / 3 |
+| --- | --- | --- | --- |
+| Guard room (3x3, was 2x2) | 5.3 | 7.4 | 3.6 / 6.2 |
+| Hall of pillars (4x4, was 3x3) | 7.1 | 10.0 | 6.3 / 10.0 |
+| Great hall (6x5, was 4x4) | 11.5 | 18.6 | 10.5 / 15.7 |
+| The pit (7x7, was 5x5) | 19.0 | 30.5 | 16.6 / 26.2 |
+
+- The floor banners lost "the doors are shut" and the "+40% health" a clear no longer gives (D7, D8 left them).
+- Tests: a wipe leaves no ring, keeps the party down and answers `home` only then; a downed hero lies still (and crawls with the slider up); dropping (owner only, after stepping away, not banked, the cap, the item check); free aim (pitch and heading, tracked to release, lock-on and no pitch keep the slice's aim, the wire's clamp). The generator's walk test now checks a big floor has a staircase, not that the way through crosses one. check 151, parity identical, test:net. In the browser: the death card and its button home, a drop round trip in the village, the shoulder camera and an arrow on the aim, a guard room and the hall of pillars.
+
+**Learned**
+
+- **A wiped party used to stand back up to walk to the ring,** because the slice gets heroes up outside a fight. On a floor the end card now holds them down.
+- **Picking a dropped item straight back up** is what happens if it lands at your feet with nothing else said, so a dropped item waits for its owner to step away.
+- **Free aim needs the shot aimed from the hand, not along the camera.** The camera sits behind and right; aiming along its ray would land every shot left of the reticle, so the browser finds what the ray meets and aims the hand at that.
+- **Bigger rooms at D1's density would double the enemies,** so the budget a cell came down to keep D1's counts and give the space to moving.
+
+**Next**
+
+- Michael plays a floor with a bow and a staff (free aim), dies once (the card), drops something, and judges the room sizes and the counts above.
+- D9's scaling still wants his answer.
+- Then D3 (wear a find straight away), D4 (smashables and the health potion), P9 and D5 (stash, bag at risk).
+
 ## 2026-10-28: local session, D7, D8, D9, D11: no heal per room, open doors, a quicker dodge, a reticle
 
 **What changed**
