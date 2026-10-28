@@ -50,6 +50,10 @@ export type PieceKind =
   | 'medium'
   | 'large'
   | 'arena'
+  | 'guard'
+  | 'pillared'
+  | 'greatHall'
+  | 'cavern'
   | 'rest'
   | 'boss';
 
@@ -142,6 +146,82 @@ export const KIT: Record<PieceKind, PieceDef> = {
       { x: 27.4, z: 2.6 },
       { x: 2.6, z: 27.4 },
       { x: 27.4, z: 27.4 },
+    ],
+  },
+  // D2 (Michael 28 Oct: "much wider / expansive spaces", room for four): the rooms a generated floor
+  // is fought in now, each a size up from the four above, which stay for hand-built dungeons.
+  guard: {
+    kind: 'guard',
+    w: 3,
+    d: 3,
+    sockets: [s('n', 1), s('e', 1), s('s', 1), s('w', 1)],
+    room: true,
+    title: 'A guard room',
+    pillars: [],
+    braziers: [
+      { x: 2.6, z: 2.6 },
+      { x: 15.4, z: 15.4 },
+    ],
+  },
+  pillared: {
+    kind: 'pillared',
+    w: 4,
+    d: 4,
+    sockets: [s('n', 1), s('e', 2), s('s', 2), s('w', 1)],
+    room: true,
+    title: 'The hall of pillars',
+    pillars: [
+      { x: 8, z: 8, radius: 0.7 },
+      { x: 16, z: 8, radius: 0.7 },
+      { x: 8, z: 16, radius: 0.7 },
+      { x: 16, z: 16, radius: 0.7 },
+    ],
+    braziers: [
+      { x: 12, z: 2.6 },
+      { x: 12, z: 21.4 },
+    ],
+  },
+  greatHall: {
+    kind: 'greatHall',
+    w: 6,
+    d: 5,
+    sockets: [s('n', 1), s('n', 4), s('e', 2), s('s', 1), s('s', 4), s('w', 2)],
+    room: true,
+    title: 'The great hall',
+    pillars: [
+      { x: 9, z: 10, radius: 0.8 },
+      { x: 18, z: 10, radius: 0.8 },
+      { x: 27, z: 10, radius: 0.8 },
+      { x: 9, z: 20, radius: 0.8 },
+      { x: 18, z: 20, radius: 0.8 },
+      { x: 27, z: 20, radius: 0.8 },
+    ],
+    braziers: [
+      { x: 2.6, z: 15 },
+      { x: 33.4, z: 15 },
+    ],
+  },
+  cavern: {
+    kind: 'cavern',
+    w: 7,
+    d: 7,
+    sockets: [s('n', 3), s('e', 3), s('s', 3), s('w', 3)],
+    room: true,
+    title: 'The pit',
+    pillars: [
+      { x: 11, z: 11, radius: 0.9 },
+      { x: 31, z: 11, radius: 0.9 },
+      { x: 11, z: 31, radius: 0.9 },
+      { x: 31, z: 31, radius: 0.9 },
+      { x: 21, z: 16, radius: 1.1 },
+      { x: 15, z: 26, radius: 0.8 },
+      { x: 28, z: 25, radius: 0.8 },
+    ],
+    braziers: [
+      { x: 2.6, z: 2.6 },
+      { x: 39.4, z: 2.6 },
+      { x: 2.6, z: 39.4 },
+      { x: 39.4, z: 39.4 },
     ],
   },
   // A dead end the party reaches at the far side of a floor: the rings to go deeper or go home.

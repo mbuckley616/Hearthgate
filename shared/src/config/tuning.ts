@@ -1118,10 +1118,10 @@ export const tuning = {
     piecesPerLevel: 0.5,
     /**
      * A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor.
-     * Doubled and more after the feel pass (D1, Michael 28 Oct: three or four a room was easy):
-     * a guard room is four or so, a large room eight to ten, an arena a dozen and more.
+     * Doubled and more after the feel pass (D1, Michael 28 Oct: three or four a room was easy), then
+     * 1 to 0.6 when D2's rooms grew a size: about D1's counts a room, with twice the room to move.
      */
-    budgetPerCell: 1,
+    budgetPerCell: 0.6,
     /** Each floor deeper adds this fraction of the budget. */
     budgetPerFloor: 0.35,
     /** Each player past the first adds this much budget (the slice: one grunt a wave). */

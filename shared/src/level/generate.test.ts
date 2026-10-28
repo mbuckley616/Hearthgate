@@ -182,7 +182,10 @@ describe('the dungeon generator (T4)', () => {
       }
       expect(insidePiece(pieces[def.exit], hero.x, hero.z)).toBe(true);
       expect(hero.y).toBeCloseTo(pieces[def.exit].y, 3);
-      expect(climbed + dropped).toBeGreaterThanOrEqual(def.pieces.length >= 25 ? 1 : 0);
+      // A big floor always has a staircase (the generator forces one), though the way through may go round it;
+      // when the exit stands at another height than the way in, the walk climbed or dropped to get there.
+      if (def.pieces.length >= 25) expect(def.pieces.some((p) => p.kind === 'stair')).toBe(true);
+      if (Math.abs(pieces[def.exit].y - pieces[def.entrance].y) > 1) expect(climbed + dropped).toBeGreaterThanOrEqual(1);
     }
   });
 });

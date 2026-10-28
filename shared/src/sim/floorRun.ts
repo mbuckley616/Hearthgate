@@ -110,7 +110,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       f.room = -1;
       r.gateClosed = false;
       // The big rooms drop loot where the last enemy fell; the Warden's is rare.
-      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'boss') spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
+      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'greatHall' || room.kind === 'cavern' || room.kind === 'boss') spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
       if (room.kind === 'boss') {
         r.phase = 'won';
         r.timer = 0;
@@ -238,7 +238,7 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
   const spec = world.level.dungeon!.def.spec;
   const share = part === 'first' ? tuning.dungeon.firstGroupShare : 1 - tuning.dungeon.firstGroupShare;
   let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share));
-  const big = room.kind !== 'small';
+  const big = room.kind !== 'small' && room.kind !== 'guard';
   // A guard room keeps at least two blades for every bow, so its archers have someone to hide behind.
   let archers = 0;
   const avgX = state.players.reduce((s, p) => s + p.x, 0) / Math.max(1, state.players.length);

@@ -98,13 +98,14 @@ const FROM_HALL: [PieceKind, number][] = [
   ['tee', 1.4],
   ['cross', 0.6],
   ['stair', 1.6],
-  ['small', 3],
-  ['medium', 2.4],
-  ['large', 1.4],
-  ['arena', 0.7],
+  // The rooms sized for a party of four (D2); the smaller kit rooms are the editor's.
+  ['guard', 3],
+  ['pillared', 2.4],
+  ['greatHall', 1.4],
+  ['cavern', 0.7],
 ];
 /** At most this many of the big rooms on one floor. */
-const CAP: Partial<Record<PieceKind, number>> = { arena: 1, large: 3 };
+const CAP: Partial<Record<PieceKind, number>> = { cavern: 1, greatHall: 3 };
 /** Connectors to try when the first pick does not fit. */
 const FALLBACK: PieceKind[] = ['corner', 'hall', 'stair', 'tee'];
 
@@ -259,7 +260,7 @@ class Builder {
       if (!stub) return;
       const capped =
         this.pieces.length < maxPieces &&
-        stub.sockets.some((sk, s) => sk.link < 0 && this.attach('small', { p: stub.id, s }) !== null);
+        stub.sockets.some((sk, s) => sk.link < 0 && (this.attach('guard', { p: stub.id, s }) ?? this.attach('small', { p: stub.id, s })) !== null);
       if (!capped) this.remove(stub.id);
     }
   }
@@ -443,8 +444,8 @@ function attempt(spec: FloorSpec, seed: number): FloorDef | null {
 
   for (const p of b.pieces) {
     const def = KIT[p.kind];
-    // Most rooms are fought in; now and then a small one stands empty, a breather on the way.
-    p.fight = def.room && (p.kind !== 'small' || rnd() < 0.7);
+    // Most rooms are fought in; now and then a guard room stands empty, a breather on the way.
+    p.fight = def.room && ((p.kind !== 'small' && p.kind !== 'guard') || rnd() < 0.7);
   }
   // Heights start at the floor's lowest point, so every height is ground the sim already knows (0 and up).
   const low = Math.min(...b.pieces.map((p) => p.level));
