@@ -99,8 +99,12 @@ export class RunUi {
 
   private handleFloor(events: SimEvent[]): void {
     for (const ev of events) {
-      if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : `Room ${ev.wave}  ·  the doors are shut`, ev.title);
-      else if (ev.kind === 'waveCleared') this.showBanner('Room cleared', `The doors open  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
+      if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : tuning.dungeon.shutDoors ? `Room ${ev.wave}  ·  the doors are shut` : `Room ${ev.wave}`, ev.title);
+      else if (ev.kind === 'waveCleared') {
+        // No heal after a room since D7, so the banner names none unless the panel turns it back on.
+        const heal = Math.round(tuning.dungeon.healOnClear * 100);
+        this.showBanner('Room cleared', heal > 0 ? `+${heal}% health` : 'Health comes back in the rest room');
+      }
       else if (ev.kind === 'rested') this.showBanner('Healed, and your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
       else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
