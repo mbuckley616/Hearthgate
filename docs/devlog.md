@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P1: the loop's stakes and rewards
+
+**What changed**
+
+- **Carried finds.** On a generated floor a pickup is carried (`SimState.floor.carried`) instead of going straight into the bag.
+- **Banking.** The rest room, or the Warden's fall, banks every player's finds in a `banked` event. The event also carries:
+  - the coin for the fight rooms cleared on that floor
+  - the village's lumber and stone
+- **Pay** is `tuning.loop`: 12 coin, 4 lumber and 3 stone for each room cleared, more for the Warden's hall, and 30% more for each floor deeper. Rare drops get likelier deeper too.
+- **Losing finds.** A wipe loses what was carried (`findsLost`). A player who leaves mid-floor gives up theirs.
+- **The browser saves what the server gives it.**
+  - Items go into the bag and coin into the profile.
+  - Lumber and stone go into `hearthgate.village.v1`, but only in the browser that opened the village the run set out from. That holds until P2 makes it a real village save.
+- **On screen:**
+  - The timer line shows what is carried.
+  - A summary card greets the party home. F, A or Escape closes it.
+  - The equip screen shows coin.
+- **Protocol 8.**
+- **The slice's arena keeps its own loot**, so parity is identical.
+
+**Learned**
+
+- Banking pays only for rooms actually fought. Since the deeper ring opens on arrival (decisions.md, 27 Oct), skipping rooms is now a real trade: a faster floor for less pay.
+- **The summary was hidden at first.** It sat under the Paused card, which shows whenever the mouse is not locked (the critic's open bug). It now sits above that card and below the hero screen.
+- The smoke walk's route to the rest room can cross no fight room, so the scratch check steered through one first. One room cleared on floor 1 banked 12 coin, 4 lumber and 3 stone.
+
+**Next**
+
+- C1, light and heavy strings.
+
 ## 2026-10-28: local session, combat depth designed with Michael
 
 **What changed**
