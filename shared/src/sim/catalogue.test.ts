@@ -31,9 +31,9 @@ describe('the item catalogue (T5b)', () => {
     expect(CATALOGUE.get('linen-robeTop')?.kind).toBe('magic');
     expect(CATALOGUE.get('gold-ring')?.kind).toBe('none');
     expect(CATALOGUE.get('yew-shortbow')?.shape.style).toBe('bow');
-    // Every slot of RuneScape's body has something to wear.
+    // Every slot of RuneScape's body has something to wear, the ammo slot (C4) included.
     const slots = new Set([...CATALOGUE.values()].map((e) => e.slot));
-    expect(slots.size).toBe(10);
+    expect(slots.size).toBe(11);
   });
 
   it('gives a heavier piece and a higher tier more armour, metal more than hide or cloth', () => {

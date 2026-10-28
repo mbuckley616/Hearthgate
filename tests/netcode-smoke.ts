@@ -188,7 +188,8 @@ async function main() {
     const rings = va.snaps[va.snaps.length - 1].portals;
     check(rings.map((r) => r.to).join(",") === "deeper,village", "the rest room has a ring deeper and a ring home", rings.map((r) => r.to).join(","));
     const deeper = rings[0];
-    await Promise.all([va.walkTo(deeper.x - 0.5, deeper.z, 1.1), vb.walkTo(deeper.x + 0.5, deeper.z, 1.1)]);
+    // Anywhere well inside the ring (2.2 m) will do: a tight mark only adds a slow crawl at the end, which a busy CI box can run out of time on.
+    await Promise.all([va.walkTo(deeper.x - 0.5, deeper.z, 1.4), vb.walkTo(deeper.x + 0.5, deeper.z, 1.4)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way deeper"), vb.until(() => vb.handoff !== null, 5000, "Wren's way deeper")]);
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
     const spec2 = va.floor;
@@ -197,7 +198,7 @@ async function main() {
     const fights2 = await walkFloor(va, vb, floor2);
     check(fights1 + fights2 > 0, "fight rooms on the way shut behind the party and open once cleared", `${fights1} + ${fights2} rooms`);
     const homeRing = va.snaps[va.snaps.length - 1].portals.find((r) => r.to === "village")!;
-    await Promise.all([va.walkTo(homeRing.x - 0.5, homeRing.z, 1.1), vb.walkTo(homeRing.x + 0.5, homeRing.z, 1.1)]);
+    await Promise.all([va.walkTo(homeRing.x - 0.5, homeRing.z, 1.4), vb.walkTo(homeRing.x + 0.5, homeRing.z, 1.4)]);
     await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's way home"), vb.until(() => vb.handoff !== null, 5000, "Wren's way home")]);
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
     check(va.kind === "village" && va.code === home && vb.code === home, "the ring home takes both to the same village", va.code);
@@ -227,7 +228,7 @@ async function main() {
     const cellarFloor = floorLevel(ha.floor!).dungeon!;
     await walkFloor(ha, hb, cellarFloor);
     const cDeeper = ha.snaps[ha.snaps.length - 1].portals.find((r) => r.to === "deeper")!;
-    await Promise.all([ha.walkTo(cDeeper.x - 0.5, cDeeper.z, 1.1), hb.walkTo(cDeeper.x + 0.5, cDeeper.z, 1.1)]);
+    await Promise.all([ha.walkTo(cDeeper.x - 0.5, cDeeper.z, 1.4), hb.walkTo(cDeeper.x + 0.5, cDeeper.z, 1.4)]);
     await Promise.all([ha.until(() => ha.handoff !== null, 5000, "Hale's way deeper"), hb.until(() => hb.handoff !== null, 5000, "Ivy's way deeper")]);
     await Promise.all([ha.takeHandoff(), hb.takeHandoff()]);
     check(

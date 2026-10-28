@@ -233,6 +233,8 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   const len = Math.hypot(dir.x, dir.z) || 1;
   // Skewer payoff: a charged shot through melee-staggered enemies hits harder and doesn't stop.
   const skewer = pr.kind === 'arrow' && pr.charged && e.skewerUntil >= state.time;
+  // The ammo slot (C4): frost arrows slow, a barbed charged shot opens a bleed.
+  const ammo = pr.kind === 'arrow' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner)?.mods.ammo : undefined;
   if (skewer && !pr.comboed) {
     pr.comboed = true;
     payCombo(state, 'skewer', pr.owner, e.x, e.y + 1.2, e.z);
@@ -249,12 +251,17 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     x: pr.x,
     y: pr.y,
     z: pr.z,
-    slowTime: pr.slowTime,
+    slowTime: ammo === 'frost' ? Math.max(pr.slowTime ?? 0, tuning.gear.frostArrowSlowS) : pr.slowTime,
     crit: pr.crit,
     style: pr.style,
     combo: skewer || undefined,
   });
   pr.hitIds.push(e.id);
+  if (ammo === 'barbed' && pr.charged && isTargetable(e)) {
+    e.bleedTicks = tuning.gear.bleedTicks;
+    e.bleedTimer = tuning.gear.bleedTickMs / 1000;
+    e.bleedOwner = pr.owner;
+  }
   // Detonate setup: volley arrows mark.
   if (pr.marks) {
     const hero = state.players.find((p) => p.id === pr.owner);

@@ -3,6 +3,7 @@ import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
 import type { FloorRunState } from './floorRun';
+import type { FlowState } from './flow';
 import type { TalentRanks } from './talents';
 
 /**
@@ -89,6 +90,14 @@ export interface PlayerState {
   attackHold?: number;
   /** The hold belongs to a press made during this attack, so it is for the next one, not this. */
   attackHoldNext?: boolean;
+  /** The Flow meter (C2), absent in the slice. */
+  flow?: FlowState;
+  /** Seconds until the off-hand's ability is ready again (C4). */
+  offhandCooldown?: number;
+  /** The step of a weapon family's chain (C5); attackHit is then the style's step whose pose it borrows. */
+  attackStep?: number;
+  /** A tome's ward on this hero (C5): hits it will absorb, until sim time. */
+  ward?: { hits: number; until: number };
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -449,6 +458,8 @@ export interface PlayerCommand {
   /** Q / E pressed since the last tick. */
   ability1: boolean;
   ability2: boolean;
+  /** The off-hand's ability pressed (C4: 3, R or RT). Absent in the slice. */
+  ability3?: boolean;
   /** Locked-on enemy id, or -1. Soft targeting prefers it. */
   lockTarget: number;
   /** Jump pressed since the last tick. */

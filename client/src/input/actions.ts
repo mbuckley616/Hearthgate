@@ -10,11 +10,12 @@ export const BUTTON_ACTIONS = [
   'block',
   'ability1',
   'ability2',
-  'style1',
-  'style2',
-  'style3',
-  'styleNext',
-  'stylePrev',
+  // The off-hand's ability (C4).
+  'ability3',
+  // The hero screen's three tabs (C3: 1, 2 and 3 are abilities in a fight; the screen keeps them for its tabs).
+  'tab1',
+  'tab2',
+  'tab3',
   'lockOn',
   'interact',
   'debugPanel',

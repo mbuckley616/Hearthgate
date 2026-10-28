@@ -1,4 +1,4 @@
-import { ABILITIES, abilityTiming, enemyStats, tuning, type AbilityKind } from '../config/tuning';
+import { ABILITIES, OFFHAND_ABILITY, abilityTiming, enemyStats, tuning, type AbilityKind } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { levelFor } from './gear';
@@ -9,14 +9,16 @@ import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 const DEG = Math.PI / 180;
 
 /** Ability ready to use for this slot of the current style? */
-export function abilityReady(p: PlayerState, slot: 0 | 1): boolean {
+export function abilityReady(p: PlayerState, slot: 0 | 1 | 2): boolean {
+  // The third is the off-hand's (C4), with its own cooldown.
+  if (slot === 2) return !!p.mods.offhand && (p.offhandCooldown ?? 0) <= 0;
   // The second ability unlocks at style level 2 (brief).
   if (slot === 1 && levelFor(p.xp[p.style]) < 2) return false;
   return p.cooldowns[p.style][slot] <= 0;
 }
 
-export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1, cmd: PlayerCommand): void {
-  const kind = ABILITIES[p.style][slot];
+export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, cmd: PlayerCommand): void {
+  const kind = slot === 2 ? OFFHAND_ABILITY[p.mods.offhand!] : ABILITIES[p.style][slot];
   const timing = abilityTiming(kind);
   p.mode = 'ability';
   p.ability = kind;
@@ -26,7 +28,8 @@ export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1, cmd: 
   p.abilityHitIds = [];
   p.abilitySeq++;
   p.attackQueued = false;
-  p.cooldowns[p.style][slot] = timing.cooldown * cooldownMult(p);
+  if (slot === 2) p.offhandCooldown = timing.cooldown * cooldownMult(p);
+  else p.cooldowns[p.style][slot] = timing.cooldown * cooldownMult(p);
   p.vx = 0;
   p.vz = 0;
   // Face the soft target (or the locked one, or the aim) for directional abilities; shots also pitch toward it.
@@ -156,6 +159,57 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
   const rank = abilityRank(p, kind);
   const base = tuning.combat.baseDamage;
   switch (kind) {
+    case 'ward': {
+      // The tome's ward (C5): the next hit on this hero and every ally near is absorbed, for a while.
+      for (const o of state.players) {
+        if (o.mode === 'down' || Math.hypot(o.x - p.x, o.z - p.z) > a.wardRadiusM) continue;
+        o.ward = { hits: 1, until: state.time + a.wardSeconds };
+      }
+      break;
+    }
+    case 'quickShot': {
+      // The hand crossbow (C5): two bolts from the off hand, a little apart.
+      state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: false });
+      const payload = { damage: a.quickShotDamage * base, poise: 1, knockback: 0, heavy: false };
+      for (const u of [-0.04, 0.04]) spawnArrow(state, p, payload, u, tuning.rangedCombo.arrowSpeed, false);
+      break;
+    }
+    case 'bash': {
+      // The shield's bash (C4): the nearest enemy in front is knocked off its feet.
+      const fx = Math.sin(p.yaw);
+      const fz = Math.cos(p.yaw);
+      let best: EnemyState | null = null;
+      let bestD = Infinity;
+      for (const e of state.enemies) {
+        if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+        const dx = e.x - p.x;
+        const dz = e.z - p.z;
+        const d = Math.hypot(dx, dz);
+        if (d > a.bashRangeM + enemyStats(e.kind).radius || d >= bestD) continue;
+        const off = Math.abs(Math.atan2(Math.sin(Math.atan2(dx, dz) - p.yaw), Math.cos(Math.atan2(dx, dz) - p.yaw)));
+        if (off > (a.bashArcDeg * DEG) / 2) continue;
+        best = e;
+        bestD = d;
+      }
+      if (best) {
+        const r = enemyStats(best.kind).radius;
+        damageEnemy(state, best, {
+          attackerId: p.id,
+          damage: a.bashDamage * base,
+          poise: 1000,
+          knockback: a.bashKnockbackM,
+          heavy: true,
+          style: p.style,
+          dirX: fx,
+          dirZ: fz,
+          x: best.x - fx * r,
+          y: best.y + 1,
+          z: best.z - fz * r,
+        });
+        p.hitstop = hitstopFor(true);
+      }
+      break;
+    }
     case 'volley': {
       state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: true });
       const payload = { damage: a.volleyDamage * (1 + rank * tl.volleyDamagePerRank) * base, poise: 0.8, knockback: 0, heavy: false };

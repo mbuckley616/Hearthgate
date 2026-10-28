@@ -2,6 +2,117 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, C5: warhammer, crossbow and wand
+
+**What changed**
+
+- **Weapon families.** A family fights its style's fight (its levels, talents and strings) with a chain of its own (`tuning.warhammerCombo`, `crossbowCombo`, `wandCombo`).
+- **Each step borrows a pose.** `FAMILY_ANIM` gives each step the pose and projectiles of one of its style's steps, so the views and the shots need nothing new:
+  - Warhammer: the sword's sweep, spin and slam.
+  - Crossbow: the bow's two quick shots, then the power shot with a long reload. The power shot still sets up Skewer.
+  - Wand: the staff's single bolts, five of them, fast.
+- **State and checks.** `PlayerState.attackStep` holds the family's step. `Mods.family` travels in the loadout, the server checks it, and it counts only with its own style.
+- **A family's heavies** are its style's strings, scaled by `tuning.families`: the warhammer's hit 40% harder and come 30% slower.
+- **The warhammer takes both hands** (+20%).
+- **The off-hands C4 held back,** each on 3:
+  - the tome's **Ward**: the next hit on you and on every ally within 5 m is absorbed, for 8 s
+  - the buckler's **Deflect**: every hit is parried for 450 ms
+  - the hand crossbow's **Quick shot**: two bolts
+- **Drawn as simple meshes in their materials,** on the borrowed poses. The off-hand sits in the off hand with any one-handed weapon. The three abilities have icons.
+- **Parity identical.**
+
+**Learned**
+
+- **Borrowing a step's pose made a family cheap.** It carries the slice's swing, its projectiles and its hit timing with it; only the numbers are new. Poses of their own can come later without touching the sim.
+- **From behind, the crossbow and the off-hands are hard to see** on the borrowed bow poses. They read in the bag and on the HUD, not yet on the figure.
+
+**Next**
+
+- The feel pass (C1 to C5) is built. It wants a hand on it: heavies, Flow, one weapon per outing, the off-hands and the families.
+- Then P2, the village save, or the henchmen (P3).
+
+## 2026-10-28: local session, C4: the off-hand slot
+
+**What changed**
+
+- **The shield slot is the off-hand.** A one-handed weapon takes an off-hand of its kind, and the off-hand brings the third ability.
+- **The shield's bash** goes on 3 (or R, or RT). It knocks the nearest enemy in front off its feet and has its own cooldown (`PlayerState.offhandCooldown`).
+- **Two-handed weapons** take no off-hand and hit 20% harder (`gear.twoHandDamage`).
+- **RuneScape's eleventh slot holds arrows.** With a bow, frost arrows slow what they hit, and a barbed charged shot opens a bleed.
+- **What travels and what is checked.** `Mods.offhand` and `Mods.ammo` go in the loadout, and the server checks them against the kinds there are. `PlayerCommand.ability3` is an optional press that a late input carries.
+- **On screen:**
+  - The HUD shows the third slot only while an off-hand is in use.
+  - The hero screen has the ammo cell beside the neck.
+  - Item text names the bash, the two-hand bonus and what arrows do.
+- **Parity identical.**
+- **test:net's flake is fixed.** The netcode test's walk onto floor 2's ring home failed CI four times since 28 Oct (main included, and #89). Both bots stood inside the ring's 2.2 m before the second reached its exact mark, the ring handed the party on, and the bot's walk waited on a room that had stopped sending. A walk now ends once a hand-off arrives.
+
+**Learned**
+
+- **Today's bow and staff take both hands,** so the off-hands for ranged and magic had nothing to go with. The tome, the buckler and the dual hand crossbow moved to C5, beside the one-handed wand and crossbow.
+- **The new ammo cell caught the hero screen's cursor.** Right from the head went down to it rather than across to the bag (a tie the ammo cell won). The smoke test walks that route and failed. The cursor now weighs a row change at three steps, so it keeps to its row.
+- **One flaky test can hide behind another.** A deterministic floor (`dungeon.seed` pinned) failing only sometimes pointed to timing, not geometry. Checking every CI failure's message found the same waypoint four times.
+
+**Next**
+
+- C5: the warhammer, the one-handed crossbow and the wand, with the tome, the buckler and the dual hand crossbow.
+
+## 2026-10-28: local session, C3: one weapon set per outing
+
+**What changed**
+
+- **The weapon changes only outside a fight** (Michael chose inventory only). The sim holds a requested swap until no fight is on: no doors shut, no waves running. It sits behind `combo.swapInFight`, which the parity test turns on because the slice's scripted parties swap. Parity identical.
+- **1 and 2 are the abilities**, beside Q and E; the pad keeps LB and RB. 3 waits for C4's off-hand.
+- **The hero screen keeps 1, 2, 3 and the d-pad for its tabs.** New `tab1`, `tab2` and `tab3` actions take the press there before anything else, so a tab change never casts.
+- **Gone or changed:**
+  - the wheel and d-pad weapon swaps
+  - the key numbers on the style bar
+  - the HUD's ability keys now read 1 and 2
+  - the controls table says how to choose a weapon
+- The smoke test that pressed 1 to take the sword back now checks that 1 no longer swaps.
+
+**Learned**
+
+- **The backlog's "move the tabs to free keys" was not needed.** The hero screen already stands the hero still and only opens between fights, so 1, 2 and 3 can mean tabs there and abilities everywhere else, as long as the tab actions are read first.
+- **A new hero's 2 does nothing** until the second ability unlocks at level 2. That is the slice's unlock, not a binding fault, and worth knowing when testing keys.
+
+**Next**
+
+- C4, the off-hand slot and its third ability on 3.
+
+## 2026-10-28: local session, C2: Flow
+
+**What changed**
+
+- **A rhythm meter on the hero** (`PlayerState.flow`, `sim/flow.ts`, `tuning.flow`).
+- **The beat.** A press as the chain's next step opens (120 ms before to 160 ms after) is on the beat. It is judged on the tick the press was made for, presses during a hit's freeze included, so the server and the prediction agree.
+- **What fills it.** An attack's earnings land with its first hit, so swings at the air earn nothing:
+  - a light: 8 on the beat, 3 off it
+  - a heavy: 14 on the beat, 5 off it
+  - the same chain a third time running: half
+  - a perfect parry, or a dodge that slips a hit (once a dodge): 20
+  - a combo payoff: a whole tier
+- **What empties it.** A hit taken costs a tier, and the meter drains after 2.5 s without fighting.
+- **The tiers:**
+  - I: attacks 5% faster.
+  - II: the trail runs hotter.
+  - III: a heavy hit lands but does not interrupt.
+  - Full: a charged heavy becomes a Crescendo (charge 3, twice the damage) and spends the meter.
+- **Harmony:** the payer and another player both at Flow III add 20% to a combo payoff.
+- **On screen and in the music.** A thin meter sits under the health bar with tier ticks and a label ("Crescendo: charge a heavy" when full). The fight music adds a layer a tier: hats, then the lead every bar, then bells.
+- **Off in the parity test:** parity identical.
+
+**Learned**
+
+- **The first press of a chain from standing is never on the beat;** there is no beat to keep yet. A press that starts a new chain from the last hit's recovery is, so a player who keeps chaining keeps the rhythm.
+- **Corrections in a brute fight swing from 11 to 49** over twelve seconds with Flow on or off alike. Flow moves the hero only from tier I (5% faster attacks), so it is not the cause.
+- **One smoke failure came from my own scratch runs.** God mode and a Flow switch left on a shared local server failed a test; on fresh servers it was 7/7. Scratch runs should restore what they tune, or use their own server.
+
+**Next**
+
+- C3, one weapon set per outing.
+- Flow needs a hand on it: whether the beat window feels like a rhythm, and whether III is reachable in a real fight.
+
 ## 2026-10-28: local session, C1: light and heavy strings
 
 **What changed**
