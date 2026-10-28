@@ -78,6 +78,17 @@ export interface PlayerState {
   attackSeq: number;
   /** Enemies the current swing has already hit (each takes one hit per swing). */
   attackHitIds: number[];
+  /**
+   * Light and heavy strings (C1), absent in the slice: the presses of this chain so far (L and H),
+   * the string move playing if it has one (its key), its charge level (1 or 2 once a hold made it a
+   * heavy), and how long attack has been held.
+   */
+  attackString?: string;
+  attackMove?: string;
+  attackCharge?: number;
+  attackHold?: number;
+  /** The hold belongs to a press made during this attack, so it is for the next one, not this. */
+  attackHoldNext?: boolean;
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -355,6 +366,8 @@ export type SimEvent =
   | { kind: 'playerLeft'; playerId: string; name: string }
   /** Walked over, or handed over when a run ends. On a generated floor it is only carried until banked (P1). */
   | { kind: 'pickup'; playerId: string; item: Item | GearItem; carried?: boolean }
+  /** A string move fired (C1): its key, and its charge level (0 for a light string's own move). */
+  | { kind: 'stringMove'; playerId: string; move: string; charge: number }
   /**
    * A rest room or the Warden's fall banked a player's finds (P1): the items, their coin, and the
    * village's lumber and stone for the run (the same in every player's event; the browser that opened
@@ -426,6 +439,8 @@ export interface PlayerCommand {
   dodge: boolean;
   /** Attack pressed since the last tick. */
   attack: boolean;
+  /** Attack held this tick (C1): a long enough hold turns the step into a heavy. Absent in the slice. */
+  attackHeld?: boolean;
   /** Camera forward on the ground plane: attacks face it when there's no move input. */
   aimX: number;
   aimZ: number;

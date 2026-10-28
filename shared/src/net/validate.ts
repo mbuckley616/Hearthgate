@@ -30,6 +30,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
   if (!isNum(moveX) || !isNum(moveZ) || !isNum(aimX) || !isNum(aimZ) || !isNum(lockTarget)) return null;
   for (const k of ['sprint', 'dodge', 'attack', 'ability1', 'ability2', 'jump', 'block', 'interact'] as const) if (!isBool(v[k])) return null;
   if (swapTo !== null && !STYLES.includes(swapTo as Style)) return null;
+  if (v.attackHeld !== undefined && !isBool(v.attackHeld)) return null;
   const len = Math.hypot(moveX, moveZ);
   const s = len > 1 ? 1 / len : 1;
   return {
@@ -47,6 +48,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
     jump: v.jump as boolean,
     block: v.block as boolean,
     interact: v.interact as boolean,
+    ...(v.attackHeld === true ? { attackHeld: true } : {}),
   };
 }
 

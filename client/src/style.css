@@ -1032,6 +1032,14 @@ canvas {
   color: #ffe9a8;
 }
 
+.hud-guard.heavy {
+  color: #ffb877;
+}
+
+.hud-guard.heavy.charged {
+  color: #ff7a4a;
+}
+
 .hud-guard.broke {
   color: #ff8a6a;
 }

@@ -540,7 +540,7 @@ export class Game {
             `cam dist ${this.cam.currentDistance.toFixed(2)} m  dodges ${curr.dodgeCharges}/${tuning.dodge.charges}` +
             (curr.invulnerable ? '  [iframes]' : '') +
             `\n${curr.style} ${curr.mode}` +
-            (curr.mode === 'attack' ? ` hit ${curr.attackHit + 1}  ${(curr.attackTime * 1000).toFixed(0)} ms` : '') +
+            (curr.mode === 'attack' ? ` hit ${curr.attackHit + 1}${curr.attackString ? ` ${curr.attackString}` : ''}  ${(curr.attackTime * 1000).toFixed(0)} ms` : '') +
             (curr.grounded ? '' : `  airborne y ${curr.y.toFixed(2)}`) +
             `\nhp ${Math.ceil(curr.hp)}  enemies ${world.enemies.filter((e) => e.ai !== 'dead').length}  run ${world.run.phase} wave ${world.run.wave}`
           : ''),
@@ -756,6 +756,8 @@ export class Game {
       lockTarget: this.lockOn.targetId,
       block: actions.held.has('block'),
       interact: actions.held.has('interact'),
+      // Held, not just pressed: a long enough hold turns the swing into a heavy (C1).
+      attackHeld: actions.held.has('attack'),
     };
   }
 
@@ -863,7 +865,7 @@ export class Game {
           <tr><td>Sprint</td><td>hold Shift · left stick click</td></tr>
           <tr><td>Walk</td><td>light stick tilt</td></tr>
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
-          <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits)</td></tr>
+          <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
           <tr><td>Abilities</td><td>Q, E · LB, RB</td></tr>
           <tr><td>Lock on</td><td>Tab · middle click · right stick click (flick to switch)</td></tr>
           <tr><td>Swap hero</td><td>1 knight · 2 archer · 3 mage · wheel · D-pad</td></tr>

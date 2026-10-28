@@ -1,4 +1,4 @@
-import { ABILITIES, ABILITY_NAMES, comboHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
+import { ABILITIES, ABILITY_NAMES, comboHit, stringHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
 import { championArmour, championCooldown, championRecharge, championSpeed } from './champion';
 import { levelFor } from './gear';
 import type { PlayerState } from './types';
@@ -173,6 +173,8 @@ export function attackSpeed(p: PlayerState): number {
 
 /** The current hero's chain hit i, sped up by haste. */
 export function heroHit(p: PlayerState, i: number): ComboHit {
+  // A string move (C1) stands in for the chain step it borrows.
+  if (p.attackMove) return stringHit(p.style, p.attackMove, attackSpeed(p), p.attackCharge ?? 1);
   return comboHit(p.style, i, attackSpeed(p));
 }
 
