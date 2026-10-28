@@ -885,6 +885,35 @@ export const tuning = {
    * for the fight rooms cleared on that floor: coin to each player, lumber and stone to the village
    * the run set out from. Each floor deeper pays depthBonus more, and makes a rare drop that much likelier.
    */
+  /**
+   * Flow (C2; Michael, 28 Oct): a rhythm meter. Presses as the chain's next step opens are on the beat;
+   * the attack's earnings land with its first hit. Off in the parity test: the slice has no meter.
+   */
+  flow: {
+    enabled: true,
+    max: 300,
+    beatEarlyMs: 120,
+    beatLateMs: 160,
+    lightOnBeat: 8,
+    lightOffBeat: 3,
+    heavyOnBeat: 14,
+    heavyOffBeat: 5,
+    /** The same chain a third time running earns this share. */
+    repeatFrac: 0.5,
+    /** A perfect parry, or a dodge that slips a hit. */
+    perfectGain: 20,
+    /** A combo payoff: a whole tier. */
+    comboGain: 100,
+    idleMs: 2500,
+    drainPerSec: 40,
+    /** Flow I and up: attacks this much faster. */
+    tier1Speed: 0.05,
+    /** Two players at Flow III: a combo payoff gains this. */
+    harmonyBonus: 0.2,
+    /** A Crescendo (a charged heavy at a full meter) hits this much harder again. */
+    crescendoDamage: 2,
+  },
+
   loop: {
     depthBonus: 0.3,
     coinPerRoom: 12,
@@ -1636,6 +1665,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'warden.spawnMs': [0, 4500, 10],
   'warden.deathMs': [0, 9000, 10],
   'warden.knockbackTaken': [0, 2, 0.01],
+  'flow.max': [30, 900, 30],
+  'flow.beatEarlyMs': [0, 400, 10],
+  'flow.beatLateMs': [0, 400, 10],
+  'flow.lightOnBeat': [0, 50, 1],
+  'flow.lightOffBeat': [0, 50, 1],
+  'flow.heavyOnBeat': [0, 80, 1],
+  'flow.heavyOffBeat': [0, 80, 1],
+  'flow.repeatFrac': [0, 1, 0.05],
+  'flow.perfectGain': [0, 150, 1],
+  'flow.comboGain': [0, 300, 5],
+  'flow.idleMs': [0, 10000, 100],
+  'flow.drainPerSec': [0, 300, 5],
+  'flow.tier1Speed': [0, 0.3, 0.01],
+  'flow.harmonyBonus': [0, 1, 0.05],
+  'flow.crescendoDamage': [1, 5, 0.1],
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],
@@ -1875,7 +1919,8 @@ export function stringHit(style: Style, key: string, speed = 1, charge = 1): Com
   return {
     ...base,
     windup: (t[`${k}WindupMs`] * c.durationScale) / 1000 / speed,
-    damage: t[`${k}Damage`] * tuning.combat.baseDamage * (two ? c.charge2Damage : 1),
+    // Charge 3 is a Crescendo (C2): a charged heavy at a full Flow meter.
+    damage: t[`${k}Damage`] * tuning.combat.baseDamage * (two ? c.charge2Damage : 1) * (charge >= 3 ? tuning.flow.crescendoDamage : 1),
     poise: t[`${k}Poise`] * (two ? c.charge2Poise : 1),
     knockback: t[`${k}KnockbackM`],
     heavy: t[`${k}Heavy`] >= 1,

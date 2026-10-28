@@ -5,6 +5,7 @@ import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
+import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
 import { dodgeRechargeCut, emptyTalents, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -120,6 +121,12 @@ function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: Pla
   p.attackQueued = false;
   p.attackSeq++;
   p.attackHitIds = [];
+  if (p.flow) {
+    // A fresh chain closes the last one; the press behind this swing was on the beat or it was not.
+    if (!prior) chainEnded(p, p.attackString);
+    p.flow.onBeat = p.flow.nextOnBeat;
+    p.flow.nextOnBeat = false;
+  }
   if (tuning.combo.heavies) {
     setStringMove(p, prior + 'L', false);
     delete p.attackHoldNext;
@@ -159,6 +166,7 @@ function startDodge(state: SimState, p: PlayerState, cmd: PlayerCommand, moveMag
   p.mode = 'dodge';
   p.dodgeTime = 0;
   p.attackQueued = false;
+  if (p.flow) p.flow.dodged = false;
   // Dodge-refund perk: a dodge right after a finisher is free.
   const refund = p.mods.perks.includes('dodgeRefund') && p.lastFinisherAt >= 0 && state.time - p.lastFinisherAt <= tuning.gear.dodgeRefundWindowMs / 1000;
   if (refund) {
@@ -363,6 +371,10 @@ export function stepPlayer(
     return;
   }
 
+  if (tuning.flow.enabled) {
+    p.flow ??= newFlow();
+    stepFlow(p, dt);
+  }
   // How long attack has been held (C1): a hold long enough turns the step into a heavy.
   if (tuning.combo.heavies) {
     p.attackHold = cmd.attackHeld ? (p.attackHold ?? 0) + dt : 0;
@@ -393,7 +405,14 @@ export function stepPlayer(
   // Hitstop: frozen in place; clicks and dodges still buffer so nothing gets eaten.
   if (p.hitstop > 0) {
     p.hitstop = Math.max(0, p.hitstop - dt);
-    if (cmd.attack && p.mode === 'attack') p.attackQueued = true;
+    if (cmd.attack && p.mode === 'attack') {
+      p.attackQueued = true;
+      // A press in a hit's freeze can still be on the beat (C2).
+      if (p.flow) {
+        const h = heroHit(p, p.attackHit);
+        p.flow.nextOnBeat = onBeat(p.attackTime, h.windup + h.active);
+      }
+    }
     if (cmd.dodge) p.dodgeBuffered = true;
     if (p.mode === 'guard') p.guardTime += dt;
     return;
@@ -464,6 +483,8 @@ export function stepPlayer(
       p.attackQueued = false;
     } else if (cmd.attack && p.attackTime >= chainOpen - tuning.combo.inputBufferMs / 1000) {
       p.attackQueued = true;
+      // Flow (C2): the beat is the moment the chain's next step opens, judged on the tick of the press.
+      if (p.flow) p.flow.nextOnBeat = onBeat(p.attackTime, chainOpen);
     }
   } else if (p.mode === 'ability') {
     // Dodge can cancel an ability's recovery.
@@ -525,6 +546,12 @@ export function stepPlayer(
 
     const windup = hit.windup;
     if (!p.attackFired && p.attackTime >= windup) {
+      // A charged heavy at a full meter is a Crescendo (C2): it spends the meter and hits much harder.
+      if (p.flow && p.attackCharge === 2 && p.flow.v >= tuning.flow.max) {
+        p.attackCharge = 3;
+        p.flow.v = 0;
+      }
+      armFlow(p);
       fireAttack(p, state, colliders);
       p.attackFired = true;
       if (p.attackMove) state.events.push({ kind: 'stringMove', playerId: p.id, move: p.attackMove, charge: p.attackCharge ?? 0 });

@@ -3,6 +3,7 @@ import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
 import type { FloorRunState } from './floorRun';
+import type { FlowState } from './flow';
 import type { TalentRanks } from './talents';
 
 /**
@@ -89,6 +90,8 @@ export interface PlayerState {
   attackHold?: number;
   /** The hold belongs to a press made during this attack, so it is for the next one, not this. */
   attackHoldNext?: boolean;
+  /** The Flow meter (C2), absent in the slice. */
+  flow?: FlowState;
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;

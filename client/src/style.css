@@ -165,6 +165,54 @@ canvas {
   color: rgba(255, 255, 255, 0.85);
 }
 
+.hud-flow {
+  position: relative;
+  width: 240px;
+  height: 7px;
+  margin-top: 5px;
+  background: rgba(10, 8, 8, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.hud-flow-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7a5cc0, #be96ff);
+  transition: width 120ms linear;
+}
+
+.hud-flow.tier2 .hud-flow-fill {
+  background: linear-gradient(90deg, #be96ff, #ffb877);
+}
+
+.hud-flow.tier3 .hud-flow-fill {
+  background: linear-gradient(90deg, #ffb877, #ffd27a);
+}
+
+.hud-flow.full .hud-flow-fill {
+  animation: hud-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.hud-flow i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.hud-flow-label {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  font: 600 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  color: #ffd27a;
+  white-space: nowrap;
+}
+
 .hud-pips {
   display: flex;
   gap: 6px;

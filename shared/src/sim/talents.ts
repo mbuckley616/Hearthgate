@@ -1,5 +1,6 @@
 import { ABILITIES, ABILITY_NAMES, comboHit, stringHit, tuning, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
 import { championArmour, championCooldown, championRecharge, championSpeed } from './champion';
+import { flowSpeed } from './flow';
 import { levelFor } from './gear';
 import type { PlayerState } from './types';
 
@@ -168,7 +169,7 @@ export function abilityRank(p: PlayerState, kind: AbilityKind): number {
 // --- Effects ---
 
 export function attackSpeed(p: PlayerState): number {
-  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank;
+  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p);
 }
 
 /** The current hero's chain hit i, sped up by haste. */

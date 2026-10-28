@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { abilityTiming, tuning, type AbilityKind, type Style } from '@hearthgate/shared/config/tuning';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
+import { flowTier } from '@hearthgate/shared/sim/flow';
 import { BODY, buildArcher, buildKnight, buildMage, type Outfit } from './outfits';
 import { ARROW_LENGTH, Bow, FORWARD, FROST, Palette, Staff, UP, buildArrow, buildQuiver, buildShield, buildSword, glowMaterial } from './props';
 import { buildGearShield, dress, outfitParts, undress, weaponMaterial, type Look } from './wardrobe';
@@ -680,7 +681,8 @@ export class HeroView {
     const u = clamp01((t - t1) / hit.active);
     this.attackHop = set.hop[p.attackHit] * Math.sin(Math.PI * u) * (t < t2 ? 1 : 0);
     // Weapon trails emit from late windup to just after the active phase.
-    this.trailStrength = t > t1 * 0.7 && t < t2 + 0.05 ? (hit.heavy ? 1 : 0.75) : 0;
+    // Flow (C2) runs the trail hotter, a step a tier.
+    this.trailStrength = t > t1 * 0.7 && t < t2 + 0.05 ? (hit.heavy ? 1 : 0.75) * (1 + 0.2 * flowTier(p)) : 0;
     // Power and piercing shots glow as they draw.
     this.arrowGlow = p.style === 'bow' && (p.attackHit === 2 || p.attackHit === 4) && !p.attackFired ? clamp01(t / t1) : 0;
   }

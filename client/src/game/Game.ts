@@ -31,6 +31,7 @@ import { rollGear } from '@hearthgate/shared/sim/catalogue';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { slotsOpen } from '@hearthgate/shared/sim/coop';
 import { worldNow } from '@hearthgate/shared/sim/world';
+import { flowTier } from '@hearthgate/shared/sim/flow';
 import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
 import { Hud } from '../ui/Hud';
@@ -531,6 +532,7 @@ export class Game {
     if (draw) this.gfx.render();
     this.crt.update();
     this.music.setMood(Game.moodFor(world));
+    this.music.setFlow(flowTier(this.me() ?? undefined));
     this.music.update(realDt);
 
     this.debug.setExtra(

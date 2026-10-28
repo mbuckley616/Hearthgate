@@ -2,6 +2,7 @@ import { ABILITIES, ABILITY_NAMES, STRING_MOVES, abilityTiming, tuning, type Sty
 import { levelUnlock, levelFor } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult } from '@hearthgate/shared/sim/talents';
+import { flowTier } from '@hearthgate/shared/sim/flow';
 import { ICONS, iconUrl } from './pixelArt';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 
@@ -35,6 +36,10 @@ export class Hud {
   private abilityRoot = document.createElement('div');
   private toasts = document.createElement('div');
   private guardText = document.createElement('div');
+  /** The Flow meter (C2), under the health bar. */
+  private flow = document.createElement('div');
+  private flowFill = document.createElement('div');
+  private flowLabel = document.createElement('div');
   private comboText = document.createElement('div');
   private slots: { root: HTMLDivElement; name: HTMLDivElement; sweep: HTMLDivElement; time: HTMLDivElement; icon: HTMLImageElement; wasReady: boolean }[] = [];
 
@@ -50,7 +55,14 @@ export class Hud {
     const bars = document.createElement('div');
     bars.className = 'hud-bars';
     this.draught.className = 'hud-draught';
-    bars.append(hp, this.pips, this.draught);
+    this.flow.className = 'hud-flow';
+    this.flowFill.className = 'hud-flow-fill';
+    this.flowLabel.className = 'hud-flow-label';
+    const ticks = '<i style="left:33.33%"></i><i style="left:66.66%"></i>';
+    this.flow.innerHTML = ticks;
+    this.flow.prepend(this.flowFill);
+    this.flow.append(this.flowLabel);
+    bars.append(hp, this.flow, this.pips, this.draught);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -122,7 +134,7 @@ export class Hud {
       if (ev.kind === 'stringMove' && ev.playerId === localId) {
         const style = sim.players.find((pl) => pl.id === localId)?.style;
         const name = style ? STRING_MOVES[style][ev.move] : undefined;
-        if (name) this.guardPop(ev.charge >= 2 ? `${name} · charged` : name, ev.charge >= 2 ? 'heavy charged' : 'heavy');
+        if (name) this.guardPop(ev.charge >= 3 ? `${name} · Crescendo` : ev.charge >= 2 ? `${name} · charged` : name, ev.charge >= 2 ? 'heavy charged' : 'heavy');
       }
       if (ev.kind === 'block' && ev.playerId === localId && ev.broke) this.guardPop('Guard broken', 'broke');
       if (ev.kind === 'levelUp' && ev.playerId === localId) {
@@ -156,6 +168,15 @@ export class Hud {
     this.hpFill.style.width = `${frac * 100}%`;
     this.hpFill.classList.toggle('low', frac < 0.3);
     this.hpText.textContent = `${Math.ceil(p.hp)} / ${max}`;
+    // Flow (C2): the meter and its tier; full, it says how to spend it.
+    this.flow.style.display = p.flow ? 'block' : 'none';
+    if (p.flow) {
+      const tier = flowTier(p);
+      const full = p.flow.v >= tuning.flow.max;
+      this.flowFill.style.width = `${Math.min(100, (p.flow.v / tuning.flow.max) * 100)}%`;
+      this.flow.className = `hud-flow tier${tier}${full ? ' full' : ''}`;
+      this.flowLabel.textContent = full ? 'Crescendo: charge a heavy' : tier > 0 ? `Flow ${['', 'I', 'II', 'III'][tier]}` : '';
+    }
 
     if (p.dodgeCharges !== this.shownPips) {
       this.shownPips = p.dodgeCharges;

@@ -1,5 +1,6 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
+import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor } from './gear';
 import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
@@ -14,6 +15,8 @@ export function comboWindow(hero: PlayerState | undefined): number {
 export function payCombo(state: SimState, combo: 'shatter' | 'skewer' | 'detonate', playerId: string, x: number, y: number, z: number): void {
   state.events.push({ kind: 'combo', combo, playerId, x, y, z });
   const p = state.players.find((pl) => pl.id === playerId);
+  // A combo payoff is worth a whole tier of Flow (C2).
+  gainFlow(p, tuning.flow.comboGain);
   if (!p || !slotted(p, 'momentum')) return;
   const cut = tuning.champion.momentumCooldownMs / 1000;
   for (const cds of Object.values(p.cooldowns)) for (let i = 0; i < cds.length; i++) cds[i] = Math.max(0, cds[i] - cut);
@@ -108,10 +111,15 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // Teamwork (T6c): a payoff on a setup an ally made.
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
-  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork : 0;
+  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
   const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
+  // Flow (C2): an attack's earnings land with its first hit, so a swing at nothing earns nothing.
+  if (hero?.flow && hero.flow.pending > 0 && !hit.dot) {
+    gainFlow(hero, hero.flow.pending);
+    hero.flow.pending = 0;
+  }
   if (hero && hit.style) grantXp(state, hero, hit.style, Math.min(damage, damage + e.hp) * tuning.progression.xpPerDamage);
   if (hit.dot) {
     // Bleed ticks: just damage (and a kill if it finishes them).
@@ -273,6 +281,7 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   // A successful parry re-arms straight away, so a rhythm of parries is possible.
   p.guardRaisedAt = -1000;
   p.hitstop = Math.max(p.hitstop, g.parryHitstopMs / 1000);
+  gainFlow(p, tuning.flow.perfectGain);
   if (slotted(p, 'counterstep') && p.dodgeCharges < tuning.dodge.charges) p.dodgeCharges++;
   const e = hit.enemyId !== undefined ? state.enemies.find((en) => en.id === hit.enemyId && isTargetable(en)) : undefined;
   if (e) {
@@ -298,7 +307,14 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
  * them down.
  */
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
-  if (heroInvulnerable(p)) return 'none';
+  if (heroInvulnerable(p)) {
+    // A dodge that slips a hit is a perfect one (C2), paid once per dodge.
+    if (p.flow && p.mode === 'dodge' && p.invulnerable && !p.flow.dodged) {
+      p.flow.dodged = true;
+      gainFlow(p, tuning.flow.perfectGain);
+    }
+    return 'none';
+  }
   if (p.lagGrace > 0 && !hit.late) {
     state.pendingHits.push({ playerId: p.id, at: state.time, hit });
     return 'pending';
@@ -341,6 +357,9 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   }
   // Worn armour (T5b) takes its share off; the slice's heroes carry none.
   if (p.mods.armour) damage *= 1 - p.mods.armour;
+  // Flow III (C2): a heavy hit lands but does not interrupt; any hit taken costs a tier.
+  if (p.flow && heavy && flowArmoured(p)) heavy = false;
+  if (p.flow) loseFlowTier(p);
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
   state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy });
   if (p.hp <= 0) {
