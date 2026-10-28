@@ -1,4 +1,4 @@
-import { abilityTiming, enemyStats, tuning } from '../config/tuning';
+import { abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, type Collider } from '../level/geometry';
 import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -97,7 +97,22 @@ function lungeCurve(t: number, windup: number, active: number): number {
   return 1 - (1 - u) * (1 - u);
 }
 
-function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number): void {
+/**
+ * Light and heavy strings (C1): the move a string plays, if any. It takes the pose of the chain step
+ * it borrows (attackHit), so the views and the projectiles follow without knowing about strings.
+ */
+function setStringMove(p: PlayerState, s: string, heavy: boolean): void {
+  p.attackString = s;
+  const move = stringMoveFor(p.style, s);
+  if (move) {
+    p.attackMove = move;
+    p.attackHit = stringAnim(p.style, move);
+  } else delete p.attackMove;
+  if (heavy) p.attackCharge = 1;
+  else delete p.attackCharge;
+}
+
+function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number, prior = ''): void {
   p.mode = 'attack';
   p.attackHit = hitIndex;
   p.attackTime = 0;
@@ -105,6 +120,10 @@ function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: Pla
   p.attackQueued = false;
   p.attackSeq++;
   p.attackHitIds = [];
+  if (tuning.combo.heavies) {
+    setStringMove(p, prior + 'L', false);
+    delete p.attackHoldNext;
+  }
   if (p.style === 'sword') {
     p.vx = 0;
     p.vz = 0;
@@ -121,8 +140,13 @@ function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: Pla
   const target = pickSoftTarget(state, p, cmd, targetingRange(p));
   p.attackTarget = target ? target.id : -1;
   if (target) p.yaw = turnToward(p.yaw, Math.atan2(target.x - p.x, target.z - p.z), tuning.combo.maxTurnDeg * DEG);
-  // Melee lunges stretch to reach a soft target, stopping short of it (brief).
-  const lunge = heroHit(p, hitIndex).lunge;
+  aimLunge(state, p);
+}
+
+/** Melee lunges stretch to reach a soft target, stopping short of it (brief). */
+function aimLunge(state: SimState, p: PlayerState): void {
+  const target = p.attackTarget >= 0 ? state.enemies.find((e) => e.id === p.attackTarget && isTargetable(e)) : undefined;
+  const lunge = heroHit(p, p.attackHit).lunge;
   p.attackLunge = lunge;
   if (target && lunge > 0) {
     const tg = tuning.targeting;
@@ -257,6 +281,34 @@ function swordHits(p: PlayerState, state: SimState): void {
   if (stop > 0) p.hitstop = Math.max(p.hitstop, stop);
 }
 
+/**
+ * Light and heavy strings (C1): while attack is still held, a light step turns into the heavy for the
+ * string so far once the hold reaches heavyHoldMs, and a heavy reaches charge level 2 after chargeMs
+ * more. A tap never waits: it fires at the end of its windup as the slice's chain always did.
+ */
+function holdForHeavy(state: SimState, p: PlayerState, cmd: PlayerCommand): void {
+  if (!cmd.attackHeld || p.attackHoldNext) return;
+  const c = tuning.combo;
+  const hold = (p.attackHold ?? 0) * 1000;
+  if (p.attackCharge === undefined && hold >= c.heavyHoldMs) {
+    const s = p.attackString ?? 'L';
+    setStringMove(p, s.slice(0, -1) + 'H', true);
+    p.attackTime = 0;
+    aimLunge(state, p);
+  } else if (p.attackCharge === 1 && hold >= c.heavyHoldMs + c.chargeMs) {
+    p.attackCharge = 2;
+  }
+}
+
+/** Whether a held attack should wait at the end of its windup rather than fire. */
+function waitingOnHold(p: PlayerState, cmd: PlayerCommand): boolean {
+  if (!cmd.attackHeld || p.attackHoldNext) return false;
+  const c = tuning.combo;
+  const hold = (p.attackHold ?? 0) * 1000;
+  if (p.attackCharge === undefined) return hold < c.heavyHoldMs;
+  return p.attackCharge === 1 && hold < c.heavyHoldMs + c.chargeMs;
+}
+
 /** Accelerate toward the commanded velocity, capped at maxSpeed; optionally turn to face it. */
 function steer(p: PlayerState, cmd: PlayerCommand, moveMag: number, maxSpeed: number, dt: number, turn: boolean): void {
   const mv = tuning.movement;
@@ -309,6 +361,13 @@ export function stepPlayer(
     }
     if (p.bleed !== undefined && inRun) bleedAndCrawl(p, cmd, dt, world, state);
     return;
+  }
+
+  // How long attack has been held (C1): a hold long enough turns the step into a heavy.
+  if (tuning.combo.heavies) {
+    p.attackHold = cmd.attackHeld ? (p.attackHold ?? 0) + dt : 0;
+    // A press made mid-swing is for the next swing in the chain: its hold must not turn this one heavy.
+    if (cmd.attack && p.mode === 'attack') p.attackHoldNext = true;
   }
 
   // Interrupted by a heavy hit: shoved back, no control until it passes.
@@ -458,14 +517,17 @@ export function stepPlayer(
     p.invulnerable = p.dodgeTime * 1000 < dg.iframesMs;
     if (p.dodgeTime >= T) endDodge(p);
   } else if (p.mode === 'attack') {
+    if (tuning.combo.heavies && !p.attackFired) holdForHeavy(state, p, cmd);
     const hit = heroHit(p, p.attackHit);
     const t0 = p.attackTime;
-    p.attackTime += dt;
+    // A held attack waits at the end of its windup: for the heavy, or for charge level 2.
+    if (!(tuning.combo.heavies && !p.attackFired && t0 + dt >= hit.windup && waitingOnHold(p, cmd))) p.attackTime += dt;
 
     const windup = hit.windup;
     if (!p.attackFired && p.attackTime >= windup) {
       fireAttack(p, state, colliders);
       p.attackFired = true;
+      if (p.attackMove) state.events.push({ kind: 'stringMove', playerId: p.id, move: p.attackMove, charge: p.attackCharge ?? 0 });
     }
     if (p.style === 'sword') swordHits(p, state);
 
@@ -502,7 +564,13 @@ export function stepPlayer(
       p.mode = 'move';
     } else if (p.attackQueued && p.attackTime >= chainOpen) {
       // Chains are 3 hits until levels unlock steps 4 and 5.
-      startAttack(state, p, (p.attackHit + 1) % chainLengthFor(levelFor(p.xp[p.style])), cmd, moveMag);
+      const length = chainLengthFor(levelFor(p.xp[p.style]));
+      if (tuning.combo.heavies) {
+        // The next light is the step after the string so far; a string as long as the chain starts again.
+        const s = p.attackString ?? '';
+        const prior = s.length >= length ? '' : s;
+        startAttack(state, p, prior.length, cmd, moveMag, prior);
+      } else startAttack(state, p, (p.attackHit + 1) % length, cmd, moveMag);
     } else if (p.attackTime >= chainOpen + hit.recovery) {
       p.mode = 'move';
       p.attackQueued = false;
