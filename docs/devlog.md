@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, P3: a henchman who fights
+
+**What changed**
+
+`auto/local-henchman`, stacked on `auto/local-modifiers`. Protocol unchanged but for a new cheat.
+- **The brain** (`shared/src/sim/henchman.ts`): a hero in a party slot with no browser, `PlayerState.henchman`, whose command HostSession writes each tick from the sim (server only, deterministic, its rolls from the sim's rng). It follows the nearest player, fights the nearest enemy near itself or its leader (closing, then pressing attack every `hirelings.attackEveryTicks`, so it chains), and when it stands in an enemy's telegraph it notices only after `hirelings.reactMs` (450 ms; a player about 250), then dodges out (`dodgeChance`, 55%) or raises its guard. Every number is a slider under `hirelings`.
+- **In the party:** `HostSession.addHenchman` (a debug cheat, "Add a henchman", until the tavern hires them in P10) adds a sword henchman at the asking hero's level, named Garrick, Bryn, Tamsin or Odo, within the party's four. It is drawn as any other hero with its name over it and listed in the party panel. Rings, the rest room's bank and loot pass it by (the players decide when to go, and loot is theirs); it does not yet follow through a ring (P10).
+- **Two smoke-test fixes the run surfaced:** talk now reaches 3 m (it was 2.4), since a hero pressing on a keeper's counter slides along it and can end out of reach; and the test's walks stop when a hand-off takes the hero out of the snapshot.
+- Tests: a henchman alone kills three grunts and takes hits; it reads a telegraph only after `reactMs` and answers it once; rings and loot pass it by and the party's cap holds (`henchman.test.ts`). check 188, parity identical, test:net, smoke 7/7 three runs in a row. In the browser: on floor 1 of seed 11, Garrick cleared a guard room and its reinforcements alone in about 20 s while the player stood in the doorway, going from 100 to 66 health (`docs/screenshots/henchman.jpg`).
+
+**Next**
+
+- P6, the bow and staff henchmen (range, abilities, combos now and then, reviving a downed player), then P10, the tavern's hiring room after Michael's mockup, with henchmen following through rings. Then the Phase 2 gate.
+
 ## 2026-10-28: local session, P8: Cursed and Haunted; doors made the server's
 
 **What changed**
