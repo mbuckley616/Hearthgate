@@ -85,6 +85,27 @@ async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
 }
 
 /**
+ * Into the village's ring and stay there. walkTo steers by a snapshot a round trip old and holds W at
+ * full speed, so a short walk in can coast clean through the ring and out the far side (29 Oct: the hero
+ * 2.6 m from its middle, the ring 2.4). So: walk to its edge, then short taps of W, each one looked at
+ * once the snapshot has caught up, until the hero stands well inside.
+ */
+async function intoRing(page: Page) {
+  await walkTo(page, 0, -10.5, 3);
+  for (let taps = 0; taps < 40; taps++) {
+    const p = mine(await seen(page));
+    if (!p || Math.hypot(p.x, p.z + 10.5) < 1.2) return;
+    await page.evaluate(([px, pz]) => {
+      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(0 - px), -(-10.5 - pz));
+    }, [p.x, p.z]);
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(60);
+    await page.keyboard.up("KeyW");
+    await page.waitForTimeout(250);
+  }
+}
+
+/**
  * Into Keeper Wren's shrine (interiors, Michael 28 Oct): round the ring (two seconds in it would take
  * it), to its front door and through, then up to her table. Its inside lies far north of the square.
  */
@@ -208,7 +229,7 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await tune(page, { "dungeon.pieces": 10, "dungeon.seed": 4242 });
   try {
     // Into the ring and hold still: two seconds later the party is handed onto a generated floor.
-    await walkTo(page, 0, -10.5, 0.8);
+    await intoRing(page);
     await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
     const run = await seen(page);
     expect(run.code).not.toBe(home);
@@ -281,7 +302,7 @@ test("Keeper Wren's menu turns the village's ring to the first story dungeon, a 
   await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
   await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
   await outOfShrine(page);
-  await walkTo(page, 0, -10.5, 0.8);
+  await intoRing(page);
   await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
   const hand = await page.evaluate(() => (window as unknown as { game: any }).game.session.world.level.dungeon.def.spec.hand?.name);
   expect(hand).toBe("The Old Cellar");
