@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P7: Keeper Wren's portal menu
+
+**What changed**
+
+`auto/local-portal-menu`, stacked on `auto/local-stash`. Protocol 14. Built from Michael's mockup and answers (decisions.md "Wren's portal menu").
+- **The rules** (`shared/src/game/portalChoice.ts`): five difficulties, Easy (-25%) to Legendary (+150%), each filling every room with that much more of the budget and paying that much more (`depthMult`); the shrine opens Normal at tier 1 and one more a tier. Three sizes (12, 22, 34 pieces on the first floor, more each floor), 1 to 8 floors. Five story dungeons to start: The Old Cellar (hand-built), Mossgate Barrow, The Saltmarsh Warrens, Emberhall, The Hollow Crown, each with a level range (a guide), words, reward slots and key enemies; the generated ones from a fixed seed, so each is the same place every time. A run's plan and every floor's spec carry the difficulty and the story id.
+- **The menu** (`client/src/ui/PortalScreen.ts`): a second F (or A) to Wren opens it, violet and candle-coloured after the mockup. Story tab: the dungeons in order, locked until the one before is cleared, each with its picture of rewards (as the bag draws those slots), key enemies and Open Portal; the player's own editor dungeons follow. Random tab: floor count, size, the themes shown locked ("later"), difficulty with the locked ones saying which shrine tier opens them, and Reshape Portal. Q and E (LB, RB) change tab, up and down choose, left and right change a setting, F or A opens, Esc, Tab or B leave; clicking works too.
+- **The server**: a new `portal` message; `VillageRoom` refuses a difficulty past its shrine's tier and leads the ring with the choice. Whether a story dungeon is open is the browser's to say (progress is in its save until Phase 3); a win records the story cleared and says which opens next.
+- **A second word now acts on letting go of F.** Holding F to build (P4) begins with a press, which at a keeper already talking was taken for opening their menu; now a hold that builds opens nothing.
+- Tests: difficulty caps, the wire, plans and specs carrying difficulty and story, a story dungeon the same whatever the server's seed, harder paying more (`portalChoice.test.ts`); test:net: Hard refused at shrine tier 1, a random choice and a story one taken, the ring saying so; the smoke test's Wren case now opens the menu and takes story 1. check 174, parity identical, test:net, smoke 7/7. In the browser: the menu by keys, both tabs, a large 3-floor Normal run reshaped and the ring saying so.
+
+**Learned**
+
+- **Only four enemy kinds exist** (grunt, archer, brute, the Warden), so the key enemies are those until E1's themes. Rewards are slots, not items, until a story dungeon has a loot table of its own.
+
+**Next**
+
+- Wren's shrine interior, enterable, her menu framed by the room (decisions.md, interiors), for Michael to judge before the other three.
+- Then P8, and the henchmen with the tavern's hiring room (Michael's tavern mockup).
+
 ## 2026-10-28: local session, P9 and D5: Marta's stash, and the bag at risk
 
 **What changed**
