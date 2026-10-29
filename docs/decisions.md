@@ -9,6 +9,14 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-28: Wren's portal menu, themed menus, interiors (Claude (local))
+Michael sent two mockups: a tavern ("The Rusted Stag: Hire Companions", the companions standing in the room, each with a card and a price) and the Portal Keeper's menu (two tabs: Curated Dungeons, a list of 50 story dungeons with a level range, picture, description, potential rewards, key enemies and Open Portal; and Random Dungeon, with floor count, size, theme, difficulty and Reshape Portal). "Themed menus / adding some sort of screen behind the menu to make it feel like you're in those buildings might be cool." He imagines about 50 curated story dungeons with a natural progression, and a randomizer for players to make their own challenges. Four questions were asked.
+Michael (2026-10-28, in chat):
+- **Interiors:** asked whether a 3D backdrop should simply be an interior you can enter. Recommendation taken: yes. Each building's inside is part of the village level, off to one side, reached through its door (no loading, the room stays one room, friends see you go in); its keeper stands inside, and their menu opens with the camera framing the room behind it. Wren's shrine first, for Michael to judge, then the others.
+- **The portal menu:** both tabs now, filled in stages. Story tab with the curated dungeons (a level range, a description, rewards, key enemies), a handful to start and more over time; Random tab with floors, size and difficulty. Themes show as locked until dungeon types come after Phase 2. This replaces P7's daily board of three.
+- **Difficulty:** capped by the Portal Shrine's tier.
+- **Story order:** clear one to open the next; the level range is a guide, not a lock.
+
 ### 2026-10-28: The stash's design (Claude (local))
 Before P9, three questions in chat: how Marta's stash looks, how an item moves, and how the safe pocket works (D5). Recommendations were: bag and stash grids side by side; F moves an item across; the bag's first spaces as the pocket.
 Michael (2026-10-28, in chat):
