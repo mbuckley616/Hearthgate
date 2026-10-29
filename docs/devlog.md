@@ -11,7 +11,12 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 - **Henchmen come through doors** (found in the shakedown): `stepDoors` brings each henchman whose nearest player took a door through with them, side by side. Before, they stayed inside the tavern when their player walked out, since a door is a jump the server makes and the brain only walks at its leader.
 - **Henchmen stand apart** (found in the shakedown): hired together, all three stood on one spot and were drawn as one figure. A henchman steps away from any hero nearer than `hirelings.spacing` (1.3 m); two on the very same point part along a direction from their ids, so the sim has no rolls.
 - **The party's frames sit below the village panel**: both were at the top-left corner, so the henchmen's frames covered the village's lumber, stone and tiers.
-- Tests: a door brings three henchmen through apart and clear of every door circle; three hired on one spot are over 1 m apart within 4 s and still with the party. Both fail on the old code. check 197, parity identical, test:net passed.
+- **The open Found-in-play bugs**, after the shakedown (Michael: "fix them, black walls first"):
+  - The interiors' dark shells show only while the camera is inside one (`VillageView.setEye`); from the square they were the black walls past the palisade.
+  - The melee dot holds the centre and reddens while a swing would find someone; a red chevron marks that enemy unless it is locked. With the bow or staff and free aim it was already pinned.
+  - A Small run's floor always generates: a 14-piece floor must loop, and one spec in twenty found no seed in 64 that did, so the deeper ring failed for good. After 64 strict tries `generateFloor` tries 64 more without the loop; only specs that used to throw change, so no floor that played before is different. Swept: Small 3 floors 24 of 400 runs broken before, 0 after; the village's own plan 52 of 1000, 0; Small 8 floors 50 of 1000, 0.
+  - The bots pace their commands on one clock across drives: back-to-back `drive(4)`s (walkTo) sent the first of each at once, over the server's 75 a second. Now 60.1.
+- Tests: a door brings three henchmen through apart and clear of every door circle; three hired on one spot are over 1 m apart within 4 s and still with the party; the critic's Small floor generates, with a staircase and its rest room. Each fails on the old code. check 198, parity identical, test:net passed.
 
 **The shakedown** (the in-app browser with an autopilot in the page, as `gate-party.ts` steers; a level 1 to 3 Knight, the save seeded with 1,500 coin and 400 lumber and stone, put back after):
 - The tavern raised to tier III by the hold (272 coin, 136 lumber, 102 stone, as priced); Garrick, Bryn and Tamsin hired for 180 coin; through the shrine's door, Wren's Random tab (medium, 3 floors, Normal), into the ring, every henchman on every floor through every ring.
@@ -26,7 +31,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- Before the gate, the open bugs under Found in play: the interiors' black shells seen from the square and the dancing melee reticle (both from Michael), the deeper ring that never opens when the next floor cannot be generated (Small runs), and the bots' walkTo flood. The frame-rate corrections bug needs a desktop reading at 20 to 30 fps. Then Michael approves `auto/local-gate-prep` and plays the gate.
+- Michael approves `auto/local-gate-prep` and plays the gate. The one open Found-in-play bug, corrections climbing as the frame rate falls, needs a desktop reading at 20 to 30 fps.
 
 ## 2026-10-29: local session, D3: wear a find straight away
 
