@@ -532,12 +532,13 @@ export class Game {
   }
 
   /**
-   * The shot behind Keeper Wren's menu: from the room's front, a little to her right, looking past her,
-   * so she and her orb stand in the third of the screen the menu leaves open (Michael's mockup).
+   * The shot behind a keeper's menu: from the room's front, a little to their right, looking past them,
+   * so they and their counter stand in the third of the screen the menu leaves open (Michael's mockup).
+   * Every keeper faces their door, so one shot fits them all.
    */
-  private keeperShot(): { from: THREE.Vector3; at: THREE.Vector3 } | null {
-    const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
-    return wren ? { from: new THREE.Vector3(wren.x + 1.2, 2.1, wren.z + 4.6), at: new THREE.Vector3(wren.x + 2.6, 1.25, wren.z) } : null;
+  private keeperShot(building: BuildingId): { from: THREE.Vector3; at: THREE.Vector3 } | null {
+    const keeper = this.world.level.village?.villagers.find((n) => n.building === building);
+    return keeper ? { from: new THREE.Vector3(keeper.x + 1.2, 2.1, keeper.z + 4.6), at: new THREE.Vector3(keeper.x + 2.6, 1.25, keeper.z) } : null;
   }
 
   /** Near Keeper Wren in the village: where champion points are taken back (P5; Michael, 28 Oct). */
@@ -556,12 +557,14 @@ export class Game {
 
   private openBank(): void {
     this.bank.setVisible(true);
+    this.talk.clear();
     this.kbm.exitPointerLock();
     this.updateOverlay();
   }
 
   private openStore(): void {
     this.store.setStock(this.session.village?.view.stock ?? []);
+    this.talk.clear();
     this.store.setVisible(true);
     this.kbm.exitPointerLock();
     this.updateOverlay();
@@ -676,8 +679,9 @@ export class Game {
       this.lockOn.update(world, me0, actions.look.x, realDt);
     }
     this.cam.setLock(this.lockOn.lookPoint(world));
-    // While Keeper Wren's menu is up the camera holds a shot of her at her table: the room is the menu's backdrop.
-    this.cam.setShot(this.portalMenu.visible ? this.keeperShot() : null);
+    // While a keeper's menu is up the camera holds a shot of them at their counter: the room is the menu's backdrop.
+    const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : null;
+    this.cam.setShot(framed ? this.keeperShot(framed) : null);
     this.cam.applyLook(actions.look);
     if (actions.pressed.has('zoomIn')) this.cam.zoomBy(1);
     if (actions.pressed.has('zoomOut')) this.cam.zoomBy(-1);

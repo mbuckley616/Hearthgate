@@ -34,8 +34,8 @@ describe('the village (T3)', () => {
     const { host } = session(world);
     const p = host.sim.players[0];
     p.x = 6;
-    p.z = -5;
-    // Run east into the General Store (its west face is at x = 11).
+    p.z = -2.5;
+    // Run east into the General Store (its west face is at x = 11), clear of its door at z = -5, which leads inside.
     for (let i = 0; i < 240; i++) stepPlayer(p, { ...idleCommand(), moveX: 1, aimX: 1 }, 1 / 60, world, host.sim);
     expect(p.x).toBeLessThan(11);
     expect(p.x).toBeGreaterThan(10);
