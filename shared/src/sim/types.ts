@@ -232,6 +232,8 @@ export interface EnemyState {
   strafeDir: number;
   /** Health at spawn (scaled for party size). */
   maxHp: number;
+  /** Haunted (P8): has fallen once and got up again; the next fall is for good. */
+  risen?: true;
   tele: Telegraph;
   /** Recovery length for the attack just made (s). */
   recoverTime: number;
@@ -359,6 +361,8 @@ export type SimEvent =
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }
   | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }
+  /** Haunted (P8): a fallen enemy got up again, at half its health. */
+  | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
   | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number }
   | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number }

@@ -135,6 +135,13 @@ export class FxView {
           if (ev.potion) this.spawnLabel(ev.x, ev.y + 1.7, ev.z, 'Potion!', 'potion');
           break;
         }
+        case 'enemyRose': {
+          // Haunted (P8): a fallen enemy gets up in a cold green breath.
+          const y = sim.enemies.find((e) => e.id === ev.enemyId)?.y ?? 0;
+          this.spawnSparks(new THREE.Vector3(ev.x, y + 0.4, ev.z), new THREE.Vector3(0, 1.6, 0), 30, new THREE.Color(0x8affb8));
+          this.ring(ev.x, ev.z, 1.6, 0x6affa0, 0.7, 0.6, y);
+          break;
+        }
         case 'drank': {
           const p = sim.players.find((pl) => pl.id === ev.playerId);
           if (p) this.spawnSparks(new THREE.Vector3(p.x, p.y + 1.1, p.z), new THREE.Vector3(0, 1.6, 0), 24, new THREE.Color(0xff5a6e));

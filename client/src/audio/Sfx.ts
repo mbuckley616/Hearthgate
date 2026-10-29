@@ -174,6 +174,10 @@ export class Sfx {
           this.impact(false);
           if (ev.potion) setTimeout(() => this.tone('sine', 900, 1500, 0.3, 0.12, 0.02), 120);
           break;
+        case 'enemyRose':
+          this.groan(false, 0.3);
+          this.tone('sine', 180, 120, 0.5, 0.1, 0.05);
+          break;
         case 'potionTaken':
           this.tone('triangle', 660, 990, 0.22, 0.2, 0.01);
           break;

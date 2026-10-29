@@ -17,20 +17,20 @@ describe("Keeper Wren's portal menu (P7)", () => {
   it('takes a story id there is, or a random shape within the bounds', () => {
     expect(readPortalChoice({ kind: 'story', id: STORY[0].id })).toEqual({ kind: 'story', id: STORY[0].id });
     expect(readPortalChoice({ kind: 'story', id: 'atlantis' })).toBeNull();
-    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'large', difficulty: 2 })).toEqual({ kind: 'random', floors: 3, size: 'large', difficulty: 2 });
-    expect(readPortalChoice({ kind: 'random', floors: MAX_FLOORS + 1, size: 'large', difficulty: 2 })).toBeNull();
-    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'huge', difficulty: 2 })).toBeNull();
-    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'small', difficulty: 9 })).toBeNull();
-    expect(readToHost({ k: 'portal', choice: { kind: 'random', floors: 1, size: 'small', difficulty: 0 } })).not.toBeNull();
-    expect(choiceLabel({ kind: 'random', floors: 1, size: 'small', difficulty: 0 })).toBe('A small dungeon, 1 floor, Easy');
+    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null })).toEqual({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null });
+    expect(readPortalChoice({ kind: 'random', floors: MAX_FLOORS + 1, size: 'large', difficulty: 2, modifier: null })).toBeNull();
+    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'huge', difficulty: 2, modifier: null })).toBeNull();
+    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'small', difficulty: 9, modifier: null })).toBeNull();
+    expect(readToHost({ k: 'portal', choice: { kind: 'random', floors: 1, size: 'small', difficulty: 0, modifier: null } })).not.toBeNull();
+    expect(choiceLabel({ kind: 'random', floors: 1, size: 'small', difficulty: 0, modifier: null })).toBe('A small dungeon, 1 floor, Easy');
   });
 
   it('plans a random run as shaped, and a story run as written, every floor carrying both', () => {
-    const random = planChoice([], 7, { kind: 'random', floors: 4, size: 'large', difficulty: 3 });
+    const random = planChoice([], 7, { kind: 'random', floors: 4, size: 'large', difficulty: 3, modifier: null });
     expect(random.floors).toBe(4);
     const f2 = floorSpecFor(random, 2);
     expect(f2.difficulty).toBe(3);
-    expect(f2.pieces).toBeGreaterThan(floorSpecFor(planChoice([], 7, { kind: 'random', floors: 4, size: 'small', difficulty: 3 }), 2).pieces);
+    expect(f2.pieces).toBeGreaterThan(floorSpecFor(planChoice([], 7, { kind: 'random', floors: 4, size: 'small', difficulty: 3, modifier: null }), 2).pieces);
     const generated = STORY.find((s) => !('hand' in s.run))!;
     const story = planChoice([], 7, { kind: 'story', id: generated.id });
     expect(floorSpecFor(story, 1).story).toBe(generated.id);
@@ -39,7 +39,7 @@ describe("Keeper Wren's portal menu (P7)", () => {
   });
 
   it('fills rooms and pays more the harder the portal', () => {
-    const spec = (difficulty: number) => floorSpecFor(planChoice([], 7, { kind: 'random', floors: 2, size: 'medium', difficulty }), 2);
+    const spec = (difficulty: number) => floorSpecFor(planChoice([], 7, { kind: 'random', floors: 2, size: 'medium', difficulty, modifier: null }), 2);
     const easy = buildWorld(floorLevel(spec(0)));
     const hard = buildWorld(floorLevel(spec(3)));
     expect(depthMult(hard) / depthMult(easy)).toBeCloseTo(difficultyMult(3) / difficultyMult(0), 6);

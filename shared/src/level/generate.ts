@@ -26,6 +26,8 @@ export interface FloorSpec {
   difficulty?: number;
   /** The story dungeon this run is (P7), so a win can open the next. */
   story?: string;
+  /** The run's twist (P8): Cursed or Haunted. */
+  modifier?: 'cursed' | 'haunted';
 }
 
 export interface PlacedSocket {

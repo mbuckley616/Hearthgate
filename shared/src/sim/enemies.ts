@@ -586,6 +586,11 @@ function attackCooldown(e: EnemyState): number {
   }
 }
 
+/** Haunted (P8): a fallen enemy that has not yet got up, and will. The Warden falls once. */
+export function willRise(state: SimState, e: EnemyState): boolean {
+  return state.floor?.modifier === 'haunted' && e.ai === 'dead' && !e.risen && e.kind !== 'warden';
+}
+
 export function stepEnemies(state: SimState, dt: number, world: World): void {
   const c = tuning.combat;
 
@@ -719,7 +724,16 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     settle(state, world, e, fromX, fromZ);
   }
 
-  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000));
+  // Haunted (P8): each enemy gets up once, at half its health, a moment after it falls.
+  for (const e of state.enemies) {
+    if (!willRise(state, e) || e.aiTime < tuning.dungeon.hauntedRiseMs / 1000) continue;
+    e.risen = true;
+    e.hp = e.maxHp * tuning.dungeon.hauntedHp;
+    e.poise = enemyStats(e.kind).maxPoise;
+    setAi(e, 'spawn');
+    state.events.push({ kind: 'enemyRose', enemyId: e.id, x: e.x, z: e.z });
+  }
+  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e)));
 }
 
 /**

@@ -1291,3 +1291,8 @@ body.on-title .run-banner {
     width: min(860px, 64vw);
   }
 }
+
+/* A run's modifier on a story dungeon (P8). */
+.portal-twist {
+  color: #8affb8;
+}
