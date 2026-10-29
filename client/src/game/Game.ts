@@ -42,6 +42,8 @@ import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
+import { KeeperCard, type KeeperChoice } from '../ui/KeeperCard';
+import { VillageMap, type VillageMapData } from '../ui/VillageMap';
 import { VillagePanel } from '../ui/VillagePanel';
 import { StoreScreen } from '../ui/StoreScreen';
 import { BankScreen } from '../ui/BankScreen';
@@ -124,11 +126,12 @@ export class Game {
   private homeIsOurs = false;
   private readonly villagePanel = new VillagePanel();
   private shownVillage = -1;
-  /** How long talk has been held at a building's keeper, and whether this hold has already built (P4). */
-  private holdS = 0;
-  private holdDone = false;
-  /** A keeper spoken to a second time, acted on when talk is let go (secondTalk). */
-  private secondWord: string | null = null;
+  /** A keeper's card (P11): their menu, building the next tier, leaving. */
+  private readonly keeperCard = new KeeperCard((id) => this.keeperChose(id));
+  /** What the keeper last said on their card (a tier built, a word on it), under their usual line. */
+  private keeperNote = '';
+  /** The village from above (P14, M or Start in the village). */
+  private readonly villageMap = new VillageMap(() => this.closeVillageMap());
   /** The shot behind Old Fenn's hiring board: the three for hire, in a row before his bar. */
   private hireShot(): { from: THREE.Vector3; at: THREE.Vector3 } | null {
     const tavern = this.world.level.village?.interiors.find((r) => r.building === 'tavern');
@@ -478,41 +481,92 @@ export class Game {
   }
 
   /**
-   * Talking (T3), and Keeper Wren's ring (T4b): asked once she says where the ring opens now; asked
-   * again while she is speaking she turns it to the next dungeon (a new generated one, then the
-   * hand-built ones this browser can play). The server checks the layout and every ring follows.
+   * Talking (T3): F (or A) by a building's keeper opens their card at once (P11; Michael, 29 Oct: no
+   * press-again, no hold), anyone else says their line. While the card is up it has the keys.
    */
-  private talkTo(near: Villager | null, pressed: boolean, held: boolean, dt: number): void {
-    // A second word to a keeper acts when talk is let go, so holding it to build (P4) is never taken
-    // for opening their menu: a hold that built does nothing on release.
-    const released = !held && this.secondWord !== null;
-    const built = this.holdDone;
-    const hold = this.upgradeHold(near, held, dt);
-    if (near && pressed && near.building && this.talk.showing(near.name)) {
-      this.secondWord = near.id;
-      return this.talk.update(near, false, dt, hold);
+  private talkTo(near: Villager | null, pressed: boolean, dt: number): void {
+    if (this.keeperCard.visible) {
+      const keeper = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper);
+      // Walked off or the village gone (a ring took the party): the card goes too.
+      if (!keeper || !this.session.village || keeper.id !== near?.id) this.closeKeeper();
+      else this.keeperCard.update(keeper.name, this.keeperLine(keeper), this.keeperChoices(keeper));
+      return this.talk.update(null, false, dt);
     }
-    if (released) {
-      const who = this.secondWord;
-      this.secondWord = null;
-      if (near && near.id === who && !built) this.secondTalk(near);
-      return this.talk.update(near, false, dt, hold);
+    if (near && pressed && near.building && this.session.village) {
+      this.keeperNote = '';
+      this.keeperCard.open(near.id, near.name, this.keeperLine(near), this.keeperChoices(near));
+      this.talk.clear();
+      this.kbm.exitPointerLock();
+      this.updateOverlay();
+      return;
     }
-    if (!near || !pressed) return this.talk.update(near, false, dt, hold);
-    const about = near.building && this.session.village ? ` ${this.buildingWords(near.building, near.name)}` : '';
-    if (near.id === 'keeper') {
-      const NEW = 'A new dungeon';
-      const now = this.session.portals[0]?.label ?? NEW;
-      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will show you where else it can.${about}`);
-    } else {
-      const again = near.building === 'store' ? ' Ask again to see the shelves.' : near.building === 'storehouse' && this.session.village?.yours ? ' Ask again to open the stash.' : '';
-      this.talk.say(near.name, near.line + about + again);
-    }
-    this.talk.update(near, false, dt, hold);
+    this.talk.update(near, pressed, dt);
   }
 
-  /** A second word to a building's keeper: Wren's portal menu (P7), Aldous's shop (P5), Marta's stash (P9). */
-  private secondTalk(near: Villager): void {
+  /** A keeper's words on their card: their line, their building's tier and what it gives, any news. */
+  private keeperLine(near: Villager): string {
+    const v = this.session.village!;
+    const building = near.building!;
+    const tier = v.view.tiers[building];
+    let line = `${near.line} The ${BUILDING_NAMES[building]} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.`;
+    if (building === 'shrine') {
+      const NEW = 'A new dungeon';
+      const now = this.session.portals[0]?.label ?? NEW;
+      line += ` Just now the ring opens on ${now === NEW ? 'a new dungeon, never walked before' : now}. Champion points come back here for ${tuning.village.respecCoinPerPoint} coin each: open your hero (Tab) beside me.`;
+    }
+    return this.keeperNote ? `${line} ${this.keeperNote}` : line;
+  }
+
+  /** A keeper's buttons: their menu, the next tier with its price and whether it can be paid, leaving. */
+  private keeperChoices(near: Villager): KeeperChoice[] {
+    const v = this.session.village!;
+    const building = near.building!;
+    const menu: KeeperChoice =
+      building === 'shrine'
+        ? { id: 'menu', label: 'Choose where the portal leads', detail: 'Story dungeons, or a random one' }
+        : building === 'store'
+          ? { id: 'menu', label: 'Browse the shelves', detail: 'Buy, and sell from your bag' }
+          : building === 'tavern'
+            ? { id: 'menu', label: 'Hire companions', detail: `${tuning.village.hireCoin} coin each` }
+            : { id: 'menu', label: 'Open the stash', ...(v.yours ? { detail: 'What your bag cannot carry' } : { blocked: 'Your own things are kept in your own village' }) };
+    const tier = v.view.tiers[building];
+    let build: KeeperChoice;
+    if (tier >= tuning.village.maxTier) build = { id: 'upgrade', label: `Tier ${roman(tier)}`, blocked: 'As high as it goes for now' };
+    else {
+      const c = upgradeCost(tier + 1);
+      const problem = upgradeProblem(v.view, building, this.profile.data.coin);
+      build = {
+        id: 'upgrade',
+        label: `Build tier ${roman(tier + 1)}`,
+        detail: `${capital(tierGives(building, tier + 1))}  ·  ${c.lumber} lumber, ${c.stone} stone, ${c.coin} coin`,
+        ...(!v.yours ? { blocked: `Only ${v.host || 'the host'} can build here` } : problem ? { blocked: `You need ${problem}` } : {}),
+      };
+    }
+    return [menu, build, { id: 'leave', label: 'Leave' }];
+  }
+
+  private keeperChose(id: string): void {
+    const near = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper);
+    const v = this.session.village;
+    if (id === 'leave' || !near?.building || !v) return this.closeKeeper();
+    if (id === 'menu') {
+      this.keeperCard.close();
+      this.openKeeperMenu(near);
+      this.updateOverlay();
+    } else if (id === 'upgrade' && !upgradeProblem(v.view, near.building, this.profile.data.coin)) {
+      this.session.request({ k: 'upgrade', building: near.building, coin: this.profile.data.coin });
+    }
+  }
+
+  private closeKeeper(): void {
+    if (!this.keeperCard.visible) return;
+    this.keeperCard.close();
+    this.kbm.requestPointerLock();
+    this.updateOverlay();
+  }
+
+  /** A keeper's menu, from their card: Wren's portal menu (P7), Aldous's shop (P5), Fenn's board (P10), Marta's stash (P9). */
+  private openKeeperMenu(near: Villager): void {
     const v = this.session.village;
     if (!v) return;
     if (near.building === 'shrine') {
@@ -534,53 +588,6 @@ export class Game {
     }
   }
 
-
-  /**
-   * A building's keeper on its tier (P4): what it gives now and what the next would, at what price,
-   * and whether its owner can pay. A visitor hears it is the host's to build.
-   */
-  private buildingWords(building: BuildingId, keeper: string): string {
-    const v = this.session.village!;
-    const tier = v.view.tiers[building];
-    const name = BUILDING_NAMES[building];
-    const respec = building === 'shrine' ? ` Here, too, champion points come back for ${tuning.village.respecCoinPerPoint} coin each: open your hero (Tab) beside me.` : '';
-    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.${respec}`;
-    if (tier >= tuning.village.maxTier) return `${now} That is as high as it goes for now.`;
-    const c = upgradeCost(tier + 1);
-    const next = `Tier ${roman(tier + 1)} would bring ${tierGives(building, tier + 1)}, for ${c.lumber} lumber, ${c.stone} stone and ${c.coin} coin.`;
-    if (!v.yours) return `${now} ${next} Only ${v.host || 'the host'} can build here.`;
-    const problem = upgradeProblem(v.view, building, this.profile.data.coin);
-    return `${now} ${next} ${problem ? `You need ${problem}.` : `Hold F (or A) with ${keeper} and it is done.`}`;
-  }
-
-  /**
-   * The owner holds talk at a building's keeper to raise its tier (P4): a hold, not a press, so
-   * spending is never an accident. Returns the hint for the hold, or null where there is none.
-   */
-  private upgradeHold(near: Villager | null, held: boolean, dt: number): { text: string; frac: number } | null {
-    const v = this.session.village;
-    const building = near?.building;
-    if (!near || !building || !v?.yours || v.view.tiers[building] >= tuning.village.maxTier) {
-      this.holdS = 0;
-      return null;
-    }
-    const text = `build tier ${roman(v.view.tiers[building] + 1)}`;
-    if (!held) {
-      this.holdS = 0;
-      this.holdDone = false;
-      return { text, frac: 0 };
-    }
-    if (this.holdDone) return { text, frac: 0 };
-    this.holdS += dt;
-    const frac = Math.min(1, (this.holdS * 1000) / Math.max(1, tuning.village.upgradeHoldMs));
-    if (frac < 1) return { text, frac };
-    this.holdDone = true;
-    this.holdS = 0;
-    const problem = upgradeProblem(v.view, building, this.profile.data.coin);
-    if (problem) this.talk.say(near.name, `Not yet: you need ${problem}.`);
-    else this.session.request({ k: 'upgrade', building, coin: this.profile.data.coin });
-    return { text, frac: 0 };
-  }
 
   /**
    * The shot behind a keeper's menu: from the room's front, a little to their right, looking past them,
@@ -665,7 +672,9 @@ export class Game {
       this.profile.save();
       const keeper = this.world.level.village?.villagers.find((n) => n.building === u.building);
       this.hud.toast(`<b>${BUILDING_NAMES[u.building]}: tier ${roman(u.tier)}</b><span>${tierGives(u.building, u.tier)}  ·  -${u.coin} coin</span>`, 'level');
-      if (keeper) this.talk.say(keeper.name, `Done: the ${BUILDING_NAMES[u.building]} stands at tier ${roman(u.tier)} now. ${capital(tierGives(u.building, u.tier))}.`);
+      const words = `Done: the ${BUILDING_NAMES[u.building]} stands at tier ${roman(u.tier)} now.`;
+      if (keeper && this.keeperCard.keeper === keeper.id) this.keeperNote = words;
+      else if (keeper) this.talk.say(keeper.name, `${words} ${capital(tierGives(u.building, u.tier))}.`);
     }
   }
 
@@ -725,6 +734,12 @@ export class Game {
     } else if (this.hire.visible) {
       this.hire.handle(actions, realDt);
       actions = emptyFrame();
+    } else if (this.keeperCard.visible) {
+      this.keeperCard.handle(actions, realDt);
+      actions = emptyFrame();
+    } else if (this.villageMap.visible) {
+      this.villageMap.handle(actions, realDt);
+      actions = emptyFrame();
     }
 
     // Slow motion is the server's (debug.slowMo through the panel or backslash); each snapshot says how fast it runs.
@@ -744,7 +759,8 @@ export class Game {
     }
     this.cam.setLock(this.lockOn.lookPoint(world));
     // While a keeper's menu is up the camera holds a shot of them at their counter: the room is the menu's backdrop.
-    const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : null;
+    const carded = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper)?.building ?? null;
+    const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : this.keeperCard.visible ? carded : null;
     this.cam.setShot(framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null);
     // Who is with the party (P10): their figure leaves the tavern's row, and the board keeps up.
     const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman).map((p) => p.style));
@@ -807,7 +823,7 @@ export class Game {
     // The run's summary takes the first F (or A, or Escape) home, before any villager does.
     const closeSummary = this.summary.visible && (actions.pressed.has('interact') || actions.pressed.has('menuBack'));
     if (closeSummary) this.summary.hide();
-    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact') && !closeSummary, actions.held.has('interact') && !closeSummary, realDt);
+    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact') && !closeSummary, realDt);
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 
@@ -834,7 +850,10 @@ export class Game {
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
-    if (actions.pressed.has('map')) this.minimap.toggle();
+    // M or Start: the village from above in the village (P14), the floor's map in a dungeon.
+    if (actions.pressed.has('map') && village) this.openVillageMap();
+    else if (actions.pressed.has('map')) this.minimap.toggle();
+    if (this.villageMap.visible) this.villageMap.update(this.villageMapData(world));
     this.minimap.update(world, curr, localId, this.session.portals, realDt);
     this.lockOn.updateMarker(world, dt);
     const ended = this.session.ended;
@@ -862,7 +881,7 @@ export class Game {
     this.cam.setShoulder(free);
     this.aim = free && curr ? freeAimFrom(this.cam.camera, curr, world, worldNow(this.world, world).colliders) : null;
     const aim = this.cam.basis();
-    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !this.hire.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
+    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !this.hire.visible && !this.keeperCard.visible && !this.villageMap.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
@@ -1185,6 +1204,15 @@ export class Game {
       this.closeStore();
       return;
     }
+    if (this.keeperCard.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      this.closeKeeper();
+      return;
+    }
+    // M, Start and B the map takes itself (VillageMap.handle), so the press that closes it never reopens it.
+    if (this.villageMap.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      this.closeVillageMap();
+      return;
+    }
     if (this.hire.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
       this.hire.setVisible(false);
       this.kbm.requestPointerLock();
@@ -1294,7 +1322,39 @@ export class Game {
 
   /** A screen of its own is up: the hero screen, a keeper's menu, the title or the end card. */
   private panelOpen(): boolean {
-    return this.debug.visible || this.equip.visible || !!this.store?.visible || !!this.bank?.visible || !!this.portalMenu?.visible || !!this.hire?.visible || !!this.title?.visible || this.wiped;
+    return this.debug.visible || this.equip.visible || !!this.store?.visible || !!this.bank?.visible || !!this.portalMenu?.visible || !!this.hire?.visible || !!this.keeperCard?.visible || !!this.villageMap?.visible || !!this.title?.visible || this.wiped;
+  }
+
+  private openVillageMap(): void {
+    const data = this.villageMapData(this.session.view().curr);
+    if (!data) return;
+    this.villageMap.open(data);
+    this.kbm.exitPointerLock();
+    this.updateOverlay();
+  }
+
+  private closeVillageMap(): void {
+    if (!this.villageMap.visible) return;
+    this.villageMap.close();
+    this.kbm.requestPointerLock();
+    this.updateOverlay();
+  }
+
+  /** What the village map shows (P14): the square, its buildings and their tiers, the party, what there is to spend. */
+  private villageMapData(world: SimState): VillageMapData | null {
+    const def = this.world.level.village;
+    const v = this.session.village;
+    if (!def || !v) return null;
+    return {
+      def,
+      half: this.world.level.floorSize / 2,
+      view: v.view,
+      yours: v.yours,
+      host: v.host,
+      coin: this.profile.data.coin,
+      // Heroes inside a building stand in its room far off the square: only those on it are drawn.
+      party: world.players.filter((p) => Math.abs(p.x) <= this.world.level.floorSize / 2 && Math.abs(p.z) <= this.world.level.floorSize / 2).map((p) => ({ x: p.x, z: p.z, me: p.id === this.session.localId })),
+    };
   }
 
   private updateOverlay(): void {

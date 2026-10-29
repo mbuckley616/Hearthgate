@@ -28,10 +28,10 @@ export class TalkUi {
   }
 
   /**
-   * Per frame: the villager in reach (or null) and whether talk was pressed. `hold` adds what holding
-   * talk does there (P4: build the next tier) and how far through the hold is, 0 to 1.
+   * Per frame: the villager in reach (or null) and whether talk was pressed. A keeper's choices are
+   * their card's (P11, KeeperCard); this is the hint and a line said in passing.
    */
-  update(near: Villager | null, pressed: boolean, dt: number, hold: { text: string; frac: number } | null = null): void {
+  update(near: Villager | null, pressed: boolean, dt: number): void {
     if (near && pressed) {
       this.name.textContent = near.name;
       this.line.textContent = near.line;
@@ -39,8 +39,7 @@ export class TalkUi {
     }
     this.shownFor = Math.max(0, this.shownFor - dt);
     this.box.style.display = this.shownFor > 0 ? 'block' : 'none';
-    const holding = hold && hold.frac > 0 ? `${hold.text}: ${Math.round(hold.frac * 100)}%` : '';
-    const hint = !near ? '' : holding || (this.shownFor === 0 ? `F (or A): talk to ${near.name}${hold ? `  ·  hold F (or A): ${hold.text}` : ''}` : hold ? `Hold F (or A): ${hold.text}` : '');
+    const hint = near && this.shownFor === 0 ? `F (or A): talk to ${near.name}` : '';
     if (hint !== this.hinted) {
       this.hinted = hint;
       this.hint.textContent = hint;
@@ -54,11 +53,6 @@ export class TalkUi {
     this.line.textContent = line;
     this.shownFor = LINE_S;
     this.box.style.display = 'block';
-  }
-
-  /** Whether this villager's words are up now (a second F to Keeper Wren turns the ring). */
-  showing(name: string): boolean {
-    return this.shownFor > 0 && this.name.textContent === name;
   }
 
   /** Leaving the village: nothing stays up. */

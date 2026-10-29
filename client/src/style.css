@@ -1133,8 +1133,7 @@ canvas {
 .party-frames {
   position: fixed;
   left: 16px;
-  /* Below the village panel while one is up (VillagePanel sets the height). */
-  top: calc(16px + var(--village-panel-h, 0px));
+  top: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
