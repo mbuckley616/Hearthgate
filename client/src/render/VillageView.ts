@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import type { World } from '@hearthgate/shared/level/arena';
-import type { Building, Villager } from '@hearthgate/shared/level/village';
+import type { Building, InteriorDef, Villager } from '@hearthgate/shared/level/village';
 import { createPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { HeroView } from './HeroView';
 import { Nameplate } from './Nameplate';
-import type { Palette } from './props';
+import { glowMaterial, type Palette } from './props';
 import { earthTextures, fieldstoneTextures, grassTextures, plankTextures, roofTextures, timberTextures, type TexturePair } from './villageTextures';
 
 const DEG = Math.PI / 180;
@@ -66,6 +66,7 @@ export class VillageView {
     this.buildWood(h);
     v.trees.forEach((t, i) => this.buildTree(t.x, t.z, 1, i, `tree-${i}`));
     this.buildProps();
+    for (const r of v.interiors) this.buildInterior(r);
 
     for (const def of v.villagers) {
       const state = createPlayer(def.id, def.x, def.z, def.facingYawDeg * DEG);
@@ -247,6 +248,151 @@ export class VillageView {
     this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1 });
 
     if (shrine) this.buildShrineFront(b, out, side);
+  }
+
+  /**
+   * A building's inside (Michael, 28 Oct): the shrine's is Keeper Wren's candle-lit room, her table
+   * and its orb, shelves of books, a rune circle and the doorway's daylight. Its walls fade like a
+   * dungeon's (registered by their collider ids), and a dark shell hides the sky and the woods.
+   */
+  private buildInterior(r: InteriorDef): void {
+    const cx = (r.minX + r.maxX) / 2;
+    const cz = (r.minZ + r.maxZ) / 2;
+    const w = r.maxX - r.minX;
+    const d = r.maxZ - r.minZ;
+    const H = 4;
+    const t = 0.4;
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(w + 30, 24, d + 30), new THREE.MeshBasicMaterial({ color: 0x06040a, side: THREE.BackSide, fog: false }));
+    shell.position.set(cx, 8, cz);
+    this.group.add(shell);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w + 2 * t, d + 2 * t).rotateX(-Math.PI / 2), standard(plankTextures(w, d), 1.2));
+    floor.material.color.setHex(0x8a7a7a);
+    floor.position.set(cx, 0.01, cz);
+    floor.receiveShadow = true;
+    this.group.add(floor);
+
+    const stone = standard(fieldstoneTextures(6, H), 2);
+    stone.color.setHex(0x9a8aa8);
+    const half = r.doorWidth / 2;
+    const walls: [string, number, number, number, number][] = [
+      ['wall-n', r.minX - t, r.maxX + t, r.minZ - t, r.minZ],
+      ['wall-w', r.minX - t, r.minX, r.minZ, r.maxZ],
+      ['wall-e', r.maxX, r.maxX + t, r.minZ, r.maxZ],
+      ['wall-sw', r.minX - t, r.doorX - half, r.maxZ, r.maxZ + t],
+      ['wall-se', r.doorX + half, r.maxX + t, r.maxZ, r.maxZ + t],
+    ];
+    for (const [id, x0, x1, z0, z1] of walls) {
+      const mat = stone.clone();
+      mat.transparent = false;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, H, z1 - z0), mat);
+      mesh.position.set((x0 + x1) / 2, H / 2, (z0 + z1) / 2);
+      mesh.castShadow = mesh.receiveShadow = true;
+      this.group.add(mesh);
+      this.trees.set(`interior-${r.building}-${id}`, { mats: [mat], opacity: 1 });
+    }
+    // The way out: a timber frame and the square's daylight beyond it.
+    const timber = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.9 });
+    for (const s of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3, 0.5), timber);
+      post.position.set(r.doorX + s * (half + 0.12), 1.5, r.maxZ + t / 2);
+      this.group.add(post);
+    }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(r.doorWidth + 0.5, 0.3, 0.5), timber);
+    lintel.position.set(r.doorX, 3, r.maxZ + t / 2);
+    this.group.add(lintel);
+    const day = new THREE.Mesh(new THREE.PlaneGeometry(r.doorWidth, 2.85), new THREE.MeshBasicMaterial({ color: 0xffe2a8, fog: false }));
+    day.position.set(r.doorX, 1.43, r.maxZ + t + 0.02);
+    day.rotation.y = Math.PI;
+    this.group.add(day);
+
+    const plank = standard(plankTextures(2, 1), 1);
+    for (const f of r.furniture) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.height, f.maxZ - f.minZ), plank);
+      mesh.position.set((f.minX + f.maxX) / 2, f.height / 2, (f.minZ + f.maxZ) / 2);
+      mesh.castShadow = mesh.receiveShadow = true;
+      this.group.add(mesh);
+      if (f.id.startsWith('shelf')) this.buildBooks(f);
+    }
+    if (r.building === 'shrine') this.buildShrineInside(r, cx);
+  }
+
+  /** Rows of coloured spines along a shelf's face toward the room. */
+  private buildBooks(f: InteriorDef['furniture'][number]): void {
+    const colours = [0x6a2a2a, 0x2a4a6a, 0x5a4a1a, 0x3a5a2a, 0x4a2a5a, 0x7a5a2a];
+    const rand = rng(f.minX * 31 + f.minZ);
+    const faceX = Math.abs(f.minX) < Math.abs(f.maxX) ? f.minX - 0.01 : f.maxX + 0.01;
+    const inward = faceX === f.minX - 0.01 ? -1 : 1;
+    for (const y of [0.55, 1.25, 1.95]) {
+      for (let z = f.minZ + 0.2; z < f.maxZ - 0.2; ) {
+        const width = 0.08 + rand() * 0.1;
+        const tall = 0.35 + rand() * 0.2;
+        const book = new THREE.Mesh(new THREE.BoxGeometry(0.06, tall, width), new THREE.MeshStandardMaterial({ color: colours[Math.floor(rand() * colours.length)], roughness: 0.8 }));
+        book.position.set(faceX + inward * 0.03, y + tall / 2, z + width / 2);
+        this.group.add(book);
+        z += width + 0.01;
+      }
+    }
+  }
+
+  /** Wren's orb on her table, candles, a rune circle on the floor and crystals in the corners: the portal's light. */
+  private buildShrineInside(r: InteriorDef, cx: number): void {
+    const table = r.furniture.find((f) => f.id === 'wren-table')!;
+    const tz = (table.minZ + table.maxZ) / 2;
+    const top = table.height;
+    const glow = new THREE.MeshStandardMaterial({ color: 0xb58aff, emissive: 0x8a5cff, emissiveIntensity: 1.3, roughness: 0.2 });
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), glow);
+    orb.position.set(cx, top + 0.42, tz);
+    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0x8a6a2a, metalness: 0.6, roughness: 0.4 }));
+    stand.position.set(cx, top + 0.06, tz);
+    this.group.add(orb, stand);
+    const orbLight = new THREE.PointLight(0xa070ff, 4, 9, 1.4);
+    orbLight.position.set(cx, top + 0.8, tz + 0.4);
+    this.group.add(orbLight);
+
+    const wax = new THREE.MeshStandardMaterial({ color: 0xeee0c8, roughness: 0.7 });
+    const flame = new THREE.MeshBasicMaterial({ color: 0xffc060 });
+    const candle = (x: number, y: number, z: number, h = 0.22) => {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, h, 8), wax);
+      c.position.set(x, y + h / 2, z);
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), flame);
+      f.scale.y = 1.8;
+      f.position.set(x, y + h + 0.05, z);
+      this.group.add(c, f);
+    };
+    for (const [dx, h] of [[-1.05, 0.26], [-0.85, 0.18], [0.9, 0.3], [1.1, 0.2]] as const) candle(cx + dx, top, tz + 0.15, h);
+    for (const s of [-1, 1]) {
+      const stand2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.8 }));
+      stand2.position.set(cx + s * 3.6, 0.7, tz + 1.6);
+      this.group.add(stand2);
+      for (const dx of [-0.1, 0.1]) candle(cx + s * 3.6 + dx, 1.4, tz + 1.6, 0.24);
+      const warm = new THREE.PointLight(0xffa850, 7, 9, 1.5);
+      warm.position.set(cx + s * 3.6, 2, tz + 1.6);
+      this.group.add(warm);
+    }
+
+    // A rune circle where a visitor stands before her.
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.35, 48).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.55));
+    ring.position.set(cx, 0.03, tz + 2.4);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.9, 6).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.4));
+    inner.position.copy(ring.position);
+    this.group.add(ring, inner);
+
+    const crystal = new THREE.MeshStandardMaterial({ color: 0xb58aff, emissive: 0x8a5cff, emissiveIntensity: 1.8, roughness: 0.3 });
+    for (const [x, z] of [
+      [r.minX + 0.9, r.minZ + 0.9],
+      [r.maxX - 0.9, r.minZ + 0.9],
+    ]) {
+      const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), crystal);
+      c.scale.y = 1.8;
+      c.position.set(x, 0.8, z);
+      this.group.add(c);
+    }
+    // A violet rug down the middle, from the door to the table.
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(2, r.maxZ - tz - 1.2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3a1f5a, roughness: 1 }));
+    rug.position.set(cx, 0.02, (r.maxZ + tz + 1.2) / 2);
+    rug.receiveShadow = true;
+    this.group.add(rug);
   }
 
   /** A row of pennants along the roof's ridge, one a tier; the top tier's is gold. */

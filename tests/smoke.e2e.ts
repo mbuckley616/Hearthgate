@@ -82,6 +82,37 @@ async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
   await holdUntil(page, "KeyW", near, 25_000);
 }
 
+/**
+ * Into Keeper Wren's shrine (interiors, Michael 28 Oct): round the ring (two seconds in it would take
+ * it), to its front door and through, then up to her table. Its inside lies far north of the square.
+ */
+async function intoShrine(page: Page) {
+  await walkTo(page, 3.2, 2, 1.2);
+  await walkTo(page, 3.4, -13.6, 0.6);
+  await walkTo(page, 0, -13.6, 0.5);
+  await throughDoor(page, 0, -16, (z) => z < -50);
+  await walkTo(page, 0, -78.9, 0.5);
+}
+
+/** And out again, onto the square before the shrine. */
+async function outOfShrine(page: Page) {
+  await throughDoor(page, 0, -72, (z) => z > -50);
+}
+
+/** Walk at a door until the hero is on its other side. */
+async function throughDoor(page: Page, x: number, z: number, there: (z: number) => boolean) {
+  const through = async () => {
+    const p = mine(await seen(page));
+    // Through already: stop steering, or the held key turns round and walks straight back.
+    if (there(p.z)) return true;
+    await page.evaluate(([tx, tz, px, pz]) => {
+      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
+    }, [x, z, p.x, p.z]);
+    return false;
+  };
+  await holdUntil(page, "KeyW", through, 15_000);
+}
+
 test("solo: a village of our own on the server, the scene drawn, and the hero runs", async ({ page }) => {
   const errors: string[] = [];
   await open(page, "play", errors);
@@ -161,12 +192,12 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await open(page, "play", errors);
   const home = (await seen(page)).code;
 
-  // Keeper Wren stands by the shrine; F in reach shows her line. Round the well first: it stands on the way.
-  await walkTo(page, 3.2, 2, 1.2);
-  await walkTo(page, 2.6, -11.6, 1.6);
+  // Keeper Wren keeps her shrine; F in reach shows her line. Then back out to the ring.
+  await intoShrine(page);
   await page.keyboard.press("KeyF");
   await expect(page.locator(".talk-box")).toBeVisible();
   await expect(page.locator(".talk-name")).toHaveText("Keeper Wren");
+  await outOfShrine(page);
 
   // Small floors from one seed (the dev server takes the panel's edits), so the walk is short.
   await tune(page, { "dungeon.pieces": 10, "dungeon.seed": 4242 });
@@ -233,8 +264,7 @@ test("the dungeon editor: a dungeon of two floors laid out by keys alone, saved 
 test("Keeper Wren's menu turns the village's ring to the first story dungeon, a hand-built one", async ({ page }) => {
   const errors: string[] = [];
   await open(page, "play", errors);
-  await walkTo(page, 3.2, 2, 1.2);
-  await walkTo(page, 3.0, -12.2, 0.8);
+  await intoShrine(page);
   // Asked once she says where it opens; asked again her menu opens on the first story dungeon (P7), which ships hand-built.
   await page.keyboard.press("KeyF");
   await expect(page.locator(".talk-line")).toContainText("a new dungeon");
@@ -245,6 +275,7 @@ test("Keeper Wren's menu turns the village's ring to the first story dungeon, a 
   await expect(page.locator(".portal-menu")).toBeHidden();
   await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
   await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
+  await outOfShrine(page);
   await walkTo(page, 0, -10.5, 0.8);
   await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
   const hand = await page.evaluate(() => (window as unknown as { game: any }).game.session.world.level.dungeon.def.spec.hand?.name);

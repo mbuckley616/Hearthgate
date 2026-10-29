@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, interiors: Keeper Wren's shrine
+
+**What changed**
+
+`auto/local-shrine-interior`, stacked on `auto/local-portal-menu`. No protocol change. Michael's call (decisions.md "Wren's portal menu"): interiors you can enter, the shrine first, for him to judge.
+- **The inside is part of the village level** (`village.ts`: `InteriorDef`, `DoorLink`): a 14 by 12 m room far north of the square, out of sight, with walls, a table and two bookshelves as colliders. Its walls fade for the camera as a dungeon's do. Keeper Wren stands inside now, at her table.
+- **Doors** (`throughDoor` in `stepPlayer`): stepping into the shrine's front door puts the hero inside facing in, and the inside door puts them back on the square before the shrine, past the ring. In `stepPlayer` so the browser's own hero goes through at once and the server agrees; each arrival lies outside the other door's circle. One room, so friends see each other go in; no loading. The camera snaps through with the hero, facing in.
+- **The room** (`VillageView.buildInterior`): dark stone and planks, a dark shell hiding the sky and woods, Wren's table with a violet orb (its light) and candles, two candle stands with warm lights, shelves of books, crystals in the far corners, a violet rug and a rune circle before her, and the doorway's daylight.
+- **Her menu is framed by the room:** while it is up the camera eases to a set shot from the room's front, Wren and her orb in the left third; on a wide screen the menu sits to the right so she shows (Michael's mockup). Her words close as it opens.
+- Tests: a hero walks in through the front door and out through the inside one, no arrival in a door's circle (`interior.test.ts`); the smoke tests that talk to Wren now go round the ring, into the shrine and out. check 176, parity identical, test:net, smoke 7/7 twice. In the browser: in and out with no correction, the room, and the menu over the framed shot at 1366 by 768.
+
+**Learned**
+
+- **A test that steers the camera at a door keeps steering after it,** walking the hero straight back through: the smoke helper stops turning once the hero is on the far side. A player holding W after a door walks on into the room, since the camera turns with them.
+- **Wren stood 2.3 m from her table's front** with talk reaching 2.4: she now stands against it.
+
+**Next**
+
+- Michael judges the shrine. Then the store's, the storehouse's and the tavern's insides the same way (the tavern with P10's hiring room, after his mockup), and P8.
+
 ## 2026-10-28: local session, P7: Keeper Wren's portal menu
 
 **What changed**

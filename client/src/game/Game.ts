@@ -126,6 +126,8 @@ export class Game {
   private holdDone = false;
   /** A keeper spoken to a second time, acted on when talk is let go (secondTalk). */
   private secondWord: string | null = null;
+  /** Where the hero was drawn last frame, to know a door's jump from a step. */
+  private lastHeroAt: THREE.Vector3 | null = null;
   /** The run's tally so far; null outside a run. */
   private tally: RunTally | null = null;
   private lastKind = '';
@@ -471,6 +473,7 @@ export class Game {
     if (!v) return;
     if (near.building === 'shrine') {
       this.portalMenu.open(this.profile.data.storyCleared ?? [], v.view.tiers.shrine, playableDungeons());
+      this.talk.clear();
       this.kbm.exitPointerLock();
       this.updateOverlay();
     } else if (near.building === 'store') this.openStore();
@@ -526,6 +529,15 @@ export class Game {
     if (problem) this.talk.say(near.name, `Not yet: you need ${problem}.`);
     else this.session.request({ k: 'upgrade', building, coin: this.profile.data.coin });
     return { text, frac: 0 };
+  }
+
+  /**
+   * The shot behind Keeper Wren's menu: from the room's front, a little to her right, looking past her,
+   * so she and her orb stand in the third of the screen the menu leaves open (Michael's mockup).
+   */
+  private keeperShot(): { from: THREE.Vector3; at: THREE.Vector3 } | null {
+    const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
+    return wren ? { from: new THREE.Vector3(wren.x + 1.2, 2.1, wren.z + 4.6), at: new THREE.Vector3(wren.x + 2.6, 1.25, wren.z) } : null;
   }
 
   /** Near Keeper Wren in the village: where champion points are taken back (P5; Michael, 28 Oct). */
@@ -664,6 +676,8 @@ export class Game {
       this.lockOn.update(world, me0, actions.look.x, realDt);
     }
     this.cam.setLock(this.lockOn.lookPoint(world));
+    // While Keeper Wren's menu is up the camera holds a shot of her at her table: the room is the menu's backdrop.
+    this.cam.setShot(this.portalMenu.visible ? this.keeperShot() : null);
     this.cam.applyLook(actions.look);
     if (actions.pressed.has('zoomIn')) this.cam.zoomBy(1);
     if (actions.pressed.has('zoomOut')) this.cam.zoomBy(-1);
@@ -756,6 +770,12 @@ export class Game {
       const mv = tuning.movement;
       const sprint = Math.min(1, Math.max(0, (Math.hypot(curr.vx, curr.vz) - mv.runSpeed) / Math.max(0.1, mv.sprintSpeed - mv.runSpeed)));
       this.cam.setColliders(worldNow(this.world, world).colliders);
+      // Through a door (an interior) the hero is somewhere else at once: so is the camera, facing in.
+      if (this.lastHeroAt && this.lastHeroAt.distanceTo(this.hero.root.position) > 6) {
+        this.cam.snap();
+        this.cam.yaw = curr.yaw + Math.PI;
+      }
+      (this.lastHeroAt ??= new THREE.Vector3()).copy(this.hero.root.position);
       this.cam.update(realDt, this.hero.root.position, sprint);
     }
     // Free aim (D12): over the shoulder, and the reticle pinned to the centre, where the shots go.
@@ -763,7 +783,7 @@ export class Game {
     this.cam.setShoulder(free);
     this.aim = free && curr ? freeAimFrom(this.cam.camera, curr, world, worldNow(this.world, world).colliders) : null;
     const aim = this.cam.basis();
-    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
+    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);

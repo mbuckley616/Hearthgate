@@ -690,6 +690,27 @@ export function stepPlayer(
       p.vz -= into * nz;
     }
   }
+  throughDoor(p, world);
+}
+
+/**
+ * The village's doors (Michael, 28 Oct: enterable interiors): a standing hero who steps into one is
+ * put on its other side, facing in. Here rather than on the server alone, so the browser's own hero
+ * goes through at once and the next snapshot agrees. Each side's arrival lies outside the other's
+ * circle, so nobody bounces back.
+ */
+function throughDoor(p: PlayerState, world: World): void {
+  const doors = world.level.village?.doors;
+  if (!doors || p.mode === 'down') return;
+  for (const d of doors) {
+    if (Math.hypot(p.x - d.x, p.z - d.z) > d.radius) continue;
+    p.x = d.toX;
+    p.z = d.toZ;
+    p.yaw = d.toYawDeg * DEG;
+    p.vx = 0;
+    p.vz = 0;
+    return;
+  }
 }
 
 /**

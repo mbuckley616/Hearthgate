@@ -229,6 +229,14 @@ export class OrbitCamera {
     if (this.lockPoint) this.lookPoint.lerp(this.lockPoint, tuning.lockOn.framing);
     this.camera.lookAt(this.lookPoint);
 
+    // A keeper's menu (interiors): the camera eases to a set shot of the room, and back when it closes.
+    this.shotK += ((this.shot ? 1 : 0) - this.shotK) * (1 - Math.exp(-4 * dt));
+    if (this.shotK > 0.001 && this.lastShot) {
+      const k = this.shotK * this.shotK * (3 - 2 * this.shotK);
+      this.camera.position.lerp(this.lastShot.from, k);
+      this.camera.lookAt(this.shotLook.copy(this.lookPoint).lerp(this.lastShot.at, k));
+    }
+
     // Hit shake: a short decaying wobble applied after collision (brief caps it at 0.15 m).
     if (this.shakeTime < this.shakeDur) {
       this.shakeTime += dt;
@@ -268,6 +276,22 @@ export class OrbitCamera {
   }
 
   /** Swap the collision set (the antechamber gate only counts while it's down). */
+  /** Jump straight to the hero next frame instead of gliding there (a door into an interior). */
+  snap(): void {
+    this.initialised = false;
+  }
+
+  /** Hold a set shot (from, looking at) while a keeper's menu is up, or null to follow the hero again. */
+  setShot(shot: { from: THREE.Vector3; at: THREE.Vector3 } | null): void {
+    this.shot = shot;
+    if (shot) this.lastShot = shot;
+  }
+
+  private shot: { from: THREE.Vector3; at: THREE.Vector3 } | null = null;
+  private lastShot: { from: THREE.Vector3; at: THREE.Vector3 } | null = null;
+  private shotK = 0;
+  private readonly shotLook = new THREE.Vector3();
+
   setColliders(colliders: readonly Collider[]): void {
     this.colliders = colliders;
   }
