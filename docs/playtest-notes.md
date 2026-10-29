@@ -153,3 +153,29 @@ Other notes
 
 Decisions
 - Gate: passed on Michael's solo play (2026-10-27, "Feels good"). The two-player run and lag testing wait: he wants content first (decisions.md, 27 Oct).
+
+## 2026-10-29: Michael solo on the hosted build (main 194321a, gate prep merged as #120), a shakedown before the Phase 2 gate
+
+Filed by the producer from the local session's notes (`auto/local-playtest-fixes`: devlog 29 Oct, decisions.md "After the playtest of main 194321a"). Not the gate playtest: Michael's notes, not the three gate answers.
+Ping (HUD): not recorded
+Corrections (HUD, after 5 minutes): not recorded
+Session length: not recorded
+
+Gate questions (Phase 2)
+1. Over three to five runs in one evening, did the loop hold you: did you want another run each time you got home? — Not answered.
+2. Did the henchmen pull their weight without feeling like a friend: useful, but taking hits you would have dodged? — Not answered; he asked for henchmen who level, their level shown by their names.
+3. Did anything break the evening: a lost item, a stuck portal, a village that forgot what you built, a crash? — Not answered one by one; the bugs below.
+
+Other notes
+- Equipping on a floor healed to full, and the potion key seemed not to work (it refused at full health without a word). Fixed on `auto/local-playtest-fixes`.
+- Hit flashes turned enemies white. Fixed (`hitFeel.flashStrength` 0.25).
+- Henchmen stuck on corners. Fixed (a stuck henchman is put beside its player).
+- Keepers: F to talk, F again or hold F to build "feels very unclear, and there's a weird timing component." Backlog P11, keeper cards with buttons.
+- Henchmen "should have a progression ... their level / tier listed next to their names." Backlog P12 (Fable).
+- The party's frames want a head icon and more than health. Backlog P13.
+- The village panel: a map on M instead. Backlog P14.
+- Melee abilities "need to have invulnerability or highly reduced damage while they're being used ... especially the Whirlwind." Backlog C6 (Fable).
+- Health did not grow with level. Built: +10 max health a level of the weapon in hand.
+
+Decisions
+- Keepers A, henchmen A, village map A, melee abilities A, health with level A then flat +10 (decisions.md, 29 Oct). The gate playtest is still to come.
