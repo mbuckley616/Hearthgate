@@ -1,5 +1,5 @@
 import { ABILITIES, ABILITY_NAMES, FAMILY_STYLE, comboHit, familyHit, stringHit, tuning, type WeaponFamily, type AbilityKind, type ComboHit, type Style } from '../config/tuning';
-import { championArmour, championCooldown, championRecharge, championSpeed } from './champion';
+import { championArmour, championCooldown, championRecharge, championRecovery, championSpeed } from './champion';
 import { flowSpeed } from './flow';
 import { levelFor } from './gear';
 import type { PlayerState } from './types';
@@ -111,7 +111,7 @@ export function talentText(style: Style, id: TalentId): string {
     case 'riposte':
       return `+${t.riposteParryMsPerRank} ms parry window`;
     case 'wind':
-      return `-${pct(t.windRechargePerRank)} dodge recharge`;
+      return `-${pct(t.windRechargePerRank)} dodge recharge, -${t.windCancelMsPerRank} ms dodge recovery`;
     case 'mastery':
       return `+${pct(t.masteryDamagePerRank)} damage`;
   }
@@ -215,6 +215,16 @@ export function parryWindowMs(p: PlayerState): number {
 /** The share taken off a dodge charge's recharge by gear and Second wind. */
 export function dodgeRechargeCut(p: PlayerState): number {
   return p.mods.dodgeRecharge + rankOf(p, 'wind') * tuning.talents.windRechargePerRank + championRecharge(p);
+}
+
+/**
+ * When a roll's tail may be cut short (D9; Michael, 28 Oct): Second wind and Light step bring it
+ * sooner, never under dodge.cancelFloorMs. With neither it is cancelAfterMs to the bit, as parity needs.
+ */
+export function dodgeCancelMs(p: PlayerState): number {
+  const dg = tuning.dodge;
+  const cut = rankOf(p, 'wind') * tuning.talents.windCancelMsPerRank + championRecovery(p);
+  return cut > 0 ? Math.max(Math.min(dg.cancelFloorMs, dg.cancelAfterMs), dg.cancelAfterMs - cut) : dg.cancelAfterMs;
 }
 
 export function damageTakenMult(p: PlayerState): number {

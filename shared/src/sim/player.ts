@@ -6,7 +6,7 @@ import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
-import { dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
+import { dodgeCancelMs, dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -470,7 +470,7 @@ export function stepPlayer(
     if (cmd.attack) p.attackQueued = true;
     if (abilitySlot !== null) p.queuedAbility = abilitySlot;
     const wantsOut = p.attackQueued || p.queuedAbility >= 0 || wantDodge || cmd.jump || cmd.block || moveMag > 0.01;
-    if (p.dodgeTime * 1000 >= dg.cancelAfterMs && wantsOut) {
+    if (p.dodgeTime * 1000 >= dodgeCancelMs(p) && wantsOut) {
       // A roll cut short keeps its i-frames (D9): a quicker way out must not make the dodge leakier.
       if (dg.keepIframesOnCancel) p.invulnTime = Math.max(p.invulnTime, dg.iframesMs / 1000 - p.dodgeTime);
       endDodge(p);
