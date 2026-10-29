@@ -65,6 +65,8 @@ export interface ProfileData {
   potions?: number;
   /** Story dungeons cleared (P7), by id: each opens the next at Keeper Wren's. */
   storyCleared?: string[];
+  /** Finds carried on this floor (D3), by uid: in the bag or worn, but lost on a wipe until banked. */
+  carried?: string[];
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -221,9 +223,13 @@ export class Profile {
     return wornStyle(this.data.worn);
   }
 
-  /** Keep a found item in the bag; worn at once if its slot is empty. False if the bag was full (it is left behind). */
-  addItem(found: Item | GearItem): boolean {
+  /**
+   * Keep a found item in the bag; worn at once if its slot is empty. False if the bag was full (it is
+   * left behind). A find picked up on a floor is `carried` (D3): wearable now, lost on a wipe until banked.
+   */
+  addItem(found: Item | GearItem, carried = false): boolean {
     const item: GearItem = { ...(isGearItem(found) ? found : fromSliceItem(found)), uid: newUid() };
+    if (carried) (this.data.carried ??= []).push(item.uid);
     const slot = entryOf(item).slot;
     let kept = true;
     if (!this.data.worn[slot] && slot !== 'weapon') this.data.worn[slot] = item;
@@ -292,6 +298,42 @@ export class Profile {
     this.spaceOf(at)[at.i] = null;
     this.save();
     return true;
+  }
+
+  /** Whether this item is a carried find (D3), not yet banked. */
+  isCarried(item: GearItem | null | undefined): boolean {
+    return !!item && (this.data.carried ?? []).includes(item.uid);
+  }
+
+  /** The floor banked (D3): what was carried is the player's for good. */
+  bankCarried(): void {
+    this.data.carried = [];
+    this.save();
+  }
+
+  /**
+   * A wipe takes every carried find (D3), worn or in the pocket too: wearing one is never a way round
+   * the risk (Michael, 28 Oct). A hero left with nothing in hand takes the best weapon left in the bag,
+   * or a plain one of their kind. Returns how many went.
+   */
+  loseCarried(): number {
+    const gone = new Set(this.data.carried ?? []);
+    if (gone.size === 0) return 0;
+    let lost = 0;
+    this.data.bag = this.data.bag.map((i) => (i && gone.has(i.uid) ? (lost++, null) : i));
+    for (const [slot, item] of Object.entries(this.data.worn) as [BodySlot, GearItem][]) {
+      if (!gone.has(item.uid)) continue;
+      delete this.data.worn[slot];
+      lost++;
+    }
+    if (!this.data.worn.weapon) {
+      const spare = this.data.bag.findIndex((i) => i && entryOf(i).slot === 'weapon');
+      if (spare >= 0) this.wear(spare);
+      else this.data.worn.weapon = { ...starterGear().worn.weapon!, uid: newUid() };
+    }
+    this.data.carried = [];
+    this.save();
+    return lost;
   }
 
   /** A wipe takes the bag (D5): everything past the safe pocket. Returns how many items went. */

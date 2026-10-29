@@ -1407,3 +1407,18 @@ body.on-title .run-banner {
 .hire-foot b {
   color: var(--gold);
 }
+
+/* A find carried on this floor (D3): at risk until banked. */
+.gear-cell.carried {
+  border-style: dashed;
+  border-color: #d8902a;
+}
+
+.gear-carried {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  font-size: 8px;
+  color: #ffb050;
+  text-transform: uppercase;
+}

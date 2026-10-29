@@ -407,7 +407,18 @@ export type SimEvent =
    * village's lumber and stone for the run (the same in every player's event; the browser that opened
    * the village keeps them).
    */
-  | { kind: 'banked'; playerId: string; items: (Item | GearItem)[]; coin: number; lumber: number; stone: number; floor: number }
+  | {
+      kind: 'banked';
+      playerId: string;
+      /** Finds still on the ground for the player, handed over now. */
+      items: (Item | GearItem)[];
+      /** Carried finds the browser already holds in the bag (D3), now banked and safe. */
+      kept: number;
+      coin: number;
+      lumber: number;
+      stone: number;
+      floor: number;
+    }
   /** A wipe lost a player's unbanked finds (P1). */
   | { kind: 'findsLost'; playerId: string; count: number }
   /**

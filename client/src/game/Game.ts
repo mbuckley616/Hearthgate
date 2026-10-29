@@ -440,6 +440,13 @@ export class Game {
    */
   private runTally(kind: string): void {
     if (kind === 'village') {
+      // Carried finds still marked on reaching a village were never banked (the floor was left early): gone (D3).
+      const stale = this.profile.loseCarried();
+      if (stale > 0) {
+        if (this.tally) this.tally.lost += stale;
+        this.applyProfile(false);
+        this.hud.toast(`<b>${stale} unbanked find${stale === 1 ? '' : 's'} lost</b><span>The floor was left before a rest room banked them</span>`, 'common');
+      }
       if (this.tally && (this.tally.banked > 0 || this.tally.lost > 0 || this.tally.deepest > 0)) this.summary.show(this.tally);
       this.tally = null;
     } else if (kind === 'floor') {
@@ -988,9 +995,17 @@ export class Game {
     const localId = this.session.localId;
     let dirty = false;
     for (const ev of events) {
-      // On a floor a find is only carried until the rest room banks it (P1); the banked event hands it over.
-      if (ev.kind === 'pickup' && ev.playerId === localId && ev.carried) continue;
+      // On a floor a find goes in the bag at once, marked carried (D3): wearable now, lost on a wipe until banked.
+      if (ev.kind === 'pickup' && ev.playerId === localId && ev.carried) {
+        const worn = JSON.stringify(this.profile.data.worn);
+        if (!this.profile.addItem(ev.item, true)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(ev.item)} was left behind</span>`, 'common');
+        if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
+        dirty = true;
+        continue;
+      }
       if (ev.kind === 'banked' && ev.playerId === localId) {
+        // What was carried is safe now; what still lay on the ground comes into the bag.
+        this.profile.bankCarried();
         let left = 0;
         for (const item of ev.items) if (!this.profile.addItem(item)) left++;
         if (left > 0) this.hud.toast(`<b>Your bag is full</b><span>${left} banked find${left === 1 ? ' was' : 's were'} left behind</span>`, 'common');
@@ -1001,7 +1016,7 @@ export class Game {
           this.profile.village.stone += ev.stone;
         }
         if (this.tally) {
-          this.tally.banked += ev.items.length;
+          this.tally.banked += ev.items.length + ev.kept;
           this.tally.coin += ev.coin;
           this.tally.lumber += ev.lumber;
           this.tally.stone += ev.stone;
@@ -1012,8 +1027,12 @@ export class Game {
       if (ev.kind === 'findsLost' && ev.playerId === localId && this.tally) this.tally.lost += ev.count;
       // A wipe takes the bag but its pocket (D5): the server says so, and the bag is this browser's to empty.
       if (ev.kind === 'bagLost' && ev.playerId === localId) {
-        const lost = this.profile.loseBag();
-        if (this.tally) this.tally.lost += lost;
+        // Carried finds go wherever they are, worn or pocketed (D3; findsLost has counted them); then the bag.
+        const finds = this.profile.loseCarried();
+        const bag = this.profile.loseBag();
+        if (this.tally) this.tally.lost += bag;
+        const lost = finds + bag;
+        this.applyProfile(false);
         if (lost > 0) this.hud.toast(`<b>Your bag was lost: ${lost} item${lost === 1 ? '' : 's'}</b><span>The pocket kept its ${this.profile.pocketSize()}; the stash and what you wear are safe</span>`, 'common');
         dirty = true;
       }

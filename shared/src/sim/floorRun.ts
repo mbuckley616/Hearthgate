@@ -175,7 +175,12 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
   const lumber = pay(l.lumberPerRoom, l.bossLumber) + Math.round(f.found.lumber * mult);
   const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
   const floor = world.level.dungeon!.def.spec.floor;
-  for (const p of state.players) state.events.push({ kind: 'banked', playerId: p.id, items: unbanked(state, p.id), coin, lumber, stone, floor });
+  // Carried finds are in the browser's bag already (D3): the bank makes them safe. Finds still on the ground come now.
+  for (const p of state.players) {
+    const kept = (f.carried[p.id] ?? []).length;
+    const items = state.drops.filter((d) => d.owner === p.id && !d.dropped).map((d) => d.item);
+    state.events.push({ kind: 'banked', playerId: p.id, items, kept, coin, lumber, stone, floor });
+  }
   f.carried = {};
   f.found = { lumber: 0, stone: 0 };
   // What a player put down themselves (D13) stays where it is.
