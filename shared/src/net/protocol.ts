@@ -2,11 +2,12 @@ import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
 import type { HandDungeon } from '../level/handmade';
+import type { VillageSave, VillageView } from '../game/villageSave';
 import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -29,7 +30,8 @@ export type Cheat = (typeof CHEATS)[number];
  * itself and now asks the server for: a restart once the run is over, a tuning edit, a cheat.
  */
 export type ToHost =
-  | { k: 'hello'; version: number; loadout: Loadout }
+  /** Joining a village, the player's own village save comes too (P2); the room keeps the first one it gets. */
+  | { k: 'hello'; version: number; loadout: Loadout; village?: VillageSave }
   | { k: 'input'; cmds: SeqCommand[] }
   | { k: 'loadout'; loadout: Loadout }
   | { k: 'restart' }
@@ -60,7 +62,12 @@ export type ToPeer =
    * browser leaves this room and takes the seat (colyseus.js consumeSeatReservation); `level` says
    * what that room runs, so it can be built before the first snapshot.
    */
-  | { k: 'handoff'; reservation: unknown; level: LevelKind };
+  | { k: 'handoff'; reservation: unknown; level: LevelKind }
+  /**
+   * The village this room is (P2), on joining and whenever it changes: whose it is, and whether it is
+   * this player's own, whose browser then saves it.
+   */
+  | { k: 'village'; village: VillageView; host: string; yours: boolean };
 
 /** The kinds of room: the host's village, the slice's arena (the tests and the lab), and a generated dungeon floor (T4). */
 export type LevelKind = 'village' | 'arena' | 'floor';

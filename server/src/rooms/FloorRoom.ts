@@ -2,6 +2,7 @@ import type { Client } from "@colyseus/core";
 import type { PortalTo } from "@hearthgate/shared/game/portal";
 import { floorSpecFor, readRunPlan, type RunPlan } from "@hearthgate/shared/game/runPlan";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
+import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { floorLevel } from "@hearthgate/shared/level/floor";
 import { HostRoom } from "./HostRoom.js";
 import { VillageRoom } from "./VillageRoom.js";
@@ -49,6 +50,15 @@ export class FloorRoom extends HostRoom {
     }
     const home = VillageRoom.byCode(this.home);
     void this.handOff("village", "village", home ? home.roomId : null, {});
+  }
+
+  /**
+   * A bank pays the village the run came from (P2). Each player's banked event carries the same
+   * lumber and stone, the party's, so one a tick is the village's share.
+   */
+  protected onEvents(events: readonly SimEvent[]) {
+    const bank = events.find((e) => e.kind === "banked");
+    if (bank?.kind === "banked") VillageRoom.byCode(this.home)?.credit(bank.lumber, bank.stone);
   }
 
   /** The end card's button (D10): this player alone goes back to the village the run left from. */

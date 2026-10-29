@@ -1,6 +1,7 @@
 import { applyServerEdits } from '@hearthgate/shared/config/edits';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import type { PortalState } from '@hearthgate/shared/game/portal';
+import type { VillageSave, VillageView } from '@hearthgate/shared/game/villageSave';
 import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
 import { floorLevel } from '@hearthgate/shared/level/floor';
 import type { FloorSpec } from '@hearthgate/shared/level/generate';
@@ -143,6 +144,12 @@ export class ClientSession implements Session {
   levelVersion = 0;
   /** The open rings and how full each is, from the latest snapshot. */
   portals: PortalState[] = [];
+  /** The village this room is (P2), as its room last sent it; null outside one. */
+  village: { view: VillageView; host: string; yours: boolean } | null = null;
+  /** Bumped when `village` changes. */
+  villageVersion = 0;
+  /** This browser's own village, sent in the hello when joining a village (P2). */
+  private villageSave: VillageSave | null = null;
   /** What to draw before the first snapshot: this level, empty. */
   private empty: SimState;
   readonly stats: PredictionStats = { snapshots: 0, corrections: 0, snaps: 0, maxCorrection: 0, sumCorrection: 0, bigCorrections: 0, bigBySwing: 0, bigByHit: 0, bigOther: 0, bigPlaced: 0 };
@@ -207,6 +214,11 @@ export class ClientSession implements Session {
   /** The loadout the next room's hello carries, without telling this room (D4: the potion belt). */
   keepLoadout(loadout: Loadout): void {
     this.loadout = loadout;
+  }
+
+  /** The village save the next village's hello carries. */
+  setVillageSave(save: VillageSave): void {
+    this.villageSave = save;
   }
 
   setLoadout(loadout: Loadout, refill: boolean): void {
@@ -335,7 +347,7 @@ export class ClientSession implements Session {
         this.code = ev.code;
         // A floor is built when its welcome brings the spec; until then the old room's stays drawn.
         if (ev.kind !== 'floor') this.enterWorld(ev.kind, worldFor(ev.kind));
-        this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout });
+        this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout, ...(ev.kind === 'village' && this.villageSave ? { village: this.villageSave } : {}) });
         break;
       case 'error':
         this.state = 'refused';
@@ -365,6 +377,9 @@ export class ClientSession implements Session {
     } else if (msg.k === 'snap') {
       this.portals = msg.portals;
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
+    } else if (msg.k === 'village') {
+      this.village = { view: msg.village, host: msg.host, yours: msg.yours };
+      this.villageVersion++;
     } else if (msg.k === 'handoff') {
       this.leaveRoom();
       void this.relay.handoff(msg.reservation);
@@ -391,6 +406,8 @@ export class ClientSession implements Session {
     this.inbox = [];
     this.err = { x: 0, y: 0, z: 0 };
     this.portals = [];
+    this.village = null;
+    this.villageVersion++;
     this.diagPred.clear();
   }
 

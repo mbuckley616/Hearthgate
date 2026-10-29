@@ -1,7 +1,10 @@
+import type { Client } from "@colyseus/core";
 import { planRun } from "@hearthgate/shared/game/runPlan";
+import { villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { PROTOCOL_VERSION, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
-import { HostRoom } from "./HostRoom.js";
+import { HostRoom, MSG } from "./HostRoom.js";
 
 /** Open villages by code, so a dungeon run can bring its party home to the one it left (T3). */
 const villages = new Map<string, VillageRoom>();
@@ -18,6 +21,15 @@ const RETURN_WAIT_MS = 30_000;
 export class VillageRoom extends HostRoom {
   /** Floor rooms of this village's runs that are still open. */
   private away = 0;
+  /**
+   * The village itself (P2): the first save a hello brings, kept here from then on, so the party's
+   * banks add to it while they are away. Null until someone with a save has joined.
+   */
+  private save: VillageSave | null = null;
+  /** The owner's name as their hello last gave it. */
+  private ownerName = "";
+  /** Who here is the village's owner, by session. */
+  private owners = new Set<string>();
 
   protected get kind() {
     return "village" as const;
@@ -35,6 +47,38 @@ export class VillageRoom extends HostRoom {
   onDispose() {
     villages.delete(this.roomId);
     super.onDispose();
+  }
+
+  protected onHello(client: Client, msg: Extract<ToHost, { k: "hello" }>) {
+    if (msg.version !== PROTOCOL_VERSION) return;
+    if (!this.save && msg.village) {
+      this.save = msg.village;
+      this.log(`the village of ${msg.loadout.name || "a player"}: ${this.save.lumber} lumber, ${this.save.stone} stone`);
+    }
+    if (this.save && msg.village?.id === this.save.id) {
+      this.owners.add(client.sessionId);
+      this.ownerName = msg.loadout.name;
+    }
+    this.sendVillage(client);
+  }
+
+  onLeave(client: Client) {
+    this.owners.delete(client.sessionId);
+    super.onLeave(client);
+  }
+
+  /** A floor of this village's run banked (P1, P2): its lumber and stone are the village's. */
+  credit(lumber: number, stone: number) {
+    if (!this.save || (lumber <= 0 && stone <= 0)) return;
+    this.save.lumber += lumber;
+    this.save.stone += stone;
+    for (const c of this.clients) this.sendVillage(c);
+  }
+
+  private sendVillage(client: Client) {
+    if (!this.save) return;
+    const msg: ToPeer = { k: "village", village: villageView(this.save), host: this.ownerName, yours: this.owners.has(client.sessionId) };
+    client.send(MSG, msg);
   }
 
   /** The ring leads into a generated dungeon (T4): a run planned for this party, its first floor a room of its own. */

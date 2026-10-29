@@ -18,6 +18,7 @@ import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
+import { emptyVillage, readVillageSave, type VillageSave } from '@hearthgate/shared/game/villageSave';
 import {
   CHAMPION_IDS,
   SLOTTED_IDS,
@@ -40,10 +41,6 @@ const CHAMPION_KEY = 'hearthgate.champion.v1';
 /** The village this browser opens (P1): its lumber and stone until P2 makes it a village save of its own. */
 const VILLAGE_KEY = 'hearthgate.village.v1';
 
-export interface VillageStore {
-  lumber: number;
-  stone: number;
-}
 
 /**
  * What persists between runs (brief: "levels and gear persist in the browser"; T5b: a 28-space bag
@@ -77,6 +74,11 @@ function fresh(): ProfileData {
   const bag = emptyBag();
   start.bag.forEach((item, i) => (bag[i] = item));
   return { version: 2, xp: { sword: 0, bow: 0, staff: 0 }, bag, worn: start.worn, talents: emptyTalents(), runs: 0, wins: 0, coin: 0, name: '' };
+}
+
+/** A village's id: only its own browser knows it, so only that browser keeps what its room sends back. */
+function newVillageId(): string {
+  return Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
 }
 
 function newUid(): string {
@@ -125,7 +127,8 @@ function placeInBag(bag: (GearItem | null)[], item: GearItem): boolean {
 export class Profile {
   data: ProfileData;
   champion: ChampionState;
-  village: VillageStore;
+  /** This browser's own village (P2): sent in the hello when joining one, and what its room sends back. */
+  village: VillageSave;
 
   constructor() {
     this.data = Profile.load();
@@ -133,13 +136,15 @@ export class Profile {
     this.village = Profile.loadVillage();
   }
 
-  private static loadVillage(): VillageStore {
+  private static loadVillage(): VillageSave {
     try {
-      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<VillageStore>;
+      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<VillageSave>;
       const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
-      return { lumber: n(v.lumber), stone: n(v.stone) };
+      // P1's save had only lumber and stone; it gains an id and the starting tiers.
+      const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), lumber: n(v.lumber), stone: n(v.stone) };
+      return readVillageSave({ ...save, tiers: { ...save.tiers, ...v.tiers } }) ?? save;
     } catch {
-      return { lumber: 0, stone: 0 };
+      return emptyVillage(newVillageId());
     }
   }
 
@@ -190,7 +195,7 @@ export class Profile {
   reset(): void {
     this.data = fresh();
     this.champion = emptyChampion();
-    this.village = { lumber: 0, stone: 0 };
+    this.village = emptyVillage(newVillageId());
     this.save();
   }
 

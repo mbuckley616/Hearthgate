@@ -770,3 +770,33 @@ body.on-title .run-banner {
   font-size: 15px;
   color: #ff8a9a;
 }
+
+/* The village (P2): whose it is and what it holds, top left while in one. */
+.hud-village {
+  position: fixed;
+  left: 18px;
+  top: 14px;
+  padding: 8px 12px;
+  background: #1a0e26cc;
+  border: 2px solid var(--frame);
+  box-shadow: 0 0 0 2px var(--frame-dark);
+  font: 600 12px/1.5 ui-monospace, Consolas, monospace;
+  color: #e8dcc8;
+  pointer-events: none;
+}
+
+.hud-village b {
+  display: block;
+  font: 700 14px/1.4 Georgia, serif;
+  color: var(--gold);
+}
+
+.hud-village span,
+.hud-village small {
+  display: block;
+}
+
+.hud-village small {
+  font-size: 11px;
+  color: #b8a890;
+}
