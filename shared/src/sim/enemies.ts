@@ -139,9 +139,14 @@ function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
   return best;
 }
 
-/** Attack tokens: at most grunt.maxAttackers per standing hero (brief: two attackers per player). */
+/**
+ * Attack tokens: at most grunt.maxAttackers per standing hero (brief: two attackers per player); a
+ * generated floor's fuller rooms (D1) allow dungeon.attackersPerHero. The arena never has a floor,
+ * so the slice's two stand there and in the parity test.
+ */
 function tokenCap(state: SimState): number {
-  return tuning.grunt.maxAttackers * Math.max(1, state.players.filter((p) => p.mode !== 'down').length);
+  const per = state.floor ? tuning.dungeon.attackersPerHero : tuning.grunt.maxAttackers;
+  return per * Math.max(1, state.players.filter((p) => p.mode !== 'down').length);
 }
 
 function tokenHolders(state: SimState): number {

@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, D1: denser fights
+
+**What changed**
+
+- **About twice the enemies a room** (`tuning.dungeon`): a budget of 1 a cell (was 0.45), +35% a floor deeper (was 25%), 2 for each player past the first (was 1.5), and 70% of it in the first group (was 60%), so a room arrives as a fight.
+- **Guard rooms mix in archers,** at most one for every two blades. They were grunts only, which made them a queue.
+- **Three attackers a hero on a generated floor** (`dungeon.attackersPerHero`). The slice's two (`grunt.maxAttackers`) left most of a fuller room circling. The arena has no `SimState.floor`, so it and the parity test keep two.
+- Solo, every enemy a room sends (first group and reinforcements), averaged over 59 seeds:
+
+| Room | Floor 1 before | Floor 1 now | Floor 3 before | Floor 3 now |
+| --- | --- | --- | --- | --- |
+| Guard room (2x2 cells) | 2.0 | 3.6 | 3.0 | 6.2 |
+| Medium | 3.2 | 6.3 | 4.3 | 10.0 |
+| Large (4x4) | 4.9 | 10.5 | 6.5 | 15.7 |
+| Arena (5x5) | 8.2 | 16.6 | 10.9 | 26.2 |
+
+- Three new floor-run tests: a guard room meets one hero with three or more, a large room has six or more and more again on floor 3, and three enemies hold attack tokens at once on a floor while `grunt.maxAttackers` stays two. All three fail on the old numbers.
+- check 138, parity identical, test:net (0 corrections on the floor walks; a four-player snapshot 6.0 KB), smoke 7/7. In the browser, seed 11's large room had seven up at once, three attacking, a brute's slam telegraphed, a 5.9 KB snapshot.
+
+**Learned**
+
+- **Rooms already woke together:** the whole first group spawns when the doors shut. What made a room feel like a queue was the size of the group and the two-attacker cap, not the waking.
+- **A guard room's budget was under two,** so with the reinforcement split it sent one grunt, then one more. Most fight rooms are guard rooms, so most fights were one at a time.
+- **A scripted bot is no judge of difficulty.** One that walks in and taps attack landed no kills under the old numbers or the new, so the comparison is the per-room counts above, and the feel is Michael's.
+
+**Next**
+
+- Michael plays a floor or two: too much, too little, or right. Every number above is a debug-panel slider.
+- D2, bigger rooms (deep work), which these numbers will want to be re-checked against.
+
 ## 2026-10-28: local session, quality of life after the feel-pass playtest
 
 **What changed**

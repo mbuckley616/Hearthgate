@@ -157,3 +157,49 @@ describe('a generated floor’s run (T4)', () => {
     expect('floor' in state).toBe(false);
   });
 });
+
+describe('denser fights (D1)', () => {
+  /** One hero at a fight room's middle, through the intro to the wave. */
+  function soloFight(kind: PieceInfo['kind'], floor = 1) {
+    for (let seed = 1; seed < 400; seed++) {
+      const level = floorLevel({ seed, pieces: 24, floor, floors: 3 });
+      const room = level.dungeon!.pieces.find((p) => p.fight && p.kind === kind);
+      if (!room) continue;
+      const world = buildWorld(level);
+      const host = new HostSession(world, () => {}, true, () => {});
+      host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+      const p = host.sim.players[0];
+      const mid = openMiddle(room);
+      p.x = mid.x;
+      p.z = mid.z;
+      p.y = room.y;
+      for (let i = 0; i < Math.ceil((tuning.run.introMs / 1000) * 60) + 4; i++) host.tick();
+      return { host, room };
+    }
+    throw new Error(`no ${kind} fight room in 400 seeds`);
+  }
+
+  it('meets one hero in a guard room with a group, not a pair', () => {
+    const { host } = soloFight('small');
+    expect(host.sim.run.phase).toBe('wave');
+    expect(alive(host).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('fills a large room, and a deeper floor fills it more', () => {
+    const shallow = alive(soloFight('large', 1).host).length;
+    const deep = alive(soloFight('large', 3).host).length;
+    expect(shallow).toBeGreaterThanOrEqual(6);
+    expect(deep).toBeGreaterThan(shallow);
+  });
+
+  it('lets three enemies at a hero at once on a floor (the arena keeps the slice’s two)', () => {
+    const { host } = soloFight('large');
+    let most = 0;
+    for (let i = 0; i < 60 * 6; i++) {
+      host.tick();
+      most = Math.max(most, alive(host).filter((e) => e.hasToken).length);
+    }
+    expect(tuning.grunt.maxAttackers).toBe(2);
+    expect(most).toBe(tuning.dungeon.attackersPerHero);
+  });
+});
