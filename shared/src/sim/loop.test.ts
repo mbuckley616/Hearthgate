@@ -77,7 +77,9 @@ describe('the loop’s stakes and rewards (P1)', () => {
     expect(banked).toHaveLength(2);
     const l = tuning.loop;
     expect(banked[0]).toMatchObject({ playerId: 'p1', coin: 2 * l.coinPerRoom, lumber: 2 * l.lumberPerRoom, stone: 2 * l.stonePerRoom, floor: 1 });
-    expect((banked[0] as Extract<SimEvent, { kind: 'banked' }>).items).toHaveLength(1);
+    // p1's find was carried, so the browser holds it already (D3): banked as kept, not handed over again.
+    expect((banked[0] as Extract<SimEvent, { kind: 'banked' }>).items).toHaveLength(0);
+    expect((banked[0] as Extract<SimEvent, { kind: 'banked' }>).kept).toBe(1);
     expect((banked[1] as Extract<SimEvent, { kind: 'banked' }>).items.map((i) => (i as GearItem).id)).toEqual(['oak-shortbow']);
     expect(s.host.sim.floor!.carried).toEqual({});
     expect(s.host.sim.drops).toEqual([]);

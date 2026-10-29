@@ -1,4 +1,5 @@
 import type { Loadout } from '../sim/coop';
+import type { Style } from '../config/tuning';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
 import type { HandDungeon } from '../level/handmade';
@@ -8,7 +9,7 @@ import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 15;
+export const PROTOCOL_VERSION = 16;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -23,7 +24,7 @@ export interface TuneEdit {
 }
 
 /** The debug panel's buttons that change the fight; the server takes them only in a dev build (HEARTHGATE_DEV=1). */
-export const CHEATS = ['restart', 'wave2', 'wave3', 'warden', 'spawnGrunts', 'spawnBrute', 'spawnArcher', 'killAll'] as const;
+export const CHEATS = ['restart', 'wave2', 'wave3', 'warden', 'spawnGrunts', 'spawnBrute', 'spawnArcher', 'killAll', 'henchman'] as const;
 export type Cheat = (typeof CHEATS)[number];
 
 /**
@@ -54,7 +55,10 @@ export type ToHost =
   /** Buy one of today's shelf (P5), by its uid, saying how much coin the player holds. */
   | { k: 'buy'; uid: string; coin: number }
   /** Sell an item from the bag to Aldous (P5); the browser takes it out of the bag when the room answers. */
-  | { k: 'sell'; item: GearItem };
+  | { k: 'sell'; item: GearItem }
+  /** Hire one of the Tavern's henchmen by kit (P10), saying the coin held; or let one go. */
+  | { k: 'hire'; kit: Style; coin: number }
+  | { k: 'dismiss'; kit: Style };
 
 /** Server -> players. */
 export type ToPeer =
@@ -85,7 +89,9 @@ export type ToPeer =
   /** A purchase went through (P5): the item for the bag, and the coin it cost. */
   | { k: 'bought'; item: GearItem; coin: number }
   /** A sale went through (P5): which item left the bag, and the coin it brought. */
-  | { k: 'sold'; uid: string; coin: number };
+  | { k: 'sold'; uid: string; coin: number }
+  /** A hire went through (P10): the browser pays its coin. */
+  | { k: 'hired'; kit: Style; coin: number };
 
 /** The kinds of room: the host's village, the slice's arena (the tests and the lab), and a generated dungeon floor (T4). */
 export type LevelKind = 'village' | 'arena' | 'floor';

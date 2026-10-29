@@ -235,6 +235,10 @@ export function readToHost(v: unknown): ToHost | null {
       const dungeon = readDungeon(v.dungeon);
       return dungeon && checkHandDungeon(dungeon).playable ? { k: 'destination', dungeon } : null;
     }
+    case 'hire':
+      return STYLES.includes(v.kit as Style) && isNum(v.coin) && v.coin >= 0 ? { k: 'hire', kit: v.kit as Style, coin: Math.floor(v.coin) } : null;
+    case 'dismiss':
+      return STYLES.includes(v.kit as Style) ? { k: 'dismiss', kit: v.kit as Style } : null;
     case 'buy':
       return typeof v.uid === 'string' && v.uid.length <= 40 && isNum(v.coin) && v.coin >= 0 ? { k: 'buy', uid: v.uid, coin: Math.floor(v.coin) } : null;
     case 'sell': {

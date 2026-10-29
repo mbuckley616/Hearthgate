@@ -312,17 +312,19 @@ export class EquipScreen {
     const item = this.itemAt(c);
     // The bag's first spaces are its safe pocket (D5): marked, and named while empty.
     const pocket = c.area === 'bag' && c.space < this.profile.pocketSize() ? ' pocket' : '';
+    // A find carried on this floor (D3): marked until a rest room banks it.
+    const carried = this.profile.isCarried(item) ? ' carried' : '';
     const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : pocket ? 'pocket' : '';
     const at = `grid-column:${c.col + 1};grid-row:${c.row + 1}`;
     const chosen = i === this.cursor ? ' chosen' : '';
-    if (!item) return `<button class="gear-cell empty ${c.area}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
+    if (!item) return `<button class="gear-cell empty ${c.area}${pocket}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
     const e = entryOf(item);
     const icon = gearIconUrl(e);
     const picture = icon
       ? `<img class="pixel-art gear-icon" src="${icon}" alt="">`
       : `<span class="gear-swatch" style="background:linear-gradient(135deg, ${hex(e.material.colors.base)} 55%, ${hex(e.material.colors.trim)})"></span>`;
-    return `<button class="gear-cell ${c.area} ${item.rarity}${chosen}" style="${at}" data-action="cell" data-cell="${i}" title="${nameOf(item)}">
-        ${picture}<span class="gear-short">${e.shape.name}</span>
+    return `<button class="gear-cell ${c.area} ${item.rarity}${pocket}${carried}${chosen}" style="${at}" data-action="cell" data-cell="${i}" title="${nameOf(item)}">
+        ${picture}<span class="gear-short">${e.shape.name}</span>${carried ? '<span class="gear-carried">carried</span>' : ''}
       </button>`;
   }
 
@@ -338,6 +340,7 @@ export class EquipScreen {
     const detail = item
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
+         ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this floor and lost if the party wipes, even worn, until a rest room or the ring home banks it.</div>' : ''}
          <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: take off'}</div>`
       : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
     const free = this.profile.data.bag.filter((i) => !i).length;

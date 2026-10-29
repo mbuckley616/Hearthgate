@@ -1093,6 +1093,8 @@ export const tuning = {
     sellShare: 0.3,
     /** A champion point taken back costs this much coin (P5; decisions.md 27 Oct: free until coin came). */
     respecCoinPerPoint: 15,
+    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. */
+    hireCoin: 60,
   },
 
   loop: {
@@ -1160,6 +1162,35 @@ export const tuning = {
    * growing with the floor, the dungeon's tier and the party's level. The server reads these when
    * it makes a floor; the layout itself comes from the seed, so browsers never need them.
    */
+  /**
+   * Henchmen (P3; Michael, 28 Oct): heroes the server plays. Slower to read a telegraph than a player
+   * and not always quick enough to dodge, so a friend is still the better partner.
+   */
+  hirelings: {
+    /** How long a henchman stands in a telegraph before it notices (a player takes about 250 ms). */
+    reactMs: 450,
+    /** Once it notices, the chance it dodges out; otherwise it raises its guard. */
+    dodgeChance: 0.55,
+    guardMs: 700,
+    /** It fights enemies this near itself or its leader, and keeps this near its leader otherwise. */
+    aggroRange: 12,
+    followDistance: 3,
+    /** Its reach to start swinging, and how often it presses attack (a player mashes faster). */
+    reach: 1.8,
+    attackEveryTicks: 9,
+    /** The bow and staff henchmen (P6) shoot from this far, and step back from anything nearer than rangedMin. */
+    bowRange: 10,
+    staffRange: 8,
+    rangedMin: 4.5,
+    /** Every abilityCheckTicks a henchman with a ready ability and a target in reach uses it on this chance. */
+    abilityCheckTicks: 40,
+    abilityChance: 0.4,
+    /** The share of the time it turns on an enemy someone has set up for a combo, to pay it off. */
+    comboChance: 0.5,
+    /** A top-tier Tavern's hires read telegraphs in this share of the time (P10). */
+    quickReact: 0.7,
+  },
+
   dungeon: {
     /** The dungeon's difficulty until the portal offers a choice: floors per run are 2 + tier (3 to 5). */
     tier: 1,
@@ -1535,6 +1566,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
   'dungeon.attackersPerHero': [1, 6, 1],
+  'hirelings.reactMs': [0, 2000, 10],
+  'hirelings.dodgeChance': [0, 1, 0.05],
+  'hirelings.guardMs': [0, 3000, 50],
+  'hirelings.aggroRange': [2, 40, 1],
+  'hirelings.followDistance': [1, 12, 0.5],
+  'hirelings.reach': [0.5, 4, 0.1],
+  'hirelings.attackEveryTicks': [1, 60, 1],
+  'hirelings.bowRange': [3, 20, 0.5],
+  'hirelings.staffRange': [3, 20, 0.5],
+  'hirelings.rangedMin': [0, 10, 0.5],
+  'hirelings.abilityCheckTicks': [1, 240, 1],
+  'hirelings.abilityChance': [0, 1, 0.05],
+  'hirelings.comboChance': [0, 1, 0.05],
+  'hirelings.quickReact': [0.1, 1, 0.05],
+  'village.hireCoin': [0, 500, 5],
   'dungeon.hauntedRiseMs': [0, 5000, 50],
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],

@@ -2,6 +2,67 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, D3: wear a find straight away
+
+**What changed**
+
+`auto/local-wear-finds`, stacked on `auto/local-tavern-hire`. Event shape changed (`banked` gains `kept`); no message change.
+- **A find on a floor goes into the bag at once,** marked carried (`ProfileData.carried`, by uid): wearable outside a fight like anything else, worn straight onto a bare slot as any find is. The server still keeps its own list of what is carried (P1) and decides the loss.
+- **The bank:** `banked` now hands over only what still lay on the ground (`items`) and says how many carried finds it made safe (`kept`); the browser clears its marks.
+- **A wipe takes every carried find wherever it is,** in the bag, in the pocket or worn (decisions.md 28 Oct: wearing a find is never a way round the risk), then the bag past the pocket (D5). A hero left with nothing in hand takes the best weapon left in the bag, or a plain one of their kind. Marks still there on reaching a village (a floor left early) are lost too.
+- **Marked on the hero screen:** a dashed amber cell with "carried", and the item's words say it is lost on a wipe until banked. Also fixed: the bag's pocket stripes (D5) never reached the hero screen's cells, only the stash's.
+- Tests: the loop's bank test now expects a carried find as kept, not handed over again. check 195, parity identical, test:net, smoke 7/7. In the browser (the gate): a helm picked up on floor 1 went onto the bare head, marked carried; a wipe took it off the head; picked up again and banked, it stayed and was no longer carried. The pane's save put back after.
+
+**Next**
+
+- Phase 2's backlog is built. The gate is Michael's: a solo evening of three to five runs with henchmen on the hosted build, which needs the stack approved and merged first. The producer words the questions.
+
+## 2026-10-29: local session, P10: the tavern's hires
+
+**What changed**
+
+`auto/local-tavern-hire`, stacked on `auto/local-henchmen-kits`. Protocol 16. Built to Michael's tavern mockup ("The Rusted Stag: Hire Companions").
+- **The hires stand in the room:** Garrick (Sellsword), Bryn (Archer) and Tamsin (Hedge-mage) wait in a row before Old Fenn's bar as figures with name tags; one hired leaves the row.
+- **The board:** a second F (or A) to Old Fenn opens it, the camera holding on the three, the title top left, a card each along the bottom (name, kit in its colour, a weapon of its kind as the bag draws it, a line on how it fights, and Hire for `village.hireCoin` (60) coin, or "With you, let go"). Left and right choose, F or A hires, X or Q lets one go, Esc leaves; clicking works too.
+- **The rules:** a new `hire` message (a kit and the coin held) and `dismiss`; the village's room sends as many at once as the Tavern's tier allows (one, two, three), one of each kit, within the party's four, and a tier-4 Tavern's hires read telegraphs in `hirelings.quickReact` (70%) of the time. The browser pays on `hired`. Anyone in the village may hire, for their own coin.
+- **They follow the party:** `HostRoom.handOff` takes the room's henchmen as cards (name, kit, level, quickness) into the next room, new or open, and the last player sent home from an end card takes them too. A friend joining a full party takes a henchman's slot (any room, not only the village or a rest room as the backlog said). Hires last for the session; a new visit to the game starts without them.
+- Old Fenn's line, and the debug panel's henchmen now named for their kits.
+- Tests: cards carry a henchman out of one room and into another, a friend joining a full party takes a henchman's slot, a quick hire answers sooner, the wire (`henchman.test.ts`); test:net: one hire at tier 1, two at tier 2 after raising the Tavern, a friend joining the full party takes a henchman's slot, and a henchman hired in the village follows the party through the ring onto the floor. check 195, parity identical, test:net, smoke 7/7. In the browser at 1366 by 768: the board over the three, Bryn hired for 60 coin and with the party (`docs/screenshots/tavern-hire.jpg`); the pane's coin put back after.
+
+**Next**
+
+- The Phase 2 gate is Michael's: a solo evening of three to five runs with henchmen on the hosted build (a party of four needs the Tavern at tier 3). The producer words the questions and files it.
+
+## 2026-10-29: local session, P6: the bow and staff henchmen
+
+**What changed**
+
+`auto/local-henchmen-kits`, stacked on `auto/local-henchman`. No protocol change.
+- **Three kits in turn:** "Add a henchman" now brings a sword (Garrick), then a bow (Bryn), then a staff (Tamsin); `addHenchman` also takes a kit.
+- **Range:** the bow keeps `hirelings.bowRange` (10 m), the staff `staffRange` (8 m), and both step back from anything nearer than `rangedMin` (4.5 m) while still facing it.
+- **Abilities:** every `abilityCheckTicks` a henchman with a ready ability and a target in reach uses one on `abilityChance` (40%).
+- **Combos, sometimes:** `comboChance` (half) of the time it turns on an enemy someone has set up (Shatter, Skewer or Detonate), to pay it off; which ticks it does so come from the tick and its id, with no roll.
+- **Reviving:** with nothing threatening it, a henchman goes to a downed friend (players before other henchmen) and holds talk until they are up. It can go down itself, and players revive it as they would a friend. Party scaling already counted every hero, henchmen included.
+- Tests: the kits in turn; a bow steps back, closes and shoots in range; a downed player is revived; three henchmen pay off a combo in a fight (the gate's callout). check 192, parity identical, test:net, smoke 7/7. In the browser, on floor 1 of seed 11, Garrick, Bryn and Tamsin cleared the guard room with none of them hurt, Bryn shooting from 9.8 m and Tamsin from 7.8 m. Three may be too strong for floor 1; the gate's run to floor 3 will say.
+
+**Next**
+
+- P10, the tavern's hiring room (after Michael's mockup: the henchmen standing in the room, each with a card and a price), henchmen following the party through rings and giving their slot to a friend who joins. Then the Phase 2 gate.
+
+## 2026-10-29: local session, P3: a henchman who fights
+
+**What changed**
+
+`auto/local-henchman`, stacked on `auto/local-modifiers`. Protocol unchanged but for a new cheat.
+- **The brain** (`shared/src/sim/henchman.ts`): a hero in a party slot with no browser, `PlayerState.henchman`, whose command HostSession writes each tick from the sim (server only, deterministic, its rolls from the sim's rng). It follows the nearest player, fights the nearest enemy near itself or its leader (closing, then pressing attack every `hirelings.attackEveryTicks`, so it chains), and when it stands in an enemy's telegraph it notices only after `hirelings.reactMs` (450 ms; a player about 250), then dodges out (`dodgeChance`, 55%) or raises its guard. Every number is a slider under `hirelings`.
+- **In the party:** `HostSession.addHenchman` (a debug cheat, "Add a henchman", until the tavern hires them in P10) adds a sword henchman at the asking hero's level, named Garrick, Bryn, Tamsin or Odo, within the party's four. It is drawn as any other hero with its name over it and listed in the party panel. Rings, the rest room's bank and loot pass it by (the players decide when to go, and loot is theirs); it does not yet follow through a ring (P10).
+- **Two smoke-test fixes the run surfaced:** talk now reaches 3 m (it was 2.4), since a hero pressing on a keeper's counter slides along it and can end out of reach; and the test's walks stop when a hand-off takes the hero out of the snapshot.
+- Tests: a henchman alone kills three grunts and takes hits; it reads a telegraph only after `reactMs` and answers it once; rings and loot pass it by and the party's cap holds (`henchman.test.ts`). check 188, parity identical, test:net, smoke 7/7 three runs in a row. In the browser: on floor 1 of seed 11, Garrick cleared a guard room and its reinforcements alone in about 20 s while the player stood in the doorway, going from 100 to 66 health (`docs/screenshots/henchman.jpg`).
+
+**Next**
+
+- P6, the bow and staff henchmen (range, abilities, combos now and then, reviving a downed player), then P10, the tavern's hiring room after Michael's mockup, with henchmen following through rings. Then the Phase 2 gate.
+
 ## 2026-10-28: local session, P8: Cursed and Haunted; doors made the server's
 
 **What changed**

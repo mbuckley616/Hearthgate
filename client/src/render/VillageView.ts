@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { tuning } from '@hearthgate/shared/config/tuning';
+import { tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { HIRES } from '@hearthgate/shared/sim/henchman';
 import type { World } from '@hearthgate/shared/level/arena';
 import type { Building, InteriorDef, Villager } from '@hearthgate/shared/level/village';
 import { createPlayer } from '@hearthgate/shared/sim/player';
@@ -46,6 +47,8 @@ export class VillageView {
   /** No torches or braziers burn in the afternoon. */
   readonly fireSources: THREE.Vector3[] = [];
   private villagers: VillagerFigure[] = [];
+  /** The Tavern's hires standing by the hearth (P10), hidden while one is with the party. */
+  private hires: { kit: Style; view: HeroView; state: PlayerState }[] = [];
   /** Candle and hearth light in the interiors, wobbling a little each frame. */
   private flickers: { light: THREE.PointLight; base: number; amount: number; seed: number }[] = [];
   private clock = 0;
@@ -71,6 +74,24 @@ export class VillageView {
     this.buildProps();
     for (const r of v.interiors) this.buildInterior(r);
 
+    // The Rusted Stag's three for hire, in a row before the bar (Michael's mockup: the companions in the room).
+    const tavern = v.interiors.find((r) => r.building === 'tavern');
+    if (tavern) {
+      const cx = (tavern.minX + tavern.maxX) / 2;
+      (['sword', 'bow', 'staff'] as const).forEach((kit, i) => {
+        const state = createPlayer(`hire-${kit}`, cx - 2.4 + i * 2.4, tavern.minZ + 8.3, 0);
+        state.style = kit;
+        state.name = HIRES[kit].name;
+        const view = new HeroView(palette);
+        const plate = new Nameplate();
+        view.root.add(plate.sprite);
+        plate.sprite.position.y = 2.25;
+        plate.update(state, tuning.coop.reviveMs);
+        this.group.add(view.root, view.effects);
+        this.hires.push({ kit, view, state });
+      });
+    }
+
     for (const def of v.villagers) {
       const state = createPlayer(def.id, def.x, def.z, def.facingYawDeg * DEG);
       state.style = def.look;
@@ -95,6 +116,7 @@ export class VillageView {
    */
   update(dt: number, _time: number, occluders: ReadonlySet<string>, _gateClosed = false): void {
     for (const v of this.villagers) v.view.update(v.state, v.state, 1, dt);
+    for (const h of this.hires) if (h.view.root.visible) h.view.update(h.state, h.state, 1, dt);
     this.clock += dt;
     for (const f of this.flickers) {
       const t = this.clock * 9 + f.seed;
@@ -647,6 +669,15 @@ export class VillageView {
       flags.push(flag);
     }
     return flags;
+  }
+
+  /** Who is with the party (P10): their figure leaves the tavern's row. */
+  setHired(kits: ReadonlySet<Style>): void {
+    for (const h of this.hires) {
+      const away = kits.has(h.kit);
+      h.view.root.visible = !away;
+      h.view.effects.visible = !away;
+    }
   }
 
   /** Show each building's tier (P4): its pennants and the numeral on its sign. */

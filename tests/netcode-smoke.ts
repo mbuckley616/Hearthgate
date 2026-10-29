@@ -268,6 +268,22 @@ async function main() {
     va.send({ k: "portal", choice: { kind: "story", id: "mossgate" } });
     await va.until(() => ringLabel() === "Mossgate Barrow", 2000, "the ring takes the story choice");
     check(true, "anyone may choose at Wren's: a random dungeon, then a story one, and the ring says so");
+    // P10: Old Fenn's hires. A tier-1 tavern sends one at a time; raising it sends two, and a friend
+    // joining the full party takes a henchman's slot.
+    va.send({ k: "hire", kit: "sword", coin: 999 });
+    await va.until(() => va.messages.some((m) => m.k === "hired"), 2000, "Vale's first hire");
+    va.send({ k: "hire", kit: "bow", coin: 999 });
+    await va.drive(10);
+    const henchIn = () => va.snaps[va.snaps.length - 1].s.players.filter((p) => p.henchman).length;
+    check(henchIn() === 1, "a tier-1 tavern sends one henchman at a time", `${henchIn()}`);
+    va.send({ k: "upgrade", building: "tavern", coin: 9999 });
+    await va.until(() => va.lastVillage()?.village.tiers.tavern === 2, 2000, "the tavern at tier 2");
+    va.send({ k: "hire", kit: "bow", coin: 999 });
+    await va.until(() => henchIn() === 2, 2000, "a second hire at tier 2");
+    const vc = await bot("Wynn", home, "village");
+    await va.until(() => va.snaps[va.snaps.length - 1].s.players.length === 4 && henchIn() === 1, 3000, "Wynn takes a henchman's slot");
+    check(vc.state.players.length === 4 && henchIn() === 1, "a friend joining a full party takes a henchman's slot", `${henchIn()} henchmen`);
+    await vc.leave();
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();
@@ -284,12 +300,17 @@ async function main() {
     ha.send({ k: "destination", dungeon: cellar });
     await ha.until(() => ha.snaps[ha.snaps.length - 1].portals[0]?.label === cellar.name, 3000, "the ring's label");
     check(hb.snaps[hb.snaps.length - 1].portals[0]?.label === cellar.name, "asking Keeper Wren turns the ring for the whole party", cellar.name);
+    // P10: a henchman hired in the village follows the party through every ring.
+    ha.send({ k: "hire", kit: "staff", coin: 999 });
+    await ha.until(() => ha.state.players.some((p) => p.henchman), 2000, "Hale's hire");
     const hRing = village.village!.portal;
     await Promise.all([ha.walkTo(-3.2, 2, 1), hb.walkTo(3.2, 2, 1)]);
     await Promise.all([ha.walkTo(hRing.x - 0.6, hRing.z, 1.5), hb.walkTo(hRing.x + 0.6, hRing.z, 1.5)]);
     await Promise.all([ha.until(() => ha.handoff !== null, 5000, "Hale's hand-off"), hb.until(() => hb.handoff !== null, 5000, "Ivy's hand-off")]);
     await Promise.all([ha.takeHandoff(), hb.takeHandoff()]);
     check(ha.kind === "floor" && ha.floor?.hand?.name === cellar.name && ha.floor.floor === 1 && ha.floor.floors === 2, "the ring leads onto the hand-built dungeon's first floor", JSON.stringify({ floor: ha.floor?.floor, floors: ha.floor?.floors, hand: ha.floor?.hand?.name }));
+    await ha.until(() => ha.state.players.some((p) => p.henchman), 3000, "the henchman on the floor");
+    check(ha.state.players.some((p) => p.henchman && p.style === "staff"), "the henchman follows the party through the ring onto the floor");
     const cellarFloor = floorLevel(ha.floor!).dungeon!;
     await walkFloor(ha, hb, cellarFloor);
     const cDeeper = ha.snaps[ha.snaps.length - 1].portals.find((r) => r.to === "deeper")!;

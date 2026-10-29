@@ -59,7 +59,8 @@ export function portalFor(world: World, state: SimState): Ring | null {
 
 /** Every player still standing is inside the ring (and there is at least one). */
 export function partyOnPortal(state: SimState, portal: PortalDef): boolean {
-  const standing = state.players.filter((p) => p.mode !== 'down');
+  // Henchmen follow their party through a ring (P10); the players decide when to take it.
+  const standing = state.players.filter((p) => p.mode !== 'down' && !p.henchman);
   return standing.length > 0 && standing.every((p) => Math.hypot(p.x - portal.x, p.z - portal.z) <= portal.radius);
 }
 

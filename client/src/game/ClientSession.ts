@@ -159,6 +159,8 @@ export class ClientSession implements Session {
   upgraded: Extract<ToPeer, { k: 'upgraded' }>[] = [];
   /** Purchases and sales the room made that the game has not settled in the save yet (P5). */
   trades: Extract<ToPeer, { k: 'bought' | 'sold' }>[] = [];
+  /** Hires the room made that the game has not paid for yet (P10). */
+  hires: Extract<ToPeer, { k: 'hired' }>[] = [];
   /** This browser's own village, sent in the hello when joining a village (P2). */
   private villageSave: VillageSave | null = null;
   /** What to draw before the first snapshot: this level, empty. */
@@ -239,7 +241,7 @@ export class ClientSession implements Session {
   }
 
   /** Ask the server for something the slice's host did itself (a restart, a tuning edit, a cheat). */
-  request(msg: Extract<ToHost, { k: 'restart' | 'home' | 'drop' | 'tune' | 'cheat' | 'destination' | 'upgrade' | 'buy' | 'sell' | 'portal' }>): void {
+  request(msg: Extract<ToHost, { k: 'restart' | 'home' | 'drop' | 'tune' | 'cheat' | 'destination' | 'upgrade' | 'buy' | 'sell' | 'portal' | 'hire' | 'dismiss' }>): void {
     if (this.state === 'playing') this.send(msg);
   }
 
@@ -390,6 +392,8 @@ export class ClientSession implements Session {
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
     } else if (msg.k === 'upgraded') {
       this.upgraded.push(msg);
+    } else if (msg.k === 'hired') {
+      this.hires.push(msg);
     } else if (msg.k === 'bought' || msg.k === 'sold') {
       this.trades.push(msg);
     } else if (msg.k === 'village') {

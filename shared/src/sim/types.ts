@@ -4,6 +4,7 @@ import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
 import type { FloorRunState } from './floorRun';
 import type { FlowState } from './flow';
+import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
 
@@ -95,6 +96,9 @@ export interface PlayerState {
   flow?: FlowState;
   /** Seconds until the off-hand's ability is ready again (C4). */
   offhandCooldown?: number;
+  /** A henchman (P3): the server plays it (henchman.ts); portals, banking and loot pass it by. */
+  henchman?: true;
+  brain?: HenchmanBrain;
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
   /** Seconds until another potion can be drunk (D4). */
@@ -403,7 +407,18 @@ export type SimEvent =
    * village's lumber and stone for the run (the same in every player's event; the browser that opened
    * the village keeps them).
    */
-  | { kind: 'banked'; playerId: string; items: (Item | GearItem)[]; coin: number; lumber: number; stone: number; floor: number }
+  | {
+      kind: 'banked';
+      playerId: string;
+      /** Finds still on the ground for the player, handed over now. */
+      items: (Item | GearItem)[];
+      /** Carried finds the browser already holds in the bag (D3), now banked and safe. */
+      kept: number;
+      coin: number;
+      lumber: number;
+      stone: number;
+      floor: number;
+    }
   /** A wipe lost a player's unbanked finds (P1). */
   | { kind: 'findsLost'; playerId: string; count: number }
   /**

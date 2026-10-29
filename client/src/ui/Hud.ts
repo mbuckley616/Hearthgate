@@ -161,7 +161,7 @@ export class Hud {
       }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
-        const held = ev.carried ? '  ·  carried until you bank it' : '';
+        const held = ev.carried ? '  ·  in your bag, lost on a wipe until banked' : '';
         this.toast(`<b class="${i.rarity}">${i.rarity === 'rare' ? 'Rare: ' : ''}${itemNameOf(i)}</b><span>${gearLine(i)}${held}</span>`, i.rarity);
       }
       if (ev.kind === 'banked' && ev.playerId === localId && (ev.items.length > 0 || ev.coin > 0)) {
