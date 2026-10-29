@@ -702,18 +702,41 @@ export function stepPlayer(
 export function stepDoors(state: SimState, world: World): void {
   const doors = world.level.village?.doors;
   if (!doors) return;
+  // A henchman keeps to its nearest player (P3), and a door is a jump a walk cannot follow: when that
+  // player takes one, the henchman comes through with them.
+  const leaders = new Map<PlayerState, PlayerState>();
+  for (const h of state.players) {
+    if (!h.henchman || h.mode === 'down') continue;
+    let best: PlayerState | null = null;
+    for (const p of state.players) {
+      if (p.henchman || p.mode === 'down') continue;
+      if (!best || Math.hypot(p.x - h.x, p.z - h.z) < Math.hypot(best.x - h.x, best.z - h.z)) best = p;
+    }
+    if (best) leaders.set(h, best);
+  }
   for (const p of state.players) {
     if (p.mode === 'down') continue;
     for (const d of doors) {
       if (Math.hypot(p.x - d.x, p.z - d.z) > d.radius) continue;
-      p.x = d.toX;
-      p.z = d.toZ;
-      p.yaw = d.toYawDeg * DEG;
-      p.vx = 0;
-      p.vz = 0;
+      through(p, d, 0);
+      if (!p.henchman) {
+        let n = 0;
+        for (const [h, leader] of leaders) if (leader === p) through(h, d, ++n);
+      }
       break;
     }
   }
+}
+
+/** Out of a door: the nth henchman behind its player stands a step to one side, then the other. */
+function through(p: PlayerState, d: { toX: number; toZ: number; toYawDeg: number }, n: number): void {
+  const yaw = d.toYawDeg * DEG;
+  const side = n === 0 ? 0 : (n % 2 === 1 ? 1 : -1) * Math.ceil(n / 2) * 0.9;
+  p.x = d.toX + Math.cos(yaw) * side;
+  p.z = d.toZ - Math.sin(yaw) * side;
+  p.yaw = yaw;
+  p.vx = 0;
+  p.vz = 0;
 }
 
 /**

@@ -107,6 +107,20 @@ describe('the tavern’s henchmen (P10)', () => {
     expect(host.sim.players.some((p) => p.name === 'p' && p.id !== me.id)).toBe(true);
   });
 
+  it('hired together on one spot, they step apart rather than stand as one figure', () => {
+    const { host, me, h } = party();
+    const more = [host.addHenchman(me)!, host.addHenchman(me)!];
+    for (const o of more) {
+      o.x = h.x;
+      o.z = h.z;
+    }
+    for (let i = 0; i < 240; i++) host.tick();
+    const hench = [h, ...more];
+    for (const a of hench) for (const b of hench) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(1);
+    // And still with the party.
+    for (const a of hench) expect(Math.hypot(a.x - me.x, a.z - me.z)).toBeLessThan(tuning.hirelings.followDistance + 2);
+  });
+
   it('a top tier’s hire reads a telegraph quicker', () => {
     const { host, me } = party();
     host.takeHenchmen();

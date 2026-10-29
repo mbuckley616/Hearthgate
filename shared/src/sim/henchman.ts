@@ -172,6 +172,7 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
       cmd.moveZ = at.z;
       cmd.sprint = at.d > range + 6;
     }
+    spread(state, h, cmd);
     const inReach = at.d <= range + (ranged ? 1 : 0);
     if (inReach && state.tick % Math.max(1, Math.round(c.attackEveryTicks)) === 0) cmd.attack = true;
     // Its abilities, now and then.
@@ -197,5 +198,40 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
       cmd.sprint = at.d > 8;
     }
   }
+  spread(state, h, cmd);
   return cmd;
+}
+
+/**
+ * Step apart from any hero standing too close: hired together and following one leader, henchmen
+ * otherwise walk the same line to the same spot and are drawn as one figure. Two on the very same
+ * point part along a direction from their ids, so the sim stays free of rolls.
+ */
+function spread(state: SimState, h: PlayerState, cmd: PlayerCommand): void {
+  const gap = tuning.hirelings.spacing;
+  let px = 0;
+  let pz = 0;
+  for (const o of state.players) {
+    if (o === h || o.mode === 'down') continue;
+    const dx = h.x - o.x;
+    const dz = h.z - o.z;
+    const d = Math.hypot(dx, dz);
+    if (d >= gap) continue;
+    const w = (gap - d) / gap;
+    if (d > 1e-3) {
+      px += (dx / d) * w;
+      pz += (dz / d) * w;
+    } else {
+      // The golden angle apart for each id, so a whole stack fans out rather than pairing off.
+      const a = (Number(h.id.replace(/\D/g, '')) || 0) * 2.39996;
+      px += Math.sin(a) * w;
+      pz += Math.cos(a) * w;
+    }
+  }
+  if (px === 0 && pz === 0) return;
+  const x = cmd.moveX + px;
+  const z = cmd.moveZ + pz;
+  const len = Math.hypot(x, z);
+  cmd.moveX = len > 1 ? x / len : x;
+  cmd.moveZ = len > 1 ? z / len : z;
 }
