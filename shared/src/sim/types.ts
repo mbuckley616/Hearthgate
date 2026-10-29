@@ -306,6 +306,10 @@ export interface DropState {
   age: number;
   /** The slice's loot, or (T5b, gear.catalogue) a catalogue item. */
   item: Item | GearItem;
+  /** Put down from the owner's bag (D13), not found: never banked or lost, taken back as it was. */
+  dropped?: true;
+  /** A dropped item waits until its owner has stepped away, or it would be picked straight back up. */
+  waitAway?: true;
 }
 
 export type RunPhase = 'ante' | 'intro' | 'wave' | 'rest' | 'won' | 'lost';

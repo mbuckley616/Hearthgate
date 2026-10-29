@@ -156,7 +156,8 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
   const floor = world.level.dungeon!.def.spec.floor;
   for (const p of state.players) state.events.push({ kind: 'banked', playerId: p.id, items: unbanked(state, p.id), coin, lumber, stone, floor });
   f.carried = {};
-  state.drops = [];
+  // What a player put down themselves (D13) stays where it is.
+  state.drops = state.drops.filter((d) => d.dropped);
 }
 
 /** A wipe (P1): what was carried since the last bank, and what still lay on the ground, is gone. */

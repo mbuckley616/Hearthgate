@@ -26,18 +26,41 @@ export function spawnDrop(state: SimState, world: World, x: number, z: number, f
   });
 }
 
+/**
+ * A player puts an item from their bag on the floor at their feet (D13). Only they see it and can
+ * take it back, once they have stepped away; it goes when the room does. Handing an item to a friend
+ * is a trade, and waits for Phase 3's ledger. Until then the item is the browser's (rule 1's
+ * accepted exception), checked by validate.ts as a catalogue item before it gets here.
+ */
+export function dropFromBag(state: SimState, world: World, playerId: string, item: GearItem): boolean {
+  const p = state.players.find((pl) => pl.id === playerId);
+  if (!p || p.mode === 'down') return false;
+  // A cap on what one player may leave lying about, so the snapshot stays small: the oldest goes.
+  const mine = state.drops.filter((d) => d.owner === playerId && d.dropped);
+  if (mine.length >= tuning.gear.maxDropped) state.drops = state.drops.filter((d) => d !== mine[0]);
+  state.drops.push({ id: state.nextId++, owner: playerId, x: p.x, y: groundHeight(world, p.x, p.z), z: p.z, age: 0, item, dropped: true, waitAway: true });
+  state.events.push({ kind: 'dropSpawned', owner: playerId, x: p.x, z: p.z, rarity: item.rarity });
+  return true;
+}
+
 /** Walk over a drop to pick it up. */
 export function stepDrops(state: SimState, dt: number): void {
   const r = tuning.gear.pickupRadius;
   for (const d of state.drops) d.age += dt;
   state.drops = state.drops.filter((d) => {
+    if (d.waitAway) {
+      const owner = state.players.find((pl) => pl.id === d.owner);
+      if (owner && Math.hypot(owner.x - d.x, owner.z - d.z) > r * tuning.champion.magnetRadiusMult) delete d.waitAway;
+      return true;
+    }
     if (d.age < 0.6) return true;
     const p = state.players.find(
       (pl) => pl.id === d.owner && pl.mode !== 'down' && Math.hypot(pl.x - d.x, pl.z - d.z) <= (slotted(pl, 'magnet') ? r * tuning.champion.magnetRadiusMult : r) && Math.abs(pl.y - d.y) < 1.2,
     );
     if (!p) return true;
-    // On a generated floor a find is carried until it is banked (P1); the slice's arena hands it over at once.
-    if (state.floor) {
+    // On a generated floor a find is carried until it is banked (P1); the slice's arena hands it over
+    // at once, and so does anything a player put down themselves (D13).
+    if (state.floor && !d.dropped) {
       (state.floor.carried[p.id] ??= []).push(d.item);
       state.events.push({ kind: 'pickup', playerId: p.id, item: d.item, carried: true });
     } else state.events.push({ kind: 'pickup', playerId: p.id, item: d.item });
@@ -54,5 +77,5 @@ export function collectAllDrops(state: SimState): void {
 /** Everything a player has found on this floor and not banked: what they carry, and what still lies on the ground for them. */
 export function unbanked(state: SimState, playerId: string): (Item | GearItem)[] {
   const carried = state.floor?.carried[playerId] ?? [];
-  return [...carried, ...state.drops.filter((d) => d.owner === playerId).map((d) => d.item)];
+  return [...carried, ...state.drops.filter((d) => d.owner === playerId && !d.dropped).map((d) => d.item)];
 }

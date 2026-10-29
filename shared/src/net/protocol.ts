@@ -2,6 +2,7 @@ import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
 import type { HandDungeon } from '../level/handmade';
+import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
@@ -34,6 +35,8 @@ export type ToHost =
   | { k: 'restart' }
   /** Back to the village from a generated floor's end card (D10): only once the run is won or lost. */
   | { k: 'home' }
+  /** An item from the bag put on the floor at the player's feet (D13); the browser has already taken it out. */
+  | { k: 'drop'; item: GearItem }
   | { k: 'tune'; edit: TuneEdit }
   | { k: 'cheat'; cheat: Cheat }
   /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */
