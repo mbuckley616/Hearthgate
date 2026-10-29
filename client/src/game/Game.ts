@@ -174,6 +174,13 @@ export class Game {
   private lastPhase = '';
   /** The party wiped on a generated floor (D10): the mouse is freed for the end card's button. */
   private wiped = false;
+  /**
+   * The pause card is up because the player let go of the mouse in play (Esc), not merely because
+   * the mouse is unlocked: a join-link arrival, a pad player and a browser without pointer lock
+   * never locked it, and the fight runs on regardless.
+   */
+  private paused = false;
+  private pausedAt = 0;
   private shownTuning = 0;
   /** When the last animation frame ran (the worker takes over if they stop). */
   private lastFrameAt = performance.now();
@@ -326,7 +333,14 @@ export class Game {
     });
     canvas.addEventListener('click', () => this.kbm.requestPointerLock());
     this.runUi.onHome = () => this.session.request({ k: 'home' });
-    document.addEventListener('pointerlockchange', () => this.updateOverlay());
+    document.addEventListener('pointerlockchange', () => {
+      if (this.kbm.pointerLocked) this.paused = false;
+      else if (!this.panelOpen()) {
+        this.paused = true;
+        this.pausedAt = performance.now();
+      }
+      this.updateOverlay();
+    });
     window.addEventListener('resize', () => {
       this.cam.setAspect(window.innerWidth / window.innerHeight);
       this.gfx.resize(window.innerWidth, window.innerHeight);
@@ -1141,6 +1155,11 @@ export class Game {
   }
 
   private handleMetaActions(actions: ActionFrame): void {
+    // Esc, Start or A closes the pause card; the press that opened it is not the one that closes it.
+    if (this.paused && performance.now() - this.pausedAt > 250 && (['menuBack', 'map', 'interact'] as const).some((a) => actions.pressed.has(a))) {
+      this.resume();
+      return;
+    }
     if (actions.pressed.has('debugPanel')) {
       this.debug.toggle();
       if (this.debug.visible) this.kbm.exitPointerLock();
@@ -1198,7 +1217,7 @@ export class Game {
     const card = document.createElement('div');
     card.className = 'overlay-card';
     card.addEventListener('click', (e) => e.stopPropagation());
-    card.innerHTML = '<h1>Paused</h1><p class="cta">Click outside this box, or press Resume, to play</p>';
+    card.innerHTML = '<h1>Paused</h1><p class="cta">Click outside this box, press Resume, Esc, Start or A to play</p>';
     const buttons = document.createElement('div');
     buttons.className = 'pause-buttons';
     const drawer = document.createElement('div');
@@ -1215,7 +1234,7 @@ export class Game {
       drawer.innerHTML = '';
       if (!same) drawer.appendChild(panel);
     };
-    button('Resume', () => this.kbm.requestPointerLock());
+    button('Resume', () => this.resume());
     button('Settings', () => toggle(this.settings.panel));
     button('Controls', () => toggle(this.controlsEl));
     button('Quit to title', () => {
@@ -1223,7 +1242,7 @@ export class Game {
     });
     card.append(buttons, drawer, this.party.panel);
     el.appendChild(card);
-    el.addEventListener('click', () => this.kbm.requestPointerLock());
+    el.addEventListener('click', () => this.resume());
     container.appendChild(el);
     return el;
   }
@@ -1259,9 +1278,22 @@ export class Game {
     return el;
   }
 
+  /** Close the pause card, taking the mouse back where the browser allows it. */
+  private resume(): void {
+    this.paused = false;
+    this.kbm.requestPointerLock();
+    this.updateOverlay();
+  }
+
+  /** A screen of its own is up: the hero screen, a keeper's menu, the title or the end card. */
+  private panelOpen(): boolean {
+    return this.debug.visible || this.equip.visible || !!this.store?.visible || !!this.bank?.visible || !!this.portalMenu?.visible || !!this.hire?.visible || !!this.title?.visible || this.wiped;
+  }
+
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.portalMenu?.visible && !this.hire?.visible && !this.title?.visible && !this.wiped;
-    this.overlay.style.display = show ? 'flex' : 'none';
+    // A screen opened over the pause card replaces it; closing that screen goes back to play.
+    if (this.panelOpen()) this.paused = false;
+    this.overlay.style.display = this.paused ? 'flex' : 'none';
   }
 }
 
