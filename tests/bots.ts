@@ -164,17 +164,23 @@ export class Bot {
     return this.snaps[this.snaps.length - 1]?.acks[this.id] ?? 0;
   }
 
+  /** When the next command is due. One clock across drives: each drive used to send its first at once, and walkTo's back-to-back drive(4)s ran at 80 a second, over the server's 75 (the critic, 29 Oct). */
+  private paceAt = 0;
+
   /** Send `ticks` commands paced by wall time at the tick rate, every one due on each wake-up, as the browser does. */
   async drive(ticks: number, c: (k: number) => PlayerCommand = () => command()) {
-    const start = performance.now();
+    // Carry on from the last drive's clock; after a quiet spell, start from now rather than catching up.
+    const start = Math.max(performance.now(), this.paceAt);
     let sent = 0;
     while (sent < ticks) {
-      const due = Math.min(ticks, Math.floor((performance.now() - start) / TICK_MS) + 1);
+      const now = performance.now();
+      const due = now < start ? 0 : Math.min(ticks, Math.floor((now - start) / TICK_MS) + 1);
       const cmds: SeqCommand[] = [];
       while (sent < due) cmds.push({ seq: ++this.seq, cmd: c(sent++) });
       if (cmds.length) this.send({ k: "input", cmds });
       if (sent < ticks) await sleep(2);
     }
+    this.paceAt = start + ticks * TICK_MS;
   }
 
   /**
