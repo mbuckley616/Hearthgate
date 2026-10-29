@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, P12 henchmen who grow and P13 the party's frames
+
+**What changed**
+
+`auto/local-henchmen-grow`, stacked on `auto/local-melee-guard`. Event shape changed (`banked` gains an optional `hench`); no message change.
+- **Henchmen keep their XP (P12).** By kit (one name a kit) in the village save (`VillageSave.hench`, checked by `readVillageSave`). A floor's bank carries the henchmen's XP in the `banked` event: the village's room keeps it (`credit`, `bankHenchmen`, the most each has banked) and so does the owner's browser, since the village only messages those standing in it. A hire in the village comes at its banked XP, and henchmen coming home are set back to it (`VillageRoom.welcomeHenchmen`, `HostSession.settleHenchmen`), so a wipe loses what they earned since, as finds are lost.
+- **The Tavern caps them**: 12 levels a tier, the top tier to 50 (`henchmanCap`, `village.henchmanCapPerTier`); the cap rides on the brain and the card through rings, and `grantXp` earns nothing past it. Raising the Tavern lifts it at once. The Tavern's words and the map say "up to level N".
+- **A level is a henchman's build**: `hirelings.damagePerLevel` (2%) a level, as it has no talents, and +10 health as any hero. A new henchman's health now follows its own kit's level from the start.
+- **The party's frames (P13)**: a 16-pixel head each (Garrick's plumed helm, Bryn's hood, Tamsin's hat, a player's open helm), "Lv N" beside the name, a line of what they are (a henchman's title and cap, a player's class and weapon), health in numbers; 48 px tall. A henchman's name tag reads "Garrick · Lv 6".
+- Two gaps found in the browser and fixed: the browser dropped `hench` reading its save, and the hello rebuilt the village field by field without it.
+- Tests: the cap a tier; the save keeps the most banked a kit and reads it back, refusing a bad one; no XP past the cap while a player earns on; settling sets a hire to its banked XP under the cap, quick at the top, the cap on the card; a level's damage and health; a bank with henchmen carries their XP, one without says nothing. check 215, parity identical, test:net, smoke 7/7. In the browser: a tier-3 Tavern's hires came at levels 6 and 3 with 150 and 120 health; on floor 2 their XP climbed in the fight and the rest room banked it into the save (Garrick 12,000 to 13,483, Bryn 2,000 to 3,228). The pane's save put back after.
+- Found and filed under Found in play: a fight room's archers left chasing from far off, so the room never cleared.
+
+**Next**
+
+- Michael approves the stack (playtest-fixes, keeper-cards, melee-guard, this) and plays the gate.
+
 ## 2026-10-29: local session, C6 melee abilities that protect
 
 **What changed**
