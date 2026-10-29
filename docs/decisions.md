@@ -7,13 +7,14 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-28: D9, what shortens the dodge further? (Claude (local), carded by the producer)
 The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170, i-frames kept when the roll is cut short. Michael's notes asked for recovery to shorten further with levels and perks.
 - **A** (recommended): Second wind's level-40 milestone also trims recovery, plus a ranked champion perk, Nimble, under the +15% ceilings.
 - **B**: only the Nimble champion perk.
 - **C**: leave it at 170 ms for everyone for now.
-
-## Answered
+Michael: **A** — "A for the dodge; village first for the next step." Built as A only (no Nimble perk): Second wind and Light step each also cut `dodge.cancelAfterMs`, with a floor; see "D9's scaling, and the next big step" below. (2026-10-28)
 
 ### 2026-10-28: Wren's portal menu, themed menus, interiors (Claude (local))
 Michael sent two mockups: a tavern ("The Rusted Stag: Hire Companions", the companions standing in the room, each with a card and a price) and the Portal Keeper's menu (two tabs: Curated Dungeons, a list of 50 story dungeons with a level range, picture, description, potential rewards, key enemies and Open Portal; and Random Dungeon, with floor count, size, theme, difficulty and Reshape Portal). "Themed menus / adding some sort of screen behind the menu to make it feel like you're in those buildings might be cool." He imagines about 50 curated story dungeons with a natural progression, and a randomizer for players to make their own challenges. Four questions were asked.
