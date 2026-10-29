@@ -7,7 +7,7 @@ import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 12;
+export const PROTOCOL_VERSION = 13;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -47,7 +47,11 @@ export type ToHost =
    * The village's owner raises a building a tier (P4), saying how much coin their save holds: coin
    * is the player's, in their browser until Phase 3, so the room takes their word for it.
    */
-  | { k: 'upgrade'; building: BuildingId; coin: number };
+  | { k: 'upgrade'; building: BuildingId; coin: number }
+  /** Buy one of today's shelf (P5), by its uid, saying how much coin the player holds. */
+  | { k: 'buy'; uid: string; coin: number }
+  /** Sell an item from the bag to Aldous (P5); the browser takes it out of the bag when the room answers. */
+  | { k: 'sell'; item: GearItem };
 
 /** Server -> players. */
 export type ToPeer =
@@ -74,7 +78,11 @@ export type ToPeer =
    */
   | { k: 'village'; village: VillageView; host: string; yours: boolean }
   /** The owner's upgrade went through (P4): their browser takes the coin it cost from their save. */
-  | { k: 'upgraded'; building: BuildingId; tier: number; coin: number };
+  | { k: 'upgraded'; building: BuildingId; tier: number; coin: number }
+  /** A purchase went through (P5): the item for the bag, and the coin it cost. */
+  | { k: 'bought'; item: GearItem; coin: number }
+  /** A sale went through (P5): which item left the bag, and the coin it brought. */
+  | { k: 'sold'; uid: string; coin: number };
 
 /** The kinds of room: the host's village, the slice's arena (the tests and the lab), and a generated dungeon floor (T4). */
 export type LevelKind = 'village' | 'arena' | 'floor';

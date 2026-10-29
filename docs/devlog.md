@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P5: coin and the General Store
+
+**What changed**
+
+`auto/local-general-store`, stacked on `auto/local-village-tiers`. Protocol 13.
+- **Aldous's shelves** (`shared/src/game/store.ts`): rolled each day (UTC) from the catalogue, `storeStock` items for the store's tier (4 at tier 1, 2 more a tier). Commons only, of materials up to a tier above the store's; the first three are a melee, a ranged and a magic weapon, so there is always one for another weapon kind. Each place is rolled from the whole catalogue and brought down to the best material the store can get, so raising the store keeps the same things in better materials and adds more. `VillageRoom` keeps the day's shelves (and what was bought from them) and sends them with the village.
+- **Prices** in `tuning.village`: a tier-1 common costs 20 coin, each tier 1.8 times more, a rare three times; Aldous pays 30% of his price.
+- **Buying and selling.** A second F (or A) to Aldous opens the store: the shelves and the bag side by side with prices and the coin you hold; up and down to choose, left and right to change side, F or A to buy or sell, Esc, Tab or B to leave; clicking works too. New `buy` (a shelf uid and the player's coin) and `sell` (a bag item, checked as D13's drop is) messages; the room answers `bought` (the item, the price) or `sold` (the uid, the price) and the browser changes the bag and the coin. Anyone in the village may trade, visitors too; a bought item is gone from the shelf for everyone until tomorrow.
+- **A champion point taken back now costs coin, at Keeper Wren's shrine** (`village.respecCoinPerPoint`, 15 a point, a reset all of them; decisions.md 27 Oct: free until coin came; Michael, 28 Oct, liked the shrine as the place). Within 6 m of Wren the Champion tab takes points back and shows the coin held; elsewhere it says where to go. Wren says so too.
+- After Michael's look at the first version: each row on the store's lists is drawn as the bag draws an item (its icon in a cell with the shape's name and rarity), then what it does, then its price.
+- Aldous's line no longer says his shelves are bare.
+- Tests: prices, the day, the shelves (the same all day, a weapon of each kind first, commons within the tier, the same things better as the store rises), the wire (`store.test.ts`); test:net's village now has a visitor refused short of coin, then buying a shelf item that leaves it for both, and selling it back at Aldous's price. check 170, parity identical, test:net, smoke 7/7. In the browser: the store opened on a second F, a warhammer bought (300 to 264 coin, the shelf one short), a staff sold for 6, Esc closed it; the pane's save put back after.
+
+**Learned**
+
+- **Rolling each tier's shelves from that tier's catalogue reshuffled them** when the store rose (an oak shortbow became an elm one, the cape changed colour). Rolling from the whole catalogue and capping the material keeps a shelf a shelf.
+- **Coin is still the browser's,** so the room takes the buyer's word for it, as with upgrades; the item a seller names is checked as an item could be, and the bag is the browser's to empty.
+
+**Next**
+
+- P9 and D5: the Storehouse's stash, and the bag at risk. Then P7, P8.
+- Michael: prices are a first guess (`village` sliders).
+
 ## 2026-10-28: local session, P4: the four buildings' tiers
 
 **What changed**

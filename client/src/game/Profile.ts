@@ -234,6 +234,15 @@ export class Profile {
     return true;
   }
 
+  /** Take an item out of the bag by its uid (P5: sold to Aldous). False if it is not there. */
+  removeByUid(uid: string): boolean {
+    const at = this.data.bag.findIndex((i) => i?.uid === uid);
+    if (at < 0) return false;
+    this.data.bag[at] = null;
+    this.save();
+    return true;
+  }
+
   /** Take what is in a bag space out of the bag: the hero screen's Drop lays it on the floor (D13). */
   drop(space: number): void {
     this.data.bag[space] = null;
@@ -304,18 +313,33 @@ export class Profile {
     return championPointsEarned(this.champion.xp) - championPointsSpent(this.champion.ranks);
   }
 
-  /** Spend (+1) or refund (-1) a champion point; free to move between runs until Phase 2 brings coin. */
-  changeChampion(id: ChampionId, delta: 1 | -1): void {
+  /**
+   * Spend (+1) or take back (-1) a champion point. Taking one back costs village.respecCoinPerPoint
+   * coin (P5; decisions.md 27 Oct: free until coin came); false if there is not the coin.
+   */
+  changeChampion(id: ChampionId, delta: 1 | -1): boolean {
     const rank = this.champion.ranks[id] ?? 0;
-    if (delta > 0 && (rank >= championMaxRanks(id) || this.championLeft() <= 0)) return;
-    if (delta < 0 && rank <= 0) return;
+    if (delta > 0 && (rank >= championMaxRanks(id) || this.championLeft() <= 0)) return false;
+    if (delta < 0 && rank <= 0) return false;
+    if (delta < 0 && !this.pay(tuning.village.respecCoinPerPoint)) return false;
     this.champion.ranks[id] = rank + delta;
     this.save();
+    return true;
   }
 
-  resetChampion(): void {
+  /** Take back every champion point, at the same price a point. False if there is not the coin. */
+  resetChampion(): boolean {
+    if (!this.pay(championPointsSpent(this.champion.ranks) * tuning.village.respecCoinPerPoint)) return false;
     this.champion.ranks = {};
     this.save();
+    return true;
+  }
+
+  /** Pay coin from the save, if there is enough. */
+  private pay(coin: number): boolean {
+    if (this.data.coin < coin) return false;
+    this.data.coin -= coin;
+    return true;
   }
 
   /**

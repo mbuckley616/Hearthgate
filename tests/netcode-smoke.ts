@@ -31,7 +31,8 @@ import { arena } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
 import { floorLevel, insidePiece, walkRoute, type FloorLayout } from "@hearthgate/shared/level/floor";
 import { floorSeed } from "@hearthgate/shared/level/generate";
-import { emptyVillage, upgradeCost, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { emptyVillage, storeStock, upgradeCost, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { buyPrice, sellPrice } from "@hearthgate/shared/game/store";
 import { DUNGEONS } from "@hearthgate/shared/level/dungeons";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
@@ -241,6 +242,22 @@ async function main() {
       "the owner raises the store to tier 2: the village pays lumber and stone, the owner the coin, and both see it",
       JSON.stringify(va.lastVillage()?.village),
     );
+    // P5: the store's shelves come with the village; a visitor buys one, and it is gone for both; anyone sells.
+    const shelf = vb.lastVillage()?.village.stock ?? [];
+    check(shelf.length === storeStock(2), "the store's shelves come with the village, sized by its tier", `${shelf.length} items`);
+    const want = shelf[0];
+    vb.send({ k: "buy", uid: want.uid, coin: buyPrice(want) - 1 });
+    await vb.drive(10);
+    check(!vb.messages.some((m) => m.k === "bought"), "a purchase waits for coin enough");
+    vb.send({ k: "buy", uid: want.uid, coin: buyPrice(want) });
+    await vb.until(() => vb.messages.some((m) => m.k === "bought"), 2000, "Wren's purchase");
+    await va.until(() => (va.lastVillage()?.village.stock ?? []).length === shelf.length - 1, 2000, "Vale sees the shelf one short");
+    const bought = vb.messages.find((m) => m.k === "bought");
+    check(bought?.k === "bought" && bought.item.uid === want.uid && bought.coin === buyPrice(want) && !(va.lastVillage()?.village.stock ?? []).some((i) => i.uid === want.uid), "a visitor buys from the shelf at its price, and it is gone for everyone");
+    vb.send({ k: "sell", item: { ...want, uid: "wren-1" } });
+    await vb.until(() => vb.messages.some((m) => m.k === "sold"), 2000, "Wren's sale");
+    const sold = vb.messages.find((m) => m.k === "sold");
+    check(sold?.k === "sold" && sold.uid === "wren-1" && sold.coin === sellPrice(want), "Aldous buys it back at his price", JSON.stringify(sold));
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();

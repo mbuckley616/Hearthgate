@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import type { Building } from '../level/village';
+import type { GearItem } from '../sim/catalogue';
 
 /**
  * The host's village (P2; Michael, 28 Oct: in the browser until Phase 3). The host's browser keeps it
@@ -20,8 +21,8 @@ export interface VillageSave {
   tiers: Record<BuildingId, number>;
 }
 
-/** What every player in the village is sent: the save without its owner's id. */
-export type VillageView = Omit<VillageSave, 'id'>;
+/** What every player in the village is sent: the save without its owner's id, and the store's shelves today (P5). */
+export type VillageView = Omit<VillageSave, 'id'> & { stock?: GearItem[] };
 
 export function emptyVillage(id: string): VillageSave {
   return { id, lumber: 0, stone: 0, tiers: { shrine: 1, store: 1, storehouse: 1, tavern: 1 } };

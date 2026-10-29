@@ -15,6 +15,12 @@ The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170
 
 ## Answered
 
+### 2026-10-28: Where a champion respec happens, the store's look, interiors (Claude (local))
+After P5. A champion point taken back now costs coin; asked whether that is only at Keeper Wren's shrine or anywhere points can change. Michael also looked at the store's first version and asked whether the buildings need interiors.
+Michael (2026-10-28, in chat): "I kind of like having Keeper Wren's shrine be the place for that", left to the recommendation (the shrine). The store's items should look as they do in the inventory, icons with their descriptions and costs. For the other shop menus (the stash, the tavern, Wren's dungeon chooser), ask him about their design before building. Interiors: asked, answered with the recommendation (exteriors only; see the chat).
+- **Respec at the shrine:** within 6 m of Keeper Wren, for `village.respecCoinPerPoint` coin a point.
+- **Every shop lists items as the bag draws them.**
+
 ### 2026-10-28: D9's scaling, and the next big step (Claude (local))
 Michael asked for proposals on how dodge recovery shortens with levels and perks, and for a talk on what comes next (monster variety, dungeon types, bosses, the village, weapons and armour). Proposals for the dodge: A, Second wind and Light step also trim the recovery; B, it shortens with the weapon's level on its own; C, armour weight (light rolls sooner, heavy protects more); D, a slotted perk, Quicksilver, where a roll that slips a hit has no recovery and refunds its charge; E, each Flow tier trims it. Recommendation: A and D, C with an armour pass. For the next step: D4 first (nothing heals between rest rooms since D7), then the village, then henchmen, then the gate; two dungeon types with a boss each could be pulled into the end of Phase 2.
 Michael (2026-10-28, in chat): **A** for the dodge; **village first** for the next step.

@@ -43,6 +43,7 @@ import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { VillagePanel } from '../ui/VillagePanel';
+import { StoreScreen } from '../ui/StoreScreen';
 import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
 import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
 import { Settings } from '../ui/Settings';
@@ -55,6 +56,9 @@ import { ClientSession } from './ClientSession';
 import { findDungeon, playableDungeons } from '../editor/store';
 import { LockOn } from './LockOn';
 import { Profile } from './Profile';
+
+/** How near Keeper Wren a hero stands to be at the shrine (m): the square in front of it. */
+const SHRINE_REACH = 6;
 
 /** Another player's hero on screen. */
 interface RemoteHero {
@@ -125,6 +129,8 @@ export class Game {
   private propView: PropView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
+  /** Aldous's General Store (P5), opened by a second F (or A) to him. */
+  private readonly store: StoreScreen;
   private readonly party: PartyUi;
   private saveTimer = 0;
   private readonly fx: FxView;
@@ -228,6 +234,12 @@ export class Game {
       () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
       () => slotsOpen(this.session.view().curr, !!this.world.level.village),
       (item) => this.session.request({ k: 'drop', item }),
+      () => this.atShrine(),
+    );
+    this.store = new StoreScreen(
+      this.profile,
+      (item) => this.session.request({ k: 'buy', uid: item.uid, coin: this.profile.data.coin }),
+      (item) => this.session.request({ k: 'sell', item }),
     );
     // Every player may invite: the room is the server's, not one player's.
     this.party = new PartyUi(this.profile.data.name, {
@@ -365,6 +377,7 @@ export class Game {
     }
     this.lockOn.targetId = -1;
     this.equip.setVisible(false);
+    this.store.setVisible(false);
     this.talk.clear();
     this.lastPhase = '';
     this.pending = Game.noPresses();
@@ -403,8 +416,13 @@ export class Game {
     const hold = this.upgradeHold(near, held, dt);
     if (!near || !pressed) return this.talk.update(near, false, dt, hold);
     const about = near.building && this.session.village ? ` ${this.buildingWords(near.building, near.name)}` : '';
+    // A second word with Aldous opens his shop (P5), as a second with Wren turns her ring.
+    if (near.building === 'store' && this.talk.showing(near.name) && this.session.village) {
+      this.openStore();
+      return this.talk.update(near, false, dt, hold);
+    }
     if (near.id !== 'keeper') {
-      this.talk.say(near.name, near.line + about);
+      this.talk.say(near.name, near.line + about + (near.building === 'store' ? ' Ask again to see the shelves.' : ''));
       return this.talk.update(near, false, dt, hold);
     }
     const NEW = 'A new dungeon';
@@ -429,7 +447,8 @@ export class Game {
     const v = this.session.village!;
     const tier = v.view.tiers[building];
     const name = BUILDING_NAMES[building];
-    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.`;
+    const respec = building === 'shrine' ? ` Here, too, champion points come back for ${tuning.village.respecCoinPerPoint} coin each: open your hero (Tab) beside me.` : '';
+    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.${respec}`;
     if (tier >= tuning.village.maxTier) return `${now} That is as high as it goes for now.`;
     const c = upgradeCost(tier + 1);
     const next = `Tier ${roman(tier + 1)} would bring ${tierGives(building, tier + 1)}, for ${c.lumber} lumber, ${c.stone} stone and ${c.coin} coin.`;
@@ -465,6 +484,47 @@ export class Game {
     if (problem) this.talk.say(near.name, `Not yet: you need ${problem}.`);
     else this.session.request({ k: 'upgrade', building, coin: this.profile.data.coin });
     return { text, frac: 0 };
+  }
+
+  /** Near Keeper Wren in the village: where champion points are taken back (P5; Michael, 28 Oct). */
+  private atShrine(): boolean {
+    const me = this.me();
+    const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
+    return !!me && !!wren && Math.hypot(me.x - wren.x, me.z - wren.z) < SHRINE_REACH;
+  }
+
+  private openStore(): void {
+    this.store.setStock(this.session.village?.view.stock ?? []);
+    this.store.setVisible(true);
+    this.kbm.exitPointerLock();
+    this.updateOverlay();
+  }
+
+  private closeStore(): void {
+    if (!this.store.visible) return;
+    this.store.setVisible(false);
+    this.kbm.requestPointerLock();
+    this.updateOverlay();
+  }
+
+  /** What the store's room did with a purchase or a sale (P5): the bag and the coin follow it. */
+  private settleTrades(): void {
+    for (const t of this.session.trades.splice(0)) {
+      if (t.k === 'bought') {
+        this.profile.data.coin = Math.max(0, this.profile.data.coin - t.coin);
+        const worn = JSON.stringify(this.profile.data.worn);
+        if (!this.profile.addItem(t.item)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(t.item)} was left on the counter</span>`, 'common');
+        if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
+        this.store.say(`Bought ${nameOf(t.item)} for ${t.coin} coin.`);
+      } else {
+        const item = this.profile.data.bag.find((i) => i?.uid === t.uid);
+        if (!item || !this.profile.removeByUid(t.uid)) continue;
+        this.profile.data.coin += t.coin;
+        this.store.say(`Sold ${nameOf(item)} for ${t.coin} coin.`);
+      }
+      this.profile.save();
+      this.store.refresh();
+    }
   }
 
   /** The room built what the owner asked for (P4): pay its coin from the save and say so. */
@@ -521,6 +581,9 @@ export class Game {
     // The bag and body take the keys and the pad while they are open (T5b): the hero stands still.
     if (this.equip.visible) {
       this.equip.handle(actions, realDt);
+      actions = emptyFrame();
+    } else if (this.store.visible) {
+      this.store.handle(actions, realDt);
       actions = emptyFrame();
     }
 
@@ -613,6 +676,7 @@ export class Game {
     this.propView?.update(world.floor, this.presentTime);
     this.syncVillage();
     this.payUpgrades();
+    this.settleTrades();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
@@ -851,6 +915,7 @@ export class Game {
     this.villagePanel.show(v);
     if (!v) return;
     if (this.room instanceof VillageView) this.room.setTiers(v.view.tiers);
+    this.store.setStock(v.view.stock ?? []);
     this.homeIsOurs = v.yours;
     if (!v.yours) return;
     this.profile.village = { id: this.profile.village.id, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };
@@ -921,6 +986,11 @@ export class Game {
     if (actions.pressed.has('hitboxes')) tuning.debug.showHitboxes = !tuning.debug.showHitboxes;
     // The equip screen is for between runs.
     const between = ['ante', 'won', 'lost'].includes(this.session.view().curr.run.phase);
+    // The store closes on Tab, Esc or B, and opens only by talking to Aldous.
+    if (this.store.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      this.closeStore();
+      return;
+    }
     if (actions.pressed.has('inventory') && (between || this.equip.visible)) {
       this.equip.toggle();
       if (this.equip.visible) this.kbm.exitPointerLock();
@@ -1003,7 +1073,7 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.title?.visible && !this.wiped;
+    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.title?.visible && !this.wiped;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
 }

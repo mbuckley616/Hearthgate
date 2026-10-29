@@ -1078,6 +1078,16 @@ export const tuning = {
     stashPerTier: 12,
     /** How long the owner holds talk (F, A) at a building's villager to build its next tier. */
     upgradeHoldMs: 900,
+    /**
+     * The General Store (P5): a common of tier 1 costs priceBase, each tier priceTierGrowth more, a
+     * rare rarePriceMult more; Aldous pays sellShare of what he would ask.
+     */
+    priceBase: 20,
+    priceTierGrowth: 1.8,
+    rarePriceMult: 3,
+    sellShare: 0.3,
+    /** A champion point taken back costs this much coin (P5; decisions.md 27 Oct: free until coin came). */
+    respecCoinPerPoint: 15,
   },
 
   loop: {
@@ -1971,6 +1981,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.stockPerTier': [0, 10, 1],
   'village.stashPerTier': [0, 40, 1],
   'village.upgradeHoldMs': [0, 3000, 50],
+  'village.priceBase': [1, 200, 1],
+  'village.priceTierGrowth': [1, 4, 0.1],
+  'village.rarePriceMult': [1, 10, 0.5],
+  'village.sellShare': [0, 1, 0.05],
+  'village.respecCoinPerPoint': [0, 200, 1],
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],

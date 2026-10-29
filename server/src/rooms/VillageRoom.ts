@@ -1,6 +1,8 @@
 import type { Client } from "@colyseus/core";
 import { planRun } from "@hearthgate/shared/game/runPlan";
 import { applyUpgrade, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { buyPrice, dailyStock, sellPrice, storeDay } from "@hearthgate/shared/game/store";
+import type { GearItem } from "@hearthgate/shared/sim/catalogue";
 import { PROTOCOL_VERSION, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
@@ -30,6 +32,12 @@ export class VillageRoom extends HostRoom {
   private ownerName = "";
   /** Who here is the village's owner, by session. */
   private owners = new Set<string>();
+  /** The General Store's shelves (P5): the day they were rolled for, at which tier, and what is left. */
+  private stockDay = -1;
+  private stockTier = 0;
+  private stock: GearItem[] = [];
+  /** Today's items bought already, by uid, so raising the store's tier does not put them back. */
+  private boughtToday = new Set<string>();
 
   protected get kind() {
     return "village" as const;
@@ -52,6 +60,39 @@ export class VillageRoom extends HostRoom {
   protected onPeerMessage(client: Client, msg: ToHost) {
     if (msg.k === "hello") this.onHello(client, msg);
     if (msg.k === "upgrade") this.onUpgrade(client, msg);
+    if (msg.k === "buy") this.onBuy(client, msg);
+    if (msg.k === "sell") this.onSell(client, msg);
+  }
+
+  /** Today's shelves at the store's tier, rolled afresh when the day or the tier changes. */
+  private shelves(): GearItem[] {
+    const day = storeDay(Date.now());
+    const tier = this.save?.tiers.store ?? 1;
+    if (day !== this.stockDay) this.boughtToday.clear();
+    if (day !== this.stockDay || tier !== this.stockTier) {
+      this.stockDay = day;
+      this.stockTier = tier;
+      this.stock = dailyStock(day, tier).filter((i) => !this.boughtToday.has(i.uid));
+    }
+    return this.stock;
+  }
+
+  /** Anyone in the village may buy (the design doc: visitors use everything); the room says the price. */
+  private onBuy(client: Client, msg: Extract<ToHost, { k: "buy" }>) {
+    const shelves = this.shelves();
+    const item = shelves.find((i) => i.uid === msg.uid);
+    if (!item || msg.coin < buyPrice(item)) return;
+    this.stock = shelves.filter((i) => i !== item);
+    this.boughtToday.add(item.uid);
+    const done: ToPeer = { k: "bought", item, coin: buyPrice(item) };
+    client.send(MSG, done);
+    for (const c of this.clients) this.sendVillage(c);
+  }
+
+  /** Aldous buys anything from a bag at his price; the browser takes it out of the bag on the answer. */
+  private onSell(client: Client, msg: Extract<ToHost, { k: "sell" }>) {
+    const done: ToPeer = { k: "sold", uid: msg.item.uid, coin: sellPrice(msg.item) };
+    client.send(MSG, done);
   }
 
   /**
@@ -96,7 +137,7 @@ export class VillageRoom extends HostRoom {
 
   private sendVillage(client: Client) {
     if (!this.save) return;
-    const msg: ToPeer = { k: "village", village: villageView(this.save), host: this.ownerName, yours: this.owners.has(client.sessionId) };
+    const msg: ToPeer = { k: "village", village: { ...villageView(this.save), stock: this.shelves() }, host: this.ownerName, yours: this.owners.has(client.sessionId) };
     client.send(MSG, msg);
   }
 
