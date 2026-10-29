@@ -1177,6 +1177,12 @@ export const tuning = {
     followDistance: 3,
     /** It steps apart from another hero nearer than this, so three never stand as one figure. */
     spacing: 1.3,
+    /**
+     * A henchman that has tried to walk for stuckMs without getting stuckMoveM from where it started
+     * (a tight corner, the far side of a counter) is put beside its player (playtest, 29 Oct).
+     */
+    stuckMs: 3000,
+    stuckMoveM: 1,
     /** Its reach to start swinging, and how often it presses attack (a player mashes faster). */
     reach: 1.8,
     attackEveryTicks: 9,
@@ -1574,6 +1580,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.aggroRange': [2, 40, 1],
   'hirelings.followDistance': [1, 12, 0.5],
   'hirelings.spacing': [0, 4, 0.1],
+  'hirelings.stuckMs': [500, 10000, 100],
+  'hirelings.stuckMoveM': [0.2, 4, 0.1],
   'hirelings.reach': [0.5, 4, 0.1],
   'hirelings.attackEveryTicks': [1, 60, 1],
   'hirelings.bowRange': [3, 20, 0.5],
