@@ -26,7 +26,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 
-- Michael approves `auto/local-gate-prep` and plays the gate. The critic's frame-rate corrections bug is still open (needs a desktop reading at 20 to 30 fps).
+- Before the gate, the open bugs under Found in play: the interiors' black shells seen from the square and the dancing melee reticle (both from Michael), the deeper ring that never opens when the next floor cannot be generated (Small runs), and the bots' walkTo flood. The frame-rate corrections bug needs a desktop reading at 20 to 30 fps. Then Michael approves `auto/local-gate-prep` and plays the gate.
 
 ## 2026-10-29: local session, D3: wear a find straight away
 
