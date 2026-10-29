@@ -256,6 +256,13 @@ function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): voi
   if (e.kind === 'warden') r.bossDown = true;
 }
 
+/** In a Whirlwind's spin, with melee abilities that protect (C6). */
+function spinning(p: PlayerState): boolean {
+  if (!tuning.abilities.meleeGuard || p.mode !== 'ability' || p.ability !== 'whirlwind') return false;
+  const t = abilityTiming('whirlwind');
+  return p.abilityTime >= t.windup && p.abilityTime < t.windup + t.active;
+}
+
 export function heroInvulnerable(p: PlayerState): boolean {
   return p.invulnerable || p.invulnTime > 0 || p.mode === 'down' || tuning.debug.godMode;
 }
@@ -376,6 +383,11 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   }
   // Worn armour (T5b) takes its share off; the slice's heroes carry none.
   if (p.mods.armour) damage *= 1 - p.mods.armour;
+  // A Whirlwind's spin (C6) takes a share of the hit and keeps spinning: a risk in a crowd, not a punishment.
+  if (spinning(p)) {
+    damage *= tuning.abilities.whirlwindDamageTaken;
+    heavy = false;
+  }
   // Flow III (C2): a heavy hit lands but does not interrupt; any hit taken costs a tier.
   if (p.flow && heavy && flowArmoured(p)) heavy = false;
   if (p.flow) loseFlowTier(p);
