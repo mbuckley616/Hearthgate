@@ -39,6 +39,34 @@ export interface Villager {
   building?: Building['id'];
 }
 
+/**
+ * A building's inside (Michael, 28 Oct: enterable interiors). It lies in the village level itself,
+ * far off the square, so going in is a step through a door, not a load: the room stays one room
+ * and friends see each other go in. Its walls fade for the camera as a dungeon's do.
+ */
+export interface InteriorDef {
+  building: Building['id'];
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  /** The way out, on the south wall: a gap this wide centred on x. */
+  doorX: number;
+  doorWidth: number;
+  /** Solid furniture (a table, shelves), floor to height. */
+  furniture: { id: string; minX: number; maxX: number; minZ: number; maxZ: number; height: number }[];
+}
+
+/** Stepping into a door's circle puts the hero at the other side, facing in (stepPlayer, so prediction agrees). */
+export interface DoorLink {
+  x: number;
+  z: number;
+  radius: number;
+  toX: number;
+  toZ: number;
+  toYawDeg: number;
+}
+
 /** A ring on the ground: the whole standing party inside it for PORTAL_HOLD_S takes it. */
 export interface PortalDef {
   x: number;
@@ -53,6 +81,8 @@ export interface VillageDef {
   well: { x: number; z: number; radius: number };
   /** Trees inside the palisade (solid trunks); the renderer adds more outside it. */
   trees: { x: number; z: number; radius: number }[];
+  interiors: InteriorDef[];
+  doors: DoorLink[];
 }
 
 /** How close a player must stand to a villager to talk (F). */
@@ -67,10 +97,11 @@ const villageDef: VillageDef = {
   ],
   villagers: [
     {
+      // Inside her shrine now (Michael, 28 Oct), behind her table with its orb.
       id: 'keeper',
       name: 'Keeper Wren',
-      x: 3.6,
-      z: -13.4,
+      x: 0,
+      z: -80.9,
       facingYawDeg: 0,
       look: 'staff',
       building: 'shrine',
@@ -81,6 +112,27 @@ const villageDef: VillageDef = {
     { id: 'innkeeper', name: 'Old Fenn', x: -6.6, z: 13.6, facingYawDeg: 90, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
   ],
   portal: { x: 0, z: -10.5, radius: 2.4 },
+  interiors: [
+    {
+      building: 'shrine',
+      minX: -7,
+      maxX: 7,
+      minZ: -86,
+      maxZ: -74,
+      doorX: 0,
+      doorWidth: 1.8,
+      furniture: [
+        { id: 'wren-table', minX: -1.3, maxX: 1.3, minZ: -80.45, maxZ: -79.55, height: 0.9 },
+        { id: 'shelf-w', minX: -7, maxX: -6.2, minZ: -84.5, maxZ: -77.5, height: 2.6 },
+        { id: 'shelf-e', minX: 6.2, maxX: 7, minZ: -84.5, maxZ: -77.5, height: 2.6 },
+      ],
+    },
+  ],
+  doors: [
+    // The shrine's front door and the way out of its inside.
+    { x: 0, z: -14.5, radius: 0.8, toX: 0, toZ: -75.8, toYawDeg: 180 },
+    { x: 0, z: -74.6, radius: 0.8, toX: 0, toZ: -13.3, toYawDeg: 0 },
+  ],
   well: { x: 0, z: 2, radius: 1.1 },
   trees: [
     { x: 17, z: 13, radius: 0.5 },
@@ -111,6 +163,33 @@ export const village: LevelDef = {
   spawn: { x: 0, z: 14, yawDeg: 180 },
   village: villageDef,
 };
+
+const INTERIOR_WALL_H = 4;
+const INTERIOR_WALL_T = 0.4;
+
+/**
+ * An interior's walls (round the outside of its floor, the south one split at the door), its floor
+ * for the camera, and its furniture. The walls fade and let the camera through, as a dungeon's do.
+ */
+function interiorColliders(
+  r: InteriorDef,
+  box: (id: string, minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number, blocksCamera?: boolean) => Collider,
+): Collider[] {
+  const t = INTERIOR_WALL_T;
+  const H = INTERIOR_WALL_H;
+  const wall = (id: string, minX: number, maxX: number, minZ: number, maxZ: number): Collider => ({ ...box(id, minX, maxX, 0, H, minZ, maxZ, false), fadeable: true });
+  const id = (s: string) => `interior-${r.building}-${s}`;
+  const half = r.doorWidth / 2;
+  return [
+    { ...box(id('floor'), r.minX - t, r.maxX + t, -10, 0, r.minZ - t, r.maxZ + t), blocksMovement: false },
+    wall(id('wall-n'), r.minX - t, r.maxX + t, r.minZ - t, r.minZ),
+    wall(id('wall-w'), r.minX - t, r.minX, r.minZ, r.maxZ),
+    wall(id('wall-e'), r.maxX, r.maxX + t, r.minZ, r.maxZ),
+    wall(id('wall-sw'), r.minX - t, r.doorX - half, r.maxZ, r.maxZ + t),
+    wall(id('wall-se'), r.doorX + half, r.maxX + t, r.maxZ, r.maxZ + t),
+    ...r.furniture.map((f) => box(id(f.id), f.minX, f.maxX, 0, f.height, f.minZ, f.maxZ, false)),
+  ];
+}
 
 /** The village's colliders: the palisade, the buildings, the well, the trees and the villagers. */
 export function buildVillageWorld(level: LevelDef): World {
@@ -151,6 +230,7 @@ export function buildVillageWorld(level: LevelDef): World {
     cylinder('well', v.well.x, v.well.z, v.well.radius, 3, true),
     ...v.trees.map((tr, i) => cylinder(`tree-${i}`, tr.x, tr.z, tr.radius, 6, true)),
     ...v.villagers.map((n) => cylinder(`villager-${n.id}`, n.x, n.z, 0.45, 1.8, false)),
+    ...v.interiors.flatMap((r) => interiorColliders(r, box)),
   ];
   return { level, colliders, collidersOpen: colliders, surfaces: [] };
 }
