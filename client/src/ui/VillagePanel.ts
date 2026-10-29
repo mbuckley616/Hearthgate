@@ -19,7 +19,7 @@ export class VillagePanel {
 
   show(village: { view: VillageView; host: string; yours: boolean } | null): void {
     if (!village) {
-      this.el.style.display = 'none';
+      this.hide();
       return;
     }
     const v = village.view;
@@ -27,10 +27,13 @@ export class VillagePanel {
     const tiers = BUILDINGS.map((b) => `${NAMES[b]} ${roman(v.tiers[b])}`).join('  ·  ');
     this.el.innerHTML = `<b>${whose}</b><span>${v.lumber} lumber  ·  ${v.stone} stone</span><small>${tiers}</small>`;
     this.el.style.display = 'block';
+    // The party's frames share the corner (P10's henchmen fill them in the village): they sit below.
+    document.documentElement.style.setProperty('--village-panel-h', `${this.el.offsetHeight + 8}px`);
   }
 
   hide(): void {
     this.el.style.display = 'none';
+    document.documentElement.style.setProperty('--village-panel-h', '0px');
   }
 }
 
