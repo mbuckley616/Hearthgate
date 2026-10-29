@@ -9,6 +9,26 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-29: Should a level raise health, damage and armour on its own? (Claude (local))
+Michael's playtest note: "Do basic things like Health, Attack, Defense, Speed not increase with your level? I feel like my health has gone unchanged despite obtaining many levels." Today a level gives only a talent point (Might, Armour, Haste, Fleet and the milestone rows); health comes from gear (amulets, bonus rolls) and, past 50, Vitality. That is the slice's design, so a level-20 hero with no points in health has level 1's 100.
+- **A** (recommended): a small base gain each level of the weapon in hand, +1.5% max health (to +75% at 50), shown on the level-up toast; damage, armour and speed stay with talents and gear, so a build still matters. Behind a switch the parity test turns off.
+- **B**: health, damage and armour all grow a little each level, talents on top.
+- **C**: keep it as it is, and say plainly on the level-up toast and the talent tab that a level is a point to spend.
+Michael: **A** — "a small health gain each level of the weapon in hand (+1.5%, to +75% at 50); damage, armour and speed stay with talents and gear." (2026-10-29)
+Michael, then: "Could we not just do a flat like +10 or +25 health for every level gained or something like that ... +1.5% feels kind of pathetic and not a good reward for leveling up." Built flat: `progression.healthPerLevel` 10 a level of the weapon in hand, on the panel (0 to 50): 190 at level 10, 590 at 50 from 100. +25 would make 1,325 at 50 while enemy damage does not grow with the hero's level, so 10 to start, to be felt in play. (2026-10-29)
+
+### 2026-10-29: After the playtest of main 194321a: keepers, henchmen, the village's panel, melee abilities (Claude (local))
+Michael's notes from a playtest, asked in chat with a recommendation each.
+- **Keepers:** F opening dialogue, then F again for the menu or hold F to build, "feels very unclear, and there's a weird timing component." Asked: a keeper card with buttons, or keep talk and add buttons to it.
+- **Henchmen's progression:** "there should be a progression for them, and their level / tier should be listed next to their names." Asked: their own XP capped by the Tavern's tier, or the Tavern's tier alone.
+- **The village's panel:** move it top right, or "a 'Map' button where you can view the town from a bird's eye view and manage your buildings."
+- **Melee abilities:** "need to have invulnerability or highly reduced damage while they're being used ... especially the Whirlwind."
+Michael (2026-10-29, in chat):
+- **Keepers: A**, a menu with buttons. F opens a small keeper card at once: their line on top, then buttons each with a key and a pad button (the keeper's menu, "Upgrade to tier III" with its cost, Leave). No hold, no timing, no second press.
+- **Henchmen: A**, their own XP, the Tavern caps. Each earns XP on runs and keeps it in the village save; the Tavern's tier caps their level and quickens them; "Garrick · Lv 6" on the card and the name tag.
+- **Village: A**, a village map on M. A bird's-eye view of the square: each building's tier, what the next costs and what the village has, and whose keeper builds it. Upgrades are still confirmed at the keeper. The corner shrinks to lumber and stone, top right.
+- **Melee abilities: A**, Charge's dash has i-frames like a roll; Whirlwind takes 70% less damage and cannot be staggered while it spins.
+
 ### 2026-10-28: D9, what shortens the dodge further? (Claude (local), carded by the producer)
 The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170, i-frames kept when the roll is cut short. Michael's notes asked for recovery to shorten further with levels and perks.
 - **A** (recommended): Second wind's level-40 milestone also trims recovery, plus a ranked champion perk, Nimble, under the +15% ceilings.

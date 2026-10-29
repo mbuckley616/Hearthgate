@@ -657,6 +657,11 @@ export const tuning = {
     hitstopLightMs: 60,
     hitstopHeavyMs: 110,
     flashMs: 80,
+    /**
+     * How bright a struck enemy glows for flashMs. At 0.9 the glow cleared the bloom's threshold and a
+     * chain on pale skeletons was a stream of white flashes (playtest, 29 Oct); the sparks carry the hit.
+     */
+    flashStrength: 0.25,
     /** Camera shake on heavy hits only (brief: at most 0.15 m for 150 ms) plus an FOV punch. */
     shakeM: 0.15,
     shakeMs: 150,
@@ -812,6 +817,13 @@ export const tuning = {
     maxLevel: 50,
     /** The weapon glow lights at this level (the slice's was 5); at maxLevel it burns gold. */
     glowLevel: 25,
+    /**
+     * Max health gained each level of the weapon in hand, flat, on top of the hero's base (gear and
+     * Vitality): 190 at level 10 and 590 at 50 from 100 (Michael, 29 Oct: a flat gain, "+1.5% feels
+     * kind of pathetic"). Damage, armour and speed stay with talents and gear. The slice's heroes
+     * gain nothing; the parity test sets 0.
+     */
+    healthPerLevel: 10,
   },
 
   /**
@@ -1177,6 +1189,12 @@ export const tuning = {
     followDistance: 3,
     /** It steps apart from another hero nearer than this, so three never stand as one figure. */
     spacing: 1.3,
+    /**
+     * A henchman that has tried to walk for stuckMs without getting stuckMoveM from where it started
+     * (a tight corner, the far side of a counter) is put beside its player (playtest, 29 Oct).
+     */
+    stuckMs: 3000,
+    stuckMoveM: 1,
     /** Its reach to start swinging, and how often it presses attack (a player mashes faster). */
     reach: 1.8,
     attackEveryTicks: 9,
@@ -1574,6 +1592,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.aggroRange': [2, 40, 1],
   'hirelings.followDistance': [1, 12, 0.5],
   'hirelings.spacing': [0, 4, 0.1],
+  'hirelings.stuckMs': [500, 10000, 100],
+  'hirelings.stuckMoveM': [0.2, 4, 0.1],
   'hirelings.reach': [0.5, 4, 0.1],
   'hirelings.attackEveryTicks': [1, 60, 1],
   'hirelings.bowRange': [3, 20, 0.5],
@@ -1831,6 +1851,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hitFeel.hitstopLightMs': [0, 300, 5],
   'hitFeel.hitstopHeavyMs': [0, 400, 5],
   'hitFeel.flashMs': [0, 300, 5],
+  'hitFeel.flashStrength': [0, 1, 0.05],
   'hitFeel.shakeM': [0, 0.5, 0.01],
   'hitFeel.shakeMs': [0, 600, 10],
   'hitFeel.fovPunchDeg': [0, 10, 0.1],
@@ -2087,6 +2108,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'run.extraPlayerHealth': [0, 2, 0.01],
 
   'progression.xpPerDamage': [0, 10, 0.1],
+  'progression.healthPerLevel': [0, 50, 1],
   'progression.level2Xp': [10, 20000, 10],
   'progression.level3Xp': [10, 20000, 10],
   'progression.level4Xp': [10, 30000, 10],

@@ -760,7 +760,13 @@ export class Game {
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
     if (actions.pressed.has('ability3')) this.pending.ability3 = true;
     // The hero screen has the d-pad's left for its first tab.
-    if (actions.pressed.has('drink') && !this.equip.visible) this.pending.drink = true;
+    if (actions.pressed.has('drink') && !this.equip.visible) {
+      this.pending.drink = true;
+      // The sim turns a drink down without a word; a press that did nothing read as a broken key (playtest, 29 Oct).
+      const me = this.me();
+      if (me && me.mode !== 'down' && !me.potions) this.hud.toast('<b class="potion">No health potions</b><span>Break crates, barrels and urns to find them</span>', 'common');
+      else if (me && me.mode !== 'down' && me.hp >= me.maxHp) this.hud.toast('<b class="potion">Already at full health</b><span>The potion stays on your belt</span>', 'common');
+    }
     // The hero fights with the weapon in hand (T5): after a change on the hero screen, or on joining, follow it.
     // Mid-fight the server holds the change until the fight is over (C3), so it is asked for again each tick.
     const meNow = this.me();

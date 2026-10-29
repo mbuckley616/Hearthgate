@@ -154,7 +154,8 @@ export class Hud {
       if (ev.kind === 'block' && ev.playerId === localId && ev.broke) this.guardPop('Guard broken', 'broke');
       if (ev.kind === 'levelUp' && ev.playerId === localId) {
         const unlock = levelUnlock(ev.level) ? `${levelUnlock(ev.level)} unlocked · ` : '';
-        this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point</span>`, 'level');
+        const hp = tuning.progression.healthPerLevel > 0 ? `  ·  +${Math.round(tuning.progression.healthPerLevel)} health` : '';
+        this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point${hp}</span>`, 'level');
       }
       if (ev.kind === 'championPoint' && ev.playerId === localId) {
         this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under Tab · 3 Champion</span>`, 'level');

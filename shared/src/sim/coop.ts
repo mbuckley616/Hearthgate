@@ -2,7 +2,7 @@ import { tuning, type Style } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { hurtHero } from './combat';
 import type { Mods } from './gear';
-import { createPlayer } from './player';
+import { createPlayer, levelHealth } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
 import { championHealth, championRevive, slotted, type ChampionState } from './champion';
@@ -36,7 +36,15 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   p.talents = structuredClone(l.talents);
   p.mods = structuredClone(l.mods);
   // Vitality is applied here, on the server's numbers, so its ceiling holds whatever the browser sends.
-  p.maxHp = l.champion ? Math.round(l.maxHp * (1 + championHealth(l.champion))) : l.maxHp;
+  const base = l.champion ? Math.round(l.maxHp * (1 + championHealth(l.champion))) : l.maxHp;
+  // Each level's health (healthPerLevel) comes on top, here and each tick after (refreshLevelHealth).
+  if (tuning.progression.healthPerLevel > 0) {
+    p.hpBase = base;
+    p.maxHp = levelHealth(p, base);
+  } else {
+    delete p.hpBase;
+    p.maxHp = base;
+  }
   if (l.look) p.look = [...l.look];
   else delete p.look;
   if (l.champion) p.champion = structuredClone(l.champion);

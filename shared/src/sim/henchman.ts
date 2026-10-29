@@ -29,6 +29,10 @@ export interface HenchmanBrain {
   guardUntil: number;
   /** Hired from a Tavern at its top tier (P10): it reads telegraphs quicker. */
   quick?: boolean;
+  /** Where and when it last started trying to walk, to tell when it is stuck (unstickHenchmen). */
+  walkX?: number;
+  walkZ?: number;
+  walkSince?: number;
 }
 
 /** The Tavern's hires (P10; Michael's mockup), one of each kit: who stands by Old Fenn's hearth. */
@@ -79,6 +83,43 @@ export function inTelegraph(e: EnemyState, x: number, z: number): boolean {
   const along = (x - e.x) * fx + (z - e.z) * fz;
   if (along < 0 || along > t.radius + r) return false;
   return Math.abs((x - e.x) * fz - (z - e.z) * fx) <= r + 0.5;
+}
+
+/**
+ * A henchman pressing into a corner it cannot path round (the brain walks straight at what it wants)
+ * is put beside its player once it has tried for long enough. Standing still to shoot is not trying:
+ * only a command that moves counts. Server only, in the sim's step, after the doors.
+ */
+export function unstickHenchmen(state: SimState, commands: Record<string, PlayerCommand>): void {
+  const c = tuning.hirelings;
+  for (const h of state.players) {
+    const b = h.brain;
+    if (!h.henchman || !b || h.mode === 'down') continue;
+    const cmd = commands[h.id];
+    const trying = !!cmd && Math.hypot(cmd.moveX, cmd.moveZ) > 0.1;
+    if (!trying || b.walkSince === undefined || Math.hypot(h.x - b.walkX!, h.z - b.walkZ!) > c.stuckMoveM) {
+      b.walkX = h.x;
+      b.walkZ = h.z;
+      // State is plain data: an unset field is deleted, not undefined.
+      if (trying) b.walkSince = state.time;
+      else delete b.walkSince;
+      continue;
+    }
+    if ((state.time - b.walkSince) * 1000 < c.stuckMs) continue;
+    delete b.walkSince;
+    let leader: PlayerState | null = null;
+    for (const p of state.players) {
+      if (p.henchman || p.mode === 'down') continue;
+      if (!leader || Math.hypot(p.x - h.x, p.z - h.z) < Math.hypot(leader.x - h.x, leader.z - h.z)) leader = p;
+    }
+    if (!leader || Math.hypot(leader.x - h.x, leader.z - h.z) <= c.followDistance + 1) continue;
+    // On the player's own spot and height: the spacing steps it apart, and the walls it then meets are theirs.
+    h.x = leader.x;
+    h.z = leader.z;
+    h.y = leader.y;
+    h.vx = 0;
+    h.vz = 0;
+  }
 }
 
 /** The command a henchman gives itself this tick. */

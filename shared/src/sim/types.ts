@@ -141,8 +141,13 @@ export interface PlayerState {
   queuedSwap: Style | null;
   /** Experience per style (brief: use-based levels). Levels derive from it. */
   xp: Record<Style, number>;
-  /** Max health, including gear. */
+  /** Max health, including gear and (healthPerLevel) the level of the weapon in hand. */
   maxHp: number;
+  /**
+   * Max health before the level's share: what the loadout brings, Vitality included. Set only while
+   * progression.healthPerLevel is on, so the slice's state never carries it.
+   */
+  hpBase?: number;
   /** What equipped gear adds (stats and perks). The items themselves live in the client's saved profile. */
   mods: Mods;
   /**

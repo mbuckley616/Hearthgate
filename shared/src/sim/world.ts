@@ -3,6 +3,7 @@ import { stepPendingHits, stepRevives } from './coop';
 import { stepDrops } from './drops';
 import { stepEnemies } from './enemies';
 import { floorWorldNow, initialFloorRun } from './floorRun';
+import { unstickHenchmen } from './henchman';
 import { createPlayer, stepDoors, stepPlayer } from './player';
 import { stepProjectiles } from './projectiles';
 import { initialRun, stepRun } from './run';
@@ -49,6 +50,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
     stepPlayer(p, commands[p.id] ?? idleCommand(), dt, w, state);
   }
   stepDoors(state, w);
+  unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
   stepPendingHits(state);
   stepEnemies(state, dt, w);

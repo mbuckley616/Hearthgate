@@ -3,6 +3,7 @@ import { tuning } from '../config/tuning';
 import { HostSession } from '../game/HostSession';
 import { partyOnPortal } from '../game/portal';
 import { arena, buildWorld } from '../level/arena';
+import { village } from '../level/village';
 import { PROTOCOL_VERSION } from '../net/protocol';
 import { readToHost } from '../net/validate';
 import { spawnDrop } from './drops';
@@ -119,6 +120,36 @@ describe('the tavern’s henchmen (P10)', () => {
     for (const a of hench) for (const b of hench) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(1);
     // And still with the party.
     for (const a of hench) expect(Math.hypot(a.x - me.x, a.z - me.z)).toBeLessThan(tuning.hirelings.followDistance + 2);
+  });
+
+  it('stuck behind a counter it walks straight into, it is put beside its player after stuckMs, and not before', () => {
+    const host = new HostSession(buildWorld(village), () => {}, true);
+    host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    const me = host.sim.players[0];
+    const h = host.addHenchman(me)!;
+    // The tavern: the player before the bar, the henchman behind it between the bar and the kegs.
+    Object.assign(me, { x: 0, z: 80 });
+    Object.assign(h, { x: 0, z: 73.8 });
+    const ticks = (ms: number) => Math.round((ms / 1000) * tuning.sim.tickRate);
+    for (let i = 0; i < ticks(tuning.hirelings.stuckMs * 0.8); i++) host.tick();
+    expect(h.z).toBeLessThan(75.55);
+    for (let i = 0; i < ticks(tuning.hirelings.stuckMs * 0.5); i++) host.tick();
+    expect(Math.hypot(h.x - me.x, h.z - me.z)).toBeLessThan(tuning.hirelings.spacing + 0.5);
+  });
+
+  it('a bow henchman standing to shoot is never taken for stuck', () => {
+    const { host, me, h } = party();
+    host.sim.players.splice(host.sim.players.indexOf(h), 1);
+    const bow = host.addHenchman(me, 'bow')!;
+    Object.assign(bow, { x: 0, z: 0 });
+    for (const dx of [-2, 0, 2]) host.sim.enemies.push(createEnemy(host.sim, world, 'grunt', dx, -9, 0));
+    const at: number[] = [];
+    for (let i = 0; i < 300; i++) {
+      host.tick();
+      at.push(Math.hypot(bow.x - me.x, bow.z - me.z));
+    }
+    // Never jumps to the player's side mid-fight.
+    expect(Math.min(...at)).toBeGreaterThan(tuning.hirelings.spacing + 0.5);
   });
 
   it('a top tier’s hire reads a telegraph quicker', () => {
