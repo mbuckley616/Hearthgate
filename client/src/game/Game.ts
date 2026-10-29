@@ -57,6 +57,9 @@ import { findDungeon, playableDungeons } from '../editor/store';
 import { LockOn } from './LockOn';
 import { Profile } from './Profile';
 
+/** How near Keeper Wren a hero stands to be at the shrine (m): the square in front of it. */
+const SHRINE_REACH = 6;
+
 /** Another player's hero on screen. */
 interface RemoteHero {
   view: HeroView;
@@ -231,6 +234,7 @@ export class Game {
       () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
       () => slotsOpen(this.session.view().curr, !!this.world.level.village),
       (item) => this.session.request({ k: 'drop', item }),
+      () => this.atShrine(),
     );
     this.store = new StoreScreen(
       this.profile,
@@ -443,7 +447,8 @@ export class Game {
     const v = this.session.village!;
     const tier = v.view.tiers[building];
     const name = BUILDING_NAMES[building];
-    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.`;
+    const respec = building === 'shrine' ? ` Here, too, champion points come back for ${tuning.village.respecCoinPerPoint} coin each: open your hero (Tab) beside me.` : '';
+    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.${respec}`;
     if (tier >= tuning.village.maxTier) return `${now} That is as high as it goes for now.`;
     const c = upgradeCost(tier + 1);
     const next = `Tier ${roman(tier + 1)} would bring ${tierGives(building, tier + 1)}, for ${c.lumber} lumber, ${c.stone} stone and ${c.coin} coin.`;
@@ -479,6 +484,13 @@ export class Game {
     if (problem) this.talk.say(near.name, `Not yet: you need ${problem}.`);
     else this.session.request({ k: 'upgrade', building, coin: this.profile.data.coin });
     return { text, frac: 0 };
+  }
+
+  /** Near Keeper Wren in the village: where champion points are taken back (P5; Michael, 28 Oct). */
+  private atShrine(): boolean {
+    const me = this.me();
+    const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
+    return !!me && !!wren && Math.hypot(me.x - wren.x, me.z - wren.z) < SHRINE_REACH;
   }
 
   private openStore(): void {

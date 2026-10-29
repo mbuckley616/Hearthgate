@@ -7,6 +7,8 @@ import { gearLine, nameOf } from './gearText';
 
 type Column = 'shelf' | 'bag';
 
+const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+
 /**
  * The General Store (P5): Aldous's shelves today on the left, the bag on the right, each with its
  * price. Keyboard and pad first, like the hero screen (rule 4): up and down to choose, left and right
@@ -118,15 +120,19 @@ export class StoreScreen {
     this.render();
   }
 
+  /** A row: the item as the bag draws it (its icon in a cell, rarity and all), what it does, and its price. */
   private rowHtml(item: GearItem, i: number, col: Column, price: number, verb: string): string {
     const e = entryOf(item);
     const icon = gearIconUrl(e);
     const chosen = this.col === col && this.row === i ? ' chosen' : '';
     const cant = col === 'shelf' && price > this.profile.data.coin ? ' dear' : '';
-    return `<button class="store-row ${item.rarity}${chosen}${cant}" data-col="${col}" data-row="${i}">
-        ${icon ? `<img class="pixel-art gear-icon" src="${icon}" alt="">` : '<span class="gear-swatch"></span>'}
+    const picture = icon
+      ? `<img class="pixel-art gear-icon" src="${icon}" alt="">`
+      : `<span class="gear-swatch" style="background:linear-gradient(135deg, ${hex(e.material.colors.base)} 55%, ${hex(e.material.colors.trim)})"></span>`;
+    return `<button class="store-row${chosen}${cant}" data-col="${col}" data-row="${i}">
+        <span class="gear-cell store-cell ${item.rarity}${chosen}">${picture}<span class="gear-short">${e.shape.name}</span></span>
         <span class="store-name"><b class="item-name ${item.rarity}">${nameOf(item)}</b><small>${gearLine(item)}</small></span>
-        <span class="store-price">${verb} ${price}</span>
+        <span class="store-price">${verb}<b>${price}</b><small>coin</small></span>
       </button>`;
   }
 

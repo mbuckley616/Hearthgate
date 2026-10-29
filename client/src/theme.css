@@ -849,11 +849,12 @@ body.on-title .run-banner {
   color: #8d8a92;
 }
 
-.store-row .gear-icon,
-.store-row .gear-swatch {
-  width: 32px;
-  height: 32px;
+.store-cell {
+  display: block;
   flex: none;
+  width: 56px;
+  height: 56px;
+  font-size: 9px;
 }
 
 .store-name {
@@ -873,8 +874,20 @@ body.on-title .run-banner {
 
 .store-price {
   flex: none;
+  min-width: 52px;
+  text-align: center;
+  color: #a8a2b0;
+  font-size: 11px;
+}
+
+.store-price b {
+  display: block;
   color: var(--gold);
-  font-weight: 700;
+  font-size: 17px;
+}
+
+.store-price small {
+  display: block;
 }
 
 .store-note {

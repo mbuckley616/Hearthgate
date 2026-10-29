@@ -90,6 +90,8 @@ export class EquipScreen {
     private canReslot: () => boolean = () => true,
     /** An item put down from the bag (D13): Game asks the server to lay it at the hero's feet. */
     private onDrop: (item: GearItem) => void = () => {},
+    /** Whether champion points can be taken back here: at Keeper Wren's shrine (P5; Michael, 28 Oct). */
+    private atShrine: () => boolean = () => true,
   ) {
     this.root.className = 'equip';
     const card = document.createElement('div');
@@ -163,8 +165,8 @@ export class EquipScreen {
       }
       const id = con.perks[this.cRow];
       if (actions.pressed.has('interact')) this.profile.changeChampion(id, 1);
-      else if (actions.pressed.has('ability1')) this.profile.changeChampion(id, -1);
-      else if (actions.pressed.has('ability2')) this.profile.resetChampion();
+      else if (actions.pressed.has('ability1')) this.takeBack(() => this.profile.changeChampion(id, -1));
+      else if (actions.pressed.has('ability2')) this.takeBack(() => this.profile.resetChampion());
       else return;
       this.onChange();
       this.render();
@@ -172,6 +174,11 @@ export class EquipScreen {
     }
     if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
     if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+  }
+
+  /** Champion points come back only at the shrine, for coin; elsewhere the board says where. */
+  private takeBack(fn: () => boolean): void {
+    if (this.atShrine()) fn();
   }
 
   private stepChampion(dir: string): void {
@@ -254,8 +261,8 @@ export class EquipScreen {
     if (action === 'drop') this.drop(this.grid[this.cursor]);
     if (action === 'tab') this.tab = el.dataset.tab === 'talents' || el.dataset.tab === 'champion' ? el.dataset.tab : 'gear';
     if (action === 'cpUp' && talent) this.profile.changeChampion(talent as ChampionId, 1);
-    if (action === 'cpDown' && talent) this.profile.changeChampion(talent as ChampionId, -1);
-    if (action === 'cpReset') this.profile.resetChampion();
+    if (action === 'cpDown' && talent) this.takeBack(() => this.profile.changeChampion(talent as ChampionId, -1));
+    if (action === 'cpReset') this.takeBack(() => this.profile.resetChampion());
     if (action === 'cpSlot' && talent) this.slot(talent as SlottedId);
     if (action === 'rankUp' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, 1);
     if (action === 'rankDown' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, -1);
@@ -438,6 +445,6 @@ export class EquipScreen {
       ${slotBar}
       <div class="talent-cols">${cols}</div>
       <button class="talent-respec" data-action="cpReset">Reset all</button>
-      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. Taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}). Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
+      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. ${this.atShrine() ? `Here at the shrine, taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}).` : `Points are taken back at Keeper Wren's shrine in the village, for ${tuning.village.respecCoinPerPoint} coin each.`} Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
   }
 }
