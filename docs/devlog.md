@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P2: the village save
+
+**What changed**
+
+`auto/local-village-save`, stacked on `auto/local-dodge-smash`. Protocol 11.
+- **The village is a save of its own** (`shared/src/game/villageSave.ts`): an id, lumber, stone and the four starting buildings' tiers (1 to `village.maxTier`, 4). The browser keeps it under P1's key, which gains the id and the tiers on first load.
+- **The hello carries it when joining a village.** The server checks it (`readVillageSave`: an id, whole counts within bounds, tiers that exist; a bad one refuses the hello whole) and `VillageRoom` keeps the first one it is given. From then on the room's copy is the village: a floor's bank adds to it on the server (`FloorRoom.onEvents` credits the village the run came from).
+- **A new `village` message** goes to each player on joining and whenever the village changes: the save without its id, the host's name, and whether it is this player's own (their hello carried the same id). Only the owner's browser keeps it, replacing its save with the room's count; a visitor's own save is never touched. A panel top left shows "Your village" or "Vale's village", the lumber and stone and each building's tier.
+- The browser still adds its own banks to its save as they happen, so a tab closed mid-run keeps them; the room's count, which has them too, replaces it on the way home.
+- Tests: the save's bounds and the hello (`villageSave.test.ts`); test:net's village run now brings two saves and checks the gate: the maker's is the room's, the visitor is told it is the host's, and the run's two banks grew it from 10 lumber and 5 stone to 15 and 9, seen by both. check 163, parity identical, test:net. In the browser: the panel in the village, the save given an id.
+
+**Learned**
+
+- **Ownership by room code broke on the way home,** because a session id changes with every room. An id kept in the save, never sent back to anyone, is what says whose village it is.
+- **"Costs it could have paid"** cannot be checked yet: no tier has a price until P4, and the save does not record what was spent. P4 can keep a running total of lumber and stone earned if the check is wanted.
+
+**Next**
+
+- P4, the buildings' tiers: prices in `tuning.village`, an upgrade at each building's villager, and the tier showing on the building.
+
 ## 2026-10-28: local session, D9's scaling and D4: a quicker roll with perks, things to smash, the health potion
 
 **What changed**
