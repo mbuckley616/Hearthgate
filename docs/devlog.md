@@ -2,6 +2,21 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, D3: wear a find straight away
+
+**What changed**
+
+`auto/local-wear-finds`, stacked on `auto/local-tavern-hire`. Event shape changed (`banked` gains `kept`); no message change.
+- **A find on a floor goes into the bag at once,** marked carried (`ProfileData.carried`, by uid): wearable outside a fight like anything else, worn straight onto a bare slot as any find is. The server still keeps its own list of what is carried (P1) and decides the loss.
+- **The bank:** `banked` now hands over only what still lay on the ground (`items`) and says how many carried finds it made safe (`kept`); the browser clears its marks.
+- **A wipe takes every carried find wherever it is,** in the bag, in the pocket or worn (decisions.md 28 Oct: wearing a find is never a way round the risk), then the bag past the pocket (D5). A hero left with nothing in hand takes the best weapon left in the bag, or a plain one of their kind. Marks still there on reaching a village (a floor left early) are lost too.
+- **Marked on the hero screen:** a dashed amber cell with "carried", and the item's words say it is lost on a wipe until banked. Also fixed: the bag's pocket stripes (D5) never reached the hero screen's cells, only the stash's.
+- Tests: the loop's bank test now expects a carried find as kept, not handed over again. check 195, parity identical, test:net, smoke 7/7. In the browser (the gate): a helm picked up on floor 1 went onto the bare head, marked carried; a wipe took it off the head; picked up again and banked, it stayed and was no longer carried. The pane's save put back after.
+
+**Next**
+
+- Phase 2's backlog is built. The gate is Michael's: a solo evening of three to five runs with henchmen on the hosted build, which needs the stack approved and merged first. The producer words the questions.
+
 ## 2026-10-29: local session, P10: the tavern's hires
 
 **What changed**
