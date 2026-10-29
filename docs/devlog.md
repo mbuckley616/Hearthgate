@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, fixes from Michael's playtest of main 194321a
+
+**What changed**
+
+`auto/local-playtest-fixes`, from `main` (194321a, gate prep merged as #120). No message or event change.
+- **Wearing something on a floor no longer heals.** A loadout refilled health while the run was `ante`, meant for between runs; a generated floor is `ante` between its fights, so equipping anything there was a full heal. Not on a floor now.
+- **A potion press says why it did nothing.** G was reported as not working. It does (a floor in the browser: 99 to 127, one potion gone), but the sim refuses a drink at full health without a word, which the free heal above made common. Now "Already at full health" or "No health potions".
+- **A struck enemy glows softly.** Every hit set the whole enemy to emissive 0.9 for 80 ms, past the bloom's 0.7 threshold, so a chain on pale skeletons was a stream of white flashes. `hitFeel.flashStrength` 0.25, on the panel; sparks unchanged.
+- **A stuck henchman is put beside its player.** After `hirelings.stuckMs` (3 s) trying to walk without getting `stuckMoveM` (1 m) from where it started; only a moving command counts as trying, so a bow henchman standing to shoot never jumps. `unstickHenchmen` in `stepSim` after the doors.
+- Tests: a change of gear heals in the antechamber and not on a floor; a henchman behind the tavern's bar stays there at 80% of `stuckMs` and is beside its player at 130%; a bow henchman in a fight is never moved. The first two fail on the old code. check 201, parity identical, test:net passed.
+- **Asked and answered in chat** (decisions.md): keeper cards with buttons (P11), henchmen with their own XP capped by the Tavern (P12), a village map on M (P14), Charge with i-frames and Whirlwind at 70% less damage (C6); plus the party's frames with a head icon and more stats (P13). All in the backlog. Pending: whether a level should raise health on its own (today it is only a talent point, the slice's design).
+
+**Learned**
+
+- "The potion does not work" was two bugs meeting: a free heal on equipping, and a refusal with no word. A silent refusal reads as a broken key.
+
+**Next**
+
+- Michael approves `auto/local-playtest-fixes`. Then P11 (keeper cards) and P14 (the village map) for the builder or a local session; P12 and C6 are deep-work. The Pending stats question first if Michael wants it in Phase 2.
+
 ## 2026-10-29: local session, gate prep: the Paused card and a shakedown run
 
 **What changed**
