@@ -1,7 +1,7 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, type Collider } from '../level/geometry';
-import { abilityReady, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
+import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
@@ -150,7 +150,10 @@ function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: Pla
     p.yaw = turnToward(p.yaw, Math.atan2(tx, tz), tuning.combo.maxTurnDeg * DEG);
   }
   // Soft targeting: snap toward the best enemy near the aim (up to maxTurnDeg), remember it for the lunge and homing.
-  const target = pickSoftTarget(state, p, cmd, targetingRange(p));
+  // Free aim (D12) has none: the shot faces the aim exactly.
+  const free = freeAim(p, cmd);
+  if (free) p.yaw = Math.atan2(cmd.aimX, cmd.aimZ);
+  const target = free ? null : pickSoftTarget(state, p, cmd, targetingRange(p));
   p.attackTarget = target ? target.id : -1;
   if (target) p.yaw = turnToward(p.yaw, Math.atan2(target.x - p.x, target.z - p.z), tuning.combo.maxTurnDeg * DEG);
   aimLunge(state, p);
@@ -365,6 +368,8 @@ export function stepPlayer(
   const mv = tuning.movement;
   const dg = tuning.dodge;
   p.invulnTime = Math.max(0, p.invulnTime - dt);
+  if (cmd.aimPitch !== undefined) p.aimPitch = cmd.aimPitch;
+  else delete p.aimPitch;
 
   // Down: outside a run, get back up after a while; on a generated floor that is once the room is
   // cleared. In a run you stay down: the slice's downs wait for a revive, Hearthgate's (T5) bleed
@@ -591,8 +596,10 @@ export function stepPlayer(
       p.vx = 0;
       p.vz = 0;
     } else {
-      // Ranged and magic: walk while attacking, facing stays on the shot.
+      // Ranged and magic: walk while attacking, facing stays on the shot; with free aim (D12) the
+      // shot follows the reticle while it is drawn, so it leaves where the player points at release.
       steer(p, cmd, moveMag, mv.runSpeed * tuning.combo.castMoveSpeedFrac * moveSpeedMult(p), dt, false);
+      if (freeAim(p, cmd)) p.yaw = Math.atan2(cmd.aimX, cmd.aimZ);
     }
 
     const chainOpen = windup + hit.active;

@@ -36,6 +36,7 @@ import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
 import { Hud } from '../ui/Hud';
 import { Reticle } from '../ui/Reticle';
+import { freeAimFrom, type FreeAim } from './aim';
 import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
@@ -120,6 +121,8 @@ export class Game {
   private readonly sfx = new Sfx();
   private readonly hud = new Hud();
   private readonly reticle = new Reticle();
+  /** Free aim (D12): what the screen's centre pointed at last frame, while a ranged weapon is out unlocked. */
+  private aim: FreeAim | null = null;
   private readonly crt = new CrtOverlay();
   private readonly lockOn = new LockOn();
   private readonly debug: DebugPanel;
@@ -538,8 +541,12 @@ export class Game {
       this.cam.setColliders(worldNow(this.world, world).colliders);
       this.cam.update(realDt, this.hero.root.position, sprint);
     }
+    // Free aim (D12): over the shoulder, and the reticle pinned to the centre, where the shots go.
+    const free = !!curr && tuning.camera.freeAim && curr.style !== 'sword' && !this.lockOn.locked;
+    this.cam.setShoulder(free);
+    this.aim = free && curr ? freeAimFrom(this.cam.camera, curr, world, worldNow(this.world, world).colliders) : null;
     const aim = this.cam.basis();
-    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !ended && this.overlay.style.display === 'none', realDt);
+    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
@@ -759,12 +766,15 @@ export class Game {
   private buildCommand(actions: ActionFrame): PlayerCommand {
     const b = this.cam.basis();
     const { x, y } = actions.move;
+    // Free aim (D12) points from the hand at what the reticle is on; otherwise the camera's heading.
+    const free = this.aim;
     return {
       moveX: b.fx * y + b.rx * x,
       moveZ: b.fz * y + b.rz * x,
       sprint: actions.held.has('sprint'),
-      aimX: b.fx,
-      aimZ: b.fz,
+      aimX: free ? free.aimX : b.fx,
+      aimZ: free ? free.aimZ : b.fz,
+      ...(free ? { aimPitch: free.aimPitch } : {}),
       dodge: false,
       attack: false,
       jump: false,

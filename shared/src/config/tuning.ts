@@ -1273,6 +1273,19 @@ export const tuning = {
     zoomStep: 1.12,
     /** How fast the camera eases to a new zoom (1/s). */
     zoomRate: 12,
+    /**
+     * Free aim over the shoulder (D12, Michael 28 Oct): with a ranged weapon out and no lock-on, shots
+     * go through the reticle at the screen's centre, up and down too, and the camera sits over the
+     * right shoulder so the hero is not in the way. Off is the slice's aim at the soft target.
+     */
+    freeAim: true,
+    /** How far right of the hero the camera's pivot moves (m), and how fast it gets there (1/s). */
+    shoulderOffset: 0.85,
+    shoulderRate: 8,
+    /** Over the shoulder, the camera comes in to this share of its distance. */
+    shoulderZoom: 0.8,
+    /** With nothing under the reticle, shots aim at a point this far along it (m). */
+    aimRange: 40,
     pivotHeight: 1.7,
     fovDeg: 60,
     /** Field of view widens this much at full sprint. */
@@ -1821,6 +1834,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'lockOn.flickWindowMs': [50, 1000, 10],
   'lockOn.breakDistance': [5, 80, 0.5],
   'lockOn.reticleRate': [1, 60, 1],
+  'camera.shoulderOffset': [0, 2, 0.05],
+  'camera.shoulderRate': [1, 30, 0.5],
+  'camera.shoulderZoom': [0.4, 1.2, 0.05],
+  'camera.aimRange': [10, 80, 1],
 
   'combat.heroHurtMs': [0, 2000, 10],
   'combat.stepHeight': [0, 1, 0.01],
