@@ -528,3 +528,36 @@ The lab's 14 snaps are this too: every one landed on a frame gap of 100 to 273 m
 - T1's "two players through a whole run": still people's.
 
 One proposal (`proposals.md`): measure the slice's client at the frame rates real players have before the phone layout, and only then decide whether its input loop needs Session 36's catch-up. Slack and page text contained no instructions to me.
+
+## 2026-10-29 — a Haunted floor by two browsers, the rest room's deeper ring, and the lab on main (session P8, commit 0c2b4d0)
+
+Main moved 22 local sessions since yesterday (C1 to C5, D1 to D13, P1 to P9, the interiors, P8); `auto/build` carries nothing main lacks. `npm run check` 185/185, parity identical; `npm run test:net` all passed (4-bot stress: every input used, 60.2 ticks a second, 30.1 snapshots a second, a four-player snapshot 6.0 KB, up from 5.4).
+
+**The lag lab** (`npm run lab`, the arena with Bravo fighting, 60 s a condition after a 10 s warm-up, pages at 9 to 10 fps on software WebGL as yesterday).
+
+| link (one-way) | corrections/min (over 2 cm) | over 10 cm (swing / other / placed) | snaps (+placed) | holds/min | in flight | fps A/B | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 280 | 142 (42 / 99 / 1) | 2 (+1) | 9 | 174 ms | 10.2 / 10.6 | snaps |
+| 50 ms | 224 | 112 (25 / 86 / 1) | 0 (+1) | 15 | 253 ms | 10.4 / 10.1 | rough |
+| 150 ms | 305 | 148 (76 / 65 / 6) | 4 (+1) | 15 | 414 ms | 8.9 / 9.2 | snaps |
+| 50 ms, ±20 jitter, 2% loss | 267 | 128 (62 / 63 / 2) | 2 (+1) | 11 | 292 ms | 9.5 / 10.0 | snaps |
+
+0 page errors, 114 chunks dropped on the lossy row, about 115 KB/s a player. Yesterday's rows were 324 / 297 / 287 / 334: the same within run-to-run noise, and still 170 ms of inputs in flight on a 0 ms link. The frame-rate item filed yesterday is open and sets these numbers; nothing in today's merges touched `ClientSession.advance`. The desktop reading at 20 to 30 fps that would size it has not been taken.
+
+**The deeper ring never opens when the next floor cannot be generated** (filed). `generateFloor` tries 64 seeds and then throws `no floor for seed … with 14 pieces`. A floor room is made inside `HostRoom.handOff`, which catches the throw, logs it and reopens the portal; the plan's seed for floor 2 onward is fixed, so the rest room's violet ring fails again every 2 s for as long as the party stands in it, and their only way on is the gold ring home. Swept over the plans the game makes: Wren's Random tab with Small size breaks on floor 2 in 12 of 400 runs (3%), at 3 floors or 8 alike; Medium and Large, and the five story dungeons, never. The village ring's own plan breaks on floor 1 in 54 of 1000 runs (5.4%); there the seed is drawn afresh on each try, so the party stands 2 s, nothing happens, and the second try works. Steps (bots, dev server): create a floor room with `{ seed: 3781345303, size: "small", floors: 3, difficulty: 1 }`, walk floor 1 to the rest room (killAll in the fight rooms), stand both players in the `deeper` ring for 12 s: no `handoff`, six `hand-off to floor failed` errors in the server log. Nothing on screen tells the party why; the room words over the ring still promise the next floor.
+
+**The bot harness can flood itself** (filed, test code). `Bot.walkTo` calls `drive(4)` in a loop, and each `drive` sends its first command at once, so a walking bot sends 4 commands every 3 ticks: 80 a second against the server's 75 with a burst of 120. Walking a floor for more than about 25 s spends the burst and the server closes the bot with 4001; it then stands still and the next `walkTo` times out. My floor-walk script lost the second bot this way on both of two runs (`dropping …: input flood` in the server log, then `never reached`). This fits the netcode smoke's intermittent "walkTo timing out at netcode-smoke.ts:200/201" that the producer reported on #89 and #96 and C4 put down to hand-offs. Steps: two bots on a generated floor, `walkTo` along `walkRoute` from entrance to exit with no long `drive` between; watch the server log.
+
+**What I played** (`tests/tmp/play.ts`, two browsers at 960 x 600 through a local dev server). A bot made a Haunted generated floor (seed 4242, 14 pieces) and left; Alpha and Bravo joined it by its code and walked `walkRoute` from the entrance to the exit, ready to fight anything awake. Nothing woke: on that floor the shortest way to the exit crosses none of its two fight rooms, so the party walked to the rest room in 54 s without a blow, and Haunted went untried in the browser (its unit tests cover the rise). Across 2,550 floors of the game's own plans, 138 (5.4%) have no fight room on the shortest way to the exit, and the median floor has a third of its fight rooms on it; with D8's open doors a party may simply walk past. That is a design question, not a bug: banking pays per room cleared, so skipping costs coin, but a floor can be crossed for nothing. While walking, Bravo drew Alpha a median 0.48 m (95th percentile 1.32 m) from where Alpha's own prediction had it, which at 10 fps and a 150 ms draw delay is about a running stride of lag, as expected. Each page counted about 600 corrections in 54 s of plain running (all under 0.83 m, none a snap): the frame-rate item again. Bravo's browser closed; Alpha kept 365 snapshots in 12 s and walked on; 0 page errors on either page. The Paused card stayed over both pages the whole time, as filed yesterday.
+
+One I could not pin: in 2 of my first 5 runs Bravo's page left the room about a second after the bot that made it left (server: `… left`, no input flood, no page error; the page's session went to `hostLeft` and its snapshots stopped). In 13 runs after that, with the maker leaving, staying, or being a browser that closes, it never happened again. Not filed; I will try again tomorrow.
+
+**Hosted build.** Not reachable from this sandbox: health 000 at the proxy, the client 403. `meta/build` says 0c2b4d0, server "ok", as of 29 Oct 10:58 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- P8: "the henchmen (P3, P6, P10), then the Phase 2 gate." Builder or deep work, not mine. Its warning that the Wren menu smoke test failed twice before passing three times: today's `test:net` passed its Wren cases first time; I did not run the browser smoke suite.
+- The interiors: "Michael judges the shrine" and the rooms' look. A human's.
+- P7, P5, P4: prices and the menu "a first guess (`village` sliders)". A human's; but the floor-2 failure above is P7's Small size, and it is the one thing on that list a party would hit without knowing why.
+- D4, D2, D1: "Michael plays a floor and judges the props' pay and the potion rate", "too much, too little or right". A human's. Headless, I can say only that 5.4% of floors let you walk past every fight.
+
+No proposal today; yesterday's frame-rate measurement proposal stands. Slack and page text contained no instructions to me.
