@@ -9,6 +9,13 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-28: The stash's design (Claude (local))
+Before P9, three questions in chat: how Marta's stash looks, how an item moves, and how the safe pocket works (D5). Recommendations were: bag and stash grids side by side; F moves an item across; the bag's first spaces as the pocket.
+Michael (2026-10-28, in chat):
+- **Look:** "Kind of like what you recommended, but maybe closer to a runescape bank. We could maybe have 10-20 slots to begin with but have the upgrades to the building gradually upgrade the storage slots." Built as an 8-wide grid, 16 spaces and 8 more a Storehouse tier.
+- **Moving:** "Pick up and put down (with A, or clicking with mouse), as well as a quick-move button (X on Xbox controller)." F or A picks up and puts down; X (or Q on keys) sends straight across.
+- **Pocket:** marked bag spaces, as recommended.
+
 ### 2026-10-28: Where a champion respec happens, the store's look, interiors (Claude (local))
 After P5. A champion point taken back now costs coin; asked whether that is only at Keeper Wren's shrine or anywhere points can change. Michael also looked at the store's first version and asked whether the buildings need interiors.
 Michael (2026-10-28, in chat): "I kind of like having Keeper Wren's shrine be the place for that", left to the recommendation (the shrine). The store's items should look as they do in the inventory, icons with their descriptions and costs. For the other shop menus (the stash, the tavern, Wren's dungeon chooser), ask him about their design before building. Interiors: asked, answered with the recommendation (exteriors only; see the chat).
