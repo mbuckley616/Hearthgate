@@ -657,6 +657,11 @@ export const tuning = {
     hitstopLightMs: 60,
     hitstopHeavyMs: 110,
     flashMs: 80,
+    /**
+     * How bright a struck enemy glows for flashMs. At 0.9 the glow cleared the bloom's threshold and a
+     * chain on pale skeletons was a stream of white flashes (playtest, 29 Oct); the sparks carry the hit.
+     */
+    flashStrength: 0.25,
     /** Camera shake on heavy hits only (brief: at most 0.15 m for 150 ms) plus an FOV punch. */
     shakeM: 0.15,
     shakeMs: 150,
@@ -1839,6 +1844,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hitFeel.hitstopLightMs': [0, 300, 5],
   'hitFeel.hitstopHeavyMs': [0, 400, 5],
   'hitFeel.flashMs': [0, 300, 5],
+  'hitFeel.flashStrength': [0, 1, 0.05],
   'hitFeel.shakeM': [0, 0.5, 0.01],
   'hitFeel.shakeMs': [0, 600, 10],
   'hitFeel.fovPunchDeg': [0, 10, 0.1],

@@ -439,7 +439,7 @@ export class EnemyView {
     const flash = curr.lastHitAt >= 0 && simTime - curr.lastHitAt < tuning.hitFeel.flashMs / 1000;
     const frozen = curr.frozen > 0;
     for (const m of this.materials) {
-      if (flash) m.emissive.setScalar(0.9);
+      if (flash) m.emissive.setScalar(tuning.hitFeel.flashStrength);
       else if (frozen) m.emissive.setRGB(0.12, 0.3, 0.55);
       else m.emissive.setScalar(0);
     }
