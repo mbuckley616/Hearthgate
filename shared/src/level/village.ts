@@ -85,8 +85,8 @@ export interface VillageDef {
   doors: DoorLink[];
 }
 
-/** How close a player must stand to a villager to talk (F). */
-export const TALK_RANGE = 2.4;
+/** How close a player must stand to a villager to talk (F): across a counter, from its end (interiors). */
+export const TALK_RANGE = 3;
 
 const villageDef: VillageDef = {
   buildings: [

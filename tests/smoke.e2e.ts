@@ -74,6 +74,8 @@ async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
   const near = async () => {
     const s = await seen(page);
     const p = mine(s);
+    // Mid hand-off (a ring taken) the snapshot has no hero of ours yet: the walk is over.
+    if (!p) return true;
     await page.evaluate(([tx, tz, px, pz]) => {
       (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
     }, [x, z, p.x, p.z]);
@@ -103,6 +105,7 @@ async function outOfShrine(page: Page) {
 async function throughDoor(page: Page, x: number, z: number, there: (z: number) => boolean) {
   const through = async () => {
     const p = mine(await seen(page));
+    if (!p) return true;
     // Through already: stop steering, or the held key turns round and walks straight back.
     if (there(p.z)) return true;
     await page.evaluate(([tx, tz, px, pz]) => {
