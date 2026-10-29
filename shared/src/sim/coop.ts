@@ -25,6 +25,8 @@ export interface Loadout {
   look?: string[];
   /** The player's champion points (T6b). Absent in the slice. */
   champion?: ChampionState;
+  /** Health potions on the belt (D4), kept in the browser's save between rooms; taken on joining only. */
+  potions?: number;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -64,6 +66,8 @@ export function addPlayer(state: SimState, world: World, id: string, loadout: Lo
   p.invulnTime = tuning.coop.joinInvulnMs / 1000;
   p.lagGrace = remote ? tuning.coop.lagGraceMs / 1000 : 0;
   if (tuning.coop.bleedOut) p.draughts = Math.round(tuning.coop.draughtsPerFloor);
+  // The belt comes with the hero into each room; later loadouts (gear changes) leave it as the fight has it.
+  if (loadout.potions) p.potions = Math.min(tuning.loop.potionMax, loadout.potions);
   state.players.push(p);
   state.events.push({ kind: 'playerJoined', playerId: id, name: p.name });
   return p;

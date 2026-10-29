@@ -9,6 +9,7 @@ import { damageEnemy, hurtHero, payCombo, type HitSpec } from './combat';
 import { addPlayer, slotsOpen, stepRevives, type Loadout } from './coop';
 import { stepDrops } from './drops';
 import { createEnemy } from './enemies';
+import { initialFloorRun } from './floorRun';
 import { emptyMods, xpForLevel } from './gear';
 import { emptyTalents } from './talents';
 import { idleCommand, type EnemyState, type PlayerState, type SimState } from './types';
@@ -192,7 +193,7 @@ describe('slotted perks (T6c)', () => {
     expect(slotsOpen(s, false)).toBe(true);
     s.run.phase = 'wave';
     expect(slotsOpen(s, false)).toBe(false);
-    s.floor = { room: 3, cleared: [], fights: 1, rested: false, carried: {} };
+    s.floor = { ...initialFloorRun(), room: 3, fights: 1 };
     expect(slotsOpen(s, false)).toBe(false);
     s.floor.rested = true;
     expect(slotsOpen(s, false)).toBe(true);

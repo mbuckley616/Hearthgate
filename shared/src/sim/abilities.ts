@@ -1,9 +1,11 @@
 import { ABILITIES, OFFHAND_ABILITY, abilityTiming, enemyStats, tuning, type AbilityKind } from '../config/tuning';
+import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
+import { smashArc, smashCircle } from './smash';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -48,6 +50,7 @@ export function stepAbility(
   cmd: PlayerCommand,
   dt: number,
   colliders: readonly Collider[],
+  props?: readonly PropInfo[],
 ): boolean {
   const kind = p.ability;
   const timing = abilityTiming(kind);
@@ -63,7 +66,7 @@ export function stepAbility(
   // Main effect at the end of the windup.
   if (!p.abilityFired && t >= timing.windup) {
     p.abilityFired = true;
-    fire(state, p, kind, cmd, colliders);
+    fire(state, p, kind, cmd, colliders, props);
   }
 
   const inActive = t >= timing.windup && t < timing.windup + timing.active;
@@ -75,6 +78,7 @@ export function stepAbility(
       const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
       p.x += fx * step;
       p.z += fz * step;
+      smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
       const hit = state.enemies.find(
         (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius + 0.25,
       );
@@ -112,6 +116,7 @@ export function stepAbility(
       if (p.abilityTicks < due) {
         p.abilityTicks = due;
         state.events.push({ kind: 'whirlTick', playerId: p.id });
+        smashCircle(state, props, p.id, p.x, p.y, p.z, a.whirlwindRadius + rank * tl.whirlwindRadiusPerRank);
         for (const e of state.enemies) {
           if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
           const er = enemyStats(e.kind).radius;
@@ -154,7 +159,7 @@ export function stepAbility(
   return t >= timing.windup + timing.active + timing.recovery;
 }
 
-function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCommand, colliders: readonly Collider[]): void {
+function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCommand, colliders: readonly Collider[], props?: readonly PropInfo[]): void {
   const a = tuning.abilities;
   const tl = tuning.talents;
   const rank = abilityRank(p, kind);
@@ -177,6 +182,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
     }
     case 'bash': {
       // The shield's bash (C4): the nearest enemy in front is knocked off its feet.
+      smashArc(state, props, p, p.x, p.z, a.bashRangeM, a.bashArcDeg);
       const fx = Math.sin(p.yaw);
       const fz = Math.cos(p.yaw);
       let best: EnemyState | null = null;
@@ -232,6 +238,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
     case 'frostRing': {
       const radius = a.frostRingRadius + rank * tl.frostRingRadiusPerRank;
       state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius });
+      smashCircle(state, props, p.id, p.x, p.y, p.z, radius);
       for (const e of state.enemies) {
         if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
         const dx = e.x - p.x;

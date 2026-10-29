@@ -50,7 +50,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   stepRevives(state, commands, dt);
   stepPendingHits(state);
   stepEnemies(state, dt, w);
-  stepProjectiles(state, dt, w.colliders);
+  stepProjectiles(state, dt, w.colliders, world.level.dungeon?.props);
   stepRun(state, dt, w);
   stepDrops(state, dt);
   state.tick++;

@@ -6,6 +6,8 @@ import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
+import { drinkPotion, smashArc } from './smash';
+import type { PropInfo } from '../level/floor';
 import { dodgeCancelMs, dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -249,7 +251,7 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
  * range and arc takes one hit per swing. The slam (hit 5) only lands at the end.
  * Any contact freezes the knight briefly (hitstop).
  */
-function swordHits(p: PlayerState, state: SimState): void {
+function swordHits(p: PlayerState, state: SimState, props?: readonly PropInfo[]): void {
   const hit = heroHit(p, p.attackHit);
   const isSlam = p.attackHit === 4;
   const from = hit.windup + (isSlam ? hit.active * tuning.combat.slamHitFrom : 0);
@@ -263,6 +265,8 @@ function swordHits(p: PlayerState, state: SimState): void {
     p.attackHitIds.push(-1);
     state.events.push({ kind: 'land', playerId: p.id, x: cx, z: cz, radius: hit.range });
   }
+  // Crates and urns in reach break (D4); one already broken is gone, so a swing takes each once.
+  if (props) smashArc(state, props, p, cx, cz, hit.range, hit.arcDeg);
   let stop = 0;
   for (const e of state.enemies) {
     if (!isTargetable(e) || p.attackHitIds.includes(e.id)) continue;
@@ -458,6 +462,8 @@ export function stepPlayer(
     cds[1] = Math.max(0, cds[1] - dt);
   }
   if (p.offhandCooldown !== undefined) p.offhandCooldown = Math.max(0, p.offhandCooldown - dt);
+  if (p.potionCooldown !== undefined) p.potionCooldown = Math.max(0, p.potionCooldown - dt);
+  if (cmd.drink) drinkPotion(state, p);
   const abilitySlot: 0 | 1 | 2 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : cmd.ability3 ? 2 : null;
   // One weapon set per outing (C3): a change of weapon waits until no fight is on.
   if (cmd.swapTo && cmd.swapTo !== p.style && (tuning.combo.swapInFight || !fightOn(state))) p.queuedSwap = cmd.swapTo;
@@ -580,7 +586,7 @@ export function stepPlayer(
       p.attackFired = true;
       if (p.attackMove) state.events.push({ kind: 'stringMove', playerId: p.id, move: p.attackMove, charge: p.attackCharge ?? 0 });
     }
-    if (p.style === 'sword') swordHits(p, state);
+    if (p.style === 'sword') swordHits(p, state, world.level.dungeon?.props);
 
     if (p.style === 'sword' || p.attackLunge !== 0) {
       // Melee roots the hero, and leaps commit to their path: only the attack's lunge moves them.
@@ -630,7 +636,7 @@ export function stepPlayer(
       p.attackQueued = false;
     }
   } else if (p.mode === 'ability') {
-    if (stepAbility(state, p, cmd, dt, colliders)) {
+    if (stepAbility(state, p, cmd, dt, colliders, world.level.dungeon?.props)) {
       p.mode = 'move';
       p.invulnerable = false;
     }

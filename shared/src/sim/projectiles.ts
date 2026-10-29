@@ -1,6 +1,8 @@
 import { enemyStats, tuning, type ComboHit } from '../config/tuning';
+import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
+import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
 
@@ -273,7 +275,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   if (pr.kind === 'bolt' && !pr.chained) chainBolt(state, pr, e);
 }
 
-export function stepProjectiles(state: SimState, dt: number, colliders: readonly Collider[]): void {
+export function stepProjectiles(state: SimState, dt: number, colliders: readonly Collider[], props?: readonly PropInfo[]): void {
   for (const pr of state.projectiles) {
     pr.age += dt;
     pr.life -= dt;
@@ -292,6 +294,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           pr.damage *= 1 + cb.detonateDamageBonus;
           payCombo(state, 'detonate', pr.owner, pr.x, pr.y + 1, pr.z);
         }
+        if (pr.owner[0] !== 'e') smashCircle(state, props, pr.owner, pr.x, pr.y, pr.z, pr.radius);
         for (const e of state.enemies) {
           if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.2) continue;
           const dx = e.x - pr.x;
@@ -357,6 +360,16 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
       .map((e) => ({ e, t: segmentHitsEnemy(pr, dir, Math.min(dist, wall), e) }))
       .filter((h) => h.t < Infinity)
       .sort((a, b) => a.t - b.t);
+    // A crate or urn nearer than the first enemy stops the shot and breaks (D4).
+    const prop = props ? propOnPath(state, props, pr, dir, Math.min(dist, wall)) : null;
+    if (prop && (hits.length === 0 || prop.t < hits[0].t)) {
+      smashProp(state, prop.prop, pr.owner);
+      pr.x += dir.x * prop.t;
+      pr.y += dir.y * prop.t;
+      pr.z += dir.z * prop.t;
+      pr.life = 0;
+      continue;
+    }
     let travelled = 0;
     for (const h of hits) {
       if (pr.pierce <= 0) break;

@@ -1,4 +1,4 @@
-import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
 import { BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
@@ -32,6 +32,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
   if (swapTo !== null && !STYLES.includes(swapTo as Style)) return null;
   if (v.attackHeld !== undefined && !isBool(v.attackHeld)) return null;
   if (v.ability3 !== undefined && !isBool(v.ability3)) return null;
+  if (v.drink !== undefined && !isBool(v.drink)) return null;
   if (v.aimPitch !== undefined && !isNum(v.aimPitch)) return null;
   const len = Math.hypot(moveX, moveZ);
   const s = len > 1 ? 1 / len : 1;
@@ -52,6 +53,7 @@ export function readCommand(v: unknown): PlayerCommand | null {
     interact: v.interact as boolean,
     ...(v.attackHeld === true ? { attackHeld: true } : {}),
     ...(v.ability3 === true ? { ability3: true } : {}),
+    ...(v.drink === true ? { drink: true } : {}),
     // Straight up or down is as far as a shot can point.
     ...(v.aimPitch !== undefined ? { aimPitch: Math.max(-Math.PI / 2, Math.min(Math.PI / 2, v.aimPitch as number)) } : {}),
   };
@@ -148,6 +150,12 @@ export function readLoadout(v: unknown): Loadout | null {
       slots.add(entry.slot);
     }
     loadout.look = [...(v.look as string[])];
+  }
+  // The potion belt (D4): a count, never past what a belt holds.
+  if (v.potions !== undefined) {
+    if (!isNum(v.potions) || v.potions < 0) return null;
+    const n = Math.min(tuning.loop.potionMax, Math.trunc(v.potions));
+    if (n > 0) loadout.potions = n;
   }
   return loadout;
 }

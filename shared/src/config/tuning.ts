@@ -1070,6 +1070,19 @@ export const tuning = {
     bossCoin: 60,
     bossLumber: 12,
     bossStone: 12,
+    /**
+     * Things to smash (D4; Michael, 28 Oct): a crate or barrel gives this much lumber, an urn this
+     * much stone, carried until the floor banks (and the deeper floors' bonus with it).
+     */
+    smashLumber: 1,
+    smashStone: 1,
+    /** The chance a smashed prop holds a health potion, the heal between rest rooms since D7. */
+    potionChance: 0.12,
+    /** A potion gives back this share of max health at once. */
+    potionHeal: 0.4,
+    potionMax: 3,
+    /** Between one potion and the next, so a held key drinks one. */
+    potionCooldownMs: 1000,
   },
 
   /** The run (brief: "A run"): antechamber, then waves, then the Warden. */
@@ -1937,6 +1950,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],
   'loop.bossStone': [0, 100, 1],
+  'loop.smashLumber': [0, 10, 1],
+  'loop.smashStone': [0, 10, 1],
+  'loop.potionChance': [0, 1, 0.01],
+  'loop.potionHeal': [0, 1, 0.05],
+  'loop.potionMax': [0, 9, 1],
+  'loop.potionCooldownMs': [0, 5000, 50],
   'run.introMs': [0, 4500, 10],
   'run.gateWaitMs': [0, 30000, 500],
   'run.restMs': [0, 15000, 10],

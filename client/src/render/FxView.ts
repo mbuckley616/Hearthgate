@@ -125,6 +125,21 @@ export class FxView {
           this.ring(ev.x, ev.z, ev.radius, 0xffc87a, 0.8, 0.5);
           this.puff(ev.x, 0.2, ev.z, 0x4a4038, 1.6, 0.6);
           break;
+        case 'smashed': {
+          // Splinters for wood, shards for clay, a puff of dust, and what it gave (D4).
+          const urn = ev.propKind === 'urn';
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 0.5, ev.z), new THREE.Vector3(0, 1.2, 0), 26, new THREE.Color(urn ? 0xc8714a : 0xb07a48));
+          this.puff(ev.x, ev.y + 0.3, ev.z, 0x5a4a3a, 1.1, 0.5);
+          const gave = [ev.lumber > 0 ? `+${ev.lumber} lumber` : '', ev.stone > 0 ? `+${ev.stone} stone` : ''].filter(Boolean).join('  ');
+          if (gave) this.spawnLabel(ev.x, ev.y + 1.3, ev.z, gave, 'loot');
+          if (ev.potion) this.spawnLabel(ev.x, ev.y + 1.7, ev.z, 'Potion!', 'potion');
+          break;
+        }
+        case 'drank': {
+          const p = sim.players.find((pl) => pl.id === ev.playerId);
+          if (p) this.spawnSparks(new THREE.Vector3(p.x, p.y + 1.1, p.z), new THREE.Vector3(0, 1.6, 0), 24, new THREE.Color(0xff5a6e));
+          break;
+        }
         case 'enemySlam': {
           const y = sim.enemies.find((e) => e.id === ev.enemyId)?.y ?? 0;
           this.ring(ev.x, ev.z, ev.radius * 1.2, 0xff8a5a, 0.9, 0.55, y);
@@ -266,6 +281,15 @@ export class FxView {
     this.numberLayer.appendChild(el);
     // A little horizontal scatter so stacked hits stay readable.
     this.numbers.push({ el, pos: new THREE.Vector3(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4), age: 0 });
+  }
+
+  /** A word that floats up like a damage number: what a smashed prop gave. */
+  private spawnLabel(x: number, y: number, z: number, text: string, kind: string): void {
+    const el = document.createElement('div');
+    el.className = `damage-number ${kind}`;
+    el.textContent = text;
+    this.numberLayer.appendChild(el);
+    this.numbers.push({ el, pos: new THREE.Vector3(x, y, z), age: 0 });
   }
 
   private arcDecal(x: number, z: number, yaw: number, range: number, arcDeg: number, opacity: number): void {
