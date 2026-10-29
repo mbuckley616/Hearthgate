@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, P10: the tavern's hires
+
+**What changed**
+
+`auto/local-tavern-hire`, stacked on `auto/local-henchmen-kits`. Protocol 16. Built to Michael's tavern mockup ("The Rusted Stag: Hire Companions").
+- **The hires stand in the room:** Garrick (Sellsword), Bryn (Archer) and Tamsin (Hedge-mage) wait in a row before Old Fenn's bar as figures with name tags; one hired leaves the row.
+- **The board:** a second F (or A) to Old Fenn opens it, the camera holding on the three, the title top left, a card each along the bottom (name, kit in its colour, a weapon of its kind as the bag draws it, a line on how it fights, and Hire for `village.hireCoin` (60) coin, or "With you, let go"). Left and right choose, F or A hires, X or Q lets one go, Esc leaves; clicking works too.
+- **The rules:** a new `hire` message (a kit and the coin held) and `dismiss`; the village's room sends as many at once as the Tavern's tier allows (one, two, three), one of each kit, within the party's four, and a tier-4 Tavern's hires read telegraphs in `hirelings.quickReact` (70%) of the time. The browser pays on `hired`. Anyone in the village may hire, for their own coin.
+- **They follow the party:** `HostRoom.handOff` takes the room's henchmen as cards (name, kit, level, quickness) into the next room, new or open, and the last player sent home from an end card takes them too. A friend joining a full party takes a henchman's slot (any room, not only the village or a rest room as the backlog said). Hires last for the session; a new visit to the game starts without them.
+- Old Fenn's line, and the debug panel's henchmen now named for their kits.
+- Tests: cards carry a henchman out of one room and into another, a friend joining a full party takes a henchman's slot, a quick hire answers sooner, the wire (`henchman.test.ts`); test:net: one hire at tier 1, two at tier 2 after raising the Tavern, a friend joining the full party takes a henchman's slot, and a henchman hired in the village follows the party through the ring onto the floor. check 195, parity identical, test:net, smoke 7/7. In the browser at 1366 by 768: the board over the three, Bryn hired for 60 coin and with the party (`docs/screenshots/tavern-hire.jpg`); the pane's coin put back after.
+
+**Next**
+
+- The Phase 2 gate is Michael's: a solo evening of three to five runs with henchmen on the hosted build (a party of four needs the Tavern at tier 3). The producer words the questions and files it.
+
 ## 2026-10-29: local session, P6: the bow and staff henchmen
 
 **What changed**
