@@ -176,10 +176,12 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
   const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
   const floor = world.level.dungeon!.def.spec.floor;
   // Carried finds are in the browser's bag already (D3): the bank makes them safe. Finds still on the ground come now.
+  const henchmen = state.players.filter((p) => p.henchman).map((p) => ({ style: p.style, xp: Math.floor(p.xp[p.style]) }));
+  const hench = henchmen.length > 0 ? { hench: henchmen } : {};
   for (const p of state.players) {
     const kept = (f.carried[p.id] ?? []).length;
     const items = state.drops.filter((d) => d.owner === p.id && !d.dropped).map((d) => d.item);
-    state.events.push({ kind: 'banked', playerId: p.id, items, kept, coin, lumber, stone, floor });
+    state.events.push({ kind: 'banked', playerId: p.id, items, kept, coin, lumber, stone, floor, ...hench });
   }
   f.carried = {};
   f.found = { lumber: 0, stone: 0 };

@@ -1,5 +1,26 @@
-import { tuning } from '@hearthgate/shared/config/tuning';
+import { tuning, type Style } from '@hearthgate/shared/config/tuning';
+import { CATALOGUE } from '@hearthgate/shared/sim/catalogue';
+import { levelFor } from '@hearthgate/shared/sim/gear';
+import { HIRES } from '@hearthgate/shared/sim/henchman';
 import type { PlayerState, SimState } from '@hearthgate/shared/sim/types';
+import { ICONS, iconUrl } from './pixelArt';
+
+const HERO_NAMES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
+const KIT_WEAPON: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
+
+/** Each frame's head (P13), drawn once: a henchman's by kit, a player's hero otherwise. */
+const HEADS: Record<string, string> = {};
+function headFor(p: PlayerState): string {
+  const key = p.henchman ? `head${p.style[0].toUpperCase()}${p.style.slice(1)}` : 'headHero';
+  return (HEADS[key] ??= iconUrl(ICONS[key]));
+}
+
+/** A frame's second line (P13): a henchman's title and its Tavern's cap; a player's class and weapon. */
+function frameLine(p: PlayerState): string {
+  if (p.henchman) return `${HIRES[p.style].title}${p.brain?.cap ? `  ·  up to Lv ${p.brain.cap}` : ''}`;
+  const weapon = p.look?.map((id) => CATALOGUE.get(id)).find((e) => e?.slot === 'weapon')?.name ?? KIT_WEAPON[p.style];
+  return `${HERO_NAMES[p.style]}  ·  ${weapon}`;
+}
 
 export interface PartyActions {
   /** Host: open a room and return its code. */
@@ -126,7 +147,16 @@ export class PartyUi {
         const down = p.mode === 'down';
         // Hearthgate's downs (T5): the bleed-out left, or out until the room is cleared.
         const state = !down ? '' : p.bleed === undefined ? ' · down' : p.bleed > 0 ? ` · down ${Math.ceil(p.bleed)}s` : ' · out';
-        return `<div class="party-frame ${down ? 'down' : ''}"><div class="party-frame-name">${esc(p.name || 'Player')}${state}</div><div class="party-frame-hp"><div style="width:${Math.round(frac * 100)}%"></div></div></div>`;
+        const level = levelFor(p.xp[p.style]);
+        return `<div class="party-frame ${down ? 'down' : ''}">
+            <img class="party-frame-head pixel-art" src="${headFor(p)}" alt="">
+            <div class="party-frame-body">
+              <div class="party-frame-name">${esc(p.name || 'Player')} <b>Lv ${level}</b>${state}</div>
+              <div class="party-frame-line">${esc(frameLine(p))}</div>
+              <div class="party-frame-hp"><div style="width:${Math.round(frac * 100)}%"></div></div>
+              <div class="party-frame-hpnum">${Math.ceil(Math.max(0, p.hp))} / ${p.maxHp}</div>
+            </div>
+          </div>`;
       })
       .join('');
     if (html !== this.shownFrames) {

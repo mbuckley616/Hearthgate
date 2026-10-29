@@ -61,7 +61,7 @@ describe('raising a building (P4)', () => {
   it('gives each building more as it rises, and the upgrade travels on the wire', () => {
     expect(tierGives('shrine', 1)).toBe('portals as hard as Normal');
     expect(tierGives('shrine', 2)).toBe('portals as hard as Hard');
-    expect(tierGives('tavern', 1)).toBe('1 henchman for hire');
+    expect(tierGives('tavern', 1)).toBe('1 henchman for hire, up to level 12');
     expect(tierGives('tavern', 4)).toContain('quicker');
     expect(readToHost({ k: 'upgrade', building: 'tavern', coin: 120.7 })).toEqual({ k: 'upgrade', building: 'tavern', coin: 120 });
     expect(readToHost({ k: 'upgrade', building: 'forge', coin: 1 })).toBeNull();

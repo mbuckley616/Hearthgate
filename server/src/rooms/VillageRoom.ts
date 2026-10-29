@@ -1,7 +1,9 @@
 import type { Client } from "@colyseus/core";
 import { planChoice, planRun } from "@hearthgate/shared/game/runPlan";
 import { choiceDifficulty, maxDifficulty } from "@hearthgate/shared/game/portalChoice";
-import { applyUpgrade, tavernHenchmen, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { applyUpgrade, bankHenchmen, henchmanCap, tavernHenchmen, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import type { HenchmanCard } from "@hearthgate/shared/sim/henchman";
+import type { Style } from "@hearthgate/shared/config/tuning";
 import { tuning } from "@hearthgate/shared/config/tuning";
 import { buyPrice, dailyStock, sellPrice, storeDay } from "@hearthgate/shared/game/store";
 import type { GearItem } from "@hearthgate/shared/sim/catalogue";
@@ -89,8 +91,9 @@ export class VillageRoom extends HostRoom {
     const hench = this.host.sim.players.filter((p) => p.henchman);
     if (hench.length >= tavernHenchmen(tier) || hench.some((p) => p.style === msg.kit)) return;
     if (msg.coin < tuning.village.hireCoin) return;
-    const h = this.host.addHenchman(this.host.playerOf(client.sessionId), msg.kit, { quick: tier >= 4 });
+    const h = this.host.addHenchman(this.host.playerOf(client.sessionId), msg.kit, { quick: tier >= 4, xp: 0 });
     if (!h) return;
+    this.settleHenchmen();
     const done: ToPeer = { k: "hired", kit: msg.kit, coin: tuning.village.hireCoin };
     client.send(MSG, done);
   }
@@ -134,6 +137,8 @@ export class VillageRoom extends HostRoom {
     if (!this.save || !this.owners.has(client.sessionId)) return;
     if (upgradeProblem(villageView(this.save), msg.building, msg.coin)) return;
     const cost = applyUpgrade(this.save, msg.building);
+    // A higher Tavern lifts its hires' cap at once (P12), and its top tier quickens them.
+    if (msg.building === "tavern") this.settleHenchmen();
     this.log(`${msg.building} raised to tier ${this.save.tiers[msg.building]}`);
     const done: ToPeer = { k: "upgraded", building: msg.building, tier: this.save.tiers[msg.building], coin: cost.coin };
     client.send(MSG, done);
@@ -158,12 +163,30 @@ export class VillageRoom extends HostRoom {
     super.onLeave(client);
   }
 
-  /** A floor of this village's run banked (P1, P2): its lumber and stone are the village's. */
-  credit(lumber: number, stone: number) {
-    if (!this.save || (lumber <= 0 && stone <= 0)) return;
+  /**
+   * A floor of this village's run banked (P1, P2): its lumber and stone are the village's, and the XP
+   * its henchmen have earned is theirs to keep (P12).
+   */
+  credit(lumber: number, stone: number, hench: readonly { style: Style; xp: number }[] = []) {
+    if (!this.save) return;
+    const kept = bankHenchmen(this.save, hench);
+    if (lumber <= 0 && stone <= 0 && !kept) return;
     this.save.lumber += lumber;
     this.save.stone += stone;
     for (const c of this.clients) this.sendVillage(c);
+  }
+
+  /** Henchmen home from a run come back at what they banked: a wipe loses what they earned since (P12). */
+  welcomeHenchmen(cards: readonly HenchmanCard[]): void {
+    super.welcomeHenchmen(cards);
+    this.settleHenchmen();
+  }
+
+  /** The Tavern's rules on the hires here (P12): its cap, their banked XP, its top tier's quickness. */
+  private settleHenchmen() {
+    if (!this.save) return;
+    const tier = this.save.tiers.tavern;
+    this.host.settleHenchmen(henchmanCap(tier), this.save.hench ?? {}, tier >= 4);
   }
 
   private sendVillage(client: Client) {

@@ -1142,7 +1142,11 @@ canvas {
 }
 
 .party-frame {
-  width: 170px;
+  width: 210px;
+  min-height: 48px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
   padding: 5px 8px;
   border-radius: 6px;
   background: rgba(16, 14, 20, 0.7);

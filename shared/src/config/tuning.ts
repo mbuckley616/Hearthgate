@@ -1105,6 +1105,11 @@ export const tuning = {
     respecCoinPerPoint: 15,
     /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. */
     hireCoin: 60,
+    /**
+     * A henchman's level is capped by the Tavern (P12; Michael, 29 Oct): this many levels a tier, and
+     * the top tier lets them reach progression.maxLevel.
+     */
+    henchmanCapPerTier: 12,
   },
 
   loop: {
@@ -1207,6 +1212,11 @@ export const tuning = {
     comboChance: 0.5,
     /** A top-tier Tavern's hires read telegraphs in this share of the time (P10). */
     quickReact: 0.7,
+    /**
+     * Damage a henchman gains each level (P12): it has no talents to spend, so its level is its build.
+     * Its health grows with the level as any hero's does (progression.healthPerLevel).
+     */
+    damagePerLevel: 0.02,
   },
 
   dungeon: {
@@ -1609,7 +1619,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.abilityChance': [0, 1, 0.05],
   'hirelings.comboChance': [0, 1, 0.05],
   'hirelings.quickReact': [0.1, 1, 0.05],
+  'hirelings.damagePerLevel': [0, 0.1, 0.005],
   'village.hireCoin': [0, 500, 5],
+  'village.henchmanCapPerTier': [1, 50, 1],
   'dungeon.hauntedRiseMs': [0, 5000, 50],
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],

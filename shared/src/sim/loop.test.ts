@@ -88,6 +88,17 @@ describe('the loop’s stakes and rewards (P1)', () => {
     expect(s.events.filter((e) => e.kind === 'banked')).toHaveLength(2);
   });
 
+  it('banks the henchmen’s XP with the floor (P12), and says nothing of henchmen when there are none', () => {
+    const plain = session(spec);
+    plain.rest();
+    expect((plain.events.find((e) => e.kind === 'banked') as Extract<SimEvent, { kind: 'banked' }>).hench).toBeUndefined();
+    const s = session(spec);
+    const h = s.host.addHenchman(s.p('p1'), 'bow', { xp: 1234.5 })!;
+    s.rest();
+    const b = s.events.find((e) => e.kind === 'banked') as Extract<SimEvent, { kind: 'banked' }>;
+    expect(b.hench).toEqual([{ style: 'bow', xp: Math.floor(h.xp.bow) }]);
+  });
+
   it('pays more for each floor deeper', () => {
     const deeper = session({ ...spec, floor: 3, floors: 4 });
     const fight = deeper.world.level.dungeon!.pieces.find((pc) => pc.fight && pc.kind !== 'boss')!;
