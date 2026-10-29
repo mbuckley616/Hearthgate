@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P8: Cursed and Haunted; doors made the server's
+
+**What changed**
+
+`auto/local-modifiers`, stacked on `auto/local-interiors`. Protocol 15.
+- **Two modifiers** (`portalChoice.ts` `MODIFIERS`): **Cursed**, no revives (`stepRevives` does nothing on a cursed floor; a downed hero still gets up once the room is cleared) and double loot (a big room drops twice); **Haunted**, every enemy but the Warden gets up once, `dungeon.hauntedRiseMs` (1.2 s) after it falls, at `dungeon.hauntedHp` (half) its health, in a green breath with a groan; a room does not clear while a fallen enemy is still to rise.
+- **Where they come from:** a fifth row on Wren's Random tab (None, Cursed, Haunted, each with its words), and a story dungeon may carry one (Emberhall is Haunted). The choice, the run's plan, every floor's spec and `SimState.floor` carry it; the ring's label and the floor's line top right name it. Floor-only, so the parity hashes are the slice's.
+- **Doors are the server's alone now** (`stepDoors` in `stepSim`, out of `stepPlayer`). The smoke test caught the browser's prediction taking a door the server did not, when a walk grazed its edge, and snapping back from inside; a player brushing a door would have seen the same. The browser's hero now follows the server through a snapshot later, and a jump that long is not counted as a prediction snap.
+- Tests: the modifiers on the wire and down to the floor, Cursed blocks a revive (a normal floor allows it) and doubles a big room's drops, Haunted rises once at half health and holds the room until the second fall (`modifiers.test.ts`); doors are not taken by a hero stepped alone (`interior.test.ts`). The smoke test's stop at Wren's table is tighter (it could end past talk range). check 185, parity identical, test:net, smoke 7/7 three runs in a row (two runs before those failed the Wren menu test, which passed alone; watch it).
+
+**Next**
+
+- The henchmen (P3, P6, P10), the tavern's hiring room after Michael's mockup. Then the Phase 2 gate.
+
 ## 2026-10-28: local session, interiors: the store, the storehouse and the tavern
 
 **What changed**
