@@ -49,7 +49,7 @@ export class RunSummary {
     this.body.innerHTML =
       row('Deepest floor', t.floors ? `${t.deepest} of ${t.floors}` : `${t.deepest}`) +
       row('Finds banked', `${t.banked}`) +
-      (t.lost > 0 ? row('Finds lost in a wipe', `${t.lost}`, 'lost') : '') +
+      (t.lost > 0 ? row('Lost in the wipe', `${t.lost} item${t.lost === 1 ? '' : 's'}`, 'lost') : '') +
       row('Coin', `+${t.coin}`) +
       village;
     this.visible = true;

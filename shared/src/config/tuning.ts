@@ -1075,7 +1075,12 @@ export const tuning = {
     /** What a tier gives (P5, P9, P10 use these): the store's daily stock and the storehouse's stash. */
     stockBase: 4,
     stockPerTier: 2,
-    stashPerTier: 12,
+    /** Marta's stash (P9; Michael, 28 Oct: 10 to 20 spaces to begin, growing with the Storehouse). */
+    stashBase: 16,
+    stashPerTier: 8,
+    /** The bag's first spaces are its safe pocket (D5): never lost on a wipe; more with the Storehouse. */
+    pocketBase: 3,
+    pocketPerTier: 1,
     /** How long the owner holds talk (F, A) at a building's villager to build its next tier. */
     upgradeHoldMs: 900,
     /**
@@ -1979,7 +1984,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.upgradeGrowth': [1, 5, 0.1],
   'village.stockBase': [1, 20, 1],
   'village.stockPerTier': [0, 10, 1],
+  'village.stashBase': [1, 80, 1],
   'village.stashPerTier': [0, 40, 1],
+  'village.pocketBase': [0, 28, 1],
+  'village.pocketPerTier': [0, 7, 1],
   'village.upgradeHoldMs': [0, 3000, 50],
   'village.priceBase': [1, 200, 1],
   'village.priceTierGrowth': [1, 4, 0.1],

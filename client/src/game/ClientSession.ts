@@ -31,6 +31,11 @@ function scalars(p: PlayerState): Record<string, unknown> {
 }
 
 /** The clock's numbers, read from tuning each time so the panel tunes them live. */
+/** The village as the room holds it: Marta's stash (P9) stays in this browser until Phase 3. */
+function villageOnly(v: VillageSave): VillageSave {
+  return { id: v.id, lumber: v.lumber, stone: v.stone, tiers: { ...v.tiers } };
+}
+
 function clockConfig(): ClockConfig {
   const c = tuning.coop;
   return {
@@ -351,7 +356,7 @@ export class ClientSession implements Session {
         this.code = ev.code;
         // A floor is built when its welcome brings the spec; until then the old room's stays drawn.
         if (ev.kind !== 'floor') this.enterWorld(ev.kind, worldFor(ev.kind));
-        this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout, ...(ev.kind === 'village' && this.villageSave ? { village: this.villageSave } : {}) });
+        this.send({ k: 'hello', version: PROTOCOL_VERSION, loadout: this.loadout, ...(ev.kind === 'village' && this.villageSave ? { village: villageOnly(this.villageSave) } : {}) });
         break;
       case 'error':
         this.state = 'refused';

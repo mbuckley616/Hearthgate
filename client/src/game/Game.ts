@@ -44,6 +44,7 @@ import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { VillagePanel } from '../ui/VillagePanel';
 import { StoreScreen } from '../ui/StoreScreen';
+import { BankScreen } from '../ui/BankScreen';
 import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
 import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
 import { Settings } from '../ui/Settings';
@@ -131,6 +132,8 @@ export class Game {
   private readonly equip: EquipScreen;
   /** Aldous's General Store (P5), opened by a second F (or A) to him. */
   private readonly store: StoreScreen;
+  /** Marta's stash (P9), opened by a second F (or A) to her, in the village that is yours. */
+  private readonly bank: BankScreen;
   private readonly party: PartyUi;
   private saveTimer = 0;
   private readonly fx: FxView;
@@ -236,6 +239,7 @@ export class Game {
       (item) => this.session.request({ k: 'drop', item }),
       () => this.atShrine(),
     );
+    this.bank = new BankScreen(this.profile);
     this.store = new StoreScreen(
       this.profile,
       (item) => this.session.request({ k: 'buy', uid: item.uid, coin: this.profile.data.coin }),
@@ -378,6 +382,7 @@ export class Game {
     this.lockOn.targetId = -1;
     this.equip.setVisible(false);
     this.store.setVisible(false);
+    this.bank.setVisible(false);
     this.talk.clear();
     this.lastPhase = '';
     this.pending = Game.noPresses();
@@ -421,8 +426,15 @@ export class Game {
       this.openStore();
       return this.talk.update(near, false, dt, hold);
     }
+    // And with Marta, the stash (P9): the owner's, kept with their own village until Phase 3.
+    if (near.building === 'storehouse' && this.talk.showing(near.name) && this.session.village) {
+      if (this.session.village.yours) this.openBank();
+      else this.talk.say(near.name, 'Your own things are kept in your own village’s storehouse, not this one.');
+      return this.talk.update(near, false, dt, hold);
+    }
     if (near.id !== 'keeper') {
-      this.talk.say(near.name, near.line + about + (near.building === 'store' ? ' Ask again to see the shelves.' : ''));
+      const again = near.building === 'store' ? ' Ask again to see the shelves.' : near.building === 'storehouse' && this.session.village?.yours ? ' Ask again to open the stash.' : '';
+      this.talk.say(near.name, near.line + about + again);
       return this.talk.update(near, false, dt, hold);
     }
     const NEW = 'A new dungeon';
@@ -491,6 +503,12 @@ export class Game {
     const me = this.me();
     const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
     return !!me && !!wren && Math.hypot(me.x - wren.x, me.z - wren.z) < SHRINE_REACH;
+  }
+
+  private openBank(): void {
+    this.bank.setVisible(true);
+    this.kbm.exitPointerLock();
+    this.updateOverlay();
   }
 
   private openStore(): void {
@@ -584,6 +602,9 @@ export class Game {
       actions = emptyFrame();
     } else if (this.store.visible) {
       this.store.handle(actions, realDt);
+      actions = emptyFrame();
+    } else if (this.bank.visible) {
+      this.bank.handle(actions, realDt);
       actions = emptyFrame();
     }
 
@@ -877,6 +898,13 @@ export class Game {
         dirty = true;
       }
       if (ev.kind === 'findsLost' && ev.playerId === localId && this.tally) this.tally.lost += ev.count;
+      // A wipe takes the bag but its pocket (D5): the server says so, and the bag is this browser's to empty.
+      if (ev.kind === 'bagLost' && ev.playerId === localId) {
+        const lost = this.profile.loseBag();
+        if (this.tally) this.tally.lost += lost;
+        if (lost > 0) this.hud.toast(`<b>Your bag was lost: ${lost} item${lost === 1 ? '' : 's'}</b><span>The pocket kept its ${this.profile.pocketSize()}; the stash and what you wear are safe</span>`, 'common');
+        dirty = true;
+      }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         // Found gear goes in the bag, or on the body if that slot is bare; a full bag leaves it behind.
         const worn = JSON.stringify(this.profile.data.worn);
@@ -918,7 +946,8 @@ export class Game {
     this.store.setStock(v.view.stock ?? []);
     this.homeIsOurs = v.yours;
     if (!v.yours) return;
-    this.profile.village = { id: this.profile.village.id, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };
+    // The room's count of lumber, stone and tiers; the stash is this browser's alone (P9).
+    this.profile.village = { ...this.profile.village, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };
     this.profile.save();
     this.session.setVillageSave(this.profile.village);
   }
@@ -989,6 +1018,15 @@ export class Game {
     // The store closes on Tab, Esc or B, and opens only by talking to Aldous.
     if (this.store.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
       this.closeStore();
+      return;
+    }
+    if (this.bank.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      if (this.bank.back()) {
+        this.bank.setVisible(false);
+        this.kbm.requestPointerLock();
+        this.updateOverlay();
+        this.applyProfile(false);
+      }
       return;
     }
     if (actions.pressed.has('inventory') && (between || this.equip.visible)) {
@@ -1073,7 +1111,7 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.title?.visible && !this.wiped;
+    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.title?.visible && !this.wiped;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
 }

@@ -310,7 +310,9 @@ export class EquipScreen {
 
   private cellHtml(c: Cell, i: number): string {
     const item = this.itemAt(c);
-    const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : '';
+    // The bag's first spaces are its safe pocket (D5): marked, and named while empty.
+    const pocket = c.area === 'bag' && c.space < this.profile.pocketSize() ? ' pocket' : '';
+    const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : pocket ? 'pocket' : '';
     const at = `grid-column:${c.col + 1};grid-row:${c.row + 1}`;
     const chosen = i === this.cursor ? ' chosen' : '';
     if (!item) return `<button class="gear-cell empty ${c.area}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;

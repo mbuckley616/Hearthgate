@@ -402,6 +402,11 @@ export type SimEvent =
   | { kind: 'banked'; playerId: string; items: (Item | GearItem)[]; coin: number; lumber: number; stone: number; floor: number }
   /** A wipe lost a player's unbanked finds (P1). */
   | { kind: 'findsLost'; playerId: string; count: number }
+  /**
+   * A wipe takes a player's bag (D5; Michael, 28 Oct, extraction-style): all but its safe pocket.
+   * The bag is the browser's until Phase 3, so the server says so and the browser empties it.
+   */
+  | { kind: 'bagLost'; playerId: string }
   | { kind: 'perk'; playerId: string; perk: Perk; x: number; z: number };
 
 export type Combo = 'shatter' | 'skewer' | 'detonate';
