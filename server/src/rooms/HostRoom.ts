@@ -63,8 +63,8 @@ export abstract class HostRoom extends Room {
   protected abstract onPortal(to: PortalTo): void;
   /** A player asked to go home from a finished floor (D10); only a floor answers. */
   protected onHome(_client: Client): void {}
-  /** A player's hello, after the session has taken it (P2: the village reads its save). */
-  protected onHello(_client: Client, _msg: Extract<ToHost, { k: "hello" }>): void {}
+  /** A player's message, after the session has taken it (P2: the village reads a hello's save; P4: an upgrade). */
+  protected onPeerMessage(_client: Client, _msg: ToHost): void {}
   /** What a tick did (P2: a floor pays its banks to the village it came from). */
   protected onEvents(_events: readonly SimEvent[]): void {}
 
@@ -102,7 +102,7 @@ export abstract class HostRoom extends Room {
         }
       }
       this.host.onMessage(client.sessionId, msg);
-      if (msg.k === "hello") this.onHello(client, msg);
+      this.onPeerMessage(client, msg);
       if (msg.k === "tune") tuningVersion++;
     });
 

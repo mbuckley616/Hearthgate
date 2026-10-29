@@ -27,8 +27,11 @@ export class TalkUi {
     document.body.append(this.hint, this.box);
   }
 
-  /** Per frame: the villager in reach (or null) and whether talk was pressed. */
-  update(near: Villager | null, pressed: boolean, dt: number): void {
+  /**
+   * Per frame: the villager in reach (or null) and whether talk was pressed. `hold` adds what holding
+   * talk does there (P4: build the next tier) and how far through the hold is, 0 to 1.
+   */
+  update(near: Villager | null, pressed: boolean, dt: number, hold: { text: string; frac: number } | null = null): void {
     if (near && pressed) {
       this.name.textContent = near.name;
       this.line.textContent = near.line;
@@ -36,7 +39,8 @@ export class TalkUi {
     }
     this.shownFor = Math.max(0, this.shownFor - dt);
     this.box.style.display = this.shownFor > 0 ? 'block' : 'none';
-    const hint = near && this.shownFor === 0 ? `F (or A): talk to ${near.name}` : '';
+    const holding = hold && hold.frac > 0 ? `${hold.text}: ${Math.round(hold.frac * 100)}%` : '';
+    const hint = !near ? '' : holding || (this.shownFor === 0 ? `F (or A): talk to ${near.name}${hold ? `  ·  hold F (or A): ${hold.text}` : ''}` : hold ? `Hold F (or A): ${hold.text}` : '');
     if (hint !== this.hinted) {
       this.hinted = hint;
       this.hint.textContent = hint;

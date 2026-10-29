@@ -1,7 +1,7 @@
 import { BUILDINGS, type BuildingId, type VillageView } from '@hearthgate/shared/game/villageSave';
+import { roman } from './villageWords';
 
 const NAMES: Record<BuildingId, string> = { shrine: 'Shrine', store: 'Store', storehouse: 'Storehouse', tavern: 'Tavern' };
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 /**
  * Whose village this is and what it holds (P2), in the top-left corner while in one: the host's
@@ -24,7 +24,7 @@ export class VillagePanel {
     }
     const v = village.view;
     const whose = village.yours ? 'Your village' : `${escape(village.host) || 'The host'}’s village`;
-    const tiers = BUILDINGS.map((b) => `${NAMES[b]} ${ROMAN[v.tiers[b]] ?? v.tiers[b]}`).join('  ·  ');
+    const tiers = BUILDINGS.map((b) => `${NAMES[b]} ${roman(v.tiers[b])}`).join('  ·  ');
     this.el.innerHTML = `<b>${whose}</b><span>${v.lumber} lumber  ·  ${v.stone} stone</span><small>${tiers}</small>`;
     this.el.style.display = 'block';
   }

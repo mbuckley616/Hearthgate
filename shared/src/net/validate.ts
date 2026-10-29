@@ -6,7 +6,7 @@ import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
-import { readVillageSave } from '../game/villageSave';
+import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
 
 /**
@@ -234,6 +234,8 @@ export function readToHost(v: unknown): ToHost | null {
       const dungeon = readDungeon(v.dungeon);
       return dungeon && checkHandDungeon(dungeon).playable ? { k: 'destination', dungeon } : null;
     }
+    case 'upgrade':
+      return BUILDINGS.includes(v.building as BuildingId) && isNum(v.coin) && v.coin >= 0 ? { k: 'upgrade', building: v.building as BuildingId, coin: Math.floor(v.coin) } : null;
     default:
       return null;
   }

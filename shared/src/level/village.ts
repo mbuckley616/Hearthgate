@@ -35,6 +35,8 @@ export interface Villager {
   line: string;
   /** Which hero's figure they wear (the slice's three), until villagers have outfits of their own. */
   look: 'sword' | 'bow' | 'staff';
+  /** The building they keep: its owner raises its tier by holding talk with them (P4). */
+  building?: Building['id'];
 }
 
 /** A ring on the ground: the whole standing party inside it for PORTAL_HOLD_S takes it. */
@@ -71,11 +73,12 @@ const villageDef: VillageDef = {
       z: -13.4,
       facingYawDeg: 0,
       look: 'staff',
+      building: 'shrine',
       line: 'The shrine opens on the deep places below. Step into the ring together and hold still; down there, a ring in the place to rest brings you home.',
     },
-    { id: 'storekeeper', name: 'Aldous', x: 9.6, z: -3.4, facingYawDeg: -90, look: 'sword', line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
-    { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
-    { id: 'innkeeper', name: 'Old Fenn', x: -6.6, z: 13.6, facingYawDeg: 90, look: 'sword', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
+    { id: 'storekeeper', name: 'Aldous', x: 9.6, z: -3.4, facingYawDeg: -90, look: 'sword', building: 'store', line: "Shelves are bare today. When the carts come through, I'll have stock worth your coin." },
+    { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', building: 'storehouse', line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
+    { id: 'innkeeper', name: 'Old Fenn', x: -6.6, z: 13.6, facingYawDeg: 90, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
   ],
   portal: { x: 0, z: -10.5, radius: 2.4 },
   well: { x: 0, z: 2, radius: 1.1 },

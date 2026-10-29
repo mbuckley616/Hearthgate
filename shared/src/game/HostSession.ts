@@ -153,6 +153,9 @@ export class HostSession {
       case 'cheat':
         if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id, !!this.world.level.dungeon);
         break;
+      case 'upgrade':
+        // The village's room holds the village and answers it (P4); the fight has nothing to do.
+        break;
     }
   }
 

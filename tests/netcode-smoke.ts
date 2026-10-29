@@ -31,7 +31,7 @@ import { arena } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
 import { floorLevel, insidePiece, walkRoute, type FloorLayout } from "@hearthgate/shared/level/floor";
 import { floorSeed } from "@hearthgate/shared/level/generate";
-import { emptyVillage, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { emptyVillage, upgradeCost, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import { DUNGEONS } from "@hearthgate/shared/level/dungeons";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
@@ -167,13 +167,13 @@ async function main() {
 
     // 8b. The village, its ring into a generated run, two floors walked, and home.
     // Each brings a village save of their own (P2); the room is Vale's, who made it.
-    const valeVillage = { ...emptyVillage("vale-test"), lumber: 10, stone: 5 };
+    const valeVillage = { ...emptyVillage("vale-test"), lumber: 100, stone: 80 };
     const va = await bot("Vale", null, "village", valeVillage);
     const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), lumber: 99 });
     const home = va.code;
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren is told whose village");
     check(
-      va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === 10 && vb.lastVillage()?.yours === false && vb.lastVillage()?.host === "Vale" && vb.lastVillage()?.village.lumber === 10,
+      va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === 100 && vb.lastVillage()?.yours === false && vb.lastVillage()?.host === "Vale" && vb.lastVillage()?.village.lumber === 100,
       "the village is its maker's save: theirs to keep, shown to a visitor as the host's",
       JSON.stringify({ vale: va.lastVillage(), wren: vb.lastVillage() }),
     );
@@ -217,12 +217,29 @@ async function main() {
     // What each floor banked (every player's banked event carries the party's lumber and stone).
     const banked = new Map<number, { lumber: number; stone: number }>();
     for (const e of va.events) if (e.kind === "banked") banked.set(e.floor, { lumber: e.lumber, stone: e.stone });
-    const grew = [...banked.values()].reduce((s, b) => ({ lumber: s.lumber + b.lumber, stone: s.stone + b.stone }), { lumber: 10, stone: 5 });
+    const grew = [...banked.values()].reduce((s, b) => ({ lumber: s.lumber + b.lumber, stone: s.stone + b.stone }), { lumber: 100, stone: 80 });
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren sees the village again");
     check(
       va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === grew.lumber && va.lastVillage()?.village.stone === grew.stone && vb.lastVillage()?.village.lumber === grew.lumber && vb.lastVillage()?.yours === false,
       "the run's banks grew the host's village, and both see it",
       `${grew.lumber} lumber, ${grew.stone} stone over ${banked.size} banks`,
+    );
+    // P4: a visitor cannot spend the host's village; the host raises the store, and both see it.
+    const cost = upgradeCost(2);
+    vb.send({ k: "upgrade", building: "store", coin: 9999 });
+    await vb.drive(10);
+    check(vb.lastVillage()?.village.tiers.store === 1 && !vb.messages.some((m) => m.k === "upgraded"), "a visitor's upgrade is refused");
+    va.send({ k: "upgrade", building: "store", coin: cost.coin - 1 });
+    await va.drive(10);
+    check(va.lastVillage()?.village.tiers.store === 1, "the owner's upgrade waits for coin enough");
+    va.send({ k: "upgrade", building: "store", coin: cost.coin });
+    await va.until(() => va.messages.some((m) => m.k === "upgraded"), 2000, "Vale's store upgrade");
+    await vb.until(() => vb.lastVillage()?.village.tiers.store === 2, 2000, "Wren sees the store at tier 2");
+    const paid = va.messages.find((m) => m.k === "upgraded");
+    check(
+      paid?.k === "upgraded" && paid.coin === cost.coin && va.lastVillage()?.village.lumber === grew.lumber - cost.lumber && vb.lastVillage()?.village.stone === grew.stone - cost.stone,
+      "the owner raises the store to tier 2: the village pays lumber and stone, the owner the coin, and both see it",
+      JSON.stringify(va.lastVillage()?.village),
     );
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });

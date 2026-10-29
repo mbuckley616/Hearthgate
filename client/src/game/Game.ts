@@ -43,6 +43,8 @@ import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { VillagePanel } from '../ui/VillagePanel';
+import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
+import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
 import { Settings } from '../ui/Settings';
 import { TitleScreen } from '../ui/TitleScreen';
 import { TalkUi } from '../ui/TalkUi';
@@ -112,6 +114,9 @@ export class Game {
   private homeIsOurs = false;
   private readonly villagePanel = new VillagePanel();
   private shownVillage = -1;
+  /** How long talk has been held at a building's keeper, and whether this hold has already built (P4). */
+  private holdS = 0;
+  private holdDone = false;
   /** The run's tally so far; null outside a run. */
   private tally: RunTally | null = null;
   private lastKind = '';
@@ -339,6 +344,8 @@ export class Game {
       this.gfx.scene.remove(this.room.group, this.ambient.group, this.telegraphs.group);
       for (const g of [this.room.group, this.ambient.group, this.telegraphs.group]) disposeTree(g);
       this.room = this.buildRoomView();
+      // A new village view shows its tiers from the village the room last sent.
+      this.shownVillage = -1;
       this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
       this.telegraphs = new TelegraphView(this.world);
       this.gfx.scene.add(this.room.group, this.ambient.group, this.telegraphs.group);
@@ -392,12 +399,18 @@ export class Game {
    * again while she is speaking she turns it to the next dungeon (a new generated one, then the
    * hand-built ones this browser can play). The server checks the layout and every ring follows.
    */
-  private talkTo(near: Villager | null, pressed: boolean, dt: number): void {
-    if (!near || near.id !== 'keeper' || !pressed) return this.talk.update(near, pressed, dt);
+  private talkTo(near: Villager | null, pressed: boolean, held: boolean, dt: number): void {
+    const hold = this.upgradeHold(near, held, dt);
+    if (!near || !pressed) return this.talk.update(near, false, dt, hold);
+    const about = near.building && this.session.village ? ` ${this.buildingWords(near.building, near.name)}` : '';
+    if (near.id !== 'keeper') {
+      this.talk.say(near.name, near.line + about);
+      return this.talk.update(near, false, dt, hold);
+    }
     const NEW = 'A new dungeon';
     const now = this.session.portals[0]?.label ?? NEW;
     if (!this.talk.showing(near.name)) {
-      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will turn it.`);
+      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will turn it.${about}`);
     } else {
       const options = [null, ...playableDungeons()];
       const at = options.findIndex((d) => (d?.name ?? NEW) === now);
@@ -405,7 +418,64 @@ export class Game {
       this.session.request({ k: 'destination', dungeon: next });
       this.talk.say(near.name, `There: the ring opens on ${next ? next.name : 'a new dungeon, never walked before'}. Ask again for another.`);
     }
-    this.talk.update(near, false, dt);
+    this.talk.update(near, false, dt, hold);
+  }
+
+  /**
+   * A building's keeper on its tier (P4): what it gives now and what the next would, at what price,
+   * and whether its owner can pay. A visitor hears it is the host's to build.
+   */
+  private buildingWords(building: BuildingId, keeper: string): string {
+    const v = this.session.village!;
+    const tier = v.view.tiers[building];
+    const name = BUILDING_NAMES[building];
+    const now = `The ${name} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.`;
+    if (tier >= tuning.village.maxTier) return `${now} That is as high as it goes for now.`;
+    const c = upgradeCost(tier + 1);
+    const next = `Tier ${roman(tier + 1)} would bring ${tierGives(building, tier + 1)}, for ${c.lumber} lumber, ${c.stone} stone and ${c.coin} coin.`;
+    if (!v.yours) return `${now} ${next} Only ${v.host || 'the host'} can build here.`;
+    const problem = upgradeProblem(v.view, building, this.profile.data.coin);
+    return `${now} ${next} ${problem ? `You need ${problem}.` : `Hold F (or A) with ${keeper} and it is done.`}`;
+  }
+
+  /**
+   * The owner holds talk at a building's keeper to raise its tier (P4): a hold, not a press, so
+   * spending is never an accident. Returns the hint for the hold, or null where there is none.
+   */
+  private upgradeHold(near: Villager | null, held: boolean, dt: number): { text: string; frac: number } | null {
+    const v = this.session.village;
+    const building = near?.building;
+    if (!near || !building || !v?.yours || v.view.tiers[building] >= tuning.village.maxTier) {
+      this.holdS = 0;
+      return null;
+    }
+    const text = `build tier ${roman(v.view.tiers[building] + 1)}`;
+    if (!held) {
+      this.holdS = 0;
+      this.holdDone = false;
+      return { text, frac: 0 };
+    }
+    if (this.holdDone) return { text, frac: 0 };
+    this.holdS += dt;
+    const frac = Math.min(1, (this.holdS * 1000) / Math.max(1, tuning.village.upgradeHoldMs));
+    if (frac < 1) return { text, frac };
+    this.holdDone = true;
+    this.holdS = 0;
+    const problem = upgradeProblem(v.view, building, this.profile.data.coin);
+    if (problem) this.talk.say(near.name, `Not yet: you need ${problem}.`);
+    else this.session.request({ k: 'upgrade', building, coin: this.profile.data.coin });
+    return { text, frac: 0 };
+  }
+
+  /** The room built what the owner asked for (P4): pay its coin from the save and say so. */
+  private payUpgrades(): void {
+    for (const u of this.session.upgraded.splice(0)) {
+      this.profile.data.coin = Math.max(0, this.profile.data.coin - u.coin);
+      this.profile.save();
+      const keeper = this.world.level.village?.villagers.find((n) => n.building === u.building);
+      this.hud.toast(`<b>${BUILDING_NAMES[u.building]}: tier ${roman(u.tier)}</b><span>${tierGives(u.building, u.tier)}  ·  -${u.coin} coin</span>`, 'level');
+      if (keeper) this.talk.say(keeper.name, `Done: the ${BUILDING_NAMES[u.building]} stands at tier ${roman(u.tier)} now. ${capital(tierGives(u.building, u.tier))}.`);
+    }
   }
 
   /** The villager the hero can talk to now: the nearest in reach, in the village. */
@@ -521,7 +591,7 @@ export class Game {
     // The run's summary takes the first F (or A, or Escape) home, before any villager does.
     const closeSummary = this.summary.visible && (actions.pressed.has('interact') || actions.pressed.has('menuBack'));
     if (closeSummary) this.summary.hide();
-    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact') && !closeSummary, realDt);
+    this.talkTo(this.villagerInReach(this.me()), actions.pressed.has('interact') && !closeSummary, actions.held.has('interact') && !closeSummary, realDt);
     if ((this.lastPhase === 'won' || this.lastPhase === 'lost') && world.run.phase === 'ante') this.restarted();
     this.lastPhase = world.run.phase;
 
@@ -542,6 +612,7 @@ export class Game {
     );
     this.propView?.update(world.floor, this.presentTime);
     this.syncVillage();
+    this.payUpgrades();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
@@ -779,6 +850,7 @@ export class Game {
     const v = this.session.village;
     this.villagePanel.show(v);
     if (!v) return;
+    if (this.room instanceof VillageView) this.room.setTiers(v.view.tiers);
     this.homeIsOurs = v.yours;
     if (!v.yours) return;
     this.profile.village = { id: this.profile.village.id, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };

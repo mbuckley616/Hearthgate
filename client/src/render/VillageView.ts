@@ -46,6 +46,11 @@ export class VillageView {
   /** No torches or braziers burn in the afternoon. */
   readonly fireSources: THREE.Vector3[] = [];
   private villagers: VillagerFigure[] = [];
+  /**
+   * Each building's tier, shown (P4): a pennant on its roof for every tier, and the numeral on its
+   * sign. Built once at the top tier the save allows; setTiers shows as many as the village has.
+   */
+  private tierMarks = new Map<Building['id'], { flags: THREE.Object3D[]; sign: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>; name: string; tier: number }>();
   /** Trees inside the fence and the well's roof, by collider id: they fade when they stand between camera and hero. */
   private trees = new Map<string, { mats: THREE.MeshStandardMaterial[]; opacity: number }>();
 
@@ -239,8 +244,48 @@ export class VillageView {
     sign.position.set(b.door.x, doorH + 0.75, b.door.z).addScaledVector(out, 0.08);
     sign.rotation.y = face;
     this.group.add(sign);
+    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1 });
 
     if (shrine) this.buildShrineFront(b, out, side);
+  }
+
+  /** A row of pennants along the roof's ridge, one a tier; the top tier's is gold. */
+  private buildPennants(b: Building, cx: number, cz: number, alongX: boolean, length: number, rise: number, rgb: [number, number, number]): THREE.Object3D[] {
+    // Big enough to count from across the square: a 2 m pole and a metre of cloth.
+    const pole = new THREE.CylinderGeometry(0.07, 0.07, 2, 6).translate(0, 1, 0);
+    const cloth = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1.95, 0), new THREE.Vector3(0, 1.3, 0), new THREE.Vector3(1.1, 1.62, 0)]);
+    cloth.computeVertexNormals();
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.9 });
+    const tint = new THREE.Color(`rgb(${Math.min(255, rgb[0] + 70)}, ${Math.min(255, rgb[1] + 60)}, ${Math.min(255, rgb[2] + 50)})`);
+    const max = tuning.village.maxTier;
+    const flags: THREE.Object3D[] = [];
+    for (let i = 0; i < max; i++) {
+      const top = i === max - 1;
+      const mat = new THREE.MeshStandardMaterial({ color: top ? 0xf3c54a : tint, emissive: top ? 0x6a4a10 : 0x000000, roughness: 0.7, side: THREE.DoubleSide });
+      const flag = new THREE.Group();
+      flag.add(new THREE.Mesh(pole, poleMat), new THREE.Mesh(cloth, mat));
+      // Spread along the ridge, the first at the middle and the rest out to either end.
+      const along = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * Math.min(1.8, (length - 1.5) / Math.max(1, max));
+      flag.position.set(cx + (alongX ? along : 0), b.height + rise - 0.05, cz + (alongX ? 0 : along));
+      flag.rotation.y = alongX ? 0 : Math.PI / 2;
+      flag.visible = i === 0;
+      this.group.add(flag);
+      flags.push(flag);
+    }
+    return flags;
+  }
+
+  /** Show each building's tier (P4): its pennants and the numeral on its sign. */
+  setTiers(tiers: Record<Building['id'], number>): void {
+    for (const [id, m] of this.tierMarks) {
+      const tier = tiers[id] ?? 1;
+      if (tier === m.tier) continue;
+      m.tier = tier;
+      m.flags.forEach((f, i) => (f.visible = i < tier));
+      m.sign.material.map?.dispose();
+      m.sign.material.map = signTexture(tier > 1 ? `${m.name} ${ROMAN[tier] ?? tier}` : m.name);
+      m.sign.material.needsUpdate = true;
+    }
   }
 
   /** Two standing stones with violet crystals either side of the shrine's door: the portal's light. */
@@ -372,6 +417,8 @@ export class VillageView {
   }
 }
 
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
 /** A sign board: the name in warm paint on dark wood, drawn small for the pixel look. */
 function signTexture(text: string): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -387,7 +434,8 @@ function signTexture(text: string): THREE.CanvasTexture {
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillStyle = '#f3d79a';
-  g.fillText(text, c.width / 2, c.height / 2 + 1);
+  // A long name with its tier ("General Store III") is squeezed to the board rather than cut off.
+  g.fillText(text, c.width / 2, c.height / 2 + 1, c.width - 14);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.NearestFilter;

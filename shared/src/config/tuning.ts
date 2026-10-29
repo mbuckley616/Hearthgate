@@ -1064,6 +1064,20 @@ export const tuning = {
   /** The host's village (P2, P4): its four starting buildings go up to this tier in Phase 2. */
   village: {
     maxTier: 4,
+    /**
+     * Raising a building to tier 2 costs this (P4; Michael, 28 Oct: lumber, stone and coin); each
+     * tier after costs upgradeGrowth times the one before. About a run buys tier 2 of one building.
+     */
+    upgradeLumber: 40,
+    upgradeStone: 30,
+    upgradeCoin: 80,
+    upgradeGrowth: 2.4,
+    /** What a tier gives (P5, P9, P10 use these): the store's daily stock and the storehouse's stash. */
+    stockBase: 4,
+    stockPerTier: 2,
+    stashPerTier: 12,
+    /** How long the owner holds talk (F, A) at a building's villager to build its next tier. */
+    upgradeHoldMs: 900,
   },
 
   loop: {
@@ -1949,6 +1963,14 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'flow.harmonyBonus': [0, 1, 0.05],
   'flow.crescendoDamage': [1, 5, 0.1],
   'village.maxTier': [1, 10, 1],
+  'village.upgradeLumber': [0, 500, 5],
+  'village.upgradeStone': [0, 500, 5],
+  'village.upgradeCoin': [0, 1000, 10],
+  'village.upgradeGrowth': [1, 5, 0.1],
+  'village.stockBase': [1, 20, 1],
+  'village.stockPerTier': [0, 10, 1],
+  'village.stashPerTier': [0, 40, 1],
+  'village.upgradeHoldMs': [0, 3000, 50],
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],
