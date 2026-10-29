@@ -1186,6 +1186,9 @@ export const tuning = {
      * slice's grunt.maxAttackers (two). With rooms this full, two at a time left the rest circling.
      */
     attackersPerHero: 3,
+    /** Haunted (P8): how long a fallen enemy lies before it gets up, and the share of its health it gets up with. */
+    hauntedRiseMs: 1200,
+    hauntedHp: 0.5,
     /**
      * A cleared fight room's heal, of max health, on a generated floor (D7, Michael 28 Oct: not
      * after every encounter). The arena keeps run.healOnWaveClear. The rest room heals instead.
@@ -1532,6 +1535,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
   'dungeon.attackersPerHero': [1, 6, 1],
+  'dungeon.hauntedRiseMs': [0, 5000, 50],
+  'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],
   'dungeon.restHeal': [0, 1, 0.05],
   'dungeon.seed': [0, 99999, 1],

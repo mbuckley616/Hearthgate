@@ -107,9 +107,10 @@ const villageDef: VillageDef = {
       building: 'shrine',
       line: 'The shrine opens on the deep places below. Step into the ring together and hold still; down there, a ring in the place to rest brings you home.',
     },
-    { id: 'storekeeper', name: 'Aldous', x: 9.6, z: -3.4, facingYawDeg: -90, look: 'sword', building: 'store', line: "Fresh stock each morning, and I'll take anything off your hands for fair coin." },
-    { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', building: 'storehouse', line: "What you leave with me is safe whatever happens down there. Your pack is not: only its pocket comes home from a wipe." },
-    { id: 'innkeeper', name: 'Old Fenn', x: -6.6, z: 13.6, facingYawDeg: 90, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
+    // Each keeper stands inside their building now (Michael, 28 Oct), behind their counter, facing the door.
+    { id: 'storekeeper', name: 'Aldous', x: 80, z: -2.9, facingYawDeg: 0, look: 'sword', building: 'store', line: "Fresh stock each morning, and I'll take anything off your hands for fair coin." },
+    { id: 'warden', name: 'Marta', x: -80, z: -0.9, facingYawDeg: 0, look: 'bow', building: 'storehouse', line: "What you leave with me is safe whatever happens down there. Your pack is not: only its pocket comes home from a wipe." },
+    { id: 'innkeeper', name: 'Old Fenn', x: 0, z: 75.1, facingYawDeg: 0, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
   ],
   portal: { x: 0, z: -10.5, radius: 2.4 },
   interiors: [
@@ -127,11 +128,70 @@ const villageDef: VillageDef = {
         { id: 'shelf-e', minX: 6.2, maxX: 7, minZ: -84.5, maxZ: -77.5, height: 2.6 },
       ],
     },
+    {
+      // Aldous's shop, far east: a counter before shelves of goods, barrels and sacks, a rack of arms.
+      building: 'store',
+      minX: 74,
+      maxX: 86,
+      minZ: -6,
+      maxZ: 4,
+      doorX: 80,
+      doorWidth: 1.8,
+      furniture: [
+        { id: 'counter', minX: 77, maxX: 83, minZ: -2.45, maxZ: -1.55, height: 1 },
+        { id: 'shelf-n', minX: 75, maxX: 85, minZ: -6, maxZ: -5.3, height: 2.8 },
+        { id: 'rack-e', minX: 85.3, maxX: 86, minZ: -3.5, maxZ: 1.5, height: 2.2 },
+        { id: 'barrels-w', minX: 74, maxX: 75.6, minZ: -1.5, maxZ: 2, height: 1.1 },
+      ],
+    },
+    {
+      // Marta's storehouse, far west: racks along both walls, stacked crates, the strongroom's vault, her ledger desk.
+      building: 'storehouse',
+      minX: -88,
+      maxX: -72,
+      minZ: -6,
+      maxZ: 6,
+      doorX: -80,
+      doorWidth: 2.2,
+      furniture: [
+        { id: 'desk', minX: -81.3, maxX: -78.7, minZ: -0.45, maxZ: 0.45, height: 0.9 },
+        { id: 'rack-w', minX: -88, maxX: -87, minZ: -5, maxZ: 4, height: 3 },
+        { id: 'rack-e', minX: -73, maxX: -72, minZ: -5, maxZ: 4, height: 3 },
+        { id: 'vault', minX: -81.5, maxX: -78.5, minZ: -6, maxZ: -4.6, height: 2.4 },
+        { id: 'crates-nw', minX: -86.5, maxX: -84, minZ: -5.8, maxZ: -3.6, height: 1.6 },
+        { id: 'crates-ne', minX: -76, maxX: -73.5, minZ: -5.8, maxZ: -4, height: 1.2 },
+      ],
+    },
+    {
+      // Old Fenn's tavern, far south: the bar and its kegs, a hearth, tables and stools; the Rusted Stag (Michael's mockup).
+      building: 'tavern',
+      minX: -9,
+      maxX: 9,
+      minZ: 71,
+      maxZ: 85,
+      doorX: 0,
+      doorWidth: 2,
+      furniture: [
+        { id: 'bar', minX: -4, maxX: 4, minZ: 75.55, maxZ: 76.45, height: 1.1 },
+        { id: 'kegs', minX: -3.5, maxX: 3.5, minZ: 71, maxZ: 72.2, height: 1.6 },
+        { id: 'hearth', minX: -9, maxX: -7.8, minZ: 77.5, maxZ: 81.5, height: 1.6 },
+        { id: 'table-a', minX: 3.2, maxX: 4.8, minZ: 79.2, maxZ: 80.8, height: 0.8 },
+        { id: 'table-b', minX: 5.2, maxX: 6.8, minZ: 82.4, maxZ: 84, height: 0.8 },
+        { id: 'table-c', minX: -5.3, maxX: -3.7, minZ: 81.6, maxZ: 83.2, height: 0.8 },
+      ],
+    },
   ],
   doors: [
     // The shrine's front door and the way out of its inside.
     { x: 0, z: -14.5, radius: 0.8, toX: 0, toZ: -75.8, toYawDeg: 180 },
     { x: 0, z: -74.6, radius: 0.8, toX: 0, toZ: -13.3, toYawDeg: 0 },
+    // The store's door faces the square to the west, the storehouse's and the tavern's to the east.
+    { x: 10.5, z: -5, radius: 0.8, toX: 80, toZ: 2.2, toYawDeg: 180 },
+    { x: 80, z: 3.4, radius: 0.8, toX: 9.3, toZ: -5, toYawDeg: -90 },
+    { x: -10.5, z: -5, radius: 0.8, toX: -80, toZ: 4.2, toYawDeg: 180 },
+    { x: -80, z: 5.4, radius: 0.8, toX: -9.3, toZ: -5, toYawDeg: 90 },
+    { x: -7.5, z: 12, radius: 0.8, toX: 0, toZ: 83.2, toYawDeg: 180 },
+    { x: 0, z: 84.4, radius: 0.8, toX: -6.3, toZ: 12, toYawDeg: 90 },
   ],
   well: { x: 0, z: 2, radius: 1.1 },
   trees: [

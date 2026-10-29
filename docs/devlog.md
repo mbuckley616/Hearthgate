@@ -2,6 +2,41 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P8: Cursed and Haunted; doors made the server's
+
+**What changed**
+
+`auto/local-modifiers`, stacked on `auto/local-interiors`. Protocol 15.
+- **Two modifiers** (`portalChoice.ts` `MODIFIERS`): **Cursed**, no revives (`stepRevives` does nothing on a cursed floor; a downed hero still gets up once the room is cleared) and double loot (a big room drops twice); **Haunted**, every enemy but the Warden gets up once, `dungeon.hauntedRiseMs` (1.2 s) after it falls, at `dungeon.hauntedHp` (half) its health, in a green breath with a groan; a room does not clear while a fallen enemy is still to rise.
+- **Where they come from:** a fifth row on Wren's Random tab (None, Cursed, Haunted, each with its words), and a story dungeon may carry one (Emberhall is Haunted). The choice, the run's plan, every floor's spec and `SimState.floor` carry it; the ring's label and the floor's line top right name it. Floor-only, so the parity hashes are the slice's.
+- **Doors are the server's alone now** (`stepDoors` in `stepSim`, out of `stepPlayer`). The smoke test caught the browser's prediction taking a door the server did not, when a walk grazed its edge, and snapping back from inside; a player brushing a door would have seen the same. The browser's hero now follows the server through a snapshot later, and a jump that long is not counted as a prediction snap.
+- Tests: the modifiers on the wire and down to the floor, Cursed blocks a revive (a normal floor allows it) and doubles a big room's drops, Haunted rises once at half health and holds the room until the second fall (`modifiers.test.ts`); doors are not taken by a hero stepped alone (`interior.test.ts`). The smoke test's stop at Wren's table is tighter (it could end past talk range). check 185, parity identical, test:net, smoke 7/7 three runs in a row (two runs before those failed the Wren menu test, which passed alone; watch it).
+
+**Next**
+
+- The henchmen (P3, P6, P10), the tavern's hiring room after Michael's mockup. Then the Phase 2 gate.
+
+## 2026-10-28: local session, interiors: the store, the storehouse and the tavern
+
+**What changed**
+
+`auto/local-interiors`, stacked on `auto/local-shrine-interior`. No protocol change. Michael, 28 Oct, after the shrine's screenshots: "this works for the interiors… just make sure each interior matches its intent and is unique." They can be dressed up later, or stay as the lower tiers' rooms.
+- **Three more rooms** in the village level, each far off the square in its own direction, each reached through its building's door, each keeper now inside behind a counter facing the door:
+  - **Aldous's General Store** (east): plaster and timber walls, a plank floor, his counter with scales, a till and coin, three boards of jars, bottles and boxed goods behind him, a rack of swords, bows and a shield on the east wall, barrels and sacks by the west, a red rug, two warm lanterns.
+  - **Marta's Storehouse** (west): a stone floor and plank walls, racks of crates and chests down both walls, stacked crates in the corners, the strongroom's iron vault (a brass wheel, rivets) behind her desk with its ledger, quill and one candle, cool lanterns.
+  - **Old Fenn's Tavern** (south; the Rusted Stag of Michael's mockup): timber walls, the bar with mugs and four kegs behind it, a stone hearth with a fire and a flickering orange light, three tables with stools, mugs and candles, a ring of candles overhead, the stag's head and the order's blue banners over the kegs.
+- **Each in its own materials** (`INTERIOR_STYLE`), with candle and hearth light that flickers. Shared door and furniture drawing; furniture the dressing draws itself (barrels, kegs, crates) is no longer a plain box.
+- **The store and the stash are framed by their rooms** like Wren's menu: the camera holds a shot of the keeper at their counter, the menu to the right on a wide screen; the talk box closes as a menu opens.
+- Tests: every building in and out, its keeper in reach at the counter, every inside far from the square and the others (`interior.test.ts`); the village solidity test now runs into the store's wall away from its door. check 180, parity identical, test:net, smoke 7/7. Screenshots of each room in `docs/screenshots/`.
+
+**Learned**
+
+- **A test that ran into a building's door now walks inside it**: doors are the one place a wall is not a wall.
+
+**Next**
+
+- P8, the two modifiers, then the henchmen; the tavern's hiring room (P10) after Michael's tavern mockup.
+
 ## 2026-10-28: local session, interiors: Keeper Wren's shrine
 
 **What changed**

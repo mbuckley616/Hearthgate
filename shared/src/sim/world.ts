@@ -3,7 +3,7 @@ import { stepPendingHits, stepRevives } from './coop';
 import { stepDrops } from './drops';
 import { stepEnemies } from './enemies';
 import { floorWorldNow, initialFloorRun } from './floorRun';
-import { createPlayer, stepPlayer } from './player';
+import { createPlayer, stepDoors, stepPlayer } from './player';
 import { stepProjectiles } from './projectiles';
 import { initialRun, stepRun } from './run';
 import { idleCommand, type PlayerCommand, type SimState } from './types';
@@ -28,6 +28,7 @@ export function createSimState(level: LevelDef, playerIds: string[], world: Worl
   if (level.dungeon) {
     // A generated floor (T4): its own run, and its own rolls, so two floors' fights differ too.
     state.floor = initialFloorRun();
+    if (level.dungeon.def.spec.modifier) state.floor.modifier = level.dungeon.def.spec.modifier;
     state.rng = (level.dungeon.def.spec.seed ^ 0x2f6e2b1) >>> 0;
   }
   return state;
@@ -47,6 +48,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   for (const p of state.players) {
     stepPlayer(p, commands[p.id] ?? idleCommand(), dt, w, state);
   }
+  stepDoors(state, w);
   stepRevives(state, commands, dt);
   stepPendingHits(state);
   stepEnemies(state, dt, w);

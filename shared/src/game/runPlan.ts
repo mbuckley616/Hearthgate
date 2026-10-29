@@ -2,7 +2,7 @@ import { tuning } from '../config/tuning';
 import { floorSeed, MAX_PIECES, MIN_PIECES, type FloorSpec } from '../level/generate';
 import { checkHandDungeon, handFloor, readDungeon, type HandDungeon } from '../level/handmade';
 import { levelFor } from '../sim/gear';
-import { DIFFICULTIES, SIZES, STORY, SIZE_IDS, MAX_FLOORS, type PortalChoice, type SizeId } from './portalChoice';
+import { DIFFICULTIES, MODIFIER_IDS, SIZES, STORY, SIZE_IDS, MAX_FLOORS, type ModifierId, type PortalChoice, type SizeId } from './portalChoice';
 import type { PlayerState } from '../sim/types';
 
 /**
@@ -25,6 +25,8 @@ export interface RunPlan {
   difficulty?: number;
   size?: SizeId;
   story?: string;
+  /** The run's twist (P8). */
+  modifier?: ModifierId;
 }
 
 /** The party's level for sizing floors: each hero's best style level, averaged over the party. */
@@ -51,11 +53,12 @@ export function planRun(players: readonly PlayerState[], seed: number, hand: Han
 /** The run Keeper Wren's menu chose (P7): a story dungeon as written, or a random one as shaped. */
 export function planChoice(players: readonly PlayerState[], seed: number, choice: PortalChoice): RunPlan {
   const base = planRun(players, seed);
-  if (choice.kind === 'random') return { ...base, floors: choice.floors, size: choice.size, difficulty: choice.difficulty, pieces: 0 };
+  if (choice.kind === 'random') return { ...base, floors: choice.floors, size: choice.size, difficulty: choice.difficulty, pieces: 0, ...(choice.modifier ? { modifier: choice.modifier } : {}) };
   const story = STORY.find((s) => s.id === choice.id)!;
   const r = story.run;
-  if ('hand' in r) return { ...withHand(base, r.hand), difficulty: r.difficulty, story: story.id };
-  return { ...base, seed: r.seed, floors: r.floors, size: r.size, difficulty: r.difficulty, story: story.id, pieces: 0 };
+  const modifier = r.modifier ? { modifier: r.modifier } : {};
+  if ('hand' in r) return { ...withHand(base, r.hand), difficulty: r.difficulty, story: story.id, ...modifier };
+  return { ...base, seed: r.seed, floors: r.floors, size: r.size, difficulty: r.difficulty, story: story.id, pieces: 0, ...modifier };
 }
 
 /** A run through a hand-built dungeon: its floors, no more (Michael, 27 Oct). */
@@ -65,7 +68,11 @@ function withHand(plan: RunPlan, hand: HandDungeon): RunPlan {
 
 /** Floor `floor` (1-based) of a run. */
 export function floorSpecFor(plan: RunPlan, floor: number): FloorSpec {
-  const extra = { ...(plan.difficulty !== undefined ? { difficulty: plan.difficulty } : {}), ...(plan.story ? { story: plan.story } : {}) };
+  const extra = {
+    ...(plan.difficulty !== undefined ? { difficulty: plan.difficulty } : {}),
+    ...(plan.story ? { story: plan.story } : {}),
+    ...(plan.modifier ? { modifier: plan.modifier } : {}),
+  };
   if (plan.hand) {
     const hand = handFloor(plan.hand, Math.min(floor, plan.hand.floors.length));
     return { seed: 0, pieces: hand.pieces.length, floor, floors: plan.hand.floors.length, hand, ...extra };
@@ -98,5 +105,6 @@ export function readRunPlan(options: Record<string, unknown>): RunPlan {
   if (options.difficulty !== undefined) plan.difficulty = num(options.difficulty, 0, DIFFICULTIES.length - 1, 1);
   if (SIZE_IDS.includes(options.size as SizeId)) plan.size = options.size as SizeId;
   if (typeof options.story === 'string' && STORY.some((s) => s.id === options.story)) plan.story = options.story;
+  if (MODIFIER_IDS.includes(options.modifier as ModifierId)) plan.modifier = options.modifier as ModifierId;
   return hand && checkHandDungeon(hand).playable ? withHand(plan, hand) : plan;
 }

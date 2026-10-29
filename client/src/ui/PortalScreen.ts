@@ -1,4 +1,4 @@
-import { DIFFICULTIES, MAX_FLOORS, SIZES, SIZE_IDS, STORY, maxDifficulty, type PortalChoice, type SizeId, type StoryDungeon } from '@hearthgate/shared/game/portalChoice';
+import { DIFFICULTIES, MAX_FLOORS, MODIFIERS, MODIFIER_IDS, SIZES, SIZE_IDS, STORY, maxDifficulty, type ModifierId, type PortalChoice, type SizeId, type StoryDungeon } from '@hearthgate/shared/game/portalChoice';
 import { BODY_SLOT_NAMES, CATALOGUE, type BodySlot } from '@hearthgate/shared/sim/catalogue';
 import type { EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { HandDungeon } from '@hearthgate/shared/level/handmade';
@@ -7,7 +7,9 @@ import { gearIconUrl } from './gearIcons';
 
 type Tab = 'story' | 'random';
 /** The Random tab's rows, in order; the theme is shown but locked until dungeon types arrive. */
-const ROWS = ['floors', 'size', 'theme', 'difficulty'] as const;
+const ROWS = ['floors', 'size', 'theme', 'difficulty', 'modifier'] as const;
+/** The modifier row's choices (P8): none, then each twist. */
+const MODIFIER_CHOICES: readonly (ModifierId | null)[] = [null, ...MODIFIER_IDS];
 
 const ENEMY_NAMES: Record<EnemyKind, string> = { grunt: 'Grunts', archer: 'Archers', brute: 'Brutes', warden: 'The Warden' };
 /** Themes to come (Michael's mockup), shown locked: today every dungeon is the crypt. */
@@ -40,6 +42,7 @@ export class PortalScreen {
   private floors = 3;
   private size: SizeId = 'medium';
   private difficulty = 1;
+  private modifier: ModifierId | null = null;
   private repeat = 0;
   private lastDir = '';
   private cleared = new Set<string>();
@@ -125,12 +128,13 @@ export class PortalScreen {
     if (row === 'floors') this.floors = Math.max(1, Math.min(MAX_FLOORS, this.floors + by));
     if (row === 'size') this.size = SIZE_IDS[Math.max(0, Math.min(SIZE_IDS.length - 1, SIZE_IDS.indexOf(this.size) + by))];
     if (row === 'difficulty') this.difficulty = Math.max(0, Math.min(maxDifficulty(this.shrineTier), this.difficulty + by));
+    if (row === 'modifier') this.modifier = MODIFIER_CHOICES[Math.max(0, Math.min(MODIFIER_CHOICES.length - 1, MODIFIER_CHOICES.indexOf(this.modifier) + by))];
   }
 
   /** F or A: open the chosen portal (a locked story dungeon stays shut). */
   private choose(): void {
     if (this.tab === 'random') {
-      this.onChoose({ kind: 'random', floors: this.floors, size: this.size, difficulty: this.difficulty });
+      this.onChoose({ kind: 'random', floors: this.floors, size: this.size, difficulty: this.difficulty, modifier: this.modifier });
       return;
     }
     if (this.storyAt >= STORY.length) {
@@ -152,6 +156,7 @@ export class PortalScreen {
       if (row === 'size') this.size = el.dataset.value as SizeId;
       if (row === 'difficulty' && Number(el.dataset.value) <= maxDifficulty(this.shrineTier)) this.difficulty = Number(el.dataset.value);
       if (row === 'floors') this.change('floors', el.dataset.value === '+' ? 1 : -1);
+      if (row === 'modifier') this.modifier = el.dataset.value ? (el.dataset.value as ModifierId) : null;
     }
     if (act === 'open') this.choose();
     this.render();
@@ -183,7 +188,8 @@ export class PortalScreen {
     const action = open
       ? `<button class="portal-open" data-act="open">Open portal <kbd>F</kbd></button>`
       : `<div class="portal-locked">Clear ${STORY[this.storyAt - 1].name} to open this one.</div>`;
-    return `<h3>${s.name}</h3><div class="muted">Lv. ${s.levels[0]}–${s.levels[1]} · ${floors} floor${floors === 1 ? '' : 's'} · ${DIFFICULTIES[s.run.difficulty].name}</div>
+    const twist = s.run.modifier ? ` · <span class="portal-twist">${MODIFIERS[s.run.modifier].name}: ${MODIFIERS[s.run.modifier].words}</span>` : '';
+    return `<h3>${s.name}</h3><div class="muted">Lv. ${s.levels[0]}–${s.levels[1]} · ${floors} floor${floors === 1 ? '' : 's'} · ${DIFFICULTIES[s.run.difficulty].name}${twist}</div>
       <p>${s.blurb}</p>
       <h4>Potential rewards</h4><div class="portal-rewards">${rewards}</div>
       <h4>Key enemies</h4><div class="portal-enemies">${enemies}</div>
@@ -197,6 +203,9 @@ export class PortalScreen {
       (id) => `<button class="portal-opt${this.size === id ? ' on' : ''}" data-act="set" data-row="size" data-value="${id}">${SIZES[id].name}<small>${SIZES[id].rooms}</small></button>`,
     ).join('');
     const themes = THEMES.map((t, i) => `<span class="portal-theme${i === 0 ? ' on' : ' locked'}">${t}${i === 0 ? '' : '<small>later</small>'}</span>`).join('');
+    const mods = MODIFIER_CHOICES.map(
+      (m) => `<button class="portal-opt${this.modifier === m ? ' on' : ''}" data-act="set" data-row="modifier" data-value="${m ?? ''}">${m ? MODIFIERS[m].name : 'None'}<small>${m ? MODIFIERS[m].words : 'as it comes'}</small></button>`,
+    ).join('');
     const diffs = DIFFICULTIES.map((d, i) => {
       const locked = i > cap;
       const pct = Math.round((d.mult - 1) * 100);
@@ -208,6 +217,7 @@ export class PortalScreen {
       <div class="portal-row${chosen('size')}"><h4>2. Dungeon size</h4><div class="portal-opts">${sizes}</div></div>
       <div class="portal-row${chosen('theme')}"><h4>3. Theme</h4><div class="portal-themes">${themes}</div></div>
       <div class="portal-row${chosen('difficulty')}"><h4>4. Difficulty <span class="muted">stronger enemies, better rewards</span></h4><div class="portal-opts">${diffs}</div></div>
+      <div class="portal-row${chosen('modifier')}"><h4>5. Modifier <span class="muted">a twist on the run</span></h4><div class="portal-opts">${mods}</div></div>
       <button class="portal-open" data-act="open">Reshape portal <kbd>F</kbd></button>`;
   }
 

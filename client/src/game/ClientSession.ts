@@ -22,6 +22,8 @@ import { isPredictedFor, withoutPresses, type Blend, type Session } from '@heart
  * from 2 cm since Phase 0, so the numbers compare across the transplant. Smaller ones still ease out.
  */
 const CORRECTION_M = 0.02;
+/** A correction this far is a door into an interior (village.ts), not a prediction error. */
+const DOOR_JUMP_M = 20;
 
 /** A hero's plain fields (numbers, strings, booleans), for the lab's diagnosis. */
 function scalars(p: PlayerState): Record<string, unknown> {
@@ -498,9 +500,10 @@ export class ClientSession implements Session {
       this.prevMe.x -= d.x;
       this.prevMe.y -= d.y;
       this.prevMe.z -= d.z;
-      // Far off (a teleport, a restart): just snap.
+      // Far off (a teleport, a restart): just snap. A door into an interior is the server's to take and
+      // lands tens of metres away: that is a door, not a prediction gone wrong, so it is not counted.
       if (Math.hypot(this.err.x, this.err.z) > 2.5) {
-        this.stats.snaps++;
+        if (Math.hypot(this.err.x, this.err.z) < DOOR_JUMP_M) this.stats.snaps++;
         this.err = { x: 0, y: 0, z: 0 };
         this.prevMe = structuredClone(mine);
       }

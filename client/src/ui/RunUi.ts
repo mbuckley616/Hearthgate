@@ -1,3 +1,4 @@
+import { MODIFIERS } from '@hearthgate/shared/game/portalChoice';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import type { FloorSpec } from '@hearthgate/shared/level/generate';
 import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
@@ -161,7 +162,7 @@ export class RunUi {
       this.bossFill.classList.toggle('staggered', boss.ai === 'stagger');
       this.bossName.textContent = boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden';
     }
-    const where = `floor ${spec.floor} of ${spec.floors}`;
+    const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';
     // What a wipe would cost (P1): finds carried since the last rest room.
     this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${carried > 0 ? `  ·  carrying ${carried} unbanked` : ''}`;

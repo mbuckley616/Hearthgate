@@ -4,7 +4,7 @@ import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
-import { createEnemy } from './enemies';
+import { createEnemy, willRise } from './enemies';
 import { stepPotions } from './smash';
 import { difficultyMult } from '../game/portalChoice';
 import type { EnemyKind } from '../config/tuning';
@@ -44,6 +44,8 @@ export interface FloorRunState {
   found: { lumber: number; stone: number };
   /** Potions lying where a prop broke, by that prop's id (D4). */
   potions: { id: number; x: number; y: number; z: number }[];
+  /** The run's twist (P8), from the floor's spec: absent for none. */
+  modifier?: 'cursed' | 'haunted';
 }
 
 export function initialFloorRun(): FloorRunState {
@@ -105,7 +107,8 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       break;
     case 'wave': {
       const room = layout.pieces[f.room];
-      const alive = state.enemies.filter((e) => e.ai !== 'dead').length;
+      // Haunted (P8): a fallen enemy that will still get up keeps the room from clearing.
+      const alive = state.enemies.filter((e) => e.ai !== 'dead' || willRise(state, e)).length;
       if (!r.reinforced && room.kind !== 'boss' && alive <= Math.floor(r.waveSize * tuning.run.reinforceAt)) {
         r.reinforced = true;
         if (spawnRoomGroup(state, world, room, 'reinforce') > 0) state.events.push({ kind: 'reinforcements', wave: r.wave });
@@ -118,7 +121,11 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       f.room = -1;
       r.gateClosed = false;
       // The big rooms drop loot where the last enemy fell; the Warden's is rare.
-      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'greatHall' || room.kind === 'cavern' || room.kind === 'boss') spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
+      if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'greatHall' || room.kind === 'cavern' || room.kind === 'boss') {
+        spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
+        // Cursed (P8): double loot, for no revives.
+        if (f.modifier === 'cursed') spawnDrop(state, world, r.dropX + 0.8, r.dropZ, room.kind === 'boss', depthMult(world));
+      }
       if (room.kind === 'boss') {
         r.phase = 'won';
         r.timer = 0;

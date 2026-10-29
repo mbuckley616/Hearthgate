@@ -90,6 +90,8 @@ export function removePlayer(state: SimState, id: string): void {
  */
 export function stepRevives(state: SimState, commands: Record<string, PlayerCommand>, dt: number): void {
   const c = tuning.coop;
+  // Cursed (P8): no revives on this run; a downed hero waits for the room to be cleared.
+  if (state.floor?.modifier === 'cursed') return;
   for (const down of state.players) {
     if (down.mode !== 'down') {
       down.reviveProgress = 0;

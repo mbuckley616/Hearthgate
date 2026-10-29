@@ -46,6 +46,9 @@ export class VillageView {
   /** No torches or braziers burn in the afternoon. */
   readonly fireSources: THREE.Vector3[] = [];
   private villagers: VillagerFigure[] = [];
+  /** Candle and hearth light in the interiors, wobbling a little each frame. */
+  private flickers: { light: THREE.PointLight; base: number; amount: number; seed: number }[] = [];
+  private clock = 0;
   /**
    * Each building's tier, shown (P4): a pennant on its roof for every tier, and the numeral on its
    * sign. Built once at the top tier the save allows; setTiers shows as many as the village has.
@@ -92,6 +95,11 @@ export class VillageView {
    */
   update(dt: number, _time: number, occluders: ReadonlySet<string>, _gateClosed = false): void {
     for (const v of this.villagers) v.view.update(v.state, v.state, 1, dt);
+    this.clock += dt;
+    for (const f of this.flickers) {
+      const t = this.clock * 9 + f.seed;
+      f.light.intensity = f.base * (1 + f.amount * (Math.sin(t) * 0.5 + Math.sin(t * 2.3 + 1.7) * 0.3 + Math.sin(t * 5.1) * 0.2));
+    }
     const cam = tuning.camera;
     for (const [id, t] of this.trees) {
       const target = occluders.has(id) ? cam.occluderOpacity : 1;
@@ -251,9 +259,10 @@ export class VillageView {
   }
 
   /**
-   * A building's inside (Michael, 28 Oct): the shrine's is Keeper Wren's candle-lit room, her table
-   * and its orb, shelves of books, a rune circle and the doorway's daylight. Its walls fade like a
-   * dungeon's (registered by their collider ids), and a dark shell hides the sky and the woods.
+   * A building's inside (Michael, 28 Oct: each matching its use, each its own). Walls and floor in the
+   * building's own materials and light, its furniture (the colliders) drawn as what it is, then its
+   * dressing. Walls fade like a dungeon's (registered by their collider ids), and a dark shell hides
+   * the sky and the woods. Firelight flickers (update).
    */
   private buildInterior(r: InteriorDef): void {
     const cx = (r.minX + r.maxX) / 2;
@@ -262,18 +271,21 @@ export class VillageView {
     const d = r.maxZ - r.minZ;
     const H = 4;
     const t = 0.4;
+    const style = INTERIOR_STYLE[r.building];
     const shell = new THREE.Mesh(new THREE.BoxGeometry(w + 30, 24, d + 30), new THREE.MeshBasicMaterial({ color: 0x06040a, side: THREE.BackSide, fog: false }));
     shell.position.set(cx, 8, cz);
     this.group.add(shell);
 
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w + 2 * t, d + 2 * t).rotateX(-Math.PI / 2), standard(plankTextures(w, d), 1.2));
-    floor.material.color.setHex(0x8a7a7a);
+    const floorTex = style.floor === 'stone' ? fieldstoneTextures(w, d) : plankTextures(w, d);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w + 2 * t, d + 2 * t).rotateX(-Math.PI / 2), standard(floorTex, 1.2));
+    floor.material.color.setHex(style.floorTint);
     floor.position.set(cx, 0.01, cz);
     floor.receiveShadow = true;
     this.group.add(floor);
 
-    const stone = standard(fieldstoneTextures(6, H), 2);
-    stone.color.setHex(0x9a8aa8);
+    const wallTex = style.walls === 'stone' ? fieldstoneTextures(6, H) : style.walls === 'timber' ? timberTextures(6, H) : plankTextures(6, H);
+    const wallMat = standard(wallTex, 1.6);
+    wallMat.color.setHex(style.wallTint);
     const half = r.doorWidth / 2;
     const walls: [string, number, number, number, number][] = [
       ['wall-n', r.minX - t, r.maxX + t, r.minZ - t, r.minZ],
@@ -283,8 +295,7 @@ export class VillageView {
       ['wall-se', r.doorX + half, r.maxX + t, r.maxZ, r.maxZ + t],
     ];
     for (const [id, x0, x1, z0, z1] of walls) {
-      const mat = stone.clone();
-      mat.transparent = false;
+      const mat = wallMat.clone();
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, H, z1 - z0), mat);
       mesh.position.set((x0 + x1) / 2, H / 2, (z0 + z1) / 2);
       mesh.castShadow = mesh.receiveShadow = true;
@@ -293,28 +304,59 @@ export class VillageView {
     }
     // The way out: a timber frame and the square's daylight beyond it.
     const timber = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.9 });
-    for (const s of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3, 0.5), timber);
-      post.position.set(r.doorX + s * (half + 0.12), 1.5, r.maxZ + t / 2);
-      this.group.add(post);
-    }
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(r.doorWidth + 0.5, 0.3, 0.5), timber);
-    lintel.position.set(r.doorX, 3, r.maxZ + t / 2);
-    this.group.add(lintel);
+    for (const s of [-1, 1]) this.add(new THREE.Mesh(new THREE.BoxGeometry(0.25, 3, 0.5), timber), r.doorX + s * (half + 0.12), 1.5, r.maxZ + t / 2);
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(r.doorWidth + 0.5, 0.3, 0.5), timber), r.doorX, 3, r.maxZ + t / 2);
     const day = new THREE.Mesh(new THREE.PlaneGeometry(r.doorWidth, 2.85), new THREE.MeshBasicMaterial({ color: 0xffe2a8, fog: false }));
-    day.position.set(r.doorX, 1.43, r.maxZ + t + 0.02);
     day.rotation.y = Math.PI;
-    this.group.add(day);
+    this.add(day, r.doorX, 1.43, r.maxZ + t + 0.02);
 
-    const plank = standard(plankTextures(2, 1), 1);
     for (const f of r.furniture) {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.height, f.maxZ - f.minZ), plank);
-      mesh.position.set((f.minX + f.maxX) / 2, f.height / 2, (f.minZ + f.maxZ) / 2);
+      if (CUSTOM_FURNITURE.has(f.id)) continue;
+      const mat = f.id === 'vault' ? IRON() : f.id === 'hearth' ? standard(fieldstoneTextures(2, 2), 2) : standard(plankTextures(2, 1), 1);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.height, f.maxZ - f.minZ), mat);
       mesh.castShadow = mesh.receiveShadow = true;
-      this.group.add(mesh);
-      if (f.id.startsWith('shelf')) this.buildBooks(f);
+      this.add(mesh, (f.minX + f.maxX) / 2, f.height / 2, (f.minZ + f.maxZ) / 2);
     }
-    if (r.building === 'shrine') this.buildShrineInside(r, cx);
+    const byId = (id: string) => r.furniture.find((f) => f.id === id)!;
+    if (r.building === 'shrine') this.buildShrineInside(r, cx, byId);
+    if (r.building === 'store') this.buildStoreInside(byId);
+    if (r.building === 'storehouse') this.buildStorehouseInside(r, byId);
+    if (r.building === 'tavern') this.buildTavernInside(r, byId);
+  }
+
+  /** Put a mesh at a place in the group. */
+  private add<T extends THREE.Object3D>(o: T, x: number, y: number, z: number): T {
+    o.position.set(x, y, z);
+    this.group.add(o);
+    return o;
+  }
+
+  /** A point light; flickering ones (candles, a hearth) wobble in update. */
+  private light(colour: number, intensity: number, distance: number, x: number, y: number, z: number, flicker = 0): void {
+    const l = new THREE.PointLight(colour, intensity, distance, 1.5);
+    this.add(l, x, y, z);
+    if (flicker > 0) this.flickers.push({ light: l, base: intensity, amount: flicker, seed: x * 3.1 + z * 1.7 });
+  }
+
+  private candle(x: number, y: number, z: number, h = 0.22): void {
+    this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, h, 8), WAX()), x, y + h / 2, z);
+    const f = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), FLAME()), x, y + h + 0.05, z);
+    f.scale.y = 1.8;
+  }
+
+  /** A barrel standing up (or lying, for a keg on its rack), hooped in iron. */
+  private barrel(x: number, y: number, z: number, lying = false, scale = 1): THREE.Group {
+    const g = new THREE.Group();
+    const staves = new THREE.Mesh(new THREE.CylinderGeometry(0.36 * scale, 0.36 * scale, 0.95 * scale, 14), new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.85 }));
+    g.add(staves);
+    for (const dy of [-0.32, 0.32]) {
+      const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.37 * scale, 0.025, 6, 18).rotateX(Math.PI / 2), IRON());
+      hoop.position.y = dy * scale;
+      g.add(hoop);
+    }
+    if (lying) g.rotation.z = Math.PI / 2;
+    g.traverse((c) => (c.castShadow = true));
+    return this.add(g, x, y, z);
   }
 
   /** Rows of coloured spines along a shelf's face toward the room. */
@@ -327,72 +369,258 @@ export class VillageView {
       for (let z = f.minZ + 0.2; z < f.maxZ - 0.2; ) {
         const width = 0.08 + rand() * 0.1;
         const tall = 0.35 + rand() * 0.2;
-        const book = new THREE.Mesh(new THREE.BoxGeometry(0.06, tall, width), new THREE.MeshStandardMaterial({ color: colours[Math.floor(rand() * colours.length)], roughness: 0.8 }));
-        book.position.set(faceX + inward * 0.03, y + tall / 2, z + width / 2);
-        this.group.add(book);
+        this.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, tall, width), new THREE.MeshStandardMaterial({ color: colours[Math.floor(rand() * colours.length)], roughness: 0.8 })), faceX + inward * 0.03, y + tall / 2, z + width / 2);
         z += width + 0.01;
       }
     }
   }
 
   /** Wren's orb on her table, candles, a rune circle on the floor and crystals in the corners: the portal's light. */
-  private buildShrineInside(r: InteriorDef, cx: number): void {
-    const table = r.furniture.find((f) => f.id === 'wren-table')!;
+  private buildShrineInside(r: InteriorDef, cx: number, byId: (id: string) => InteriorDef['furniture'][number]): void {
+    this.buildBooks(byId('shelf-w'));
+    this.buildBooks(byId('shelf-e'));
+    const table = byId('wren-table');
     const tz = (table.minZ + table.maxZ) / 2;
     const top = table.height;
-    const glow = new THREE.MeshStandardMaterial({ color: 0xb58aff, emissive: 0x8a5cff, emissiveIntensity: 1.3, roughness: 0.2 });
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), glow);
-    orb.position.set(cx, top + 0.42, tz);
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0x8a6a2a, metalness: 0.6, roughness: 0.4 }));
-    stand.position.set(cx, top + 0.06, tz);
-    this.group.add(orb, stand);
-    const orbLight = new THREE.PointLight(0xa070ff, 4, 9, 1.4);
-    orbLight.position.set(cx, top + 0.8, tz + 0.4);
-    this.group.add(orbLight);
-
-    const wax = new THREE.MeshStandardMaterial({ color: 0xeee0c8, roughness: 0.7 });
-    const flame = new THREE.MeshBasicMaterial({ color: 0xffc060 });
-    const candle = (x: number, y: number, z: number, h = 0.22) => {
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, h, 8), wax);
-      c.position.set(x, y + h / 2, z);
-      const f = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), flame);
-      f.scale.y = 1.8;
-      f.position.set(x, y + h + 0.05, z);
-      this.group.add(c, f);
-    };
-    for (const [dx, h] of [[-1.05, 0.26], [-0.85, 0.18], [0.9, 0.3], [1.1, 0.2]] as const) candle(cx + dx, top, tz + 0.15, h);
+    this.add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), new THREE.MeshStandardMaterial({ color: 0xb58aff, emissive: 0x8a5cff, emissiveIntensity: 1.3, roughness: 0.2 })), cx, top + 0.42, tz);
+    this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.12, 10), BRASS()), cx, top + 0.06, tz);
+    this.light(0xa070ff, 4, 9, cx, top + 0.8, tz + 0.4, 0.08);
+    for (const [dx, h] of [[-1.05, 0.26], [-0.85, 0.18], [0.9, 0.3], [1.1, 0.2]] as const) this.candle(cx + dx, top, tz + 0.15, h);
     for (const s of [-1, 1]) {
-      const stand2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.8 }));
-      stand2.position.set(cx + s * 3.6, 0.7, tz + 1.6);
-      this.group.add(stand2);
-      for (const dx of [-0.1, 0.1]) candle(cx + s * 3.6 + dx, 1.4, tz + 1.6, 0.24);
-      const warm = new THREE.PointLight(0xffa850, 7, 9, 1.5);
-      warm.position.set(cx + s * 3.6, 2, tz + 1.6);
-      this.group.add(warm);
+      this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.8 })), cx + s * 3.6, 0.7, tz + 1.6);
+      for (const dx of [-0.1, 0.1]) this.candle(cx + s * 3.6 + dx, 1.4, tz + 1.6, 0.24);
+      this.light(0xffa850, 7, 9, cx + s * 3.6, 2, tz + 1.6, 0.18);
     }
-
     // A rune circle where a visitor stands before her.
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.35, 48).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.55));
-    ring.position.set(cx, 0.03, tz + 2.4);
-    const inner = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.9, 6).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.4));
-    inner.position.copy(ring.position);
-    this.group.add(ring, inner);
-
+    this.add(new THREE.Mesh(new THREE.RingGeometry(1.25, 1.35, 48).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.55)), cx, 0.03, tz + 2.4);
+    this.add(new THREE.Mesh(new THREE.RingGeometry(0.85, 0.9, 6).rotateX(-Math.PI / 2), glowMaterial(0x9a6aff, 0.4)), cx, 0.03, tz + 2.4);
     const crystal = new THREE.MeshStandardMaterial({ color: 0xb58aff, emissive: 0x8a5cff, emissiveIntensity: 1.8, roughness: 0.3 });
-    for (const [x, z] of [
-      [r.minX + 0.9, r.minZ + 0.9],
-      [r.maxX - 0.9, r.minZ + 0.9],
-    ]) {
-      const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), crystal);
-      c.scale.y = 1.8;
-      c.position.set(x, 0.8, z);
-      this.group.add(c);
-    }
-    // A violet rug down the middle, from the door to the table.
+    for (const x of [r.minX + 0.9, r.maxX - 0.9]) this.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.45), crystal), x, 0.8, r.minZ + 0.9).scale.y = 1.8;
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(2, r.maxZ - tz - 1.2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3a1f5a, roughness: 1 }));
-    rug.position.set(cx, 0.02, (r.maxZ + tz + 1.2) / 2);
     rug.receiveShadow = true;
-    this.group.add(rug);
+    this.add(rug, cx, 0.02, (r.maxZ + tz + 1.2) / 2);
+  }
+
+  /**
+   * Aldous's shop: a counter with scales and a till, shelves behind it of jars, bottles and boxed
+   * goods, a rack of arms on the east wall, barrels and sacks by the west, lanterns hung low.
+   */
+  private buildStoreInside(byId: (id: string) => InteriorDef['furniture'][number]): void {
+    const counter = byId('counter');
+    const ccx = (counter.minX + counter.maxX) / 2;
+    const ccz = (counter.minZ + counter.maxZ) / 2;
+    const top = counter.height;
+    // The counter's top, darker, and on it the scales and a stack of coin.
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(counter.maxX - counter.minX + 0.1, 0.06, counter.maxZ - counter.minZ + 0.1), new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 })), ccx, top + 0.03, ccz);
+    this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 6), BRASS()), ccx - 1.6, top + 0.3, ccz);
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.03, 0.03), BRASS()), ccx - 1.6, top + 0.55, ccz);
+    for (const s of [-1, 1]) this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.04, 10), BRASS()), ccx - 1.6 + s * 0.33, top + 0.38, ccz);
+    for (let i = 0; i < 5; i++) this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 10), GOLD()), ccx + 1.4 + (i % 2) * 0.03, top + 0.07 + i * 0.022, ccz + 0.1);
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.35), new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.8 })), ccx + 2.2, top + 0.15, ccz);
+
+    // Goods on the shelves behind him: three boards of jars, bottles and boxes.
+    const shelf = byId('shelf-n');
+    const rand = rng(77);
+    const jarColours = [0x7a9a6a, 0xa87a4a, 0x6a7aa8, 0xc8b88a, 0x8a4a3a];
+    for (const y of [0.7, 1.5, 2.3]) {
+      this.add(new THREE.Mesh(new THREE.BoxGeometry(shelf.maxX - shelf.minX, 0.05, 0.6), new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.85 })), (shelf.minX + shelf.maxX) / 2, y, shelf.maxZ + 0.25);
+      for (let x = shelf.minX + 0.3; x < shelf.maxX - 0.3; x += 0.32 + rand() * 0.2) {
+        const kind = rand();
+        const colour = jarColours[Math.floor(rand() * jarColours.length)];
+        if (kind < 0.45) this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.26, 10), new THREE.MeshStandardMaterial({ color: colour, roughness: 0.4 })), x, y + 0.16, shelf.maxZ + 0.25);
+        else if (kind < 0.75) {
+          this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), new THREE.MeshStandardMaterial({ color: colour, roughness: 0.2, transparent: true, opacity: 0.85 })), x, y + 0.18, shelf.maxZ + 0.25);
+          this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.1, 6), new THREE.MeshStandardMaterial({ color: 0x5a3a22 })), x, y + 0.38, shelf.maxZ + 0.25);
+        } else this.add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.3), new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 })), x, y + 0.14, shelf.maxZ + 0.25);
+      }
+    }
+
+    // The rack of arms: swords upright, bows hung, a shield.
+    const rack = byId('rack-e');
+    const rx = rack.minX - 0.05;
+    for (let i = 0; i < 4; i++) {
+      const z = rack.minZ + 0.6 + i * 0.5;
+      this.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.1, 0.09), STEEL()), rx, 1.35, z);
+      this.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.3), BRASS()), rx, 0.8, z);
+    }
+    for (const z of [rack.minZ + 2.9, rack.minZ + 3.6]) {
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.03, 6, 16, Math.PI), new THREE.MeshStandardMaterial({ color: 0x6a4a28, roughness: 0.7 }));
+      bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
+      this.add(bow, rx, 1.4, z);
+    }
+    const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 16).rotateZ(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8a2a2a, roughness: 0.7 }));
+    this.add(shield, rx, 1.5, rack.maxZ - 0.45);
+
+    // Barrels and sacks by the west wall, a rug before the counter.
+    const barrels = byId('barrels-w');
+    for (const [x, z] of [
+      [barrels.minX + 0.45, barrels.minZ + 0.45],
+      [barrels.minX + 0.45, barrels.minZ + 1.3],
+      [barrels.minX + 1.15, barrels.minZ + 0.85],
+    ])
+      this.barrel(x, 0.48, z);
+    const sack = new THREE.MeshStandardMaterial({ color: 0xb8a070, roughness: 1 });
+    for (const [x, z] of [
+      [barrels.minX + 0.4, barrels.maxZ - 0.6],
+      [barrels.minX + 1.1, barrels.maxZ - 0.4],
+    ])
+      this.add(new THREE.Mesh(new THREE.SphereGeometry(0.36, 10, 8), sack), x, 0.3, z).scale.set(1, 0.85, 0.8);
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.6).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7a3a22, roughness: 1 }));
+    rug.receiveShadow = true;
+    this.add(rug, ccx, 0.02, counter.maxZ + 1.6);
+    // Two lanterns over the counter: warm, steady.
+    for (const dx of [-2, 2]) {
+      this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4), IRON()), ccx + dx, 3.4, ccz + 0.8);
+      this.add(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), new THREE.MeshStandardMaterial({ color: 0xffd090, emissive: 0xffa040, emissiveIntensity: 1.4 })), ccx + dx, 2.9, ccz + 0.8);
+      this.light(0xffc070, 8, 10, ccx + dx, 2.7, ccz + 0.8, 0.04);
+    }
+  }
+
+  /**
+   * Marta's storehouse: racks of crates and chests down both walls, stacks in the corners, the
+   * strongroom's iron vault behind her ledger desk; cool lantern light, the one candle on her desk.
+   */
+  private buildStorehouseInside(r: InteriorDef, byId: (id: string) => InteriorDef['furniture'][number]): void {
+    const rand = rng(53);
+    const crate = (x: number, y: number, z: number, s: number) => {
+      const c = this.add(new THREE.Mesh(new THREE.BoxGeometry(s, s, s), standard(plankTextures(1, 1), 1)), x, y + s / 2, z);
+      c.rotation.y = (rand() - 0.5) * 0.3;
+      c.castShadow = c.receiveShadow = true;
+    };
+    for (const id of ['rack-w', 'rack-e']) {
+      const rack = byId(id);
+      const rx = (rack.minX + rack.maxX) / 2;
+      for (const y of [0, 1, 2]) {
+        this.add(new THREE.Mesh(new THREE.BoxGeometry(rack.maxX - rack.minX + 0.1, 0.06, rack.maxZ - rack.minZ), new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9 })), rx, y + 0.03, (rack.minZ + rack.maxZ) / 2);
+        for (let z = rack.minZ + 0.5; z < rack.maxZ - 0.4; z += 0.9 + rand() * 0.3) {
+          if (rand() < 0.75) crate(rx, y + 0.06, z, 0.55 + rand() * 0.25);
+          else this.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.5), new THREE.MeshStandardMaterial({ color: 0x5a2e1a, roughness: 0.8 })), rx, y + 0.3, z);
+        }
+      }
+    }
+    for (const id of ['crates-nw', 'crates-ne']) {
+      const c = byId(id);
+      const w = c.maxX - c.minX;
+      crate(c.minX + w * 0.3, 0, c.minZ + 0.6, 1);
+      crate(c.minX + w * 0.72, 0, c.minZ + 0.8, 0.9);
+      if (c.height > 1.4) crate(c.minX + w * 0.4, 1, c.minZ + 0.6, 0.6);
+    }
+    // The vault's door: a wheel and rivets in its iron face.
+    const vault = byId('vault');
+    const vx = (vault.minX + vault.maxX) / 2;
+    const face = vault.maxZ + 0.02;
+    this.add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 20), BRASS()), vx, 1.3, face);
+    for (let i = 0; i < 4; i++) {
+      const spoke = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 0.04), BRASS()), vx, 1.3, face);
+      spoke.rotation.z = (i * Math.PI) / 4;
+    }
+    for (const [dx, y] of [
+      [-1.2, 0.3],
+      [1.2, 0.3],
+      [-1.2, 2.1],
+      [1.2, 2.1],
+    ])
+      this.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), IRON()), vx + dx, y, face);
+    // Her desk: a ledger, a quill, a candle.
+    const desk = byId('desk');
+    const dx = (desk.minX + desk.maxX) / 2;
+    const dz = (desk.minZ + desk.maxZ) / 2;
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.42), new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.9 })), dx - 0.3, desk.height + 0.03, dz);
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.3), new THREE.MeshStandardMaterial({ color: 0xf0f0f0 })), dx + 0.15, desk.height + 0.06, dz).rotation.y = 0.5;
+    this.candle(dx + 0.9, desk.height, dz, 0.2);
+    this.light(0xffb060, 3, 5, dx + 0.9, desk.height + 0.5, dz, 0.2);
+    // Lanterns on the walls: cool, a storehouse's light.
+    for (const [x, z] of [
+      [r.minX + 1.4, -1],
+      [r.maxX - 1.4, -1],
+      [(r.minX + r.maxX) / 2, r.minZ + 2.2],
+    ]) {
+      this.add(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.22), new THREE.MeshStandardMaterial({ color: 0xd8e8ff, emissive: 0x88a8d8, emissiveIntensity: 1.2 })), x, 2.8, z);
+      this.light(0xb8d0ff, 6, 10, x, 2.6, z);
+    }
+  }
+
+  /**
+   * Old Fenn's tavern, the Rusted Stag (Michael's mockup): the bar with mugs and the kegs behind it,
+   * a hearth burning on the west wall, tables and stools, a ring of candles overhead, the stag's
+   * head over the kegs and the order's banners either side of it.
+   */
+  private buildTavernInside(r: InteriorDef, byId: (id: string) => InteriorDef['furniture'][number]): void {
+    const cx = (r.minX + r.maxX) / 2;
+    const bar = byId('bar');
+    const bz = (bar.minZ + bar.maxZ) / 2;
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(bar.maxX - bar.minX + 0.2, 0.08, bar.maxZ - bar.minZ + 0.2), new THREE.MeshStandardMaterial({ color: 0x3a2214, roughness: 0.5 })), cx, bar.height + 0.04, bz);
+    const mug = (x: number, y: number, z: number) => {
+      this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 10), new THREE.MeshStandardMaterial({ color: 0x8a5a30, roughness: 0.7 })), x, y + 0.08, z);
+      this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.02, 10), new THREE.MeshStandardMaterial({ color: 0xf0e8d0 })), x, y + 0.165, z);
+    };
+    for (const x of [-3, -2.6, 1.8, 3.1]) mug(cx + x, bar.height + 0.08, bz + 0.1);
+    // Kegs on their side behind the bar, a tap each.
+    const kegs = byId('kegs');
+    for (let i = 0; i < 4; i++) {
+      const x = kegs.minX + 0.9 + i * 1.75;
+      this.barrel(x, 0.5, kegs.minZ + 0.6, true, 1.1);
+      this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6).rotateX(Math.PI / 2), BRASS()), x, 0.5, kegs.maxZ + 0.08);
+    }
+    // The stag's head over the kegs, on a shield-shaped plaque, and a banner either side.
+    const wallZ = r.minZ + 0.02;
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1.1, 0.1), new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.8 })), cx, 3, wallZ + 0.05);
+    const hide = new THREE.MeshStandardMaterial({ color: 0x8a5a38, roughness: 0.9 });
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.6), hide), cx, 2.95, wallZ + 0.4);
+    this.add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, 0.4), hide), cx, 2.8, wallZ + 0.8);
+    const antler = new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.6 });
+    for (const s of [-1, 1]) {
+      const a = this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.9, 6), antler), cx + s * 0.35, 3.55, wallZ + 0.35);
+      a.rotation.z = -s * 0.6;
+      for (const k of [0.25, 0.5]) {
+        const tine = this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.35, 5), antler), cx + s * (0.3 + k * 0.5), 3.4 + k * 0.6, wallZ + 0.35);
+        tine.rotation.z = s * 0.4;
+      }
+    }
+    for (const s of [-1, 1]) {
+      const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2), new THREE.MeshStandardMaterial({ color: 0x2a3a7a, roughness: 0.9, side: THREE.DoubleSide }));
+      this.add(banner, cx + s * 3, 2.6, wallZ + 0.04);
+      this.add(new THREE.Mesh(new THREE.RingGeometry(0.2, 0.26, 16), new THREE.MeshBasicMaterial({ color: 0xd8b25a, side: THREE.DoubleSide })), cx + s * 3, 2.8, wallZ + 0.06);
+    }
+    // The hearth: a fire in its mouth, its light flickering over the room.
+    const hearth = byId('hearth');
+    const hz = (hearth.minZ + hearth.maxZ) / 2;
+    const mouth = hearth.maxX + 0.01;
+    this.add(new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.9).rotateY(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1a0c06 })), mouth, 0.55, hz);
+    const fire = new THREE.MeshBasicMaterial({ color: 0xffa030 });
+    for (const [dz, h] of [
+      [-0.4, 0.5],
+      [0, 0.7],
+      [0.4, 0.45],
+    ])
+      this.add(new THREE.Mesh(new THREE.ConeGeometry(0.18, h, 6), fire), mouth + 0.25, 0.12 + h / 2, hz + dz);
+    for (let i = 0; i < 3; i++) this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.8, 6).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3a2010 })), mouth + 0.3, 0.1, hz + (i - 1) * 0.15).rotation.y = i * 0.5;
+    this.light(0xff8a30, 12, 12, mouth + 0.8, 1, hz, 0.3);
+    this.fireSources.push(new THREE.Vector3(mouth + 0.3, 0.6, hz));
+    // Tables with stools and a mug or two.
+    const stool = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.85 });
+    for (const id of ['table-a', 'table-b', 'table-c']) {
+      const tb = byId(id);
+      const tx = (tb.minX + tb.maxX) / 2;
+      const tz = (tb.minZ + tb.maxZ) / 2;
+      for (const [sx, sz] of [
+        [-1.15, 0],
+        [1.15, 0],
+        [0, 1.15],
+      ])
+        this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.5, 8), stool), tx + sx, 0.25, tz + sz);
+      mug(tx - 0.3, tb.height, tz + 0.2);
+      if (id !== 'table-b') this.candle(tx + 0.3, tb.height, tz - 0.2, 0.14);
+    }
+    // A ring of candles hung over the room.
+    const ringY = 3.3;
+    const ringZ = (r.minZ + r.maxZ) / 2 + 1.5;
+    this.add(new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.05, 6, 24).rotateX(Math.PI / 2), IRON()), cx, ringY, ringZ);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      this.candle(cx + Math.cos(a) * 1.2, ringY, ringZ + Math.sin(a) * 1.2, 0.18);
+    }
+    this.light(0xffb060, 9, 14, cx, ringY - 0.3, ringZ, 0.1);
   }
 
   /** A row of pennants along the roof's ridge, one a tier; the top tier's is gold. */
@@ -564,6 +792,29 @@ export class VillageView {
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+/** Furniture an interior's dressing draws itself rather than as a plain box. */
+const CUSTOM_FURNITURE = new Set(['barrels-w', 'kegs', 'crates-nw', 'crates-ne']);
+
+/** Each inside in its building's own materials (Michael, 28 Oct: each matching its use, each its own). */
+const INTERIOR_STYLE: Record<Building['id'], { floor: 'plank' | 'stone'; floorTint: number; walls: 'stone' | 'timber' | 'plank'; wallTint: number }> = {
+  shrine: { floor: 'plank', floorTint: 0x8a7a7a, walls: 'stone', wallTint: 0x9a8aa8 },
+  store: { floor: 'plank', floorTint: 0xb89a7a, walls: 'timber', wallTint: 0xe0d0b8 },
+  storehouse: { floor: 'stone', floorTint: 0x8a8a90, walls: 'plank', wallTint: 0x8a7a68 },
+  tavern: { floor: 'plank', floorTint: 0x9a7452, walls: 'timber', wallTint: 0xb89878 },
+};
+
+// Made once each the first time an interior asks: the materials its props share.
+const once = <T,>(make: () => T) => {
+  let made: T | null = null;
+  return () => (made ??= make());
+};
+const IRON = once(() => new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.5, metalness: 0.6 }));
+const BRASS = once(() => new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.7 }));
+const GOLD = once(() => new THREE.MeshStandardMaterial({ color: 0xe8c050, roughness: 0.3, metalness: 0.8 }));
+const STEEL = once(() => new THREE.MeshStandardMaterial({ color: 0xc8ccd4, roughness: 0.25, metalness: 0.8 }));
+const WAX = once(() => new THREE.MeshStandardMaterial({ color: 0xeee0c8, roughness: 0.7 }));
+const FLAME = once(() => new THREE.MeshBasicMaterial({ color: 0xffc060 }));
 
 /** A sign board: the name in warm paint on dark wood, drawn small for the pixel look. */
 function signTexture(text: string): THREE.CanvasTexture {

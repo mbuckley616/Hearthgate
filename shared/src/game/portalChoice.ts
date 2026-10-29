@@ -36,6 +36,14 @@ export const SIZE_IDS: readonly SizeId[] = ['small', 'medium', 'large'];
 
 export const MAX_FLOORS = 8;
 
+/** A run's twist (P8; Michael, 28 Oct: Cursed and Haunted first). */
+export type ModifierId = 'cursed' | 'haunted';
+export const MODIFIERS: Record<ModifierId, { name: string; words: string }> = {
+  cursed: { name: 'Cursed', words: 'no revives, double loot' },
+  haunted: { name: 'Haunted', words: 'every enemy gets up once, at half health' },
+};
+export const MODIFIER_IDS: readonly ModifierId[] = ['cursed', 'haunted'];
+
 /** A story dungeon: its place in the order, what it is, and how its run is made. */
 export interface StoryDungeon {
   id: string;
@@ -47,7 +55,7 @@ export interface StoryDungeon {
   /** What it tends to give: shown as the bag shows those slots. */
   rewards: BodySlot[];
   /** A generated run from a fixed seed, or a hand-built dungeon (T4b) exactly as laid out. */
-  run: { seed: number; floors: number; size: SizeId; difficulty: number } | { hand: HandDungeon; difficulty: number };
+  run: { seed: number; floors: number; size: SizeId; difficulty: number; modifier?: ModifierId } | { hand: HandDungeon; difficulty: number; modifier?: ModifierId };
 }
 
 const cellar = DUNGEONS.find((d) => d.name === 'The Old Cellar');
@@ -96,7 +104,7 @@ export const STORY: readonly StoryDungeon[] = [
     blurb: 'A dwarven hall left to burn out. The fires never quite did, and what moved in likes the warmth.',
     enemies: ['grunt', 'brute'],
     rewards: ['body', 'shield', 'ring'],
-    run: { seed: 5303, floors: 3, size: 'medium', difficulty: 2 },
+    run: { seed: 5303, floors: 3, size: 'medium', difficulty: 2, modifier: 'haunted' },
   },
   {
     id: 'hollow-crown',
@@ -109,7 +117,7 @@ export const STORY: readonly StoryDungeon[] = [
   },
 ];
 
-export type PortalChoice = { kind: 'story'; id: string } | { kind: 'random'; floors: number; size: SizeId; difficulty: number };
+export type PortalChoice = { kind: 'story'; id: string } | { kind: 'random'; floors: number; size: SizeId; difficulty: number; modifier: ModifierId | null };
 
 /** A choice from a browser, or null: a story id there is, or numbers within the menu's bounds. */
 export function readPortalChoice(v: unknown): PortalChoice | null {
@@ -121,7 +129,9 @@ export function readPortalChoice(v: unknown): PortalChoice | null {
   const floors = int(o.floors, 1, MAX_FLOORS);
   const difficulty = int(o.difficulty, 0, DIFFICULTIES.length - 1);
   if (floors === null || difficulty === null || !SIZE_IDS.includes(o.size as SizeId)) return null;
-  return { kind: 'random', floors, size: o.size as SizeId, difficulty };
+  const modifier = o.modifier === undefined || o.modifier === null ? null : MODIFIER_IDS.includes(o.modifier as ModifierId) ? (o.modifier as ModifierId) : undefined;
+  if (modifier === undefined) return null;
+  return { kind: 'random', floors, size: o.size as SizeId, difficulty, modifier };
 }
 
 /** The difficulty a choice runs at. */
@@ -132,5 +142,5 @@ export function choiceDifficulty(c: PortalChoice): number {
 /** The words over the village's ring for a choice. */
 export function choiceLabel(c: PortalChoice): string {
   if (c.kind === 'story') return STORY.find((s) => s.id === c.id)?.name ?? 'A story dungeon';
-  return `A ${SIZES[c.size].name.toLowerCase()} dungeon, ${c.floors} floor${c.floors === 1 ? '' : 's'}, ${DIFFICULTIES[c.difficulty].name}`;
+  return `A ${SIZES[c.size].name.toLowerCase()} dungeon, ${c.floors} floor${c.floors === 1 ? '' : 's'}, ${DIFFICULTIES[c.difficulty].name}${c.modifier ? `, ${MODIFIERS[c.modifier].name}` : ''}`;
 }
