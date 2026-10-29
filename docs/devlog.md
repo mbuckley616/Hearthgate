@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P4: the four buildings' tiers
+
+**What changed**
+
+`auto/local-village-tiers`, stacked on `auto/local-village-save`. Protocol 12.
+- **Prices** in `tuning.village`: tier 2 costs 40 lumber, 30 stone and 80 coin, and each tier after 2.4 times the one before (tier 3: 96, 72, 192; tier 4: 230, 173, 461). Lumber and stone are the village's; coin is the owner's, in their save.
+- **What a tier gives** (`villageSave.ts`, for P5, P7, P9 and P10 to use): the shrine opens portals up to one tier above its own; the store stocks 4 items a day and 2 more a tier; the storehouse keeps 12 spaces a tier; the tavern hires a henchman a tier to three, and at tier 4 they are quicker.
+- **Building one.** Each building's keeper (Wren, Aldous, Marta, Old Fenn) now says its tier, what it gives, what the next would bring and cost, and what the owner still needs. The owner holds talk (F, or A on a pad) for `village.upgradeHoldMs` (0.9 s) to build it, a hold so spending is never an accident; the hint shows it and fills while held. A new `upgrade` message carries the building and the owner's coin; `VillageRoom` takes it only from the owner, checks the village's lumber and stone and the coin they say they have (their browser holds it until Phase 3), pays, raises the tier, sends everyone the village and the owner an `upgraded` message, whose browser takes the coin and says so. A visitor hears it is the host's to build.
+- **The tier shows** on the building: a pennant on the roof for each tier (the top one gold), and the numeral on its sign ("General Store II").
+- Tests: prices, what is missing, paying, the top tier, the wire (`villageSave.test.ts`); test:net's village run now has the visitor refused, the owner refused short of coin, then the store raised to tier 2 with the village paying lumber and stone and both players seeing it. check 166, parity identical, test:net. In the browser: Aldous's words, the hold filling, the store raised (coin 300 to 220, lumber 150 to 110, stone 120 to 90), the panel and the sign saying II after a reload. The browser pane's save was put back after.
+
+**Learned**
+
+- **Coin is the player's and lives in their browser,** so the room takes the owner's word for how much they have, as it takes a loadout's. Phase 3's ledger ends that.
+- **Wren already uses a second F to turn the ring,** so holding F at her to raise the shrine also turns the ring if her words were already up. Small; a press-on-release for the ring would part them.
+
+**Next**
+
+- P5, coin and the General Store (Aldous's stock, sized by the store's tier), then P9 and D5, P7, P8.
+- Michael: the prices are a first guess (`village` sliders); a run banks about 100 lumber and 70 stone over three floors.
+
 ## 2026-10-28: local session, P2: the village save
 
 **What changed**
