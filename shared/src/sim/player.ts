@@ -361,6 +361,24 @@ function steer(p: PlayerState, cmd: PlayerCommand, moveMag: number, maxSpeed: nu
   }
 }
 
+/**
+ * Max health follows the level of the weapon in hand (Michael, 29 Oct): checked each tick, so a level
+ * gained mid-fight or a change of weapon shows at once, in the server's step and the prediction alike.
+ * Health keeps its share of the bar, so changing weapons is never a heal.
+ */
+/** Max health from a base, with healthPerLevel for each level of the weapon in hand. */
+export function levelHealth(p: PlayerState, base: number): number {
+  return Math.round(base + tuning.progression.healthPerLevel * (levelFor(p.xp[p.style]) - 1));
+}
+
+export function refreshLevelHealth(p: PlayerState): void {
+  if (p.hpBase === undefined) return;
+  const want = levelHealth(p, p.hpBase);
+  if (want === p.maxHp) return;
+  p.hp = p.maxHp > 0 ? (p.hp * want) / p.maxHp : want;
+  p.maxHp = want;
+}
+
 export function stepPlayer(
   p: PlayerState,
   cmd: PlayerCommand,
@@ -371,6 +389,7 @@ export function stepPlayer(
   const colliders = world.colliders;
   const mv = tuning.movement;
   const dg = tuning.dodge;
+  refreshLevelHealth(p);
   p.invulnTime = Math.max(0, p.invulnTime - dt);
   if (cmd.aimPitch !== undefined) p.aimPitch = cmd.aimPitch;
   else delete p.aimPitch;

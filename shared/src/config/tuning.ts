@@ -817,6 +817,13 @@ export const tuning = {
     maxLevel: 50,
     /** The weapon glow lights at this level (the slice's was 5); at maxLevel it burns gold. */
     glowLevel: 25,
+    /**
+     * Max health gained each level of the weapon in hand, flat, on top of the hero's base (gear and
+     * Vitality): 190 at level 10 and 590 at 50 from 100 (Michael, 29 Oct: a flat gain, "+1.5% feels
+     * kind of pathetic"). Damage, armour and speed stay with talents and gear. The slice's heroes
+     * gain nothing; the parity test sets 0.
+     */
+    healthPerLevel: 10,
   },
 
   /**
@@ -2101,6 +2108,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'run.extraPlayerHealth': [0, 2, 0.01],
 
   'progression.xpPerDamage': [0, 10, 0.1],
+  'progression.healthPerLevel': [0, 50, 1],
   'progression.level2Xp': [10, 20000, 10],
   'progression.level3Xp': [10, 20000, 10],
   'progression.level4Xp': [10, 30000, 10],

@@ -64,11 +64,12 @@ describe('champion points (T6b)', () => {
     const { p } = party(full);
     expect(championDamage(p)).toBeCloseTo(0.15);
     expect(styleDamageBonus(p, 'sword')).toBeCloseTo(0.15);
-    expect(p.maxHp).toBe(115);
+    // Vitality's ceiling is on the base; each level's health (healthPerLevel) comes on top of it.
+    expect(p.hpBase).toBe(115);
     tuning.champion.precisionDamagePerRank = 0.05;
     tuning.champion.vitalityHealthPerRank = 0.05;
     expect(championDamage(p)).toBeCloseTo(0.15);
-    expect(party(full).p.maxHp).toBe(115);
+    expect(party(full).p.hpBase).toBe(115);
   });
 
   it('puts each perk where it belongs, and nothing for a hero without them', () => {
