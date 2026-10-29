@@ -23,7 +23,7 @@ export interface TuneEdit {
 }
 
 /** The debug panel's buttons that change the fight; the server takes them only in a dev build (HEARTHGATE_DEV=1). */
-export const CHEATS = ['restart', 'wave2', 'wave3', 'warden', 'spawnGrunts', 'spawnBrute', 'spawnArcher', 'killAll'] as const;
+export const CHEATS = ['restart', 'wave2', 'wave3', 'warden', 'spawnGrunts', 'spawnBrute', 'spawnArcher', 'killAll', 'henchman'] as const;
 export type Cheat = (typeof CHEATS)[number];
 
 /**

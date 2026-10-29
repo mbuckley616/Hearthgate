@@ -73,7 +73,9 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
     case 'ante': {
       // The rest room banks what the party carries, once they are all in it.
       const rest = layout.pieces[layout.def.exit];
-      if (!f.rested && rest.kind === 'rest' && standing.length > 0 && standing.every((p) => insidePiece(rest, p.x, p.z))) {
+      // The players reach the rest room together; a henchman lagging behind does not hold up the bank.
+      const party = standing.filter((p) => !p.henchman);
+      if (!f.rested && rest.kind === 'rest' && party.length > 0 && party.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
         for (const p of standing) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.restHeal);
         bank(state, world, f);

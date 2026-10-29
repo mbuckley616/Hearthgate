@@ -3,12 +3,15 @@ import { tuning } from '../config/tuning';
 import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
+import { HENCHMAN_NAMES, henchmanCommand } from '../sim/henchman';
+import { emptyMods } from '../sim/gear';
+import { emptyTalents } from '../sim/talents';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
 import { dropFromBag } from '../sim/drops';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
-import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
+import type { PlayerCommand, PlayerState, SimEvent, SimState } from '../sim/types';
 import { createSimState, stepSim } from '../sim/world';
 import { createSlots, nextSlotCommand, receiveInputs, type SlotConfig, type Slots } from './inputSlots';
 import { PORTAL_HOLD_S, partyOnPortal, portalsFor, type PortalState, type PortalTo } from './portal';
@@ -91,6 +94,8 @@ export class HostSession {
     const step = 1 / tuning.sim.tickRate;
     const commands: Record<string, PlayerCommand> = {};
     for (const r of this.remotes.values()) commands[r.id] = this.nextCommand(r);
+    // Henchmen (P3): their brains give their commands, here on the server alone.
+    for (const p of this.sim.players) if (p.henchman) commands[p.id] = henchmanCommand(this.sim, p);
     stepSim(this.sim, commands, step, this.world);
     const events = this.sim.events;
     this.outbox.push(...events);
@@ -211,6 +216,24 @@ export class HostSession {
   }
 
   /** The slice's debug buttons that change the fight (Game's onHost tools). */
+  /**
+   * A henchman joins the party (P3: a debug cheat until the tavern hires them, P10): a sword hero at
+   * the level of the hero who asked, beside them, with the next free name. Not past the party's size.
+   */
+  addHenchman(beside: PlayerState | undefined): PlayerState | null {
+    const sim = this.sim;
+    if (sim.players.length >= tuning.coop.maxPlayers) return null;
+    const n = sim.players.filter((p) => p.henchman).length;
+    const name = HENCHMAN_NAMES[n % HENCHMAN_NAMES.length];
+    const best = beside ? Math.max(beside.xp.sword, beside.xp.bow, beside.xp.staff) : 0;
+    let id = 'h1';
+    for (let i = 1; sim.players.some((p) => p.id === id); i++) id = `h${i}`;
+    const h = addPlayer(sim, this.world, id, { name, xp: { sword: best, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: tuning.combat.heroMaxHp }, false);
+    h.henchman = true;
+    h.style = 'sword';
+    return h;
+  }
+
   private cheat(cheat: Cheat, playerId: string, floor: boolean): void {
     const sim = this.sim;
     const me = sim.players.find((p) => p.id === playerId) ?? sim.players[0];
@@ -232,6 +255,8 @@ export class HostSession {
           return skipToWave(sim, this.world, 4);
         case 'spawnGrunts':
           return spawnGroup(sim, this.world);
+        case 'henchman':
+          return this.addHenchman(me);
         case 'spawnBrute': {
           if (!me) return;
           const x = me.x + Math.sin(me.yaw) * 6;

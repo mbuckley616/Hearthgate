@@ -239,6 +239,7 @@ export class Game {
         this.applyProfile(true);
       },
       'Kill all enemies': cheat('killAll'),
+      'Add a henchman': cheat('henchman'),
     }, (path, value) => this.tune(path, value));
     this.equip = new EquipScreen(
       this.profile,
