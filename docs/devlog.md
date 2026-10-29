@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, interiors: the store, the storehouse and the tavern
+
+**What changed**
+
+`auto/local-interiors`, stacked on `auto/local-shrine-interior`. No protocol change. Michael, 28 Oct, after the shrine's screenshots: "this works for the interiors… just make sure each interior matches its intent and is unique." They can be dressed up later, or stay as the lower tiers' rooms.
+- **Three more rooms** in the village level, each far off the square in its own direction, each reached through its building's door, each keeper now inside behind a counter facing the door:
+  - **Aldous's General Store** (east): plaster and timber walls, a plank floor, his counter with scales, a till and coin, three boards of jars, bottles and boxed goods behind him, a rack of swords, bows and a shield on the east wall, barrels and sacks by the west, a red rug, two warm lanterns.
+  - **Marta's Storehouse** (west): a stone floor and plank walls, racks of crates and chests down both walls, stacked crates in the corners, the strongroom's iron vault (a brass wheel, rivets) behind her desk with its ledger, quill and one candle, cool lanterns.
+  - **Old Fenn's Tavern** (south; the Rusted Stag of Michael's mockup): timber walls, the bar with mugs and four kegs behind it, a stone hearth with a fire and a flickering orange light, three tables with stools, mugs and candles, a ring of candles overhead, the stag's head and the order's blue banners over the kegs.
+- **Each in its own materials** (`INTERIOR_STYLE`), with candle and hearth light that flickers. Shared door and furniture drawing; furniture the dressing draws itself (barrels, kegs, crates) is no longer a plain box.
+- **The store and the stash are framed by their rooms** like Wren's menu: the camera holds a shot of the keeper at their counter, the menu to the right on a wide screen; the talk box closes as a menu opens.
+- Tests: every building in and out, its keeper in reach at the counter, every inside far from the square and the others (`interior.test.ts`); the village solidity test now runs into the store's wall away from its door. check 180, parity identical, test:net, smoke 7/7. Screenshots of each room in `docs/screenshots/`.
+
+**Learned**
+
+- **A test that ran into a building's door now walks inside it**: doors are the one place a wall is not a wall.
+
+**Next**
+
+- P8, the two modifiers, then the henchmen; the tavern's hiring room (P10) after Michael's tavern mockup.
+
 ## 2026-10-28: local session, interiors: Keeper Wren's shrine
 
 **What changed**
