@@ -861,6 +861,7 @@ export class Game {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
     }
+    if (this.room instanceof VillageView) this.room.setEye(this.cam.camera.position);
     this.room.update(realDt, this.presentTime, this.cam.occluders, world.run.gateClosed);
     if (draw) this.gfx.render();
     this.crt.update();
