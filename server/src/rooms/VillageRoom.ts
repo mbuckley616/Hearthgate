@@ -1,6 +1,6 @@
 import type { Client } from "@colyseus/core";
 import { planRun } from "@hearthgate/shared/game/runPlan";
-import { villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { applyUpgrade, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import { PROTOCOL_VERSION, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { LevelDef } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
@@ -49,7 +49,26 @@ export class VillageRoom extends HostRoom {
     super.onDispose();
   }
 
-  protected onHello(client: Client, msg: Extract<ToHost, { k: "hello" }>) {
+  protected onPeerMessage(client: Client, msg: ToHost) {
+    if (msg.k === "hello") this.onHello(client, msg);
+    if (msg.k === "upgrade") this.onUpgrade(client, msg);
+  }
+
+  /**
+   * The owner raises a building (P4): only they may spend the village, and only what it holds and
+   * what their coin covers. Everyone sees the new tier; the owner's browser pays the coin.
+   */
+  private onUpgrade(client: Client, msg: Extract<ToHost, { k: "upgrade" }>) {
+    if (!this.save || !this.owners.has(client.sessionId)) return;
+    if (upgradeProblem(villageView(this.save), msg.building, msg.coin)) return;
+    const cost = applyUpgrade(this.save, msg.building);
+    this.log(`${msg.building} raised to tier ${this.save.tiers[msg.building]}`);
+    const done: ToPeer = { k: "upgraded", building: msg.building, tier: this.save.tiers[msg.building], coin: cost.coin };
+    client.send(MSG, done);
+    for (const c of this.clients) this.sendVillage(c);
+  }
+
+  private onHello(client: Client, msg: Extract<ToHost, { k: "hello" }>) {
     if (msg.version !== PROTOCOL_VERSION) return;
     if (!this.save && msg.village) {
       this.save = msg.village;

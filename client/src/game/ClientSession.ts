@@ -148,6 +148,8 @@ export class ClientSession implements Session {
   village: { view: VillageView; host: string; yours: boolean } | null = null;
   /** Bumped when `village` changes. */
   villageVersion = 0;
+  /** Upgrades the owner made that the game has not paid for yet (P4): it takes them as it pays. */
+  upgraded: Extract<ToPeer, { k: 'upgraded' }>[] = [];
   /** This browser's own village, sent in the hello when joining a village (P2). */
   private villageSave: VillageSave | null = null;
   /** What to draw before the first snapshot: this level, empty. */
@@ -228,7 +230,7 @@ export class ClientSession implements Session {
   }
 
   /** Ask the server for something the slice's host did itself (a restart, a tuning edit, a cheat). */
-  request(msg: Extract<ToHost, { k: 'restart' | 'home' | 'drop' | 'tune' | 'cheat' | 'destination' }>): void {
+  request(msg: Extract<ToHost, { k: 'restart' | 'home' | 'drop' | 'tune' | 'cheat' | 'destination' | 'upgrade' }>): void {
     if (this.state === 'playing') this.send(msg);
   }
 
@@ -377,6 +379,8 @@ export class ClientSession implements Session {
     } else if (msg.k === 'snap') {
       this.portals = msg.portals;
       this.onSnapshot(msg.s, msg.acks, msg.ev, msg.scale);
+    } else if (msg.k === 'upgraded') {
+      this.upgraded.push(msg);
     } else if (msg.k === 'village') {
       this.village = { view: msg.village, host: msg.host, yours: msg.yours };
       this.villageVersion++;

@@ -2,12 +2,12 @@ import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
 import type { HandDungeon } from '../level/handmade';
-import type { VillageSave, VillageView } from '../game/villageSave';
+import type { BuildingId, VillageSave, VillageView } from '../game/villageSave';
 import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 11;
+export const PROTOCOL_VERSION = 12;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -42,7 +42,12 @@ export type ToHost =
   | { k: 'tune'; edit: TuneEdit }
   | { k: 'cheat'; cheat: Cheat }
   /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */
-  | { k: 'destination'; dungeon: HandDungeon | null };
+  | { k: 'destination'; dungeon: HandDungeon | null }
+  /**
+   * The village's owner raises a building a tier (P4), saying how much coin their save holds: coin
+   * is the player's, in their browser until Phase 3, so the room takes their word for it.
+   */
+  | { k: 'upgrade'; building: BuildingId; coin: number };
 
 /** Server -> players. */
 export type ToPeer =
@@ -67,7 +72,9 @@ export type ToPeer =
    * The village this room is (P2), on joining and whenever it changes: whose it is, and whether it is
    * this player's own, whose browser then saves it.
    */
-  | { k: 'village'; village: VillageView; host: string; yours: boolean };
+  | { k: 'village'; village: VillageView; host: string; yours: boolean }
+  /** The owner's upgrade went through (P4): their browser takes the coin it cost from their save. */
+  | { k: 'upgraded'; building: BuildingId; tier: number; coin: number };
 
 /** The kinds of room: the host's village, the slice's arena (the tests and the lab), and a generated dungeon floor (T4). */
 export type LevelKind = 'village' | 'arena' | 'floor';

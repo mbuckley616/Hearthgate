@@ -57,3 +57,61 @@ export function readVillageSave(v: unknown): VillageSave | null {
 export function villageView(save: VillageSave): VillageView {
   return { lumber: save.lumber, stone: save.stone, tiers: { ...save.tiers } };
 }
+
+export interface Cost {
+  lumber: number;
+  stone: number;
+  coin: number;
+}
+
+/** What raising a building to `tier` costs (P4): tier 2's price, upgradeGrowth more each tier after. */
+export function upgradeCost(tier: number): Cost {
+  const v = tuning.village;
+  const k = Math.pow(v.upgradeGrowth, Math.max(0, tier - 2));
+  return { lumber: Math.round(v.upgradeLumber * k), stone: Math.round(v.upgradeStone * k), coin: Math.round(v.upgradeCoin * k) };
+}
+
+/** Why the owner cannot raise this building now, or null: the top tier, or too little of something. */
+export function upgradeProblem(view: VillageView, building: BuildingId, coin: number): string | null {
+  const tier = view.tiers[building];
+  if (tier >= tuning.village.maxTier) return 'at its highest tier';
+  const c = upgradeCost(tier + 1);
+  if (view.lumber < c.lumber) return `${c.lumber - view.lumber} more lumber`;
+  if (view.stone < c.stone) return `${c.stone - view.stone} more stone`;
+  if (coin < c.coin) return `${c.coin - coin} more coin`;
+  return null;
+}
+
+/** Raise a building a tier, paying its lumber and stone (the coin is the owner's, in their save). */
+export function applyUpgrade(save: VillageSave, building: BuildingId): Cost {
+  const c = upgradeCost(save.tiers[building] + 1);
+  save.lumber -= c.lumber;
+  save.stone -= c.stone;
+  save.tiers[building]++;
+  return c;
+}
+
+/** The highest portal tier the shrine opens (P7): one above its own. */
+export const shrinePortalTier = (tier: number) => tier + 1;
+/** Henchmen the tavern hires (P10): one a tier to three; tier 4 makes them quicker. */
+export const tavernHenchmen = (tier: number) => Math.min(3, tier);
+/** Items the store stocks a day (P5). */
+export const storeStock = (tier: number) => tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier;
+/** Spaces in the storehouse's stash (P9). */
+export const stashSpaces = (tier: number) => tier * tuning.village.stashPerTier;
+
+/** What a building does at a tier, in a villager's words. */
+export function tierGives(building: BuildingId, tier: number): string {
+  switch (building) {
+    case 'shrine':
+      return `portals up to tier ${shrinePortalTier(tier)}`;
+    case 'store':
+      return `${storeStock(tier)} items on the shelves each day`;
+    case 'storehouse':
+      return `${stashSpaces(tier)} spaces to keep things in`;
+    case 'tavern': {
+      const n = tavernHenchmen(tier);
+      return tier >= 4 ? 'three henchmen, quicker on their feet' : `${n} ${n === 1 ? 'henchman' : 'henchmen'} for hire`;
+    }
+  }
+}
