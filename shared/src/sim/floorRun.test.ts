@@ -252,20 +252,20 @@ describe('denser fights (D1)', () => {
   }
 
   it('meets one hero in a guard room with a group, not a pair', () => {
-    const { host } = soloFight('small');
+    const { host } = soloFight('guard');
     expect(host.sim.run.phase).toBe('wave');
     expect(alive(host).length).toBeGreaterThanOrEqual(3);
   });
 
   it('fills a large room, and a deeper floor fills it more', () => {
-    const shallow = alive(soloFight('large', 1).host).length;
-    const deep = alive(soloFight('large', 3).host).length;
+    const shallow = alive(soloFight('greatHall', 1).host).length;
+    const deep = alive(soloFight('greatHall', 3).host).length;
     expect(shallow).toBeGreaterThanOrEqual(6);
     expect(deep).toBeGreaterThan(shallow);
   });
 
   it('lets three enemies at a hero at once on a floor (the arena keeps the slice’s two)', () => {
-    const { host } = soloFight('large');
+    const { host } = soloFight('greatHall');
     let most = 0;
     for (let i = 0; i < 60 * 6; i++) {
       host.tick();

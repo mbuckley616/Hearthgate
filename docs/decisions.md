@@ -15,6 +15,12 @@ The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170
 
 ## Answered
 
+### 2026-10-28: D9's scaling, and the next big step (Claude (local))
+Michael asked for proposals on how dodge recovery shortens with levels and perks, and for a talk on what comes next (monster variety, dungeon types, bosses, the village, weapons and armour). Proposals for the dodge: A, Second wind and Light step also trim the recovery; B, it shortens with the weapon's level on its own; C, armour weight (light rolls sooner, heavy protects more); D, a slotted perk, Quicksilver, where a roll that slips a hit has no recovery and refunds its charge; E, each Flow tier trims it. Recommendation: A and D, C with an armour pass. For the next step: D4 first (nothing heals between rest rooms since D7), then the village, then henchmen, then the gate; two dungeon types with a boss each could be pulled into the end of Phase 2.
+Michael (2026-10-28, in chat): **A** for the dodge; **village first** for the next step.
+- **D9's scaling is A only.** Second wind (the level-40 milestone) and Light step (champion, ranked) each also cut `dodge.cancelAfterMs`, by a tuned amount a rank with a floor (about 15 ms a rank, never under about 110 ms). No new perk, no level scaling, no armour weight for now.
+- **Village first.** After D4, Phase 2 runs as planned: the village save, buildings, store, stash and the bag at risk, the portal board, then henchmen, then the gate. Dungeon types, new enemies and bosses stay out of Phase 2.
+
 ### 2026-10-28: After playing D1: healing, aiming, dropping (Claude (local))
 Michael played the denser fights ("plays pretty well"; leave the spawns until bigger rooms and harder dungeons come) and sent eight notes, filed as backlog items D7 to D12. Three needed a rule, so they were asked in chat as three cards. Recommendations were: rest rooms heal and potions are found; ranged weapons aim over the shoulder; a dropped item lands on the floor for its owner.
 Michael (2026-10-28, in chat): all three as recommended.

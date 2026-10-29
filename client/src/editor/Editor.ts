@@ -5,7 +5,7 @@ import { KIT, OPPOSITE, SIDE_DIR, rotSide, rotSize, rotSocket, type PieceKind, t
 import { deleteDungeon, saveDungeon, savedDungeons } from './store';
 
 /** The palette, in the order Q and E step through it (and 1 to 9, 0 pick directly). */
-const PALETTE: PieceKind[] = ['entrance', 'hall', 'hallLong', 'corner', 'tee', 'cross', 'stair', 'small', 'medium', 'large', 'arena', 'rest', 'boss'];
+const PALETTE: PieceKind[] = ['entrance', 'hall', 'hallLong', 'corner', 'tee', 'cross', 'stair', 'small', 'medium', 'large', 'arena', 'guard', 'pillared', 'greatHall', 'cavern', 'rest', 'boss'];
 const NAMES: Record<PieceKind, string> = {
   entrance: 'Entrance',
   hall: 'Hall',
@@ -18,6 +18,10 @@ const NAMES: Record<PieceKind, string> = {
   medium: 'Medium room',
   large: 'Large room',
   arena: 'Arena',
+  guard: 'Guard room (for four)',
+  pillared: 'Hall of pillars (for four)',
+  greatHall: 'Great hall (for four)',
+  cavern: 'The pit (for four)',
   rest: 'Rest room',
   boss: 'Warden’s hall',
 };
