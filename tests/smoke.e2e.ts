@@ -91,7 +91,7 @@ async function intoShrine(page: Page) {
   await walkTo(page, 3.4, -13.6, 0.6);
   await walkTo(page, 0, -13.6, 0.5);
   await throughDoor(page, 0, -16, (z) => z < -50);
-  await walkTo(page, 0, -78.9, 0.5);
+  await walkTo(page, 0, -79.1, 0.3);
 }
 
 /** And out again, onto the square before the shrine. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addPlayer, type Loadout } from '../sim/coop';
 import { emptyMods } from '../sim/gear';
-import { stepPlayer } from '../sim/player';
+import { stepDoors, stepPlayer } from '../sim/player';
 import { emptyTalents } from '../sim/talents';
 import { idleCommand, type PlayerState } from '../sim/types';
 import { createSimState } from '../sim/world';
@@ -20,6 +20,7 @@ function walkAt(p: PlayerState, s: ReturnType<typeof createSimState>, x: number,
     const dz = z - p.z;
     const d = Math.hypot(dx, dz) || 1;
     stepPlayer(p, { ...idleCommand(), moveX: dx / d, moveZ: dz / d, aimX: dx / d, aimZ: dz / d }, DT, world, s);
+    stepDoors(s, world);
   }
 }
 
@@ -42,6 +43,18 @@ describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
     expect(Math.hypot(p.x - keeper.x, p.z - keeper.z)).toBeLessThan(TALK_RANGE);
     walkAt(p, s, out.x, out.z, () => !inside());
     expect(Math.hypot(p.x - out.toX, p.z - out.toZ)).toBeLessThan(1.5);
+  });
+
+  it('is the server’s to decide: a hero stepped alone (the browser’s prediction) never goes through', () => {
+    const s = createSimState(village, [], world);
+    const p = addPlayer(s, world, 'p1', loadout, false);
+    const [into] = v.doors;
+    p.x = into.x;
+    p.z = into.z;
+    stepPlayer(p, idleCommand(), DT, world, s);
+    expect(Math.hypot(p.x - into.x, p.z - into.z)).toBeLessThan(1);
+    stepDoors(s, world);
+    expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
   });
 
   it('never lands a hero in a door circle, so nobody bounces back', () => {
