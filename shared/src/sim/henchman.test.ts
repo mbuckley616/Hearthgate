@@ -8,7 +8,7 @@ import { readToHost } from '../net/validate';
 import { spawnDrop } from './drops';
 import { createEnemy } from './enemies';
 import { emptyMods } from './gear';
-import { henchmanCommand, inTelegraph } from './henchman';
+import { henchmanCommand, inTelegraph, readHenchmanCards } from './henchman';
 import { emptyTalents } from './talents';
 import type { SimEvent } from './types';
 
@@ -74,6 +74,56 @@ describe('a henchman (P3)', () => {
     for (let i = 0; i < tuning.coop.maxPlayers; i++) host.addHenchman(me);
     expect(host.sim.players).toHaveLength(tuning.coop.maxPlayers);
     expect(readToHost({ k: 'cheat', cheat: 'henchman' })).toEqual({ k: 'cheat', cheat: 'henchman' });
+  });
+});
+
+describe('the tavern’s henchmen (P10)', () => {
+  it('travel as cards: name, kit, level and quickness, out of one room and into the next', () => {
+    const a = party();
+    a.host.addHenchman(a.me, 'staff', { quick: true });
+    const cards = a.host.takeHenchmen();
+    expect(a.host.sim.players.some((p) => p.henchman)).toBe(false);
+    expect(cards.map((c) => [c.name, c.style, c.quick ?? false])).toEqual([
+      ['Garrick', 'sword', false],
+      ['Tamsin', 'staff', true],
+    ]);
+    const b = party();
+    b.host.takeHenchmen();
+    b.host.receiveHenchmen(readHenchmanCards(JSON.parse(JSON.stringify(cards))));
+    expect(b.host.sim.players.filter((p) => p.henchman).map((p) => [p.name, p.style, !!p.brain?.quick])).toEqual([
+      ['Garrick', 'sword', false],
+      ['Tamsin', 'staff', true],
+    ]);
+  });
+
+  it('give their slot to a friend who joins a full party; a party of players stays full', () => {
+    const { host, me } = party();
+    host.addHenchman(me);
+    host.addHenchman(me);
+    expect(host.sim.players).toHaveLength(4);
+    host.onMessage('b', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    expect(host.sim.players).toHaveLength(4);
+    expect(host.sim.players.filter((p) => p.henchman)).toHaveLength(2);
+    expect(host.sim.players.some((p) => p.name === 'p' && p.id !== me.id)).toBe(true);
+  });
+
+  it('a top tier’s hire reads a telegraph quicker', () => {
+    const { host, me } = party();
+    host.takeHenchmen();
+    const quick = host.addHenchman(me, 'sword', { quick: true })!;
+    quick.x = 0;
+    quick.z = 0;
+    const e = createEnemy(host.sim, world, 'grunt', 0, -1.5, 0);
+    host.sim.enemies.push(e);
+    e.ai = 'windup';
+    e.tele = { shape: 'circle', x: 0, z: -0.8, radius: 1.2, yaw: 0, arcDeg: 360 };
+    henchmanCommand(host.sim, quick);
+    host.sim.time += (tuning.hirelings.reactMs * tuning.hirelings.quickReact) / 1000 + 0.01;
+    const later = henchmanCommand(host.sim, quick);
+    expect(later.dodge || later.block).toBe(true);
+    expect(readToHost({ k: 'hire', kit: 'bow', coin: 70 })).toEqual({ k: 'hire', kit: 'bow', coin: 70 });
+    expect(readToHost({ k: 'hire', kit: 'axe', coin: 70 })).toBeNull();
+    expect(readToHost({ k: 'dismiss', kit: 'staff' })).toEqual({ k: 'dismiss', kit: 'staff' });
   });
 });
 

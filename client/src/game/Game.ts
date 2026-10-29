@@ -46,6 +46,9 @@ import { VillagePanel } from '../ui/VillagePanel';
 import { StoreScreen } from '../ui/StoreScreen';
 import { BankScreen } from '../ui/BankScreen';
 import { PortalScreen } from '../ui/PortalScreen';
+import { HireScreen } from '../ui/HireScreen';
+import { HIRES } from '@hearthgate/shared/sim/henchman';
+import type { Style } from '@hearthgate/shared/config/tuning';
 import { STORY, choiceLabel } from '@hearthgate/shared/game/portalChoice';
 import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
 import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
@@ -126,6 +129,15 @@ export class Game {
   private holdDone = false;
   /** A keeper spoken to a second time, acted on when talk is let go (secondTalk). */
   private secondWord: string | null = null;
+  /** The shot behind Old Fenn's hiring board: the three for hire, in a row before his bar. */
+  private hireShot(): { from: THREE.Vector3; at: THREE.Vector3 } | null {
+    const tavern = this.world.level.village?.interiors.find((r) => r.building === 'tavern');
+    if (!tavern) return null;
+    const cx = (tavern.minX + tavern.maxX) / 2;
+    const z = tavern.minZ + 8.3;
+    return { from: new THREE.Vector3(cx, 2.4, z + 5.2), at: new THREE.Vector3(cx, 1.6, z - 1) };
+  }
+
   /** Where the hero was drawn last frame, to know a door's jump from a step. */
   private lastHeroAt: THREE.Vector3 | null = null;
   /** The run's tally so far; null outside a run. */
@@ -142,6 +154,8 @@ export class Game {
   private readonly bank: BankScreen;
   /** Keeper Wren's portal menu (P7), opened by a second F (or A) to her. */
   private readonly portalMenu: PortalScreen;
+  /** Old Fenn's hiring board (P10), opened by a second F (or A) to him. */
+  private readonly hire: HireScreen;
   private readonly party: PartyUi;
   private saveTimer = 0;
   private readonly fx: FxView;
@@ -249,6 +263,13 @@ export class Game {
       () => this.atShrine(),
     );
     this.bank = new BankScreen(this.profile);
+    this.hire = new HireScreen(
+      (kit) => this.session.request({ k: 'hire', kit, coin: this.profile.data.coin }),
+      (kit) => {
+        this.session.request({ k: 'dismiss', kit });
+        this.hire.say(`${HIRES[kit].name} goes back to the hearth.`);
+      },
+    );
     this.portalMenu = new PortalScreen(
       (choice) => {
         this.session.request({ k: 'portal', choice });
@@ -405,6 +426,7 @@ export class Game {
     this.store.setVisible(false);
     this.bank.setVisible(false);
     this.portalMenu.setVisible(false);
+    this.hire.setVisible(false);
     this.talk.clear();
     this.lastPhase = '';
     this.pending = Game.noPresses();
@@ -478,6 +500,13 @@ export class Game {
       this.kbm.exitPointerLock();
       this.updateOverlay();
     } else if (near.building === 'store') this.openStore();
+    else if (near.building === 'tavern') {
+      const hired = this.session.view().curr.players.filter((p) => p.henchman).map((p) => p.style);
+      this.hire.open(hired, v.view.tiers.tavern, this.profile.data.coin);
+      this.talk.clear();
+      this.kbm.exitPointerLock();
+      this.updateOverlay();
+    }
     else if (near.building === 'storehouse') {
       if (v.yours) this.openBank();
       else this.talk.say(near.name, 'Your own things are kept in your own village’s storehouse, not this one.');
@@ -578,6 +607,16 @@ export class Game {
     this.updateOverlay();
   }
 
+  /** The tavern's room took a hire (P10): pay its coin and say who joins. */
+  private payHires(): void {
+    for (const h of this.session.hires.splice(0)) {
+      this.profile.data.coin = Math.max(0, this.profile.data.coin - h.coin);
+      this.profile.save();
+      this.hire.say(`${HIRES[h.kit].name} joins you, for ${h.coin} coin.`);
+      this.hud.toast(`<b>${HIRES[h.kit].name} joins the party</b><span>${HIRES[h.kit].title}  ·  -${h.coin} coin</span>`, 'level');
+    }
+  }
+
   /** What the store's room did with a purchase or a sale (P5): the bag and the coin follow it. */
   private settleTrades(): void {
     for (const t of this.session.trades.splice(0)) {
@@ -662,6 +701,9 @@ export class Game {
     } else if (this.portalMenu.visible) {
       this.portalMenu.handle(actions, realDt);
       actions = emptyFrame();
+    } else if (this.hire.visible) {
+      this.hire.handle(actions, realDt);
+      actions = emptyFrame();
     }
 
     // Slow motion is the server's (debug.slowMo through the panel or backslash); each snapshot says how fast it runs.
@@ -682,7 +724,11 @@ export class Game {
     this.cam.setLock(this.lockOn.lookPoint(world));
     // While a keeper's menu is up the camera holds a shot of them at their counter: the room is the menu's backdrop.
     const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : null;
-    this.cam.setShot(framed ? this.keeperShot(framed) : null);
+    this.cam.setShot(framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null);
+    // Who is with the party (P10): their figure leaves the tavern's row, and the board keeps up.
+    const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman).map((p) => p.style));
+    if (this.room instanceof VillageView) this.room.setHired(hiredKits);
+    if (this.hire.visible) this.hire.update([...hiredKits], this.session.village?.view.tiers.tavern ?? 1, this.profile.data.coin);
     this.cam.applyLook(actions.look);
     if (actions.pressed.has('zoomIn')) this.cam.zoomBy(1);
     if (actions.pressed.has('zoomOut')) this.cam.zoomBy(-1);
@@ -757,6 +803,7 @@ export class Game {
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();
+    this.payHires();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
@@ -788,7 +835,7 @@ export class Game {
     this.cam.setShoulder(free);
     this.aim = free && curr ? freeAimFrom(this.cam.camera, curr, world, worldNow(this.world, world).colliders) : null;
     const aim = this.cam.basis();
-    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
+    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !this.hire.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
@@ -1093,6 +1140,12 @@ export class Game {
       this.closeStore();
       return;
     }
+    if (this.hire.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      this.hire.setVisible(false);
+      this.kbm.requestPointerLock();
+      this.updateOverlay();
+      return;
+    }
     if (this.portalMenu.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
       this.closeMenu();
       return;
@@ -1188,7 +1241,7 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.portalMenu?.visible && !this.title?.visible && !this.wiped;
+    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.portalMenu?.visible && !this.hire?.visible && !this.title?.visible && !this.wiped;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
 }

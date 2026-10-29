@@ -1093,6 +1093,8 @@ export const tuning = {
     sellShare: 0.3,
     /** A champion point taken back costs this much coin (P5; decisions.md 27 Oct: free until coin came). */
     respecCoinPerPoint: 15,
+    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. */
+    hireCoin: 60,
   },
 
   loop: {
@@ -1185,6 +1187,8 @@ export const tuning = {
     abilityChance: 0.4,
     /** The share of the time it turns on an enemy someone has set up for a combo, to pay it off. */
     comboChance: 0.5,
+    /** A top-tier Tavern's hires read telegraphs in this share of the time (P10). */
+    quickReact: 0.7,
   },
 
   dungeon: {
@@ -1575,6 +1579,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.abilityCheckTicks': [1, 240, 1],
   'hirelings.abilityChance': [0, 1, 0.05],
   'hirelings.comboChance': [0, 1, 0.05],
+  'hirelings.quickReact': [0.1, 1, 0.05],
+  'village.hireCoin': [0, 500, 5],
   'dungeon.hauntedRiseMs': [0, 5000, 50],
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],

@@ -1,7 +1,8 @@
 import type { Client } from "@colyseus/core";
 import { planChoice, planRun } from "@hearthgate/shared/game/runPlan";
 import { choiceDifficulty, maxDifficulty } from "@hearthgate/shared/game/portalChoice";
-import { applyUpgrade, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { applyUpgrade, tavernHenchmen, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { tuning } from "@hearthgate/shared/config/tuning";
 import { buyPrice, dailyStock, sellPrice, storeDay } from "@hearthgate/shared/game/store";
 import type { GearItem } from "@hearthgate/shared/sim/catalogue";
 import { PROTOCOL_VERSION, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
@@ -63,6 +64,8 @@ export class VillageRoom extends HostRoom {
     if (msg.k === "upgrade") this.onUpgrade(client, msg);
     if (msg.k === "buy") this.onBuy(client, msg);
     if (msg.k === "portal") this.onPortalChoice(msg);
+    if (msg.k === "hire") this.onHire(client, msg);
+    if (msg.k === "dismiss") this.host.dismissHenchman(msg.kit);
     if (msg.k === "sell") this.onSell(client, msg);
   }
 
@@ -75,6 +78,21 @@ export class VillageRoom extends HostRoom {
     if (choiceDifficulty(msg.choice) > maxDifficulty(this.save?.tiers.shrine ?? 1)) return;
     this.host.choice = msg.choice;
     this.host.destination = null;
+  }
+
+  /**
+   * Old Fenn hires a henchman out (P10): as many at once as the Tavern's tier allows, one of each
+   * kit, within the party's four, for the coin the player says they hold. A top-tier Tavern's are quick.
+   */
+  private onHire(client: Client, msg: Extract<ToHost, { k: "hire" }>) {
+    const tier = this.save?.tiers.tavern ?? 1;
+    const hench = this.host.sim.players.filter((p) => p.henchman);
+    if (hench.length >= tavernHenchmen(tier) || hench.some((p) => p.style === msg.kit)) return;
+    if (msg.coin < tuning.village.hireCoin) return;
+    const h = this.host.addHenchman(this.host.playerOf(client.sessionId), msg.kit, { quick: tier >= 4 });
+    if (!h) return;
+    const done: ToPeer = { k: "hired", kit: msg.kit, coin: tuning.village.hireCoin };
+    client.send(MSG, done);
   }
 
   /** Today's shelves at the store's tier, rolled afresh when the day or the tier changes. */

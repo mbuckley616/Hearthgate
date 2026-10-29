@@ -3,7 +3,7 @@ import { STYLES, tuning, type Style } from '../config/tuning';
 import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
-import { HENCHMAN_NAMES, henchmanCommand } from '../sim/henchman';
+import { HIRES, henchmanCard, henchmanCommand, type HenchmanCard } from '../sim/henchman';
 import { emptyMods } from '../sim/gear';
 import { emptyTalents } from '../sim/talents';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
@@ -109,7 +109,12 @@ export class HostSession {
       const send = (m: ToPeer) => this.send(m, peer);
       if (msg.version !== PROTOCOL_VERSION) return send({ k: 'refused', reason: 'Different game version; refresh the page' });
       if (this.remotes.has(peer)) return;
-      if (this.sim.players.length >= tuning.coop.maxPlayers) return send({ k: 'refused', reason: 'The party is full' });
+      // A friend joining a full party takes a henchman's slot (P10); only a party of players is full.
+      if (this.sim.players.length >= tuning.coop.maxPlayers) {
+        const hench = [...this.sim.players].reverse().find((p) => p.henchman);
+        if (!hench) return send({ k: 'refused', reason: 'The party is full' });
+        this.between(() => removePlayer(this.sim, hench.id));
+      }
       const id = this.freeId();
       this.between(() => addPlayer(this.sim, this.world, id, msg.loadout, true));
       this.remotes.set(peer, { id, slots: createSlots(slotConfig()) });
@@ -170,6 +175,8 @@ export class HostSession {
       case 'upgrade':
       case 'buy':
       case 'sell':
+      case 'hire':
+      case 'dismiss':
         // The village's room holds the village and its store and answers these (P4, P5); the fight has nothing to do.
         break;
     }
@@ -221,20 +228,50 @@ export class HostSession {
    * the hero who asked, beside them, with the next free name, and (P6) the next kit in turn, a sword,
    * a bow, a staff, unless one is asked for. Not past the party's size.
    */
-  addHenchman(beside: PlayerState | undefined, style?: Style): PlayerState | null {
+  addHenchman(beside: PlayerState | undefined, style?: Style, card?: Partial<HenchmanCard>): PlayerState | null {
     const sim = this.sim;
     if (sim.players.length >= tuning.coop.maxPlayers) return null;
     const n = sim.players.filter((p) => p.henchman).length;
-    const kit: Style = style ?? STYLES[n % STYLES.length];
-    const name = HENCHMAN_NAMES[n % HENCHMAN_NAMES.length];
-    const best = beside ? Math.max(beside.xp.sword, beside.xp.bow, beside.xp.staff) : 0;
+    const kit: Style = style ?? card?.style ?? STYLES[n % STYLES.length];
+    const name = card?.name ?? HIRES[kit].name;
+    const best = card?.xp ?? (beside ? Math.max(beside.xp.sword, beside.xp.bow, beside.xp.staff) : 0);
     let id = 'h1';
     for (let i = 1; sim.players.some((p) => p.id === id); i++) id = `h${i}`;
     const xp = { sword: 0, bow: 0, staff: 0, [kit]: best };
     const h = addPlayer(sim, this.world, id, { name, xp, talents: emptyTalents(), mods: emptyMods(), maxHp: tuning.combat.heroMaxHp }, false);
     h.henchman = true;
     h.style = kit;
+    if (card?.quick) h.brain = { threat: -1, seenAt: 0, answered: -1, guardUntil: -1, quick: true };
     return h;
+  }
+
+  /** The party's henchmen as they travel to the next room (P10), taken out of this one. */
+  takeHenchmen(): HenchmanCard[] {
+    const hench = this.sim.players.filter((p) => p.henchman);
+    this.between(() => {
+      for (const h of hench) removePlayer(this.sim, h.id);
+    });
+    return hench.map(henchmanCard);
+  }
+
+  /** Henchmen arriving with their party from another room (P10). */
+  receiveHenchmen(cards: readonly HenchmanCard[]): void {
+    this.between(() => {
+      for (const c of cards) this.addHenchman(this.sim.players.find((p) => !p.henchman), c.style, c);
+    });
+  }
+
+  /** A henchman let go (P10), by kit. */
+  dismissHenchman(kit: Style): boolean {
+    const h = this.sim.players.find((p) => p.henchman && p.style === kit);
+    if (h) this.between(() => removePlayer(this.sim, h.id));
+    return !!h;
+  }
+
+  /** The hero a peer plays, if they have joined. */
+  playerOf(peer: string): PlayerState | undefined {
+    const r = this.remotes.get(peer);
+    return r ? this.sim.players.find((p) => p.id === r.id) : undefined;
   }
 
   private cheat(cheat: Cheat, playerId: string, floor: boolean): void {

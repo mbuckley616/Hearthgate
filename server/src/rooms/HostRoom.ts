@@ -7,6 +7,7 @@ import { buildWorld, type LevelDef } from "@hearthgate/shared/level/arena";
 import type { LevelKind, ToHost, ToPeer } from "@hearthgate/shared/net/protocol";
 import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { readToHost } from "@hearthgate/shared/net/validate";
+import { readHenchmanCards } from "@hearthgate/shared/sim/henchman";
 import { createCommandBucket, takeCommands, type CommandBucket } from "./bucket.js";
 
 /** Every message in both directions travels under this one Colyseus type, as the relay's one `msg`. */
@@ -25,6 +26,8 @@ const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 let tuningVersion = 0;
 /** Room codes in use, so two rooms never share one. */
 const codes = new Set<string>();
+/** Open rooms by code, so henchmen can be handed to one the party is going back to (P10). */
+const rooms = new Map<string, HostRoom>();
 
 /** Cheats (the debug panel's skip-wave, spawn and kill buttons) work only in a dev build: npm run dev, or HEARTHGATE_DEV=1. */
 export const CHEATS = process.env.HEARTHGATE_DEV === "1" || process.argv.includes("--dev");
@@ -70,6 +73,7 @@ export abstract class HostRoom extends Room {
 
   onCreate(options: Record<string, unknown> = {}) {
     this.roomId = newCode();
+    rooms.set(this.roomId, this);
     const world = buildWorld(this.levelFor(options));
     this.host = new HostSession(
       world,
@@ -106,6 +110,10 @@ export abstract class HostRoom extends Room {
       if (msg.k === "tune") tuningVersion++;
     });
 
+    // Henchmen arriving with a party through a ring (P10).
+    const hench = readHenchmanCards(options.henchmen);
+    if (hench.length > 0) this.host.receiveHenchmen(hench);
+
     this.lastPump = performance.now();
     this.pump();
     this.log(`created${CHEATS && this.kind !== "village" ? " (dev: cheats on)" : ""}`);
@@ -127,6 +135,7 @@ export abstract class HostRoom extends Room {
   onDispose() {
     if (this.timer !== null) clearTimeout(this.timer);
     codes.delete(this.roomId);
+    rooms.delete(this.roomId);
     this.log("disposed");
   }
 
@@ -143,8 +152,11 @@ export abstract class HostRoom extends Room {
     if (this.handingOff) return null;
     this.handingOff = true;
     const clients = [...this.clients];
+    // The party's henchmen go with it (P10): into the new room's options, or straight to the one that is open.
+    const henchmen = this.host.takeHenchmen();
     try {
-      const target = roomId ?? (await matchMaker.createRoom(roomName, createOptions)).roomId;
+      const target = roomId ?? (await matchMaker.createRoom(roomName, { ...createOptions, henchmen })).roomId;
+      if (roomId && henchmen.length > 0) rooms.get(roomId)?.host.receiveHenchmen(henchmen);
       for (const c of clients) {
         const reservation = await matchMaker.joinById(target, {});
         const msg: ToPeer = { k: "handoff", reservation, level };
@@ -167,8 +179,11 @@ export abstract class HostRoom extends Room {
    */
   protected async handOne(client: Client, roomId: string | null): Promise<void> {
     this.leaving.add(client.sessionId);
+    // The last player to go home takes the party's henchmen with them (P10).
+    const henchmen = this.clients.length <= 1 ? this.host.takeHenchmen() : [];
     try {
-      const target = roomId ?? (await matchMaker.createRoom("village", {})).roomId;
+      const target = roomId ?? (await matchMaker.createRoom("village", { henchmen })).roomId;
+      if (roomId && henchmen.length > 0) rooms.get(roomId)?.host.receiveHenchmen(henchmen);
       const reservation = await matchMaker.joinById(target, {});
       const msg: ToPeer = { k: "handoff", reservation, level: "village" };
       client.send(MSG, msg);

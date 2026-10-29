@@ -1,4 +1,4 @@
-import { enemyStats, tuning } from '../config/tuning';
+import { enemyStats, tuning, type Style } from '../config/tuning';
 import { abilityReady } from './abilities';
 import { isTargetable, nextRandom } from './combat';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
@@ -27,10 +27,39 @@ export interface HenchmanBrain {
   answered: number;
   /** Sim time until which it holds its guard up. */
   guardUntil: number;
+  /** Hired from a Tavern at its top tier (P10): it reads telegraphs quicker. */
+  quick?: boolean;
 }
 
-/** Names for the tavern's hires (P10 lets the player choose; a cheat takes the next). */
-export const HENCHMAN_NAMES = ['Garrick', 'Bryn', 'Tamsin', 'Odo'] as const;
+/** The Tavern's hires (P10; Michael's mockup), one of each kit: who stands by Old Fenn's hearth. */
+export const HIRES: Record<Style, { name: string; title: string }> = {
+  sword: { name: 'Garrick', title: 'Sellsword' },
+  bow: { name: 'Bryn', title: 'Archer' },
+  staff: { name: 'Tamsin', title: 'Hedge-mage' },
+};
+
+/** A henchman as it travels from room to room (P10): who it is, not where it stands. */
+export interface HenchmanCard {
+  name: string;
+  style: Style;
+  xp: number;
+  quick?: boolean;
+}
+
+export function henchmanCard(p: PlayerState): HenchmanCard {
+  return { name: p.name, style: p.style, xp: p.xp[p.style], ...(p.brain?.quick ? { quick: true } : {}) };
+}
+
+/** Cards from a room's create options (the server's own), each field checked. */
+export function readHenchmanCards(v: unknown): HenchmanCard[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((c) => {
+    if (typeof c !== 'object' || c === null) return [];
+    const o = c as Record<string, unknown>;
+    if (typeof o.name !== 'string' || !(o.style === 'sword' || o.style === 'bow' || o.style === 'staff') || typeof o.xp !== 'number' || !Number.isFinite(o.xp)) return [];
+    return [{ name: o.name.slice(0, 16), style: o.style, xp: Math.max(0, o.xp), ...(o.quick === true ? { quick: true } : {}) }];
+  });
+}
 
 /** Whether this point stands inside an enemy's telegraph, with a hero's radius of slack. */
 export function inTelegraph(e: EnemyState, x: number, z: number): boolean {
@@ -72,7 +101,7 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
       b.threat = threat.id;
       b.seenAt = state.time;
     }
-    if (b.answered !== threat.id && (state.time - b.seenAt) * 1000 >= c.reactMs) {
+    if (b.answered !== threat.id && (state.time - b.seenAt) * 1000 >= c.reactMs * (b.quick ? c.quickReact : 1)) {
       b.answered = threat.id;
       if (nextRandom(state) < c.dodgeChance) {
         const away = toward(threat.x, threat.z);

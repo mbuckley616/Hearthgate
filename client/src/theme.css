@@ -1296,3 +1296,114 @@ body.on-title .run-banner {
 .portal-twist {
   color: #8affb8;
 }
+
+/* Old Fenn's hiring board (P10; Michael's mockup): the room behind, a title top left, the cards along the bottom. */
+.hire {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 3vw 20px;
+  background: linear-gradient(180deg, rgba(6, 4, 2, 0.55) 0%, rgba(6, 4, 2, 0) 22%, rgba(6, 4, 2, 0) 55%, rgba(6, 4, 2, 0.75) 100%);
+  z-index: 15;
+  font: 13px/1.4 system-ui, sans-serif;
+  color: #e8dcc8;
+}
+
+/* Below the village panel, which keeps the top-left corner. */
+.hire-head {
+  margin-top: 64px;
+}
+
+.hire-head h2 {
+  margin: 0;
+  font: 700 34px/1.1 Georgia, serif;
+  letter-spacing: 0.06em;
+  color: #f3d79a;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 #000;
+}
+
+.hire-head span {
+  font: 400 20px/1.2 Georgia, serif;
+  letter-spacing: 0.08em;
+  color: #e8dcc8;
+  text-shadow: 0 2px 0 #000;
+}
+
+.hire-cards {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.hire-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 200px;
+  padding: 12px;
+  text-align: center;
+  background: rgba(14, 10, 8, 0.92);
+  border: 2px solid #6a4a28;
+  box-shadow: 0 0 0 2px #1a1008;
+}
+
+.hire-card.chosen {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 2px #1a1008,
+    0 0 16px rgba(255, 190, 90, 0.5);
+}
+
+.hire-card.with {
+  background: rgba(30, 24, 12, 0.94);
+}
+
+.hire-card b {
+  font: 700 20px/1.2 Georgia, serif;
+  color: #f4e6cf;
+}
+
+.hire-kit {
+  font: 700 12px/1 system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hire-icon img {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+
+.hire-card small {
+  min-height: 34px;
+  color: #a8a2b0;
+}
+
+.hire-act {
+  min-height: 48px;
+  width: 100%;
+  font: 700 14px/1 Georgia, serif;
+  color: #f3d79a;
+  background: linear-gradient(180deg, #4a2e18, #2a1a0e);
+  border: 1px solid #8a6a3a;
+  cursor: pointer;
+}
+
+.hire-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  text-shadow: 0 1px 0 #000;
+}
+
+.hire-foot b {
+  color: var(--gold);
+}

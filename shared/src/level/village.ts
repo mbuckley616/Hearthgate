@@ -110,7 +110,7 @@ const villageDef: VillageDef = {
     // Each keeper stands inside their building now (Michael, 28 Oct), behind their counter, facing the door.
     { id: 'storekeeper', name: 'Aldous', x: 80, z: -2.9, facingYawDeg: 0, look: 'sword', building: 'store', line: "Fresh stock each morning, and I'll take anything off your hands for fair coin." },
     { id: 'warden', name: 'Marta', x: -80, z: -0.9, facingYawDeg: 0, look: 'bow', building: 'storehouse', line: "What you leave with me is safe whatever happens down there. Your pack is not: only its pocket comes home from a wipe." },
-    { id: 'innkeeper', name: 'Old Fenn', x: 0, z: 75.1, facingYawDeg: 0, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
+    { id: 'innkeeper', name: 'Old Fenn', x: 0, z: 75.1, facingYawDeg: 0, look: 'sword', building: 'tavern', line: 'Warm yourself by the fire. The three by the bar will go below with you, for coin; ask again to meet them.' },
   ],
   portal: { x: 0, z: -10.5, radius: 2.4 },
   interiors: [
