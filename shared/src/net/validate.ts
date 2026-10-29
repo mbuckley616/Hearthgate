@@ -6,6 +6,7 @@ import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
+import { readVillageSave } from '../game/villageSave';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
 
 /**
@@ -192,7 +193,10 @@ export function readToHost(v: unknown): ToHost | null {
   switch (v.k) {
     case 'hello': {
       const loadout = readLoadout(v.loadout);
-      return isNum(v.version) && loadout ? { k: 'hello', version: v.version, loadout } : null;
+      if (!isNum(v.version) || !loadout) return null;
+      if (v.village === undefined) return { k: 'hello', version: v.version, loadout };
+      const village = readVillageSave(v.village);
+      return village ? { k: 'hello', version: v.version, loadout, village } : null;
     }
     case 'input': {
       if (!Array.isArray(v.cmds) || v.cmds.length > MAX_CMDS_PER_MESSAGE) return null;

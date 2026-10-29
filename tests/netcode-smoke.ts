@@ -31,6 +31,7 @@ import { arena } from "@hearthgate/shared/level/arena";
 import { village } from "@hearthgate/shared/level/village";
 import { floorLevel, insidePiece, walkRoute, type FloorLayout } from "@hearthgate/shared/level/floor";
 import { floorSeed } from "@hearthgate/shared/level/generate";
+import { emptyVillage, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import { DUNGEONS } from "@hearthgate/shared/level/dungeons";
 import { tuning, tuningDefaults } from "@hearthgate/shared/config/tuning";
 import { ClientSession } from "../client/src/game/ClientSession";
@@ -51,8 +52,10 @@ async function main() {
   const bots: Bot[] = [];
   try {
     await waitForHealth(`http://127.0.0.1:${PORT}/health`);
-    const bot = async (name: string, code: string | null, create: "dungeon" | "village" = "dungeon") => {
-      const b = await new Bot(name, ENDPOINT).join(code, create);
+    const bot = async (name: string, code: string | null, create: "dungeon" | "village" = "dungeon", village: VillageSave | null = null) => {
+      const b = new Bot(name, ENDPOINT);
+      b.village = village;
+      await b.join(code, create);
       bots.push(b);
       return b;
     };
@@ -163,9 +166,17 @@ async function main() {
     bots.length = 0;
 
     // 8b. The village, its ring into a generated run, two floors walked, and home.
-    const va = await bot("Vale", null, "village");
-    const vb = await bot("Wren", va.code, "village");
+    // Each brings a village save of their own (P2); the room is Vale's, who made it.
+    const valeVillage = { ...emptyVillage("vale-test"), lumber: 10, stone: 5 };
+    const va = await bot("Vale", null, "village", valeVillage);
+    const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), lumber: 99 });
     const home = va.code;
+    await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren is told whose village");
+    check(
+      va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === 10 && vb.lastVillage()?.yours === false && vb.lastVillage()?.host === "Vale" && vb.lastVillage()?.village.lumber === 10,
+      "the village is its maker's save: theirs to keep, shown to a visitor as the host's",
+      JSON.stringify({ vale: va.lastVillage(), wren: vb.lastVillage() }),
+    );
     check(va.kind === "village" && va.state.enemies.length === 0 && va.state.run.phase === "ante", "a village: no enemies, no run", `code ${home}`);
     check(va.snaps[va.snaps.length - 1].portals[0]?.to === "dungeon", "the village's ring is open and leads into a dungeon");
     // Small floors from a fixed seed, so the walk is short and the same every time.
@@ -203,6 +214,16 @@ async function main() {
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
     check(va.kind === "village" && va.code === home && vb.code === home, "the ring home takes both to the same village", va.code);
     check(va.state.players.length === 2, "both stand in the village again");
+    // What each floor banked (every player's banked event carries the party's lumber and stone).
+    const banked = new Map<number, { lumber: number; stone: number }>();
+    for (const e of va.events) if (e.kind === "banked") banked.set(e.floor, { lumber: e.lumber, stone: e.stone });
+    const grew = [...banked.values()].reduce((s, b) => ({ lumber: s.lumber + b.lumber, stone: s.stone + b.stone }), { lumber: 10, stone: 5 });
+    await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren sees the village again");
+    check(
+      va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === grew.lumber && va.lastVillage()?.village.stone === grew.stone && vb.lastVillage()?.village.lumber === grew.lumber && vb.lastVillage()?.yours === false,
+      "the run's banks grew the host's village, and both see it",
+      `${grew.lumber} lumber, ${grew.stone} stone over ${banked.size} banks`,
+    );
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();

@@ -10,6 +10,7 @@ import { Client, type Room } from "colyseus.js";
 import { tuning } from "@hearthgate/shared/config/tuning";
 import type { PortalState } from "@hearthgate/shared/game/portal";
 import type { FloorSpec } from "@hearthgate/shared/level/generate";
+import type { VillageSave } from "@hearthgate/shared/game/villageSave";
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
@@ -75,6 +76,8 @@ export class Bot {
 
   /** Every event the server sent, in order (the Phase 1 gate counts combos, downs and revives from it). */
   events: SimEvent[] = [];
+  /** A village save of our own, said in the hello when joining a village (P2); none unless a test gives one. */
+  village: VillageSave | null = null;
 
   constructor(
     readonly name: string,
@@ -132,7 +135,16 @@ export class Bot {
     room.onLeave((c) => {
       if (this.room === room) this.closedWith = c;
     });
-    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: this.kit });
+    this.send({ k: "hello", version: PROTOCOL_VERSION, loadout: this.kit, ...(room.name === "village" && this.village ? { village: this.village } : {}) });
+  }
+
+  /** The village message the room we are in sent last (P2), or undefined. */
+  lastVillage(): Extract<ToPeer, { k: "village" }> | undefined {
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      const m = this.messages[i];
+      if (m.k === "village") return m;
+    }
+    return undefined;
   }
 
   send(msg: ToHost | Record<string, unknown>) {

@@ -4,7 +4,8 @@ import { tuning } from "@hearthgate/shared/config/tuning";
 import { HostSession } from "@hearthgate/shared/game/HostSession";
 import type { PortalTo } from "@hearthgate/shared/game/portal";
 import { buildWorld, type LevelDef } from "@hearthgate/shared/level/arena";
-import type { LevelKind, ToPeer } from "@hearthgate/shared/net/protocol";
+import type { LevelKind, ToHost, ToPeer } from "@hearthgate/shared/net/protocol";
+import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { readToHost } from "@hearthgate/shared/net/validate";
 import { createCommandBucket, takeCommands, type CommandBucket } from "./bucket.js";
 
@@ -62,6 +63,10 @@ export abstract class HostRoom extends Room {
   protected abstract onPortal(to: PortalTo): void;
   /** A player asked to go home from a finished floor (D10); only a floor answers. */
   protected onHome(_client: Client): void {}
+  /** A player's hello, after the session has taken it (P2: the village reads its save). */
+  protected onHello(_client: Client, _msg: Extract<ToHost, { k: "hello" }>): void {}
+  /** What a tick did (P2: a floor pays its banks to the village it came from). */
+  protected onEvents(_events: readonly SimEvent[]): void {}
 
   onCreate(options: Record<string, unknown> = {}) {
     this.roomId = newCode();
@@ -97,6 +102,7 @@ export abstract class HostRoom extends Room {
         }
       }
       this.host.onMessage(client.sessionId, msg);
+      if (msg.k === "hello") this.onHello(client, msg);
       if (msg.k === "tune") tuningVersion++;
     });
 
@@ -185,7 +191,8 @@ export abstract class HostRoom extends Room {
     try {
       while (this.owed >= step) {
         this.owed -= step;
-        this.host.tick();
+        const events = this.host.tick();
+        if (events.length > 0) this.onEvents(events);
       }
       if (this.sentTuning !== tuningVersion) {
         this.sentTuning = tuningVersion;

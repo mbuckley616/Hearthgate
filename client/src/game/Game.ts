@@ -42,6 +42,7 @@ import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
+import { VillagePanel } from '../ui/VillagePanel';
 import { Settings } from '../ui/Settings';
 import { TitleScreen } from '../ui/TitleScreen';
 import { TalkUi } from '../ui/TalkUi';
@@ -104,12 +105,14 @@ export class Game {
   private telegraphs: TelegraphView;
   private readonly runUi = new RunUi();
   private readonly summary = new RunSummary();
-  /** Whether this browser opened its first room as a village of its own (Play), not a friend's by code. */
-  private readonly opensVillage: boolean;
-  /** That village's code once joined: lumber and stone banked on its runs are kept here (P1). */
-  private ownVillage: string | null = null;
-  /** The village the current run set out from, and the run's tally so far; null outside a run. */
-  private runHome: string | null = null;
+  /**
+   * Whether the village the party is in, or last set out from, is this browser's own (its room says
+   * so, P2): lumber and stone banked on its runs are added to the save here as they are banked.
+   */
+  private homeIsOurs = false;
+  private readonly villagePanel = new VillagePanel();
+  private shownVillage = -1;
+  /** The run's tally so far; null outside a run. */
   private tally: RunTally | null = null;
   private lastKind = '';
   private readonly drops = new DropView();
@@ -150,8 +153,8 @@ export class Game {
     // ?hand=NAME plays a hand-built dungeon from this browser or the game's own (the editor's Play, T4b).
     const hand = params.has('hand') ? findDungeon(params.get('hand')!) : null;
     const floorOptions = { seed: num('seed') ?? Math.floor(Math.random() * 1e9), pieces: num('pieces'), floors: num('floors'), floor: num('at'), ...(hand ? { hand } : {}) };
-    this.opensVillage = !join && create === 'village';
     this.session = new ClientSession(join ? join.toUpperCase() : null, this.profile.loadout(), undefined, create, create === 'floor' ? floorOptions : {});
+    this.session.setVillageSave(this.profile.village);
     this.builtWorld = this.world;
     setLookMood(this.session.kind);
 
@@ -364,18 +367,16 @@ export class Game {
 
   /**
    * A run is village to village (P1): leaving a village for a floor starts its tally, and the first
-   * village after it shows the summary. The village we opened ourselves is where our lumber goes.
+   * village after it shows the summary. Lumber and stone go to our own village, as its room said it was.
    */
   private runTally(kind: string): void {
     if (kind === 'village') {
-      if (this.opensVillage && this.ownVillage === null) this.ownVillage = this.session.code;
       if (this.tally && (this.tally.banked > 0 || this.tally.lost > 0 || this.tally.deepest > 0)) this.summary.show(this.tally);
       this.tally = null;
-      this.runHome = this.session.code;
     } else if (kind === 'floor') {
       if (this.lastKind === 'village' || !this.tally) {
         this.tally = newTally();
-        this.tally.ownVillage = this.runHome !== null && this.runHome === this.ownVillage;
+        this.tally.ownVillage = this.homeIsOurs;
       }
       const spec = this.world.level.dungeon?.def.spec;
       if (spec) {
@@ -540,6 +541,7 @@ export class Game {
       this.presentTime,
     );
     this.propView?.update(world.floor, this.presentTime);
+    this.syncVillage();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
@@ -764,6 +766,24 @@ export class Game {
       this.profile.save();
       this.session.keepLoadout(this.profile.loadout());
     }
+  }
+
+  /**
+   * The village room's word on its village (P2): show it to everyone there, and keep it when it is
+   * this browser's own. Its banks were added to the save as they happened; the room's count, which
+   * has them too, replaces it.
+   */
+  private syncVillage(): void {
+    if (this.session.villageVersion === this.shownVillage) return;
+    this.shownVillage = this.session.villageVersion;
+    const v = this.session.village;
+    this.villagePanel.show(v);
+    if (!v) return;
+    this.homeIsOurs = v.yours;
+    if (!v.yours) return;
+    this.profile.village = { id: this.profile.village.id, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };
+    this.profile.save();
+    this.session.setVillageSave(this.profile.village);
   }
 
   /** Re-send saved levels, talents and gear to the fight (refill = full health, between runs). */

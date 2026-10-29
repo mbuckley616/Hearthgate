@@ -1061,6 +1061,11 @@ export const tuning = {
     crescendoDamage: 2,
   },
 
+  /** The host's village (P2, P4): its four starting buildings go up to this tier in Phase 2. */
+  village: {
+    maxTier: 4,
+  },
+
   loop: {
     depthBonus: 0.3,
     coinPerRoom: 12,
@@ -1943,6 +1948,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'flow.tier1Speed': [0, 0.3, 0.01],
   'flow.harmonyBonus': [0, 1, 0.05],
   'flow.crescendoDamage': [1, 5, 0.1],
+  'village.maxTier': [1, 10, 1],
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],
