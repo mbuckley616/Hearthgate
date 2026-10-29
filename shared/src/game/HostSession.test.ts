@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { tuning, tuningDefaults } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
+import { floorLevel } from '../level/floor';
 import { PROTOCOL_VERSION, type ToPeer } from '../net/protocol';
 import type { Loadout } from '../sim/coop';
 import { emptyMods } from '../sim/gear';
@@ -264,5 +265,24 @@ describe('what the slice’s host did itself', () => {
     host.onMessage('a', { k: 'restart' });
     expect(host.sim.run.phase).toBe('ante');
     expect(player('p1').hp).toBe(player('p1').maxHp);
+  });
+});
+
+describe('a change of gear', () => {
+  it('heals in the antechamber between runs, but never on a floor between its fights (playtest, 29 Oct)', () => {
+    const arenaHost = new HostSession(world, () => {}, true);
+    arenaHost.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout: loadout('a') });
+    const a = arenaHost.sim.players[0];
+    a.hp = 40;
+    arenaHost.onMessage('a', { k: 'loadout', loadout: loadout('a') });
+    expect(a.hp).toBe(a.maxHp);
+
+    const floorHost = new HostSession(buildWorld(floorLevel({ seed: 7, pieces: 14, floor: 1, floors: 3 })), () => {}, true);
+    floorHost.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout: loadout('a') });
+    const f = floorHost.sim.players[0];
+    expect(floorHost.sim.run.phase).toBe('ante');
+    f.hp = 40;
+    floorHost.onMessage('a', { k: 'loadout', loadout: loadout('a') });
+    expect(f.hp).toBe(40);
   });
 });

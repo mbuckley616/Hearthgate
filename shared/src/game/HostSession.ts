@@ -139,7 +139,9 @@ export class HostSession {
           const kept = p.champion?.slots;
           l.champion = { xp: l.champion.xp, ranks: l.champion.ranks, ...(kept ? { slots: [...kept] } : {}) };
         }
-        applyLoadout(p, l, this.sim.run.phase === 'ante');
+        // Between runs a change of gear comes with full health; on a floor the phase is ante between fights
+        // too, so wearing something there was a free heal (playtest, 29 Oct).
+        applyLoadout(p, l, this.sim.run.phase === 'ante' && !this.sim.floor);
         break;
       }
       case 'restart':
