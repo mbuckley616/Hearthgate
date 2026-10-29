@@ -6,6 +6,7 @@ import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
 import { createEnemy } from './enemies';
 import { stepPotions } from './smash';
+import { difficultyMult } from '../game/portalChoice';
 import type { EnemyKind } from '../config/tuning';
 import type { GearItem } from './catalogue';
 import type { Item } from './gear';
@@ -144,8 +145,9 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
 
 /** What a floor pays over the first: depthBonus more for each floor deeper (P1). */
 export function depthMult(world: World): number {
-  const floor = world.level.dungeon?.def.spec.floor ?? 1;
-  return 1 + tuning.loop.depthBonus * (floor - 1);
+  const spec = world.level.dungeon?.def.spec;
+  // A harder portal (P7) pays as much more as it sends.
+  return (1 + tuning.loop.depthBonus * ((spec?.floor ?? 1) - 1)) * difficultyMult(spec?.difficulty);
 }
 
 /**
@@ -250,7 +252,8 @@ export function roomBudget(room: PieceInfo, floor: number, players: number): num
 function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'first' | 'reinforce'): number {
   const spec = world.level.dungeon!.def.spec;
   const share = part === 'first' ? tuning.dungeon.firstGroupShare : 1 - tuning.dungeon.firstGroupShare;
-  let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share));
+  // A harder portal (P7) fills every room more.
+  let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share * difficultyMult(spec.difficulty)));
   const big = room.kind !== 'small' && room.kind !== 'guard';
   // A guard room keeps at least two blades for every bow, so its archers have someone to hide behind.
   let archers = 0;

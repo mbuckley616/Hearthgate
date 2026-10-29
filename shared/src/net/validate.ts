@@ -7,6 +7,7 @@ import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type Ch
 import type { PlayerCommand } from '../sim/types';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
+import { readPortalChoice } from '../game/portalChoice';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
 
 /**
@@ -239,6 +240,10 @@ export function readToHost(v: unknown): ToHost | null {
     case 'sell': {
       const item = readGearItem(v.item);
       return item ? { k: 'sell', item } : null;
+    }
+    case 'portal': {
+      const choice = readPortalChoice(v.choice);
+      return choice ? { k: 'portal', choice } : null;
     }
     case 'upgrade':
       return BUILDINGS.includes(v.building as BuildingId) && isNum(v.coin) && v.coin >= 0 ? { k: 'upgrade', building: v.building as BuildingId, coin: Math.floor(v.coin) } : null;

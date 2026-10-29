@@ -45,6 +45,8 @@ import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { VillagePanel } from '../ui/VillagePanel';
 import { StoreScreen } from '../ui/StoreScreen';
 import { BankScreen } from '../ui/BankScreen';
+import { PortalScreen } from '../ui/PortalScreen';
+import { STORY, choiceLabel } from '@hearthgate/shared/game/portalChoice';
 import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
 import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
 import { Settings } from '../ui/Settings';
@@ -122,6 +124,8 @@ export class Game {
   /** How long talk has been held at a building's keeper, and whether this hold has already built (P4). */
   private holdS = 0;
   private holdDone = false;
+  /** A keeper spoken to a second time, acted on when talk is let go (secondTalk). */
+  private secondWord: string | null = null;
   /** The run's tally so far; null outside a run. */
   private tally: RunTally | null = null;
   private lastKind = '';
@@ -134,6 +138,8 @@ export class Game {
   private readonly store: StoreScreen;
   /** Marta's stash (P9), opened by a second F (or A) to her, in the village that is yours. */
   private readonly bank: BankScreen;
+  /** Keeper Wren's portal menu (P7), opened by a second F (or A) to her. */
+  private readonly portalMenu: PortalScreen;
   private readonly party: PartyUi;
   private saveTimer = 0;
   private readonly fx: FxView;
@@ -240,6 +246,18 @@ export class Game {
       () => this.atShrine(),
     );
     this.bank = new BankScreen(this.profile);
+    this.portalMenu = new PortalScreen(
+      (choice) => {
+        this.session.request({ k: 'portal', choice });
+        this.closeMenu();
+        this.talk.say('Keeper Wren', `There: the ring opens on ${choiceLabel(choice).replace(/^A /, 'a ')}. Step in together when you are ready.`);
+      },
+      (dungeon) => {
+        this.session.request({ k: 'destination', dungeon });
+        this.closeMenu();
+        this.talk.say('Keeper Wren', `There: the ring opens on ${dungeon.name}, as you laid it out.`);
+      },
+    );
     this.store = new StoreScreen(
       this.profile,
       (item) => this.session.request({ k: 'buy', uid: item.uid, coin: this.profile.data.coin }),
@@ -383,6 +401,7 @@ export class Game {
     this.equip.setVisible(false);
     this.store.setVisible(false);
     this.bank.setVisible(false);
+    this.portalMenu.setVisible(false);
     this.talk.clear();
     this.lastPhase = '';
     this.pending = Game.noPresses();
@@ -418,38 +437,49 @@ export class Game {
    * hand-built ones this browser can play). The server checks the layout and every ring follows.
    */
   private talkTo(near: Villager | null, pressed: boolean, held: boolean, dt: number): void {
+    // A second word to a keeper acts when talk is let go, so holding it to build (P4) is never taken
+    // for opening their menu: a hold that built does nothing on release.
+    const released = !held && this.secondWord !== null;
+    const built = this.holdDone;
     const hold = this.upgradeHold(near, held, dt);
+    if (near && pressed && near.building && this.talk.showing(near.name)) {
+      this.secondWord = near.id;
+      return this.talk.update(near, false, dt, hold);
+    }
+    if (released) {
+      const who = this.secondWord;
+      this.secondWord = null;
+      if (near && near.id === who && !built) this.secondTalk(near);
+      return this.talk.update(near, false, dt, hold);
+    }
     if (!near || !pressed) return this.talk.update(near, false, dt, hold);
     const about = near.building && this.session.village ? ` ${this.buildingWords(near.building, near.name)}` : '';
-    // A second word with Aldous opens his shop (P5), as a second with Wren turns her ring.
-    if (near.building === 'store' && this.talk.showing(near.name) && this.session.village) {
-      this.openStore();
-      return this.talk.update(near, false, dt, hold);
-    }
-    // And with Marta, the stash (P9): the owner's, kept with their own village until Phase 3.
-    if (near.building === 'storehouse' && this.talk.showing(near.name) && this.session.village) {
-      if (this.session.village.yours) this.openBank();
-      else this.talk.say(near.name, 'Your own things are kept in your own village’s storehouse, not this one.');
-      return this.talk.update(near, false, dt, hold);
-    }
-    if (near.id !== 'keeper') {
+    if (near.id === 'keeper') {
+      const NEW = 'A new dungeon';
+      const now = this.session.portals[0]?.label ?? NEW;
+      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will show you where else it can.${about}`);
+    } else {
       const again = near.building === 'store' ? ' Ask again to see the shelves.' : near.building === 'storehouse' && this.session.village?.yours ? ' Ask again to open the stash.' : '';
       this.talk.say(near.name, near.line + about + again);
-      return this.talk.update(near, false, dt, hold);
-    }
-    const NEW = 'A new dungeon';
-    const now = this.session.portals[0]?.label ?? NEW;
-    if (!this.talk.showing(near.name)) {
-      this.talk.say(near.name, `${near.line} Just now it opens on ${now === NEW ? 'a new dungeon, never walked before' : now}; ask again and I will turn it.${about}`);
-    } else {
-      const options = [null, ...playableDungeons()];
-      const at = options.findIndex((d) => (d?.name ?? NEW) === now);
-      const next = options[(at + 1) % options.length];
-      this.session.request({ k: 'destination', dungeon: next });
-      this.talk.say(near.name, `There: the ring opens on ${next ? next.name : 'a new dungeon, never walked before'}. Ask again for another.`);
     }
     this.talk.update(near, false, dt, hold);
   }
+
+  /** A second word to a building's keeper: Wren's portal menu (P7), Aldous's shop (P5), Marta's stash (P9). */
+  private secondTalk(near: Villager): void {
+    const v = this.session.village;
+    if (!v) return;
+    if (near.building === 'shrine') {
+      this.portalMenu.open(this.profile.data.storyCleared ?? [], v.view.tiers.shrine, playableDungeons());
+      this.kbm.exitPointerLock();
+      this.updateOverlay();
+    } else if (near.building === 'store') this.openStore();
+    else if (near.building === 'storehouse') {
+      if (v.yours) this.openBank();
+      else this.talk.say(near.name, 'Your own things are kept in your own village’s storehouse, not this one.');
+    }
+  }
+
 
   /**
    * A building's keeper on its tier (P4): what it gives now and what the next would, at what price,
@@ -503,6 +533,13 @@ export class Game {
     const me = this.me();
     const wren = this.world.level.village?.villagers.find((n) => n.building === 'shrine');
     return !!me && !!wren && Math.hypot(me.x - wren.x, me.z - wren.z) < SHRINE_REACH;
+  }
+
+  /** Close Keeper Wren's menu and take the hero back. */
+  private closeMenu(): void {
+    this.portalMenu.setVisible(false);
+    this.kbm.requestPointerLock();
+    this.updateOverlay();
   }
 
   private openBank(): void {
@@ -605,6 +642,9 @@ export class Game {
       actions = emptyFrame();
     } else if (this.bank.visible) {
       this.bank.handle(actions, realDt);
+      actions = emptyFrame();
+    } else if (this.portalMenu.visible) {
+      this.portalMenu.handle(actions, realDt);
       actions = emptyFrame();
     }
 
@@ -915,6 +955,14 @@ export class Game {
       if (ev.kind === 'levelUp' && ev.playerId === localId) dirty = true;
       // The belt is the server's; it is saved as it changes so the next room starts with it (D4).
       if ((ev.kind === 'potionTaken' || ev.kind === 'drank') && ev.playerId === localId) dirty = true;
+      // A story dungeon won opens the next at Keeper Wren's (P7).
+      const story = this.world.level.dungeon?.def.spec.story;
+      if (ev.kind === 'runWon' && story && !(this.profile.data.storyCleared ?? []).includes(story)) {
+        (this.profile.data.storyCleared ??= []).push(story);
+        const at = STORY.findIndex((s) => s.id === story);
+        const next = STORY[at + 1];
+        this.hud.toast(`<b>${STORY[at]?.name ?? 'The dungeon'} cleared</b><span>${next ? `${next.name} is open at Keeper Wren's` : 'Every story dungeon so far is yours'}</span>`, 'level');
+      }
       if (ev.kind === 'runWon' || ev.kind === 'runLost') {
         this.profile.data.runs++;
         if (ev.kind === 'runWon') this.profile.data.wins++;
@@ -1020,6 +1068,10 @@ export class Game {
       this.closeStore();
       return;
     }
+    if (this.portalMenu.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
+      this.closeMenu();
+      return;
+    }
     if (this.bank.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
       if (this.bank.back()) {
         this.bank.setVisible(false);
@@ -1111,7 +1163,7 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.title?.visible && !this.wiped;
+    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.store?.visible && !this.bank?.visible && !this.portalMenu?.visible && !this.title?.visible && !this.wiped;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
 }

@@ -2,12 +2,13 @@ import type { Loadout } from '../sim/coop';
 import type { PortalState } from '../game/portal';
 import type { FloorSpec } from '../level/generate';
 import type { HandDungeon } from '../level/handmade';
+import type { PortalChoice } from '../game/portalChoice';
 import type { BuildingId, VillageSave, VillageView } from '../game/villageSave';
 import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 13;
+export const PROTOCOL_VERSION = 14;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -43,6 +44,8 @@ export type ToHost =
   | { k: 'cheat'; cheat: Cheat }
   /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */
   | { k: 'destination'; dungeon: HandDungeon | null }
+  /** Keeper Wren's menu (P7): a story dungeon or a random one; the village's room checks it against its shrine. */
+  | { k: 'portal'; choice: PortalChoice }
   /**
    * The village's owner raises a building a tier (P4), saying how much coin their save holds: coin
    * is the player's, in their browser until Phase 3, so the room takes their word for it.

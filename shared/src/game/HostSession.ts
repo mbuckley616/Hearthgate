@@ -2,6 +2,7 @@ import { applyTuningEdit, tuningEdits } from '../config/edits';
 import { tuning } from '../config/tuning';
 import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
+import { choiceLabel, type PortalChoice } from './portalChoice';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
 import { dropFromBag } from '../sim/drops';
@@ -54,6 +55,8 @@ export class HostSession {
   private portalTaken = false;
   /** Where the village's ring leads (T4b): a hand-built dungeon Keeper Wren was asked for, or null for a generated run. */
   destination: HandDungeon | null = null;
+  /** What Keeper Wren's menu chose (P7), set by the village's room; it leads the ring over `destination`. */
+  choice: PortalChoice | null = null;
 
   constructor(
     private readonly world: World,
@@ -148,7 +151,13 @@ export class HostSession {
         break;
       case 'destination':
         // Anyone in the village may ask Keeper Wren; the whole party's ring follows.
-        if (this.world.level.village) this.destination = msg.dungeon;
+        if (this.world.level.village) {
+          this.destination = msg.dungeon;
+          this.choice = null;
+        }
+        break;
+      case 'portal':
+        // The village's room checks the choice against its shrine and sets `choice` (P7).
         break;
       case 'cheat':
         if (this.cheats && !this.world.level.village) this.cheat(msg.cheat, r.id, !!this.world.level.dungeon);
@@ -271,7 +280,7 @@ export class HostSession {
 
   /** The words over a ring: where it leads. */
   private ringLabel(to: PortalTo): string {
-    if (to === 'dungeon') return this.destination?.name ?? 'A new dungeon';
+    if (to === 'dungeon') return this.choice ? choiceLabel(this.choice) : (this.destination?.name ?? 'A new dungeon');
     return to === 'deeper' ? 'Deeper' : 'Home';
   }
 

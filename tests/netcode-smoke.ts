@@ -258,6 +258,16 @@ async function main() {
     await vb.until(() => vb.messages.some((m) => m.k === "sold"), 2000, "Wren's sale");
     const sold = vb.messages.find((m) => m.k === "sold");
     check(sold?.k === "sold" && sold.uid === "wren-1" && sold.coin === sellPrice(want), "Aldous buys it back at his price", JSON.stringify(sold));
+    // P7: Keeper Wren's menu. The shrine is tier 1 here, so Hard is refused and Normal is taken.
+    const ringLabel = () => va.snaps[va.snaps.length - 1].portals[0]?.label;
+    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 2 } });
+    await va.drive(10);
+    check(ringLabel() !== "A small dungeon, 2 floors, Hard", "a difficulty past the shrine's tier is refused", ringLabel());
+    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 1 } });
+    await va.until(() => ringLabel() === "A small dungeon, 2 floors, Normal", 2000, "the ring takes the random choice");
+    va.send({ k: "portal", choice: { kind: "story", id: "mossgate" } });
+    await va.until(() => ringLabel() === "Mossgate Barrow", 2000, "the ring takes the story choice");
+    check(true, "anyone may choose at Wren's: a random dungeon, then a story one, and the ring says so");
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();
