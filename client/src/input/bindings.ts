@@ -18,6 +18,8 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   ability2: ['KeyE', 'Digit2'],
   // The off-hand's ability (C4): 3, or R beside Q and E.
   ability3: ['KeyR', 'Digit3'],
+  // A health potion (D4): G, or 4 after the three abilities.
+  drink: ['KeyG', 'Digit4'],
   tab1: ['Digit1'],
   tab2: ['Digit2'],
   tab3: ['Digit3'],
@@ -63,6 +65,7 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   ability1: [4], // LB
   ability2: [5], // RB
   ability3: [7], // RT / R2, the off-hand's
+  drink: [14], // d-pad left, off the hero screen (D4)
   lockOn: [11], // right stick click
   tab1: [14], // d-pad left, on the hero screen
   tab2: [12], // d-pad up

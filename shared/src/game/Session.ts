@@ -35,6 +35,7 @@ const PRESSES = { dodge: false, attack: false, jump: false, swapTo: null, abilit
 export function withoutPresses(cmd: PlayerCommand): PlayerCommand {
   const out = { ...cmd, ...PRESSES };
   delete out.ability3;
+  delete out.drink;
   return out;
 }
 
@@ -48,6 +49,7 @@ export function mergePresses(a: PlayerCommand, b: PlayerCommand): PlayerCommand 
     ability1: a.ability1 || b.ability1,
     ability2: a.ability2 || b.ability2,
     ...(a.ability3 || b.ability3 ? { ability3: true } : {}),
+    ...(a.drink || b.drink ? { drink: true } : {}),
     swapTo: b.swapTo ?? a.swapTo,
   };
 }

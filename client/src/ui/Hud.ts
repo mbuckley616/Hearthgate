@@ -34,6 +34,9 @@ export class Hud {
   private down = document.createElement('div');
   /** Revive Draughts carried on this floor (Hearthgate's downs, T5). */
   private draught = document.createElement('div');
+  /** Health potions on the belt and the key that drinks one (D4). */
+  private potion = document.createElement('div');
+  private shownPotions = -1;
   private hits = 0;
   private sinceHit = Infinity;
   private hurtFlash = 0;
@@ -60,6 +63,7 @@ export class Hud {
     const bars = document.createElement('div');
     bars.className = 'hud-bars';
     this.draught.className = 'hud-draught';
+    this.potion.className = 'hud-potion';
     this.flow.className = 'hud-flow';
     this.flowFill.className = 'hud-flow-fill';
     this.flowLabel.className = 'hud-flow-label';
@@ -73,7 +77,7 @@ export class Hud {
     xpTrack.className = 'hud-level-track';
     xpTrack.appendChild(this.levelXp);
     this.level.append(this.levelText, xpTrack);
-    bars.append(this.level, hp, this.flow, this.pips, this.draught);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -162,6 +166,9 @@ export class Hud {
       }
       if (ev.kind === 'banked' && ev.playerId === localId && (ev.items.length > 0 || ev.coin > 0)) {
         this.toast(`<b>Banked ${ev.items.length} find${ev.items.length === 1 ? '' : 's'}</b><span>+${ev.coin} coin  ·  floor ${ev.floor}</span>`, 'level');
+      }
+      if (ev.kind === 'potionTaken' && ev.playerId === localId) {
+        this.toast(`<b class="potion">Health potion</b><span>${ev.potions} on your belt  ·  G, 4 or d-pad left to drink</span>`, 'common');
       }
       if (ev.kind === 'findsLost' && ev.playerId === localId) {
         this.toast(`<b>Lost ${ev.count} unbanked find${ev.count === 1 ? '' : 's'}</b><span>Bank them in a rest room next time</span>`, 'common');
@@ -279,6 +286,12 @@ export class Hud {
     }
     this.draught.style.display = p.draughts === undefined ? 'none' : 'block';
     if (p.draughts !== undefined) this.draught.textContent = `Revive Draught ×${p.draughts}`;
+    const potions = p.potions ?? 0;
+    if (potions !== this.shownPotions) {
+      this.shownPotions = potions;
+      this.potion.style.display = potions > 0 ? 'block' : 'none';
+      this.potion.innerHTML = `Health potion ×${potions} <kbd>G</kbd>`;
+    }
   }
 
   /** Short word under the crosshair for a parry or a broken guard. */

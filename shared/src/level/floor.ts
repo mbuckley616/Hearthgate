@@ -61,6 +61,21 @@ export interface FloorLayout {
   /** Wall torches, (x, z) on the wall's inner face, facing into the piece. */
   torches: { x: number; y: number; z: number; facingYawDeg: number }[];
   bounds: Rect;
+  /** Things to smash (D4), by id: placed from the floor's seed, so every browser has the same. */
+  props: PropInfo[];
+}
+
+export type PropKind = 'crate' | 'barrel' | 'urn';
+
+/** A crate, barrel or urn against a wall (D4). Which ones are broken is the sim's (`SimState.floor.broken`). */
+export interface PropInfo {
+  id: number;
+  kind: PropKind;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  piece: number;
 }
 
 /** The floor generated from a spec, as a level the sim runs. */
@@ -79,6 +94,8 @@ export function levelFromFloor(def: FloorDef): LevelDef {
   const pieces = def.pieces.map(pieceInfo);
   const torches: FloorLayout['torches'] = [];
   for (const info of pieces) torches.push(...torchesFor(info, def.pieces[info.id]));
+  const props: PropInfo[] = [];
+  for (const info of pieces) propsFor(info, def.spec.seed, props);
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -108,7 +125,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds },
+    dungeon: { def, pieces, torches, bounds, props },
   };
 }
 
@@ -158,6 +175,49 @@ function spotsFor(info: PieceInfo): { x: number; z: number }[] {
     }
   }
   return out;
+}
+
+/** A prop's distance from the wall it stands against, and the gap along the wall between places for one (m). */
+const PROP_INSET = 0.8;
+const PROP_STEP = 2;
+/** The share of places along a wall that get a prop: rooms more than halls. */
+const PROP_ROOM_SHARE = 0.13;
+const PROP_HALL_SHARE = 0.08;
+
+/** A number in [0, 1) from the floor's seed, a piece and a place in it: the same in every browser and on the server. */
+function propHash(seed: number, piece: number, k: number): number {
+  let h = (seed ^ Math.imul(piece + 1, 0x9e3779b1) ^ Math.imul(k + 1, 0x85ebca6b)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * Crates, barrels and urns against a piece's inner walls (D4), clear of doorways, pillars and
+ * braziers so they never block a way through. None on a staircase or in the rest room. They do not
+ * block movement: standing against the walls, nobody needs to walk through them.
+ */
+function propsFor(info: PieceInfo, seed: number, out: PropInfo[]): void {
+  if (info.kind === 'stair' || info.kind === 'rest' || info.y !== info.top) return;
+  const share = KIT[info.kind].room ? PROP_ROOM_SHARE : PROP_HALL_SHARE;
+  const i = info.inner;
+  let k = 0;
+  for (const side of ['n', 'e', 's', 'w'] as Side[]) {
+    const ns = side === 'n' || side === 's';
+    const lo = (ns ? i.minX : i.minZ) + 0.9;
+    const hi = (ns ? i.maxX : i.maxZ) - 0.9;
+    for (let along = lo; along <= hi + 1e-6; along += PROP_STEP, k++) {
+      const x = ns ? along : side === 'w' ? i.minX + PROP_INSET : i.maxX - PROP_INSET;
+      const z = ns ? (side === 'n' ? i.minZ + PROP_INSET : i.maxZ - PROP_INSET) : along;
+      if (propHash(seed, info.id, k) >= share) continue;
+      if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3)) continue;
+      if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1)) continue;
+      if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
+      const pick = propHash(seed ^ 0x5bd1e995, info.id, k);
+      const kind: PropKind = pick < 0.45 ? 'crate' : pick < 0.8 ? 'barrel' : 'urn';
+      out.push({ id: out.length, kind, x, y: info.y, z, yaw: propHash(seed ^ 0x1b873593, info.id, k) * Math.PI * 2, piece: info.id });
+    }
+  }
 }
 
 /** Torches on a piece's walls: every other wall cell in a room, one per cell in a hall, never over a doorway. */

@@ -204,6 +204,11 @@ export class ClientSession implements Session {
     }
   }
 
+  /** The loadout the next room's hello carries, without telling this room (D4: the potion belt). */
+  keepLoadout(loadout: Loadout): void {
+    this.loadout = loadout;
+  }
+
   setLoadout(loadout: Loadout, refill: boolean): void {
     this.loadout = loadout;
     if (this.me) applyLoadout(this.me, loadout, refill);

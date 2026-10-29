@@ -4,6 +4,7 @@ import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
 import type { FloorRunState } from './floorRun';
 import type { FlowState } from './flow';
+import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
 
 /**
@@ -94,6 +95,10 @@ export interface PlayerState {
   flow?: FlowState;
   /** Seconds until the off-hand's ability is ready again (C4). */
   offhandCooldown?: number;
+  /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
+  potions?: number;
+  /** Seconds until another potion can be drunk (D4). */
+  potionCooldown?: number;
   /** The step of a weapon family's chain (C5); attackHit is then the style's step whose pose it borrows. */
   attackStep?: number;
   /** A tome's ward on this hero (C5): hits it will absorb, until sim time. */
@@ -381,6 +386,12 @@ export type SimEvent =
   | { kind: 'playerLeft'; playerId: string; name: string }
   /** Walked over, or handed over when a run ends. On a generated floor it is only carried until banked (P1). */
   | { kind: 'pickup'; playerId: string; item: Item | GearItem; carried?: boolean }
+  /** A hero's blow broke a crate, barrel or urn (D4): what it gave the floor, and whether a potion rolled out. */
+  | { kind: 'smashed'; playerId: string; prop: number; propKind: PropKind; x: number; y: number; z: number; lumber: number; stone: number; potion: boolean }
+  /** A hero picked up a potion (D4); potions is how many they now carry. */
+  | { kind: 'potionTaken'; playerId: string; potions: number }
+  /** A hero drank a potion (D4). */
+  | { kind: 'drank'; playerId: string; potions: number }
   /** A string move fired (C1): its key, and its charge level (0 for a light string's own move). */
   | { kind: 'stringMove'; playerId: string; move: string; charge: number }
   /**
@@ -472,6 +483,8 @@ export interface PlayerCommand {
   ability2: boolean;
   /** The off-hand's ability pressed (C4: 3, R or RT). Absent in the slice. */
   ability3?: boolean;
+  /** Drink a health potion pressed (D4: G, 4 or d-pad left). Absent in the slice. */
+  drink?: boolean;
   /** Locked-on enemy id, or -1. Soft targeting prefers it. */
   lockTarget: number;
   /** Jump pressed since the last tick. */

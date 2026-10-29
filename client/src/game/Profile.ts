@@ -64,6 +64,8 @@ export interface ProfileData {
   coin: number;
   /** Shown to other players in co-op. */
   name: string;
+  /** Health potions on the belt (D4): the server's count, saved so the next room starts with them. */
+  potions?: number;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -332,12 +334,22 @@ export class Profile {
     const mods = wornMods(this.data.worn);
     const ranks = { ...this.champion.ranks };
     for (const id of CHAMPION_IDS) if ((ranks[id] ?? 0) > championMaxRanks(id)) ranks[id] = championMaxRanks(id);
-    return { name: this.data.name || 'Player', xp: { ...this.data.xp }, talents, mods, maxHp: tuning.combat.heroMaxHp + mods.maxHp, look: lookOf(this.data.worn), champion: { xp: this.champion.xp, ranks, slots: (this.champion.slots ?? []).slice(0, slotCount()) } };
+    return {
+      name: this.data.name || 'Player',
+      xp: { ...this.data.xp },
+      talents,
+      mods,
+      maxHp: tuning.combat.heroMaxHp + mods.maxHp,
+      look: lookOf(this.data.worn),
+      champion: { xp: this.champion.xp, ranks, slots: (this.champion.slots ?? []).slice(0, slotCount()) },
+      ...(this.data.potions ? { potions: this.data.potions } : {}),
+    };
   }
 
   /** Pull XP earned in the sim back into the profile. */
   syncFrom(p: PlayerState): void {
     this.data.xp = { ...p.xp };
     if (p.champion) this.champion.xp = p.champion.xp;
+    this.data.potions = p.potions ?? 0;
   }
 }

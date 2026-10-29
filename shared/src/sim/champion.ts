@@ -98,7 +98,7 @@ export function championText(id: ChampionId): string {
     case 'will':
       return `-${pct(v)} ability cooldowns`;
     case 'lightstep':
-      return `-${pct(v)} dodge recharge`;
+      return `-${pct(v)} dodge recharge, -${tuning.champion.lightstepCancelMsPerRank} ms dodge recovery`;
     case 'stride':
       return `+${pct(v)} move speed`;
   }
@@ -212,6 +212,12 @@ export const championRevive = (p: PlayerState) => gain(p, 'steady');
 export const championCooldown = (p: PlayerState) => gain(p, 'will');
 export const championRecharge = (p: PlayerState) => gain(p, 'lightstep');
 export const championSpeed = (p: PlayerState) => gain(p, 'stride');
+
+/** Milliseconds Light step takes off a roll's recovery (D9). */
+export function championRecovery(p: PlayerState): number {
+  const rank = Math.min(championMaxRanks('lightstep'), p.champion?.ranks.lightstep ?? 0);
+  return rank > 0 ? rank * tuning.champion.lightstepCancelMsPerRank : 0;
+}
 
 /** A slotted perk is working: in one of the hero's slots, and its constellation holds the points to open it. */
 export function slotted(p: PlayerState | undefined, id: SlottedId): boolean {

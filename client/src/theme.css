@@ -740,3 +740,33 @@ body.on-title .run-banner {
   border: 1px solid var(--muted);
   border-radius: 3px;
 }
+
+/* Health potions (D4): the belt under the draughts, and the words a smashed prop floats up. */
+.hud-potion {
+  display: none;
+  margin-top: 6px;
+  font: 600 11px/1 ui-monospace, Consolas, monospace;
+  color: #ff8a9a;
+  text-shadow: 0 1px 0 #000;
+}
+
+.hud-potion kbd {
+  font: inherit;
+  color: #fff4dc;
+  border: 1px solid #fff4dc66;
+  padding: 0 3px;
+}
+
+.hud-toast b.potion {
+  color: #ff8a9a;
+}
+
+.damage-number.loot {
+  font-size: 13px;
+  color: #e8c68a;
+}
+
+.damage-number.potion {
+  font-size: 15px;
+  color: #ff8a9a;
+}

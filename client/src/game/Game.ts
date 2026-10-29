@@ -21,6 +21,7 @@ import { Nameplate } from '../render/Nameplate';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
 import { FloorView } from '../render/FloorView';
+import { PropView } from '../render/PropView';
 import { RoomView } from '../render/RoomView';
 import { PortalView } from '../render/PortalView';
 import { VillageView } from '../render/VillageView';
@@ -112,6 +113,8 @@ export class Game {
   private tally: RunTally | null = null;
   private lastKind = '';
   private readonly drops = new DropView();
+  /** A generated floor's crates, barrels and urns, and the potions out of them (D4); null elsewhere. */
+  private propView: PropView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
   private readonly party: PartyUi;
@@ -158,6 +161,7 @@ export class Game {
     this.palette = new Palette(this.gfx.envMap);
     this.room = this.buildRoomView();
     this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
+    this.buildPropView();
     this.enemies = new EnemiesView(this.palette);
     this.telegraphs = new TelegraphView(this.world);
     this.hero = new HeroView(this.palette);
@@ -302,6 +306,17 @@ export class Game {
     return this.session.world;
   }
 
+  /** The props of the floor the session is on, in place of the last floor's. */
+  private buildPropView(): void {
+    if (this.propView) {
+      this.gfx.scene.remove(this.propView.group);
+      disposeTree(this.propView.group);
+    }
+    const props = this.world.level.dungeon?.props;
+    this.propView = props ? new PropView(props) : null;
+    if (this.propView) this.gfx.scene.add(this.propView.group);
+  }
+
   private buildRoomView(): RoomView | VillageView | FloorView {
     if (this.world.level.village) return new VillageView(this.world, this.palette);
     return this.world.level.dungeon ? new FloorView(this.world) : new RoomView(this.world);
@@ -324,6 +339,7 @@ export class Game {
       this.ambient = new AmbientView(this.room.fireSources, level.floorSize / 2);
       this.telegraphs = new TelegraphView(this.world);
       this.gfx.scene.add(this.room.group, this.ambient.group, this.telegraphs.group);
+      this.buildPropView();
       // A generated floor is too big for one shadow map: the shadows follow the hero over a room's width instead.
       this.gfx.setLevel(level.dungeon ? 26 : level.floorSize / 2);
       if (!level.dungeon) this.gfx.followShadow(0, 0);
@@ -462,6 +478,8 @@ export class Game {
     if (actions.pressed.has('ability1')) this.pending.ability1 = true;
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
     if (actions.pressed.has('ability3')) this.pending.ability3 = true;
+    // The hero screen has the d-pad's left for its first tab.
+    if (actions.pressed.has('drink') && !this.equip.visible) this.pending.drink = true;
     // The hero fights with the weapon in hand (T5): after a change on the hero screen, or on joining, follow it.
     // Mid-fight the server holds the change until the fight is over (C3), so it is asked for again each tick.
     const meNow = this.me();
@@ -521,6 +539,7 @@ export class Game {
       world.drops.filter((d) => d.owner === localId),
       this.presentTime,
     );
+    this.propView?.update(world.floor, this.presentTime);
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
@@ -729,6 +748,8 @@ export class Game {
         dirty = true;
       }
       if (ev.kind === 'levelUp' && ev.playerId === localId) dirty = true;
+      // The belt is the server's; it is saved as it changes so the next room starts with it (D4).
+      if ((ev.kind === 'potionTaken' || ev.kind === 'drank') && ev.playerId === localId) dirty = true;
       if (ev.kind === 'runWon' || ev.kind === 'runLost') {
         this.profile.data.runs++;
         if (ev.kind === 'runWon') this.profile.data.wins++;
@@ -741,6 +762,7 @@ export class Game {
       this.saveTimer = 0;
       this.profile.syncFrom(p);
       this.profile.save();
+      this.session.keepLoadout(this.profile.loadout());
     }
   }
 
@@ -789,8 +811,8 @@ export class Game {
     };
   }
 
-  private static noPresses(): Pick<PlayerCommand, 'dodge' | 'attack' | 'jump' | 'swapTo' | 'ability1' | 'ability2' | 'ability3'> {
-    return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false, ability3: false };
+  private static noPresses(): Pick<PlayerCommand, 'dodge' | 'attack' | 'jump' | 'swapTo' | 'ability1' | 'ability2' | 'ability3' | 'drink'> {
+    return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false, ability3: false, drink: false };
   }
 
   private handleMetaActions(actions: ActionFrame): void {
@@ -869,6 +891,7 @@ export class Game {
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
           <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
           <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB; the off-hand's: 3 (or R) · RT</td></tr>
+          <tr><td>Health potion</td><td>G (or 4) · d-pad left</td></tr>
           <tr><td>Zoom</td><td>mouse wheel · - and = · d-pad up and down</td></tr>
           <tr><td>Lock on</td><td>T · middle click · right stick click (flick to switch)</td></tr>
           <tr><td>Weapon</td><td>one for the outing: choose it under Tab, outside a fight</td></tr>

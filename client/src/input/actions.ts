@@ -12,6 +12,8 @@ export const BUTTON_ACTIONS = [
   'ability2',
   // The off-hand's ability (C4).
   'ability3',
+  // Drink a health potion (D4).
+  'drink',
   // The hero screen's three tabs (C3: 1, 2 and 3 are abilities in a fight; the screen keeps them for its tabs).
   'tab1',
   'tab2',

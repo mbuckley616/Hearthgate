@@ -5,6 +5,7 @@ import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
 import { createEnemy } from './enemies';
+import { stepPotions } from './smash';
 import type { EnemyKind } from '../config/tuning';
 import type { GearItem } from './catalogue';
 import type { Item } from './gear';
@@ -36,10 +37,16 @@ export interface FloorRunState {
   rested: boolean;
   /** Finds picked up on this floor and not yet banked, by player (P1): a wipe loses them. */
   carried: Record<string, (Item | GearItem)[]>;
+  /** The props smashed so far (D4), by id in the layout's `props`. */
+  broken: number[];
+  /** Lumber and stone from smashing, the party's, banked with the floor or lost with it (D4). */
+  found: { lumber: number; stone: number };
+  /** Potions lying where a prop broke, by that prop's id (D4). */
+  potions: { id: number; x: number; y: number; z: number }[];
 }
 
 export function initialFloorRun(): FloorRunState {
-  return { room: -1, cleared: [], fights: 0, rested: false, carried: {} };
+  return { room: -1, cleared: [], fights: 0, rested: false, carried: {}, broken: [], found: { lumber: 0, stone: 0 }, potions: [] };
 }
 
 const active = (phase: string) => phase === 'intro' || phase === 'wave' || phase === 'rest';
@@ -124,6 +131,8 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
     }
   }
 
+  stepPotions(state);
+
   if (active(r.phase) && state.players.length > 0 && state.players.every((p) => p.mode === 'down')) {
     r.phase = 'lost';
     r.timer = 0;
@@ -151,11 +160,13 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
   const mult = depthMult(world);
   const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
   const coin = pay(l.coinPerRoom, l.bossCoin);
-  const lumber = pay(l.lumberPerRoom, l.bossLumber);
-  const stone = pay(l.stonePerRoom, l.bossStone);
+  // What the party smashed (D4) pays the deeper floors' bonus too.
+  const lumber = pay(l.lumberPerRoom, l.bossLumber) + Math.round(f.found.lumber * mult);
+  const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
   const floor = world.level.dungeon!.def.spec.floor;
   for (const p of state.players) state.events.push({ kind: 'banked', playerId: p.id, items: unbanked(state, p.id), coin, lumber, stone, floor });
   f.carried = {};
+  f.found = { lumber: 0, stone: 0 };
   // What a player put down themselves (D13) stays where it is.
   state.drops = state.drops.filter((d) => d.dropped);
 }
@@ -167,6 +178,7 @@ function loseUnbanked(state: SimState, f: FloorRunState): void {
     if (count > 0) state.events.push({ kind: 'findsLost', playerId: p.id, count });
   }
   f.carried = {};
+  f.found = { lumber: 0, stone: 0 };
   state.drops = [];
 }
 

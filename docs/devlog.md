@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, D9's scaling and D4: a quicker roll with perks, things to smash, the health potion
+
+**What changed**
+
+`auto/local-dodge-smash`, stacked on `auto/local-bigger-rooms`, one commit each (and the docs). Protocol 10.
+- **D9's scaling (Michael: option A).** Each Second wind rank (the level-40 row) takes `talents.windCancelMsPerRank` (10 ms) off the point a roll can be cut, and each Light step rank (champion) `champion.lightstepCancelMsPerRank` (4 ms), never under `dodge.cancelFloorMs` (110). Maxed, both bring 170 ms to 110. Both perks' text says so. With neither, it is `cancelAfterMs` to the bit, so parity is untouched.
+- **D4, things to smash.** Crates, barrels and urns stand against the walls of a generated floor's rooms and halls (not the rest room or a stair, never within 3 m of a doorway), placed from the floor's seed in `floor.ts` so every browser has the same; the sim keeps only which are broken (`SimState.floor.broken`), so a snapshot grows by a few ids. About 20 to 30 a floor, 4 to 7 a fight room, over five seeds. Any hero's blow breaks one: a swing in its arc, a shot (it stops there), a burst, a whirlwind's turn, a charge, a bash, a frost ring (`sim/smash.ts`). A crate or barrel gives `loop.smashLumber` (1), an urn `loop.smashStone` (1), carried by the party until the floor banks (with the deeper floors' bonus) and lost with a wipe. They do not block movement. Drawn from primitives (`client/src/render/PropView.ts`; the repo has no KayKit models, everything is made in code), with splinters or shards, dust, a sound, and "+1 lumber" floating up.
+- **D4, the health potion.** `loop.potionChance` (12%) of smashed props drop one on the floor; the first standing hero over it with room on the belt (`loop.potionMax`, 3) takes it. G, 4 or d-pad left drinks one (`PlayerCommand.drink`, a press, predicted like the rest): `loop.potionHeal` (40%) of max health at once, not at full health, one a second. The belt is `PlayerState.potions` on the server; the browser saves the server's count and brings it into the next room on the loadout (`Loadout.potions`, clamped, taken on joining only; rule 1's accepted exception, like the bag). The HUD shows "Health potion ×N G" under the draughts, and a toast names the keys.
+- Tests: the scaling (ranks, the shut row below 40, the floor, i-frames kept); placement (the same every build, against a wall, nowhere it should not be); a swing breaks what is in front and not behind; an arrow stops at a crate; banking pays the smashed lumber and stone, a wipe loses them; a potion rolls out, waits for a belt with room, and is taken; drinking heals, waits a second, refuses at full; the loadout's belt and the `drink` press on the wire. check 160, parity identical, test:net, smoke 7/7. In the browser: a swing broke a crate and an urn (1 lumber, 1 stone), a potion rolled out and went on the belt, the save kept it into the arena, and a drink took 118 back to 127.
+
+**Learned**
+
+- **A level shot flies over a crate.** Arrows leave at chest height and a crate is under a metre, so a crate is broken by aiming down (D12's free aim) or by a swing. The soft target never picks a prop.
+- **A handoff carries the loadout ClientSession kept at the last gear change,** so the belt would have been lost at a portal. The browser now refreshes that loadout whenever it saves (`ClientSession.keepLoadout`), without sending it.
+- **`Object.assign` cannot set a three.js mesh's position** (it is a read-only property); tsc does not catch it. The first PropView threw on every floor.
+
+**Next**
+
+- Michael plays a floor: smash, drink, and judge how much the props pay and how often a potion drops (sliders under `loop`).
+- Then, village first (Michael, 28 Oct): P2, P4, P5, P9 with D5, P7, P8, then the henchmen, then the gate.
+
 ## 2026-10-28: local session, D10, D13, D12, D2: death and home, drop to the floor, free aim, bigger rooms
 
 **What changed**

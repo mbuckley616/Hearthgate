@@ -65,6 +65,8 @@ export const tuning = {
     cancelAfterMs: 170,
     /** A roll cut short keeps the rest of its i-frames (D9); the slice ended them with the roll. */
     keepIframesOnCancel: true,
+    /** Second wind and Light step bring cancelAfterMs down (D9), never below this. */
+    cancelFloorMs: 110,
   },
 
   /**
@@ -858,6 +860,8 @@ export const tuning = {
     riposteParryMsPerRank: 25,
     /** Second wind (40): dodge charges come back sooner. */
     windRechargePerRank: 0.08,
+    /** Second wind also cuts a roll's recovery (D9; Michael, 28 Oct): ms off dodge.cancelAfterMs a rank. */
+    windCancelMsPerRank: 10,
     /** Mastery (50): a little more damage. */
     masteryDamagePerRank: 0.03,
   },
@@ -884,6 +888,8 @@ export const tuning = {
     steadyReviveCutPerRank: 0.06,
     willCooldownPerRank: 0.015,
     lightstepRechargePerRank: 0.03,
+    /** Light step also cuts a roll's recovery (D9): ms off dodge.cancelAfterMs a rank. */
+    lightstepCancelMsPerRank: 4,
     strideSpeedPerRank: 0.01,
     /**
      * Slotted perks (T6c; Michael, 28 Oct): four active at once, changed in the village or a rest room.
@@ -1064,6 +1070,19 @@ export const tuning = {
     bossCoin: 60,
     bossLumber: 12,
     bossStone: 12,
+    /**
+     * Things to smash (D4; Michael, 28 Oct): a crate or barrel gives this much lumber, an urn this
+     * much stone, carried until the floor banks (and the deeper floors' bonus with it).
+     */
+    smashLumber: 1,
+    smashStone: 1,
+    /** The chance a smashed prop holds a health potion, the heal between rest rooms since D7. */
+    potionChance: 0.12,
+    /** A potion gives back this share of max health at once. */
+    potionHeal: 0.4,
+    potionMax: 3,
+    /** Between one potion and the next, so a held key drinks one. */
+    potionCooldownMs: 1000,
   },
 
   /** The run (brief: "A run"): antechamber, then waves, then the Warden. */
@@ -1529,6 +1548,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combos.detonateRadiusBonus': [0, 2, 0.05],
   'combos.detonateDamageBonus': [0, 2, 0.05],
   'dodge.cancelAfterMs': [0, 1000, 10],
+  'dodge.cancelFloorMs': [0, 500, 10],
   'guard.moveSpeedFrac': [0, 1, 0.05],
   'guard.arcDeg': [30, 360, 5],
   'guard.parryWindowMs': [0, 600, 10],
@@ -1930,6 +1950,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],
   'loop.bossStone': [0, 100, 1],
+  'loop.smashLumber': [0, 10, 1],
+  'loop.smashStone': [0, 10, 1],
+  'loop.potionChance': [0, 1, 0.01],
+  'loop.potionHeal': [0, 1, 0.05],
+  'loop.potionMax': [0, 9, 1],
+  'loop.potionCooldownMs': [0, 5000, 50],
   'run.introMs': [0, 4500, 10],
   'run.gateWaitMs': [0, 30000, 500],
   'run.restMs': [0, 15000, 10],
@@ -1972,6 +1998,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'champion.ceilingHealth': [0, 0.5, 0.01],
   'champion.precisionDamagePerRank': [0, 0.05, 0.005],
   'champion.vitalityHealthPerRank': [0, 0.05, 0.005],
+  'champion.lightstepCancelMsPerRank': [0, 20, 1],
   'champion.slotUnlockStep': [0, 10, 1],
   'champion.wideShatterRadiusMult': [1, 4, 0.1],
   'champion.teamworkBonus': [0, 1, 0.05],
@@ -1985,6 +2012,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'talents.finisherDamagePerRank': [0, 0.5, 0.01],
   'talents.riposteParryMsPerRank': [0, 100, 5],
   'talents.windRechargePerRank': [0, 0.2, 0.01],
+  'talents.windCancelMsPerRank': [0, 40, 1],
   'talents.masteryDamagePerRank': [0, 0.1, 0.005],
   'talents.hasteSpeedPerRank': [0, 0.2, 0.01],
   'talents.armourReductionPerRank': [0, 0.2, 0.01],

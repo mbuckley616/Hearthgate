@@ -167,6 +167,20 @@ export class Sfx {
           this.tone('triangle', 880, 1320, 0.25, 0.22, 0.01);
           if (ev.item.rarity === 'rare') setTimeout(() => this.tone('triangle', 1320, 1760, 0.3, 0.2, 0.01), 90);
           break;
+        case 'smashed':
+          // Wood crunches; an urn shatters higher.
+          if (ev.propKind === 'urn') this.noiseBurst('highpass', 2600, 1400, 0.8, 0.22, 0.45);
+          else this.noiseBurst('lowpass', 900, 260, 1.2, 0.28, 0.6);
+          this.impact(false);
+          if (ev.potion) setTimeout(() => this.tone('sine', 900, 1500, 0.3, 0.12, 0.02), 120);
+          break;
+        case 'potionTaken':
+          this.tone('triangle', 660, 990, 0.22, 0.2, 0.01);
+          break;
+        case 'drank':
+          [330, 300, 360].forEach((f, i) => setTimeout(() => this.tone('sine', f, f * 0.8, 0.09, 0.16, 0.01), i * 90));
+          setTimeout(() => this.tone('triangle', 520, 880, 0.35, 0.14, 0.02), 300);
+          break;
         case 'perk':
           this.tone('sine', ev.perk === 'bleed' ? 300 : 1500, ev.perk === 'bleed' ? 200 : 900, 0.12, 0.08);
           break;
