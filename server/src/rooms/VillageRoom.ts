@@ -1,5 +1,6 @@
 import type { Client } from "@colyseus/core";
-import { planRun } from "@hearthgate/shared/game/runPlan";
+import { planChoice, planRun } from "@hearthgate/shared/game/runPlan";
+import { choiceDifficulty, maxDifficulty } from "@hearthgate/shared/game/portalChoice";
 import { applyUpgrade, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import { buyPrice, dailyStock, sellPrice, storeDay } from "@hearthgate/shared/game/store";
 import type { GearItem } from "@hearthgate/shared/sim/catalogue";
@@ -61,7 +62,19 @@ export class VillageRoom extends HostRoom {
     if (msg.k === "hello") this.onHello(client, msg);
     if (msg.k === "upgrade") this.onUpgrade(client, msg);
     if (msg.k === "buy") this.onBuy(client, msg);
+    if (msg.k === "portal") this.onPortalChoice(msg);
     if (msg.k === "sell") this.onSell(client, msg);
+  }
+
+  /**
+   * Anyone may ask Keeper Wren (as with the ring's destination); a difficulty past what the shrine's
+   * tier opens is refused (P7; Michael, 28 Oct). Whether a story dungeon is open is the browser's
+   * to say: progress lives in its save until Phase 3.
+   */
+  private onPortalChoice(msg: Extract<ToHost, { k: "portal" }>) {
+    if (choiceDifficulty(msg.choice) > maxDifficulty(this.save?.tiers.shrine ?? 1)) return;
+    this.host.choice = msg.choice;
+    this.host.destination = null;
   }
 
   /** Today's shelves at the store's tier, rolled afresh when the day or the tier changes. */
@@ -143,7 +156,8 @@ export class VillageRoom extends HostRoom {
 
   /** The ring leads into a generated dungeon (T4): a run planned for this party, its first floor a room of its own. */
   protected onPortal() {
-    const plan = planRun(this.host.sim.players, Math.floor(Math.random() * 0xffffffff), this.host.destination);
+    const seed = Math.floor(Math.random() * 0xffffffff);
+    const plan = this.host.choice ? planChoice(this.host.sim.players, seed, this.host.choice) : planRun(this.host.sim.players, seed, this.host.destination);
     void this.handOff("floor", "floor", null, { ...plan, home: this.roomId, floor: 1 });
   }
 

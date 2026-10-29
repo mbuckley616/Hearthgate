@@ -230,15 +230,19 @@ test("the dungeon editor: a dungeon of two floors laid out by keys alone, saved 
   expect(errors).toEqual([]);
 });
 
-test("Keeper Wren turns the village's ring to a hand-built dungeon", async ({ page }) => {
+test("Keeper Wren's menu turns the village's ring to the first story dungeon, a hand-built one", async ({ page }) => {
   const errors: string[] = [];
   await open(page, "play", errors);
   await walkTo(page, 3.2, 2, 1.2);
   await walkTo(page, 3.0, -12.2, 0.8);
-  // Asked once she says where it opens; asked again she turns it to the next (the first hand-built one ships with the game).
+  // Asked once she says where it opens; asked again her menu opens on the first story dungeon (P7), which ships hand-built.
   await page.keyboard.press("KeyF");
   await expect(page.locator(".talk-line")).toContainText("a new dungeon");
   await page.keyboard.press("KeyF");
+  await expect(page.locator(".portal-menu")).toBeVisible();
+  await expect(page.locator(".portal-detail h3")).toContainText("The Old Cellar");
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".portal-menu")).toBeHidden();
   await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
   await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
   await walkTo(page, 0, -10.5, 0.8);

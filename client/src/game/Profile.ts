@@ -63,6 +63,8 @@ export interface ProfileData {
   name: string;
   /** Health potions on the belt (D4): the server's count, saved so the next room starts with them. */
   potions?: number;
+  /** Story dungeons cleared (P7), by id: each opens the next at Keeper Wren's. */
+  storyCleared?: string[];
 }
 
 function emptyBag(): (GearItem | null)[] {

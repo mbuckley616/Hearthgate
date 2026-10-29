@@ -1,6 +1,7 @@
 import { tuning } from '../config/tuning';
 import type { Building } from '../level/village';
 import type { GearItem } from '../sim/catalogue';
+import { DIFFICULTIES, maxDifficulty } from './portalChoice';
 
 /**
  * The host's village (P2; Michael, 28 Oct: in the browser until Phase 3). The host's browser keeps it
@@ -107,7 +108,7 @@ export const pocketSpaces = (tier: number) => Math.min(28, tuning.village.pocket
 export function tierGives(building: BuildingId, tier: number): string {
   switch (building) {
     case 'shrine':
-      return `portals up to tier ${shrinePortalTier(tier)}`;
+      return `portals as hard as ${DIFFICULTIES[maxDifficulty(tier)].name}`;
     case 'store':
       return `${storeStock(tier)} items on the shelves each day`;
     case 'storehouse':

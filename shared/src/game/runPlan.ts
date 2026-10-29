@@ -2,6 +2,7 @@ import { tuning } from '../config/tuning';
 import { floorSeed, MAX_PIECES, MIN_PIECES, type FloorSpec } from '../level/generate';
 import { checkHandDungeon, handFloor, readDungeon, type HandDungeon } from '../level/handmade';
 import { levelFor } from '../sim/gear';
+import { DIFFICULTIES, SIZES, STORY, SIZE_IDS, MAX_FLOORS, type PortalChoice, type SizeId } from './portalChoice';
 import type { PlayerState } from '../sim/types';
 
 /**
@@ -20,6 +21,10 @@ export interface RunPlan {
   pieces: number;
   /** A hand-built dungeon (T4b), or none: then the run is exactly its floors. */
   hand?: HandDungeon;
+  /** Chosen at Keeper Wren (P7): how hard, how big, and which story dungeon if it is one. */
+  difficulty?: number;
+  size?: SizeId;
+  story?: string;
 }
 
 /** The party's level for sizing floors: each hero's best style level, averaged over the party. */
@@ -43,6 +48,16 @@ export function planRun(players: readonly PlayerState[], seed: number, hand: Han
   return hand ? withHand(plan, hand) : plan;
 }
 
+/** The run Keeper Wren's menu chose (P7): a story dungeon as written, or a random one as shaped. */
+export function planChoice(players: readonly PlayerState[], seed: number, choice: PortalChoice): RunPlan {
+  const base = planRun(players, seed);
+  if (choice.kind === 'random') return { ...base, floors: choice.floors, size: choice.size, difficulty: choice.difficulty, pieces: 0 };
+  const story = STORY.find((s) => s.id === choice.id)!;
+  const r = story.run;
+  if ('hand' in r) return { ...withHand(base, r.hand), difficulty: r.difficulty, story: story.id };
+  return { ...base, seed: r.seed, floors: r.floors, size: r.size, difficulty: r.difficulty, story: story.id, pieces: 0 };
+}
+
 /** A run through a hand-built dungeon: its floors, no more (Michael, 27 Oct). */
 function withHand(plan: RunPlan, hand: HandDungeon): RunPlan {
   return { ...plan, hand, floors: hand.floors.length };
@@ -50,13 +65,16 @@ function withHand(plan: RunPlan, hand: HandDungeon): RunPlan {
 
 /** Floor `floor` (1-based) of a run. */
 export function floorSpecFor(plan: RunPlan, floor: number): FloorSpec {
+  const extra = { ...(plan.difficulty !== undefined ? { difficulty: plan.difficulty } : {}), ...(plan.story ? { story: plan.story } : {}) };
   if (plan.hand) {
     const hand = handFloor(plan.hand, Math.min(floor, plan.hand.floors.length));
-    return { seed: 0, pieces: hand.pieces.length, floor, floors: plan.hand.floors.length, hand };
+    return { seed: 0, pieces: hand.pieces.length, floor, floors: plan.hand.floors.length, hand, ...extra };
   }
   const d = tuning.dungeon;
-  const grown = d.basePieces + (floor - 1) * d.piecesPerFloor + (plan.tier - 1) * d.piecesPerTier + Math.max(0, plan.level - 1) * d.piecesPerLevel;
-  return { seed: floorSeed(plan.seed, floor), pieces: plan.pieces > 0 ? plan.pieces : clampPieces(grown), floor, floors: plan.floors };
+  const grown = plan.size
+    ? SIZES[plan.size].pieces + (floor - 1) * SIZES[plan.size].perFloor
+    : d.basePieces + (floor - 1) * d.piecesPerFloor + (plan.tier - 1) * d.piecesPerTier + Math.max(0, plan.level - 1) * d.piecesPerLevel;
+  return { seed: floorSeed(plan.seed, floor), pieces: plan.pieces > 0 ? plan.pieces : clampPieces(grown), floor, floors: plan.floors, ...extra };
 }
 
 function clampPieces(n: number): number {
@@ -73,9 +91,12 @@ export function readRunPlan(options: Record<string, unknown>): RunPlan {
   const plan: RunPlan = {
     seed: num(options.seed, 0, 0xffffffff, 1),
     tier,
-    floors: num(options.floors, 1, 5, 2 + tier),
+    floors: num(options.floors, 1, MAX_FLOORS, 2 + tier),
     level: typeof options.level === 'number' && Number.isFinite(options.level) ? Math.max(1, Math.min(50, options.level)) : 1,
     pieces: options.pieces === undefined || options.pieces === 0 ? 0 : num(options.pieces, MIN_PIECES, MAX_PIECES, 0),
   };
+  if (options.difficulty !== undefined) plan.difficulty = num(options.difficulty, 0, DIFFICULTIES.length - 1, 1);
+  if (SIZE_IDS.includes(options.size as SizeId)) plan.size = options.size as SizeId;
+  if (typeof options.story === 'string' && STORY.some((s) => s.id === options.story)) plan.story = options.story;
   return hand && checkHandDungeon(hand).playable ? withHand(plan, hand) : plan;
 }
