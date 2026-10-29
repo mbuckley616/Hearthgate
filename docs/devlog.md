@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, P11 keeper cards and P14 the village map
+
+**What changed**
+
+`auto/local-keeper-cards`, stacked on `auto/local-playtest-fixes`. Client only; no message change.
+- **A keeper's card (P11).** F (or A) by Wren, Aldous, Marta or Fenn opens it at once: their line and their building's tier, then three 48 px buttons: their menu (choose a portal, browse the shelves, open the stash, hire companions), "Build tier N" with what it brings and its price (greyed with what is missing, or "Only the host can build here", or "As high as it goes"), Leave. Up and down (keys, arrows, stick, d-pad), F or A, Esc or B; a click works. It opens on the keeper's menu, so a second F never spends; building is one press, and the card stays up to say it is done and show the next tier. Walking off or a ring taking the party closes it. The press-again and hold-to-build paths are gone (`talkTo`, `secondTalk`, `upgradeHold`, `village.upgradeHoldMs`); `TalkUi` keeps the hint and lines said in passing (Wren after a portal is chosen).
+- **The village map (P14).** M or Start in the village (the floor's map elsewhere): the square drawn from the level's data, each building with its tier, the ring, the well and the party; any direction or a click chooses a building, and beside it are what it gives, what the next tier brings, its price against what the village holds and what you carry, and whose keeper builds it. M, Start, Esc, Tab or B close it. Building stays at the keeper.
+- **The corner** is one line top right: whose village, lumber and stone, an M. The party's frames have the top left back.
+- Tests: the two smoke tests that talked to Wren use the card. check 206, test:net, smoke 7/7. In the browser by keys: every path above, tier II of the shrine built from the card for 80 coin, the map's five ways to close, and the map at 375 px with no sideways scroll. The pane's save put back after.
+
+**Learned**
+
+- A press that closes a screen must be used up by that screen: the map's own M closed it, then reopened it later in the same frame, until the map took M itself.
+
+**Next**
+
+- Michael approves the stack (`auto/local-playtest-fixes`, then this). The pad by hand on both. Then C6 (melee abilities) and P12, P13 (henchmen).
+
 ## 2026-10-29: local session, fixes from Michael's playtest of main 194321a
 
 **What changed**
