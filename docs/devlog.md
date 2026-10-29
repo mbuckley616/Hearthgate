@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, gate prep: the Paused card and a shakedown run
+
+**What changed**
+
+`auto/local-gate-prep`, from `main` (9ef90ac). No message or event change.
+- **The Paused card (the critic's bug, 28 Oct)** shows only when the player lets go of the mouse in play (Esc) with no other screen up, not whenever the mouse is unlocked. A join-link arrival who has not clicked, a pad player and a browser without pointer lock never see it over the fight. Esc, Start or A close it as well as Resume or a click. The party line says "1 player".
+- **Henchmen come through doors** (found in the shakedown): `stepDoors` brings each henchman whose nearest player took a door through with them, side by side. Before, they stayed inside the tavern when their player walked out, since a door is a jump the server makes and the brain only walks at its leader.
+- **Henchmen stand apart** (found in the shakedown): hired together, all three stood on one spot and were drawn as one figure. A henchman steps away from any hero nearer than `hirelings.spacing` (1.3 m); two on the very same point part along a direction from their ids, so the sim has no rolls.
+- **The party's frames sit below the village panel**: both were at the top-left corner, so the henchmen's frames covered the village's lumber, stone and tiers.
+- **The open Found-in-play bugs**, after the shakedown (Michael: "fix them, black walls first"):
+  - The interiors' dark shells show only while the camera is inside one (`VillageView.setEye`); from the square they were the black walls past the palisade.
+  - The melee dot holds the centre and reddens while a swing would find someone; a red chevron marks that enemy unless it is locked. With the bow or staff and free aim it was already pinned.
+  - A Small run's floor always generates: a 14-piece floor must loop, and one spec in twenty found no seed in 64 that did, so the deeper ring failed for good. After 64 strict tries `generateFloor` tries 64 more without the loop; only specs that used to throw change, so no floor that played before is different. Swept: Small 3 floors 24 of 400 runs broken before, 0 after; the village's own plan 52 of 1000, 0; Small 8 floors 50 of 1000, 0.
+  - The bots pace their commands on one clock across drives: back-to-back `drive(4)`s (walkTo) sent the first of each at once, over the server's 75 a second. Now 60.1.
+- Tests: a door brings three henchmen through apart and clear of every door circle; three hired on one spot are over 1 m apart within 4 s and still with the party; the critic's Small floor generates, with a staircase and its rest room. Each fails on the old code. check 198, parity identical, test:net passed.
+
+**The shakedown** (the in-app browser with an autopilot in the page, as `gate-party.ts` steers; a level 1 to 3 Knight, the save seeded with 1,500 coin and 400 lumber and stone, put back after):
+- The tavern raised to tier III by the hold (272 coin, 136 lumber, 102 stone, as priced); Garrick, Bryn and Tamsin hired for 180 coin; through the shrine's door, Wren's Random tab (medium, 3 floors, Normal), into the ring, every henchman on every floor through every ring.
+- Run 1, bronze sword: floor 1 cleared (3 rooms, downed once and picked up by a henchman), banked, rest room healed all; wiped in floor 2's second room. The card, the button home, the summary (2 finds banked, 2 lost from the bag, +36 coin, +18 lumber, +10 stone) all right.
+- The store: an iron warhammer for 36 coin, worn from the hero screen by keys. Run 2: floors 1 and 2 cleared with no downs, never under 94%; wiped in floor 3's first room (two brutes and five archers left of it). Home with the henchmen; the summary said floor 3 of 3, +40 coin, the bronze sword lost.
+- Two things that looked like bugs were the autopilot: walking round the end of the tavern's bar to stand behind it, and walking back in through a door it had just come out of.
+
+**Learned**
+
+- An autopilot walking straight lines finds door and interior bugs a scripted test does not, but it cannot judge a fight: it never blocks or parries, so its two wipes on floors 2 and 3 say nothing about the difficulty. That is the gate's to judge.
+- Not seen yet: a story dungeon cleared, either modifier, the stash, a pad.
+
+**Next**
+
+- Michael approves `auto/local-gate-prep` and plays the gate. The one open Found-in-play bug, corrections climbing as the frame rate falls, needs a desktop reading at 20 to 30 fps.
+
 ## 2026-10-29: local session, D3: wear a find straight away
 
 **What changed**

@@ -57,6 +57,23 @@ describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
     expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
   });
 
+  it('brings a player’s henchmen through a door with them, side by side and clear of the doors', () => {
+    const s = createSimState(village, [], world);
+    const p = addPlayer(s, world, 'p1', loadout, false);
+    const hench = ['h1', 'h2', 'h3'].map((id) => Object.assign(addPlayer(s, world, id, loadout, false), { henchman: true }));
+    const [into] = v.doors;
+    hench.forEach((h, i) => Object.assign(h, { x: into.x + i - 1, z: into.z + 3 }));
+    p.x = into.x;
+    p.z = into.z;
+    stepDoors(s, world);
+    expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
+    for (const h of hench) {
+      expect(Math.hypot(h.x - into.toX, h.z - into.toZ)).toBeLessThan(2);
+      for (const d of v.doors) expect(Math.hypot(h.x - d.x, h.z - d.z)).toBeGreaterThan(d.radius);
+      for (const o of [p, ...hench]) if (o !== h) expect(Math.hypot(h.x - o.x, h.z - o.z)).toBeGreaterThan(0.8);
+    }
+  });
+
   it('never lands a hero in a door circle, so nobody bounces back', () => {
     for (const d of v.doors) for (const e of v.doors) expect(Math.hypot(d.toX - e.x, d.toZ - e.z)).toBeGreaterThan(e.radius);
   });

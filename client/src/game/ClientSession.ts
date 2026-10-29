@@ -215,8 +215,11 @@ export class ClientSession implements Session {
     switch (this.state) {
       case 'joining':
         return this.code ? `Joining game ${this.code}…` : 'Starting a game…';
-      case 'playing':
-        return this.me ? `In ${this.code} · ${this.pred?.players.length ?? 1} players` : `Joined ${this.code}, waiting for the fight…`;
+      case 'playing': {
+        if (!this.me) return `Joined ${this.code}, waiting for the fight…`;
+        const n = this.pred?.players.length ?? 1;
+        return `In ${this.code} · ${n} ${n === 1 ? 'player' : 'players'}`;
+      }
       case 'refused':
         return `Couldn't join: ${this.message}`;
       case 'hostLeft':

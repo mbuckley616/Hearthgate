@@ -59,6 +59,11 @@ export class VillageView {
   private tierMarks = new Map<Building['id'], { flags: THREE.Object3D[]; sign: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>; name: string; tier: number }>();
   /** Trees inside the fence and the well's roof, by collider id: they fade when they stand between camera and hero. */
   private trees = new Map<string, { mats: THREE.MeshStandardMaterial[]; opacity: number }>();
+  /**
+   * Each interior's dark shell and the box it covers. A shell hides the sky and the woods only from
+   * inside its room: seen from the square, the shells were great black walls past the palisade.
+   */
+  private shells: { mesh: THREE.Mesh; box: THREE.Box3 }[] = [];
 
   constructor(world: World, palette: Palette) {
     const level = world.level;
@@ -107,6 +112,11 @@ export class VillageView {
   }
 
   /** The villagers, for talking (the game finds the nearest in reach). */
+  /** Show only the shell around the camera, if it is in an interior's. */
+  setEye(eye: THREE.Vector3): void {
+    for (const s of this.shells) s.mesh.visible = s.box.containsPoint(eye);
+  }
+
   get villagerDefs(): readonly Villager[] {
     return this.villagers.map((v) => v.def);
   }
@@ -296,7 +306,9 @@ export class VillageView {
     const style = INTERIOR_STYLE[r.building];
     const shell = new THREE.Mesh(new THREE.BoxGeometry(w + 30, 24, d + 30), new THREE.MeshBasicMaterial({ color: 0x06040a, side: THREE.BackSide, fog: false }));
     shell.position.set(cx, 8, cz);
+    shell.visible = false;
     this.group.add(shell);
+    this.shells.push({ mesh: shell, box: new THREE.Box3().setFromObject(shell) });
 
     const floorTex = style.floor === 'stone' ? fieldstoneTextures(w, d) : plankTextures(w, d);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w + 2 * t, d + 2 * t).rotateX(-Math.PI / 2), standard(floorTex, 1.2));

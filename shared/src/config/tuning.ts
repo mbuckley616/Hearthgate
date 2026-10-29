@@ -1175,6 +1175,8 @@ export const tuning = {
     /** It fights enemies this near itself or its leader, and keeps this near its leader otherwise. */
     aggroRange: 12,
     followDistance: 3,
+    /** It steps apart from another hero nearer than this, so three never stand as one figure. */
+    spacing: 1.3,
     /** Its reach to start swinging, and how often it presses attack (a player mashes faster). */
     reach: 1.8,
     attackEveryTicks: 9,
@@ -1571,6 +1573,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.guardMs': [0, 3000, 50],
   'hirelings.aggroRange': [2, 40, 1],
   'hirelings.followDistance': [1, 12, 0.5],
+  'hirelings.spacing': [0, 4, 0.1],
   'hirelings.reach': [0.5, 4, 0.1],
   'hirelings.attackEveryTicks': [1, 60, 1],
   'hirelings.bowRange': [3, 20, 0.5],

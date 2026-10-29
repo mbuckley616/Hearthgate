@@ -712,6 +712,28 @@ body.on-title .run-banner {
   box-sizing: border-box;
 }
 
+/* Melee's soft target (the dot holds the centre): a small red chevron over the enemy a swing would pick. */
+.hud-target-mark {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 6;
+  display: none;
+  pointer-events: none;
+}
+.hud-target-mark::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -8px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #ff4d3d;
+  filter: drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
 /* The end card's way home (D10): a real button, 48 px tall for touch, F or A from the keys and pad. */
 .run-end-home {
   pointer-events: auto;

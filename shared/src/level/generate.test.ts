@@ -111,6 +111,15 @@ describe('the dungeon generator (T4)', () => {
     }
   });
 
+  it('never gives up on a Small run’s floor: one no seed can loop still comes, a staircase and all', () => {
+    // The critic's floor (29 Oct): 64 seeds found no 14-piece floor with a loop, and the deeper ring failed for good.
+    const def = generateFloor({ seed: 997671972, pieces: 14, floor: 2, floors: 3 });
+    expect(def.pieces.length).toBeGreaterThanOrEqual(11);
+    expect(def.pieces.some((p) => p.kind === 'stair' && p.sockets.every((sk) => sk.link >= 0))).toBe(true);
+    expect(def.pieces[def.exit].kind).toBe('rest');
+    expect(generateFloor({ seed: 997671972, pieces: 14, floor: 2, floors: 3 })).toEqual(def);
+  });
+
   it('climbs or drops: a staircase joins pieces at two heights', () => {
     for (const { def } of floors) {
       const stairs = def.pieces.filter((p) => p.kind === 'stair' && p.sockets.every((sk) => sk.link >= 0));

@@ -415,8 +415,8 @@ export function loopCount(def: FloorDef): number {
   return links / 2 - def.pieces.length + 1;
 }
 
-/** One try at a floor; null if it came out short of what a floor must have. */
-function attempt(spec: FloorSpec, seed: number): FloorDef | null {
+/** One try at a floor; null if it came out short of what a floor must have (a loop only when `strict`). */
+function attempt(spec: FloorSpec, seed: number, strict = true): FloorDef | null {
   const target = Math.max(MIN_PIECES, Math.min(MAX_PIECES, Math.round(spec.pieces)));
   const rnd = seeded(seed);
   const b = new Builder(rnd);
@@ -464,7 +464,7 @@ function attempt(spec: FloorSpec, seed: number): FloorDef | null {
   const enough = n >= Math.max(MIN_PIECES, target - 3) && n <= Math.min(MAX_PIECES, target + 2);
   // A staircase counts only if it joins two pieces: the floor really climbs or drops somewhere.
   const climbs = b.pieces.some((p) => p.kind === 'stair' && p.sockets.every((sk) => sk.link >= 0));
-  const loops = loopCount(def) >= (target >= 14 ? 1 : 0);
+  const loops = !strict || loopCount(def) >= (target >= 14 ? 1 : 0);
   return enough && climbs && loops ? def : null;
 }
 
@@ -476,6 +476,13 @@ function attempt(spec: FloorSpec, seed: number): FloorDef | null {
 export function generateFloor(spec: FloorSpec): FloorDef {
   for (let i = 0; i < 64; i++) {
     const def = attempt(spec, (spec.seed + Math.imul(i, 0x9e3779b1)) >>> 0);
+    if (def) return def;
+  }
+  // A Small run's 14 pieces are the least that must hold a loop, and about one seed in twenty finds no
+  // floor with one: a floor without a loop beats a ring that never opens (the critic, 29 Oct). Only
+  // specs that found nothing come here, so every floor that generated before is the same.
+  for (let i = 0; i < 64; i++) {
+    const def = attempt(spec, (spec.seed + Math.imul(i, 0x9e3779b1)) >>> 0, false);
     if (def) return def;
   }
   throw new Error(`no floor for seed ${spec.seed} with ${spec.pieces} pieces`);
