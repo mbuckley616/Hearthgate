@@ -800,3 +800,91 @@ body.on-title .run-banner {
   font-size: 11px;
   color: #b8a890;
 }
+
+/* The General Store (P5): the shelves and the bag side by side, one column on a narrow screen. */
+.store-coin {
+  margin-bottom: 10px;
+  color: #e8dcc8;
+}
+
+.store-coin b {
+  color: var(--gold);
+}
+
+.store-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.store-cols h3 {
+  margin: 0 0 8px;
+  font: 700 15px/1.2 Georgia, serif;
+  color: #f4e6cf;
+}
+
+.store-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.store-row.chosen {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.45);
+}
+
+.store-row.dear .store-price {
+  color: #8d8a92;
+}
+
+.store-row .gear-icon,
+.store-row .gear-swatch {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+.store-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.store-name b,
+.store-name small {
+  display: block;
+}
+
+.store-name small {
+  color: #a8a2b0;
+  font-size: 11px;
+}
+
+.store-price {
+  flex: none;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.store-note {
+  min-height: 20px;
+  margin-top: 8px;
+  color: #e8c68a;
+}
+
+@media (max-width: 640px) {
+  .store-cols {
+    grid-template-columns: 1fr;
+  }
+}

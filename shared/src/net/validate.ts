@@ -234,6 +234,12 @@ export function readToHost(v: unknown): ToHost | null {
       const dungeon = readDungeon(v.dungeon);
       return dungeon && checkHandDungeon(dungeon).playable ? { k: 'destination', dungeon } : null;
     }
+    case 'buy':
+      return typeof v.uid === 'string' && v.uid.length <= 40 && isNum(v.coin) && v.coin >= 0 ? { k: 'buy', uid: v.uid, coin: Math.floor(v.coin) } : null;
+    case 'sell': {
+      const item = readGearItem(v.item);
+      return item ? { k: 'sell', item } : null;
+    }
     case 'upgrade':
       return BUILDINGS.includes(v.building as BuildingId) && isNum(v.coin) && v.coin >= 0 ? { k: 'upgrade', building: v.building as BuildingId, coin: Math.floor(v.coin) } : null;
     default:

@@ -438,6 +438,6 @@ export class EquipScreen {
       ${slotBar}
       <div class="talent-cols">${cols}</div>
       <button class="talent-respec" data-action="cpReset">Reset all</button>
-      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. Resetting is free between fights. Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
+      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. Taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}). Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
   }
 }
