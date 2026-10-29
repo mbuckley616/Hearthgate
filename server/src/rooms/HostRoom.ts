@@ -53,11 +53,15 @@ export abstract class HostRoom extends Room {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private sentTuning = 0;
   private handingOff = false;
+  /** Players being sent home on their own from the end card (D10), so a second press does nothing. */
+  private leaving = new Set<string>();
 
   protected abstract get kind(): LevelKind;
   protected abstract levelFor(options: Record<string, unknown>): LevelDef;
   /** The party took an open ring (to where it leads): move them on (handOff). */
   protected abstract onPortal(to: PortalTo): void;
+  /** A player asked to go home from a finished floor (D10); only a floor answers. */
+  protected onHome(_client: Client): void {}
 
   onCreate(options: Record<string, unknown> = {}) {
     this.roomId = newCode();
@@ -70,6 +74,10 @@ export abstract class HostRoom extends Room {
       },
       CHEATS,
       (to) => this.onPortal(to),
+      (peer) => {
+        const client = this.clients.getById(peer);
+        if (client && !this.leaving.has(peer)) this.onHome(client);
+      },
     );
     // The snapshot is sent by the session at the end of its tick; Colyseus has no state to patch.
     this.patchRate = 0;
@@ -106,6 +114,7 @@ export abstract class HostRoom extends Room {
   onLeave(client: Client) {
     this.host.onPeerLeft(client.sessionId);
     this.buckets.delete(client.sessionId);
+    this.leaving.delete(client.sessionId);
     this.log(`${client.sessionId} left`);
   }
 
@@ -143,6 +152,24 @@ export abstract class HostRoom extends Room {
       return null;
     } finally {
       this.handingOff = false;
+    }
+  }
+
+  /**
+   * Send one player, alone, to a village (D10): the room `roomId` names, or a fresh one. The rest
+   * of the party stays. If the matchmaker refuses, they can press again.
+   */
+  protected async handOne(client: Client, roomId: string | null): Promise<void> {
+    this.leaving.add(client.sessionId);
+    try {
+      const target = roomId ?? (await matchMaker.createRoom("village", {})).roomId;
+      const reservation = await matchMaker.joinById(target, {});
+      const msg: ToPeer = { k: "handoff", reservation, level: "village" };
+      client.send(MSG, msg);
+      this.log(`sent ${client.sessionId} home to village ${target}`);
+    } catch (err) {
+      console.error(`[${this.kind} ${this.roomId}] sending ${client.sessionId} home failed`, err);
+      this.leaving.delete(client.sessionId);
     }
   }
 

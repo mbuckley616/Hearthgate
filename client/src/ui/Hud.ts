@@ -274,7 +274,7 @@ export class Hud {
       this.down.textContent = !inRun
         ? `Down — back up in ${Math.ceil(p.downTime)}`
         : p.bleed! > 0
-          ? `Down — bleeding out in ${Math.ceil(p.bleed!)}  ·  crawl to a friend`
+          ? `Down — bleeding out in ${Math.ceil(p.bleed!)}  ·  a friend can revive you`
           : 'Out until the room is cleared';
     }
     this.draught.style.display = p.draughts === undefined ? 'none' : 'block';

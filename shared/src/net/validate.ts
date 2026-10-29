@@ -174,6 +174,8 @@ export function readToHost(v: unknown): ToHost | null {
     }
     case 'restart':
       return { k: 'restart' };
+    case 'home':
+      return { k: 'home' };
     case 'tune': {
       const e = v.edit;
       if (!isObj(e) || typeof e.path !== 'string' || !(isNum(e.value) || isBool(e.value))) return null;

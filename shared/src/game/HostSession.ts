@@ -61,6 +61,8 @@ export class HostSession {
     private readonly cheats = false,
     /** Called once when the party has held the open portal long enough: the room hands them on. */
     private readonly onPortal: (to: PortalTo) => void = () => {},
+    /** A player asked to go home from a finished floor (D10): the room hands that peer alone to the village. */
+    private readonly onHome: (peer: string) => void = () => {},
   ) {
     this.sim = createSimState(world.level, [], world);
   }
@@ -130,6 +132,11 @@ export class HostSession {
         // The slice's host started again on its own F (or A) once a run was over; now anyone's does.
         // A generated floor is never run again in place: its rings lead on or home (T4).
         if ((this.sim.run.phase === 'won' || this.sim.run.phase === 'lost') && !this.world.level.dungeon) this.restart();
+        break;
+      case 'home':
+        // The end card's button (D10): a wipe leaves the party down where it fell, so each goes home
+        // when they choose; a win's ring still takes the party together.
+        if (this.world.level.dungeon && (this.sim.run.phase === 'won' || this.sim.run.phase === 'lost')) this.onHome(peer);
         break;
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).

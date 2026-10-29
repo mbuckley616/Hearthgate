@@ -59,7 +59,7 @@ describe('Hearthgate’s downs (T5, decision 5A)', () => {
     for (const p of s.players) expect(p.draughts).toBe(tuning.coop.draughtsPerFloor);
   });
 
-  it('downs a hero who then crawls, slowly, and cannot fight', () => {
+  it('downs a hero who lies still and cannot fight (D10; T5 crawled)', () => {
     const { s, step } = fight();
     downHero(s, 'p1');
     const p = s.players[0];
@@ -68,8 +68,23 @@ describe('Hearthgate’s downs (T5, decision 5A)', () => {
     const x0 = p.x;
     step(60, { p1: hold({ moveX: 1, attack: true }) });
     expect(p.mode).toBe('down');
-    expect(p.x - x0).toBeGreaterThan(tuning.coop.crawlSpeed * 0.8);
-    expect(p.x - x0).toBeLessThan(tuning.coop.crawlSpeed * 1.2);
+    expect(p.x).toBe(x0);
+  });
+
+  it('still crawls at coop.crawlSpeed when it is turned up', () => {
+    const kept = tuning.coop.crawlSpeed;
+    tuning.coop.crawlSpeed = 1.1;
+    try {
+      const { s, step } = fight();
+      downHero(s, 'p1');
+      const p = s.players[0];
+      const x0 = p.x;
+      step(60, { p1: hold({ moveX: 1 }) });
+      expect(p.x - x0).toBeGreaterThan(1.1 * 0.8);
+      expect(p.x - x0).toBeLessThan(1.1 * 1.2);
+    } finally {
+      tuning.coop.crawlSpeed = kept;
+    }
   });
 
   it('bleeds out after the bleed-out time: out of the fight, lying still', () => {

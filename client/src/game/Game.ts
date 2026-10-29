@@ -127,6 +127,8 @@ export class Game {
   private endedHandled = false;
   /** The run's phase last frame: a won or lost run going back to the antechamber is a restart. */
   private lastPhase = '';
+  /** The party wiped on a generated floor (D10): the mouse is freed for the end card's button. */
+  private wiped = false;
   private shownTuning = 0;
   /** When the last animation frame ran (the worker takes over if they stop). */
   private lastFrameAt = performance.now();
@@ -249,6 +251,7 @@ export class Game {
       e.returnValue = '';
     });
     canvas.addEventListener('click', () => this.kbm.requestPointerLock());
+    this.runUi.onHome = () => this.session.request({ k: 'home' });
     document.addEventListener('pointerlockchange', () => this.updateOverlay());
     window.addEventListener('resize', () => {
       this.cam.setAspect(window.innerWidth / window.innerHeight);
@@ -482,7 +485,16 @@ export class Game {
     this.progress(events, realDt);
     // Run over: anyone's F / A asks the server to start again (the slice's host did it itself); the view follows the snapshot.
     const village = !!this.world.level.village;
-    if (!village && (world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) this.session.request({ k: 'restart' });
+    // On a generated floor F, A or the end card's button goes home instead (D10).
+    if (!village && (world.run.phase === 'won' || world.run.phase === 'lost') && actions.pressed.has('interact')) {
+      this.session.request(this.world.level.dungeon ? { k: 'home' } : { k: 'restart' });
+    }
+    const wiped = !!this.world.level.dungeon && world.run.phase === 'lost';
+    if (wiped !== this.wiped) {
+      this.wiped = wiped;
+      if (wiped) this.kbm.exitPointerLock();
+      this.updateOverlay();
+    }
     // The run's summary takes the first F (or A, or Escape) home, before any villager does.
     const closeSummary = this.summary.visible && (actions.pressed.has('interact') || actions.pressed.has('menuBack'));
     if (closeSummary) this.summary.hide();
@@ -865,7 +877,7 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.title?.visible;
+    const show = !this.kbm.pointerLocked && !this.debug.visible && !this.equip.visible && !this.title?.visible && !this.wiped;
     this.overlay.style.display = show ? 'flex' : 'none';
   }
 }
