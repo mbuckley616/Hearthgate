@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { HostSession } from '../game/HostSession';
 import { PORTAL_HOLD_S, portalsFor, type PortalTo } from '../game/portal';
@@ -11,6 +11,7 @@ import { emptyMods } from './gear';
 import { stepPlayer } from './player';
 import { emptyTalents } from './talents';
 import { idleCommand, type SimEvent } from './types';
+import { floorWorldNow } from './floorRun';
 import { createSimState } from './world';
 
 const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
@@ -41,6 +42,13 @@ const alive = (host: HostSession) => host.sim.enemies.filter((e) => e.ai !== 'de
 
 describe('a generated floor’s run (T4)', () => {
   const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+  // T4's shut doors, kept behind a switch since D8 opened them.
+  beforeAll(() => {
+    tuning.dungeon.shutDoors = true;
+  });
+  afterAll(() => {
+    tuning.dungeon.shutDoors = false;
+  });
 
   it('shuts a fight room behind the party, spawns its group inside, and opens it once cleared', () => {
     const f = floorSession(spec);
@@ -155,5 +163,107 @@ describe('a generated floor’s run (T4)', () => {
     const world = buildWorld(arena);
     const state = createSimState(arena, ['p1'], world);
     expect('floor' in state).toBe(false);
+  });
+});
+
+describe('open doors (D8)', () => {
+  const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+
+  it('starts the fight on the first hero in, never walls the room or pulls the straggler in', () => {
+    const f = floorSession(spec);
+    const room = f.pieces.find((p) => p.fight)!;
+    const entrance = f.pieces[f.level.dungeon!.def.entrance];
+    f.put('p1', openMiddle(room), room);
+    f.put('p2', openMiddle(entrance), entrance);
+    f.tick(1);
+    expect(f.host.sim.run.phase).toBe('intro');
+    expect(f.host.sim.run.gateClosed).toBe(false);
+    expect(f.host.sim.run.gateWait).toBe(-1);
+    f.tick(Math.ceil((tuning.run.introMs / 1000) * 60) + 2);
+    expect(f.host.sim.run.phase).toBe('wave');
+    const p2 = f.host.sim.players[1];
+    expect(insidePiece(room, p2.x, p2.z)).toBe(false);
+    expect(insidePiece(entrance, p2.x, p2.z)).toBe(true);
+
+    // A hero runs out through a doorway mid-fight.
+    const door = room.doors.find((d) => d.open)!;
+    const dir = SIDE_DIR[door.side];
+    const p = f.host.sim.players[0];
+    p.x = door.x - dir.x * 1.5;
+    p.z = door.z - dir.z * 1.5;
+    const world = floorWorldNow(f.world, f.host.sim);
+    for (let i = 0; i < 90; i++) stepPlayer(p, { ...idleCommand(), moveX: dir.x, moveZ: dir.z }, 1 / 60, world, f.host.sim);
+    expect(insidePiece(room, p.x, p.z)).toBe(false);
+  });
+});
+
+describe('healing on a floor (D7)', () => {
+  const spec: FloorSpec = { seed: 202, pieces: 18, floor: 1, floors: 3 };
+
+  it('heals nothing when a room is cleared, and fully in the rest room', () => {
+    const f = floorSession(spec);
+    const room = f.pieces.find((p) => p.fight)!;
+    f.put('p1', openMiddle(room), room);
+    f.put('p2', openMiddle(room), room);
+    f.tick(Math.ceil((tuning.run.introMs / 1000) * 60) + 2);
+    for (const p of f.host.sim.players) p.hp = 30;
+    for (let k = 0; k < 3 && f.host.sim.run.phase === 'wave'; k++) {
+      killAll(f.host);
+      f.tick(2);
+    }
+    expect(f.host.sim.run.phase).toBe('ante');
+    for (const p of f.host.sim.players) expect(p.hp).toBe(30);
+
+    const rest = f.pieces[f.level.dungeon!.def.exit];
+    f.put('p1', openMiddle(rest), rest);
+    f.put('p2', openMiddle(rest), rest);
+    f.tick(1);
+    for (const p of f.host.sim.players) expect(p.hp).toBe(p.maxHp);
+  });
+});
+
+describe('denser fights (D1)', () => {
+  /** One hero at a fight room's middle, through the intro to the wave. */
+  function soloFight(kind: PieceInfo['kind'], floor = 1) {
+    for (let seed = 1; seed < 400; seed++) {
+      const level = floorLevel({ seed, pieces: 24, floor, floors: 3 });
+      const room = level.dungeon!.pieces.find((p) => p.fight && p.kind === kind);
+      if (!room) continue;
+      const world = buildWorld(level);
+      const host = new HostSession(world, () => {}, true, () => {});
+      host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+      const p = host.sim.players[0];
+      const mid = openMiddle(room);
+      p.x = mid.x;
+      p.z = mid.z;
+      p.y = room.y;
+      for (let i = 0; i < Math.ceil((tuning.run.introMs / 1000) * 60) + 4; i++) host.tick();
+      return { host, room };
+    }
+    throw new Error(`no ${kind} fight room in 400 seeds`);
+  }
+
+  it('meets one hero in a guard room with a group, not a pair', () => {
+    const { host } = soloFight('small');
+    expect(host.sim.run.phase).toBe('wave');
+    expect(alive(host).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('fills a large room, and a deeper floor fills it more', () => {
+    const shallow = alive(soloFight('large', 1).host).length;
+    const deep = alive(soloFight('large', 3).host).length;
+    expect(shallow).toBeGreaterThanOrEqual(6);
+    expect(deep).toBeGreaterThan(shallow);
+  });
+
+  it('lets three enemies at a hero at once on a floor (the arena keeps the slice’s two)', () => {
+    const { host } = soloFight('large');
+    let most = 0;
+    for (let i = 0; i < 60 * 6; i++) {
+      host.tick();
+      most = Math.max(most, alive(host).filter((e) => e.hasToken).length);
+    }
+    expect(tuning.grunt.maxAttackers).toBe(2);
+    expect(most).toBe(tuning.dungeon.attackersPerHero);
   });
 });

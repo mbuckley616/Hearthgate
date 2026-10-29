@@ -60,8 +60,11 @@ export const tuning = {
      * From this point the roll's slow tail can be cut short: moving, attacking,
      * an ability, guard, jump or another dodge ends it at once (Michael: no
      * dodge recovery). Attacks and Q/E pressed earlier in the roll are kept and fire here.
+     * 240 in the slice; 170 since D9 (Michael 28 Oct: recovery too long).
      */
-    cancelAfterMs: 240,
+    cancelAfterMs: 170,
+    /** A roll cut short keeps the rest of its i-frames (D9); the slice ended them with the roll. */
+    keepIframesOnCancel: true,
   },
 
   /**
@@ -1111,14 +1114,36 @@ export const tuning = {
     piecesPerTier: 8,
     /** Per style level of the party's best hero, averaged over the party. */
     piecesPerLevel: 0.5,
-    /** A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor. */
-    budgetPerCell: 0.45,
+    /**
+     * A fight room's enemy budget (a grunt costs 1, an archer 2, a brute 4) per 6 m cell of floor.
+     * Doubled and more after the feel pass (D1, Michael 28 Oct: three or four a room was easy):
+     * a guard room is four or so, a large room eight to ten, an arena a dozen and more.
+     */
+    budgetPerCell: 1,
     /** Each floor deeper adds this fraction of the budget. */
-    budgetPerFloor: 0.25,
+    budgetPerFloor: 0.35,
     /** Each player past the first adds this much budget (the slice: one grunt a wave). */
-    budgetPerExtraPlayer: 1.5,
+    budgetPerExtraPlayer: 2,
     /** The rest comes as reinforcements once the first group is mostly down. */
-    firstGroupShare: 0.6,
+    firstGroupShare: 0.7,
+    /**
+     * Enemies that may attack each standing hero at once on a generated floor; the arena keeps the
+     * slice's grunt.maxAttackers (two). With rooms this full, two at a time left the rest circling.
+     */
+    attackersPerHero: 3,
+    /**
+     * A cleared fight room's heal, of max health, on a generated floor (D7, Michael 28 Oct: not
+     * after every encounter). The arena keeps run.healOnWaveClear. The rest room heals instead.
+     */
+    healOnClear: 0,
+    /** Of max health, given to every standing hero as the rest room banks the floor. */
+    restHeal: 1,
+    /**
+     * Shut a fight room's doors behind the party, waiting for them and pulling in stragglers (T4).
+     * Off since D8 (Michael 28 Oct: locking a party in is annoying with several players); the
+     * kit keeps its gates for a room that wants them.
+     */
+    shutDoors: false,
     /** Debug: 0 = a fresh seed each run; anything else pins the run's seed (the gate's five floors). */
     seed: 0,
     /** Debug: 0 = pieces from the tier, floor and level; 10 to 50 forces every floor's size. */
@@ -1233,6 +1258,8 @@ export const tuning = {
     flickDeg: 7,
     flickWindowMs: 250,
     breakDistance: 30,
+    /** How fast the aim mark (D11) glides to a new target or point (1/s). */
+    reticleRate: 22,
   },
 
   camera: {
@@ -1432,10 +1459,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.piecesPerFloor': [0, 15, 1],
   'dungeon.piecesPerTier': [0, 20, 1],
   'dungeon.piecesPerLevel': [0, 3, 0.1],
-  'dungeon.budgetPerCell': [0.1, 1.5, 0.05],
+  'dungeon.budgetPerCell': [0.1, 3, 0.05],
   'dungeon.budgetPerFloor': [0, 1, 0.05],
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
+  'dungeon.attackersPerHero': [1, 6, 1],
+  'dungeon.healOnClear': [0, 1, 0.05],
+  'dungeon.restHeal': [0, 1, 0.05],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 16, 1],
@@ -1788,6 +1818,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'lockOn.flickDeg': [1, 45, 0.5],
   'lockOn.flickWindowMs': [50, 1000, 10],
   'lockOn.breakDistance': [5, 80, 0.5],
+  'lockOn.reticleRate': [1, 60, 1],
 
   'combat.heroHurtMs': [0, 2000, 10],
   'combat.stepHeight': [0, 1, 0.01],

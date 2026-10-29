@@ -35,6 +35,7 @@ import { flowTier } from '@hearthgate/shared/sim/flow';
 import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
 import { Hud } from '../ui/Hud';
+import { Reticle } from '../ui/Reticle';
 import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
@@ -118,6 +119,7 @@ export class Game {
   private readonly hitboxes = new HitboxOverlay();
   private readonly sfx = new Sfx();
   private readonly hud = new Hud();
+  private readonly reticle = new Reticle();
   private readonly crt = new CrtOverlay();
   private readonly lockOn = new LockOn();
   private readonly debug: DebugPanel;
@@ -523,6 +525,8 @@ export class Game {
       this.cam.setColliders(worldNow(this.world, world).colliders);
       this.cam.update(realDt, this.hero.root.position, sprint);
     }
+    const aim = this.cam.basis();
+    this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !ended && this.overlay.style.display === 'none', realDt);
     if (this.room instanceof FloorView) {
       this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);

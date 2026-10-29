@@ -12,10 +12,12 @@ import type { SimState } from './types';
 
 /**
  * A generated floor's run (T4): the slice's arena run, room by room. The party explores freely;
- * when a standing hero steps into a fight room not yet cleared, its doors wait for the rest of the
- * party (the slice's gate wait), then close behind them, bringing in anyone still outside. The
+ * when a standing hero steps into a fight room not yet cleared, its fight starts and the rest of the
+ * party walk in when they like (D8). With dungeon.shutDoors (T4's way) its doors wait for the rest
+ * of the party (the slice's gate wait), then close behind them, bringing in anyone outside. The
  * room's group comes from a budget (its size, the floor, the party), with the slice's
- * reinforcements once it is mostly down; clearing it opens the doors and gives the slice's heal.
+ * reinforcements once it is mostly down; clearing it opens the doors. Health comes back only in
+ * the rest room (D7), not after every room as the slice's waves gave it.
  * The last floor's Warden ends the run; a wipe ends it anywhere. The rest room at the end of every
  * other floor banks the party's drops; its rings (game/portal.ts) lead deeper or home.
  *
@@ -63,6 +65,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       const rest = layout.pieces[layout.def.exit];
       if (!f.rested && rest.kind === 'rest' && standing.length > 0 && standing.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
+        for (const p of standing) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.restHeal);
         bank(state, world, f);
         state.events.push({ kind: 'rested' });
       }
@@ -71,16 +74,20 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
         r.gateWait = -1;
         break;
       }
-      r.gateWait = r.gateWait < 0 ? 0 : r.gateWait + dt;
-      const inside = standing.filter((p) => insidePiece(room, p.x, p.z));
-      if (inside.length < standing.length && r.gateWait * 1000 < tuning.run.gateWaitMs) break;
-      bringStragglersIn(state, world, room);
+      // Open doors (D8): the fight starts on the first hero in, and the rest walk in when they like.
+      const shut = tuning.dungeon.shutDoors;
+      if (shut) {
+        r.gateWait = r.gateWait < 0 ? 0 : r.gateWait + dt;
+        const inside = standing.filter((p) => insidePiece(room, p.x, p.z));
+        if (inside.length < standing.length && r.gateWait * 1000 < tuning.run.gateWaitMs) break;
+        bringStragglersIn(state, world, room);
+      }
       f.room = room.id;
       f.fights++;
       r.phase = 'intro';
       r.timer = 0;
       r.gateWait = -1;
-      r.gateClosed = true;
+      r.gateClosed = shut;
       r.reinforced = false;
       if (f.fights === 1) state.events.push({ kind: 'runStart' });
       break;
@@ -98,7 +105,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       }
       if (alive > 0) break;
       state.events.push({ kind: 'waveCleared', wave: r.wave });
-      for (const p of state.players) if (p.mode !== 'down') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.run.healOnWaveClear);
+      for (const p of state.players) if (p.mode !== 'down') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.healOnClear);
       f.cleared.push(room.id);
       f.room = -1;
       r.gateClosed = false;
@@ -223,14 +230,16 @@ export function roomBudget(room: PieceInfo, floor: number, players: number): num
 
 /**
  * Spend part of the room's budget on enemies at its spots farthest from the heroes, as the slice
- * spawns a wave on the far side of the arena. Small rooms get grunts; archers and brutes come in
- * the bigger ones. Returns how many spawned.
+ * spawns a wave on the far side of the arena. Any room mixes grunts and archers (D1: a guard room of
+ * grunts alone was a queue); brutes come in the bigger ones. Returns how many spawned.
  */
 function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'first' | 'reinforce'): number {
   const spec = world.level.dungeon!.def.spec;
   const share = part === 'first' ? tuning.dungeon.firstGroupShare : 1 - tuning.dungeon.firstGroupShare;
   let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share));
   const big = room.kind !== 'small';
+  // A guard room keeps at least two blades for every bow, so its archers have someone to hide behind.
+  let archers = 0;
   const avgX = state.players.reduce((s, p) => s + p.x, 0) / Math.max(1, state.players.length);
   const avgZ = state.players.reduce((s, p) => s + p.z, 0) / Math.max(1, state.players.length);
   const spots = [...room.spots].sort((a, b) => Math.hypot(b.x - avgX, b.z - avgZ) - Math.hypot(a.x - avgX, a.z - avgZ));
@@ -241,8 +250,9 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
     const roll = nextRandom(state);
     let kind: 'grunt' | 'archer' | 'brute' = 'grunt';
     if (big && budget >= COST.brute && brutes < 1 + Math.floor(spec.floor / 2) && roll < 0.18) kind = 'brute';
-    else if (big && budget >= COST.archer && roll < 0.45) kind = 'archer';
+    else if (budget >= COST.archer && roll < 0.45 && (big || archers * 2 < kinds.length)) kind = 'archer';
     if (kind === 'brute') brutes++;
+    if (kind === 'archer') archers++;
     kinds.push(kind);
     budget -= COST[kind];
   }

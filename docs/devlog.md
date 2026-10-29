@@ -2,6 +2,58 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, D7, D8, D9, D11: no heal per room, open doors, a quicker dodge, a reticle
+
+**What changed**
+
+Michael played D1 ("plays pretty well") and sent eight notes (decisions.md, "After playing D1"). The four contained ones are built on `auto/local-dungeon-rules`, stacked on `auto/local-denser-fights`, one commit each.
+- **D7, no heal after each room.** A cleared room on a generated floor heals `dungeon.healOnClear` (0) instead of the slice's 40%; the rest room heals every standing hero `dungeon.restHeal` (full) as it banks, and its banner says so. The arena keeps `run.healOnWaveClear`.
+- **D8, the doors stay open** (`dungeon.shutDoors`, off). A fight room's fight starts on the first hero in; nobody waits at the door, nobody is pulled in, and the room never walls anyone in or out. T4's shut doors stay behind the switch, and their tests turn it on.
+- **D9, a shorter dodge recovery.** `dodge.cancelAfterMs` 240 to 170 ms: any input ends the roll's tail sooner. A roll cut short now keeps the rest of its i-frames (`dodge.keepIframesOnCancel`), because in the slice cutting the tail also ended them, and a held stick cuts it at once, so a shorter tail alone would have made every dodge leakier. The parity test puts back 240 and the slice's ending.
+- **D11, a reticle** (`client/src/ui/Reticle.ts`): a dot for melee, a crosshair for the bow and crossbow, a ring for the staff and wand, drawn where the next swing or shot goes. That is the enemy the sim's soft targeting would pick (`pickSoftTarget`, tinted red), or a point ahead along the camera's heading. It glides between targets (`lockOn.reticleRate`) and hides behind the pause card, the hero screen and when down.
+- Tests: open doors (a straggler stays where they are, a hero runs out mid-fight), no heal on a clear and a full one in the rest room, the dodge's tail ending under 240 ms with its i-frames kept (and leaking with the switch off). check 142, parity identical, test:net, e2e 14/14 (smoke 7/7). In the browser the dot sits ahead of the knight and the bow's crosshair turned red on a grunt.
+
+**Learned**
+
+- **Soft targeting ignores walls.** The bow's crosshair turned red on a grunt in the next corridor, because the sim would turn a shot toward it. The reticle is honest about that; the sim's choice is D12's to revisit with free aim.
+- **With the camera behind the hero, the screen's centre is the hero's head,** so a mark at the screen centre would sit on the hero. Until D12's over-the-shoulder camera, the mark sits on a point 10 to 14 m ahead.
+
+**Next**
+
+- Michael plays a floor: the three rules and the reticle. All the numbers are sliders (`dungeon.healOnClear`, `dungeon.restHeal`, `dodge.cancelAfterMs`, `lockOn.reticleRate`) and `dungeon.shutDoors` a switch.
+- D9's scaling with levels and perks needs his answer (Second wind's milestone and a Nimble champion perk, recommended).
+- Then D10 (death and the button home), D13 (drop to the floor), D12 (free aim), D2 (bigger rooms): all deep work.
+
+## 2026-10-28: local session, D1: denser fights
+
+**What changed**
+
+- **About twice the enemies a room** (`tuning.dungeon`): a budget of 1 a cell (was 0.45), +35% a floor deeper (was 25%), 2 for each player past the first (was 1.5), and 70% of it in the first group (was 60%), so a room arrives as a fight.
+- **Guard rooms mix in archers,** at most one for every two blades. They were grunts only, which made them a queue.
+- **Three attackers a hero on a generated floor** (`dungeon.attackersPerHero`). The slice's two (`grunt.maxAttackers`) left most of a fuller room circling. The arena has no `SimState.floor`, so it and the parity test keep two.
+- Solo, every enemy a room sends (first group and reinforcements), averaged over 59 seeds:
+
+| Room | Floor 1 before | Floor 1 now | Floor 3 before | Floor 3 now |
+| --- | --- | --- | --- | --- |
+| Guard room (2x2 cells) | 2.0 | 3.6 | 3.0 | 6.2 |
+| Medium | 3.2 | 6.3 | 4.3 | 10.0 |
+| Large (4x4) | 4.9 | 10.5 | 6.5 | 15.7 |
+| Arena (5x5) | 8.2 | 16.6 | 10.9 | 26.2 |
+
+- Three new floor-run tests: a guard room meets one hero with three or more, a large room has six or more and more again on floor 3, and three enemies hold attack tokens at once on a floor while `grunt.maxAttackers` stays two. All three fail on the old numbers.
+- check 138, parity identical, test:net (0 corrections on the floor walks; a four-player snapshot 6.0 KB), smoke 7/7. In the browser, seed 11's large room had seven up at once, three attacking, a brute's slam telegraphed, a 5.9 KB snapshot.
+
+**Learned**
+
+- **Rooms already woke together:** the whole first group spawns when the doors shut. What made a room feel like a queue was the size of the group and the two-attacker cap, not the waking.
+- **A guard room's budget was under two,** so with the reinforcement split it sent one grunt, then one more. Most fight rooms are guard rooms, so most fights were one at a time.
+- **A scripted bot is no judge of difficulty.** One that walks in and taps attack landed no kills under the old numbers or the new, so the comparison is the per-room counts above, and the feel is Michael's.
+
+**Next**
+
+- Michael plays a floor or two: too much, too little, or right. Every number above is a debug-panel slider.
+- D2, bigger rooms (deep work), which these numbers will want to be re-checked against.
+
 ## 2026-10-28: local session, quality of life after the feel-pass playtest
 
 **What changed**

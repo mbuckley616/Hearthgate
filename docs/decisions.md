@@ -15,6 +15,15 @@ The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170
 
 ## Answered
 
+### 2026-10-28: After playing D1: healing, aiming, dropping (Claude (local))
+Michael played the denser fights ("plays pretty well"; leave the spawns until bigger rooms and harder dungeons come) and sent eight notes, filed as backlog items D7 to D12. Three needed a rule, so they were asked in chat as three cards. Recommendations were: rest rooms heal and potions are found; ranged weapons aim over the shoulder; a dropped item lands on the floor for its owner.
+Michael (2026-10-28, in chat): all three as recommended.
+- **No heal after each room.** A rest room heals to full; D4's smashables sometimes drop a health potion, drunk on a key. Revives stay as they are. This answers D4's potion question: a health potion.
+- **Free aim, over the shoulder.** With a bow, staff, crossbow or wand out, the hero faces where the camera looks and shots fly through the reticle, up and down too. Lock-on keeps today's aim at the target's chest.
+- **Dropping puts the item on the floor,** a pickup only its owner sees and can take back, gone when they leave the floor or village. Handing an item to a friend is a trade and waits for Phase 3's item ledger.
+
+Taken from the same notes without a question: the doors stay open (no locking a party in), rooms big enough for four (into D2), a shorter dodge recovery that shortens further with levels and perks, a downed hero who lies still, a "You died" / "Your party was defeated" card with a button home, and a reticle shaped by the weapon.
+
 ### 2026-10-28: After the feel-pass playtest: what a wipe costs, finds worn mid-run, what comes next (Claude (local))
 Michael played the feel pass ("a ton of fun") and sent a quality-of-life list (built the same day on `auto/local-qol`: Tab for the hero screen, item icons, levels on the Talents tab only, a level line over the health bar, the hero drawn on the bag tab, wheel zoom) and a list of ideas. Three of the ideas change rules already built, so they were asked in chat as three cards. Recommendations were: the bag at risk with a safe pocket; a find worn mid-run stays at risk until banked; the dungeon's feel before the village.
 Michael (2026-10-28, in chat): all three as recommended.

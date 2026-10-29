@@ -464,7 +464,11 @@ export function stepPlayer(
     if (cmd.attack) p.attackQueued = true;
     if (abilitySlot !== null) p.queuedAbility = abilitySlot;
     const wantsOut = p.attackQueued || p.queuedAbility >= 0 || wantDodge || cmd.jump || cmd.block || moveMag > 0.01;
-    if (p.dodgeTime * 1000 >= dg.cancelAfterMs && wantsOut) endDodge(p);
+    if (p.dodgeTime * 1000 >= dg.cancelAfterMs && wantsOut) {
+      // A roll cut short keeps its i-frames (D9): a quicker way out must not make the dodge leakier.
+      if (dg.keepIframesOnCancel) p.invulnTime = Math.max(p.invulnTime, dg.iframesMs / 1000 - p.dodgeTime);
+      endDodge(p);
+    }
   }
 
   // --- Action starts ---
