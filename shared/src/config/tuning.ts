@@ -1176,6 +1176,15 @@ export const tuning = {
     /** Its reach to start swinging, and how often it presses attack (a player mashes faster). */
     reach: 1.8,
     attackEveryTicks: 9,
+    /** The bow and staff henchmen (P6) shoot from this far, and step back from anything nearer than rangedMin. */
+    bowRange: 10,
+    staffRange: 8,
+    rangedMin: 4.5,
+    /** Every abilityCheckTicks a henchman with a ready ability and a target in reach uses it on this chance. */
+    abilityCheckTicks: 40,
+    abilityChance: 0.4,
+    /** The share of the time it turns on an enemy someone has set up for a combo, to pay it off. */
+    comboChance: 0.5,
   },
 
   dungeon: {
@@ -1560,6 +1569,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hirelings.followDistance': [1, 12, 0.5],
   'hirelings.reach': [0.5, 4, 0.1],
   'hirelings.attackEveryTicks': [1, 60, 1],
+  'hirelings.bowRange': [3, 20, 0.5],
+  'hirelings.staffRange': [3, 20, 0.5],
+  'hirelings.rangedMin': [0, 10, 0.5],
+  'hirelings.abilityCheckTicks': [1, 240, 1],
+  'hirelings.abilityChance': [0, 1, 0.05],
+  'hirelings.comboChance': [0, 1, 0.05],
   'dungeon.hauntedRiseMs': [0, 5000, 50],
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],

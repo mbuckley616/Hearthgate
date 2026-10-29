@@ -76,3 +76,72 @@ describe('a henchman (P3)', () => {
     expect(readToHost({ k: 'cheat', cheat: 'henchman' })).toEqual({ k: 'cheat', cheat: 'henchman' });
   });
 });
+
+describe('the bow and staff henchmen (P6)', () => {
+  it('come in turn: a sword, a bow, a staff', () => {
+    const { host, me } = party();
+    host.addHenchman(me);
+    host.addHenchman(me);
+    expect(host.sim.players.filter((p) => p.henchman).map((p) => p.style)).toEqual(['sword', 'bow', 'staff']);
+  });
+
+  it('keep to their range: step back from a grunt in their face, close on one far off, shoot one in range', () => {
+    const host = new HostSession(world, () => {}, true);
+    host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    const me = host.sim.players[0];
+    const bow = host.addHenchman(me, 'bow')!;
+    bow.x = 0;
+    bow.z = 0;
+    me.x = 0;
+    me.z = 2;
+    const e = createEnemy(host.sim, world, 'grunt', 0, -2, 0);
+    e.ai = 'chase';
+    host.sim.enemies.push(e);
+    const near = henchmanCommand(host.sim, bow);
+    expect(near.moveZ).toBeGreaterThan(0.5);
+    e.z = -11.5;
+    const far = henchmanCommand(host.sim, bow);
+    expect(far.moveZ).toBeLessThan(-0.5);
+    e.z = -8;
+    let shot = false;
+    for (let t = 0; t < 30; t++) {
+      host.sim.tick++;
+      const cmd = henchmanCommand(host.sim, bow);
+      expect(Math.hypot(cmd.moveX, cmd.moveZ)).toBeLessThan(0.01);
+      shot ||= cmd.attack;
+    }
+    expect(shot).toBe(true);
+  });
+
+  it('revive a downed player when nothing threatens them', () => {
+    const { host, me, h } = party();
+    me.mode = 'down';
+    me.hp = 0;
+    me.bleed = 25;
+    me.downTime = 99;
+    h.x = me.x + 3;
+    h.z = me.z;
+    for (let i = 0; i < 60 * 8 && me.mode === 'down'; i++) host.tick();
+    expect(me.mode).toBe('move');
+  });
+
+  it('three of them pay off a combo in a fight (the gate)', () => {
+    const { host, me } = party();
+    host.addHenchman(me);
+    host.addHenchman(me);
+    const hench = host.sim.players.filter((p) => p.henchman);
+    for (const h of hench) {
+      h.x = me.x + (hench.indexOf(h) - 1) * 2;
+      h.z = me.z - 4;
+    }
+    for (const dx of [-3, -1, 1, 3]) {
+      const e = createEnemy(host.sim, world, dx === 1 ? 'brute' : 'grunt', me.x + dx, me.z - 12, 0);
+      e.ai = 'chase';
+      host.sim.enemies.push(e);
+    }
+    const events: SimEvent[] = [];
+    for (let i = 0; i < 60 * 60; i++) events.push(...host.tick());
+    const combos = events.filter((e) => e.kind === 'combo' && hench.some((h) => h.id === e.playerId));
+    expect(combos.length).toBeGreaterThan(0);
+  });
+});

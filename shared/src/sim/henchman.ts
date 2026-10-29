@@ -1,4 +1,5 @@
 import { enemyStats, tuning } from '../config/tuning';
+import { abilityReady } from './abilities';
 import { isTargetable, nextRandom } from './combat';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
 
@@ -8,7 +9,10 @@ import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, typ
  * the snapshots and everyone's views need nothing new; it runs on the server only, deterministic,
  * its few rolls from the sim's own rng.
  *
- * The sword henchman follows the party, picks the nearest enemy, closes and chains on it. Standing in
+ * Each follows the party and fights the nearest enemy (or, now and then, one set up for a combo, to pay
+ * it off): the sword closes and chains, the bow and the staff keep to their range and step back from
+ * anything that comes close (P6). Each uses its abilities now and then, and goes to revive a downed
+ * friend when nothing is threatening it. Standing in
  * an enemy's telegraph it notices only after tuning.hirelings.reactMs, then dodges out of it or raises
  * its guard. A player reacts sooner and always can, so a friend is still the better partner (the design
  * doc: below the Tavern's top tiers, henchmen are clearly worse than a competent human).
@@ -90,6 +94,24 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
     return cmd;
   }
 
+  // A friend down (P6): go to them and hold talk until they are up, players before other henchmen.
+  if (!threat) {
+    const down = state.players
+      .filter((p) => p !== h && p.mode === 'down' && (p.bleed === undefined || p.bleed > 0))
+      .sort((p, q) => Number(!!p.henchman) - Number(!!q.henchman) || Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z))[0];
+    if (down) {
+      const at = toward(down.x, down.z);
+      cmd.aimX = at.x;
+      cmd.aimZ = at.z;
+      if (at.d > tuning.coop.reviveRadius - 0.3) {
+        cmd.moveX = at.x;
+        cmd.moveZ = at.z;
+        cmd.sprint = at.d > 4;
+      } else cmd.interact = true;
+      return cmd;
+    }
+  }
+
   // The party it keeps to: the nearest standing player who is not a henchman.
   const leader = state.players
     .filter((p) => !p.henchman && p.mode !== 'down')
@@ -97,19 +119,41 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
 
   // Its enemy: the nearest that it or its leader is close to.
   const near = (e: EnemyState, x: number, z: number) => Math.hypot(e.x - x, e.z - z) <= c.aggroRange;
-  const target = state.enemies
+  const foes = state.enemies
     .filter((e) => isTargetable(e) && Math.abs(e.y - h.y) < 1.5 && (near(e, h.x, h.z) || (leader && near(e, leader.x, leader.z))))
-    .sort((p, q) => Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z))[0];
+    .sort((p, q) => Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z));
+  // Now and then it turns on one someone has set up (P6): a combo to pay off. Which ticks it does so
+  // comes from the tick and its own id, so it needs no roll.
+  const marked = foes.find((e) => e.shatterUntil > state.time || e.skewerUntil > state.time || e.detonateUntil > state.time);
+  const seed = Number(h.id.replace(/\D/g, '')) * 37;
+  const target = marked && (state.tick + seed) % 100 < c.comboChance * 100 ? marked : foes[0];
   if (target) {
     const at = toward(target.x, target.z);
     cmd.aimX = at.x;
     cmd.aimZ = at.z;
     cmd.lockTarget = target.id;
-    if (at.d > c.reach + enemyStats(target.kind).radius) {
+    const ranged = h.style !== 'sword';
+    const range = h.style === 'bow' ? c.bowRange : h.style === 'staff' ? c.staffRange : c.reach + enemyStats(target.kind).radius;
+    if (ranged && at.d < c.rangedMin) {
+      // Too close for a bow or a staff: step back, still facing it.
+      cmd.moveX = -at.x;
+      cmd.moveZ = -at.z;
+    } else if (at.d > range) {
       cmd.moveX = at.x;
       cmd.moveZ = at.z;
-      cmd.sprint = at.d > 6;
-    } else if (state.tick % Math.max(1, Math.round(c.attackEveryTicks)) === 0) cmd.attack = true;
+      cmd.sprint = at.d > range + 6;
+    }
+    const inReach = at.d <= range + (ranged ? 1 : 0);
+    if (inReach && state.tick % Math.max(1, Math.round(c.attackEveryTicks)) === 0) cmd.attack = true;
+    // Its abilities, now and then.
+    if (inReach && state.tick % Math.max(1, Math.round(c.abilityCheckTicks)) === 0) {
+      for (const slot of [0, 1] as const) {
+        if (!abilityReady(h, slot) || nextRandom(state) >= c.abilityChance) continue;
+        if (slot === 0) cmd.ability1 = true;
+        else cmd.ability2 = true;
+        break;
+      }
+    }
     return cmd;
   }
 

@@ -1,5 +1,5 @@
 import { applyTuningEdit, tuningEdits } from '../config/edits';
-import { tuning } from '../config/tuning';
+import { STYLES, tuning, type Style } from '../config/tuning';
 import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
@@ -217,20 +217,23 @@ export class HostSession {
 
   /** The slice's debug buttons that change the fight (Game's onHost tools). */
   /**
-   * A henchman joins the party (P3: a debug cheat until the tavern hires them, P10): a sword hero at
-   * the level of the hero who asked, beside them, with the next free name. Not past the party's size.
+   * A henchman joins the party (P3: a debug cheat until the tavern hires them, P10): at the level of
+   * the hero who asked, beside them, with the next free name, and (P6) the next kit in turn, a sword,
+   * a bow, a staff, unless one is asked for. Not past the party's size.
    */
-  addHenchman(beside: PlayerState | undefined): PlayerState | null {
+  addHenchman(beside: PlayerState | undefined, style?: Style): PlayerState | null {
     const sim = this.sim;
     if (sim.players.length >= tuning.coop.maxPlayers) return null;
     const n = sim.players.filter((p) => p.henchman).length;
+    const kit: Style = style ?? STYLES[n % STYLES.length];
     const name = HENCHMAN_NAMES[n % HENCHMAN_NAMES.length];
     const best = beside ? Math.max(beside.xp.sword, beside.xp.bow, beside.xp.staff) : 0;
     let id = 'h1';
     for (let i = 1; sim.players.some((p) => p.id === id); i++) id = `h${i}`;
-    const h = addPlayer(sim, this.world, id, { name, xp: { sword: best, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: tuning.combat.heroMaxHp }, false);
+    const xp = { sword: 0, bow: 0, staff: 0, [kit]: best };
+    const h = addPlayer(sim, this.world, id, { name, xp, talents: emptyTalents(), mods: emptyMods(), maxHp: tuning.combat.heroMaxHp }, false);
     h.henchman = true;
-    h.style = 'sword';
+    h.style = kit;
     return h;
   }
 
