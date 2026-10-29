@@ -77,7 +77,7 @@ const villageDef: VillageDef = {
       line: 'The shrine opens on the deep places below. Step into the ring together and hold still; down there, a ring in the place to rest brings you home.',
     },
     { id: 'storekeeper', name: 'Aldous', x: 9.6, z: -3.4, facingYawDeg: -90, look: 'sword', building: 'store', line: "Fresh stock each morning, and I'll take anything off your hands for fair coin." },
-    { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', building: 'storehouse', line: "Nothing to keep yet; your pack is all you carry. There'll be room for the lot of you in time." },
+    { id: 'warden', name: 'Marta', x: -9.6, z: -6.6, facingYawDeg: 90, look: 'bow', building: 'storehouse', line: "What you leave with me is safe whatever happens down there. Your pack is not: only its pocket comes home from a wipe." },
     { id: 'innkeeper', name: 'Old Fenn', x: -6.6, z: 13.6, facingYawDeg: 90, look: 'sword', building: 'tavern', line: 'No ale, no beds, no hirelings yet. Warm yourself by the fire a while.' },
   ],
   portal: { x: 0, z: -10.5, radius: 2.4 },

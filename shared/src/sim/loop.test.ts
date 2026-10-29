@@ -117,6 +117,11 @@ describe('the loop’s stakes and rewards (P1)', () => {
     ]);
     expect(s.events.some((e) => e.kind === 'banked' || (e.kind === 'pickup' && !e.carried))).toBe(false);
     expect(s.host.sim.floor!.carried).toEqual({});
+    // D5: the server tells each browser its bag is gone, all but the safe pocket.
+    expect(s.events.filter((e) => e.kind === 'bagLost')).toEqual([
+      { kind: 'bagLost', playerId: 'p1' },
+      { kind: 'bagLost', playerId: 'p2' },
+    ]);
   });
 
   it('gives up a leaver’s carried finds, so whoever takes their place starts with none', () => {

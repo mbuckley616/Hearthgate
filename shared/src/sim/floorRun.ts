@@ -176,6 +176,7 @@ function loseUnbanked(state: SimState, f: FloorRunState): void {
   for (const p of state.players) {
     const count = unbanked(state, p.id).length;
     if (count > 0) state.events.push({ kind: 'findsLost', playerId: p.id, count });
+    state.events.push({ kind: 'bagLost', playerId: p.id });
   }
   f.carried = {};
   f.found = { lumber: 0, stone: 0 };

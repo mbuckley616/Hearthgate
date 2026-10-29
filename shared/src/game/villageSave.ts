@@ -99,7 +99,9 @@ export const tavernHenchmen = (tier: number) => Math.min(3, tier);
 /** Items the store stocks a day (P5). */
 export const storeStock = (tier: number) => tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier;
 /** Spaces in the storehouse's stash (P9). */
-export const stashSpaces = (tier: number) => tier * tuning.village.stashPerTier;
+export const stashSpaces = (tier: number) => tuning.village.stashBase + (tier - 1) * tuning.village.stashPerTier;
+/** The bag's safe pocket (D5): its first spaces, never lost on a wipe. */
+export const pocketSpaces = (tier: number) => Math.min(28, tuning.village.pocketBase + (tier - 1) * tuning.village.pocketPerTier);
 
 /** What a building does at a tier, in a villager's words. */
 export function tierGives(building: BuildingId, tier: number): string {
@@ -109,7 +111,7 @@ export function tierGives(building: BuildingId, tier: number): string {
     case 'store':
       return `${storeStock(tier)} items on the shelves each day`;
     case 'storehouse':
-      return `${stashSpaces(tier)} spaces to keep things in`;
+      return `${stashSpaces(tier)} spaces to keep things in, and a pocket of ${pocketSpaces(tier)} no wipe can take`;
     case 'tavern': {
       const n = tavernHenchmen(tier);
       return tier >= 4 ? 'three henchmen, quicker on their feet' : `${n} ${n === 1 ? 'henchman' : 'henchmen'} for hire`;

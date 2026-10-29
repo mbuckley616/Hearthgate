@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, P9 and D5: Marta's stash, and the bag at risk
+
+**What changed**
+
+`auto/local-stash`, stacked on `auto/local-general-store` (which also gained the store's rows drawn as the bag's cells and the respec at Wren's shrine, after Michael's look). No protocol change.
+- **Marta's stash** (P9; Michael's answers, decisions.md "The stash's design"): a second F (or A) to Marta opens it, in the village that is yours. The stash is a wide grid, 8 across like a RuneScape bank, the bag beside it 4 across. It holds `village.stashBase` (16) spaces and `stashPerTier` (8) more a Storehouse tier: 16, 24, 32, 40. F or A (or a click) picks an item up and puts it down, swapping with what is there; X on a pad (Q, or a shift- or right-click) sends it straight to the first free space on the other side; Esc, Tab or B puts a held item back, then leaves. The stash lives in the owner's browser with their village save (P2), never sent to the server, until Phase 3's ledger; the room's word on lumber, stone and tiers no longer overwrites it. A visitor is told their things are in their own village.
+- **The bag at risk** (D5; decisions.md 28 Oct, extraction-style): a wipe on a floor now also sends each player `bagLost`, and the browser empties its bag but for the safe pocket, the bag's first `village.pocketBase` (3) spaces and `pocketPerTier` (1) more a Storehouse tier. Worn gear and the stash are never touched. The pocket is marked (striped) on the hero screen and at Marta's; a find never lands in it by itself, so what goes there is the player's choice, made at Marta's. The run summary counts what the wipe took; a toast says so.
+- Marta's line, and the Storehouse's words on its tier, say what is safe.
+- Tests: the wipe sends `bagLost` to each player (`loop.test.ts`). check 170, parity identical, test:net, smoke 7/7. In the browser: two items quick-moved into the stash, one picked up and put into a pocket space (swapping), the grid and the striped pocket; a `bagLost` took the three items past the pocket and kept the pocket, the two worn pieces and the stash. The pane's save put back after.
+
+**Learned**
+
+- **A find put in the first free space would have gone straight into the pocket,** making the risk vanish for anyone with a near-empty bag. Finds and taken-off gear now skip the pocket.
+- **The village's room replaced the whole save,** which would have wiped the stash the moment the village answered. It now replaces only what the room holds.
+
+**Next**
+
+- P7, the portal board, after asking Michael about Wren's dungeon chooser (he has thoughts). Then P8, and the henchmen.
+
 ## 2026-10-28: local session, P5: coin and the General Store
 
 **What changed**

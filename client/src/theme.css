@@ -901,3 +901,76 @@ body.on-title .run-banner {
     grid-template-columns: 1fr;
   }
 }
+
+/* Marta's stash (P9): a wide bank grid and the bag beside it. The bag's safe pocket (D5) is marked here and on the hero screen. */
+.bank .equip-card {
+  width: min(960px, 96vw);
+}
+
+.bank-cols {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  gap: 24px;
+}
+
+.bank-cols h3 {
+  margin: 0 0 8px;
+  font: 700 15px/1.2 Georgia, serif;
+  color: #f4e6cf;
+}
+
+.bank-cols h3 .muted {
+  font: 400 12px/1 system-ui, sans-serif;
+}
+
+.bank-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.stash-grid {
+  grid-template-columns: repeat(8, 52px);
+  grid-auto-rows: 52px;
+}
+
+.bag-grid {
+  grid-template-columns: repeat(4, 52px);
+  grid-auto-rows: 52px;
+}
+
+.gear-cell.pocket {
+  border-color: #3f7f86;
+  background-image: repeating-linear-gradient(135deg, rgba(90, 170, 180, 0.12) 0 4px, transparent 4px 8px);
+}
+
+.gear-cell.pocket.chosen {
+  border-color: var(--gold);
+}
+
+.gear-cell.held {
+  opacity: 0.45;
+  outline: 2px dashed var(--gold);
+  outline-offset: -4px;
+}
+
+.bank-detail {
+  min-height: 38px;
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .bank-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .stash-grid {
+    grid-template-columns: repeat(6, 48px);
+    grid-auto-rows: 48px;
+  }
+
+  .bag-grid {
+    grid-template-columns: repeat(4, 48px);
+    grid-auto-rows: 48px;
+  }
+}

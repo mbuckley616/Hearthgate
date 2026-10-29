@@ -18,7 +18,7 @@ import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
-import { emptyVillage, readVillageSave, type VillageSave } from '@hearthgate/shared/game/villageSave';
+import { emptyVillage, pocketSpaces, readVillageSave, stashSpaces, type VillageSave } from '@hearthgate/shared/game/villageSave';
 import {
   CHAMPION_IDS,
   SLOTTED_IDS,
@@ -113,12 +113,25 @@ function fromSliceSave(raw: string): ProfileData | null {
 }
 
 /** Put an item in the first free space; false if the bag is full. */
-function placeInBag(bag: (GearItem | null)[], item: GearItem): boolean {
-  const i = bag.indexOf(null);
+/**
+ * Put an item in the first free bag space past the safe pocket (D5): what goes in the pocket is the
+ * player's choice, made at Marta's, so a find never lands there by itself.
+ */
+function placeInBag(bag: (GearItem | null)[], item: GearItem, pocket = 0): boolean {
+  const i = bag.findIndex((s, n) => n >= pocket && !s);
   if (i < 0) return false;
   bag[i] = item;
   return true;
 }
+
+/** A space in the bag or in Marta's stash (P9). */
+export interface Space {
+  area: 'bag' | 'stash';
+  i: number;
+}
+
+/** This browser's own village (P2), with Marta's stash (P9), which only this browser holds until Phase 3. */
+export type OwnVillage = VillageSave & { stash?: (GearItem | null)[] };
 
 /**
  * The local player's saved progress. Client-side: in co-op each player keeps their own and brings
@@ -128,7 +141,7 @@ export class Profile {
   data: ProfileData;
   champion: ChampionState;
   /** This browser's own village (P2): sent in the hello when joining one, and what its room sends back. */
-  village: VillageSave;
+  village: OwnVillage;
 
   constructor() {
     this.data = Profile.load();
@@ -136,13 +149,15 @@ export class Profile {
     this.village = Profile.loadVillage();
   }
 
-  private static loadVillage(): VillageSave {
+  private static loadVillage(): OwnVillage {
     try {
-      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<VillageSave>;
+      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<OwnVillage>;
       const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
       // P1's save had only lumber and stone; it gains an id and the starting tiers.
       const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), lumber: n(v.lumber), stone: n(v.stone) };
-      return readVillageSave({ ...save, tiers: { ...save.tiers, ...v.tiers } }) ?? save;
+      const read: OwnVillage = readVillageSave({ ...save, tiers: { ...save.tiers, ...v.tiers } }) ?? save;
+      if (Array.isArray(v.stash)) read.stash = v.stash.map((i) => (i && CATALOGUE.has(i.id) ? i : null));
+      return read;
     } catch {
       return emptyVillage(newVillageId());
     }
@@ -210,7 +225,7 @@ export class Profile {
     const slot = entryOf(item).slot;
     let kept = true;
     if (!this.data.worn[slot] && slot !== 'weapon') this.data.worn[slot] = item;
-    else kept = placeInBag(this.data.bag, item);
+    else kept = placeInBag(this.data.bag, item, this.pocketSize());
     this.save();
     return kept;
   }
@@ -228,10 +243,65 @@ export class Profile {
   /** Take off a worn piece into the bag (not if the bag is full). The weapon stays: a hero always has one in hand. */
   takeOff(slot: BodySlot): boolean {
     const item = this.data.worn[slot];
-    if (!item || slot === 'weapon' || !placeInBag(this.data.bag, item)) return false;
+    if (!item || slot === 'weapon' || !placeInBag(this.data.bag, item, this.pocketSize())) return false;
     delete this.data.worn[slot];
     this.save();
     return true;
+  }
+
+  /** The bag's safe pocket (D5): its first spaces, by this browser's own Storehouse. */
+  pocketSize(): number {
+    return pocketSpaces(this.village.tiers.storehouse);
+  }
+
+  /** Marta's stash (P9), as many spaces as the Storehouse holds; items past a lower size stay. */
+  stash(): (GearItem | null)[] {
+    const s = (this.village.stash ??= []);
+    while (s.length < stashSpaces(this.village.tiers.storehouse)) s.push(null);
+    return s;
+  }
+
+  private spaceOf(at: Space): (GearItem | null)[] {
+    return at.area === 'bag' ? this.data.bag : this.stash();
+  }
+
+  itemIn(at: Space): GearItem | null {
+    return this.spaceOf(at)[at.i] ?? null;
+  }
+
+  /** Put what is in one space into another, swapping with whatever is there (P9's pick up and put down). */
+  swap(a: Space, b: Space): void {
+    const from = this.spaceOf(a);
+    const to = this.spaceOf(b);
+    const held = from[a.i] ?? null;
+    from[a.i] = to[b.i] ?? null;
+    to[b.i] = held;
+    this.save();
+  }
+
+  /** Send an item straight to the other side (P9's quick move): the first free space there. False if none. */
+  quickMove(at: Space): boolean {
+    const item = this.itemIn(at);
+    if (!item) return false;
+    const to = at.area === 'bag' ? this.stash() : this.data.bag;
+    const free = at.area === 'bag' ? to.indexOf(null) : to.findIndex((s, n) => n >= this.pocketSize() && !s);
+    if (free < 0) return false;
+    to[free] = item;
+    this.spaceOf(at)[at.i] = null;
+    this.save();
+    return true;
+  }
+
+  /** A wipe takes the bag (D5): everything past the safe pocket. Returns how many items went. */
+  loseBag(): number {
+    let lost = 0;
+    for (let i = this.pocketSize(); i < this.data.bag.length; i++) {
+      if (!this.data.bag[i]) continue;
+      this.data.bag[i] = null;
+      lost++;
+    }
+    this.save();
+    return lost;
   }
 
   /** Take an item out of the bag by its uid (P5: sold to Aldous). False if it is not there. */
