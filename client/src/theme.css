@@ -146,7 +146,6 @@ body {
 
 body.on-title .hud,
 body.on-title .hud-abilities,
-body.on-title .style-bar,
 body.on-title .run-prompt,
 body.on-title .run-timer,
 body.on-title .party-frames,
@@ -242,10 +241,10 @@ body.on-title .run-banner {
   height: 18px;
 }
 
-/* ---- HUD: portrait and bars above a hotbar ---- */
+/* ---- HUD: the weapon's level, portrait and bars above the abilities, all in the bottom-left corner ---- */
 .hud {
   left: 24px;
-  bottom: 100px;
+  bottom: 104px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -258,6 +257,35 @@ body.on-title .run-banner {
   background: var(--panel-solid);
   border: 2px solid var(--frame);
   box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-inner);
+}
+
+.hud-level {
+  margin-bottom: 4px;
+  font: 700 12px/1 Georgia, serif;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  text-shadow: 0 1px 0 #000, 0 0 6px #000;
+}
+
+.hud-level b {
+  margin-left: 6px;
+  padding: 1px 4px;
+  font: 700 10px/1 ui-monospace, Consolas, monospace;
+  color: #1a0a12;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+.hud-level-track {
+  width: 230px;
+  height: 2px;
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hud-level-xp {
+  height: 100%;
+  background: var(--gold);
 }
 
 .hud-hp {
@@ -296,78 +324,8 @@ body.on-title .run-banner {
   background: linear-gradient(#7aa2ff 0 40%, #3157c4 40%);
 }
 
-.style-bar {
-  left: 24px;
-  bottom: 22px;
-  transform: none;
-  gap: 8px;
-}
-
-.style-chip {
-  position: relative;
-  width: 58px;
-  height: 58px;
-  padding: 0;
-  box-sizing: border-box;
-  border-radius: 2px;
-  background: var(--panel-solid);
-  border: 2px solid #5a3a20;
-  box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-inner);
-  color: var(--ink);
-  text-align: center;
-}
-
-.style-chip.active {
-  border-color: var(--gold);
-  background: #2a1838;
-  transform: translateY(-4px);
-  box-shadow:
-    0 0 0 2px var(--frame-dark),
-    inset 0 0 0 2px var(--frame-inner),
-    0 0 14px rgba(255, 190, 90, 0.45);
-}
-
-.style-icon {
-  width: 32px;
-  height: 32px;
-  margin-top: 9px;
-}
-
-.style-name {
-  display: none;
-}
-
-.style-key {
-  position: absolute;
-  left: 4px;
-  top: 2px;
-  margin: 0;
-  font: 700 10px ui-monospace, Consolas, monospace;
-  color: var(--gold);
-  opacity: 0.9;
-}
-
-.style-level {
-  position: absolute;
-  right: 4px;
-  top: 3px;
-  margin: 0;
-  font-size: 9px;
-  color: var(--muted);
-}
-
-.style-xp {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  bottom: 4px;
-  height: 3px;
-  margin: 0;
-  border-radius: 0;
-}
-
 .hud-abilities {
-  left: 228px;
+  left: 24px;
   bottom: 22px;
   transform: none;
   gap: 8px;
@@ -607,6 +565,29 @@ body.on-title .run-banner {
   position: absolute;
   inset: 6px 6px 18px;
   border-radius: 2px;
+}
+
+.gear-icon {
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 36px;
+  height: 36px;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+}
+
+/* The hero as dressed, over the chosen item's details. */
+.hero-preview-slot {
+  width: 200px;
+  height: 280px;
+  margin-bottom: 8px;
+  background: radial-gradient(ellipse at 50% 70%, rgba(255, 190, 110, 0.16), transparent 65%);
+  border-bottom: 1px solid rgba(255, 190, 120, 0.2);
+}
+
+.hero-preview {
+  display: block;
 }
 
 .gear-short {

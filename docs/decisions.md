@@ -15,6 +15,15 @@ The base is built on `auto/local-dungeon-rules` (#97): `dodge.cancelAfterMs` 170
 
 ## Answered
 
+### 2026-10-28: After the feel-pass playtest: what a wipe costs, finds worn mid-run, what comes next (Claude (local))
+Michael played the feel pass ("a ton of fun") and sent a quality-of-life list (built the same day on `auto/local-qol`: Tab for the hero screen, item icons, levels on the Talents tab only, a level line over the health bar, the hero drawn on the bag tab, wheel zoom) and a list of ideas. Three of the ideas change rules already built, so they were asked in chat as three cards. Recommendations were: the bag at risk with a safe pocket; a find worn mid-run stays at risk until banked; the dungeon's feel before the village.
+Michael (2026-10-28, in chat): all three as recommended.
+- **What a wipe costs: the bag, extraction-style (as Arc Raiders).** On a run everything in the bag is at risk until it is stored in the village stash. Worn gear is never lost. A small safe pocket (3 spaces to start, growing with the Storehouse's tier) keeps what is in it whatever happens. This replaces P1's rule (only finds since the last bank are lost) and makes the Storehouse's stash part of the loop.
+- **A find can be worn straight away,** outside a fight, but it stays marked as carried, and a wipe takes it, until a rest room or the ring home banks it. Wearing a find is never a way round the risk.
+- **Next: the dungeon's feel, before the village.** Denser enemies, bigger rooms, crates and barrels that smash for lumber, stone and now and then a potion, and the two rules above. Then the village save and the stash, then the henchmen.
+
+Taken from the same list as backlog items, not yet asked: knocking small enemies flying on death, with a flying corpse hurting what it hits (a bigger launch as a perk, perhaps the blunt weapons' own); a double jump unlocked at a level; an air dodge; a jump that counts as a dodge, as in Elden Ring; rooms that need jumping (a chasm across a hall, lava with safe stones); many more enemy kinds, in themes and roles.
+
 ### 2026-10-28: Combat depth: builds, strings, Flow, weapons (Claude (local))
 Michael asked for a design conversation about combat: combos that will go stale after an hour or two, wanting their effects to evolve (more reach, extra swords on a spin, orbs that do different things), a rhythm with a reward for sustained chains, damage types, heavy attacks mixed with light, specializations per style (tank, fighter, rogue; sorcerer, warlock, necromancer, druid; ranger, scout, assassin) whose choices colour the attacks, more weapon families per style, and an off-hand. A local session drew it up as an interactive page (the control room's sibling artifact "Hearthgate Combat Builds", https://claude.ai/artifact/1FRPyQGdtA9URnN8D8WaLR) and Michael marked every piece Keep, Unsure or Cut (43 marks, read back from its `reactions` store).
 Michael (2026-10-28, on the page): **Keep** on everything below except where noted.

@@ -6,6 +6,17 @@ const DEG = Math.PI / 180;
 
 const blocksCamera = (c: Collider) => c.blocksCamera;
 
+const ZOOM_KEY = 'hearthgate.cameraZoom';
+
+function loadZoom(): number {
+  try {
+    const v = Number(localStorage.getItem(ZOOM_KEY));
+    return v > 0 ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
 /**
  * Centered third-person orbit camera (brief: "Camera and controls").
  *
@@ -46,6 +57,9 @@ export class OrbitCamera {
   private pitchVel = 0;
   /** Ids of fadeable colliders currently between camera and hero. */
   readonly occluders = new Set<string>();
+  /** The player's zoom, a multiple of tuning.camera.distance, and the one drawn as it eases there. */
+  private zoom = loadZoom();
+  private shownZoom = this.zoom;
 
   constructor(
     aspect: number,
@@ -71,9 +85,25 @@ export class OrbitCamera {
     return { x: Math.sin(yaw) * cp, y: Math.sin(pitch), z: Math.cos(yaw) * cp };
   }
 
+  /** How far behind the pivot the camera wants to sit, with the player's zoom. */
+  private get reach(): number {
+    return tuning.camera.distance * this.shownZoom;
+  }
+
   private hardCast(pivot: Vec3, yaw: number, pitch: number): number {
     const c = tuning.camera;
-    return sphereCast(pivot, this.dirAt(yaw, pitch), c.distance, c.collisionRadius, this.colliders, blocksCamera);
+    return sphereCast(pivot, this.dirAt(yaw, pitch), this.reach, c.collisionRadius, this.colliders, blocksCamera);
+  }
+
+  /** Zoom in (steps > 0) or out by whole steps; kept in the browser like the other settings. */
+  zoomBy(steps: number): void {
+    const c = tuning.camera;
+    this.zoom = Math.min(c.zoomMax, Math.max(c.zoomMin, this.zoom * Math.pow(c.zoomStep, -steps)));
+    try {
+      localStorage.setItem(ZOOM_KEY, String(this.zoom));
+    } catch {
+      // Private windows: the zoom just won't stick.
+    }
   }
 
   /** Apply look input (radians: x yaw right, y pitch up). Call before building movement commands. */
@@ -96,6 +126,9 @@ export class OrbitCamera {
     this.fovBoost += (sprint * c.sprintFovBoostDeg - this.fovBoost) * (1 - Math.exp(-c.fovBlendRate * dt));
     this.fovPunch *= Math.exp(-14 * dt);
     this.syncProjection();
+    // Re-clamp too, in case the panel narrowed the zoom's range.
+    this.zoom = Math.min(c.zoomMax, Math.max(c.zoomMin, this.zoom));
+    this.shownZoom += (this.zoom - this.shownZoom) * (1 - Math.exp(-c.zoomRate * dt));
     // Lock-on: swing to look from behind the hero toward the target.
     if (this.lockPoint) {
       const dx = this.lockPoint.x - hero.x;
@@ -159,9 +192,9 @@ export class OrbitCamera {
     const ahead = this.hardCast(pivot, aheadYaw, pitch + aheadPitch);
     // Wider probe: starts easing in before the camera sphere touches anything.
     const soft =
-      sphereCast(pivot, dir, c.distance, c.collisionRadius + c.softMargin, this.colliders, blocksCamera, true) +
+      sphereCast(pivot, dir, this.reach, c.collisionRadius + c.softMargin, this.colliders, blocksCamera, true) +
       c.softMargin;
-    const target = Math.min(c.distance, hard, ahead, soft);
+    const target = Math.min(this.reach, hard, ahead, soft);
 
     const rate = target < this.dist ? c.pullInRate : c.pushOutRate;
     this.dist += (target - this.dist) * (1 - Math.exp(-rate * dt));

@@ -21,14 +21,17 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   tab1: ['Digit1'],
   tab2: ['Digit2'],
   tab3: ['Digit3'],
-  lockOn: ['Tab', 'Mouse1'],
+  // T for target: Tab is the hero screen's (Michael, 28 Oct).
+  lockOn: ['KeyT', 'Mouse1'],
   interact: ['KeyF'],
   debugPanel: ['Backquote'],
   slowMo: ['Backslash'],
   hitboxes: ['KeyH'],
-  inventory: ['KeyI'],
+  inventory: ['Tab'],
   // The minimap: the corner or the whole floor (T4).
   map: ['KeyM'],
+  zoomIn: ['WheelUp', 'Equal'],
+  zoomOut: ['WheelDown', 'Minus'],
   menuBack: ['Escape'],
 };
 
@@ -64,6 +67,9 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   tab1: [14], // d-pad left, on the hero screen
   tab2: [12], // d-pad up
   tab3: [15], // d-pad right
+  // Off the hero screen, d-pad up and down move the camera in and out.
+  zoomIn: [12],
+  zoomOut: [13],
 };
 
 export const gamepadAxes = { moveX: 0, moveY: 1, lookX: 2, lookY: 3 };

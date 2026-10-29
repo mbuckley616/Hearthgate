@@ -23,6 +23,9 @@ export const BUTTON_ACTIONS = [
   'hitboxes',
   'inventory',
   'map',
+  // The camera's distance: the wheel, - and =, the d-pad off the hero screen.
+  'zoomIn',
+  'zoomOut',
   'menuBack',
 ] as const;
 

@@ -1,7 +1,7 @@
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
-import { levelUnlock, levelFor } from '@hearthgate/shared/sim/gear';
+import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
-import { cooldownMult } from '@hearthgate/shared/sim/talents';
+import { cooldownMult, pointsEarned, pointsSpent } from '@hearthgate/shared/sim/talents';
 import { flowTier } from '@hearthgate/shared/sim/flow';
 import { ICONS, iconUrl } from './pixelArt';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
@@ -11,12 +11,17 @@ const TOAST_MS = 4200;
 const COMBO_WORDS: Record<Combo, string> = { shatter: 'Shatter', skewer: 'Skewer', detonate: 'Detonate' };
 
 /**
- * Combat HUD from the brief: health, dodge charges and a combo counter (the
- * active style lives in StyleBar), the two ability cooldowns, a red edge
- * flash when hurt and a "down" notice.
+ * Combat HUD from the brief: the weapon in hand's level over health, dodge charges and a combo
+ * counter, the ability cooldowns under them, a red edge flash when hurt and a "down" notice. The
+ * other weapons' levels are on the hero screen's Talents tab (Michael, 28 Oct).
  */
 export class Hud {
   private root = document.createElement('div');
+  /** "Knight · Level 6" for the weapon in hand, with its progress to the next level beneath. */
+  private level = document.createElement('div');
+  private levelText = document.createElement('span');
+  private levelXp = document.createElement('div');
+  private shownLevel = '';
   private hpFill = document.createElement('div');
   /** The active hero's pixel portrait beside the health bar. */
   private portrait = document.createElement('img');
@@ -62,7 +67,13 @@ export class Hud {
     this.flow.innerHTML = ticks;
     this.flow.prepend(this.flowFill);
     this.flow.append(this.flowLabel);
-    bars.append(hp, this.flow, this.pips, this.draught);
+    this.level.className = 'hud-level';
+    this.levelXp.className = 'hud-level-xp';
+    const xpTrack = document.createElement('div');
+    xpTrack.className = 'hud-level-track';
+    xpTrack.appendChild(this.levelXp);
+    this.level.append(this.levelText, xpTrack);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -142,7 +153,7 @@ export class Hud {
         this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point</span>`, 'level');
       }
       if (ev.kind === 'championPoint' && ev.playerId === localId) {
-        this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under I · 3 Champion</span>`, 'level');
+        this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under Tab · 3 Champion</span>`, 'level');
       }
       if (ev.kind === 'pickup' && ev.playerId === localId) {
         const i = ev.item;
@@ -163,6 +174,16 @@ export class Hud {
       this.shownStyle = p.style;
       this.portrait.src = iconUrl(ICONS[p.style]);
     }
+    // The hero's name follows the style until specializations (the builds pass) give it their own.
+    const xp = p.xp[p.style];
+    const unspent = pointsEarned(xp) - pointsSpent(p.talents[p.style]);
+    const level = `${HERO_NAMES[p.style]} · Level ${levelFor(xp)}${unspent > 0 ? `<b>+${unspent}</b>` : ''}`;
+    if (level !== this.shownLevel) {
+      this.shownLevel = level;
+      this.levelText.innerHTML = level;
+      this.level.title = unspent > 0 ? `${unspent} talent point${unspent > 1 ? 's' : ''} to spend (Tab, between runs)` : '';
+    }
+    this.levelXp.style.width = `${Math.round(levelProgress(xp) * 100)}%`;
     const max = p.maxHp;
     const frac = Math.max(0, Math.min(1, p.hp / max));
     this.hpFill.style.width = `${frac * 100}%`;

@@ -107,7 +107,8 @@ export class KeyboardMouseSource implements InputSource {
   };
 
   private onWheel = (e: WheelEvent) => {
-    if (!this.pointerLocked) return;
+    // The wheel zooms the camera: with the mouse captured, or over the game itself (never over a menu's scroll).
+    if (!this.pointerLocked && !(e.target instanceof Node && this.target.contains(e.target))) return;
     e.preventDefault();
     const code = e.deltaY > 0 ? 'WheelDown' : 'WheelUp';
     this.pressed.add(code);

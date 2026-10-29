@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-28: local session, quality of life after the feel-pass playtest
+
+**What changed**
+
+Michael played the feel pass and sent a list; the quality-of-life half is built (`auto/local-qol`).
+- **Tab opens and closes the hero screen** (it was I). Lock-on moves from Tab to T; middle click and the right stick click stay.
+- **Every item has an icon.** `ui/gearIcons.ts` has a 16x16 pixel grid per catalogue shape, in the HUD icons' style, painted in the item's material: base, a lighter and a darker base, and its trim. The cells keep the item's name under the icon; a worn slot's label shows only while it is empty.
+- **The three weapon levels are on the Talents tab only.**
+- **The HUD's three style chips are gone** (`StyleBar` deleted). A line over the health bar names the hero and the weapon in hand's level ("Knight · Level 6", a gold +N for talent points to spend) with a hairline of progress. The ability slots move under the health bar, in the same corner.
+- **The bag tab shows the hero as dressed** (`ui/HeroPreview.ts`): the game's own `HeroView`, put through `applyLoadout` from the profile, facing the player, on a small renderer of its own, drawn only while the tab is open.
+- **The mouse wheel zooms the camera**, from half to twice `camera.distance` (`tuning.camera.zoom*`), eased, and kept in the browser. Also - and =, and the d-pad's up and down off the hero screen (rule 4). Over a menu the wheel still scrolls the menu.
+- check 135, parity identical, smoke 7/7 (its hero-screen test now opens with Tab and checks the icons, the figure and the levels on the Talents tab). In the browser: icons for all 31 shapes, the dressed figure, the level line, and the zoom from 5.5 m out to 8.5 m on four presses of -.
+
+**Learned**
+
+- **The hero screen redraws by `innerHTML`,** so a WebGL canvas inside it would be thrown away on every keypress. The preview's canvas lives outside and is put back into its slot after each redraw.
+- **The game's shared Palette carries the main renderer's reflection map,** which a second renderer cannot use. The preview builds its own from the same `dungeonEnvironment` (now exported), so metal reads the same in both.
+
+**Next**
+
+- Michael's answers on the rest of the list (decisions.md, "After the feel-pass playtest"): the bag at risk with a safe pocket, finds wearable mid-run but still at risk, and the dungeon's feel before the village. The backlog has them as D1 to D5, with P9's stash moved up beside D5.
+- D1 (denser fights) is first; it is tuning, so a local session or the builder can take it.
+
 ## 2026-10-28: local session, C5: warhammer, crossbow and wand
 
 **What changed**

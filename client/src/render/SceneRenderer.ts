@@ -201,8 +201,9 @@ function pixelRatio(): number {
  * Dim reflection environment that matches the room: cool dark vault above,
  * warm stone below, a ring of torch-coloured hot spots. Keeps polished metal
  * readable without the blown-out highlights a studio environment gives.
+ * The hero screen's figure reflects the same (HeroPreview).
  */
-function dungeonEnvironment(): THREE.Scene {
+export function dungeonEnvironment(): THREE.Scene {
   const scene = new THREE.Scene();
   const sky = new THREE.SphereGeometry(10, 32, 16);
   const colors: number[] = [];
