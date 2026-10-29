@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, P6: the bow and staff henchmen
+
+**What changed**
+
+`auto/local-henchmen-kits`, stacked on `auto/local-henchman`. No protocol change.
+- **Three kits in turn:** "Add a henchman" now brings a sword (Garrick), then a bow (Bryn), then a staff (Tamsin); `addHenchman` also takes a kit.
+- **Range:** the bow keeps `hirelings.bowRange` (10 m), the staff `staffRange` (8 m), and both step back from anything nearer than `rangedMin` (4.5 m) while still facing it.
+- **Abilities:** every `abilityCheckTicks` a henchman with a ready ability and a target in reach uses one on `abilityChance` (40%).
+- **Combos, sometimes:** `comboChance` (half) of the time it turns on an enemy someone has set up (Shatter, Skewer or Detonate), to pay it off; which ticks it does so come from the tick and its id, with no roll.
+- **Reviving:** with nothing threatening it, a henchman goes to a downed friend (players before other henchmen) and holds talk until they are up. It can go down itself, and players revive it as they would a friend. Party scaling already counted every hero, henchmen included.
+- Tests: the kits in turn; a bow steps back, closes and shoots in range; a downed player is revived; three henchmen pay off a combo in a fight (the gate's callout). check 192, parity identical, test:net, smoke 7/7. In the browser, on floor 1 of seed 11, Garrick, Bryn and Tamsin cleared the guard room with none of them hurt, Bryn shooting from 9.8 m and Tamsin from 7.8 m. Three may be too strong for floor 1; the gate's run to floor 3 will say.
+
+**Next**
+
+- P10, the tavern's hiring room (after Michael's mockup: the henchmen standing in the room, each with a card and a price), henchmen following the party through rings and giving their slot to a friend who joins. Then the Phase 2 gate.
+
 ## 2026-10-29: local session, P3: a henchman who fights
 
 **What changed**
