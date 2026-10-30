@@ -28,7 +28,11 @@ export class BankScreen {
   private note = '';
   visible = false;
 
-  constructor(private profile: Profile) {
+  constructor(
+    private profile: Profile,
+    /** An item set down in the bag or the stash, for its sound. */
+    private onPut: (item: GearItem) => void = () => {},
+  ) {
     this.root.className = 'equip bank';
     const card = document.createElement('div');
     card.className = 'equip-card';
@@ -110,7 +114,9 @@ export class BankScreen {
     if (!this.held) {
       if (this.profile.itemIn(this.at)) this.held = { ...this.at };
     } else {
+      const item = this.profile.itemIn(this.held);
       if (this.held.area !== this.at.area || this.held.i !== this.at.i) this.profile.swap(this.held, this.at);
+      if (item) this.onPut(item);
       this.held = null;
     }
     this.note = '';
@@ -123,7 +129,10 @@ export class BankScreen {
     const item = this.profile.itemIn(this.at);
     if (!item) return;
     if (!this.profile.quickMove(this.at)) this.note = this.at.area === 'bag' ? 'The stash is full: Marta needs a bigger storehouse.' : 'Your bag is full.';
-    else this.note = '';
+    else {
+      this.note = '';
+      this.onPut(item);
+    }
     this.render();
   }
 

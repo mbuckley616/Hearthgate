@@ -41,6 +41,7 @@ import { freeAimFrom, type FreeAim } from './aim';
 import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
+import { LoadingCard } from '../ui/LoadingCard';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { KeeperCard, type KeeperChoice } from '../ui/KeeperCard';
 import { VillageMap, type VillageMapData } from '../ui/VillageMap';
@@ -119,6 +120,10 @@ export class Game {
   private telegraphs: TelegraphView;
   private readonly runUi = new RunUi();
   private readonly summary = new RunSummary();
+  /** Between Play and the room's welcome, which the free server can take a minute to send. */
+  private readonly loading = new LoadingCard();
+  /** This page has been in a room once: a wait after that is a portal's hand-off, not the server waking. */
+  private playedOnce = false;
   /**
    * Whether the village the party is in, or last set out from, is this browser's own (its room says
    * so, P2): lumber and stone banked on its runs are added to the save here as they are banked.
@@ -269,10 +274,13 @@ export class Game {
       this.profile,
       () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
       () => slotsOpen(this.session.view().curr, !!this.world.level.village),
-      (item) => this.session.request({ k: 'drop', item }),
+      (item) => {
+        this.session.request({ k: 'drop', item });
+        this.sfx.item(item, true);
+      },
       () => this.atShrine(),
     );
-    this.bank = new BankScreen(this.profile);
+    this.bank = new BankScreen(this.profile, (item) => this.sfx.item(item, true));
     this.hire = new HireScreen(
       (kit) => this.session.request({ k: 'hire', kit, coin: this.profile.data.coin }),
       (kit) => {
@@ -504,7 +512,23 @@ export class Game {
       this.updateOverlay();
       return;
     }
-    this.talk.update(near, pressed, dt);
+    this.talk.update(near, pressed, dt, this.doorInReach(this.me()));
+  }
+
+  /**
+   * What the door the hero stands in leads to, for the hint (a door takes a press, Michael 29 Oct):
+   * from the square, into the building whose front it is; from inside, out. The server takes the press.
+   */
+  private doorInReach(me: PlayerState | null): string | null {
+    const v = this.world.level.village;
+    if (!v || !me || me.mode === 'down') return null;
+    const d = v.doors.find((d) => Math.hypot(d.x - me.x, d.z - me.z) <= d.radius);
+    if (!d) return null;
+    const h = this.world.level.floorSize / 2;
+    if (Math.abs(d.x) > h || Math.abs(d.z) > h) return 'step outside';
+    let best = v.buildings[0];
+    for (const b of v.buildings) if (Math.hypot(b.door.x - d.x, b.door.z - d.z) < Math.hypot(best.door.x - d.x, best.door.z - d.z)) best = b;
+    return `go into the ${best.name}`;
   }
 
   /** A keeper's words on their card: their line, their building's tier and what it gives, any news. */
@@ -658,11 +682,15 @@ export class Game {
         if (!this.profile.addItem(t.item)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(t.item)} was left on the counter</span>`, 'common');
         if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
         this.store.say(`Bought ${nameOf(t.item)} for ${t.coin} coin.`);
+        this.sfx.coins();
+        this.sfx.item(t.item, false);
       } else {
         const item = this.profile.data.bag.find((i) => i?.uid === t.uid);
         if (!item || !this.profile.removeByUid(t.uid)) continue;
         this.profile.data.coin += t.coin;
         this.store.say(`Sold ${nameOf(item)} for ${t.coin} coin.`);
+        this.sfx.coins();
+        this.sfx.item(item, true);
       }
       this.profile.save();
       this.store.refresh();
@@ -717,6 +745,8 @@ export class Game {
 
     let actions = this.input.poll(realDt);
     if (this.session.levelVersion !== this.shownLevel) this.enterLevel();
+    if (this.session.playing) this.playedOnce = true;
+    this.loading.update(!this.title.visible && !this.session.playing && !this.session.ended, !this.playedOnce, this.session.status());
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;

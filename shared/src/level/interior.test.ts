@@ -13,16 +13,19 @@ const v = village.village!;
 const loadout: Loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
 const DT = 1 / 60;
 
-/** Walk at (x, z) until `done`, or give up after a few seconds. */
-function walkAt(p: PlayerState, s: ReturnType<typeof createSimState>, x: number, z: number, done: () => boolean) {
+/** Walk at (x, z) until `done`, or give up after a few seconds; `interact` holds F the while. */
+function walkAt(p: PlayerState, s: ReturnType<typeof createSimState>, x: number, z: number, done: () => boolean, interact = true) {
   for (let i = 0; i < 240 && !done(); i++) {
     const dx = x - p.x;
     const dz = z - p.z;
     const d = Math.hypot(dx, dz) || 1;
-    stepPlayer(p, { ...idleCommand(), moveX: dx / d, moveZ: dz / d, aimX: dx / d, aimZ: dz / d }, DT, world, s);
-    stepDoors(s, world);
+    const cmd = { ...idleCommand(), moveX: dx / d, moveZ: dz / d, aimX: dx / d, aimZ: dz / d, interact };
+    stepPlayer(p, cmd, DT, world, s);
+    stepDoors(s, world, { [p.id]: cmd });
   }
 }
+
+const press = (id: string) => ({ [id]: { ...idleCommand(), interact: true } });
 
 describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
   // The doors come in pairs: a building's front door, then the way out of its inside.
@@ -53,8 +56,29 @@ describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
     p.z = into.z;
     stepPlayer(p, idleCommand(), DT, world, s);
     expect(Math.hypot(p.x - into.x, p.z - into.z)).toBeLessThan(1);
-    stepDoors(s, world);
+    stepDoors(s, world, press('p1'));
     expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
+  });
+
+  it.each(pairs.map((p) => [p.r.building, p]))('%s: a door takes a press (Michael, 29 Oct): walking into it, either side, goes nowhere', (_name, { r, into, out }) => {
+    const s = createSimState(village, [], world);
+    const p = addPlayer(s, world, 'p1', loadout, false);
+    const inside = () => p.x >= r.minX && p.x <= r.maxX && p.z >= r.minZ && p.z <= r.maxZ;
+    p.x = out.toX;
+    p.z = out.toZ;
+    // Straight on through the door's circle, into the wall behind it.
+    walkAt(p, s, 2 * into.x - out.toX, 2 * into.z - out.toZ, () => false, false);
+    expect(Math.hypot(p.x - into.x, p.z - into.z)).toBeLessThan(into.radius);
+    expect(inside()).toBe(false);
+    expect(s.events.some((e) => e.kind === 'door')).toBe(false);
+    // F there: through, with the door's sound for the browsers.
+    stepDoors(s, world, press('p1'));
+    expect(inside()).toBe(true);
+    expect(s.events).toContainEqual(expect.objectContaining({ kind: 'door', playerId: 'p1' }));
+    // Inside, the doorway is shut: walking on at it stops in its circle and stays in.
+    walkAt(p, s, r.doorX, r.maxZ + 3, () => false, false);
+    expect(inside()).toBe(true);
+    expect(Math.hypot(p.x - out.x, p.z - out.z)).toBeLessThan(out.radius);
   });
 
   it('brings a player’s henchmen through a door with them, side by side and clear of the doors', () => {
@@ -65,7 +89,7 @@ describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
     hench.forEach((h, i) => Object.assign(h, { x: into.x + i - 1, z: into.z + 3 }));
     p.x = into.x;
     p.z = into.z;
-    stepDoors(s, world);
+    stepDoors(s, world, press('p1'));
     expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
     for (const h of hench) {
       expect(Math.hypot(h.x - into.toX, h.z - into.toZ)).toBeLessThan(2);
