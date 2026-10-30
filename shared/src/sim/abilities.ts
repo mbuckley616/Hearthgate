@@ -155,6 +155,8 @@ export function stepAbility(
     }
   }
   if (kind === 'disengage' && !inActive) p.invulnerable = false;
+  // Charge's dash slips hits as a roll does (C6), until it lands on someone or runs its length.
+  if (kind === 'charge' && tuning.abilities.meleeGuard) p.invulnerable = p.abilityTime >= timing.windup && p.abilityTime < timing.windup + timing.active;
 
   return t >= timing.windup + timing.active + timing.recovery;
 }

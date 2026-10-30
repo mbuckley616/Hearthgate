@@ -1263,6 +1263,14 @@ export const tuning = {
    * (M4); until then all six are available. Damage is x combat.baseDamage.
    */
   abilities: {
+    /**
+     * Melee abilities that protect (C6; Michael, 29 Oct: they "make you really vulnerable, especially
+     * the Whirlwind"): Charge's dash is invulnerable like a roll, and Whirlwind's spin takes
+     * whirlwindDamageTaken of each hit and is never staggered. The slice's are bare; the parity test
+     * turns it off.
+     */
+    meleeGuard: true,
+    whirlwindDamageTaken: 0.3,
     // Knight Q: dash, staggering the first enemy hit.
     chargeWindupMs: 120,
     chargeDashMs: 300,
@@ -1917,6 +1925,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.whirlwindDurationMs': [0, 4000, 10],
   'abilities.whirlwindRecoveryMs': [0, 4000, 10],
   'abilities.whirlwindTickMs': [0, 4000, 10],
+  'abilities.whirlwindDamageTaken': [0, 1, 0.05],
   'abilities.whirlwindRadius': [0, 10, 0.1],
   'abilities.whirlwindDamage': [0, 5, 0.05],
   'abilities.whirlwindMoveFrac': [0, 1, 0.05],

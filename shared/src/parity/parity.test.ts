@@ -24,13 +24,14 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
     kept.level4 = tuning.progression.level4DamageBonus;
     kept.maxLevel = tuning.progression.maxLevel;
     kept.healthPerLevel = tuning.progression.healthPerLevel;
+    kept.meleeGuard = tuning.abilities.meleeGuard;
     kept.heavies = tuning.combo.heavies;
     kept.flow = tuning.flow.enabled;
     kept.swap = tuning.combo.swapInFight;
@@ -52,6 +53,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.progression.maxLevel = 20;
     // Nor does a level raise health in the slice.
     tuning.progression.healthPerLevel = 0;
+    // The slice's Charge and Whirlwind protect nothing (C6).
+    tuning.abilities.meleeGuard = false;
   });
   afterAll(() => {
     tuning.coop.bleedOut = kept.bleedOut;
@@ -59,6 +62,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.progression.level4DamageBonus = kept.level4;
     tuning.progression.maxLevel = kept.maxLevel;
     tuning.progression.healthPerLevel = kept.healthPerLevel;
+    tuning.abilities.meleeGuard = kept.meleeGuard;
     tuning.combo.heavies = kept.heavies;
     tuning.flow.enabled = kept.flow;
     tuning.combo.swapInFight = kept.swap;

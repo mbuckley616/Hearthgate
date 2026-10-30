@@ -2,6 +2,19 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, C6 melee abilities that protect
+
+**What changed**
+
+`auto/local-melee-guard`, stacked on `auto/local-keeper-cards`. Sim only; no message or event change.
+- **Charge's dash is invulnerable**, as a roll is: `stepAbility` sets `invulnerable` while the dash runs and clears it when it lands on someone or runs its length, as Disengage already did. Its windup and recovery stay open. The server's step and the prediction set it alike, and a hit held back by the lag grace that lands during the dash is slipped, as with a dodge.
+- **Whirlwind's spin takes `abilities.whirlwindDamageTaken` (0.3) of each hit and is never staggered**: in `hurtHero`, after armour; the windup and recovery take hits as before.
+- Behind `abilities.meleeGuard`, off in the parity test. Tests: Charge invulnerable mid-dash and not in recovery; a heavy 20 mid-spin costs 6 and the spin goes on; with the switch off, the slice's. The first two fail on the old code. check 209, parity identical, test:net passed. Not felt by hand yet.
+
+**Next**
+
+- Michael approves the stack (`auto/local-playtest-fixes`, `auto/local-keeper-cards`, this) and feels the abilities in a fight. Then P12 and P13 (henchmen).
+
 ## 2026-10-29: local session, P11 keeper cards and P14 the village map
 
 **What changed**
