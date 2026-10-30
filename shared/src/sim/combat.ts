@@ -1,7 +1,7 @@
 import { abilityTiming, enemyStats, tuning, type Style } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
-import { levelFor } from './gear';
+import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 
@@ -55,13 +55,17 @@ export interface HitSpec {
 
 /** Damage multiplier for a hero's style: level 4 bonus, gear and the might talent. */
 export function styleDamageBonus(p: PlayerState, style: Style): number {
-  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p);
+  // A henchman has no talents to spend: its level is its build (P12).
+  const hench = p.henchman ? tuning.hirelings.damagePerLevel * (levelFor(p.xp[style]) - 1) : 0;
+  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p) + hench;
 }
 
 /** Add XP to a hero's style, announcing any level crossed. */
 export function grantXp(state: SimState, p: PlayerState, style: Style, amount: number): void {
   const before = levelFor(p.xp[style]);
   p.xp[style] += amount;
+  // A henchman earns no XP past its Tavern's cap (P12).
+  if (p.henchman && p.brain?.cap) p.xp[style] = Math.min(p.xp[style], xpForLevel(p.brain.cap));
   const after = levelFor(p.xp[style]);
   for (let l = before + 1; l <= after; l++) state.events.push({ kind: 'levelUp', playerId: p.id, style, level: l });
   // Past the top level in any weapon, every weapon's XP also banks toward champion points.

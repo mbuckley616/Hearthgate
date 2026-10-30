@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { levelFor } from '@hearthgate/shared/sim/gear';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 
 const W = 256;
@@ -27,7 +28,9 @@ export class Nameplate {
     const down = p.mode === 'down';
     const hp = Math.round((Math.max(0, p.hp) / p.maxHp) * 50);
     const revive = Math.round(((p.reviveProgress * 1000) / reviveMs) * 50);
-    const key = `${p.name}|${hp}|${down}|${revive}`;
+    // A henchman's level rides on its name (P12; Michael, 29 Oct: "listed next to their names").
+    const name = p.henchman ? `${p.name} · Lv ${levelFor(p.xp[p.style])}` : p.name || 'Player';
+    const key = `${name}|${hp}|${down}|${revive}`;
     if (key === this.drawn) return;
     this.drawn = key;
     const c = this.ctx;
@@ -37,7 +40,7 @@ export class Nameplate {
     c.lineWidth = 5;
     c.strokeStyle = 'rgba(0,0,0,0.75)';
     c.fillStyle = down ? '#ff8a7a' : '#f4e6cf';
-    const label = down ? `${p.name || 'Player'} (down)` : p.name || 'Player';
+    const label = down ? `${name} (down)` : name;
     c.strokeText(label, W / 2, 28);
     c.fillText(label, W / 2, 28);
     // Health bar, or the revive bar while down.

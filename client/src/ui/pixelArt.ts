@@ -69,6 +69,7 @@ const ICON_COLORS: Record<string, string> = {
   e: '#4f8a3a', // green
   c: '#7fd8ff', // cyan
   p: '#8a5ad8', // purple
+  f: '#e8b48a', // skin
 };
 
 /** A 16x16 icon from 16 strings of 16 characters, as a data URL. */
@@ -89,6 +90,79 @@ export function iconUrl(rows: string[]): string {
 
 /** Icons for heroes and abilities, hand-placed pixel by pixel. */
 export const ICONS: Record<string, string[]> = {
+  // Heads for the party's frames (P13): the three henchmen by kit, and a player's hero.
+  headSword: [
+    '.......rr.......',
+    '......rrrr......',
+    '.....kkrrkk.....',
+    '....kssssssk....',
+    '...kssssssssk...',
+    '...kswssssssk...',
+    '...kssssssssk...',
+    '...kddddddddk...',
+    '...kkkkkkkkkk...',
+    '...kssssssssk...',
+    '...ksdkssdksk...',
+    '...kssssssssk...',
+    '....kssssssk....',
+    '.....kddddk.....',
+    '......kddk......',
+    '.......kk.......',
+  ],
+  headBow: [
+    '.......kk.......',
+    '......keek......',
+    '.....keeeek.....',
+    '....keeeeeek....',
+    '...keeennneek...',
+    '...keenffnneek..',
+    '..keefffffffek..',
+    '..keefkfffkfek..',
+    '..keefffffffek..',
+    '..keeffffffeek..',
+    '...keeffnffeek..',
+    '...keeeffffeek..',
+    '....keeeeeeek...',
+    '.....keeeeek....',
+    '......kkkkk.....',
+    '................',
+  ],
+  headStaff: [
+    '..........kk....',
+    '.........kpk....',
+    '........kppk....',
+    '.......kpppk....',
+    '......kppppk....',
+    '.....kpppppk....',
+    '...kkggggggkk...',
+    '..kppppppppppk..',
+    '...kkkkkkkkkk...',
+    '....kyffffyk....',
+    '....kfkffkfk....',
+    '....kyffffyk....',
+    '....kyyffyyk....',
+    '.....kyffyk.....',
+    '......kyyk......',
+    '.......kk.......',
+  ],
+  headHero: [
+    '.......gg.......',
+    '......kggk......',
+    '.....kssssk.....',
+    '....kssssssk....',
+    '...kssssssssk...',
+    '...ksswsssssk...',
+    '...ksskkkkssk...',
+    '...kskffffksk...',
+    '...kskfkfkfsk...',
+    '...kskffffksk...',
+    '...kskffffksk...',
+    '...ksskffkssk...',
+    '....kssssssk....',
+    '.....kddddk.....',
+    '......kddk......',
+    '.......kk.......',
+  ],
   sword: [
     '..............kk',
     '.............kwk',

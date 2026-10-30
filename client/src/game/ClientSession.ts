@@ -35,7 +35,7 @@ function scalars(p: PlayerState): Record<string, unknown> {
 /** The clock's numbers, read from tuning each time so the panel tunes them live. */
 /** The village as the room holds it: Marta's stash (P9) stays in this browser until Phase 3. */
 function villageOnly(v: VillageSave): VillageSave {
-  return { id: v.id, lumber: v.lumber, stone: v.stone, tiers: { ...v.tiers } };
+  return { id: v.id, lumber: v.lumber, stone: v.stone, tiers: { ...v.tiers }, ...(v.hench ? { hench: { ...v.hench } } : {}) };
 }
 
 function clockConfig(): ClockConfig {

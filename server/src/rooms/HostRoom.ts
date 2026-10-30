@@ -7,7 +7,7 @@ import { buildWorld, type LevelDef } from "@hearthgate/shared/level/arena";
 import type { LevelKind, ToHost, ToPeer } from "@hearthgate/shared/net/protocol";
 import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { readToHost } from "@hearthgate/shared/net/validate";
-import { readHenchmanCards } from "@hearthgate/shared/sim/henchman";
+import { readHenchmanCards, type HenchmanCard } from "@hearthgate/shared/sim/henchman";
 import { createCommandBucket, takeCommands, type CommandBucket } from "./bucket.js";
 
 /** Every message in both directions travels under this one Colyseus type, as the relay's one `msg`. */
@@ -112,7 +112,7 @@ export abstract class HostRoom extends Room {
 
     // Henchmen arriving with a party through a ring (P10).
     const hench = readHenchmanCards(options.henchmen);
-    if (hench.length > 0) this.host.receiveHenchmen(hench);
+    if (hench.length > 0) this.welcomeHenchmen(hench);
 
     this.lastPump = performance.now();
     this.pump();
@@ -148,6 +148,11 @@ export abstract class HostRoom extends Room {
    * `roomName` made with `createOptions`. Each client gets a seat reserved there and a `handoff`
    * message with it. If the matchmaker refuses, the portal reopens so the party can try again.
    */
+  /** The party's henchmen arriving here (P10); the village sets them to what they have banked (P12). */
+  welcomeHenchmen(cards: readonly HenchmanCard[]): void {
+    this.host.receiveHenchmen(cards);
+  }
+
   protected async handOff(roomName: string, level: LevelKind, roomId: string | null, createOptions: Record<string, unknown>): Promise<string | null> {
     if (this.handingOff) return null;
     this.handingOff = true;
@@ -156,7 +161,7 @@ export abstract class HostRoom extends Room {
     const henchmen = this.host.takeHenchmen();
     try {
       const target = roomId ?? (await matchMaker.createRoom(roomName, { ...createOptions, henchmen })).roomId;
-      if (roomId && henchmen.length > 0) rooms.get(roomId)?.host.receiveHenchmen(henchmen);
+      if (roomId && henchmen.length > 0) rooms.get(roomId)?.welcomeHenchmen(henchmen);
       for (const c of clients) {
         const reservation = await matchMaker.joinById(target, {});
         const msg: ToPeer = { k: "handoff", reservation, level };
@@ -183,7 +188,7 @@ export abstract class HostRoom extends Room {
     const henchmen = this.clients.length <= 1 ? this.host.takeHenchmen() : [];
     try {
       const target = roomId ?? (await matchMaker.createRoom("village", { henchmen })).roomId;
-      if (roomId && henchmen.length > 0) rooms.get(roomId)?.host.receiveHenchmen(henchmen);
+      if (roomId && henchmen.length > 0) rooms.get(roomId)?.welcomeHenchmen(henchmen);
       const reservation = await matchMaker.joinById(target, {});
       const msg: ToPeer = { k: "handoff", reservation, level: "village" };
       client.send(MSG, msg);

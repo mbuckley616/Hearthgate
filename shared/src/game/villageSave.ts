@@ -1,4 +1,4 @@
-import { tuning } from '../config/tuning';
+import { STYLES, tuning, type Style } from '../config/tuning';
 import type { Building } from '../level/village';
 import type { GearItem } from '../sim/catalogue';
 import { DIFFICULTIES, maxDifficulty } from './portalChoice';
@@ -20,6 +20,11 @@ export interface VillageSave {
   stone: number;
   /** Each starting building's tier, 1 to village.maxTier (P4 spends lumber, stone and coin on them). */
   tiers: Record<BuildingId, number>;
+  /**
+   * The Tavern's henchmen's XP, by kit (P12; one name a kit, HIRES): banked with a floor as finds are,
+   * so a hire comes back at the level it banked. Absent until one has banked.
+   */
+  hench?: Partial<Record<Style, number>>;
 }
 
 /** What every player in the village is sent: the save without its owner's id, and the store's shelves today (P5). */
@@ -53,11 +58,46 @@ export function readVillageSave(v: unknown): VillageSave | null {
     if (typeof t !== 'number' || !Number.isInteger(t) || t < 1 || t > tuning.village.maxTier) return null;
     tiers[b] = t;
   }
-  return { id: o.id, lumber, stone, tiers };
+  const hench = readHench(o.hench);
+  if (hench === null) return null;
+  return { id: o.id, lumber, stone, tiers, ...(hench ? { hench } : {}) };
+}
+
+/** Henchmen's XP from a save: whole, within bounds, by a kit there is; undefined when absent, null when wrong. */
+function readHench(v: unknown): Partial<Record<Style, number>> | undefined | null {
+  if (v === undefined) return undefined;
+  if (typeof v !== 'object' || v === null) return null;
+  const out: Partial<Record<Style, number>> = {};
+  for (const [k, x] of Object.entries(v)) {
+    if (!STYLES.includes(k as Style) || typeof x !== 'number' || !Number.isFinite(x) || x < 0 || x > MAX_STOCK * 100) return null;
+    out[k as Style] = Math.floor(x);
+  }
+  return out;
 }
 
 export function villageView(save: VillageSave): VillageView {
-  return { lumber: save.lumber, stone: save.stone, tiers: { ...save.tiers } };
+  return { lumber: save.lumber, stone: save.stone, tiers: { ...save.tiers }, ...(save.hench ? { hench: { ...save.hench } } : {}) };
+}
+
+/** The highest level the Tavern's henchmen reach at this tier (P12). */
+export function henchmanCap(tavernTier: number): number {
+  const max = tuning.progression.maxLevel;
+  return tavernTier >= tuning.village.maxTier ? max : Math.min(max, tavernTier * tuning.village.henchmanCapPerTier);
+}
+
+/**
+ * A floor banked with henchmen in the party (P12): each kit keeps the most XP it has banked. Their XP
+ * is capped in the fight already, so what comes here is never past the Tavern's cap.
+ */
+export function bankHenchmen(save: VillageSave, hench: readonly { style: Style; xp: number }[]): boolean {
+  let changed = false;
+  for (const h of hench) {
+    const xp = Math.floor(h.xp);
+    if (xp <= (save.hench?.[h.style] ?? 0)) continue;
+    save.hench = { ...save.hench, [h.style]: xp };
+    changed = true;
+  }
+  return changed;
 }
 
 export interface Cost {
@@ -115,7 +155,8 @@ export function tierGives(building: BuildingId, tier: number): string {
       return `${stashSpaces(tier)} spaces to keep things in, and a pocket of ${pocketSpaces(tier)} no wipe can take`;
     case 'tavern': {
       const n = tavernHenchmen(tier);
-      return tier >= 4 ? 'three henchmen, quicker on their feet' : `${n} ${n === 1 ? 'henchman' : 'henchmen'} for hire`;
+      const cap = `, up to level ${henchmanCap(tier)}`;
+      return tier >= 4 ? `three henchmen, quicker on their feet${cap}` : `${n} ${n === 1 ? 'henchman' : 'henchmen'} for hire${cap}`;
     }
   }
 }

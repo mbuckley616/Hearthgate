@@ -423,6 +423,8 @@ export type SimEvent =
       lumber: number;
       stone: number;
       floor: number;
+      /** The henchmen's XP now banked (P12), by kit: the village keeps it, and so does its owner's browser. */
+      hench?: { style: Style; xp: number }[];
     }
   /** A wipe lost a player's unbanked finds (P1). */
   | { kind: 'findsLost'; playerId: string; count: number }

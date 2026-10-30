@@ -58,7 +58,7 @@ export class FloorRoom extends HostRoom {
    */
   protected onEvents(events: readonly SimEvent[]) {
     const bank = events.find((e) => e.kind === "banked");
-    if (bank?.kind === "banked") VillageRoom.byCode(this.home)?.credit(bank.lumber, bank.stone);
+    if (bank?.kind === "banked") VillageRoom.byCode(this.home)?.credit(bank.lumber, bank.stone, bank.hench);
   }
 
   /** The end card's button (D10): this player alone goes back to the village the run left from. */

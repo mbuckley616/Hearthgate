@@ -53,7 +53,7 @@ import { HIRES } from '@hearthgate/shared/sim/henchman';
 import type { Style } from '@hearthgate/shared/config/tuning';
 import { STORY, choiceLabel } from '@hearthgate/shared/game/portalChoice';
 import { BUILDING_NAMES, capital, roman } from '../ui/villageWords';
-import { tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
+import { bankHenchmen, tierGives, upgradeCost, upgradeProblem, type BuildingId } from '@hearthgate/shared/game/villageSave';
 import { Settings } from '../ui/Settings';
 import { TitleScreen } from '../ui/TitleScreen';
 import { TalkUi } from '../ui/TalkUi';
@@ -1054,6 +1054,8 @@ export class Game {
         if (own) {
           this.profile.village.lumber += ev.lumber;
           this.profile.village.stone += ev.stone;
+          // The village's room keeps the henchmen's XP too, but says so only to those in the village (P12).
+          if (ev.hench) bankHenchmen(this.profile.village, ev.hench);
         }
         if (this.tally) {
           this.tally.banked += ev.items.length + ev.kept;
@@ -1126,7 +1128,7 @@ export class Game {
     this.homeIsOurs = v.yours;
     if (!v.yours) return;
     // The room's count of lumber, stone and tiers; the stash is this browser's alone (P9).
-    this.profile.village = { ...this.profile.village, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers } };
+    this.profile.village = { ...this.profile.village, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers }, ...(v.view.hench ? { hench: { ...v.view.hench } } : {}) };
     this.profile.save();
     this.session.setVillageSave(this.profile.village);
   }

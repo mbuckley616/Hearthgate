@@ -159,7 +159,9 @@ export class Profile {
       const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
       // P1's save had only lumber and stone; it gains an id and the starting tiers.
       const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), lumber: n(v.lumber), stone: n(v.stone) };
-      const read: OwnVillage = readVillageSave({ ...save, tiers: { ...save.tiers, ...v.tiers } }) ?? save;
+      // The henchmen's banked XP (P12) is checked with the rest; if it is bad, the village keeps all but that.
+      const tiers = { ...save.tiers, ...v.tiers };
+      const read: OwnVillage = (v.hench ? readVillageSave({ ...save, tiers, hench: v.hench }) : null) ?? readVillageSave({ ...save, tiers }) ?? save;
       if (Array.isArray(v.stash)) read.stash = v.stash.map((i) => (i && CATALOGUE.has(i.id) ? i : null));
       return read;
     } catch {

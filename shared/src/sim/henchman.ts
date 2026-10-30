@@ -29,6 +29,8 @@ export interface HenchmanBrain {
   guardUntil: number;
   /** Hired from a Tavern at its top tier (P10): it reads telegraphs quicker. */
   quick?: boolean;
+  /** The highest level its Tavern lets it reach (P12): XP past it is not earned. */
+  cap?: number;
   /** Where and when it last started trying to walk, to tell when it is stuck (unstickHenchmen). */
   walkX?: number;
   walkZ?: number;
@@ -48,10 +50,12 @@ export interface HenchmanCard {
   style: Style;
   xp: number;
   quick?: boolean;
+  /** The Tavern's cap on its level (P12). */
+  cap?: number;
 }
 
 export function henchmanCard(p: PlayerState): HenchmanCard {
-  return { name: p.name, style: p.style, xp: p.xp[p.style], ...(p.brain?.quick ? { quick: true } : {}) };
+  return { name: p.name, style: p.style, xp: p.xp[p.style], ...(p.brain?.quick ? { quick: true } : {}), ...(p.brain?.cap ? { cap: p.brain.cap } : {}) };
 }
 
 /** Cards from a room's create options (the server's own), each field checked. */
@@ -61,7 +65,8 @@ export function readHenchmanCards(v: unknown): HenchmanCard[] {
     if (typeof c !== 'object' || c === null) return [];
     const o = c as Record<string, unknown>;
     if (typeof o.name !== 'string' || !(o.style === 'sword' || o.style === 'bow' || o.style === 'staff') || typeof o.xp !== 'number' || !Number.isFinite(o.xp)) return [];
-    return [{ name: o.name.slice(0, 16), style: o.style, xp: Math.max(0, o.xp), ...(o.quick === true ? { quick: true } : {}) }];
+    const cap = typeof o.cap === 'number' && Number.isInteger(o.cap) && o.cap >= 1 ? { cap: o.cap } : {};
+    return [{ name: o.name.slice(0, 16), style: o.style, xp: Math.max(0, o.xp), ...(o.quick === true ? { quick: true } : {}), ...cap }];
   });
 }
 

@@ -4,10 +4,11 @@ import type { World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
 import { HIRES, henchmanCard, henchmanCommand, type HenchmanCard } from '../sim/henchman';
-import { emptyMods } from '../sim/gear';
+import { emptyMods, xpForLevel } from '../sim/gear';
 import { emptyTalents } from '../sim/talents';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
 import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
+import { refreshLevelHealth } from '../sim/player';
 import { dropFromBag } from '../sim/drops';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
@@ -243,8 +244,24 @@ export class HostSession {
     const h = addPlayer(sim, this.world, id, { name, xp, talents: emptyTalents(), mods: emptyMods(), maxHp: tuning.combat.heroMaxHp }, false);
     h.henchman = true;
     h.style = kit;
-    if (card?.quick) h.brain = { threat: -1, seenAt: 0, answered: -1, guardUntil: -1, quick: true };
+    // Its health follows the level of its own kit, which is set only now (healthPerLevel).
+    refreshLevelHealth(h);
+    h.hp = h.maxHp;
+    if (card?.quick || card?.cap) h.brain = { threat: -1, seenAt: 0, answered: -1, guardUntil: -1, ...(card.quick ? { quick: true } : {}), ...(card.cap ? { cap: card.cap } : {}) };
     return h;
+  }
+
+  /**
+   * The Tavern's word on its henchmen (P12): the cap a tier sets, and for each kit the XP it has banked.
+   * Hires in the village come back at what they banked, so a wipe loses what a run earned since.
+   */
+  settleHenchmen(cap: number, banked: Partial<Record<Style, number>>, quick: boolean): void {
+    for (const h of this.sim.players) {
+      if (!h.henchman) continue;
+      h.brain = { ...(h.brain ?? { threat: -1, seenAt: 0, answered: -1, guardUntil: -1 }), cap };
+      if (quick) h.brain.quick = true;
+      h.xp = { sword: 0, bow: 0, staff: 0, [h.style]: Math.min(banked[h.style] ?? 0, xpForLevel(cap)) };
+    }
   }
 
   /** The party's henchmen as they travel to the next room (P10), taken out of this one. */
