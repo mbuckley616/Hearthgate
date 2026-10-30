@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 55, three design questions asked
+
+**What changed**
+
+Docs only. Every open Phase 2 item left is **(Fable)**, **(Michael)** or an unasked **(design)** pass, so the builder asked three of them in `decisions.md` Pending, each with options and a recommendation: building upgrades with ceremony (A: the whole tier path from the keeper card's Build button, a confirm, and a short ceremony at the building), K1 launched corpses (A: built now behind a switch, a third of the killing blow and a stagger to what a corpse meets), M1 more ways to move (A: the jump clears low attacks with no i-frames; a **(Fable)** item whichever is chosen). The backlog marks each as asked.
+
+**Learned**
+
+D6 (rooms that need jumping) waits on M1's answer, and the builds pass on the feel pass being played, so neither was asked. The builder lock could not be taken this run: the push of the tag was refused by the session's git proxy.
+
+**Next**
+
+The producer carries the three questions to Michael. Once one is answered and not marked **(Fable)**, the builder builds it; otherwise the Phase 2 gate playtest is Michael's.
+
 ## 2026-10-30: Session 54, a slow page keeps the server's time
 
 **What changed**
