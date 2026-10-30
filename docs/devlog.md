@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 58, the ceremony at the building
+
+**What changed**
+
+Client only, plus one tuning value; the `upgraded` message is unchanged. Part two of "Building upgrades with ceremony" (Michael, 30 Oct, A), which finishes the item.
+- **The ceremony.** When the room answers `upgraded`, the keeper card steps aside and the camera cuts from the counter to the building's front (`VillageView.ceremonyShot`: out from the door and a little to one side, looking up at the roof). Scaffolding climbs the walls over the first quarter (poles every 2.4 m and two rings of planks, built once per building and hidden). Dust puffs rise from the walls' feet while the work goes on. At 60% the new pennant pops onto the ridge, the sign takes its numeral and dust bursts up the walls. Then the scaffold comes down and the camera returns to the keeper, whose card is back with the new tier marked "here". The fanfare and the keeper's line are as in part one.
+- **The old tier until the reveal.** The village message can come before or after `upgraded`, so `setTiers` holds the building being raised at its old tier until the reveal (`TierMarks.wanted` is the village's tier, `tier` the one on show).
+- **Length and skipping.** `tuning.village.ceremonySeconds` (4; 0 to 10 on the panel, 0 skips it). While it plays it takes every key; A, B, F, Esc or Tab cuts it short and the building stands at its new tier at once. Leaving the village ends it too.
+- `tests/smoke.e2e.ts`, a new case: with building free (panel edits, put back after), Confirm on the shrine's tier II hides the card and puts the camera outside the shrine, the ceremony ends by itself with tier II current, and tier III's is cut short by Esc. It passed 3 of 4 runs; the failure was the known flaky walk into the shrine (Session 57), before any of the new code ran.
+
+**Learned**
+
+The cut between the inside and the front needs no camera work: the set shot's blend is already full while a card is up, so changing the shot is a cut, and `setEye` hides the interior shells once the eye is outside.
+
+**Next**
+
+The upgrade item is done. M1 is **(Fable)** and the Phase 2 gate playtest is Michael's. D6 and the builds pass are still **(design)** and not yet asked.
+
 ## 2026-10-30: Session 57, a building's tier path and a confirm
 
 **What changed**

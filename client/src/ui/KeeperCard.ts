@@ -105,6 +105,11 @@ export class KeeperCard {
       .join('');
   }
 
+  /** Stand aside while the ceremony plays at the building, and come back after it. */
+  veil(on: boolean): void {
+    this.root.style.visibility = on ? 'hidden' : '';
+  }
+
   close(): void {
     this.visible = false;
     this.keeper = null;

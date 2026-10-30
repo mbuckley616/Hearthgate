@@ -137,6 +137,8 @@ export class Game {
   private keeperNote = '';
   /** The keeper card shows its building's tier path (the upgrade ceremony; Michael, 30 Oct, A). */
   private keeperPath = false;
+  /** The ceremony at a building just raised: the camera holds on it and the keeper card stands aside. */
+  private rite: BuildingId | null = null;
   /** The village from above (P14, M or Start in the village). */
   private readonly villageMap = new VillageMap(() => this.closeVillageMap());
   /** The shot behind Old Fenn's hiring board: the three for hire, in a row before his bar. */
@@ -752,11 +754,23 @@ export class Game {
       this.profile.save();
       const keeper = this.world.level.village?.villagers.find((n) => n.building === u.building);
       this.sfx.fanfare();
+      if (this.room instanceof VillageView && tuning.village.ceremonySeconds > 0) {
+        this.room.ceremony(u.building, u.tier, tuning.village.ceremonySeconds);
+        this.rite = u.building;
+        this.keeperCard.veil(true);
+      }
       this.hud.toast(`<b>${BUILDING_NAMES[u.building]}: tier ${roman(u.tier)}</b><span>${tierGives(u.building, u.tier)}  ·  -${u.coin} coin</span>`, 'level');
       const words = `Done: the ${BUILDING_NAMES[u.building]} stands at tier ${roman(u.tier)} now.`;
       if (keeper && this.keeperCard.keeper === keeper.id) this.keeperNote = words;
       else if (keeper) this.talk.say(keeper.name, `${words} ${capital(tierGives(u.building, u.tier))}.`);
     }
+  }
+
+  /** The ceremony over or cut short: the building at its new tier, the camera back on the keeper and their card. */
+  private endRite(): void {
+    if (this.room instanceof VillageView) this.room.endCeremony();
+    this.rite = null;
+    this.keeperCard.veil(false);
   }
 
   /** The villager the hero can talk to now: the nearest in reach, in the village. */
@@ -800,6 +814,12 @@ export class Game {
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;
+    }
+    // The upgrade ceremony takes every key while it plays; a press of A, B, F or Esc cuts it short.
+    if (this.rite) {
+      const skip = (['interact', 'menuBack', 'dodge', 'inventory'] as const).some((a) => actions.pressed.has(a));
+      if (skip || !(this.room instanceof VillageView) || !this.room.ceremonyRunning) this.endRite();
+      actions = emptyFrame();
     }
     this.handleMetaActions(actions);
     // The bag and body take the keys and the pad while they are open (T5b): the hero stands still.
@@ -845,7 +865,8 @@ export class Game {
     // While a keeper's menu is up the camera holds a shot of them at their counter: the room is the menu's backdrop.
     const carded = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper)?.building ?? null;
     const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : this.keeperCard.visible ? carded : null;
-    this.cam.setShot(framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null);
+    const riteShot = this.rite && this.room instanceof VillageView ? this.room.ceremonyShot(this.rite) : null;
+    this.cam.setShot(riteShot ?? (framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null));
     // Who is with the party (P10): their figure leaves the tavern's row, and the board keeps up.
     const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman).map((p) => p.style));
     if (this.room instanceof VillageView) this.room.setHired(hiredKits);
