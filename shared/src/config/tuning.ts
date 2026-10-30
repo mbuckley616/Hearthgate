@@ -1093,8 +1093,6 @@ export const tuning = {
     /** The bag's first spaces are its safe pocket (D5): never lost on a wipe; more with the Storehouse. */
     pocketBase: 3,
     pocketPerTier: 1,
-    /** How long the owner holds talk (F, A) at a building's villager to build its next tier. */
-    upgradeHoldMs: 900,
     /**
      * The General Store (P5): a common of tier 1 costs priceBase, each tier priceTierGrowth more, a
      * rare rarePriceMult more; Aldous pays sellShare of what he would ask.
@@ -2063,7 +2061,6 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.stashPerTier': [0, 40, 1],
   'village.pocketBase': [0, 28, 1],
   'village.pocketPerTier': [0, 7, 1],
-  'village.upgradeHoldMs': [0, 3000, 50],
   'village.priceBase': [1, 200, 1],
   'village.priceTierGrowth': [1, 4, 0.1],
   'village.rarePriceMult': [1, 10, 0.5],

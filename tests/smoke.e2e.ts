@@ -195,11 +195,13 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await open(page, "play", errors);
   const home = (await seen(page)).code;
 
-  // Keeper Wren keeps her shrine; F in reach shows her line. Then back out to the ring.
+  // Keeper Wren keeps her shrine; F in reach opens her card (P11). Esc leaves it, then back out to the ring.
   await intoShrine(page);
   await page.keyboard.press("KeyF");
-  await expect(page.locator(".talk-box")).toBeVisible();
-  await expect(page.locator(".talk-name")).toHaveText("Keeper Wren");
+  await expect(page.locator(".keeper-card")).toBeVisible();
+  await expect(page.locator(".keeper-name")).toHaveText("Keeper Wren");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".keeper-card")).toBeHidden();
   await outOfShrine(page);
 
   // Small floors from one seed (the dev server takes the panel's edits), so the walk is short.
@@ -268,9 +270,9 @@ test("Keeper Wren's menu turns the village's ring to the first story dungeon, a 
   const errors: string[] = [];
   await open(page, "play", errors);
   await intoShrine(page);
-  // Asked once she says where it opens; asked again her menu opens on the first story dungeon (P7), which ships hand-built.
+  // Her card says where it opens; its first button, chosen as it opens, is her menu, on the first story dungeon (P7), which ships hand-built.
   await page.keyboard.press("KeyF");
-  await expect(page.locator(".talk-line")).toContainText("a new dungeon");
+  await expect(page.locator(".keeper-line")).toContainText("a new dungeon");
   await page.keyboard.press("KeyF");
   await expect(page.locator(".portal-menu")).toBeVisible();
   await expect(page.locator(".portal-detail h3")).toContainText("The Old Cellar");

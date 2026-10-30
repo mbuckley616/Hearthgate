@@ -1,12 +1,9 @@
-import { BUILDINGS, type BuildingId, type VillageView } from '@hearthgate/shared/game/villageSave';
-import { roman } from './villageWords';
-
-const NAMES: Record<BuildingId, string> = { shrine: 'Shrine', store: 'Store', storehouse: 'Storehouse', tavern: 'Tavern' };
+import type { VillageView } from '@hearthgate/shared/game/villageSave';
 
 /**
- * Whose village this is and what it holds (P2), in the top-left corner while in one: the host's
- * lumber and stone and each building's tier, the same for everyone there, so a visitor watches the
- * host's village grow on the run they shared.
+ * Whose village this is and what it holds (P2), the same for everyone there, so a visitor watches the
+ * host's village grow on the run they shared. One line in the top-right corner (P14; Michael, 29 Oct):
+ * the buildings' tiers and what the next costs are on the village map, M or Start.
  */
 export class VillagePanel {
   private readonly el = document.createElement('div');
@@ -24,16 +21,12 @@ export class VillagePanel {
     }
     const v = village.view;
     const whose = village.yours ? 'Your village' : `${escape(village.host) || 'The host'}’s village`;
-    const tiers = BUILDINGS.map((b) => `${NAMES[b]} ${roman(v.tiers[b])}`).join('  ·  ');
-    this.el.innerHTML = `<b>${whose}</b><span>${v.lumber} lumber  ·  ${v.stone} stone</span><small>${tiers}</small>`;
-    this.el.style.display = 'block';
-    // The party's frames share the corner (P10's henchmen fill them in the village): they sit below.
-    document.documentElement.style.setProperty('--village-panel-h', `${this.el.offsetHeight + 8}px`);
+    this.el.innerHTML = `<b>${whose}</b><span>${v.lumber} lumber  ·  ${v.stone} stone</span><kbd>M</kbd>`;
+    this.el.style.display = 'flex';
   }
 
   hide(): void {
     this.el.style.display = 'none';
-    document.documentElement.style.setProperty('--village-panel-h', '0px');
   }
 }
 
