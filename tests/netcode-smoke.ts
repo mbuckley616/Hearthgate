@@ -16,6 +16,8 @@
  *      the deeper ring takes them onto its own second floor, not a generated one;
  *   9. the real ClientSession (the browser's) runs, sprints and dodges for three seconds with no
  *      snap and ends exactly where the server has it;
+ *   9c. the real ClientSession on a slow, uneven page (about 10 fps) sends a command for every tick of
+ *      wall time and never snaps;
  *   9b. the real ClientSession on a generated floor (T4): it builds the floor the server sent, and its
  *      predicted hero walks to a room at another height, up or down a staircase, with no snap;
  *   8b. the village, the portal and a generated run (T3, T4): two bots make a village and walk into its
@@ -41,6 +43,8 @@ import { Bot, MSG, TICK_MS, bootServer, command, loadout, sleep, waitForHealth }
 const PORT = 2599;
 const ENDPOINT = `ws://127.0.0.1:${PORT}`;
 const STRESS_MS = Number(process.env.STRESS_MS ?? 5000);
+/** A slow page's frames for 9c: about 10 fps, uneven. */
+const SLOW_FRAMES_MS = [60, 150, 40, 130, 90, 140];
 
 let failures = 0;
 function check(ok: boolean, what: string, detail = "") {
@@ -350,6 +354,36 @@ async function main() {
     const lastSnap = cs.view().curr.players.find((p) => p.id === cs.localId)!;
     check(cs.stats.snaps === 0, "the ClientSession never snapped", `${cs.stats.snapshots} snapshots, ${cs.stats.corrections} corrections, largest ${cs.stats.maxCorrection.toFixed(3)} m`);
     check(Math.hypot(hero.x - lastSnap.x, hero.z - lastSnap.z) < 1e-6, "standing still, it is drawn exactly where the server has it", `${hero.x.toFixed(3)}, ${hero.z.toFixed(3)}`);
+
+    // 9c. A slow, uneven page (about 10 fps, frames of 40 to 150 ms, the critic's 28 Oct throttled lab): a
+    // frame's time is stepped whole, so the client sends a command for every tick of wall time and the
+    // server never stands in for one it lacks. Frames past 100 ms used to lose their ends.
+    const slow = new ClientSession(null, loadout("Foxtrot"), ENDPOINT, "dungeon");
+    const sStart = performance.now();
+    while (!slow.playing) {
+      if (performance.now() - sStart > 5000) throw new Error("the slow ClientSession never started");
+      await sleep(5);
+    }
+    let sLast = performance.now();
+    const sentAt = slow.sent;
+    const sT1 = performance.now();
+    let frames = 0;
+    while (performance.now() - sT1 < 4500) {
+      const now = performance.now();
+      // What Game.update hands the session: the frame's whole time.
+      const dt = Math.max(0, (now - sLast) / 1000);
+      sLast = now;
+      const el = now - sT1;
+      slow.advance(command({ moveX: el < 3000 ? Math.sin(el / 900) : 0, moveZ: el < 3000 ? -1 : 0 }), dt);
+      await sleep(SLOW_FRAMES_MS[frames++ % SLOW_FRAMES_MS.length]);
+    }
+    const wallTicks = ((sLast - sT1) / 1000) * tuning.sim.tickRate;
+    const slowSent = slow.sent - sentAt;
+    check(Math.abs(slowSent - wallTicks) < wallTicks * 0.05, "at about 10 fps the ClientSession sends a command for every tick of wall time", `${slowSent} sent over ${wallTicks.toFixed(0)} ticks`);
+    check(slow.stats.snaps === 0, "and running at about 10 fps it never snaps", `${slow.stats.corrections} corrections, largest ${slow.stats.maxCorrection.toFixed(3)} m`);
+    // Not a check yet: the few left (3 here, from 17 before the fix) are the server folding a frame's
+    // burst of commands as if it ran slow (inputSlots.ts maxExtra), a (Fable) item on the backlog.
+    console.log(`info  at about 10 fps, ${slow.stats.bigCorrections} corrections over 10 cm`);
 
     // 9b. The browser's ClientSession on a generated floor, up or down a staircase. No enemies: this is about the floor.
     const fc = new ClientSession(null, loadout("Echo"), ENDPOINT, "floor", { seed: 777, pieces: 16 });

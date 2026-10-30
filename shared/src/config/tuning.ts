@@ -9,8 +9,12 @@ export const tuning = {
   sim: {
     /** Fixed simulation rate. */
     tickRate: 60,
-    /** Max sim steps per rendered frame before we drop time (avoids spiral of death). */
-    maxStepsPerFrame: 8,
+    /**
+     * Max sim steps per rendered frame before we drop time (avoids spiral of death). Half a second, as
+     * the server catches up: the server ticks on wall time, so a slow page that dropped a long frame's
+     * ticks sent fewer commands than it ticked and was corrected for the held buttons it stood in with.
+     */
+    maxStepsPerFrame: 30,
   },
 
   movement: {
@@ -1634,7 +1638,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.restHeal': [0, 1, 0.05],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
-  'sim.maxStepsPerFrame': [1, 16, 1],
+  'sim.maxStepsPerFrame': [1, 60, 1],
 
   'movement.walkSpeed': [0.5, 5, 0.1],
   'movement.runSpeed': [2, 12, 0.1],
