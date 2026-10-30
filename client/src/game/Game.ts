@@ -43,7 +43,7 @@ import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
 import { LoadingCard } from '../ui/LoadingCard';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
-import { KeeperCard, type KeeperChoice } from '../ui/KeeperCard';
+import { KeeperCard, type KeeperChoice, type TierStep } from '../ui/KeeperCard';
 import { VillageMap, type VillageMapData } from '../ui/VillageMap';
 import { VillagePanel } from '../ui/VillagePanel';
 import { StoreScreen } from '../ui/StoreScreen';
@@ -135,6 +135,10 @@ export class Game {
   private readonly keeperCard = new KeeperCard((id) => this.keeperChose(id));
   /** What the keeper last said on their card (a tier built, a word on it), under their usual line. */
   private keeperNote = '';
+  /** The keeper card shows its building's tier path (the upgrade ceremony; Michael, 30 Oct, A). */
+  private keeperPath = false;
+  /** The ceremony at a building just raised: the camera holds on it and the keeper card stands aside. */
+  private rite: BuildingId | null = null;
   /** The village from above (P14, M or Start in the village). */
   private readonly villageMap = new VillageMap(() => this.closeVillageMap());
   /** The shot behind Old Fenn's hiring board: the three for hire, in a row before his bar. */
@@ -501,11 +505,12 @@ export class Game {
       const me = this.me();
       const away = !me || Math.hypot(me.x - (keeper?.x ?? 0), me.z - (keeper?.z ?? 0)) > TALK_RANGE + 1.5;
       if (!keeper || !this.session.village || away) this.closeKeeper();
-      else this.keeperCard.update(keeper.name, this.keeperLine(keeper), this.keeperChoices(keeper));
+      else this.keeperCard.update(keeper.name, this.keeperLine(keeper), this.keeperChoices(keeper), this.keeperSteps(keeper));
       return this.talk.update(null, false, dt);
     }
     if (near && pressed && near.building && this.session.village) {
       this.keeperNote = '';
+      this.keeperPath = false;
       this.keeperCard.open(near.id, near.name, this.keeperLine(near), this.keeperChoices(near));
       this.talk.clear();
       this.kbm.exitPointerLock();
@@ -549,6 +554,7 @@ export class Game {
   private keeperChoices(near: Villager): KeeperChoice[] {
     const v = this.session.village!;
     const building = near.building!;
+    if (this.keeperPath) return this.pathChoices(building);
     const menu: KeeperChoice =
       building === 'shrine'
         ? { id: 'menu', label: 'Choose where the portal leads', detail: 'Story dungeons, or a random one' }
@@ -558,30 +564,73 @@ export class Game {
             ? { id: 'menu', label: 'Hire companions', detail: `${tuning.village.hireCoin} coin each` }
             : { id: 'menu', label: 'Open the stash', ...(v.yours ? { detail: 'What your bag cannot carry' } : { blocked: 'Your own things are kept in your own village' }) };
     const tier = v.view.tiers[building];
-    let build: KeeperChoice;
-    if (tier >= tuning.village.maxTier) build = { id: 'upgrade', label: `Tier ${roman(tier)}`, blocked: 'As high as it goes for now' };
-    else {
-      const c = upgradeCost(tier + 1);
-      const problem = upgradeProblem(v.view, building, this.profile.data.coin);
-      build = {
-        id: 'upgrade',
-        label: `Build tier ${roman(tier + 1)}`,
-        detail: `${capital(tierGives(building, tier + 1))}  ·  ${c.lumber} lumber, ${c.stone} stone, ${c.coin} coin`,
-        ...(!v.yours ? { blocked: `Only ${v.host || 'the host'} can build here` } : problem ? { blocked: `You need ${problem}` } : {}),
-      };
-    }
+    const top = tuning.village.maxTier;
+    const build: KeeperChoice = {
+      id: 'path',
+      label: `Build: the ${BUILDING_NAMES[building]}'s tiers`,
+      detail: tier >= top ? `Tier ${roman(tier)}, as high as it goes for now` : `Tier ${roman(tier)} of ${roman(top)}; next, ${tierGives(building, tier + 1)}`,
+    };
     return [menu, build, { id: 'leave', label: 'Leave' }];
+  }
+
+  /** The tier path's buttons: build the next tier (greyed with why it cannot be), or back to the keeper. */
+  private pathChoices(building: BuildingId): KeeperChoice[] {
+    const v = this.session.village!;
+    const tier = v.view.tiers[building];
+    const back: KeeperChoice = { id: 'back', label: 'Back', detail: 'Esc or B' };
+    if (tier >= tuning.village.maxTier) return [{ id: 'confirm', label: `Tier ${roman(tier)}`, blocked: 'As high as it goes for now' }, back];
+    const c = upgradeCost(tier + 1);
+    const problem = upgradeProblem(v.view, building, this.profile.data.coin);
+    const confirm: KeeperChoice = {
+      id: 'confirm',
+      label: `Confirm: build tier ${roman(tier + 1)}`,
+      detail: `${c.lumber} lumber, ${c.stone} stone, ${c.coin} coin`,
+      ...(!v.yours ? { blocked: `Only ${v.host || 'the host'} can build here` } : problem ? { blocked: `You need ${problem}` } : {}),
+    };
+    return [confirm, back];
+  }
+
+  /** A building's whole path, I to the top, while the card shows it: built, here, next (and what is short), later. */
+  private keeperSteps(near: Villager): TierStep[] | undefined {
+    if (!this.keeperPath || !near.building) return undefined;
+    const v = this.session.village!;
+    const building = near.building;
+    const tier = v.view.tiers[building];
+    const steps: TierStep[] = [];
+    for (let t = 1; t <= tuning.village.maxTier; t++) {
+      const c = t > 1 ? upgradeCost(t) : null;
+      const state = t < tier ? 'built' : t === tier ? 'current' : t === tier + 1 ? 'next' : 'later';
+      const short = state === 'next' ? upgradeProblem(v.view, building, this.profile.data.coin) : null;
+      steps.push({
+        tier: roman(t),
+        gives: capital(tierGives(building, t)),
+        ...(c && t > tier ? { cost: `${c.lumber} lumber, ${c.stone} stone, ${c.coin} coin` } : {}),
+        state,
+        ...(short ? { short } : {}),
+      });
+    }
+    return steps;
+  }
+
+  /** Turn the card to its tier path or back to the keeper's page. */
+  private turnKeeper(near: Villager, path: boolean): void {
+    this.keeperPath = path;
+    this.keeperCard.turn(near.name, this.keeperLine(near), this.keeperChoices(near), this.keeperSteps(near));
   }
 
   private keeperChose(id: string): void {
     const near = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper);
     const v = this.session.village;
+    // Esc or B backs out a step at a time: from the path to the keeper, then away.
+    if (id === 'leave' && this.keeperPath && near) return this.turnKeeper(near, false);
     if (id === 'leave' || !near?.building || !v) return this.closeKeeper();
-    if (id === 'menu') {
+    if (id === 'path') this.turnKeeper(near, true);
+    else if (id === 'back') this.turnKeeper(near, false);
+    else if (id === 'menu') {
       this.keeperCard.close();
       this.openKeeperMenu(near);
       this.updateOverlay();
-    } else if (id === 'upgrade' && !upgradeProblem(v.view, near.building, this.profile.data.coin)) {
+    } else if (id === 'confirm' && v.yours && !upgradeProblem(v.view, near.building, this.profile.data.coin)) {
       this.session.request({ k: 'upgrade', building: near.building, coin: this.profile.data.coin });
     }
   }
@@ -589,6 +638,7 @@ export class Game {
   private closeKeeper(): void {
     if (!this.keeperCard.visible) return;
     this.keeperCard.close();
+    this.keeperPath = false;
     this.kbm.requestPointerLock();
     this.updateOverlay();
   }
@@ -703,11 +753,24 @@ export class Game {
       this.profile.data.coin = Math.max(0, this.profile.data.coin - u.coin);
       this.profile.save();
       const keeper = this.world.level.village?.villagers.find((n) => n.building === u.building);
+      this.sfx.fanfare();
+      if (this.room instanceof VillageView && tuning.village.ceremonySeconds > 0) {
+        this.room.ceremony(u.building, u.tier, tuning.village.ceremonySeconds);
+        this.rite = u.building;
+        this.keeperCard.veil(true);
+      }
       this.hud.toast(`<b>${BUILDING_NAMES[u.building]}: tier ${roman(u.tier)}</b><span>${tierGives(u.building, u.tier)}  ·  -${u.coin} coin</span>`, 'level');
       const words = `Done: the ${BUILDING_NAMES[u.building]} stands at tier ${roman(u.tier)} now.`;
       if (keeper && this.keeperCard.keeper === keeper.id) this.keeperNote = words;
       else if (keeper) this.talk.say(keeper.name, `${words} ${capital(tierGives(u.building, u.tier))}.`);
     }
+  }
+
+  /** The ceremony over or cut short: the building at its new tier, the camera back on the keeper and their card. */
+  private endRite(): void {
+    if (this.room instanceof VillageView) this.room.endCeremony();
+    this.rite = null;
+    this.keeperCard.veil(false);
   }
 
   /** The villager the hero can talk to now: the nearest in reach, in the village. */
@@ -751,6 +814,12 @@ export class Game {
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;
+    }
+    // The upgrade ceremony takes every key while it plays; a press of A, B, F or Esc cuts it short.
+    if (this.rite) {
+      const skip = (['interact', 'menuBack', 'dodge', 'inventory'] as const).some((a) => actions.pressed.has(a));
+      if (skip || !(this.room instanceof VillageView) || !this.room.ceremonyRunning) this.endRite();
+      actions = emptyFrame();
     }
     this.handleMetaActions(actions);
     // The bag and body take the keys and the pad while they are open (T5b): the hero stands still.
@@ -796,7 +865,8 @@ export class Game {
     // While a keeper's menu is up the camera holds a shot of them at their counter: the room is the menu's backdrop.
     const carded = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper)?.building ?? null;
     const framed = this.portalMenu.visible ? 'shrine' : this.store.visible ? 'store' : this.bank.visible ? 'storehouse' : this.keeperCard.visible ? carded : null;
-    this.cam.setShot(framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null);
+    const riteShot = this.rite && this.room instanceof VillageView ? this.room.ceremonyShot(this.rite) : null;
+    this.cam.setShot(riteShot ?? (framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null));
     // Who is with the party (P10): their figure leaves the tavern's row, and the board keeps up.
     const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman).map((p) => p.style));
     if (this.room instanceof VillageView) this.room.setHired(hiredKits);
@@ -1244,7 +1314,7 @@ export class Game {
       return;
     }
     if (this.keeperCard.visible && (actions.pressed.has('inventory') || actions.pressed.has('menuBack'))) {
-      this.closeKeeper();
+      this.keeperChose('leave');
       return;
     }
     // M, Start and B the map takes itself (VillageMap.handle), so the press that closes it never reopens it.

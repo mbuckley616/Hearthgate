@@ -2,6 +2,73 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 59, D6 asked
+
+**What changed**
+
+Docs only. D6 (rooms that need jumping) waited on D2's bigger rooms and M1's answer; both are in, so it is asked in `decisions.md` Pending: A (recommended), a lava room a running hop clears, built by the builder with no change to movement; B, A plus a chasm whose put-back is **(Fable)**; C, after the gate. The backlog marks it asked.
+
+**Learned**
+
+Today's jump (1 m, gravity 24) is about 0.58 s in the air: 3.2 m at a run, 4.6 m at a sprint. A 2 m strip is a hop with room to spare.
+
+**Next**
+
+The producer carries D6 to Michael. The builds pass waits on the feel pass being played; M1 is **(Fable)**; the gate playtest is Michael's.
+
+## 2026-10-30: Session 58, the ceremony at the building
+
+**What changed**
+
+Client only, plus one tuning value; the `upgraded` message is unchanged. Part two of "Building upgrades with ceremony" (Michael, 30 Oct, A), which finishes the item.
+- **The ceremony.** When the room answers `upgraded`, the keeper card steps aside and the camera cuts from the counter to the building's front (`VillageView.ceremonyShot`: out from the door and a little to one side, looking up at the roof). Scaffolding climbs the walls over the first quarter (poles every 2.4 m and two rings of planks, built once per building and hidden). Dust puffs rise from the walls' feet while the work goes on. At 60% the new pennant pops onto the ridge, the sign takes its numeral and dust bursts up the walls. Then the scaffold comes down and the camera returns to the keeper, whose card is back with the new tier marked "here". The fanfare and the keeper's line are as in part one.
+- **The old tier until the reveal.** The village message can come before or after `upgraded`, so `setTiers` holds the building being raised at its old tier until the reveal (`TierMarks.wanted` is the village's tier, `tier` the one on show).
+- **Length and skipping.** `tuning.village.ceremonySeconds` (4; 0 to 10 on the panel, 0 skips it). While it plays it takes every key; A, B, F, Esc or Tab cuts it short and the building stands at its new tier at once. Leaving the village ends it too.
+- `tests/smoke.e2e.ts`, a new case: with building free (panel edits, put back after), Confirm on the shrine's tier II hides the card and puts the camera outside the shrine, the ceremony ends by itself with tier II current, and tier III's is cut short by Esc. It passed 3 of 4 runs; the failure was the known flaky walk into the shrine (Session 57), before any of the new code ran.
+
+**Learned**
+
+The cut between the inside and the front needs no camera work: the set shot's blend is already full while a card is up, so changing the shot is a cut, and `setEye` hides the interior shells once the eye is outside.
+
+**Next**
+
+The upgrade item is done. M1 is **(Fable)** and the Phase 2 gate playtest is Michael's. D6 and the builds pass are still **(design)** and not yet asked.
+
+## 2026-10-30: Session 57, a building's tier path and a confirm
+
+**What changed**
+
+Client only; the `upgrade` message is unchanged. Part one of "Building upgrades with ceremony" (Michael, 30 Oct, A).
+- **The path.** A keeper's Build button no longer builds: it turns the card to the building's tiers, I to IV in a row (`TierStep`, `.keeper-path`), each with what it gives and, ahead of where the village stands, what it costs; the current tier is marked "here", the next is dashed gold with what the village is short of in ember. Under it, **Confirm: build tier N** (greyed with the shortfall, or "Only <host> can build here" for a guest) and **Back**.
+- **Backing out.** Esc, Tab or B step back once: from the path to the keeper's page, then away. Esc was handled twice a frame (the game's menu keys and the card's own), harmless while both closed; the card now leaves Esc to the game and keeps B.
+- **A fanfare.** `Sfx.fanfare`: a rising three-note horn call and a held chord when the room answers `upgraded`, with the toast and the keeper's "Done" line as before.
+- `tests/smoke.e2e.ts`: by keys, Wren's card, down to Build, four tiers with I current and Confirm chosen, Esc back to the card, Esc away.
+
+**Learned**
+
+The village smoke test is flaky on this box in its walks, not the card: of five runs with the change, two failed (a 25 s walk into the shrine before the card opened, and the ring hand-off), three passed; the base passed its one run.
+
+**Next**
+
+Part two: the ceremony at the building, the camera turning to it (`OrbitCamera.setShot`), dust and scaffolding for a few seconds, and the building changing with its tier. Then M1 is **(Fable)** and the gate playtest is Michael's.
+
+## 2026-10-30: Session 56, launched corpses (K1)
+
+**What changed**
+
+Shared sim and one view; no message change. Michael answered Session 55's three questions on the control room (A each, 30 Oct); this builds K1 to his A.
+- **Launched corpses** (`tuning.launch`, every number on the panel). A grunt or archer killed by a melee heavy (the heavy string, the chain's last hit, a slam, Charge, the shield bash: `hit.heavy` and not a projectile) is marked `EnemyState.launched` and slides `distanceM` (5) along the blow instead of the 1.2 m a death had, `warhammerMult` (1.5) farther from the warhammer. `stepLaunched` (combat.ts, called at the end of `stepEnemies`) checks each flying corpse against the living: the first time it meets one, that enemy takes `damageShare` (a third) of the killing blow and is staggered (a roaring Warden excepted, as damage never staggers a roar). The mark drops when the corpse slows under `minSpeed` or stops being dead (a Haunted rise). A corpse's hit is a projectile hit, so it launches nothing in turn and no browser predicts it. Enemies are the server's alone, so prediction is untouched.
+- **The arc.** `EnemyView` lifts a launched death on a `arcHeightM` (0.8 m) parabola over `arcSeconds` (0.45 s) from the moment its hitstop ends; the slide itself is the snapshot's.
+- **The slice.** `launch.enabled` is off in the parity test; the hashes are unchanged. `shared/src/sim/launch.test.ts`: a heavy kill flies and hurts and staggers the next grunt once; a light kill drops where it stands; the warhammer goes half again as far; switched off, nothing flies.
+
+**Learned**
+
+The kill's slide was already there (knockback steps for the dead too, walls included), so a launch is only a longer push plus the contact check. Corpses stagger the Warden and brutes too, as the decision reads; if that stunlocks the Warden in play, a size rule is one line.
+
+**Next**
+
+Building upgrades with ceremony (answered A): the whole tier path from the Build button, a confirm, the camera and fanfare. M1 (answered A) is now **(Fable)**. Then the Phase 2 gate playtest is Michael's.
+
 ## 2026-10-30: Session 55, three design questions asked
 
 **What changed**

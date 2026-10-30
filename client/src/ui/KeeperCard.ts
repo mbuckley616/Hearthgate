@@ -10,6 +10,16 @@ export interface KeeperChoice {
   blocked?: string;
 }
 
+/** One tier on a building's path (the upgrade ceremony; Michael, 30 Oct, A): what it gives and costs, and where the village is on it. */
+export interface TierStep {
+  tier: string;
+  gives: string;
+  cost?: string;
+  state: 'built' | 'current' | 'next' | 'later';
+  /** The next tier only: what the village is short of. */
+  short?: string;
+}
+
 /**
  * A keeper's card (P11; Michael, 29 Oct: "We need to add clear buttons/choices"): F (or A) by Wren,
  * Aldous, Marta or Fenn opens it at once, their line on top and their choices as buttons under it,
@@ -21,6 +31,7 @@ export class KeeperCard {
   private root = document.createElement('div');
   private name = document.createElement('div');
   private line = document.createElement('div');
+  private path = document.createElement('div');
   private list = document.createElement('div');
   private foot = document.createElement('div');
   private choices: KeeperChoice[] = [];
@@ -28,6 +39,7 @@ export class KeeperCard {
   private shown = '';
   private repeat = 0;
   private lastDir = '';
+  private steps: TierStep[] | undefined;
   /** The villager the card is for, by id. */
   keeper: string | null = null;
   visible = false;
@@ -36,10 +48,11 @@ export class KeeperCard {
     this.root.className = 'keeper-card';
     this.name.className = 'keeper-name';
     this.line.className = 'keeper-line';
+    this.path.className = 'keeper-path';
     this.list.className = 'keeper-choices';
     this.foot.className = 'keeper-foot';
     this.foot.textContent = 'Up and down to choose  ·  F or A  ·  Esc or B to leave';
-    this.root.append(this.name, this.line, this.list, this.foot);
+    this.root.append(this.name, this.line, this.path, this.list, this.foot);
     this.list.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-at]');
       if (!el) return;
@@ -59,15 +72,30 @@ export class KeeperCard {
     this.update(name, line, choices);
   }
 
+  /** A new page of the card (its tier path, or back): the first choice is the one chosen again. */
+  turn(name: string, line: string, choices: KeeperChoice[], path?: TierStep[]): void {
+    this.at = 0;
+    this.update(name, line, choices, path);
+  }
+
   /** Keep the card true while it is up (a tier built, coin spent): redrawn only when something changed. */
-  update(name: string, line: string, choices: KeeperChoice[]): void {
+  update(name: string, line: string, choices: KeeperChoice[], path?: TierStep[]): void {
     this.choices = choices;
     this.at = Math.min(this.at, choices.length - 1);
-    const key = JSON.stringify([name, line, choices, this.at]);
+    const key = JSON.stringify([name, line, choices, this.at, path]);
     if (key === this.shown) return;
     this.shown = key;
+    this.steps = path;
     this.name.textContent = name;
     this.line.textContent = line;
+    this.path.style.display = path ? 'grid' : 'none';
+    this.path.innerHTML = (path ?? [])
+      .map(
+        (t) => `<div class="keeper-tier ${t.state}">
+          <b>Tier ${t.tier}</b><span>${t.gives}</span>${t.cost ? `<small>${t.cost}</small>` : ''}${t.short ? `<small class="why">Short: ${t.short}</small>` : ''}
+        </div>`,
+      )
+      .join('');
     this.list.innerHTML = choices
       .map(
         (c, i) => `<button class="keeper-choice${i === this.at ? ' chosen' : ''}${c.blocked ? ' blocked' : ''}" data-at="${i}">
@@ -77,10 +105,16 @@ export class KeeperCard {
       .join('');
   }
 
+  /** Stand aside while the ceremony plays at the building, and come back after it. */
+  veil(on: boolean): void {
+    this.root.style.visibility = on ? 'hidden' : '';
+  }
+
   close(): void {
     this.visible = false;
     this.keeper = null;
     this.shown = '';
+    this.steps = undefined;
     this.root.style.display = 'none';
   }
 
@@ -91,13 +125,14 @@ export class KeeperCard {
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
       const n = this.choices.length;
       this.at = (this.at + (dir === 'down' ? 1 : n - 1)) % n;
-      this.update(this.name.textContent ?? '', this.line.textContent ?? '', this.choices);
+      this.update(this.name.textContent ?? '', this.line.textContent ?? '', this.choices, this.steps);
       this.repeat = dir === this.lastDir ? 0.15 : 0.35;
     }
     this.repeat -= dt;
     this.lastDir = dir;
     if (actions.pressed.has('interact')) this.choose();
-    else if (actions.pressed.has('menuBack') || actions.pressed.has('dodge')) this.onChoose('leave');
+    // Esc (menuBack) is the game's, with Tab, so one press steps back once; B (dodge) is the card's.
+    else if (actions.pressed.has('dodge')) this.onChoose('leave');
   }
 
   private choose(): void {

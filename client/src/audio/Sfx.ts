@@ -321,6 +321,17 @@ export class Sfx {
     );
   }
 
+  /** A building raised a tier (the upgrade ceremony; Michael, 30 Oct): a short rising horn call and a held chord. */
+  fanfare(): void {
+    if (!this.ready()) return;
+    const call = [392, 523, 659];
+    call.forEach((f, i) => this.later(i * 0.16, () => this.tone('sawtooth', f, f, 0.2, 0.06, 0.01)));
+    this.later(0.5, () => {
+      for (const f of [523, 659, 784]) this.tone('triangle', f, f * 1.003, 1.1, 0.08, 0.03);
+      this.tone('sawtooth', 1046, 1046, 0.9, 0.035, 0.03);
+    });
+  }
+
   private later(seconds: number, fn: () => void): void {
     if (seconds <= 0) fn();
     else setTimeout(fn, seconds * 1000);

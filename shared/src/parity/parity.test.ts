@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -37,6 +37,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.swap = tuning.combo.swapInFight;
     kept.cancelAfter = tuning.dodge.cancelAfterMs;
     kept.keepIframes = tuning.dodge.keepIframesOnCancel;
+    kept.launch = tuning.launch.enabled;
     tuning.coop.bleedOut = false;
     // The slice's roll tail and its i-frames ending with it (D9 shortened one and kept the other).
     tuning.dodge.cancelAfterMs = 240;
@@ -55,6 +56,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.progression.healthPerLevel = 0;
     // The slice's Charge and Whirlwind protect nothing (C6).
     tuning.abilities.meleeGuard = false;
+    // The slice's dead just fall (K1).
+    tuning.launch.enabled = false;
   });
   afterAll(() => {
     tuning.coop.bleedOut = kept.bleedOut;
@@ -68,6 +71,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.combo.swapInFight = kept.swap;
     tuning.dodge.cancelAfterMs = kept.cancelAfter;
     tuning.dodge.keepIframesOnCancel = kept.keepIframes;
+    tuning.launch.enabled = kept.launch;
   });
 
   for (const sc of SCENARIOS) {

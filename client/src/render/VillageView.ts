@@ -42,6 +42,15 @@ interface VillagerFigure {
  * Same surface as RoomView so the game swaps one for the other: a group, fire sources for embers
  * (none here), and update().
  */
+interface TierMarks {
+  flags: THREE.Object3D[];
+  sign: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  name: string;
+  /** The tier on show; `wanted` is the village's, which a ceremony holds back until its reveal. */
+  tier: number;
+  wanted: number;
+}
+
 export class VillageView {
   readonly group = new THREE.Group();
   /** No torches or braziers burn in the afternoon. */
@@ -56,7 +65,15 @@ export class VillageView {
    * Each building's tier, shown (P4): a pennant on its roof for every tier, and the numeral on its
    * sign. Built once at the top tier the save allows; setTiers shows as many as the village has.
    */
-  private tierMarks = new Map<Building['id'], { flags: THREE.Object3D[]; sign: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>; name: string; tier: number }>();
+  private tierMarks = new Map<Building['id'], TierMarks>();
+  /** Each building's scaffolding for its upgrade ceremony, built once and hidden until a tier goes up. */
+  private scaffolds = new Map<Building['id'], { root: THREE.Group; building: Building }>();
+  /** The dust a ceremony raises: one pool of puffs, reused. */
+  private dust: { sprite: THREE.Sprite; age: number; life: number; vy: number; size: number }[] = [];
+  /** The upgrade ceremony under way (Michael, 30 Oct, A): which building, how far along, the tier it reaches. */
+  private rite: { id: Building['id']; t: number; dur: number; tier: number; revealed: boolean; puff: number } | null = null;
+  /** The new tier's pennant, growing in at the reveal. */
+  private pop: { flag: THREE.Object3D; t: number } | null = null;
   /** Trees inside the fence and the well's roof, by collider id: they fade when they stand between camera and hero. */
   private trees = new Map<string, { mats: THREE.MeshStandardMaterial[]; opacity: number }>();
   /**
@@ -78,6 +95,7 @@ export class VillageView {
     v.trees.forEach((t, i) => this.buildTree(t.x, t.z, 1, i, `tree-${i}`));
     this.buildProps();
     for (const r of v.interiors) this.buildInterior(r);
+    this.buildDust();
 
     // The Rusted Stag's three for hire, in a row before the bar (Michael's mockup: the companions in the room).
     const tavern = v.interiors.find((r) => r.building === 'tavern');
@@ -128,6 +146,7 @@ export class VillageView {
     for (const v of this.villagers) v.view.update(v.state, v.state, 1, dt);
     for (const h of this.hires) if (h.view.root.visible) h.view.update(h.state, h.state, 1, dt);
     this.clock += dt;
+    this.stepCeremony(dt);
     for (const f of this.flickers) {
       const t = this.clock * 9 + f.seed;
       f.light.intensity = f.base * (1 + f.amount * (Math.sin(t) * 0.5 + Math.sin(t * 2.3 + 1.7) * 0.3 + Math.sin(t * 5.1) * 0.2));
@@ -285,7 +304,8 @@ export class VillageView {
     sign.position.set(b.door.x, doorH + 0.75, b.door.z).addScaledVector(out, 0.08);
     sign.rotation.y = face;
     this.group.add(sign);
-    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1 });
+    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1, wanted: 1 });
+    this.buildScaffold(b);
 
     if (shrine) this.buildShrineFront(b, out, side);
   }
@@ -692,16 +712,199 @@ export class VillageView {
     }
   }
 
-  /** Show each building's tier (P4): its pennants and the numeral on its sign. */
+  /**
+   * Show each building's tier (P4): its pennants and the numeral on its sign. A building whose ceremony
+   * is still raising its scaffold keeps the tier it had until the reveal.
+   */
   setTiers(tiers: Record<Building['id'], number>): void {
     for (const [id, m] of this.tierMarks) {
-      const tier = tiers[id] ?? 1;
-      if (tier === m.tier) continue;
-      m.tier = tier;
-      m.flags.forEach((f, i) => (f.visible = i < tier));
-      m.sign.material.map?.dispose();
-      m.sign.material.map = signTexture(tier > 1 ? `${m.name} ${ROMAN[tier] ?? tier}` : m.name);
-      m.sign.material.needsUpdate = true;
+      m.wanted = tiers[id] ?? 1;
+      const rite = this.rite;
+      this.showTier(m, rite && !rite.revealed && rite.id === id ? Math.min(m.wanted, rite.tier - 1) : m.wanted);
+    }
+  }
+
+  private showTier(m: TierMarks, tier: number): void {
+    if (tier === m.tier) return;
+    m.tier = tier;
+    m.flags.forEach((f, i) => (f.visible = i < tier));
+    m.sign.material.map?.dispose();
+    m.sign.material.map = signTexture(tier > 1 ? `${m.name} ${ROMAN[tier] ?? tier}` : m.name);
+    m.sign.material.needsUpdate = true;
+  }
+
+  /**
+   * A building goes up a tier (the upgrade ceremony; Michael, 30 Oct, A): scaffolding climbs its walls,
+   * dust rises while the work goes on, the new pennant and sign appear, and the scaffold comes down.
+   * The room's village message may come before or after the `upgraded` that starts this, so the old
+   * tier is put back on show until the reveal either way.
+   */
+  ceremony(id: Building['id'], tier: number, seconds: number): void {
+    this.endCeremony();
+    const m = this.tierMarks.get(id);
+    if (!m || seconds <= 0) return;
+    m.wanted = Math.max(m.wanted, tier);
+    this.showTier(m, Math.min(m.tier, tier - 1));
+    this.rite = { id, t: 0, dur: seconds, tier, revealed: false, puff: 0 };
+  }
+
+  /** Cut the ceremony short (a key pressed, the village left): the building stands at its new tier at once. */
+  endCeremony(): void {
+    const rite = this.rite;
+    if (!rite) return;
+    if (!rite.revealed) this.reveal(rite);
+    this.rite = null;
+    const s = this.scaffolds.get(rite.id);
+    if (s) s.root.visible = false;
+    for (const d of this.dust) d.sprite.visible = false;
+    if (this.pop) this.pop.flag.scale.setScalar(1);
+    this.pop = null;
+  }
+
+  get ceremonyRunning(): boolean {
+    return this.rite !== null;
+  }
+
+  /** The shot the ceremony is watched from: out from the building's door and a little aside, looking up at it. */
+  ceremonyShot(id: Building['id']): { from: THREE.Vector3; at: THREE.Vector3 } | null {
+    const b = this.scaffolds.get(id)?.building;
+    if (!b) return null;
+    const face = b.door.facingYawDeg * DEG;
+    const out = new THREE.Vector3(Math.sin(face), 0, Math.cos(face));
+    const side = new THREE.Vector3(Math.cos(face), 0, -Math.sin(face));
+    const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ);
+    const at = new THREE.Vector3((b.minX + b.maxX) / 2, b.height * 0.75, (b.minZ + b.maxZ) / 2);
+    const from = new THREE.Vector3(b.door.x, b.height * 0.9 + 1.5, b.door.z).addScaledVector(out, size * 0.9 + 4).addScaledVector(side, size * 0.35);
+    return { from, at };
+  }
+
+  private reveal(rite: NonNullable<VillageView['rite']>): void {
+    rite.revealed = true;
+    const m = this.tierMarks.get(rite.id);
+    if (!m) return;
+    this.showTier(m, m.wanted);
+    const flag = m.flags[m.tier - 1];
+    if (flag) {
+      flag.scale.setScalar(0.01);
+      this.pop = { flag, t: 0 };
+    }
+  }
+
+  /** Poles at the corners and every few metres along each wall, a little out from it, with planks between at two heights. */
+  private buildScaffold(b: Building): void {
+    const root = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.95 });
+    const height = b.height + 0.8;
+    const pole = new THREE.CylinderGeometry(0.06, 0.07, height, 5).translate(0, height / 2, 0);
+    const off = 0.55;
+    const x0 = b.minX - off;
+    const x1 = b.maxX + off;
+    const z0 = b.minZ - off;
+    const z1 = b.maxZ + off;
+    const edges: [number, number, number, number][] = [
+      [x0, z0, x1, z0],
+      [x1, z0, x1, z1],
+      [x1, z1, x0, z1],
+      [x0, z1, x0, z0],
+    ];
+    for (const [ax, az, bx, bz] of edges) {
+      const len = Math.hypot(bx - ax, bz - az);
+      const n = Math.max(1, Math.round(len / 2.4));
+      for (let i = 0; i < n; i++) {
+        const mesh = new THREE.Mesh(pole, wood);
+        mesh.position.set(ax + ((bx - ax) * i) / n, 0, az + ((bz - az) * i) / n);
+        mesh.castShadow = true;
+        root.add(mesh);
+      }
+      for (const y of [height * 0.45, height * 0.9]) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.32), wood);
+        plank.position.set((ax + bx) / 2, y, (az + bz) / 2);
+        plank.rotation.y = -Math.atan2(bz - az, bx - ax);
+        plank.castShadow = true;
+        root.add(plank);
+      }
+    }
+    root.visible = false;
+    this.group.add(root);
+    this.scaffolds.set(b.id, { root, building: b });
+  }
+
+  private buildDust(): void {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(214, 196, 168, 0.9)');
+    grad.addColorStop(1, 'rgba(214, 196, 168, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    const map = new THREE.CanvasTexture(c);
+    map.colorSpace = THREE.SRGBColorSpace;
+    for (let i = 0; i < 32; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, opacity: 0 }));
+      sprite.visible = false;
+      this.group.add(sprite);
+      this.dust.push({ sprite, age: 0, life: 1, vy: 0, size: 1 });
+    }
+  }
+
+  /** One puff at the foot of a wall (or, at the reveal, anywhere up its face). */
+  private puff(b: Building, high: boolean): void {
+    const d = this.dust.find((p) => !p.sprite.visible);
+    if (!d) return;
+    const along = Math.random();
+    const edge = Math.floor(Math.random() * 4);
+    const x = edge < 2 ? b.minX + (b.maxX - b.minX) * along : edge === 2 ? b.minX - 0.4 : b.maxX + 0.4;
+    const z = edge >= 2 ? b.minZ + (b.maxZ - b.minZ) * along : edge === 0 ? b.minZ - 0.4 : b.maxZ + 0.4;
+    d.sprite.position.set(x, high ? Math.random() * b.height : 0.3, z);
+    d.sprite.visible = true;
+    d.age = 0;
+    d.life = 1.1 + Math.random() * 0.8;
+    d.vy = 0.6 + Math.random() * 0.8;
+    d.size = 1.2 + Math.random() * 1.2;
+  }
+
+  private stepCeremony(dt: number): void {
+    const rite = this.rite;
+    if (rite) {
+      rite.t += dt;
+      const p = rite.t / rite.dur;
+      const s = this.scaffolds.get(rite.id)!;
+      // Up over the first quarter, held while the work goes on, down after the reveal.
+      const up = p < 0.25 ? p / 0.25 : p < 0.62 ? 1 : Math.max(0, 1 - (p - 0.62) / 0.28);
+      s.root.visible = up > 0.01;
+      s.root.scale.set(1, Math.max(0.01, up * up * (3 - 2 * up)), 1);
+      if (p > 0.08 && p < 0.75) {
+        rite.puff += dt * 14;
+        for (; rite.puff >= 1; rite.puff--) this.puff(s.building, false);
+      }
+      if (!rite.revealed && p >= 0.6) {
+        this.reveal(rite);
+        for (let i = 0; i < 12; i++) this.puff(s.building, true);
+      }
+      if (p >= 1) this.endCeremony();
+    }
+    if (this.pop) {
+      this.pop.t += dt;
+      // A little overshoot, so the new pennant arrives rather than fades in.
+      const k = Math.min(1, this.pop.t / 0.4);
+      this.pop.flag.scale.setScalar(Math.max(0.01, 1 + Math.sin(k * Math.PI) * 0.35 * (1 - k) - (1 - k) * (1 - k)));
+      if (k >= 1) {
+        this.pop.flag.scale.setScalar(1);
+        this.pop = null;
+      }
+    }
+    for (const d of this.dust) {
+      if (!d.sprite.visible) continue;
+      d.age += dt;
+      const k = d.age / d.life;
+      if (k >= 1) {
+        d.sprite.visible = false;
+        continue;
+      }
+      d.sprite.position.y += d.vy * (1 - k) * dt;
+      d.sprite.scale.setScalar(d.size * (1 + k * 1.8));
+      d.sprite.material.opacity = 0.8 * (1 - k) * Math.min(1, k * 6);
     }
   }
 

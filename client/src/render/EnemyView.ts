@@ -123,6 +123,8 @@ export class EnemyView {
   private lastHitAt = -1;
   private flinch = 0;
   private flinchSide = 1;
+  /** Launched corpses (K1): this death flew, so it is drawn on an arc. The sim drops the mark on landing. */
+  private flew = false;
   private time = 0;
 
   constructor(
@@ -493,7 +495,12 @@ export class EnemyView {
       const u = curr.aiTime / (stats.deathMs / 1000);
       topple = easeOut(clamp01(u * 2.5));
       rise = -0.6 * clamp01((u - 0.6) / 0.4);
-    }
+      if (curr.launched) this.flew = true;
+      if (this.flew) {
+        const a = clamp01(curr.aiTime / tuning.launch.arcSeconds);
+        rise += tuning.launch.arcHeightM * 4 * a * (1 - a);
+      }
+    } else this.flew = false;
     this.rig.position.y = rise;
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
 

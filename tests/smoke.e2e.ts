@@ -249,6 +249,16 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await page.keyboard.press("KeyF");
   await expect(page.locator(".keeper-card")).toBeVisible();
   await expect(page.locator(".keeper-name")).toHaveText("Keeper Wren");
+  // Down to Build and F: the shrine's whole path, I to IV, here at I (the upgrade ceremony, Michael 30 Oct, A).
+  // A new village has nothing to build with, so Confirm is greyed with what is short. Esc steps back, then leaves.
+  await page.keyboard.press("KeyS");
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".keeper-tier")).toHaveCount(4);
+  await expect(page.locator(".keeper-tier.current")).toContainText("Tier I");
+  await expect(page.locator(".keeper-choice.chosen")).toContainText("Confirm: build tier II");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".keeper-path")).toBeHidden();
+  await expect(page.locator(".keeper-card")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator(".keeper-card")).toBeHidden();
   await outOfShrine(page);
@@ -274,6 +284,52 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
     expect(errors).toEqual([]);
   } finally {
     await tune(page, { "dungeon.pieces": 0, "dungeon.seed": 0 });
+  }
+});
+
+test("a building raised: Confirm plays the ceremony at the shrine, and a key cuts the next one short", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  await open(page, "play", errors);
+  // Free building (the dev server takes the panel's edits), so a new village can raise its shrine twice.
+  await tune(page, { "village.upgradeLumber": 0, "village.upgradeStone": 0, "village.upgradeCoin": 0 });
+  try {
+    const rite = () => page.evaluate(() => (window as unknown as { game: any }).game.rite as string | null);
+    await intoShrine(page);
+    await page.keyboard.press("KeyF");
+    await expect(page.locator(".keeper-card")).toBeVisible();
+    await page.keyboard.press("KeyS");
+    await page.keyboard.press("KeyF");
+    await expect(page.locator(".keeper-choice.chosen")).toContainText("Confirm: build tier II");
+    await expect(page.locator(".keeper-choice.chosen .why")).toHaveCount(0, { timeout: 5_000 });
+    await page.keyboard.press("KeyF");
+    // The ceremony: the card stands aside and the camera leaves the shrine's inside for its front.
+    await expect.poll(rite, { timeout: 5_000 }).toBe("shrine");
+    await expect(page.locator(".keeper-card")).toBeHidden();
+    await expect
+      .poll(() => page.evaluate(() => {
+        const g = (window as unknown as { game: any }).game;
+        const c = g.cam.camera.position;
+        const b = g.world.level.village.buildings.find((x: any) => x.id === "shrine");
+        return c.x < b.minX - 1 || c.x > b.maxX + 1 || c.z < b.minZ - 1 || c.z > b.maxZ + 1 ? "outside" : "elsewhere";
+      }))
+      .toBe("outside");
+    // Over by itself after its seconds: the card back, tier II here.
+    await expect.poll(rite, { timeout: 8_000 }).toBe(null);
+    await expect(page.locator(".keeper-card")).toBeVisible();
+    await expect(page.locator(".keeper-tier.current")).toContainText("Tier II");
+
+    // Tier III, and Esc cuts the ceremony short: the building at its new tier at once, the card still up.
+    await expect(page.locator(".keeper-choice.chosen")).toContainText("Confirm: build tier III");
+    await page.keyboard.press("KeyF");
+    await expect.poll(rite, { timeout: 5_000 }).toBe("shrine");
+    await page.keyboard.press("Escape");
+    await expect.poll(rite, { timeout: 2_000 }).toBe(null);
+    await expect(page.locator(".keeper-card")).toBeVisible();
+    await expect(page.locator(".keeper-tier.current")).toContainText("Tier III");
+    expect(errors).toEqual([]);
+  } finally {
+    await tune(page, { "village.upgradeLumber": 40, "village.upgradeStone": 30, "village.upgradeCoin": 80 });
   }
 });
 

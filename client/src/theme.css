@@ -919,6 +919,42 @@ body.on-title .run-banner {
 .keeper-choice.blocked b {
   color: var(--muted);
 }
+/* A building's tier path (the upgrade ceremony): I to IV in a row, where the village stands marked. */
+.keeper-path {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.keeper-tier {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 2px solid var(--frame-inner);
+  font-size: 12px;
+  color: var(--muted);
+}
+.keeper-tier b {
+  font-size: 13px;
+  color: var(--ink);
+}
+.keeper-tier small.why {
+  color: var(--ember);
+}
+.keeper-tier.built {
+  opacity: 0.6;
+}
+.keeper-tier.current {
+  border-color: var(--gold);
+}
+.keeper-tier.current b::after {
+  content: ' · here';
+  color: var(--gold);
+}
+.keeper-tier.next {
+  border-style: dashed;
+  border-color: var(--gold);
+}
 .keeper-foot {
   margin-top: 10px;
   font-size: 12px;
