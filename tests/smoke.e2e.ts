@@ -69,11 +69,24 @@ async function holdUntil(page: Page, key: string, done: () => Promise<boolean>, 
   }
 }
 
-/** Face the camera at (x, z) and hold W until the hero is within `tol` of it: W walks where the camera looks. */
+/** The page's own hero as its browser predicts it, a round trip ahead of the snapshot; null mid hand-off. */
+async function predicted(page: Page): Promise<{ x: number; z: number } | null> {
+  return page.evaluate(() => {
+    const session = (window as unknown as { game: any }).game.session;
+    const h = session.hero()?.curr;
+    const inSnap = JSON.parse((window as unknown as { game: any }).game.snapshot()).players.some((p: any) => p.id === session.localId);
+    return h && inSnap ? { x: h.x, z: h.z } : null;
+  });
+}
+
+/**
+ * Face the camera at (x, z) and hold W until the hero is within `tol` of it: W walks where the camera looks.
+ * Steered by the predicted hero: a snapshot is a round trip old, and since a slow page steps a long
+ * frame whole, the hero covers that much more between looks and circled a small mark (30 Oct).
+ */
 async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
   const near = async () => {
-    const s = await seen(page);
-    const p = mine(s);
+    const p = await predicted(page);
     // Mid hand-off (a ring taken) the snapshot has no hero of ours yet: the walk is over.
     if (!p) return true;
     await page.evaluate(([tx, tz, px, pz]) => {

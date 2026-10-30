@@ -2,6 +2,40 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 55, three design questions asked
+
+**What changed**
+
+Docs only. Every open Phase 2 item left is **(Fable)**, **(Michael)** or an unasked **(design)** pass, so the builder asked three of them in `decisions.md` Pending, each with options and a recommendation: building upgrades with ceremony (A: the whole tier path from the keeper card's Build button, a confirm, and a short ceremony at the building), K1 launched corpses (A: built now behind a switch, a third of the killing blow and a stagger to what a corpse meets), M1 more ways to move (A: the jump clears low attacks with no i-frames; a **(Fable)** item whichever is chosen). The backlog marks each as asked.
+
+**Learned**
+
+D6 (rooms that need jumping) waits on M1's answer, and the builds pass on the feel pass being played, so neither was asked. The builder lock could not be taken this run: the push of the tag was refused by the session's git proxy.
+
+**Next**
+
+The producer carries the three questions to Michael. Once one is answered and not marked **(Fable)**, the builder builds it; otherwise the Phase 2 gate playtest is Michael's.
+
+## 2026-10-30: Session 54, a slow page keeps the server's time
+
+**What changed**
+
+Client and a tuning default; no message change, parity untouched (the sim is not touched).
+- **The critic's frame-rate bug** (Found in play, 28 Oct). `Game.update` clamped every frame to 100 ms before the session saw it, and `ClientSession.advance` stepped at most 8 ticks; a page under 10 fps (frames of 100 to 270 ms in the throttled lab) made fewer commands than the server ticked. The server stood in held buttons for the missing ticks, dropped the late ones when they landed, and every key change near a stand-in moved the hero from where the browser had it. The critic's raise of the cap to 16 barely helped because the 100 ms clamp, not the cap, was the limit.
+- Now the session takes the frame's whole time (`frameDt`; the views keep the clamped `realDt`), and `sim.maxStepsPerFrame` is 30, half a second, the same catch-up the server allows itself (panel range 1 to 60). Past that a stall still drops time, and the server's 300 ms stall rule picks the player up again.
+- `ClientSession.sent`, the commands made so far, for the test.
+- Test: `test:net` 9c drives the real ClientSession with uneven frames of 40 to 150 ms (about 10 fps) for 4.5 s of running. Before: 210 commands over 262 ticks of wall time, 17 corrections over 10 cm. After: 262 over 262, 3 over 10 cm, no snap. The count is a check; the corrections over 10 cm are printed as `info` (see Learned). At 13 fps even frames the remainder is 0, at 8 fps 1, at 5 fps 7.
+- `smoke.e2e`'s `walkTo` steers by the predicted hero, not a snapshot a round trip old: with a slow headless page now stepping its long frames whole, the old steering circled the 0.6 m mark at Wren's table. Smoke on this box: 5 of 7. The village walk fails at the rest room's gold ring (`steer` home; on the commit before this work it failed earlier, timing out), and the bag test's D-hold timed out once (it passed alone). e2e is not in CI.
+
+**Learned**
+
+- What is left at low frame rates is the server's, not the client's: a frame's commands arrive as one burst (9 to 12 at 5 to 8 fps), and `inputSlots.ts` takes a queue longer than the cushion plus `maxExtra` (4) for a server running slow and folds the excess into one tick. A bursty but on-time page looks the same. Telling them apart (the burst size seen recently, say) is server netcode, so it is a **(Fable)** item now.
+- A failed `test:net` leaves its dev server on port 2599; kill it by PID before the next run (`pkill -f` on that pattern also kills the shell that runs it).
+
+**Next**
+
+- Phase 2's builder items are done; the backlog holds (design) and (Fable) work and Michael's gate playtest. The critic's lab at `--cpu-throttle 2` should now read near the desktop's numbers; the fold item is for the deep-work session.
+
 ## 2026-10-30: Session 53, item sounds and a coin jingle
 
 **What changed**
