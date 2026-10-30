@@ -846,7 +846,7 @@ export class Game {
       world.drops.filter((d) => d.owner === localId),
       this.presentTime,
     );
-    this.propView?.update(world.floor, this.presentTime);
+    this.propView?.update(world.floor, this.presentTime, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();

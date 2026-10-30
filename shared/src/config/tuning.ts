@@ -1128,11 +1128,25 @@ export const tuning = {
     bossLumber: 12,
     bossStone: 12,
     /**
-     * Things to smash (D4; Michael, 28 Oct): a crate or barrel gives this much lumber, an urn this
-     * much stone, carried until the floor banks (and the deeper floors' bonus with it).
+     * Things to smash (D4; Michael, 28 Oct): a crate or barrel sprays out lumber, an urn stone, a
+     * piece at a time, between these many each (Michael, 29 Oct: "in random quantities"). What is
+     * picked up is carried until the floor banks (and the deeper floors' bonus with it).
      */
-    smashLumber: 1,
-    smashStone: 1,
+    smashLumberMin: 1,
+    smashLumberMax: 3,
+    smashStoneMin: 1,
+    smashStoneMax: 3,
+    /** Crates and barrels hold coin too (Michael, 29 Oct): this often, between these many, in up to three piles. */
+    smashCoinChance: 0.5,
+    smashCoinMin: 2,
+    smashCoinMax: 8,
+    /**
+     * How far the spray throws a piece from the prop (m), at most, out into the room; a piece can
+     * be taken once it lands, smashSettleMs after the break, by a hero within lootRadius.
+     */
+    smashSpray: 1.4,
+    smashSettleMs: 450,
+    lootRadius: 0.9,
     /** The chance a smashed prop holds a health potion, the heal between rest rooms since D7. */
     potionChance: 0.12,
     /** A potion gives back this share of max health at once. */
@@ -2101,8 +2115,16 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],
   'loop.bossStone': [0, 100, 1],
-  'loop.smashLumber': [0, 10, 1],
-  'loop.smashStone': [0, 10, 1],
+  'loop.smashLumberMin': [0, 10, 1],
+  'loop.smashLumberMax': [0, 10, 1],
+  'loop.smashStoneMin': [0, 10, 1],
+  'loop.smashStoneMax': [0, 10, 1],
+  'loop.smashCoinChance': [0, 1, 0.05],
+  'loop.smashCoinMin': [0, 50, 1],
+  'loop.smashCoinMax': [0, 50, 1],
+  'loop.smashSpray': [0.3, 3, 0.1],
+  'loop.smashSettleMs': [0, 1500, 50],
+  'loop.lootRadius': [0.3, 3, 0.1],
   'loop.potionChance': [0, 1, 0.01],
   'loop.potionHeal': [0, 1, 0.05],
   'loop.potionMax': [0, 9, 1],

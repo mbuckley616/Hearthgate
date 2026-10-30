@@ -76,6 +76,10 @@ export interface PropInfo {
   z: number;
   yaw: number;
   piece: number;
+  /** Facing out from its wall into the piece (radians, yaw 0 faces +z): where a smash sprays what it held. */
+  inward: number;
+  /** The piece's open floor, which a spray never throws past. */
+  room: Rect;
 }
 
 /** The floor generated from a spec, as a level the sim runs. */
@@ -215,7 +219,7 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[]): void {
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
       const pick = propHash(seed ^ 0x5bd1e995, info.id, k);
       const kind: PropKind = pick < 0.45 ? 'crate' : pick < 0.8 ? 'barrel' : 'urn';
-      out.push({ id: out.length, kind, x, y: info.y, z, yaw: propHash(seed ^ 0x1b873593, info.id, k) * Math.PI * 2, piece: info.id });
+      out.push({ id: out.length, kind, x, y: info.y, z, yaw: propHash(seed ^ 0x1b873593, info.id, k) * Math.PI * 2, piece: info.id, inward: (INWARD_YAW[side] * Math.PI) / 180, room: i });
     }
   }
 }

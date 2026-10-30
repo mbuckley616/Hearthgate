@@ -178,6 +178,13 @@ export class Sfx {
           this.groan(false, 0.3);
           this.tone('sine', 180, 120, 0.5, 0.1, 0.05);
           break;
+        case 'lootTaken':
+          // Coin chinks; lumber and stone knock, wood lower than stone.
+          if (ev.loot === 'coin') {
+            this.tone('triangle', 1760, 2200, 0.12, 0.14, 0.005);
+            setTimeout(() => this.tone('triangle', 2350, 2600, 0.1, 0.1, 0.005), 50);
+          } else this.tone('sine', ev.loot === 'stone' ? 520 : 300, ev.loot === 'stone' ? 380 : 220, 0.18, 0.08, 0.005);
+          break;
         case 'potionTaken':
           this.tone('triangle', 660, 990, 0.22, 0.2, 0.01);
           break;
