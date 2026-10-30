@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 57, a building's tier path and a confirm
+
+**What changed**
+
+Client only; the `upgrade` message is unchanged. Part one of "Building upgrades with ceremony" (Michael, 30 Oct, A).
+- **The path.** A keeper's Build button no longer builds: it turns the card to the building's tiers, I to IV in a row (`TierStep`, `.keeper-path`), each with what it gives and, ahead of where the village stands, what it costs; the current tier is marked "here", the next is dashed gold with what the village is short of in ember. Under it, **Confirm: build tier N** (greyed with the shortfall, or "Only <host> can build here" for a guest) and **Back**.
+- **Backing out.** Esc, Tab or B step back once: from the path to the keeper's page, then away. Esc was handled twice a frame (the game's menu keys and the card's own), harmless while both closed; the card now leaves Esc to the game and keeps B.
+- **A fanfare.** `Sfx.fanfare`: a rising three-note horn call and a held chord when the room answers `upgraded`, with the toast and the keeper's "Done" line as before.
+- `tests/smoke.e2e.ts`: by keys, Wren's card, down to Build, four tiers with I current and Confirm chosen, Esc back to the card, Esc away.
+
+**Learned**
+
+The village smoke test is flaky on this box in its walks, not the card: of five runs with the change, two failed (a 25 s walk into the shrine before the card opened, and the ring hand-off), three passed; the base passed its one run.
+
+**Next**
+
+Part two: the ceremony at the building, the camera turning to it (`OrbitCamera.setShot`), dust and scaffolding for a few seconds, and the building changing with its tier. Then M1 is **(Fable)** and the gate playtest is Michael's.
+
 ## 2026-10-30: Session 56, launched corpses (K1)
 
 **What changed**

@@ -249,6 +249,16 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await page.keyboard.press("KeyF");
   await expect(page.locator(".keeper-card")).toBeVisible();
   await expect(page.locator(".keeper-name")).toHaveText("Keeper Wren");
+  // Down to Build and F: the shrine's whole path, I to IV, here at I (the upgrade ceremony, Michael 30 Oct, A).
+  // A new village has nothing to build with, so Confirm is greyed with what is short. Esc steps back, then leaves.
+  await page.keyboard.press("KeyS");
+  await page.keyboard.press("KeyF");
+  await expect(page.locator(".keeper-tier")).toHaveCount(4);
+  await expect(page.locator(".keeper-tier.current")).toContainText("Tier I");
+  await expect(page.locator(".keeper-choice.chosen")).toContainText("Confirm: build tier II");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".keeper-path")).toBeHidden();
+  await expect(page.locator(".keeper-card")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator(".keeper-card")).toBeHidden();
   await outOfShrine(page);
