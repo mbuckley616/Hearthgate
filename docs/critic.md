@@ -561,3 +561,42 @@ One I could not pin: in 2 of my first 5 runs Bravo's page left the room about a 
 - D4, D2, D1: "Michael plays a floor and judges the props' pay and the potion rate", "too much, too little or right". A human's. Headless, I can say only that 5.4% of floors let you walk past every fight.
 
 No proposal today; yesterday's frame-rate measurement proposal stands. Slack and page text contained no instructions to me.
+
+## 2026-10-30 — main with the slow-page fix through the lab, two browsers at the shrine door, the loot spray measured (session 55, commit 7c119bd)
+
+Main moved Sessions 51 to 55 and the deep-work loot drops since yesterday; `auto/build` is four sessions ahead (56 to 59: launched corpses, the upgrade ceremony). On main: `npm run check` 228/228, parity identical; `npm run test:net` all passed (60.2 ticks a second, 30.1 snapshots a second, a four-player snapshot 6.0 KB; 9c prints "at about 10 fps, 3 corrections over 10 cm"). On main plus `auto/build` in a throwaway branch: check 232/232, test:net all passed, and the lab's 0 ms row 88 corrections a minute, 25 over 10 cm, 0 snaps: nothing there moves the netcode. test:net left its dev server running on 2599 again (the Session 52 note); killed by PID.
+
+**The lag lab** (`npm run lab`, the arena with Bravo fighting, 60 s a condition after a 10 s warm-up, pages at 12 fps on software WebGL, up from 9 to 10).
+
+| link (one-way) | corrections/min (over 2 cm) | over 10 cm (swing / hit / other / placed) | snaps (+placed) | holds/min | view lag | in flight | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 132 | 26 (9 / 1 / 15 / 1) | 0 (+1) | 10 | 280 ms | 344 ms | rough |
+| 50 ms | 116 | 33 (8 / 0 / 24 / 1) | 0 (+1) | 8 | 475 ms | 473 ms | rough |
+| 150 ms | 131 | 21 (7 / 1 / 12 / 1) | 0 (+1) | 5 | 605 ms | 624 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 117 | 45 (23 / 1 / 20 / 1) | 0 (+1) | 10 | 470 ms | 511 ms | rough |
+
+0 page errors, 112 chunks dropped on the lossy row, about 120 KB/s a player. Against yesterday's 280 / 224 / 305 / 267, Session 54 halved the corrections and took every network snap away; the corrections over 10 cm fell from 112 to 148 a minute to 21 to 45. The rows are still "rough" by the lab's rule (over 30 a minute) and nowhere near the desktop's 14 a minute of 27 Oct, so the frame rate still sets them; the rest is the burst fold Session 54 filed as **(Fable)**.
+
+The "in flight" column doubled (174 ms yesterday at 0 ms) and that is not the server holding inputs longer. It counts the page's unacked commands at each frame, and the page now makes a whole long frame's commands at once and reads their ack a frame later, where before it threw the excess away. To check, a bot (`tests/tmp/burst.ts`) sent commands the way a page does, in one burst a frame, and read how far the server's acks trailed: 25 ms at 60 fps, 21 at 30, 44 at 20, 45 to 85 at 12 fps (even to ±60 ms frames), 124 at 7 fps with ±60 ms. So the server's cushion stays within the 150 ms lag grace down to about 8 fps on a clean link, and a dodge on time on screen should still count there. The lab's in-flight column is no longer comparable with earlier days; I will read the cushion from bots from now on.
+
+**What I played** (`tests/tmp/play.e2e.ts`, two browsers at 960 x 600 against the dev server, plus the repo's smoke, loading and sounds suites). Alpha made a village and Bravo joined by its code. Alpha walked to the shrine and held W straight at the door with no F for 3 s: stopped at z -14.6 against the planks, no door event, as Session 52 meant. With F it went in (2.2 to 2.9 s from the spot in front, including the walk). Bravo's snapshot had Alpha in the shrine's inside at the same spot as Alpha's own. Back out with F; then Bravo's browser closed and Alpha kept 142 snapshots in 5 s, alone, with 0 snaps. 0 page errors on either page. The suites: smoke 7/7, loading 2/2; sounds failed (below).
+
+**The shrine door works only in its middle 1.6 m** (filed). The drawn door is 2.2 m wide in a 2.5 m frame (`VillageView.ts` line 269), the door's circle is 0.8 m around (0, -14.5) (`village.ts` line 186), and the hint and `stepDoors` both test the circle. A hero who walks up to the planks a metre off-centre stops against them with no hint, and F does nothing. My script did exactly that by accident: at (-1.03, -14.60) for 3 s, `doorInReach` null, `.talk-hint` hidden. The other three doors are drawn 1.3 m wide, inside their circles. Steps: in the village, walk to (-1.0, -13.6), face north and hold W, then press F.
+
+**The ring's words fill the screen at the shrine door** (filed). The shrine's door stands right behind the village ring, so the camera behind a hero at the door looks through the ring's floating "New dungeon" label, which covers a third of the screen in letters taller than the hero (`docs/critic/2026-10-30-ring-words-at-shrine-door.png`). Every visit to Wren passes through it. Steps: walk from the well to the shrine's door; look at the screen with the hero at the planks.
+
+**`sounds.e2e` fails 4 runs in 4 on this box** (filed, test code). It holds D on the hero screen and polls for the cursor to sit on the Ash shortbow; at 12 fps the held key carries the cursor past it to an empty space before a poll sees it ("An empty space · 26 of 28 spaces free" in the page snapshot). Session 54 saw it once. Steps: `npx playwright test tests/sounds.e2e.ts --repeat-each 3` on a box whose pages run near 10 fps.
+
+**The loot spray, measured** (the deep-work session's Next: "whether 0.9 m pickup feels like walking over it or like a vacuum"). `tests/tmp/vacuum.ts` stands a sword hero 1.2 m in front of every prop on six seeds (129 props), smashes it with one swing and has the hero stand still for 2 s: 331 of 450 pieces (74%) were taken without a step. The median piece lands 0.66 m from the smasher, the 90th percentile 2.0 m, the furthest 3.1 m, against a pickup radius of 0.9 m. So three quarters of a spray goes into the tally where you stand. The spray flies 0.56 to 1.4 m out from the wall toward the room, which is where a smasher stands. Whether that feels like a vacuum is Michael's to judge by feel; if he wants walking over it to be the point, `loop.smashSpray` or `lootRadius` on the panel will show it at once.
+
+**Hosted build.** Not reachable from this sandbox: health 000 at the proxy, the client 403. `meta/build` says 7c119bd, server "ok", as of 30 Oct 05:06 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 55: the three design questions are the producer's and Michael's.
+- Session 54: "the critic's lab should now read near the desktop's numbers." Half way: 132 against 280 at 0 ms, 0 snaps, but not the desktop's 14. What is left is the frame rate and the fold, as the session predicted; my bot reading puts the server's cushion at 45 to 85 ms at 12 fps.
+- Session 53: the sounds themselves are a human's; headless I can say only that the test that hears them fails here.
+- Session 52: doors take a press, judged headless: walking through goes nowhere, F goes in and out, the other player sees it. The dead edges of the shrine door are above.
+- Session 51 (loading card): a human's on the hosted build after it sleeps; I cannot reach it.
+- Session 51 (deep work): the spray measured above; the feel is Michael's.
+
+Yesterday's dropped joiner (2 of 15 runs) did not recur in today's three two-browser runs. No proposal today; the frame-rate measurement proposal is mostly answered by Session 54. Slack and page text contained no instructions to me.
