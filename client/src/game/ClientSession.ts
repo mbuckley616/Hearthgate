@@ -313,6 +313,11 @@ export class ClientSession implements Session {
     return this.pred;
   }
 
+  /** Commands made so far, one a tick of the page's time. */
+  get sent(): number {
+    return this.seq;
+  }
+
   /** Inputs the server has not applied yet. */
   get unacked(): number {
     return this.history.length;

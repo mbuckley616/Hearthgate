@@ -130,11 +130,13 @@ export class FxView {
           const urn = ev.propKind === 'urn';
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 0.5, ev.z), new THREE.Vector3(0, 1.2, 0), 26, new THREE.Color(urn ? 0xc8714a : 0xb07a48));
           this.puff(ev.x, ev.y + 0.3, ev.z, 0x5a4a3a, 1.1, 0.5);
-          const gave = [ev.lumber > 0 ? `+${ev.lumber} lumber` : '', ev.stone > 0 ? `+${ev.stone} stone` : ''].filter(Boolean).join('  ');
-          if (gave) this.spawnLabel(ev.x, ev.y + 1.3, ev.z, gave, 'loot');
+          // What it held lies on the floor now (Michael, 29 Oct): the word comes when it is picked up.
           if (ev.potion) this.spawnLabel(ev.x, ev.y + 1.7, ev.z, 'Potion!', 'potion');
           break;
         }
+        case 'lootTaken':
+          this.spawnLabel(ev.x, ev.y + 0.9, ev.z, `+${ev.amount} ${ev.loot}`, 'loot');
+          break;
         case 'enemyRose': {
           // Haunted (P8): a fallen enemy gets up in a cold green breath.
           const y = sim.enemies.find((e) => e.id === ev.enemyId)?.y ?? 0;

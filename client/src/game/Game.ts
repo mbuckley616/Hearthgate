@@ -740,7 +740,8 @@ export class Game {
   private update(now: number, draw: boolean): void {
     // Clamp both ways: long stalls shouldn't teleport, and out-of-order timestamps
     // must never produce a negative dt (it explodes the exponential smoothing).
-    const realDt = Math.min(0.1, Math.max(0, (now - this.lastTime) / 1000));
+    const frameDt = Math.max(0, (now - this.lastTime) / 1000);
+    const realDt = Math.min(0.1, frameDt);
     this.lastTime = now;
 
     let actions = this.input.poll(realDt);
@@ -824,7 +825,9 @@ export class Game {
     const cmd = this.buildCommand(actions);
 
     // Run the fight (host) or predict our hero (joiner); collect what happened.
-    const result = this.session.advance({ ...cmd, ...this.pending }, dt);
+    // The session takes the frame's whole time (it drops what passes sim.maxStepsPerFrame): the server
+    // ticks on wall time, and every tick a slow page leaves out is one it plays on held buttons.
+    const result = this.session.advance({ ...cmd, ...this.pending }, frameDt * timeScale);
     if (result.ticks > 0) this.pending = Game.noPresses();
     const localId = this.session.localId;
     // Loot is personal: only our own drops make a beam and a sound.
@@ -876,7 +879,7 @@ export class Game {
       world.drops.filter((d) => d.owner === localId),
       this.presentTime,
     );
-    this.propView?.update(world.floor, this.presentTime);
+    this.propView?.update(world.floor, this.presentTime, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();
