@@ -117,6 +117,21 @@ Combo payoffs scale with how many *different* players took part, not with their 
 - Elites combine two basic enemy behaviours; bosses have three phases with new telegraphs each phase.
 - Enemy groups are built to reward splitting a party's attention: a Pack Leader buffing a crowd, a Shieldbearer protecting a caster.
 
+**Enemy roles** (Michael, 29 Oct 2026). Enemies are built from eight role behaviours, each made once and dressed per dungeon type with its own look, numbers and one twist (usually the state it applies), so a type's roster is a set of reskins rather than new AI. Telegraph colours mean the same in every dungeon: red a strike, orange heavy or unblockable, yellow a projectile or a charge, violet magic or a state.
+
+| Role | Behaviour | Tell | Weakness |
+| --- | --- | --- | --- |
+| Fodder | swarms, quick slashes | raised weapon, red cone | anything |
+| Shield | blocks from the front, bashes | a short shove line | flanks, heavy hits, magic |
+| Charger | a long straight rush that knocks down | a yellow line along its path | a sidestep: it is stunned against a wall |
+| Archer | keeps range, aimed shots | a line that locks late | closing the gap |
+| Caster | channels a spell at a hero, or on its allies | a violet circle | any hit interrupts it |
+| Leader | strengthens or restores its group from behind it | a chant, a glow on the group | killing it first |
+| Heavy | slow slams, great poise | a big orange circle | dodging, then punishing |
+| Elite | two roles in one, marked out | both tells | both weaknesses |
+
+The Haunted Crypt's roster is the first (built after the Phase 2 gate), the Goblin Warrens' the second.
+
 ## Dungeons
 
 A dungeon is a portal choice (type, tier, modifier) that generates a run of 3 to 5 floors, each 4 to 6 minutes, with a rest room between floors where the party banks loot and decides whether to go deeper.
