@@ -401,8 +401,10 @@ export type SimEvent =
   | { kind: 'playerLeft'; playerId: string; name: string }
   /** Walked over, or handed over when a run ends. On a generated floor it is only carried until banked (P1). */
   | { kind: 'pickup'; playerId: string; item: Item | GearItem; carried?: boolean }
-  /** A hero's blow broke a crate, barrel or urn (D4): what it gave the floor, and whether a potion rolled out. */
-  | { kind: 'smashed'; playerId: string; prop: number; propKind: PropKind; x: number; y: number; z: number; lumber: number; stone: number; potion: boolean }
+  /** A hero's blow broke a crate, barrel or urn (D4): what it sprayed onto the floor, and whether a potion rolled out. */
+  | { kind: 'smashed'; playerId: string; prop: number; propKind: PropKind; x: number; y: number; z: number; lumber: number; stone: number; coin: number; potion: boolean }
+  /** A player picked up a piece of a smashed prop's spray (Michael, 29 Oct): it is the party's, carried until the floor banks. */
+  | { kind: 'lootTaken'; playerId: string; loot: 'lumber' | 'stone' | 'coin'; amount: number; x: number; y: number; z: number }
   /** A hero picked up a potion (D4); potions is how many they now carry. */
   | { kind: 'potionTaken'; playerId: string; potions: number }
   /** A hero drank a potion (D4). */

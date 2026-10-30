@@ -5,7 +5,7 @@ import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
-import { stepPotions } from './smash';
+import { stepLoot, stepPotions } from './smash';
 import { difficultyMult } from '../game/portalChoice';
 import type { EnemyKind } from '../config/tuning';
 import type { GearItem } from './catalogue';
@@ -40,16 +40,34 @@ export interface FloorRunState {
   carried: Record<string, (Item | GearItem)[]>;
   /** The props smashed so far (D4), by id in the layout's `props`. */
   broken: number[];
-  /** Lumber and stone from smashing, the party's, banked with the floor or lost with it (D4). */
-  found: { lumber: number; stone: number };
+  /** Lumber, stone and coin picked up from smashing, the party's, banked with the floor or lost with it (D4). */
+  found: { lumber: number; stone: number; coin: number };
   /** Potions lying where a prop broke, by that prop's id (D4). */
   potions: { id: number; x: number; y: number; z: number }[];
+  /** Lumber, stone and coin sprayed out of smashed props and not yet picked up (Michael, 29 Oct). */
+  loot?: FloorLoot[];
   /** The run's twist (P8), from the floor's spec: absent for none. */
   modifier?: 'cursed' | 'haunted';
 }
 
+/** One piece of a smashed prop's spray on the ground: lumber and stone a unit at a time, coin in piles. */
+export interface FloorLoot {
+  /** The prop's id times eight, plus the piece's place in its spray. */
+  id: number;
+  kind: 'lumber' | 'stone' | 'coin';
+  amount: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Where it was thrown from (the prop), for the views' arc. */
+  fromX: number;
+  fromZ: number;
+  /** state.time when it was thrown: it lands, and can be taken, loop.smashSettleMs later. */
+  at: number;
+}
+
 export function initialFloorRun(): FloorRunState {
-  return { room: -1, cleared: [], fights: 0, rested: false, carried: {}, broken: [], found: { lumber: 0, stone: 0 }, potions: [] };
+  return { room: -1, cleared: [], fights: 0, rested: false, carried: {}, broken: [], found: { lumber: 0, stone: 0, coin: 0 }, potions: [] };
 }
 
 const active = (phase: string) => phase === 'intro' || phase === 'wave' || phase === 'rest';
@@ -142,6 +160,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
   }
 
   stepPotions(state);
+  stepLoot(state);
 
   if (active(r.phase) && state.players.length > 0 && state.players.every((p) => p.mode === 'down')) {
     r.phase = 'lost';
@@ -170,8 +189,11 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
   const boss = f.cleared.some((id) => pieces[id]?.kind === 'boss') ? 1 : 0;
   const mult = depthMult(world);
   const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
-  const coin = pay(l.coinPerRoom, l.bossCoin);
-  // What the party smashed (D4) pays the deeper floors' bonus too.
+  // Spray still on the ground goes home with the party, as finds on the ground do.
+  for (const d of f.loot ?? []) f.found[d.kind] += d.amount;
+  f.loot = [];
+  // What the party smashed (D4) pays the deeper floors' bonus too; its coin goes to each player, as a room's does.
+  const coin = pay(l.coinPerRoom, l.bossCoin) + Math.round(f.found.coin * mult);
   const lumber = pay(l.lumberPerRoom, l.bossLumber) + Math.round(f.found.lumber * mult);
   const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
   const floor = world.level.dungeon!.def.spec.floor;
@@ -184,7 +206,7 @@ function bank(state: SimState, world: World, f: FloorRunState): void {
     state.events.push({ kind: 'banked', playerId: p.id, items, kept, coin, lumber, stone, floor, ...hench });
   }
   f.carried = {};
-  f.found = { lumber: 0, stone: 0 };
+  f.found = { lumber: 0, stone: 0, coin: 0 };
   // What a player put down themselves (D13) stays where it is.
   state.drops = state.drops.filter((d) => d.dropped);
 }
@@ -197,7 +219,8 @@ function loseUnbanked(state: SimState, f: FloorRunState): void {
     state.events.push({ kind: 'bagLost', playerId: p.id });
   }
   f.carried = {};
-  f.found = { lumber: 0, stone: 0 };
+  f.found = { lumber: 0, stone: 0, coin: 0 };
+  f.loot = [];
   state.drops = [];
 }
 

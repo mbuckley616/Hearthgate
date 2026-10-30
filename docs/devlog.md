@@ -101,6 +101,27 @@ Client only; no message change.
 
 - The stack approved and merged (#123 to #126, then this), the builder and the deep-work routine back on, Michael's gate evening; E1a once the gate is recorded.
 
+## 2026-10-30: Session 51 (deep work), lumber, stone and coin as drops
+
+**What changed**
+
+`auto/fable-loot-drops`, the deep-work card "Lumber, stone and coin as drops" (Michael, 29 Oct: "Stone and lumber should be items that drop on the ground and spray out of smashed crates in random quantities. Crates and barrels should hold coins too."). Floors only; the arena and the parity hashes untouched.
+- **The spray.** A smashed crate or barrel rolls 1 to 3 lumber and, half the time, 2 to 8 coin; an urn 1 to 3 stone (no coin: Michael named crates and barrels). Every roll is `state.rng` through `nextRandom`. Lumber and stone lie a piece a unit, coin in up to three piles, each thrown 0.56 to 1.4 m out from the prop's wall inside a 120° fan and kept 0.3 m inside the room's open floor (`PropInfo` gained `inward` and `room` for this). They lie in `SimState.floor.loot` (optional, plain data, ids the prop's id times eight plus the piece).
+- **The pickup** (`stepLoot`, after `stepPotions` in `stepFloorRun`): once a piece has landed (`loop.smashSettleMs`, 450 ms, so the arc is seen), the first standing player within `loop.lootRadius` (0.9 m) takes it into `floor.found`, now `{ lumber, stone, coin }`, with a `lootTaken` event. Henchmen take no loot (P10) and a downed player takes nothing. The server's alone: prediction runs the smash on its throwaway copy as before and never steps the pickup.
+- **Bank and loss.** The rest room or the Warden's fall pays found coin to each player on top of the rooms' coin, as the rooms' coin is paid, with the depth bonus like lumber and stone; anything still on the ground at the bank goes home with the party, as finds on the ground do. A wipe loses the found tally and the ground alike.
+- **Tuning.** `smashLumber` and `smashStone` became `smashLumberMin/Max`, `smashStoneMin/Max`; new `smashCoinChance`, `smashCoinMin/Max`, `smashSpray`, `smashSettleMs`, `lootRadius`, all on the panel.
+- **The browser.** `PropView` draws each piece (a plank, a grey stone, a stack of one to three glinting coins by the pile's size) built once, flying from the prop to where it lies over the settle time and turning slowly there; one that landed before the view saw it is drawn where it lies. The smash's "+1 lumber" word moved to the pickup ("+3 coin"), with a coin chink or a wood or stone knock. The floor's top-right line says what a wipe would cost: "carrying 5 coin, 1 lumber".
+- Tests: `smashLoot.test.ts`, six: the same spray in every run of the same state, inside the room, out from the wall, within the spray; different amounts across a floor's crates; nothing taken in the air, everything taken walking over it into the tally; a henchman and a downed player pass it by; ground loot banked at the rest room (coin to the player) and lost with a wipe. `smash.test.ts` follows the new tally. check 224, parity identical, test:net all passed. In the browser against a dev server: a bot broke floor 1's first crate (seed 202), it threw a plank and three coin piles, the browser drew them and the "+3 coin", "+1 lumber" words, and the bot walked up 7 coin and 1 lumber.
+
+**Learned**
+
+- A fresh state rolls the same dice, so "random quantities" only shows across a floor's props, never across two runs of one test: the variety test breaks a floor's every prop in one state.
+- Outside a fight a down does not last a tick, so a test of what a downed player may do steps the system alone.
+
+**Next**
+
+- Michael approves the PR; the critic's play will say whether 0.9 m pickup feels like walking over it or like a vacuum (the smasher at sword range takes the pieces that land at their feet).
+
 ## 2026-10-29: local session, a floor's archers come back (and enemies find the doorways)
 
 **What changed**
