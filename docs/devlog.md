@@ -2,6 +2,19 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, E1 the enemy design pass
+
+**What changed**
+
+`auto/local-e1-design`, stacked on `auto/local-archer-leash`. Docs only.
+- **Designed with Michael in chat** (decisions.md, "E1, the enemy design pass"): enemies as eight role behaviours dressed per dungeon type; the Haunted Crypt's roster first, then the Goblin Warrens; the design doc's eight types canonical, Wren's tab to be redrawn to them; built right after the Phase 2 gate. The Crypt adds a Skeleton Shieldbearer, a Crypt Hound, a Wraith (a chill circle), a Bone Priest (raises the fallen), a Barrow Knight (elite), and the Warden's three phases.
+- **The design doc** gains the Enemy roles table and the telegraph colour language.
+- **The backlog** gains "After the Phase 2 gate: E1, the Crypt roster", E1a (roles and types, deep-work) to E1i (the Warrens, to design after the Crypt is played). E1 is marked designed.
+
+**Next**
+
+- The stack approved and merged (#123 to #126, then this), the builder and the deep-work routine back on, Michael's gate evening; E1a once the gate is recorded.
+
 ## 2026-10-29: local session, a floor's archers come back (and enemies find the doorways)
 
 **What changed**

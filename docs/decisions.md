@@ -9,6 +9,20 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-29: E1, the enemy design pass (Claude (local))
+Today's enemies are four, all crypt skeletons: grunt, archer, brute and the Warden; melee and ranged, no caster. Wren's Random tab lists nine themes (Crypt, Caves, Ruins, Forest, Tombs, Volcanic, Frost, Swamp, Arcane); the design doc has eight dungeon types tied to regions. Asked in chat, a recommendation each, in two rounds.
+- **Structure:** eight role behaviours (fodder, shield, charger, archer, caster, leader, heavy, elite) dressed per dungeon type with a look, numbers and one twist, or bespoke enemies per theme.
+- **First theme:** the Haunted Crypt then the Goblin Warrens, the Crypt alone, or all four shared types.
+- **The list of types:** the design doc's eight, or Wren's nine.
+- **When:** right after the Phase 2 gate, or with Phase 4.
+- **The Crypt's caster (the Wraith):** a chill circle, or healing the pack. **Its leader (the Bone Priest):** raising the fallen, or an aura. **The Warden's three phases:** in the roster, or later.
+Michael (2026-10-29, in chat), every recommendation:
+- **Roles, reskinned.** One behaviour a role, built once; each dungeon type dresses it (look, numbers, the state it applies). Telegraph colours mean the same everywhere: red a strike, orange heavy or unblockable, yellow a projectile or a charge, violet magic or a state.
+- **The Crypt first, then the Warrens.** The Crypt: Skeleton Warrior (fodder, today's grunt), Skeleton Archer (today's), Bone Brute (heavy, today's), and new: Skeleton Shieldbearer (a front block and a bash that staggers; flank it, break it with a heavy, or use magic), Crypt Hound (charger: a long rush along a yellow line, stunned when it meets a wall), Wraith (caster: a violet chill circle at a hero's feet that Chills, broken by any hit), Bone Priest (leader: stands a fallen skeleton back up every few seconds, so it dies first), Barrow Knight (elite: rushes behind its shield). The Warrens follow as the second set, proving the reskin.
+- **The design doc's eight types are canonical.** Goblin Warrens, Haunted Crypt, Wizard Tower, Bandit Fort, and the four regional (Druid Ruins, Forge-Depths, Drowned Temple, Frozen Barrows). Wren's Random tab is redrawn to them.
+- **Built right after the Phase 2 gate**, before Phase 3's regions and trade.
+- **The Warden gets its three phases in the Crypt roster:** at 60% it calls up raised dead, at 30% faster sweeps and a new slam.
+
 ### 2026-10-29: Should a level raise health, damage and armour on its own? (Claude (local))
 Michael's playtest note: "Do basic things like Health, Attack, Defense, Speed not increase with your level? I feel like my health has gone unchanged despite obtaining many levels." Today a level gives only a talent point (Might, Armour, Haste, Fleet and the milestone rows); health comes from gear (amulets, bonus rolls) and, past 50, Vitality. That is the slice's design, so a level-20 hero with no points in health has level 1's 100.
 - **A** (recommended): a small base gain each level of the weapon in hand, +1.5% max health (to +75% at 50), shown on the level-up toast; damage, armour and speed stay with talents and gear, so a build still matters. Behind a switch the parity test turns off.
