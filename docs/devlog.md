@@ -2,6 +2,21 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 53, item sounds and a coin jingle
+
+**What changed**
+
+Client only; no message change.
+- **Every item handled sounds like what it is made of** (Michael, 29 Oct). `Sfx.item(item, putDown)` reads the catalogue's material family: metal clanks (two bright partials, a thud when set down), hide thumps, cloth rustles, wood knocks, arrows rattle, trinkets and dyes chime. Setting down is a little heavier than taking, a two-handed weapon heavier again. Synthesised like the rest of `Sfx` (Michael's M6 call, no recordings).
+- **Where**: dropping from the hero screen (Q, LB or the button); the stash both ways, a put-down or a quick move (`BankScreen`'s new `onPut`); a purchase (the item taken) and a sale (the item set down).
+- **The coin jingle**: four quick clinks on the room's answer to a buy or a sell (`settleTrades`), so it sounds only when the trade went through, never on the press.
+- **The smoke test's walk to Wren's table** goes in two legs: at full speed on a round-trip-old snapshot the one long walk could reach the table at its end and slide round behind it, out of reach of the spot in front. It failed 1 run in 4 on the commit before this work too, so it predates the door change.
+- Test: `tests/sounds.e2e.ts` unlocks audio with a key, drops the shortbow from the bag by keys and sees its sound asked for ("ash-shortbow", set down), then plays one item of each family both ways and the coins with no page error. check 222; smoke, loading and sounds 10/10.
+
+**Next**
+
+- Phase 2's builder items are done; what is left is (design) or (Fable) work and Michael's gate playtest. The Found-in-play bug on corrections against frame rate still wants a desktop reading at 20 to 30 fps.
+
 ## 2026-10-30: Session 52, doors take a press
 
 **What changed**

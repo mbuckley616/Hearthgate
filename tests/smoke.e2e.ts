@@ -114,7 +114,10 @@ async function intoShrine(page: Page) {
   await walkTo(page, 3.4, -13.6, 0.6);
   await walkTo(page, 0, -13.6, 0.5);
   await throughDoor(page, 0, -16, (z) => z < -50);
-  await walkTo(page, 0, -79.1, 0.3);
+  // Short of her table first: at full speed on a snapshot a round trip old, the one long walk could
+  // reach the table at its end and slide round behind it, out of reach of the spot in front (1 in 4, 30 Oct).
+  await walkTo(page, 0, -77.6, 0.6);
+  await walkTo(page, 0, -78.8, 0.5);
 }
 
 /** And out again, onto the square before the shrine. */

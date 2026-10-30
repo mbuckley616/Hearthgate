@@ -1,4 +1,5 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
+import { entryOf, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import type { SimEvent } from '@hearthgate/shared/sim/types';
 
 /**
@@ -251,6 +252,71 @@ export class Sfx {
     osc.connect(gain).connect(this.master!);
     osc.start(t);
     osc.stop(t + attack + dur + 0.05);
+  }
+
+  /** Ready to play a sound now that isn't a fight's event (a menu's): unlocked, running, the volume set. */
+  private ready(): boolean {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return false;
+    this.master!.gain.value = tuning.hitFeel.sfxVolume * tuning.audio.masterVolume;
+    return true;
+  }
+
+  /**
+   * An item handled (Michael, 29 Oct): dropped at your feet, put in the stash or taken out, bought or
+   * sold. It sounds like what it is made of: metal clanks, hide thumps, cloth rustles, wood knocks,
+   * a trinket chimes, arrows rattle. Setting something down is a little heavier than picking it up,
+   * and a two-handed weapon heavier still.
+   */
+  item(item: GearItem, putDown: boolean): void {
+    if (!this.ready()) return;
+    const entry = entryOf(item);
+    const weight = (putDown ? 1 : 0.7) * (entry.shape.twoHanded ? 1.25 : 1);
+    switch (entry.material.family) {
+      case 'metal':
+        this.tone('triangle', 1250, 1180, 0.32, 0.16 * weight, 0.002);
+        this.tone('sine', 2730, 2650, 0.22, 0.08 * weight, 0.002);
+        this.noiseBurst('highpass', 4000, 2500, 0.8, 0.05, 0.25 * weight);
+        if (putDown) this.tone('sine', 180, 90, 0.12, 0.3 * weight);
+        break;
+      case 'hide':
+        this.noiseBurst('lowpass', 700, 150, 0.7, 0.16, 0.6 * weight);
+        this.tone('sine', 120, 70, 0.1, 0.25 * weight);
+        break;
+      case 'cloth':
+        this.noiseBurst('bandpass', 2600, 1800, 0.9, 0.22, 0.22 * weight);
+        this.noiseBurst('bandpass', 1500, 1100, 0.9, 0.14, 0.12 * weight);
+        break;
+      case 'wood':
+        this.tone('triangle', 330, 260, 0.09, 0.4 * weight, 0.002);
+        this.noiseBurst('bandpass', 900, 600, 3, 0.06, 0.4 * weight);
+        break;
+      case 'fletch':
+        for (let i = 0; i < 3; i++) this.later(i * 0.035, () => this.noiseBurst('bandpass', 2400, 1900, 4, 0.025, 0.3 * weight));
+        break;
+      default:
+        // Trinkets and dyes: a small glassy chime.
+        this.tone('sine', 1760, 1740, 0.4, 0.12 * weight, 0.002);
+        this.later(0.06, () => this.tone('sine', 2350, 2330, 0.35, 0.08 * weight, 0.002));
+        break;
+    }
+  }
+
+  /** Coins changing hands: a trade went through (bought or sold). A few bright clinks, a little apart. */
+  coins(): void {
+    if (!this.ready()) return;
+    const clinks = [0, 0.06, 0.11, 0.19];
+    clinks.forEach((at, i) =>
+      this.later(at, () => {
+        this.tone('sine', 2900 + i * 230, 2850 + i * 230, 0.18, 0.09, 0.001);
+        this.tone('sine', 4700 + i * 310, 4650 + i * 310, 0.12, 0.05, 0.001);
+      }),
+    );
+  }
+
+  private later(seconds: number, fn: () => void): void {
+    if (seconds <= 0) fn();
+    else setTimeout(fn, seconds * 1000);
   }
 
   /** A door opening (Michael, 29 Oct): a low creak of the hinge, then the latch and the thump of it swinging to. */

@@ -274,10 +274,13 @@ export class Game {
       this.profile,
       () => this.applyProfile(this.session.view().curr.run.phase === 'ante'),
       () => slotsOpen(this.session.view().curr, !!this.world.level.village),
-      (item) => this.session.request({ k: 'drop', item }),
+      (item) => {
+        this.session.request({ k: 'drop', item });
+        this.sfx.item(item, true);
+      },
       () => this.atShrine(),
     );
-    this.bank = new BankScreen(this.profile);
+    this.bank = new BankScreen(this.profile, (item) => this.sfx.item(item, true));
     this.hire = new HireScreen(
       (kit) => this.session.request({ k: 'hire', kit, coin: this.profile.data.coin }),
       (kit) => {
@@ -679,11 +682,15 @@ export class Game {
         if (!this.profile.addItem(t.item)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(t.item)} was left on the counter</span>`, 'common');
         if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
         this.store.say(`Bought ${nameOf(t.item)} for ${t.coin} coin.`);
+        this.sfx.coins();
+        this.sfx.item(t.item, false);
       } else {
         const item = this.profile.data.bag.find((i) => i?.uid === t.uid);
         if (!item || !this.profile.removeByUid(t.uid)) continue;
         this.profile.data.coin += t.coin;
         this.store.say(`Sold ${nameOf(item)} for ${t.coin} coin.`);
+        this.sfx.coins();
+        this.sfx.item(item, true);
       }
       this.profile.save();
       this.store.refresh();
