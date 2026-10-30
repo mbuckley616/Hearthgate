@@ -165,7 +165,11 @@ export class RunUi {
     const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';
     // What a wipe would cost (P1): finds carried since the last rest room.
-    this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${carried > 0 ? `  ·  carrying ${carried} unbanked` : ''}`;
+    // And the party's picked-up lumber, stone and coin, lost the same way (Michael, 29 Oct).
+    const f = sim.floor?.found;
+    const found = f ? [f.coin ? `${f.coin} coin` : '', f.lumber ? `${f.lumber} lumber` : '', f.stone ? `${f.stone} stone` : ''].filter(Boolean).join(', ') : '';
+    const risk = [carried > 0 ? `${carried} unbanked` : '', found].filter(Boolean).join(', ');
+    this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${risk ? `  ·  carrying ${risk}` : ''}`;
     // The way on, for a while after arriving; the doors' wait whenever one is holding for the party.
     const waiting = r.phase === 'ante' && r.gateWait >= 0;
     const arriving = r.phase === 'ante' && this.now - this.floorSince < 8;

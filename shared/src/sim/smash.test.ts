@@ -75,8 +75,21 @@ describe('things to smash (D4)', () => {
     expect(s.floor!.broken).toEqual([pr.id]);
     const smashed = events.filter((e) => e.kind === 'smashed');
     expect(smashed).toHaveLength(1);
-    const want = pr.kind === 'urn' ? { lumber: 0, stone: tuning.loop.smashStone } : { lumber: tuning.loop.smashLumber, stone: 0 };
-    expect(s.floor!.found).toEqual(want);
+    // What it held lies on the floor now (Michael, 29 Oct); nothing is the party's until walked over.
+    expect(s.floor!.found).toEqual({ lumber: 0, stone: 0, coin: 0 });
+    const loot = s.floor!.loot ?? [];
+    const l = tuning.loop;
+    const count = (k: string) => loot.filter((d) => d.kind === k).reduce((n, d) => n + d.amount, 0);
+    if (pr.kind === 'urn') {
+      expect(count('stone')).toBeGreaterThanOrEqual(l.smashStoneMin);
+      expect(count('lumber') + count('coin')).toBe(0);
+    } else {
+      expect(count('lumber')).toBeGreaterThanOrEqual(l.smashLumberMin);
+      expect(count('lumber')).toBeLessThanOrEqual(l.smashLumberMax);
+      expect(count('stone')).toBe(0);
+    }
+    const gave = smashed[0].kind === 'smashed' ? smashed[0] : null;
+    expect(gave && [gave.lumber, gave.stone, gave.coin]).toEqual([count('lumber'), count('stone'), count('coin')]);
   });
 
   it('stand when the swing faces away', () => {
@@ -103,7 +116,7 @@ describe('things to smash (D4)', () => {
   });
 
   it('bank with the rest room, the deeper bonus on top, and are lost with a wipe', () => {
-    const run = (found: { lumber: number; stone: number }, wipe: boolean) => {
+    const run = (found: { lumber: number; stone: number; coin: number }, wipe: boolean) => {
       const host = new HostSession(buildWorld(floorLevel(spec)), () => {});
       host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
       const events: SimEvent[] = [];
@@ -125,15 +138,16 @@ describe('things to smash (D4)', () => {
       for (let i = 0; i < 3; i++) events.push(...host.tick());
       return { events, floor: host.sim.floor! };
     };
-    const plain = run({ lumber: 0, stone: 0 }, false).events.find((e) => e.kind === 'banked');
-    const more = run({ lumber: 5, stone: 2 }, false).events.find((e) => e.kind === 'banked');
+    const plain = run({ lumber: 0, stone: 0, coin: 0 }, false).events.find((e) => e.kind === 'banked');
+    const more = run({ lumber: 5, stone: 2, coin: 9 }, false).events.find((e) => e.kind === 'banked');
     expect(plain && more && plain.kind === 'banked' && more.kind === 'banked').toBe(true);
     if (plain?.kind !== 'banked' || more?.kind !== 'banked') return;
     expect(more.lumber - plain.lumber).toBe(5);
     expect(more.stone - plain.stone).toBe(2);
-    const lost = run({ lumber: 5, stone: 2 }, true);
+    expect(more.coin - plain.coin).toBe(9);
+    const lost = run({ lumber: 5, stone: 2, coin: 9 }, true);
     expect(lost.events.some((e) => e.kind === 'banked')).toBe(false);
-    expect(lost.floor.found).toEqual({ lumber: 0, stone: 0 });
+    expect(lost.floor.found).toEqual({ lumber: 0, stone: 0, coin: 0 });
   });
 });
 

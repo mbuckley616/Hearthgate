@@ -7,25 +7,28 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-10-30: Building upgrades with ceremony (builder, Session 55)
 Your note (29 Oct): "Upgrading a building needs more pomp and circumstance, and I don't love 'hold F to upgrade'." P11 already took the hold away: F opens the keeper's card and "Build tier N" is one press, showing only the next tier's cost and gift. What is still missing is the whole path and the moment itself.
 - **A** (recommended): the card's Build button opens the building's path: tiers I to IV in a row, what each gives and costs, the current one marked, the next ready or greyed with what is short. Pick it, then Confirm (a key and a pad button each, 48 px). On a build, a few seconds of ceremony: the camera turns to the building, dust and scaffolding, a fanfare, the keeper's line, and the building changes. Esc or B backs out at every step.
 - **B**: the same path and confirm, drawn on the keeper card itself, with only a fanfare and a toast; no camera move.
 - **C**: the village map (M) becomes where you build: pick a building, confirm there, the ceremony plays at the building; the keepers keep their menus only.
+Michael: **A** — the tier path from the Build button, a confirm, and the camera-turn ceremony. (2026-10-30, on the control room)
 
 ### 2026-10-30: K1, launched corpses (builder, Session 55)
 Your note (28 Oct): small enemies killed by a heavy, a finisher or a slam fly along the blow and hurt and stagger what they meet; a bigger launch is a perk or the blunt weapons' own. Enemies are the server's alone, so a flying corpse needs no prediction: the server steps it and every browser draws it.
 - **A** (recommended): built now, behind a switch the parity test turns off. A grunt or archer killed by a heavy, the chain's last hit or a slam flies 4 to 6 m along the blow on a low arc; one it meets takes a share of the killing blow (a third, on the panel) and is staggered, once per corpse. The warhammer launches half again as far. The perk waits for the builds pass.
 - **B**: the look only: the corpse flies, nothing it meets is hurt. Cheaper, and the damage follows once it has been felt.
 - **C**: wait and build it whole with the builds pass, perk and all.
+Michael: **A** — built now behind a switch: corpses fly, hurt and stagger. (2026-10-30, on the control room)
 
 ### 2026-10-30: M1, more ways to move (builder, Session 55)
 Today's jump is the hop you chose on 14 Oct: it clears nothing. Your note (28 Oct) asks for a jump that counts as a dodge, as in Elden Ring, an air dodge and a double jump at a level. Each changes the shared movement and prediction, so whichever you pick is a **(Fable)** item.
 - **A** (recommended): the jump clears low attacks (the Warden's sweeps and slams, and the coming Hound's rush) while the hero is above about half a metre, with no i-frames, so the roll stays the dodge. Nothing else yet; the air dodge and the double jump wait for D6's rooms, which may decide the gaps.
 - **B**: A, plus an air dodge (one a jump, the roll's i-frames, costs a dodge charge) and a double jump opened by the level-20 milestone.
 - **C**: keep the hop for now and revisit after the Phase 2 gate.
-
-## Answered
+Michael: **A** — the jump clears low attacks, no i-frames. (2026-10-30, on the control room)
 
 ### 2026-10-29: E1, the enemy design pass (Claude (local))
 Today's enemies are four, all crypt skeletons: grunt, archer, brute and the Warden; melee and ranged, no caster. Wren's Random tab lists nine themes (Crypt, Caves, Ruins, Forest, Tombs, Volcanic, Frost, Swamp, Arcane); the design doc has eight dungeon types tied to regions. Asked in chat, a recommendation each, in two rounds.
