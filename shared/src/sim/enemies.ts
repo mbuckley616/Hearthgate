@@ -1,6 +1,10 @@
 import { enemyStats, tuning, type EnemyKind } from '../config/tuning';
 import { resolveCircle, sphereCast } from '../level/geometry';
 import { groundHeight, rampPaths, type World } from '../level/arena';
+import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
+
+/** A floor's brazier as its collider stands (floor.ts). */
+const BRAZIER_RADIUS = 0.45;
 import { damageEnemy, heroInvulnerable, hurtHero, nextRandom } from './combat';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 
@@ -158,6 +162,7 @@ function tokenHolders(state: SimState): number {
  * otherwise via the nearest ramp (bottom then top, or the reverse).
  */
 function navGoal(world: World, e: EnemyState, target: PlayerState): { x: number; z: number } {
+  if (world.level.dungeon) return floorGoal(world, e, target);
   if (Math.abs(target.y - e.y) < LEVEL_GAP) return { x: target.x, z: target.z };
   const paths = rampPaths(world.level);
   // A generated floor has no ledge ramps; its fights stay in one flat room behind shut doors.
@@ -173,6 +178,57 @@ function navGoal(world: World, e: EnemyState, target: PlayerState): { x: number;
   }
   if (onRamp || Math.hypot(ramp.top.x - e.x, ramp.top.z - e.z) < 1.2) return ramp.bottom;
   return ramp.top;
+}
+
+/**
+ * Where to head for a hero on a generated floor: straight at them in the same piece, otherwise the next
+ * point on the way through the doorways (walkRoute). With the doors open (D8) a hero can leave a room,
+ * and an enemy walking straight at them only pressed into the wall between.
+ */
+function floorGoal(world: World, e: EnemyState, target: PlayerState): { x: number; z: number } {
+  const layout = world.level.dungeon!;
+  const from = pieceAt(layout, e.x, e.z);
+  const to = pieceAt(layout, target.x, target.z);
+  if (from < 0) return { x: target.x, z: target.z };
+  if (to < 0 || from === to) return around(layout.pieces[from], e, { x: target.x, z: target.z });
+  const route = walkRoute(layout, from, to);
+  // A point is passed once the enemy is nearer the one after it than the point itself is: the first
+  // lies just inside the doorway, and turning back for it held enemies jittering in the door.
+  let i = 0;
+  const dist = (p: { x: number; z: number }, q: { x: number; z: number }) => Math.hypot(p.x - q.x, p.z - q.z);
+  while (i + 1 < route.length && dist(e, route[i + 1]) < dist(route[i], route[i + 1])) i++;
+  return around(layout.pieces[from], e, route[i] ?? { x: target.x, z: target.z });
+}
+
+/**
+ * Step round the first pillar or brazier on the straight line to a goal: aim beside it, on the side
+ * the line already passes. Head-on, the push out of it is straight back and an enemy stood there for
+ * good (a brazier in front of a great hall's doorway, 29 Oct).
+ */
+function around(piece: PieceInfo, e: EnemyState, goal: { x: number; z: number }): { x: number; z: number } {
+  const dx = goal.x - e.x;
+  const dz = goal.z - e.z;
+  const len = Math.hypot(dx, dz);
+  if (len < 0.1) return goal;
+  const ux = dx / len;
+  const uz = dz / len;
+  const r = enemyStats(e.kind).radius;
+  let best: { x: number; z: number; along: number; side: number; clear: number } | null = null;
+  const check = (x: number, z: number, radius: number) => {
+    const along = (x - e.x) * ux + (z - e.z) * uz;
+    if (along <= 0 || along > len) return;
+    // Signed distance of the obstacle from the line, along its left-hand perpendicular (-uz, ux).
+    const side = -(x - e.x) * uz + (z - e.z) * ux;
+    const clear = radius + r + 0.25;
+    if (Math.abs(side) < clear && (!best || along < best.along)) best = { x, z, along, side, clear };
+  };
+  for (const p of piece.pillars) check(p.x, p.z, p.radius);
+  for (const b of piece.braziers) check(b.x, b.z, BRAZIER_RADIUS);
+  if (!best) return goal;
+  const o: { x: number; z: number; side: number; clear: number } = best;
+  // Pass on the far side from it; dead ahead, the side the enemy strafes to.
+  const dir = o.side > 0.01 ? -1 : o.side < -0.01 ? 1 : e.strafeDir || 1;
+  return { x: o.x - uz * dir * (o.clear + 0.1), z: o.z + ux * dir * (o.clear + 0.1) };
 }
 
 /** Can the enemy see the hero (walls, pillars and the ledge block the view)? */
@@ -240,7 +296,10 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
       const gx = goal.x - e.x;
       const gz = goal.z - e.z;
       const gd = Math.max(Math.hypot(gx, gz), 1e-3);
-      if (!sameLevel) {
+      // A hero in another piece of a floor (navGoal routed through a doorway): go round to them first,
+      // as a hero up a ramp is gone round to; the ring of waiting grunts is for the room they share.
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      if (!sameLevel || routed) {
         want.x = gx / gd;
         want.z = gz / gd;
         e.yaw = turnToward(e.yaw, Math.atan2(gx, gz), g.turnRateDeg * DEG * edt);
@@ -306,8 +365,9 @@ function archerBrain(state: SimState, world: World, e: EnemyState, target: Playe
   const toTarget = Math.atan2(dx, dz);
   switch (e.ai) {
     case 'chase': {
+      if (world.level.dungeon) floorArcher(world, e, target, dist, want);
       // Keep distance: back away along the ledge when the hero closes in, otherwise drift a little.
-      if (dist < a.fleeDistance) want.x = Math.sign(e.x - target.x || e.strafeDir);
+      else if (dist < a.fleeDistance) want.x = Math.sign(e.x - target.x || e.strafeDir);
       else want.x = e.strafeDir * 0.25;
       e.yaw = turnToward(e.yaw, toTarget, a.turnRateDeg * DEG * edt);
       if (!e.hasToken && e.cooldown <= 0 && tokenHolders(state) < tokenCap(state) && lineOfSight(world, e, target)) {
@@ -345,6 +405,31 @@ function archerBrain(state: SimState, world: World, e: EnemyState, target: Playe
       break;
   }
   return want;
+}
+
+/**
+ * An archer on a generated floor: out of sight or out of range it comes after the hero through the
+ * doorways; too close it backs straight away; otherwise it holds, drifting a little across the line.
+ */
+function floorArcher(world: World, e: EnemyState, target: PlayerState, dist: number, want: Intent): void {
+  const a = tuning.archer;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const d = Math.max(dist, 1e-3);
+  if (dist > a.floorRange || !lineOfSight(world, e, target)) {
+    const goal = floorGoal(world, e, target);
+    const gx = goal.x - e.x;
+    const gz = goal.z - e.z;
+    const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+    want.x = gx / gd;
+    want.z = gz / gd;
+  } else if (dist < a.fleeDistance) {
+    want.x = -dx / d;
+    want.z = -dz / d;
+  } else {
+    want.x = (dz / d) * e.strafeDir * 0.25;
+    want.z = (-dx / d) * e.strafeDir * 0.25;
+  }
 }
 
 function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): void {

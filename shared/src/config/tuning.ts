@@ -730,6 +730,12 @@ export const tuning = {
     damage: 8,
     /** Backs away along the ledge when you get this close. */
     fleeDistance: 4.5,
+    /**
+     * On a generated floor an archer that cannot see its hero, or stands further than this, comes after
+     * them through the doorways (found in play, 29 Oct: the slice's ledge archer drifted along x, out of
+     * sight, and its room never cleared). The arena keeps the slice's.
+     */
+    floorRange: 14,
     spawnMs: 700,
     deathMs: 1600,
     knockbackTaken: 1,
@@ -2003,6 +2009,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'archer.arrowSpeed': [0, 72, 0.1],
   'archer.damage': [0, 24, 0.1],
   'archer.fleeDistance': [0, 13.5, 0.1],
+  'archer.floorRange': [4, 40, 0.5],
   'archer.spawnMs': [0, 3000, 10],
   'archer.deathMs': [0, 4800, 10],
   'archer.knockbackTaken': [0, 2, 0.01],

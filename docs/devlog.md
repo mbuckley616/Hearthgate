@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-29: local session, a floor's archers come back (and enemies find the doorways)
+
+**What changed**
+
+`auto/local-archer-leash`, stacked on `auto/local-henchmen-grow`. Sim only, floors only; no message or event change.
+- **Archers on a floor.** The slice's archer stands on the arena's ledge and only ever moves along x: back along the ledge when you close in, a slow drift otherwise. On a floor, out of sight, that drift ran on for good, and its room never cleared (filed this morning). Now, on a floor only: out of sight or further than `archer.floorRange` (14 m) it comes after its hero through the doorways; nearer than `fleeDistance` it backs straight away in any direction; otherwise it strafes a little across the line.
+- **Every enemy on a floor finds the doorways.** `navGoal` on a floor is `floorGoal`: straight at a hero in the same piece, otherwise the next point of `walkRoute` through the doorways, a point counted passed once the enemy is nearer the next (the first sits just inside the door, and turning back for it held enemies jittering in the doorway). A grunt waiting its turn to attack follows the route too when its hero is in another piece. With the doors open (D8) a hero can leave a room, and enemies walking straight at them only pressed into the wall.
+- **And steps round a pillar or brazier dead ahead** (`around`): a great hall's brazier stands in front of its north doorway, and an enemy walking straight down the line from the room's middle met it head-on, where the push out is straight back, and stood there for good.
+- **The keeper card no longer shuts under the next F** (P11's branch, found by the smoke test): it closed whenever `villagerInReach` lost the keeper, and a hero stopped at the edge of talk range settled a hair past it. It closes now only when the hero is well away (talk range and 1.5 m) or the village is gone.
+- **The smoke test's ring**: `walkTo` steers by a snapshot a round trip old at full speed, so the short walk from the shrine's door into the ring could coast through it and out (the hero 2.6 m from its middle, the ring 2.4). `intoRing` walks to its edge, then taps W until the hero stands well inside.
+- Tests: on the reported seed, archers in a fight room come within 16 m of a hero two pieces away and closer than they started; a grunt dead in line with the doorway, behind the brazier, reaches its hero; an archer backs away along z. All three fail on the old code, the grunt one without the stepping round too. check 218, parity identical, test:net, smoke 7/7; the two ring tests 8 of 8 repeated.
+
+**Learned**
+
+- The dev server's watcher can keep a half-reloaded module graph after files change under it mid-test (stashing to compare): floor rooms threw `unstickHenchmen is not defined` every tick until a restart. A smoke failure after such checks wants the server's log read first.
+- A test that makes enemies with `createEnemy` must not push them again: it adds them itself, and a doubled enemy is stepped twice a tick.
+
+**Next**
+
+- Michael approves the stack (playtest-fixes, keeper-cards, melee-guard, henchmen-grow, this) and plays the gate.
+
 ## 2026-10-29: local session, P12 henchmen who grow and P13 the party's frames
 
 **What changed**

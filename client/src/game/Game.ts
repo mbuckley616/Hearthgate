@@ -487,8 +487,12 @@ export class Game {
   private talkTo(near: Villager | null, pressed: boolean, dt: number): void {
     if (this.keeperCard.visible) {
       const keeper = this.world.level.village?.villagers.find((n) => n.id === this.keeperCard.keeper);
-      // Walked off or the village gone (a ring took the party): the card goes too.
-      if (!keeper || !this.session.village || keeper.id !== near?.id) this.closeKeeper();
+      // The village gone (a ring took the party) or the hero well away (pushed, handed off): the card goes
+      // too. The card holds the keys, so the hero stands still; a hero stopped at the very edge of talk range
+      // settles a hair past it, and closing on that shut the card under the next F (the smoke test, 29 Oct).
+      const me = this.me();
+      const away = !me || Math.hypot(me.x - (keeper?.x ?? 0), me.z - (keeper?.z ?? 0)) > TALK_RANGE + 1.5;
+      if (!keeper || !this.session.village || away) this.closeKeeper();
       else this.keeperCard.update(keeper.name, this.keeperLine(keeper), this.keeperChoices(keeper));
       return this.talk.update(null, false, dt);
     }
