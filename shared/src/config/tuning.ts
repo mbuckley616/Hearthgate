@@ -650,6 +650,29 @@ export const tuning = {
     comboResetMs: 2000,
   },
 
+  /**
+   * Launched corpses (K1; Michael, 30 Oct, A): a grunt or archer killed by a melee heavy (a heavy,
+   * the chain's last hit, a slam) flies along the blow, and the first time it meets each enemy that
+   * one takes a share of the killing blow and is staggered. The slice's dead just fall; the parity
+   * test turns it off.
+   */
+  launch: {
+    enabled: true,
+    /** Metres a launched corpse slides along the blow. */
+    distanceM: 5,
+    /** The warhammer launches this much farther. */
+    warhammerMult: 1.5,
+    /** Share of the killing blow's damage each enemy it meets takes. */
+    damageShare: 1 / 3,
+    /** Knockback (m) on an enemy a corpse meets. */
+    impactKnockbackM: 1,
+    /** Below this speed (m/s) a corpse has landed and hurts nothing. */
+    minSpeed: 2.5,
+    /** The arc the views draw it on: peak height (m) and time in the air (s). */
+    arcHeightM: 0.8,
+    arcSeconds: 0.45,
+  },
+
   /** Volumes (the player's settings override these on their machine). */
   audio: {
     masterVolume: 0.8,
@@ -1875,6 +1898,14 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combat.knockbackFriction': [1, 30, 0.5],
   'combat.slamHitFrom': [0, 1, 0.05],
   'combat.comboResetMs': [200, 6000, 100],
+
+  'launch.distanceM': [0, 12, 0.5],
+  'launch.warhammerMult': [1, 3, 0.1],
+  'launch.damageShare': [0, 1, 0.05],
+  'launch.impactKnockbackM': [0, 4, 0.1],
+  'launch.minSpeed': [0, 10, 0.5],
+  'launch.arcHeightM': [0, 3, 0.1],
+  'launch.arcSeconds': [0.1, 1.5, 0.05],
 
   'hitFeel.hitstopLightMs': [0, 300, 5],
   'hitFeel.hitstopHeavyMs': [0, 400, 5],

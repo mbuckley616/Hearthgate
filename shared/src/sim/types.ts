@@ -243,6 +243,8 @@ export interface EnemyState {
   maxHp: number;
   /** Haunted (P8): has fallen once and got up again; the next fall is for good. */
   risen?: true;
+  /** Launched corpse (K1): who killed it, what it deals, and the enemies it has already met. */
+  launched?: { by: string; damage: number; struck: number[] };
   tele: Telegraph;
   /** Recovery length for the attack just made (s). */
   recoverTime: number;

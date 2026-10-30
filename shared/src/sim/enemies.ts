@@ -5,7 +5,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 
 /** A floor's brazier as its collider stands (floor.ts). */
 const BRAZIER_RADIUS = 0.45;
-import { damageEnemy, heroInvulnerable, hurtHero, nextRandom } from './combat';
+import { damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -808,6 +808,8 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     }
     settle(state, world, e, fromX, fromZ);
   }
+
+  stepLaunched(state);
 
   // Haunted (P8): each enemy gets up once, at half its health, a moment after it falls.
   for (const e of state.enemies) {

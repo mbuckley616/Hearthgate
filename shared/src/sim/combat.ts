@@ -2,7 +2,7 @@ import { abilityTiming, enemyStats, tuning, type Style } from '../config/tuning'
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
-import { damageTakenMult, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
+import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
@@ -159,6 +159,11 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   if (killed) {
     killEnemy(state, e, stats.knockbackTaken);
     push = Math.max(push, 1.2 * stats.knockbackTaken);
+    if (tuning.launch.enabled && hit.heavy && !hit.projectile && isLight(e) && hero) {
+      const l = tuning.launch;
+      e.launched = { by: hero.id, damage: damage * l.damageShare, struck: [] };
+      push = Math.max(push, l.distanceM * (familyOf(hero) === 'warhammer' ? l.warhammerMult : 1) * stats.knockbackTaken);
+    }
   } else if (!staggered) {
     e.poise -= hit.poise * (1 + poiseBonus);
     // A roar is a commitment: it can't be staggered out of (poise still drains).
@@ -258,6 +263,46 @@ function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): voi
     r.dropZ = e.z;
   }
   if (e.kind === 'warden') r.bossDown = true;
+}
+
+/**
+ * Launched corpses (K1): a corpse still flying hurts and staggers each enemy it meets, once. The
+ * enemy step calls it after moving everyone, so the corpse is where it was drawn this tick.
+ */
+export function stepLaunched(state: SimState): void {
+  const l = tuning.launch;
+  for (const e of state.enemies) {
+    const flight = e.launched;
+    if (!flight) continue;
+    const speed = Math.hypot(e.kbx, e.kbz);
+    if (e.ai !== 'dead' || (speed < l.minSpeed && e.hitstop <= 0)) {
+      delete e.launched;
+      continue;
+    }
+    const r = enemyStats(e.kind).radius;
+    for (const o of state.enemies) {
+      if (o === e || !isTargetable(o) || flight.struck.includes(o.id) || Math.abs(o.y - e.y) > 1.2) continue;
+      const or = enemyStats(o.kind).radius;
+      if (Math.hypot(o.x - e.x, o.z - e.z) >= r + or) continue;
+      flight.struck.push(o.id);
+      const dirX = speed > 1e-3 ? e.kbx / speed : 0;
+      const dirZ = speed > 1e-3 ? e.kbz / speed : 0;
+      damageEnemy(state, o, {
+        attackerId: flight.by,
+        damage: flight.damage,
+        poise: 0,
+        knockback: l.impactKnockbackM,
+        heavy: false,
+        dirX,
+        dirZ,
+        x: o.x - dirX * or,
+        y: o.y + Math.min(1.2, enemyStats(o.kind).height * 0.55),
+        z: o.z - dirZ * or,
+        projectile: true,
+      });
+      if (isTargetable(o) && o.ai !== 'roar') staggerEnemy(state, o);
+    }
+  }
 }
 
 /** In a Whirlwind's spin, with melee abilities that protect (C6). */

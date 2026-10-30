@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 56, launched corpses (K1)
+
+**What changed**
+
+Shared sim and one view; no message change. Michael answered Session 55's three questions on the control room (A each, 30 Oct); this builds K1 to his A.
+- **Launched corpses** (`tuning.launch`, every number on the panel). A grunt or archer killed by a melee heavy (the heavy string, the chain's last hit, a slam, Charge, the shield bash: `hit.heavy` and not a projectile) is marked `EnemyState.launched` and slides `distanceM` (5) along the blow instead of the 1.2 m a death had, `warhammerMult` (1.5) farther from the warhammer. `stepLaunched` (combat.ts, called at the end of `stepEnemies`) checks each flying corpse against the living: the first time it meets one, that enemy takes `damageShare` (a third) of the killing blow and is staggered (a roaring Warden excepted, as damage never staggers a roar). The mark drops when the corpse slows under `minSpeed` or stops being dead (a Haunted rise). A corpse's hit is a projectile hit, so it launches nothing in turn and no browser predicts it. Enemies are the server's alone, so prediction is untouched.
+- **The arc.** `EnemyView` lifts a launched death on a `arcHeightM` (0.8 m) parabola over `arcSeconds` (0.45 s) from the moment its hitstop ends; the slide itself is the snapshot's.
+- **The slice.** `launch.enabled` is off in the parity test; the hashes are unchanged. `shared/src/sim/launch.test.ts`: a heavy kill flies and hurts and staggers the next grunt once; a light kill drops where it stands; the warhammer goes half again as far; switched off, nothing flies.
+
+**Learned**
+
+The kill's slide was already there (knockback steps for the dead too, walls included), so a launch is only a longer push plus the contact check. Corpses stagger the Warden and brutes too, as the decision reads; if that stunlocks the Warden in play, a size rule is one line.
+
+**Next**
+
+Building upgrades with ceremony (answered A): the whole tier path from the Build button, a confirm, the camera and fanfare. M1 (answered A) is now **(Fable)**. Then the Phase 2 gate playtest is Michael's.
+
 ## 2026-10-30: Session 55, three design questions asked
 
 **What changed**
