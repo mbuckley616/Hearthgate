@@ -2,6 +2,58 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 53, item sounds and a coin jingle
+
+**What changed**
+
+Client only; no message change.
+- **Every item handled sounds like what it is made of** (Michael, 29 Oct). `Sfx.item(item, putDown)` reads the catalogue's material family: metal clanks (two bright partials, a thud when set down), hide thumps, cloth rustles, wood knocks, arrows rattle, trinkets and dyes chime. Setting down is a little heavier than taking, a two-handed weapon heavier again. Synthesised like the rest of `Sfx` (Michael's M6 call, no recordings).
+- **Where**: dropping from the hero screen (Q, LB or the button); the stash both ways, a put-down or a quick move (`BankScreen`'s new `onPut`); a purchase (the item taken) and a sale (the item set down).
+- **The coin jingle**: four quick clinks on the room's answer to a buy or a sell (`settleTrades`), so it sounds only when the trade went through, never on the press.
+- **The smoke test's walk to Wren's table** goes in two legs: at full speed on a round-trip-old snapshot the one long walk could reach the table at its end and slide round behind it, out of reach of the spot in front. It failed 1 run in 4 on the commit before this work too, so it predates the door change.
+- Test: `tests/sounds.e2e.ts` unlocks audio with a key, drops the shortbow from the bag by keys and sees its sound asked for ("ash-shortbow", set down), then plays one item of each family both ways and the coins with no page error. check 222; smoke, loading and sounds 10/10.
+
+**Next**
+
+- Phase 2's builder items are done; what is left is (design) or (Fable) work and Michael's gate playtest. The Found-in-play bug on corrections against frame rate still wants a desktop reading at 20 to 30 fps.
+
+## 2026-10-30: Session 52, doors take a press
+
+**What changed**
+
+Sim (village only), event and client; no message change, parity untouched (the arena has no doors).
+- **A door takes F or A** (Michael, 29 Oct: "entering should take a button press (interact), not happen just by walking into the doorway"). `stepDoors` now gets the tick's commands and puts a hero through only while their `interact` is held in the door's circle. Still the server's alone, so prediction never takes a door; the held F rides the input slots like any held button. Henchmen never press, so they still go on touch and with their player, as before.
+- **The way out is shut.** An inside's doorway had a gap in its south wall that only the door's circle stopped you walking out of; it now has a `door` collider (no camera block), so walking at it stops in the circle under the daylight, and F takes you out.
+- **The hint**: in a door's circle the corner hint reads "F (or A): go into the Portal Shrine" (the building whose front it is) or "F (or A): step outside" (`Game.doorInReach`, through `TalkUi`); a keeper in reach still comes first.
+- **The sound**: a new `door` event (player and place) from `stepDoors`; `Sfx.door` synthesises a hinge creak, the latch and the thump of it swinging to, quieter for another player's door.
+- Tests: for each of the four buildings, walking straight through a door's circle from the square goes nowhere and makes no door event, F there takes the hero in with the event, and inside, walking at the doorway stops in its circle (fails on the old code: the walk alone went in). check 222, test:net, smoke 7/7 with the shrine's doors now taken with F held (held only once out of Wren's talk range: F by her opens her card, which holds the hero still).
+
+**Learned**
+
+- `npm run test:net` can leave its dev server running when its output is piped and cut short; one left from this run's first check sat at 8 GB and held port 2599, failing the next run with EADDRINUSE. Look for a stray `src/index.ts --dev` before reading a test:net failure.
+
+**Next**
+
+- Item sounds (drop, buy, sell, store, each by item type, a coin jingle on a trade).
+
+## 2026-10-30: Session 51, a loading card while the server wakes
+
+**What changed**
+
+Client only; no message change.
+- **After Play, a card instead of a frozen screen** (Michael, 29 Oct). `client/src/ui/LoadingCard.ts`: from the moment the title goes until the room's `welcome`, a card over the level reads "Waking the server", says the free server sleeps and can take about a minute, and shows a bar, the session's own status line ("Starting a game…", "Joining game ABCD…") and the seconds waited. Nothing tells the browser how far the server is, so the bar eases toward full over the expected minute (86% at 60 s, never full) rather than claiming a real percentage.
+- After the page has played once, a wait is a portal's hand-off: the card reads "Through the ring" instead, and only past 300 ms, so a quick hand-off never flashes it. A refused or lost connection leaves it to the party panel's message, as before.
+- No press on it, no pointer events: it goes on its own. 380 px wide at most, 16 px from the edges on a phone.
+- Test: `tests/loading.e2e.ts` points the page at a TCP server that takes the connection and never answers (a server still waking): the card shows, titled, with the bar moving and the seconds counting; against the real dev server the card is gone once playing. Both pass; check 218. At 375 x 667, no sideways scroll.
+
+**Learned**
+
+- The Colyseus client's create starts with an HTTP matchmaking request, so a listener that accepts and never writes is an exact stand-in for a sleeping Render service: the browser waits as it does on the hosted build.
+
+**Next**
+
+- Doors take a press, then item sounds. The open Found-in-play bug (corrections against frame rate) still wants a desktop reading at 20 to 30 fps.
+
 ## 2026-10-29: local session, E1 the enemy design pass
 
 **What changed**

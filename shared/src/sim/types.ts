@@ -362,6 +362,8 @@ export type SimEvent =
   | { kind: 'stagger'; enemyId: number; x: number; z: number }
   | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean }
   | { kind: 'heroDown'; playerId: string }
+  /** Through a village door (the server's alone): the sound of it opening, where the hero came out. */
+  | { kind: 'door'; playerId: string; x: number; z: number }
   | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }

@@ -114,7 +114,10 @@ async function intoShrine(page: Page) {
   await walkTo(page, 3.4, -13.6, 0.6);
   await walkTo(page, 0, -13.6, 0.5);
   await throughDoor(page, 0, -16, (z) => z < -50);
-  await walkTo(page, 0, -79.1, 0.3);
+  // Short of her table first: at full speed on a snapshot a round trip old, the one long walk could
+  // reach the table at its end and slide round behind it, out of reach of the spot in front (1 in 4, 30 Oct).
+  await walkTo(page, 0, -77.6, 0.6);
+  await walkTo(page, 0, -78.8, 0.5);
 }
 
 /** And out again, onto the square before the shrine. */
@@ -122,19 +125,31 @@ async function outOfShrine(page: Page) {
   await throughDoor(page, 0, -72, (z) => z > -50);
 }
 
-/** Walk at a door until the hero is on its other side. */
+/** Walk at a door, F held (a door takes a press, Michael 29 Oct), until the hero is on its other side. */
 async function throughDoor(page: Page, x: number, z: number, there: (z: number) => boolean) {
   const through = async () => {
     const p = mine(await seen(page));
     if (!p) return true;
     // Through already: stop steering, or the held key turns round and walks straight back.
     if (there(p.z)) return true;
-    await page.evaluate(([tx, tz, px, pz]) => {
-      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
+    const talking = await page.evaluate(([tx, tz, px, pz]) => {
+      const g = (window as unknown as { game: any }).game;
+      g.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
+      return !!g.villagerInReach(g.me());
     }, [x, z, p.x, p.z]);
+    // F by a keeper opens their card, which holds the hero still: hold it only once out of talk.
+    if (!talking && !holdingF) {
+      holdingF = true;
+      await page.keyboard.down("KeyF");
+    }
     return false;
   };
-  await holdUntil(page, "KeyW", through, 15_000);
+  let holdingF = false;
+  try {
+    await holdUntil(page, "KeyW", through, 15_000);
+  } finally {
+    await page.keyboard.up("KeyF");
+  }
 }
 
 test("solo: a village of our own on the server, the scene drawn, and the hero runs", async ({ page }) => {

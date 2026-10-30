@@ -57,7 +57,7 @@ export interface InteriorDef {
   furniture: { id: string; minX: number; maxX: number; minZ: number; maxZ: number; height: number }[];
 }
 
-/** Stepping into a door's circle puts the hero at the other side, facing in (stepPlayer, so prediction agrees). */
+/** Interact (F, A) in a door's circle puts the hero at the other side, facing in (stepDoors, the server's alone). */
 export interface DoorLink {
   x: number;
   z: number;
@@ -247,6 +247,8 @@ function interiorColliders(
     wall(id('wall-e'), r.maxX, r.maxX + t, r.minZ, r.maxZ),
     wall(id('wall-sw'), r.minX - t, r.doorX - half, r.maxZ, r.maxZ + t),
     wall(id('wall-se'), r.doorX + half, r.maxX + t, r.maxZ, r.maxZ + t),
+    // The doorway itself, shut: the way out takes a press (Michael, 29 Oct), not a walk into the daylight.
+    box(id('door'), r.doorX - half, r.doorX + half, 0, H, r.maxZ, r.maxZ + t, false),
     ...r.furniture.map((f) => box(id(f.id), f.minX, f.maxX, 0, f.height, f.minZ, f.maxZ, false)),
   ];
 }

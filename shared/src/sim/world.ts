@@ -49,7 +49,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   for (const p of state.players) {
     stepPlayer(p, commands[p.id] ?? idleCommand(), dt, w, state);
   }
-  stepDoors(state, w);
+  stepDoors(state, w, commands);
   unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
   stepPendingHits(state);

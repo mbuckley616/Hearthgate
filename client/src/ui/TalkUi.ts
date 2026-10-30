@@ -31,7 +31,7 @@ export class TalkUi {
    * Per frame: the villager in reach (or null) and whether talk was pressed. A keeper's choices are
    * their card's (P11, KeeperCard); this is the hint and a line said in passing.
    */
-  update(near: Villager | null, pressed: boolean, dt: number): void {
+  update(near: Villager | null, pressed: boolean, dt: number, door: string | null = null): void {
     if (near && pressed) {
       this.name.textContent = near.name;
       this.line.textContent = near.line;
@@ -39,7 +39,7 @@ export class TalkUi {
     }
     this.shownFor = Math.max(0, this.shownFor - dt);
     this.box.style.display = this.shownFor > 0 ? 'block' : 'none';
-    const hint = near && this.shownFor === 0 ? `F (or A): talk to ${near.name}` : '';
+    const hint = near && this.shownFor === 0 ? `F (or A): talk to ${near.name}` : door ? `F (or A): ${door}` : '';
     if (hint !== this.hinted) {
       this.hinted = hint;
       this.hint.textContent = hint;
