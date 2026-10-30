@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-30: D6, rooms that need jumping (builder, Session 59)
+Your note (28 Oct): a chasm across a hall, a lava room with safe stones. D2's bigger rooms are in, and M1 (A) keeps today's jump: 1 m high, about 0.6 s in the air, so about 3 m at a run and 4.5 m at a sprint. The question is how much of this lands before the Phase 2 gate.
+- **A** (recommended): lava only, on today's jump. A lava room kit piece for generated floors: strips of lava no wider than 2 m between safe stones and the room's edges, so a running hop always clears them and walking round is slower but possible. Standing in it burns (a share of health a second, on the panel; the server's alone, as hits are) and nothing else. No change to movement or prediction, so the builder can build it now; one lava room a floor at most, from floor 2.
+- **B**: A plus the chasm: a gap across a hall that only a jump crosses; falling in costs a share of health and puts the hero back on the last ground they stood on. The put-back moves the hero, which touches prediction, so the chasm half is **(Fable)**.
+- **C**: wait: D6 after the Phase 2 gate, with the air dodge and double jump.
+
 ## Answered
 
 ### 2026-10-30: Building upgrades with ceremony (builder, Session 55)

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 59, D6 asked
+
+**What changed**
+
+Docs only. D6 (rooms that need jumping) waited on D2's bigger rooms and M1's answer; both are in, so it is asked in `decisions.md` Pending: A (recommended), a lava room a running hop clears, built by the builder with no change to movement; B, A plus a chasm whose put-back is **(Fable)**; C, after the gate. The backlog marks it asked.
+
+**Learned**
+
+Today's jump (1 m, gravity 24) is about 0.58 s in the air: 3.2 m at a run, 4.6 m at a sprint. A 2 m strip is a hop with room to spare.
+
+**Next**
+
+The producer carries D6 to Michael. The builds pass waits on the feel pass being played; M1 is **(Fable)**; the gate playtest is Michael's.
+
 ## 2026-10-30: Session 58, the ceremony at the building
 
 **What changed**
