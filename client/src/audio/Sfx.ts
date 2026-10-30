@@ -89,6 +89,9 @@ export class Sfx {
         case 'heroDown':
           if (ev.playerId === localId) this.groan(true, 0.6);
           break;
+        case 'door':
+          this.door(ev.playerId === localId ? 1 : 0.4);
+          break;
         case 'enemyTelegraph':
           this.growl();
           break;
@@ -248,6 +251,14 @@ export class Sfx {
     osc.connect(gain).connect(this.master!);
     osc.start(t);
     osc.stop(t + attack + dur + 0.05);
+  }
+
+  /** A door opening (Michael, 29 Oct): a low creak of the hinge, then the latch and the thump of it swinging to. */
+  private door(level: number): void {
+    this.tone('sawtooth', 150, 95, 0.35, 0.07 * level, 0.04);
+    this.tone('triangle', 420, 310, 0.3, 0.05 * level, 0.03);
+    this.noiseBurst('bandpass', 1800, 900, 2, 0.05, 0.3 * level);
+    this.noiseBurst('lowpass', 900, 120, 0.7, 0.22, 0.45 * level);
   }
 
   private swoosh(dur: number, freq: number, peak: number): void {

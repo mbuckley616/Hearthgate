@@ -509,7 +509,23 @@ export class Game {
       this.updateOverlay();
       return;
     }
-    this.talk.update(near, pressed, dt);
+    this.talk.update(near, pressed, dt, this.doorInReach(this.me()));
+  }
+
+  /**
+   * What the door the hero stands in leads to, for the hint (a door takes a press, Michael 29 Oct):
+   * from the square, into the building whose front it is; from inside, out. The server takes the press.
+   */
+  private doorInReach(me: PlayerState | null): string | null {
+    const v = this.world.level.village;
+    if (!v || !me || me.mode === 'down') return null;
+    const d = v.doors.find((d) => Math.hypot(d.x - me.x, d.z - me.z) <= d.radius);
+    if (!d) return null;
+    const h = this.world.level.floorSize / 2;
+    if (Math.abs(d.x) > h || Math.abs(d.z) > h) return 'step outside';
+    let best = v.buildings[0];
+    for (const b of v.buildings) if (Math.hypot(b.door.x - d.x, b.door.z - d.z) < Math.hypot(best.door.x - d.x, best.door.z - d.z)) best = b;
+    return `go into the ${best.name}`;
   }
 
   /** A keeper's words on their card: their line, their building's tier and what it gives, any news. */

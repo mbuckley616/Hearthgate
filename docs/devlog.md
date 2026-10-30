@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 52, doors take a press
+
+**What changed**
+
+Sim (village only), event and client; no message change, parity untouched (the arena has no doors).
+- **A door takes F or A** (Michael, 29 Oct: "entering should take a button press (interact), not happen just by walking into the doorway"). `stepDoors` now gets the tick's commands and puts a hero through only while their `interact` is held in the door's circle. Still the server's alone, so prediction never takes a door; the held F rides the input slots like any held button. Henchmen never press, so they still go on touch and with their player, as before.
+- **The way out is shut.** An inside's doorway had a gap in its south wall that only the door's circle stopped you walking out of; it now has a `door` collider (no camera block), so walking at it stops in the circle under the daylight, and F takes you out.
+- **The hint**: in a door's circle the corner hint reads "F (or A): go into the Portal Shrine" (the building whose front it is) or "F (or A): step outside" (`Game.doorInReach`, through `TalkUi`); a keeper in reach still comes first.
+- **The sound**: a new `door` event (player and place) from `stepDoors`; `Sfx.door` synthesises a hinge creak, the latch and the thump of it swinging to, quieter for another player's door.
+- Tests: for each of the four buildings, walking straight through a door's circle from the square goes nowhere and makes no door event, F there takes the hero in with the event, and inside, walking at the doorway stops in its circle (fails on the old code: the walk alone went in). check 222, test:net, smoke 7/7 with the shrine's doors now taken with F held (held only once out of Wren's talk range: F by her opens her card, which holds the hero still).
+
+**Learned**
+
+- `npm run test:net` can leave its dev server running when its output is piped and cut short; one left from this run's first check sat at 8 GB and held port 2599, failing the next run with EADDRINUSE. Look for a stray `src/index.ts --dev` before reading a test:net failure.
+
+**Next**
+
+- Item sounds (drop, buy, sell, store, each by item type, a coin jingle on a trade).
+
 ## 2026-10-30: Session 51, a loading card while the server wakes
 
 **What changed**

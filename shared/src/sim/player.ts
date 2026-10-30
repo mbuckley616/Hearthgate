@@ -712,13 +712,15 @@ export function stepPlayer(
 }
 
 /**
- * The village's doors (Michael, 28 Oct: enterable interiors): a standing hero who steps into one is
- * put on its other side, facing in. In stepSim, after everyone has moved, and never in prediction:
+ * The village's doors (Michael, 28 Oct: enterable interiors): a standing hero in one who presses
+ * interact (F, A) is put on its other side, facing in (Michael, 29 Oct: walking into the doorway
+ * alone no longer takes it; a closed door fills an inside's doorway). A henchman never presses, so it
+ * goes on touch, which only ever happens beside its player. In stepSim, after everyone has moved, and never in prediction:
  * a hero grazing a door's edge could be through in the browser and not on the server, and snap back
  * from inside. So the server alone decides, and the browser's hero follows a snapshot later. Each
  * side's arrival lies outside the other's circle, so nobody bounces back.
  */
-export function stepDoors(state: SimState, world: World): void {
+export function stepDoors(state: SimState, world: World, commands: Record<string, PlayerCommand> = {}): void {
   const doors = world.level.village?.doors;
   if (!doors) return;
   // A henchman keeps to its nearest player (P3), and a door is a jump a walk cannot follow: when that
@@ -737,7 +739,9 @@ export function stepDoors(state: SimState, world: World): void {
     if (p.mode === 'down') continue;
     for (const d of doors) {
       if (Math.hypot(p.x - d.x, p.z - d.z) > d.radius) continue;
+      if (!p.henchman && !commands[p.id]?.interact) break;
       through(p, d, 0);
+      if (!p.henchman) state.events.push({ kind: 'door', playerId: p.id, x: p.x, z: p.z });
       if (!p.henchman) {
         let n = 0;
         for (const [h, leader] of leaders) if (leader === p) through(h, d, ++n);
