@@ -41,6 +41,7 @@ import { freeAimFrom, type FreeAim } from './aim';
 import { Minimap } from '../ui/Minimap';
 import { PartyUi } from '../ui/PartyUi';
 import { RunUi } from '../ui/RunUi';
+import { LoadingCard } from '../ui/LoadingCard';
 import { RunSummary, newTally, type RunTally } from '../ui/RunSummary';
 import { KeeperCard, type KeeperChoice } from '../ui/KeeperCard';
 import { VillageMap, type VillageMapData } from '../ui/VillageMap';
@@ -119,6 +120,10 @@ export class Game {
   private telegraphs: TelegraphView;
   private readonly runUi = new RunUi();
   private readonly summary = new RunSummary();
+  /** Between Play and the room's welcome, which the free server can take a minute to send. */
+  private readonly loading = new LoadingCard();
+  /** This page has been in a room once: a wait after that is a portal's hand-off, not the server waking. */
+  private playedOnce = false;
   /**
    * Whether the village the party is in, or last set out from, is this browser's own (its room says
    * so, P2): lumber and stone banked on its runs are added to the save here as they are banked.
@@ -717,6 +722,8 @@ export class Game {
 
     let actions = this.input.poll(realDt);
     if (this.session.levelVersion !== this.shownLevel) this.enterLevel();
+    if (this.session.playing) this.playedOnce = true;
+    this.loading.update(!this.title.visible && !this.session.playing && !this.session.ended, !this.playedOnce, this.session.status());
     if (this.title.visible) {
       this.titleFrame(realDt, draw);
       return;

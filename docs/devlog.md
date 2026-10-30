@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-30: Session 51, a loading card while the server wakes
+
+**What changed**
+
+Client only; no message change.
+- **After Play, a card instead of a frozen screen** (Michael, 29 Oct). `client/src/ui/LoadingCard.ts`: from the moment the title goes until the room's `welcome`, a card over the level reads "Waking the server", says the free server sleeps and can take about a minute, and shows a bar, the session's own status line ("Starting a game…", "Joining game ABCD…") and the seconds waited. Nothing tells the browser how far the server is, so the bar eases toward full over the expected minute (86% at 60 s, never full) rather than claiming a real percentage.
+- After the page has played once, a wait is a portal's hand-off: the card reads "Through the ring" instead, and only past 300 ms, so a quick hand-off never flashes it. A refused or lost connection leaves it to the party panel's message, as before.
+- No press on it, no pointer events: it goes on its own. 380 px wide at most, 16 px from the edges on a phone.
+- Test: `tests/loading.e2e.ts` points the page at a TCP server that takes the connection and never answers (a server still waking): the card shows, titled, with the bar moving and the seconds counting; against the real dev server the card is gone once playing. Both pass; check 218. At 375 x 667, no sideways scroll.
+
+**Learned**
+
+- The Colyseus client's create starts with an HTTP matchmaking request, so a listener that accepts and never writes is an exact stand-in for a sleeping Render service: the browser waits as it does on the hosted build.
+
+**Next**
+
+- Doors take a press, then item sounds. The open Found-in-play bug (corrections against frame rate) still wants a desktop reading at 20 to 30 fps.
+
 ## 2026-10-29: local session, a floor's archers come back (and enemies find the doorways)
 
 **What changed**
