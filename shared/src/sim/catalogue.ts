@@ -285,10 +285,13 @@ const PERKS_FOR: Record<GearKind, Perk[]> = { melee: ['bleed'], ranged: ['hunter
  * A drop from the catalogue (behind gear.catalogue; the parity test keeps the slice's loot). Any
  * slot; a common of tier 1 to 3, a rare of 3 up with a bonus and usually a perk.
  */
-export function rollGear(rand: () => number, forceRare = false, rareMult = 1): GearItem {
+export function rollGear(rand: () => number, forceRare = false, rareMult = 1, minTier = 0): GearItem {
   const rarity: Rarity = forceRare || rand() < tuning.gear.rareChance * rareMult ? 'rare' : 'common';
   const rare = rarity === 'rare';
-  const entries = [...CATALOGUE.values()].filter((e) => (rare ? e.tier >= 3 : e.tier <= 3));
+  // A Warden's special drop (Michael, 31 Oct) asks for a better material than the rooms give.
+  const all = [...CATALOGUE.values()];
+  const better = minTier > 0 ? all.filter((e) => e.tier >= minTier) : [];
+  const entries = better.length > 0 ? better : all.filter((e) => (rare ? e.tier >= 3 : e.tier <= 3));
   const entry = entries[Math.floor(rand() * entries.length)];
   let bonus: GearItem['bonus'] = null;
   if (rare) {

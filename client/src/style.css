@@ -434,6 +434,20 @@ canvas {
   z-index: 5;
 }
 
+.run-cleared {
+  position: fixed;
+  right: 18px;
+  top: 36px;
+  padding: 8px 12px;
+  font: 600 15px/1.2 Georgia, serif;
+  color: #ffcf6a;
+  background: rgba(12, 6, 20, 0.6);
+  border-radius: 6px;
+  pointer-events: none;
+  display: none;
+  z-index: 5;
+}
+
 .run-prompt {
   position: fixed;
   left: 50%;

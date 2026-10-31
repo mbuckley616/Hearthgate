@@ -1185,6 +1185,16 @@ export const tuning = {
      */
     bankAtRest: false,
     /**
+     * The Warden's fall on a generated floor (Michael, 31 Oct, A): each player gets one rare a
+     * difficulty step past Normal (Easy and Normal 1, Hard 2, Nightmare and up 3), at most
+     * bossDropsMax, of a material from bossDropMinTier up, above what the rooms drop.
+     */
+    bossDropsMax: 3,
+    bossDropMinTier: 4,
+    /** The gold ring home opens this long after the Warden falls (his note: "like a 10 second count"), this far from where it fell (m). */
+    homeRingDelayS: 10,
+    homeRingOffset: 8,
+    /**
      * Things to smash (D4; Michael, 28 Oct): a crate or barrel sprays out lumber, an urn stone, a
      * piece at a time, between these many each (Michael, 29 Oct: "in random quantities"). What is
      * picked up is carried until the floor banks (and the deeper floors' bonus with it).
@@ -2200,6 +2210,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],
   'loop.bossStone': [0, 100, 1],
+  'loop.bossDropsMax': [1, 5, 1],
+  'loop.bossDropMinTier': [1, 5, 1],
+  'loop.homeRingDelayS': [0, 30, 1],
+  'loop.homeRingOffset': [0, 20, 0.5],
   'loop.smashLumberMin': [0, 10, 1],
   'loop.smashLumberMax': [0, 10, 1],
   'loop.smashStoneMin': [0, 10, 1],

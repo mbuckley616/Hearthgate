@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 72, the Warden's drops and the way home
+
+**What changed**
+
+Shared sim and portals, the run's corner. Michael's A on "The boss's drops and the way home" (control room, 31 Oct), with his note: "a small delay on the ring appearing as well, with a countdown timer ... like a 10 second count".
+- The Warden's hall drops `bossDropCount` rares a player (Easy and Normal 1, Hard 2, Nightmare and Legendary 3, at most `loop.bossDropsMax`), a step apart, each of a material from `loop.bossDropMinTier` (IV) up: `rollGear` and `spawnDrop` take an optional `minTier`, so every other roll is unchanged. Cursed's extra drop stays.
+- The Warden's fall no longer banks at once, which would have swept the drops into the bags (option B). The drops lie on the floor and the gold ring banks the whole run as it is taken (`leaveFloor`), as a rest room's does.
+- `portalsFor`: on a won floor the ring waits `loop.homeRingDelayS` (10 s) after the fall, then opens `loop.homeRingOffset` (8 m) from where the Warden fell, toward the hall's middle (or its doorway), kept off the walls. `homeRingIn` gives the count.
+- `RunUi`: no Victory card over a won floor. "Dungeon cleared · 4:12 · the way home opens in 7" in the top-right corner under the timer, then "the gold ring home is open" for 4 s. The run's summary still greets the party in the village. A wipe keeps its card and its button home.
+- Tests: the Warden test waits out the count, finds the ring in the hall at least 5 m from the fall, and one tier IV+ rare each at Normal; `bossDrops.test.ts` for the count by difficulty. check 266/266, test:net all passed.
+
+**Learned**
+
+Michael's A put the drops on the floor and the old bank at the fall would have quietly made it B; banking at the ring makes the rest room and the Warden's hall the same rule: only the way home banks.
+
+**Next**
+
+Materials in the bag (A: lumber and stone stack to 50 in bag spaces, picked up by whoever walks over them, a full bag leaves them; potions stay on the belt; coin stays a count), then the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
 ## 2026-10-31: Session 71, the way out waits for a fight
 
 **What changed**

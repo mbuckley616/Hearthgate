@@ -17,6 +17,9 @@ function formatTime(s: number): string {
  * antechamber prompt and the victory / defeat card. On a generated floor (T4)
  * the same pieces speak of rooms and floors instead of waves.
  */
+/** How long "Dungeon cleared" stays once the ring home has opened. */
+const CLEARED_AFTER_S = 4;
+
 export class RunUi {
   private banner = document.createElement('div');
   private bannerTitle = document.createElement('div');
@@ -27,6 +30,8 @@ export class RunUi {
   private bossName = document.createElement('div');
   private timer = document.createElement('div');
   private prompt = document.createElement('div');
+  /** "Dungeon cleared" in the corner after the Warden's fall on a floor, with the ring's count (Michael, 31 Oct). */
+  private cleared = document.createElement('div');
   private end = document.createElement('div');
   private endTitle = document.createElement('div');
   private endBody = document.createElement('div');
@@ -74,13 +79,14 @@ export class RunUi {
     card.append(this.endTitle, this.endBody, this.again, this.home);
     this.end.appendChild(card);
 
-    document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end);
+    this.cleared.className = 'run-cleared';
+    document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end, this.cleared);
   }
 
   /** In the village (T3) there is no run: no banner, timer, prompt or end card. */
   hide(): void {
     this.banner.style.opacity = '0';
-    for (const el of [this.boss, this.timer, this.prompt, this.end]) el.style.display = 'none';
+    for (const el of [this.boss, this.timer, this.prompt, this.end, this.cleared]) el.style.display = 'none';
   }
 
   setFloor(spec: FloorSpec | null): void {
@@ -182,7 +188,14 @@ export class RunUi {
     this.prompt.style.display = waiting || arriving ? 'block' : 'none';
     if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
     else if (arriving) this.prompt.textContent = `${where[0].toUpperCase()}${where.slice(1)}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
-    const over = r.phase === 'won' || r.phase === 'lost';
+    // A win is a line in the corner, not a card over the hall (Michael, 31 Oct): the drops are there
+    // to pick up, the gold ring opens after a count, and the run's summary waits for the village.
+    const won = r.phase === 'won';
+    const ringIn = won ? Math.max(0, tuning.loop.homeRingDelayS - r.timer) : 0;
+    const showCleared = won && (ringIn > 0 || r.timer - tuning.loop.homeRingDelayS < CLEARED_AFTER_S);
+    this.cleared.style.display = showCleared ? 'block' : 'none';
+    if (showCleared) this.cleared.textContent = ringIn > 0 ? `Dungeon cleared  ·  ${formatTime(r.elapsed)}  ·  the way home opens in ${Math.ceil(ringIn)}` : `Dungeon cleared  ·  the gold ring home is open`;
+    const over = r.phase === 'lost';
     this.end.style.display = over ? 'flex' : 'none';
     this.home.style.display = over ? '' : 'none';
     if (over) {

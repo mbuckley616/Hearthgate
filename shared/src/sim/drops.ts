@@ -12,13 +12,13 @@ import type { SimState } from './types';
  * Put a rolled item on the floor for every hero (personal loot: each sees and
  * takes only their own). The sim's RNG keeps it host-authoritative.
  */
-export function spawnDrop(state: SimState, world: World, x: number, z: number, forceRare: boolean, rareMult = 1): void {
+export function spawnDrop(state: SimState, world: World, x: number, z: number, forceRare: boolean, rareMult = 1, minTier = 0): void {
   // Loot is each player's own; a henchman takes none (P3, P10).
   const players = state.players.filter((p) => !p.henchman);
   const n = players.length;
   players.forEach((p, i) => {
     const rand = () => nextRandom(state);
-    const item = tuning.gear.catalogue ? rollGear(rand, forceRare, rareMult) : rollItem(rand, forceRare);
+    const item = tuning.gear.catalogue ? rollGear(rand, forceRare, rareMult, minTier) : rollItem(rand, forceRare);
     // Spread a party's drops in a small circle so the beams don't overlap.
     const a = (i / Math.max(1, n)) * Math.PI * 2;
     const dx = n > 1 ? x + Math.cos(a) * 0.9 : x;

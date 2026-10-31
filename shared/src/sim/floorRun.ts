@@ -21,7 +21,7 @@ import type { SimState } from './types';
  * reinforcements once it is mostly down; clearing it opens the doors. Health comes back only in
  * the rest room (D7), not after every room as the slice's waves gave it.
  * The last floor's Warden ends the run; a wipe ends it anywhere. The rest room at the end of every
- * other floor banks the party's drops; its rings (game/portal.ts) lead deeper or home.
+ * other floor is the way out; its rings (game/portal.ts) lead deeper or home, and only home banks.
  *
  * Reuses the slice's RunState for the phase, timers, gate and boss (so the HUD, sound and revives
  * read it as they do in the arena); what only a floor has lives in SimState.floor, which the arena
@@ -178,14 +178,16 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       r.gateClosed = false;
       // The big rooms drop loot where the last enemy fell; the Warden's is rare.
       if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'greatHall' || room.kind === 'cavern' || room.kind === 'boss') {
-        spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
+        if (room.kind === 'boss') bossDrops(state, world, r.dropX, r.dropZ);
+        else spawnDrop(state, world, r.dropX, r.dropZ, false, depthMult(world));
         // Cursed (P8): double loot, for no revives.
         if (f.modifier === 'cursed') spawnDrop(state, world, r.dropX + 0.8, r.dropZ, room.kind === 'boss', depthMult(world));
       }
       if (room.kind === 'boss') {
         r.phase = 'won';
         r.timer = 0;
-        bank(state, world, f);
+        // The Warden's drops lie on the floor to be picked up (Michael, 31 Oct, A); the ring home,
+        // open after its count, banks the run with them (leaveFloor).
         state.events.push({ kind: 'runWon', time: r.elapsed });
       } else {
         r.phase = 'ante';
@@ -204,6 +206,22 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
     r.gateClosed = false;
     loseUnbanked(state, f);
     state.events.push({ kind: 'runLost', wave: r.wave });
+  }
+}
+
+/** How many special drops the Warden leaves each player (Michael, 31 Oct): by the portal's difficulty. */
+export function bossDropCount(world: World): number {
+  const d = world.level.dungeon?.def.spec.difficulty ?? 1;
+  return Math.max(1, Math.min(Math.round(tuning.loop.bossDropsMax), d));
+}
+
+/** The Warden's drops, a step apart around where it fell, so their beams stand apart. */
+function bossDrops(state: SimState, world: World, x: number, z: number): void {
+  const n = bossDropCount(world);
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + 0.4;
+    const r = n > 1 ? 1.6 : 0;
+    spawnDrop(state, world, x + Math.cos(a) * r, z + Math.sin(a) * r, true, depthMult(world), Math.round(tuning.loop.bossDropMinTier));
   }
 }
 
