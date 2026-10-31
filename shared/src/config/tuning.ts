@@ -1133,6 +1133,8 @@ export const tuning = {
      * first build costing plotLumber, plotStone and plotCoin. An old village keeps its buildings.
      */
     startWithPlots: true,
+    /** Wren's Random tab opens at this Portal tier (Michael, 31 Oct, A: tier III); story dungeons before it. */
+    randomFromTier: 3,
     plotLumber: 10,
     plotStone: 8,
     plotCoin: 0,
@@ -2209,6 +2211,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.plotLumber': [0, 200, 1],
   'village.plotStone': [0, 200, 1],
   'village.plotCoin': [0, 500, 5],
+  'village.randomFromTier': [1, 4, 1],
   'village.upgradeGrowth': [1, 5, 0.1],
   'village.stockBase': [1, 20, 1],
   'village.stockPerTier': [0, 10, 1],

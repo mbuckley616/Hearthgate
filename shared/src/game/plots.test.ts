@@ -69,3 +69,10 @@ describe('empty plots', () => {
     expect(Math.hypot(p.x - front.toX, p.z - front.toZ)).toBeLessThan(0.01);
   });
 });
+
+describe("Wren's Random tab", () => {
+  it('opens at Portal tier III (Michael, 31 Oct, A)', async () => {
+    const { randomOpen } = await import('./portalChoice');
+    expect([1, 2, 3, 4].map(randomOpen)).toEqual([false, false, true, true]);
+  });
+});

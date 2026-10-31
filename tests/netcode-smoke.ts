@@ -173,7 +173,8 @@ async function main() {
     // 8b. The village, its ring into a generated run, two floors walked, and home.
     // Each brings a village save of their own (P2); the room is Vale's, who made it.
     // Built villages, as a save from before the empty plots (Michael, 31 Oct) is: these walk into the store and the tavern.
-    const built = { shrine: 1, store: 1, storehouse: 1, tavern: 1 };
+    // The shrine at III, where Wren's Random tab opens (Michael, 31 Oct, A).
+    const built = { shrine: 3, store: 1, storehouse: 1, tavern: 1 };
     const valeVillage = { ...emptyVillage("vale-test"), tiers: { ...built }, lumber: 100, stone: 80 };
     const va = await bot("Vale", null, "village", valeVillage);
     const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), tiers: { ...built }, lumber: 99 });
@@ -269,11 +270,11 @@ async function main() {
     await vb.until(() => vb.messages.some((m) => m.k === "sold"), 2000, "Wren's sale");
     const sold = vb.messages.find((m) => m.k === "sold");
     check(sold?.k === "sold" && sold.uid === "wren-1" && sold.coin === sellPrice(want), "Aldous buys it back at his price", JSON.stringify(sold));
-    // P7: Keeper Wren's menu. The shrine is tier 1 here, so Hard is refused and Normal is taken.
+    // P7: Keeper Wren's menu. The shrine is tier III here, so Legendary is refused and Normal is taken.
     const ringLabel = () => va.snaps[va.snaps.length - 1].portals[0]?.label;
-    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 2, modifier: null } });
+    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 4, modifier: null } });
     await va.drive(10);
-    check(ringLabel() !== "A small dungeon, 2 floors, Hard", "a difficulty past the shrine's tier is refused", ringLabel());
+    check(!/Legendary/.test(ringLabel() ?? ""), "a difficulty past the shrine's tier is refused", ringLabel());
     vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 1, modifier: null } });
     await va.until(() => ringLabel() === "A small dungeon, 2 floors, Normal", 2000, "the ring takes the random choice");
     va.send({ k: "portal", choice: { kind: "story", id: "mossgate" } });

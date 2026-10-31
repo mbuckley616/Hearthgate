@@ -1,6 +1,6 @@
 import type { Client } from "@colyseus/core";
 import { planChoice, planRun } from "@hearthgate/shared/game/runPlan";
-import { choiceDifficulty, maxDifficulty } from "@hearthgate/shared/game/portalChoice";
+import { choiceDifficulty, maxDifficulty, randomOpen } from "@hearthgate/shared/game/portalChoice";
 import { applyUpgrade, bankHenchmen, henchmanCap, tavernHenchmen, plotsOf, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import type { HenchmanCard } from "@hearthgate/shared/sim/henchman";
 import type { Style } from "@hearthgate/shared/config/tuning";
@@ -77,7 +77,10 @@ export class VillageRoom extends HostRoom {
    * to say: progress lives in its save until Phase 3.
    */
   private onPortalChoice(msg: Extract<ToHost, { k: "portal" }>) {
-    if (choiceDifficulty(msg.choice) > maxDifficulty(this.save?.tiers.shrine ?? 1)) return;
+    const shrine = this.save?.tiers.shrine ?? 1;
+    if (choiceDifficulty(msg.choice) > maxDifficulty(shrine)) return;
+    // A random dungeon waits for the Portal's third tier (Michael, 31 Oct, A).
+    if (msg.choice.kind === "random" && !randomOpen(shrine)) return;
     this.host.choice = msg.choice;
     this.host.destination = null;
   }

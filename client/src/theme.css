@@ -1730,3 +1730,14 @@ body.on-title .run-banner {
   font-size: 11px;
   color: #fff;
 }
+
+/* Wren's Random tab before the Portal's third tier (Michael, 31 Oct, A): visible, marked shut. */
+.portal-tab.locked {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.portal-shut {
+  padding: 24px 8px;
+  text-align: center;
+}

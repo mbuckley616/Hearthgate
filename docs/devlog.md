@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 76, Wren's Random tab opens at Portal tier III
+
+**What changed**
+
+Wren's portal menu and the village room. The second half of Michael's A on "The village's start and the Random tab" (control room, 31 Oct).
+- `randomOpen` in `game/portalChoice.ts`: the Random tab opens at `village.randomFromTier` (3, panel 1 to 4). `VillageRoom.onPortalChoice` refuses a random choice below it, so the lock is the server's.
+- `PortalScreen`: the Random tab is still there to look at, dashed and dimmed, and shows "Opens at Portal tier III" and how to get there; F does nothing on it. The story dungeons are as they were. Every village today has a tier I shrine, so Random is shut for everyone until a shrine is raised twice.
+- Tests: `randomOpen` by tier in `game/plots.test.ts`; the netcode smoke test's village has a tier III shrine, and the refused difficulty is now Legendary. check 277/277, test:net all passed.
+
+**Learned**
+
+Nothing new; the shrine's cap on difficulty already showed how the menu and the room share one rule.
+
+**Next**
+
+The gamepad layout (Michael's A: RT attacks, X the off-hand, Start pauses, d-pad right the map).
+
 ## 2026-10-31: Session 75, empty plots, part two: the village starts with only the portal
 
 **What changed**
