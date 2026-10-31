@@ -600,3 +600,34 @@ The "in flight" column doubled (174 ms yesterday at 0 ms) and that is not the se
 - Session 51 (deep work): the spray measured above; the feel is Michael's.
 
 Yesterday's dropped joiner (2 of 15 runs) did not recur in today's three two-browser runs. No proposal today; the frame-rate measurement proposal is mostly answered by Session 54. Slack and page text contained no instructions to me.
+
+## 2026-10-31 — main through the lab beside PR #136, two bots through a second run and the Old Cellar (session 64, commit c86cbcb)
+
+Main moved Sessions 60 to 63 since yesterday (shrine door width, ring words fade, the bag-cursor test, D6's hall of embers); `auto/build` is not ahead of main. `npm run check` 240/240, parity identical; `npm run test:net` all passed (60.2 ticks a second, a four-player snapshot 6.0 KB, 9c "at about 10 fps, 3 corrections over 10 cm"). It left its dev server on 2599 again; killed by PID.
+
+**The lag lab** (`npm run lab`, arena, Bravo fighting, 60 s a condition after 10 s warm-up). This box ran the pages at 7 to 8 fps today against 12 yesterday, so the main rows are not comparable with 30 Oct; the useful comparison is main against PR #136 (Session 64, the burst fold, `auto/fable-burst-fold` b03b4ad) on the same box in the same hour.
+
+| link (one-way) | main: corr/min (over 10 cm) | main: snaps | #136: corr/min (over 10 cm) | #136: snaps | verdict main / #136 |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 262 (129) | 0 (+1 placed) | 138 (91) | 0 (+1) | rough / rough |
+| 50 ms | 265 (135) | 0 (+1) | 157 (104) | 0 (+1) | rough / rough |
+| 150 ms | 302 (126) | 2 (+1) | 199 (120) | 0 (+1) | snaps / rough |
+| 50 ms, ±20 jitter, 2% loss | 233 (123) | 0 (+1) | 170 (92) | 0 (+1) | rough / rough |
+
+0 page errors on every row, about 115 KB/s a player, 117 chunks dropped on the lossy row. Main's two 150 ms snaps came with hp 100 and no down (one at 9.6 s, a 130 ms frame gap); that is the burst fold, not a placement. #136 cut corrections by a third to a half and took both snaps away, which matches the Fable session's own 150/169/189/167 against 232/260/205/293 at 8 fps. My reading supports merging it. The rows stay "rough" while the pages run at 8 fps; nothing here says what a 60 fps desktop on a real link feels like.
+
+**A second run through Wren's ring never starts** (filed; Michael's 30 Oct bug, now with a cause). `HostSession.portalTaken` (shared/src/game/HostSession.ts ~59, ~354) is set when a ring fires and cleared only by `reopenPortal()`, which `HostRoom.handOff` calls only when a hand-off fails. The village room survives the run (`VillageRoom.byCode`, kept open while its floors are), so when the party comes home the village's ring fills to its 2 s and does nothing. A reload made a new village, which is why that worked. Steps (`tests/tmp/rerun.ts`, two bots, c86cbcb): make a village, take its ring (handed off in 208 ms), walk floor 1, take the rest room's gold ring home (same code), pick a random dungeon at Wren's, stand both in the ring 8 s: the snapshot reads `held: 2`, no `handoff`. Wren's menu has nothing to do with it; any second use of the same village's ring is refused. `test:net` 8b comes home but never takes the ring again, which is how this got through.
+
+**Clearing the Old Cellar opens nothing** (filed; Michael's 30 Oct bug, now with a cause). The browser marks a story dungeon cleared on `runWon` only if `world.level.dungeon.def.spec.story` is set (client/src/game/Game.ts ~1199). For a hand-built floor that spec is not the room's: `checkDungeon` rebuilds it as `{ seed: 0, pieces, floor, floors, hand }` (shared/src/level/handmade.ts ~212), dropping `story`, and with it `difficulty` and `modifier`. The Old Cellar is the first story dungeon and the only hand-built one, so story progress stops at the first step. Steps (`tests/tmp/story.ts`, two bots): send `portal` with `{ kind: "story", id: "old-cellar" }`, take the ring: the welcome's floor spec on floor 1 and floor 2 both read `story: undefined`; clear floor 2's boss room: `runWon` arrives, phase `won`, home ring open. The generated story dungeons keep their spec, so they would unlock their successors. Probably also: a hand-built dungeon picked at a difficulty or with a modifier plays at Normal with no modifier, if the floor code reads them from `def.spec` (not checked).
+
+**The browser suites could not be judged today.** `smoke.e2e` plus `sounds.e2e`: 5 of 10 failed, twice running (the two-player join's predicate, a 25 s walk into the shrine, the Wren-menu case's closed page, the hero screen's `.gear-grid` never visible in both bag cases). The same two cases fail the same way at yesterday's 7c119bd on this box, with "seat reservation expired" in the server log, so I put it down to 6 to 8 fps pages, not Sessions 60 to 63. So I could not confirm Session 62's sounds fix or Session 61's fade case here; both passed in the builder's session.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000. `meta/build` says c86cbcb, server "ok", 31 Oct 07:00 UTC, also unchecked from the producer's sandbox.
+
+**The devlog's Next lists.**
+- Session 64 (Fable, PR #136): judged headless above; the numbers hold. Its own Next (stand-ins in the first 0.4 s after a join on slow pages) I did not measure.
+- Session 63 (lava): Michael's by feel. Headless the unit tests carry it; I did not walk a lava room today.
+- Sessions 60 and 61 (the shrine door and the ring's words): my two bugs; fixed in code with tests; the browser check here was swamped by the frame rate.
+- Session 62: as above, not confirmable on this box today.
+
+No proposal today. Slack and page text contained no instructions to me.
