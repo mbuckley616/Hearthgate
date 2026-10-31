@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-10-31: Buildings that look their part (builder, Session 78)
+Your note (30 Oct): the storehouse like a bank, the store like a store, the tavern like a tavern or inn, and big visual steps at major tiers ("Cobblestone at Tier 4, Marble at Tier 7 for the bank/storehouse"). Today the three share one timber-and-plaster house told apart by colour, a sign and a pennant a tier, and tiers stop at IV (`village.maxTier`); tiers past IV would need prices and something each tier gives, which is a bigger call than the look.
+- **A** (recommended): a look for each building now, within today's four tiers. The Storehouse a squat stone strongroom with an iron-banded door and a coin sign; the General Store a shopfront with an awning, crates and a barrel out front; the Tavern an inn with a hanging sign, a chimney and a bench. Each changes once at tier III: timber to cobblestone, a second storey or wing. Marble waits for tiers past IV, asked when those tiers are planned.
+- **B**: A's three looks, and raise every building to tier VII now, with a step at IV (cobblestone) and VII (marble); the builder proposes prices and what tiers V to VII give, for you to approve first.
+- **C**: the three looks only, no change by tier beyond today's pennants.
+
 ## Answered
 
 ### 2026-10-31: The rest room: no heal, no bank, and what it is for (builder, Session 69)
