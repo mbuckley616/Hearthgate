@@ -39,7 +39,7 @@ export class VillageMap {
     card.className = 'village-map-card';
     const head = document.createElement('div');
     head.className = 'village-map-head';
-    head.innerHTML = '<h2>The village</h2><span>Arrows or stick: choose a building  ·  M, Start, Esc or B to close</span>';
+    head.innerHTML = '<h2>The village</h2><span>Arrows or stick: choose a building  ·  M, d-pad right, Esc or B to close</span>';
     const body = document.createElement('div');
     body.className = 'village-map-body';
     this.plan.className = 'village-map-plan';
@@ -79,7 +79,7 @@ export class VillageMap {
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
     // M or Start again, or B on a pad (the dodge button).
-    if (actions.pressed.has('map') || actions.pressed.has('dodge')) return this.onClose();
+    if (actions.pressed.has('map') || actions.pressed.has('pause') || actions.pressed.has('dodge')) return this.onClose();
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const fwd = x > 0.5 || y < -0.5 || actions.pressed.has('zoomOut');

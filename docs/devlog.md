@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 77, the gamepad's default layout
+
+**What changed**
+
+Input and the screens that name the buttons. Michael's A on "The gamepad's default layout" (control room, 31 Oct): his layout exactly.
+- `bindings.ts`: RT attacks (a hold is the heavy, as before); X is the off-hand's ability (RT's until now); Start pauses; d-pad right opens the map (the village from above, or the floor's corner and whole). LT block, LB and RB the abilities, the stick clicks, Y, B, A, View and the d-pad's up, down and left are as they were.
+- A new `pause` action (Start; the keyboard's pause stays Esc): Start opens the pause card with its settings when no screen is up, and Start, A or B closes it. The map waits while a screen or the pause card is up, so d-pad right stays the hero screen's third tab there.
+- The hero screen's "wear at once" follows attack to RT ("J or RT"), as do the stash's and the tavern's quick actions; the controls list, the village map's header and Fenn's "let go" say so.
+- Tests: a pad e2e case (a stand-in pad: Start pauses and resumes, d-pad right opens the village map and B closes it, RT starts a swing); the earlier pad case still passes. check 277/277.
+
+**Learned**
+
+Two actions on one button work when one of them waits for the screen it belongs to: d-pad left was already drink and the first tab, and d-pad right is now the map and the third.
+
+**Next**
+
+Phase 2's builder items are done: what is left is the builds pass and "buildings that look their part" (both **(design)**, not yet asked), and the gate playtest. Left from this run: a Drop for a lumber or stone stack, a "bag full" word over materials left on the floor.
+
 ## 2026-10-31: Session 76, Wren's Random tab opens at Portal tier III
 
 **What changed**

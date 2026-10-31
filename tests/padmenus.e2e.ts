@@ -114,3 +114,38 @@ test("B closes the hero screen without a dodge, and RB resets a board only on a 
   expect(modes).not.toContain("dodge");
   expect(errors).toEqual([]);
 });
+
+test("Michael's pad layout: Start pauses and resumes, d-pad right opens the village map, RT is the attack", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // A stand-in pad: the buttons in window.__pad are down.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __pad: number[] };
+    w.__pad = [];
+    const buttons = () => Array.from({ length: 17 }, (_, i) => ({ pressed: w.__pad.includes(i), touched: false, value: w.__pad.includes(i) ? 1 : 0 }));
+    Object.defineProperty(navigator, "getGamepads", {
+      value: () => [{ id: "stand-in", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons: buttons(), timestamp: 0 }],
+    });
+  });
+  await page.goto("/?play");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/?play");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { game: any }).game.session.playing), { timeout: 20_000 }).toBe(true);
+  /** Hold a pad button until `done`, then let go and wait for the release to be seen. */
+  const tap = async (button: number, done: () => Promise<boolean>) => {
+    await page.evaluate((b) => ((window as unknown as { __pad: number[] }).__pad = [b]), button);
+    await expect.poll(done, { timeout: 5_000 }).toBe(true);
+    await page.evaluate(() => ((window as unknown as { __pad: number[] }).__pad = []));
+    await page.waitForTimeout(300);
+  };
+  const paused = () => page.evaluate(() => (window as unknown as { game: any }).game.paused as boolean);
+  await tap(9, paused);
+  await tap(9, async () => !(await paused()));
+  const mapUp = () => page.evaluate(() => (window as unknown as { game: any }).game.villageMap.visible as boolean);
+  await tap(15, mapUp);
+  await tap(1, async () => !(await mapUp()));
+  // RT swings: the hero's attack starts.
+  const swinging = () => page.evaluate(() => (window as unknown as { game: any }).game.me()?.mode === "attack");
+  await tap(7, swinging);
+  expect(errors).toEqual([]);
+});

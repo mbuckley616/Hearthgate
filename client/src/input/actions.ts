@@ -29,6 +29,8 @@ export const BUTTON_ACTIONS = [
   'zoomIn',
   'zoomOut',
   'menuBack',
+  // The pause card on a pad's Start (Michael, 31 Oct, A); the keyboard's is Esc, letting go of the mouse.
+  'pause',
 ] as const;
 
 export type ButtonAction = (typeof BUTTON_ACTIONS)[number];

@@ -980,9 +980,11 @@ export class Game {
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt, this.cam.camera.position));
-    // M or Start: the village from above in the village (P14), the floor's map in a dungeon.
-    if (actions.pressed.has('map') && village) this.openVillageMap();
-    else if (actions.pressed.has('map')) this.minimap.toggle();
+    // M or d-pad right: the village from above in the village (P14), the floor's map in a dungeon. On
+    // the hero screen d-pad right is its third tab, and the map waits.
+    const mapPress = actions.pressed.has('map') && !this.panelOpen() && !this.paused;
+    if (mapPress && village) this.openVillageMap();
+    else if (mapPress) this.minimap.toggle();
     if (this.villageMap.visible) this.villageMap.update(this.villageMapData(world));
     this.minimap.update(world, curr, localId, this.session.portals, realDt);
     this.lockOn.updateMarker(world, dt);
@@ -1327,8 +1329,16 @@ export class Game {
 
   private handleMetaActions(actions: ActionFrame): void {
     // Esc, Start or A closes the pause card; the press that opened it is not the one that closes it.
-    if (this.paused && performance.now() - this.pausedAt > 250 && (['menuBack', 'map', 'interact'] as const).some((a) => actions.pressed.has(a))) {
+    if (this.paused && performance.now() - this.pausedAt > 250 && (['menuBack', 'pause', 'interact'] as const).some((a) => actions.pressed.has(a))) {
       this.resume();
+      return;
+    }
+    // Start pauses (Michael, 31 Oct, A): the card with its settings, as Esc gives the keyboard.
+    if (!this.paused && actions.pressed.has('pause') && !this.panelOpen()) {
+      this.paused = true;
+      this.pausedAt = performance.now();
+      this.kbm.exitPointerLock();
+      this.updateOverlay();
       return;
     }
     if (actions.pressed.has('debugPanel')) {
@@ -1437,8 +1447,8 @@ export class Game {
           <tr><td>Sprint</td><td>hold Shift · left stick click</td></tr>
           <tr><td>Walk</td><td>light stick tilt</td></tr>
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
-          <tr><td>Attack</td><td>left click · J · X / Square (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
-          <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB; the off-hand's: 3 (or R) · RT</td></tr>
+          <tr><td>Attack</td><td>left click · J · RT / R2 (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
+          <tr><td>Abilities</td><td>1, 2 (or Q, E) · LB, RB; the off-hand's: 3 (or R) · X / Square</td></tr>
           <tr><td>Health potion</td><td>G (or 4) · d-pad left</td></tr>
           <tr><td>Zoom</td><td>mouse wheel · - and = · d-pad up and down</td></tr>
           <tr><td>Lock on</td><td>T · middle click · right stick click (flick to switch)</td></tr>
@@ -1450,9 +1460,9 @@ export class Game {
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
           <tr><td>Slow motion</td><td>\\ (backslash)</td></tr>
           <tr><td>Gear &amp; talents</td><td>Tab · View (between runs)</td></tr>
-          <tr><td>Map: corner or whole floor</td><td>M · Menu / Start (in a dungeon)</td></tr>
+          <tr><td>Map: the village, or the floor's corner or whole</td><td>M · d-pad right</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
-          <tr><td>Release mouse / pause</td><td>Esc</td></tr>
+          <tr><td>Release mouse / pause</td><td>Esc · Menu / Start</td></tr>
           <tr><td>Close a menu</td><td>Esc · Tab · B</td></tr>
         </table>`;
     el.addEventListener('click', (e) => e.stopPropagation());

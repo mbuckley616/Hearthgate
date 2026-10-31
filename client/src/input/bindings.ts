@@ -35,6 +35,7 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   zoomIn: ['WheelUp', 'Equal'],
   zoomOut: ['WheelDown', 'Minus'],
   menuBack: ['Escape'],
+  pause: [],
 };
 
 export const keyboardMove = {
@@ -53,8 +54,9 @@ export const keyboardLook = {
 };
 
 /** Standard-mapping gamepad button indices. */
+// Michael's layout (31 Oct, A): RT attacks, X the off-hand's ability, Start pauses, d-pad right the map.
 export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
-  attack: [2], // X / Square
+  attack: [7], // RT / R2
   block: [6], // LT / L2
   dodge: [1], // B / Circle
   // B also steps back out of a menu (Michael, 30 Oct); Game keeps that press from dodging.
@@ -63,10 +65,11 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   jump: [3], // Y / Triangle
   interact: [0], // A / Cross
   inventory: [8], // View / Select
-  map: [9], // Menu / Start
+  pause: [9], // Menu / Start
+  map: [15], // d-pad right, off the hero screen
   ability1: [4], // LB
   ability2: [5], // RB
-  ability3: [7], // RT / R2, the off-hand's
+  ability3: [2], // X / Square, the off-hand's
   drink: [14], // d-pad left, off the hero screen (D4)
   lockOn: [11], // right stick click
   tab1: [14], // d-pad left, on the hero screen

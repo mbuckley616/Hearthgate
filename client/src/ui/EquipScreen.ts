@@ -63,7 +63,7 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * The bag and the body (T5b; decisions.md 27 Oct): what the hero wears on RuneScape's ten slots, the
  * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
  * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
- * pick up and put down, J or X to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
+ * pick up and put down, J or RT to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
  * between fights (Tab, or View on a pad), on a floor between rooms as well. Each weapon kind's level
  * shows on the Talents tab, and the bag and body tab shows the hero as dressed (Michael, 28 Oct).
  */
@@ -431,7 +431,7 @@ export class EquipScreen {
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
          ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this run and lost if the party wipes, even worn, until the gold ring home banks it.</div>' : ''}
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or X: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or X: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}</div>`
       : c.area === 'bag' && this.profile.materialStacks().has(c.space)
         ? `<div class="item-name">${matLine(this.profile.materialStacks().get(c.space)!)}</div><div class="gear-warn">Carried for the village: it goes to the village when the gold ring home banks the run, and is lost if the party wipes.</div>`
         : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
