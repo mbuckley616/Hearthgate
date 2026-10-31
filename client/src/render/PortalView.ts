@@ -3,6 +3,13 @@ import { PORTAL_HOLD_S, type PortalState } from '@hearthgate/shared/game/portal'
 
 const SEGMENTS = 64;
 const MOTES = 48;
+/**
+ * The words fade as the camera comes up to them (the critic, 30 Oct): the shrine's door stands just
+ * behind the village ring, and a camera behind a hero there looks through letters a third of the screen.
+ */
+const LABEL_FADE_NEAR = 3;
+const LABEL_FADE_FAR = 6;
+const labelAt = new THREE.Vector3();
 
 /**
  * A portal on the ground (T3): a glowing violet ring with a slow swirl inside and motes rising, and
@@ -65,7 +72,8 @@ export class PortalView {
     this.group.visible = false;
   }
 
-  update(portal: PortalState | null, dt: number): void {
+  /** `eye`, the camera's position, fades the words when it is close to them. */
+  update(portal: PortalState | null, dt: number, eye?: THREE.Vector3): void {
     this.group.visible = !!portal;
     if (!portal) return;
     this.time += dt;
@@ -94,6 +102,11 @@ export class PortalView {
       // The group is scaled to the ring; the words keep their own size.
       this.label.scale.set((0.5 * this.labelAspect) / portal.radius, 0.5, 1);
     }
+    this.label.getWorldPosition(labelAt);
+    const near = eye ? labelAt.distanceTo(eye) : LABEL_FADE_FAR;
+    const fade = Math.min(1, Math.max(0, (near - LABEL_FADE_NEAR) / (LABEL_FADE_FAR - LABEL_FADE_NEAR)));
+    this.label.material.opacity = fade;
+    this.label.visible = fade > 0;
     this.swirl.rotation.z = this.time * 0.6;
     const k = Math.min(1, portal.held / PORTAL_HOLD_S);
     // Rebuilt only when the fill moves, in coarse steps: it is a progress arc, not an animation.

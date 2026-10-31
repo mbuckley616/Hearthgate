@@ -956,7 +956,7 @@ export class Game {
     this.payHires();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
-    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt, this.cam.camera.position));
     // M or Start: the village from above in the village (P14), the floor's map in a dungeon.
     if (actions.pressed.has('map') && village) this.openVillageMap();
     else if (actions.pressed.has('map')) this.minimap.toggle();
@@ -1033,7 +1033,7 @@ export class Game {
     this.enemies.update(view.prev.enemies, view.curr.enemies, view.alpha, realDt, view.curr.time);
     this.ambient.update(realDt);
     this.fx.update(realDt);
-    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, realDt));
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, realDt, this.cam.camera.position));
     const sway = Math.sin(this.titleTime * 0.08);
     const cam = this.cam.camera;
     if (this.world.level.village) {

@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 61, the ring's words fade up close
+
+**What changed**
+
+Client only. The critic's bug (7c119bd): the shrine's door stands just behind the village ring, so the camera behind a hero at the door sat in the ring under its "New dungeon" label, letters taller than the hero over a third of the screen.
+- `PortalView.update` takes the camera's position and fades the words over it from full at 6 m to gone at 3 m (`LABEL_FADE_FAR`, `LABEL_FADE_NEAR`), hiding the sprite at nothing. Every ring does it, the rest room's two included. A camera 5.5 m behind a hero standing in the ring still reads them at about 80%.
+- `tests/smoke.e2e.ts`, a new case: from the square the words are at full; at the shrine door facing it, under 0.3 within 5 s. It fails without the change (1, against < 0.3) and passed 2 of 2 with it.
+
+**Learned**
+
+A label's size on screen is its distance, nothing else, so fading by distance fixes the shrine door and any later spot where a ring sits against a wall, without moving the ring or the door.
+
+**Next**
+
+The flaky `sounds.e2e` (test code), then D6's lava room (Michael, 30 Oct, A on the control room).
+
 ## 2026-10-31: Session 60, the shrine's broad door
 
 **What changed**
