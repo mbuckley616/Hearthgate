@@ -91,7 +91,11 @@ export function floorLevel(spec: FloorSpec): LevelDef {
   // A hand-built floor was checked before its room was made; one that fails here was never sent.
   const checked = checkDungeon(spec.hand, spec.floor, spec.floors);
   if (!checked.def) throw new Error(`not a playable dungeon: ${checked.errors.join(' ')}`);
-  return levelFromFloor(checked.def);
+  // The check knows only the floor; what Wren's menu chose rides on the spec it was given, and the
+  // browser's story unlock and the room's budget read it from the level.
+  const { difficulty, story, modifier } = spec;
+  const chosen = { ...(difficulty !== undefined ? { difficulty } : {}), ...(story ? { story } : {}), ...(modifier ? { modifier } : {}) };
+  return levelFromFloor({ ...checked.def, spec: { ...checked.def.spec, ...chosen } });
 }
 
 /** Whether (x, z) is in a strip's band across the whole room, `margin` either side: the strip and its walkway. */

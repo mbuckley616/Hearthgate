@@ -1025,6 +1025,10 @@ canvas {
   color: #ffe9a8;
 }
 
+.hud-guard.cleared {
+  color: #bfe8ff;
+}
+
 .hud-guard.heavy {
   color: #ffb877;
 }
@@ -1421,4 +1425,11 @@ canvas {
   font: 13px/1.3 system-ui, sans-serif;
   color: #a89f92;
   font-variant-numeric: tabular-nums;
+}
+
+.talent-armed {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0a050;
 }

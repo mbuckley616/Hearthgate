@@ -112,6 +112,14 @@ export const tuning = {
     gravity: 24,
     /** Fraction of ground acceleration available in the air. */
     airControl: 0.45,
+    /**
+     * M1 (Michael, 30 Oct: A): a jump clears low attacks (the Warden's sweep, slam and far slam, the
+     * Brute's slam) while the hero's feet are this high over the attack's ground when the hit lands.
+     * No i-frames: an arrow or a slash still hits a jumper, so the roll stays the dodge. A 1 m jump is
+     * above 0.5 m for about 0.4 s of its 0.58 s in the air.
+     */
+    clearsLow: true,
+    clearHeight: 0.5,
   },
 
   /**
@@ -1537,6 +1545,8 @@ export const tuning = {
     stickDeadzone: 0.18,
     /** Exponent on look-stick magnitude; >1 gives finer control near center. */
     lookStickCurve: 2.0,
+    /** A board's reset (E or RB on the talents or champion screen) takes a second press inside this window (Michael, 30 Oct). */
+    resetConfirmSec: 2,
   },
 
   /**
@@ -1754,6 +1764,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'jump.height': [0.2, 3, 0.05],
   'jump.gravity': [5, 60, 0.5],
   'jump.airControl': [0, 1, 0.05],
+  'jump.clearHeight': [0, 1.5, 0.05],
 
   'combo.durationScale': [0.5, 3, 0.05],
   'combo.inputBufferMs': [0, 500, 10],
@@ -2311,6 +2322,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'input.stickDeadzone': [0, 0.5, 0.01],
   'input.lookStickCurve': [1, 4, 0.1],
+  'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
   'look.maxPixelRatio': [0.5, 3, 0.25],

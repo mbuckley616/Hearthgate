@@ -369,6 +369,8 @@ export type SimEvent =
   /** Through a village door (the server's alone): the sound of it opening, where the hero came out. */
   | { kind: 'door'; playerId: string; x: number; z: number }
   | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
+  /** A jump cleared a low attack (M1): the server's alone, as every hit on a hero is. */
+  | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }
@@ -461,6 +463,11 @@ export interface HeroHit {
   arrow?: boolean;
   /** Already waited out the remote player's lag grace. */
   late?: boolean;
+  /**
+   * A low attack (M1: a sweep, a slam's shockwave) runs along the ground at this height, the enemy's
+   * feet as it swung; a hero whose feet are `jump.clearHeight` above it when the hit lands clears it.
+   */
+  low?: number;
 }
 
 /** A hit on a remote player, waiting out their lag grace. */

@@ -38,6 +38,21 @@ describe("Keeper Wren's portal menu (P7)", () => {
     expect(floorSpecFor(planChoice([], 99, { kind: 'story', id: generated.id }), 1).seed).toBe(floorSpecFor(story, 1).seed);
   });
 
+  it('a hand-built story dungeon keeps its story, difficulty and modifier on every floor the level is built from', () => {
+    const built = STORY.find((s) => 'hand' in s.run)!;
+    const plan = planChoice([], 7, { kind: 'story', id: built.id });
+    for (let f = 1; f <= plan.floors; f++) {
+      const spec = floorLevel(floorSpecFor(plan, f)).dungeon!.def.spec;
+      expect(spec.story).toBe(built.id);
+      expect(spec.difficulty).toBe(built.run.difficulty);
+      expect(spec.modifier).toBe(built.run.modifier);
+      expect(spec.seed).toBe(0);
+    }
+    const cursed = floorLevel({ ...floorSpecFor(plan, 1), difficulty: 3, modifier: 'cursed' }).dungeon!.def.spec;
+    expect(cursed.difficulty).toBe(3);
+    expect(cursed.modifier).toBe('cursed');
+  });
+
   it('fills rooms and pays more the harder the portal', () => {
     const spec = (difficulty: number) => floorSpecFor(planChoice([], 7, { kind: 'random', floors: 2, size: 'medium', difficulty, modifier: null }), 2);
     const easy = buildWorld(floorLevel(spec(0)));

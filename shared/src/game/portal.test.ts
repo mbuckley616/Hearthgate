@@ -63,6 +63,30 @@ describe('the village (T3)', () => {
     expect(taken()).toBe(2);
   });
 
+  it('can be taken again by a party home from its run (the village outlives it)', () => {
+    const { host, taken } = session(world);
+    const ring = portalFor(world, host.sim)!;
+    const stand = () => {
+      for (const [i, p] of host.sim.players.entries()) {
+        p.x = ring.x + i;
+        p.z = ring.z;
+      }
+    };
+    stand();
+    for (let i = 0; i < PORTAL_HOLD_S * 60 + 2; i++) host.tick();
+    expect(taken()).toBe(1);
+    // Handed on: both leave the room while still standing in the ring.
+    host.onPeerLeft('a');
+    host.onPeerLeft('b');
+    for (let i = 0; i < 30; i++) host.tick();
+    // Home from the run, they come back and stand in it again.
+    host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    host.onMessage('b', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    stand();
+    for (let i = 0; i < PORTAL_HOLD_S * 60 + 2; i++) host.tick();
+    expect(taken()).toBe(2);
+  });
+
   it('cheats do nothing in the village', () => {
     const { host } = session(world);
     host.onMessage('a', { k: 'cheat', cheat: 'warden' });

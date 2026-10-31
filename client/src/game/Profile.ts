@@ -259,6 +259,26 @@ export class Profile {
     return true;
   }
 
+  /**
+   * Put a worn piece into a chosen bag space (the hero screen's pick up and put down): into an empty
+   * space, or swapped with a piece for the same slot there. False if neither; the weapon only swaps.
+   */
+  takeOffTo(slot: BodySlot, space: number): boolean {
+    const worn = this.data.worn[slot];
+    const there = this.data.bag[space];
+    if (!worn || space < 0 || space >= this.data.bag.length) return false;
+    if (there) {
+      if (entryOf(there).slot !== slot) return false;
+      this.wear(space);
+      return true;
+    }
+    if (slot === 'weapon') return false;
+    this.data.bag[space] = worn;
+    delete this.data.worn[slot];
+    this.save();
+    return true;
+  }
+
   /** The bag's safe pocket (D5): its first spaces, by this browser's own Storehouse. */
   pocketSize(): number {
     return pocketSpaces(this.village.tiers.storehouse);

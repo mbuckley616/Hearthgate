@@ -9,6 +9,12 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-31: Fable M1 clashes with main (devlog only) (producer)
+Fable M1 (PR #138, 003cc65) was finished, but main took the burst-fold merge while it was built and both added a Session 64 entry at the top of docs/devlog.md; that was the only clash, and CI could not run on the PR until it was resolved.
+- **A** (recommended): approve M1 as built; the producer joins the two devlog entries in auto/producer and merges Producer notes once its CI is green.
+- **B**: send it back to the Fable session to merge main first.
+Michael: **A** — approve M1 as built; producer joins the devlog. (2026-10-31, on the control room)
+
 ### 2026-10-30: D6, rooms that need jumping (builder, Session 59)
 Your note (28 Oct): a chasm across a hall, a lava room with safe stones. D2's bigger rooms are in, and M1 (A) keeps today's jump: 1 m high, about 0.6 s in the air, so about 3 m at a run and 4.5 m at a sprint. The question is how much of this lands before the Phase 2 gate.
 - **A** (recommended): lava only, on today's jump. A lava room kit piece for generated floors: strips of lava no wider than 2 m between safe stones and the room's edges, so a running hop always clears them and walking round is slower but possible. Standing in it burns (a share of health a second, on the panel; the server's alone, as hits are) and nothing else. No change to movement or prediction, so the builder can build it now; one lava room a floor at most, from floor 2.

@@ -2,6 +2,77 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 68, pick up and put down on the hero screen
+
+**What changed**
+
+Client only (`ui/EquipScreen.ts`, `game/Profile.ts`, `game/Game.ts`). The rest of Michael's 30 Oct "Menus with an Xbox pad", as he asked it: A picks an item up and drops it in another space, X quick-equips.
+- On the bag and body tab, F or A picks up the item under the cursor (its cell marked as held, "Holding Ash shortbow: F or A puts it down here · Esc or B puts it back" over the detail) and a second F or A puts it down: in another bag space, swapping with what is there (the safe pocket's spaces too), or on the worn slot it fits, which wears it. A worn piece goes into an empty bag space, or swaps with a piece for its slot there; the weapon only swaps, as a hero always holds one. A put-down that cannot go there says why and stays held. Esc or B puts a held item back first and closes the screen on the next press, as the stash does; Tab, a tab change or closing the screen drops the hold.
+- J or X (`attack`) wears or takes off at once, what F did before. Q or LB still drops at your feet. The hints say so.
+- `Profile.takeOffTo(slot, space)` for the worn-to-bag put-down.
+- `tests/padmenus.e2e.ts` gains the moves: the bow to the last bag space, refused on the head and put back by B with the screen still open, then worn from there with the sword taking its space. Passed 3 runs in 3. `smoke.e2e`'s bag test wears the bow with J now.
+
+**Learned**
+
+The stash (P9) already had this exact pick-up-and-put-down and its `back()`, so the hero screen copies its keys and its words; both screens now behave alike under the thumb. `sounds.e2e` and `smoke.e2e`'s bag test fail here on the committed base as well (a held D carries the cursor past the bow on this box's slow pages), so they could not judge this change; the new test drives the screen's handler directly and does not depend on frame rate.
+
+**Next**
+
+Nothing in Phase 2 is the builder's: what is left is (Fable), unanswered (design), or the gate playtest, which is Michael's.
+
+## 2026-10-31: Session 67, B closes menus and a board reset takes two presses
+
+**What changed**
+
+Client only (`input/bindings.ts`, `game/Game.ts`, `ui/EquipScreen.ts`) and one tuning value. Two thirds of Michael's 30 Oct "Menus with an Xbox pad":
+- B (button 1) is `menuBack` as well as `dodge`, so it closes the hero screen, the store, the stash, Wren's menu, the tavern's board, a keeper's card and the village map, and resumes from the pause card, as Esc does. `Game.update` notes whether a menu or the run's summary was up when B went down, and drops that frame's dodge press, so the press that closes a menu never rolls the hero (a keeper's card, which read B as its own leave, also no longer steps back twice).
+- On the talents and champion boards E or RB arms the reset: the note under the board says "Press E or RB again to reset the whole board", and a second press inside `input.resetConfirmSec` (2 s, on the panel) resets. Moving the cursor or changing tab disarms it. The mouse's Reset buttons are unchanged.
+- The controls list gains "Close a menu: Esc · Tab · B"; the pause card says B resumes.
+- `tests/padmenus.e2e.ts`: a stand-in pad through `navigator.getGamepads`; RB's arm, reset, timeout and disarm driven straight through `EquipScreen.handle`, then B with the hero screen up closes it and the hero's mode stays out of `dodge` for 1.5 s. Passed 3 runs in 3; with the guard switched off it fails on the first frame's dodge.
+
+**Learned**
+
+The reverted attempt's flake was its way in, not the code: pressing Tab until the hero screen showed raced the page's frames at a few fps. Driving the screen's handler directly for the board and opening the screen with `setVisible` leaves only B going through the real pad poll, which is the part under test.
+
+**Next**
+
+The rest of the item: A picks a bag item up and sets it down in another space (a bag space, the safe pocket or a worn slot), X quick-equips. Then the gate playtest, which is Michael's.
+
+## 2026-10-31: Session 66, the Old Cellar opens the next story
+
+**What changed**
+
+Shared level (`level/floor.ts`); no message change. The critic's bug (c86cbcb), the cause of Michael's 30 Oct "clearing the first story dungeon does not unlock the next": `floorLevel` built a hand-built floor from `checkDungeon`'s own spec, `{ seed, pieces, floor, floors, hand }`, so what Wren's menu chose (`story`, `difficulty`, `modifier`) never reached the level. The welcome sent that spec, and the browser's `runWon` check in `Game.ts` found no story to mark cleared.
+- `floorLevel` lays the given spec's `difficulty`, `story` and `modifier` over the checked one; the seed, pieces and joins stay the check's.
+- `portalChoice.test.ts`, a new case: every floor of the hand-built story keeps its story, difficulty and modifier, and a spec's Hard and Cursed come through. Fails without the change.
+
+**Learned**
+
+The same drop also kept difficulty and modifiers off any hand-built floor. Today's one hand-built story, the Old Cellar, is Normal with no modifier, so its fights are unchanged; a later hand-built story at Hard or Haunted would have played at Normal with none.
+
+**Next**
+
+Found in play: menus with an Xbox pad (Michael, 30 Oct). I started it this run and reverted it: the code was small, but its e2e passed 1 run in 3 here, so the backlog item now says what was found and what the test needs. Then the gate playtest, which is Michael's.
+
+`test:net` leaves its server on 2599 running after "all passed" (here at 65% CPU and 3 GB until killed), which slowed the next e2e runs to a crawl and makes a second `test:net` fail with EADDRINUSE. Kill it between runs in one session.
+
+## 2026-10-31: Session 65, the village ring a second time
+
+**What changed**
+
+Shared game (`game/HostSession.ts`); no message change, no tuning. The critic's bug (c86cbcb), the cause of Michael's 30 Oct "a second run does not start without a reload": `portalTaken` was set when a ring fired and cleared only by `reopenPortal()` on a failed hand-off, and a village outlives its runs, so the party home again filled the ring to 2 s and nothing happened.
+- `stepPortal` clears `portalTaken` whenever nobody is on a ring (the party left the room, or stepped off). While they stand in it during the hand-off it still fires once, and `handingOff` guards the async part as before.
+- `portal.test.ts`, a new case: two peers take the village ring, leave, come back, take it again. Fails without the change (1 taken, not 2).
+- `test:net` 8b: after the run home and the village's business, Vale and Wren walk into the village ring again and are handed on to a floor.
+
+**Learned**
+
+Michael's "resetting the portal with the portal keeper" was beside the point: Wren's menu sets `choice`, never the taken flag, so any second run from a village was stuck, reset or not. A floor room never met it because each floor is a fresh room.
+
+**Next**
+
+The critic's other bug: `checkDungeon` drops a story floor's `story`, `difficulty` and `modifier`, so clearing the Old Cellar opens nothing (Session 66).
+
 ## 2026-10-31: Session 64, a slow page's burst is not folded
 
 **What changed**
@@ -21,6 +92,25 @@ Shared netcode (`game/inputSlots.ts`), deep-work card `fable/burst-fold`; no mes
 **Next**
 
 The start-up stand-ins on an uneven slow page (the 0.4 s after a join or a hand-off) would want the first cushion sized from more than the first frame; small, and only on slow pages. The critic's lab on a desktop at 20 to 30 fps would say whether the extra 60 ms in flight on a slow page is felt.
+## 2026-10-31: Session 64, the jump clears low attacks (M1)
+
+**What changed**
+
+Shared sim and the HUD; no message change beyond one new event. M1 to Michael's A (control room, 30 Oct): a jump clears low attacks above about half a metre, no i-frames; the air dodge and double jump wait.
+- **Which attacks are low.** Everything that goes through `shove` in `enemies.ts`: the Warden's sweep, slam and far slam, and the Brute's slam (a slam is a slam, so the Brute's counts with the Warden's). The grunt's slash and every arrow are not low and still hit a jumper. The Crypt Hound's rush will tag itself the same way when it is built: `low` on its `HeroHit`.
+- **The tag** is `HeroHit.low`, the enemy's feet height as it swung: the attack runs along that ground, so a hero over a ledge's lip is measured from the floor the slam struck, not their own. Set only while `jump.clearsLow` is on.
+- **The check** (`clearsLow` in `combat.ts`, inside `hurtHero`): in the air and `jump.clearHeight` (0.5 m, panel 0 to 1.5) over the attack's ground, the hit does nothing and pushes a `cleared` event. The HUD shows "Cleared" under the crosshair (pale blue, the parry's slot) and a thin ring passes on the floor beneath. A 1 m jump is above 0.5 m for about 0.4 s of its 0.58 s.
+- **When it is judged: as the hit lands, after `coop.lagGraceMs`.** The grace exists so what was on time on the player's screen counts; that screen draws the Warden behind the server and the hero ahead of it, so the slam lands there later than the server swung it. A dodge and a parry are already judged at landing, and the jump now agrees with them: a jump pressed in the 150 ms after the swing clears it, a hero in the air at the swing who has come down by the landing is hit. A hit that lands early because the player rolled or guarded is judged at that moment, as before.
+- **Prediction** is untouched: the browser never resolves an enemy's hit on its hero, so the server's verdict reaches it as the snapshot's health and mode, as every hit does. The switch is off in the parity test, and with it off no hit carries the tag, so the golden hashes did not move.
+- `sim/jumpClears.test.ts` (10): the Warden's sweep, slam and far slam and the Brute's slam cleared above the height with a `cleared` event and no damage; a 0.3 m hop and standing still are hit; an arrow and a slash still hit a jumper; height measured from the attack's ground; a remote player cleared by a jump after the swing and hit after coming down; off for the slice (no tag, the hit lands); the same inputs twice give the same state. Six of them fail with the check disabled.
+
+**Learned**
+
+Measured on the lag lab locally (30 s a condition, the container drawing at about 12 fps, so noisy): corrections a minute at 0, 50 and 150 ms were 210, 184, 142 on main and 136, 178, 156 here, snaps 0 on both. The lab's bots do not jump, so this says only that nothing else moved.
+
+**Next**
+
+Michael to jump a Warden slam on the hosted build. Not in, by his answer: the air dodge and the double jump (after D6's rooms). The Hound's rush tags itself `low` when the Crypt roster is built.
 
 ## 2026-10-31: Session 63, a hall of embers (D6)
 
