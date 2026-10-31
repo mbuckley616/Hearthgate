@@ -55,7 +55,11 @@ export class HostSession {
   /** Seconds the whole party has stood in one open ring (T3), and which ring (the rest room has two, T4). */
   private portalHeld = 0;
   private heldRing = -1;
-  /** The portal was taken and the room is moving the party; it fires once until reopenPortal(). */
+  /**
+   * The portal was taken and the room is moving the party; it fires once until reopenPortal(), or
+   * until nobody is on a ring any more: a village outlives its runs, so the party gone (or off the
+   * ring) must leave it ready for their return.
+   */
   private portalTaken = false;
   /** Where the village's ring leads (T4b): a hand-built dungeon Keeper Wren was asked for, or null for a generated run. */
   destination: HandDungeon | null = null;
@@ -349,7 +353,10 @@ export class HostSession {
     const on = this.remotes.size === 0 ? -1 : rings.findIndex((ring) => partyOnPortal(this.sim, ring));
     if (on !== this.heldRing) this.portalHeld = 0;
     this.heldRing = on;
-    if (on < 0) return;
+    if (on < 0) {
+      this.portalTaken = false;
+      return;
+    }
     this.portalHeld = Math.min(PORTAL_HOLD_S, this.portalHeld + step);
     if (this.portalHeld >= PORTAL_HOLD_S && !this.portalTaken) {
       this.portalTaken = true;

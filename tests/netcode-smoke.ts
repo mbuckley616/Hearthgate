@@ -288,6 +288,13 @@ async function main() {
     await va.until(() => va.snaps[va.snaps.length - 1].s.players.length === 4 && henchIn() === 1, 3000, "Wynn takes a henchman's slot");
     check(vc.state.players.length === 4 && henchIn() === 1, "a friend joining a full party takes a henchman's slot", `${henchIn()} henchmen`);
     await vc.leave();
+    // The village outlives its run: home again, the party can take its ring a second time (the critic, c86cbcb).
+    va.handoff = null;
+    vb.handoff = null;
+    await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
+    await Promise.all([va.walkTo(ring.x - 0.6, ring.z, 1.5), vb.walkTo(ring.x + 0.6, ring.z, 1.5)]);
+    await Promise.all([va.until(() => va.handoff !== null, 5000, "Vale's second run"), vb.until(() => vb.handoff !== null, 5000, "Wren's second run")]);
+    check(va.handoff?.level === "floor" && vb.handoff?.level === "floor", "home from a run, the village's ring takes the party on a second one");
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 0 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 0 } });
     for (const x of [va, vb]) await x.leave();

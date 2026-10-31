@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 65, the village ring a second time
+
+**What changed**
+
+Shared game (`game/HostSession.ts`); no message change, no tuning. The critic's bug (c86cbcb), the cause of Michael's 30 Oct "a second run does not start without a reload": `portalTaken` was set when a ring fired and cleared only by `reopenPortal()` on a failed hand-off, and a village outlives its runs, so the party home again filled the ring to 2 s and nothing happened.
+- `stepPortal` clears `portalTaken` whenever nobody is on a ring (the party left the room, or stepped off). While they stand in it during the hand-off it still fires once, and `handingOff` guards the async part as before.
+- `portal.test.ts`, a new case: two peers take the village ring, leave, come back, take it again. Fails without the change (1 taken, not 2).
+- `test:net` 8b: after the run home and the village's business, Vale and Wren walk into the village ring again and are handed on to a floor.
+
+**Learned**
+
+Michael's "resetting the portal with the portal keeper" was beside the point: Wren's menu sets `choice`, never the taken flag, so any second run from a village was stuck, reset or not. A floor room never met it because each floor is a fresh room.
+
+**Next**
+
+The critic's other bug: `checkDungeon` drops a story floor's `story`, `difficulty` and `modifier`, so clearing the Old Cellar opens nothing.
+
 ## 2026-10-31: Session 64, a slow page's burst is not folded
 
 **What changed**
