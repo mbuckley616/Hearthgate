@@ -26,9 +26,16 @@ test("an item dropped from the bag sounds, and every material's sound plays", as
   await page.keyboard.press("Tab");
   await expect(page.locator(".gear-grid")).toBeVisible();
   const detail = page.locator(".gear-detail .item-name");
-  await page.keyboard.down("KeyD");
-  await expect.poll(async () => (await detail.count()) > 0 && (await detail.textContent()) === "Ash shortbow", { timeout: 5_000 }).toBe(true);
-  await page.keyboard.up("KeyD");
+  // One space at a time: D held while a poll waits carried the cursor past the bow on a page near
+  // 12 fps (the critic, 30 Oct), so each step holds D only until the cursor has moved.
+  const cursor = () => page.evaluate(() => (window as unknown as { game: any }).game.equip.cursor as number);
+  for (let i = 0; i < 12 && !((await detail.count()) > 0 && (await detail.textContent()) === "Ash shortbow"); i++) {
+    const was = await cursor();
+    await page.keyboard.down("KeyD");
+    await expect.poll(cursor, { timeout: 5_000, intervals: [10] }).not.toBe(was);
+    await page.keyboard.up("KeyD");
+  }
+  await expect(detail).toHaveText("Ash shortbow");
   await page.keyboard.press("KeyQ");
   await expect.poll(() => page.evaluate(() => (window as unknown as { game: any }).game.sfx.played)).toEqual(["ash-shortbow:true"]);
   // One of each family, picked up and set down, and the coins.

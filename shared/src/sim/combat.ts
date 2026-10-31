@@ -362,6 +362,18 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
  * moments, then blocks light hits and breaks on heavy ones. Zero health puts
  * them down.
  */
+/** A hero at zero health goes down: by a hit, or by lava (D6). */
+export function knockDown(state: SimState, p: PlayerState): void {
+  p.mode = 'down';
+  p.downTime = tuning.combat.downMs / 1000;
+  if (tuning.coop.bleedOut) p.bleed = tuning.coop.bleedOutMs / 1000;
+  p.vx = 0;
+  p.vz = 0;
+  p.attackQueued = false;
+  p.queuedAbility = -1;
+  state.events.push({ kind: 'heroDown', playerId: p.id });
+}
+
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
   if (heroInvulnerable(p)) {
     // A dodge that slips a hit is a perfect one (C2), paid once per dodge.
@@ -442,16 +454,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.flow) loseFlowTier(p);
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
   state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy });
-  if (p.hp <= 0) {
-    p.mode = 'down';
-    p.downTime = tuning.combat.downMs / 1000;
-    if (tuning.coop.bleedOut) p.bleed = tuning.coop.bleedOutMs / 1000;
-    p.vx = 0;
-    p.vz = 0;
-    p.attackQueued = false;
-    p.queuedAbility = -1;
-    state.events.push({ kind: 'heroDown', playerId: p.id });
-  } else if (heavy) {
+  if (p.hp <= 0) knockDown(state, p);
+  else if (heavy) {
     p.mode = 'hurt';
     p.hurtTime = hurtMs / 1000;
     p.attackQueued = false;

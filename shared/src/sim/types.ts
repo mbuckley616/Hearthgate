@@ -107,6 +107,8 @@ export interface PlayerState {
   attackStep?: number;
   /** A tome's ward on this hero (C5): hits it will absorb, until sim time. */
   ward?: { hits: number; until: number };
+  /** Standing in lava (D6): seconds to the next burn. Absent off it. The server's alone (sim/lava.ts). */
+  burn?: number;
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;

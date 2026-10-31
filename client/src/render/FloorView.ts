@@ -52,6 +52,8 @@ export class FloorView {
   private focus = new THREE.Vector3();
   private relightIn = 0;
   private colliderDebug: THREE.Group;
+  /** The lava's one material (D6): its crust drifts and its glow breathes. */
+  private lava: THREE.MeshBasicMaterial | null = null;
 
   constructor(world: World) {
     const layout = world.level.dungeon!;
@@ -144,6 +146,26 @@ export class FloorView {
       this.lights.push({ light, fire: null });
     }
 
+    // Lava (D6): a molten strip just above the floor, glowing past the tone map, and a light from each.
+    if (layout.lava.length) {
+      const tex = lavaTexture();
+      this.lava = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.6, 1.25, 1.1), toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+      const spark = new THREE.Mesh();
+      for (const l of layout.lava) {
+        const w = l.maxX - l.minX;
+        const d = l.maxZ - l.minZ;
+        const geo = new THREE.PlaneGeometry(w, d);
+        // A metre of texture to every two metres of strip, whatever its size.
+        const uv = geo.attributes.uv as THREE.BufferAttribute;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / 2, (uv.getY(i) * d) / 2);
+        const mesh = new THREE.Mesh(geo, this.lava);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set((l.minX + l.maxX) / 2, l.y + 0.03, (l.minZ + l.maxZ) / 2);
+        this.group.add(mesh);
+        this.addFire(new THREE.Vector3(mesh.position.x, l.y + 0.6, mesh.position.z), spark, 1.3);
+      }
+    }
+
     this.colliderDebug = buildColliderDebug([...world.colliders, ...[...(world.roomColliders ?? [])].flat().filter((c) => c.id.startsWith('gate-'))]);
     this.colliderDebug.visible = false;
     this.group.add(this.colliderDebug);
@@ -210,6 +232,12 @@ export class FloorView {
       l.light.intensity = look.torchIntensity * (1 + n * look.torchFlicker) * l.fire.scale;
       l.light.distance = look.torchRange * l.fire.scale;
       l.light.color.setHex(look.torchColor);
+    }
+
+    if (this.lava) {
+      this.lava.map!.offset.set(time * 0.03, time * 0.05);
+      const glow = 1.35 + Math.sin(time * 1.7) * 0.2;
+      this.lava.color.setRGB(glow, glow * 0.78, glow * 0.7);
     }
 
     this.colliderDebug.visible = tuning.debug.showColliders;
@@ -336,4 +364,31 @@ function buildColliderDebug(colliders: readonly Collider[]): THREE.Group {
     g.add(mesh);
   }
   return g;
+}
+
+/** Molten rock: orange and yellow under a broken dark crust, tiling. */
+function lavaTexture(): THREE.CanvasTexture {
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ff6a1a';
+  g.fillRect(0, 0, size, size);
+  // Hot veins, then crust plates over them; drawn wrapped so the texture tiles.
+  const blob = (x: number, y: number, r: number, colour: string) => {
+    g.fillStyle = colour;
+    for (const dx of [-size, 0, size]) for (const dy of [-size, 0, size]) {
+      g.beginPath();
+      g.arc(x + dx, y + dy, r, 0, Math.PI * 2);
+      g.fill();
+    }
+  };
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 40; i++) blob(rnd() * size, rnd() * size, 4 + rnd() * 10, rnd() < 0.5 ? '#ffb030' : '#ffd860');
+  for (let i = 0; i < 26; i++) blob(rnd() * size, rnd() * size, 6 + rnd() * 12, rnd() < 0.5 ? 'rgba(70, 18, 8, 0.85)' : 'rgba(110, 30, 10, 0.7)');
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }

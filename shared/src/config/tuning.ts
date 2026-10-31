@@ -673,6 +673,17 @@ export const tuning = {
     arcSeconds: 0.45,
   },
 
+  /**
+   * Rooms that need jumping (D6, Michael 30 Oct: A): a hero standing in a lava strip burns, a share of
+   * their health a second, paid in pulses; one in the air does not. The server's alone, as hits are.
+   */
+  lava: {
+    /** Share of max health a second. */
+    burnFracPerS: 0.15,
+    /** Seconds between pulses; the first lands the tick a hero steps in. */
+    tickS: 0.5,
+  },
+
   /** Volumes (the player's settings override these on their machine). */
   audio: {
     masterVolume: 0.8,
@@ -1926,6 +1937,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'launch.minSpeed': [0, 10, 0.5],
   'launch.arcHeightM': [0, 3, 0.1],
   'launch.arcSeconds': [0.1, 1.5, 0.05],
+  'lava.burnFracPerS': [0, 1, 0.01],
+  'lava.tickS': [0.1, 2, 0.05],
 
   'hitFeel.hitstopLightMs': [0, 300, 5],
   'hitFeel.hitstopHeavyMs': [0, 400, 5],

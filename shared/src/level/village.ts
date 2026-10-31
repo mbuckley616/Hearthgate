@@ -62,9 +62,25 @@ export interface DoorLink {
   x: number;
   z: number;
   radius: number;
+  /**
+   * A wide door's reach along its face, either side of (x, z): the circle slides that far, so a hero
+   * against a broad door's planks off its middle is still in it. The face runs across `toYawDeg`.
+   */
+  halfWidth?: number;
   toX: number;
   toZ: number;
   toYawDeg: number;
+}
+
+/** Whether (x, z) is in a door's reach: its circle, slid along the face by `halfWidth`. */
+export function inDoor(d: DoorLink, x: number, z: number): boolean {
+  const w = d.halfWidth ?? 0;
+  const yaw = (d.toYawDeg * Math.PI) / 180;
+  // Along the face, as `through` lines henchmen up beside the arrival.
+  const ax = Math.cos(yaw);
+  const az = -Math.sin(yaw);
+  const t = Math.max(-w, Math.min(w, (x - d.x) * ax + (z - d.z) * az));
+  return Math.hypot(x - d.x - ax * t, z - d.z - az * t) <= d.radius;
 }
 
 /** A ring on the ground: the whole standing party inside it for PORTAL_HOLD_S takes it. */
@@ -182,8 +198,9 @@ const villageDef: VillageDef = {
     },
   ],
   doors: [
-    // The shrine's front door and the way out of its inside.
-    { x: 0, z: -14.5, radius: 0.8, toX: 0, toZ: -75.8, toYawDeg: 180 },
+    // The shrine's front door and the way out of its inside. The front is drawn 2.2 m wide, the others 1.3,
+    // so its reach runs the planks' width and a hero pressed against them anywhere is in it.
+    { x: 0, z: -14.5, radius: 0.8, halfWidth: 0.6, toX: 0, toZ: -75.8, toYawDeg: 180 },
     { x: 0, z: -74.6, radius: 0.8, toX: 0, toZ: -13.3, toYawDeg: 0 },
     // The store's door faces the square to the west, the storehouse's and the tavern's to the east.
     { x: 10.5, z: -5, radius: 0.8, toX: 80, toZ: 2.2, toYawDeg: 180 },

@@ -11,7 +11,7 @@ import { KeyboardMouseSource } from '../input/KeyboardMouseSource';
 import { emptyFrame, type ActionFrame } from '../input/actions';
 import { nameOf } from '../ui/gearText';
 import type { World } from '@hearthgate/shared/level/arena';
-import { TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
+import { inDoor, TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
 import { AmbientView } from '../render/AmbientView';
 import { DropView } from '../render/DropView';
 import { EnemiesView } from '../render/EnemyView';
@@ -527,7 +527,7 @@ export class Game {
   private doorInReach(me: PlayerState | null): string | null {
     const v = this.world.level.village;
     if (!v || !me || me.mode === 'down') return null;
-    const d = v.doors.find((d) => Math.hypot(d.x - me.x, d.z - me.z) <= d.radius);
+    const d = v.doors.find((d) => inDoor(d, me.x, me.z));
     if (!d) return null;
     const h = this.world.level.floorSize / 2;
     if (Math.abs(d.x) > h || Math.abs(d.z) > h) return 'step outside';
@@ -956,7 +956,7 @@ export class Game {
     this.payHires();
     if (village) this.runUi.hide();
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
-    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt));
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt, this.cam.camera.position));
     // M or Start: the village from above in the village (P14), the floor's map in a dungeon.
     if (actions.pressed.has('map') && village) this.openVillageMap();
     else if (actions.pressed.has('map')) this.minimap.toggle();
@@ -1033,7 +1033,7 @@ export class Game {
     this.enemies.update(view.prev.enemies, view.curr.enemies, view.alpha, realDt, view.curr.time);
     this.ambient.update(realDt);
     this.fx.update(realDt);
-    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, realDt));
+    this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, realDt, this.cam.camera.position));
     const sway = Math.sin(this.titleTime * 0.08);
     const cam = this.cam.camera;
     if (this.world.level.village) {

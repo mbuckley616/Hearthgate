@@ -287,6 +287,22 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   }
 });
 
+test("the ring's words fade when the camera comes up to them, as it does at the shrine door", async ({ page }) => {
+  const errors: string[] = [];
+  await open(page, "play", errors);
+  const words = () => page.evaluate(() => (window as unknown as { game: any }).game.portals[0].label.material.opacity as number);
+  // From the square, the camera well back from the ring: the words read in full.
+  await walkTo(page, 3.2, 2, 1.2);
+  await page.waitForTimeout(300);
+  expect(await words()).toBeGreaterThan(0.95);
+  // At the shrine door, facing it: the camera behind the hero stands in the ring, under the words.
+  await walkTo(page, 3.4, -13.6, 0.6);
+  await walkTo(page, 0, -13.6, 0.5);
+  await page.evaluate(() => { (window as unknown as { game: any }).game.cam.yaw = 0; });
+  await expect.poll(words, { timeout: 5_000 }).toBeLessThan(0.3);
+  expect(errors).toEqual([]);
+});
+
 test("a building raised: Confirm plays the ceremony at the shrine, and a key cuts the next one short", async ({ page }) => {
   test.setTimeout(90_000);
   const errors: string[] = [];

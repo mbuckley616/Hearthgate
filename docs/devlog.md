@@ -2,6 +2,71 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 63, a hall of embers (D6)
+
+**What changed**
+
+Shared level and sim, the floor's view and the minimap; no message change. D6 to Michael's A (control room, 30 Oct): lava only, on today's jump.
+- **Where** (`level/lava.ts`, level data from the seed like the props, so every browser and the server lay the same). From a run's second floor, on 60% of floors (by the seed's own hash, so the generator's layout and the props of every seed are untouched), one flat fight room of three cells or more a side, never the Warden's hall, gets strips across its longer run: 1.6 m wide (a running hop is about 3.2 m), 3.4 m of stone between, 3 m clear inside the walls a party enters by, none within 2.5 m of a side wall's doorway. Each strip stops 2 m short of one wall, the next short of the other: the long way round is a zigzag, the hop the quick way. The room's banner reads "A hall of embers"; no enemy wakes within a metre of a strip and no crate stands in one or across its walkway. Hand-built floors have none.
+- **The burn** (`sim/lava.ts`, in `stepSim` after the doors, never in prediction: the browser's hero takes its health from the snapshot, as from a hit). A hero on their feet in a strip loses `lava.burnFracPerS` (15%) of max health a second in pulses every `lava.tickS` (0.5 s), the first on the tick they step in, each a `heroHurt` event, so the hurt sound and numbers play; at nothing they go down (`knockDown`, now shared with `hurtHero`). One in the air is spared, and stepping out ends it. Henchmen are spared (their brains do not see lava) and enemies walk it.
+- **The look.** A molten strip just above the floor, glowing past the tone map, its crust drifting and its glow breathing, one material for the floor; each strip lights from the torch pool. Orange on the minimap.
+- `sim/lava.test.ts` (7): none on floor 1; on 120 deeper floors, between 30% and 90% have one room of lava, and every strip is 1.6 m, inside the walls, clear of doorways, with its walkway alternating, no pillar in a walkway, nobody waking or crate standing in it; the same spec lays the same strips; the burn's rate (30 in two seconds), the hop, the henchman, stepping out, and the down.
+
+**Learned**
+
+The first pulse on the step in and then every 30 ticks needs the countdown to start after the pulse, not before: subtracting first put the second pulse a tick early and five pulses in two seconds.
+
+**Next**
+
+Michael to play a lava room on the hosted build (Wren's Random, any floor past the first). Left out on purpose: lava in the editor's hand-built floors, henchmen that path round it, a chasm (B). The gate playtest is Michael's.
+
+## 2026-10-31: Session 62, the bag cursor one space at a time
+
+**What changed**
+
+Test code only. The critic's bug (7c119bd): `sounds.e2e` held D and polled for the Ash shortbow's name; Playwright's poll waits longer each time (100, 250, 500 ms), and with the menu's repeat at 0.12 s a held D crossed several spaces between looks, carrying the cursor past the bow on a page near 12 fps. Now each step holds D only until `game.equip.cursor` changes (polled every 10 ms), then lets go, up to twelve steps, and the test asserts the bow is chosen.
+
+**Learned**
+
+Old test 3 of 3 failed in this cloud session, the new one 4 of 4 passed. Two earlier failures of the new one were not the test: Vite reloaded the page because I was editing `shared/` while it ran ("Execution context was destroyed", `game` undefined). An e2e run in a session that is also editing the code is not a measurement.
+
+**Next**
+
+D6's lava room (Michael, 30 Oct, A on the control room).
+
+## 2026-10-31: Session 61, the ring's words fade up close
+
+**What changed**
+
+Client only. The critic's bug (7c119bd): the shrine's door stands just behind the village ring, so the camera behind a hero at the door sat in the ring under its "New dungeon" label, letters taller than the hero over a third of the screen.
+- `PortalView.update` takes the camera's position and fades the words over it from full at 6 m to gone at 3 m (`LABEL_FADE_FAR`, `LABEL_FADE_NEAR`), hiding the sprite at nothing. Every ring does it, the rest room's two included. A camera 5.5 m behind a hero standing in the ring still reads them at about 80%.
+- `tests/smoke.e2e.ts`, a new case: from the square the words are at full; at the shrine door facing it, under 0.3 within 5 s. It fails without the change (1, against < 0.3) and passed 2 of 2 with it.
+
+**Learned**
+
+A label's size on screen is its distance, nothing else, so fading by distance fixes the shrine door and any later spot where a ring sits against a wall, without moving the ring or the door.
+
+**Next**
+
+The flaky `sounds.e2e` (test code), then D6's lava room (Michael, 30 Oct, A on the control room).
+
+## 2026-10-31: Session 60, the shrine's broad door
+
+**What changed**
+
+Shared level data and the door check; no message change. The critic's bug (7c119bd): the shrine's front door is drawn 2.2 m wide but took F only in a 0.8 m circle, so a hero pressed against its planks a metre off the middle got no hint and F did nothing.
+- `DoorLink.halfWidth` (optional): the door's circle slides that far either way along its face (the line across `toYawDeg`, as `through` lines henchmen up). `inDoor` in `level/village.ts` is the one test, used by `stepDoors` on the server and the door hint in `Game.doorInReach`, so the hint and the press always agree.
+- The shrine's front door has 0.6, so it reaches 1.4 m either side of its middle at the wall: the drawn door's 1.1 m and a little. The other doors are drawn 1.3 m wide and keep their circles.
+- `interior.test.ts`: a hero walking north into the planks with F held at x = -1.1, -0.6, 0, 0.6 and 1.1 goes through (fails without the change at the edges); 1.6 m off, or 1 m out in front, it does not. The no-bounce and henchmen checks use `inDoor`.
+
+**Learned**
+
+A hero against the shrine's wall stands at z = -14.6 (the wall at -15, a 0.4 m body), so the critic's (-1.0, -13.6) ends 1.0 m from the circle's centre: the depth was never the problem, only the width.
+
+**Next**
+
+The ring's words at the shrine door, then the flaky `sounds.e2e`, then D6's lava room (Michael, 30 Oct, A on the control room).
+
 ## 2026-10-30: Session 59, D6 asked
 
 **What changed**

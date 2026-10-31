@@ -8,6 +8,7 @@ import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
 import { drinkPotion, smashArc } from './smash';
 import type { PropInfo } from '../level/floor';
+import { inDoor } from '../level/village';
 import { dodgeCancelMs, dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -738,7 +739,7 @@ export function stepDoors(state: SimState, world: World, commands: Record<string
   for (const p of state.players) {
     if (p.mode === 'down') continue;
     for (const d of doors) {
-      if (Math.hypot(p.x - d.x, p.z - d.z) > d.radius) continue;
+      if (!inDoor(d, p.x, p.z)) continue;
       if (!p.henchman && !commands[p.id]?.interact) break;
       through(p, d, 0);
       if (!p.henchman) state.events.push({ kind: 'door', playerId: p.id, x: p.x, z: p.z });
