@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 74, empty plots, part one: the rules
+
+**What changed**
+
+Shared village save, the sim's doors, the village room. Michael's A on "The village's start and the Random tab" (control room, 31 Oct): a new village is Wren's portal and empty plots for the other three, each raised by a first build; the Random tab opens at Portal tier III. This session is the plots' rules, behind `village.startWithPlots` (off), so nothing changes in play until part two draws them.
+- `villageSave.ts`: tier 0 is an empty plot, allowed for all but the shrine (`minTier`); `emptyVillage` starts the store, storehouse and tavern at 0 with the switch on; a save that leaves a tier out had it built, so an old village keeps its buildings. A plot gives nothing (`storeStock`, `stashSpaces`, `pocketSpaces`, `tavernHenchmen`, `henchmanCap` all 0) and says "an empty plot, waiting to be built"; its first build costs `village.plotLumber` (10), `plotStone` (8) and `plotCoin` (0), on the panel. `plotsOf` lists them.
+- `SimState.plots`, set by `VillageRoom.settlePlots` from the save on the first hello and every build: `stepDoors` leaves a plot's front door shut (`doorBuilding` in `level/village.ts` finds a door's building). `VillageRoom` refuses buy and sell at a plot's store; the Tavern's hires were already capped by tier.
+- Tests: `game/plots.test.ts` (4: the start, reading saves, the first build's price and what a plot gives, a plot's door). check 276/276; test:net all passed (on the second run; the first lost a bot walking to Wren, with three orphaned smoke servers on the box).
+
+**Learned**
+
+Keeping the building's collider on a plot keeps the world's colliders the same for prediction and the server, so a plot can be a fenced, marked footprint and nothing in movement changes. In this box the smoke test leaves its server running after it passes, so each later run needs another port.
+
+**Next**
+
+Part two, the browser: draw each plot (a fenced footprint and a sign) instead of the building, the keeper waiting on it whose card offers only the build, the map and the store, stash and tavern menus closed at a plot; then turn `village.startWithPlots` on. Then the Random tab at Portal tier III.
+
 ## 2026-10-31: Session 73, lumber and stone in the bag
 
 **What changed**

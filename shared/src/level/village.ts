@@ -83,6 +83,12 @@ export function inDoor(d: DoorLink, x: number, z: number): boolean {
   return Math.hypot(x - d.x - ax * t, z - d.z - az * t) <= d.radius;
 }
 
+/** The building whose front door this is (within 1.5 m of its `door`), or null for a way out of an inside. */
+export function doorBuilding(v: VillageDef, d: DoorLink): Building['id'] | null {
+  for (const b of v.buildings) if (Math.hypot(b.door.x - d.x, b.door.z - d.z) <= 1.5) return b.id;
+  return null;
+}
+
 /** A ring on the ground: the whole standing party inside it for PORTAL_HOLD_S takes it. */
 export interface PortalDef {
   x: number;

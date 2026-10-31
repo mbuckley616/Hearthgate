@@ -1129,6 +1129,14 @@ export const tuning = {
   village: {
     maxTier: 4,
     /**
+     * A new village is Wren's portal and three empty plots (Michael, 31 Oct, A), each raised by a
+     * first build costing plotLumber, plotStone and plotCoin. Off until the plots are drawn.
+     */
+    startWithPlots: false,
+    plotLumber: 10,
+    plotStone: 8,
+    plotCoin: 0,
+    /**
      * Raising a building to tier 2 costs this (P4; Michael, 28 Oct: lumber, stone and coin); each
      * tier after costs upgradeGrowth times the one before. About a run buys tier 2 of one building.
      */
@@ -2198,6 +2206,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.upgradeLumber': [0, 500, 5],
   'village.upgradeStone': [0, 500, 5],
   'village.upgradeCoin': [0, 1000, 10],
+  'village.plotLumber': [0, 200, 1],
+  'village.plotStone': [0, 200, 1],
+  'village.plotCoin': [0, 500, 5],
   'village.upgradeGrowth': [1, 5, 0.1],
   'village.stockBase': [1, 20, 1],
   'village.stockPerTier': [0, 10, 1],

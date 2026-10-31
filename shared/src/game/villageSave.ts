@@ -18,7 +18,10 @@ export interface VillageSave {
   id: string;
   lumber: number;
   stone: number;
-  /** Each starting building's tier, 1 to village.maxTier (P4 spends lumber, stone and coin on them). */
+  /**
+   * Each starting building's tier, 1 to village.maxTier (P4 spends lumber, stone and coin on them);
+   * 0 is an empty plot (Michael, 31 Oct, A), which the shrine never is.
+   */
   tiers: Record<BuildingId, number>;
   /**
    * The Tavern's henchmen's XP, by kit (P12; one name a kit, HIRES): banked with a floor as finds are,
@@ -30,9 +33,20 @@ export interface VillageSave {
 /** What every player in the village is sent: the save without its owner's id, and the store's shelves today (P5). */
 export type VillageView = Omit<VillageSave, 'id'> & { stock?: GearItem[] };
 
+/**
+ * A new village (Michael, 31 Oct, A): Wren's portal and, with village.startWithPlots, empty plots for
+ * the other three, each raised by its first build.
+ */
 export function emptyVillage(id: string): VillageSave {
-  return { id, lumber: 0, stone: 0, tiers: { shrine: 1, store: 1, storehouse: 1, tavern: 1 } };
+  const t = tuning.village.startWithPlots ? 0 : 1;
+  return { id, lumber: 0, stone: 0, tiers: { shrine: 1, store: t, storehouse: t, tavern: t } };
 }
+
+/** The lowest tier a building may stand at: the shrine is always built, the others may be a plot. */
+export const minTier = (b: BuildingId) => (b === 'shrine' ? 1 : 0);
+
+/** The buildings still an empty plot. */
+export const plotsOf = (tiers: Record<BuildingId, number>): BuildingId[] => BUILDINGS.filter((b) => tiers[b] < 1);
 
 const MAX_STOCK = 10_000_000;
 
@@ -51,11 +65,12 @@ export function readVillageSave(v: unknown): VillageSave | null {
   if (typeof o.tiers !== 'object' || o.tiers === null) return null;
   const given = o.tiers as Record<string, unknown>;
   if (Object.keys(given).some((k) => !BUILDINGS.includes(k as BuildingId))) return null;
-  const tiers = emptyVillage('').tiers;
+  // A save from before the plots names every tier; one that leaves a building out had it built.
+  const tiers: Record<BuildingId, number> = { shrine: 1, store: 1, storehouse: 1, tavern: 1 };
   for (const b of BUILDINGS) {
     const t = given[b];
     if (t === undefined) continue;
-    if (typeof t !== 'number' || !Number.isInteger(t) || t < 1 || t > tuning.village.maxTier) return null;
+    if (typeof t !== 'number' || !Number.isInteger(t) || t < minTier(b) || t > tuning.village.maxTier) return null;
     tiers[b] = t;
   }
   const hench = readHench(o.hench);
@@ -82,7 +97,7 @@ export function villageView(save: VillageSave): VillageView {
 /** The highest level the Tavern's henchmen reach at this tier (P12). */
 export function henchmanCap(tavernTier: number): number {
   const max = tuning.progression.maxLevel;
-  return tavernTier >= tuning.village.maxTier ? max : Math.min(max, tavernTier * tuning.village.henchmanCapPerTier);
+  return tavernTier >= tuning.village.maxTier ? max : Math.min(max, Math.max(0, tavernTier) * tuning.village.henchmanCapPerTier);
 }
 
 /**
@@ -109,6 +124,8 @@ export interface Cost {
 /** What raising a building to `tier` costs (P4): tier 2's price, upgradeGrowth more each tier after. */
 export function upgradeCost(tier: number): Cost {
   const v = tuning.village;
+  // A plot's first build (Michael, 31 Oct, A) costs a little lumber and stone.
+  if (tier <= 1) return { lumber: v.plotLumber, stone: v.plotStone, coin: v.plotCoin };
   const k = Math.pow(v.upgradeGrowth, Math.max(0, tier - 2));
   return { lumber: Math.round(v.upgradeLumber * k), stone: Math.round(v.upgradeStone * k), coin: Math.round(v.upgradeCoin * k) };
 }
@@ -138,14 +155,15 @@ export const shrinePortalTier = (tier: number) => tier + 1;
 /** Henchmen the tavern hires (P10): one a tier to three; tier 4 makes them quicker. */
 export const tavernHenchmen = (tier: number) => Math.min(3, tier);
 /** Items the store stocks a day (P5). */
-export const storeStock = (tier: number) => tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier;
+export const storeStock = (tier: number) => (tier < 1 ? 0 : tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier);
 /** Spaces in the storehouse's stash (P9). */
-export const stashSpaces = (tier: number) => tuning.village.stashBase + (tier - 1) * tuning.village.stashPerTier;
+export const stashSpaces = (tier: number) => (tier < 1 ? 0 : tuning.village.stashBase + (tier - 1) * tuning.village.stashPerTier);
 /** The bag's safe pocket (D5): its first spaces, never lost on a wipe. */
-export const pocketSpaces = (tier: number) => Math.min(28, tuning.village.pocketBase + (tier - 1) * tuning.village.pocketPerTier);
+export const pocketSpaces = (tier: number) => (tier < 1 ? 0 : Math.min(28, tuning.village.pocketBase + (tier - 1) * tuning.village.pocketPerTier));
 
 /** What a building does at a tier, in a villager's words. */
 export function tierGives(building: BuildingId, tier: number): string {
+  if (tier < 1) return 'an empty plot, waiting to be built';
   switch (building) {
     case 'shrine':
       return `portals as hard as ${DIFFICULTIES[maxDifficulty(tier)].name}`;

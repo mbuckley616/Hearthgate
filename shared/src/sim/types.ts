@@ -497,6 +497,11 @@ export interface SimState {
   run: RunState;
   /** A generated floor's run (T4, floorRun.ts); never set in the arena, so its state is the slice's to the byte. */
   floor?: FloorRunState;
+  /**
+   * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
+   * shut. The village room sets it from the save; absent everywhere else.
+   */
+  plots?: string[];
 }
 
 /**
