@@ -16,7 +16,9 @@ The same drop also kept difficulty and modifiers off any hand-built floor. Today
 
 **Next**
 
-Found in play: menus with an Xbox pad (Michael, 30 Oct). Then the gate playtest, which is Michael's.
+Found in play: menus with an Xbox pad (Michael, 30 Oct). I started it this run and reverted it: the code was small, but its e2e passed 1 run in 3 here, so the backlog item now says what was found and what the test needs. Then the gate playtest, which is Michael's.
+
+`test:net` leaves its server on 2599 running after "all passed" (here at 65% CPU and 3 GB until killed), which slowed the next e2e runs to a crawl and makes a second `test:net` fail with EADDRINUSE. Kill it between runs in one session.
 
 ## 2026-10-31: Session 65, the village ring a second time
 
