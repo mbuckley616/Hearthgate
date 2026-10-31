@@ -9,6 +9,48 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-10-31: The rest room: no heal, no bank, and what it is for (builder, Session 69)
+Your board notes (30 Oct) on two items: rest rooms should heal nothing ("not a free heal") and should not bank ("a judgement call to continue risking what you've collected or to go deeper"), while staying "a checkpoint to give you an out on the dungeon and to pocket what you have". Today the rest room heals the party to full (`dungeon.restHeal`, on the panel) and banks every find, coin, lumber and stone on arrival, so a wipe deeper loses only that floor's. The two answers are one question: what does reaching a rest room give?
+- **A** (recommended): the rest room is the way out, nothing more. No heal (`restHeal` 0; potions and revives are the heal). Nothing banks on arrival: finds, coin, lumber, stone, henchman XP and the bag stay carried across floors, and they bank only when the party takes the gold ring home or wins the run. Going deeper puts the whole run's haul at stake; a wipe on floor 4 loses floors 1 to 4. Talents and perks may still change there.
+- **B**: A, but the rest room heals a little (a quarter of max health, on the panel), so a party that limps in has some reason to try the next floor.
+- **C**: heal nothing, but keep the bank as it is (the stakes stay one floor deep).
+Michael: **A** — the way out only: no heal, nothing banks till home. (2026-10-31, on the control room)
+
+### 2026-10-31: Clear the floor before the rest or boss room? (builder, Session 69)
+Your note (30 Oct): lock the rest and boss rooms until every room on the floor is cleared, "or your reward(s) should be reduced if you 'speed run' the dungeon. We should debate this." On 27 Oct you chose rushing ("You don't have to clear everything!"), so this reopens T4. The critic found 5.4% of floors with no fight at all on the shortest way. With A above, skipping rooms also skips their finds and smashables, which is already a cost.
+- **A** (recommended): a fight on the way. The rest or boss room's door stays shut until the party has cleared at least one fight room on the floor (two from floor 3), a line on the door saying how many are left. Rushing stays possible; a floor with no fight on its shortest way can no longer be walked through.
+- **B**: lock until every fight room on the floor is cleared; a counter in the corner says how many remain.
+- **C**: no lock; the rest room pays less (coin and materials scaled by the share of fight rooms cleared, at least half) and says so on arrival.
+- **D**: keep it as built: rushing is fine.
+Michael: **A** — at least one fight first (two from floor 3). (2026-10-31, on the control room)
+
+### 2026-10-31: The boss's drops and the way home (builder, Session 69)
+Your note (30 Oct): the boss always drops one or more special items scaled to the difficulty; "you beat the dungeon" becomes a quick popup that fades or is dismissed; only the gold ring returns, and not on top of where the boss fell. Today the Warden's fall banks the floor, the run's summary card covers the screen, and the gold ring opens in the hall.
+- **A** (recommended): the Warden drops 1 item at Normal, 2 at Hard and 3 at the hardest tier, each a shape from the catalogue in the best material its tier allows (one material above what the floor's own finds roll), lying on the floor to be walked over like any find. "Dungeon cleared" shows for 4 s in the top corner (any key dismisses it); the gold ring opens 8 m from where the Warden fell, at the hall's far end, 3 s after the fall. The full summary card shows once home in the village.
+- **B**: A, but the drops go straight into each player's bag (no picking up), so the ring may open at once.
+- **C**: A's popup and ring now; the special items wait for the builds pass (runes, elements), which would give them something to be special with.
+Michael: **A** — 1/2/3 drops by difficulty, popup, ring 8 m away — Maybe a small delay on the ring appearing as well, with a countdown timer? Doesn’t need to be a massive message, but like a 10 second count. (2026-10-31, on the control room)
+
+### 2026-10-31: Lumber, stone and potions in the bag (builder, Session 69)
+Your two notes (30 Oct): stone and wood take bag spaces in stacks of 50 or 99, "sometimes a choice of bringing building materials back or bringing loot back"; potions too, stacking to 5 or 10, "or if that would just be annoying". Today lumber, stone and coin are the party's shared count (no space), the belt holds potions apart from the bag, and the bag has 28 spaces, the first few safe. Materials in the bag also make them each player's, not the party's. This changes the bag's save and the smash pickups, so it is a sizeable item, and Phase 3's ledger will take items over.
+- **A** (recommended): materials in the bag, potions on the belt. Lumber and stone stack to 50 a space, picked up by whoever walks over them; a full bag leaves them on the floor. The belt stays as it is (a drink should never mean opening the bag mid-fight). Coin stays a count.
+- **B**: both: materials stack to 50, potions to 5 a space, and the belt draws from the bag's potion stacks.
+- **C**: neither for Phase 2; revisit with Phase 3's ledger, when items move server-side anyway.
+Michael: **A** — materials in the bag (stacks of 50); potions stay on the belt. (2026-10-31, on the control room)
+
+### 2026-10-31: The village's start and the Random tab (builder, Session 69)
+Your two notes (30 Oct): the village starts with only the portal building, the others "not present at the start"; and Wren's Random tab locked at first, opened past a threshold (Portal tier 4, or a player level such as 25 or 50). Today a new village has all four buildings at tier I, and the Random tab is open from the start. Tiers stop at IV today.
+- **A** (recommended): a new village has Wren's portal and empty plots marked for the other three. Each plot's first build (tier I) costs a little lumber and stone and raises the building with the ceremony you chose; until then its keeper waits on the plot and offers only that build. The Random tab opens at Portal tier 3 (the top tier with today's four is IV), showing "Opens at Portal tier III" until then.
+- **B**: A's plots, with the Random tab opened by a player level (25) instead.
+- **C**: the plots only; the Random tab stays open.
+Michael: **A** — empty plots; Random opens at Portal tier III. (2026-10-31, on the control room)
+
+### 2026-10-31: The gamepad's default layout (builder, Session 69)
+Your layout (30 Oct) mostly matches today's: LT block, LB and RB abilities 1 and 2, left stick sprint, right stick lock-on, Y jump, B dodge (and back out of menus), A interact and select, View the hero screen, d-pad up and down zoom, d-pad left a potion. Three differ: today X attacks and RT is the off-hand's ability; Start opens the map and nothing pauses; d-pad right does nothing outside the hero screen.
+- **A** (recommended): your layout exactly. RT attacks, X takes the off-hand's ability (today's RT), Start pauses (the pause card and its settings), d-pad right opens the map. The hero screen's "wear at once" (Session 68, today X) follows attack to RT.
+- **B**: keep X attacking and RT the off-hand's; only Start pauses and d-pad right opens the map.
+Michael: **A** — your layout exactly. (2026-10-31, on the control room)
+
 ### 2026-10-31: Fable M1 clashes with main (devlog only) (producer)
 Fable M1 (PR #138, 003cc65) was finished, but main took the burst-fold merge while it was built and both added a Session 64 entry at the top of docs/devlog.md; that was the only clash, and CI could not run on the PR until it was resolved.
 - **A** (recommended): approve M1 as built; the producer joins the two devlog entries in auto/producer and merges Producer notes once its CI is green.

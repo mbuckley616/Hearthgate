@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 69, Michael's 30 Oct board notes asked
+
+**What changed**
+
+Docs only. Nothing in Phase 2 was buildable: every open item is (Fable), (Michael) or an unanswered (design). The 30 Oct board notes had been filed as (design) but never asked, so `decisions.md` Pending now holds six questions covering nine of them, each with today's behaviour, lettered options and a recommendation: the rest room (no heal, no bank: A banks only at the gold ring or a win, so the whole run is at stake), clearing the floor (A: one fight room cleared, two from floor 3, before the rest or boss door opens), the boss's drops and the way home (A: 1 to 3 drops by difficulty, a 4 s corner popup, the gold ring 8 m off and 3 s late), materials and potions in the bag (A: lumber and stone stack to 50 in the bag, the belt stays), the village's start and the Random tab (A: empty plots, Random at Portal tier III), the gamepad layout (A: his layout exactly: RT attack, X the off-hand's ability, Start pause, d-pad right the map). Each backlog item says where it was asked.
+
+**Learned**
+
+The rest-room heal is one panel value (`dungeon.restHeal`), so that half of the first question is trivial to build once answered; the banking half moves the `banked` event from arrival to the gold ring and touches the wipe's losses. The gamepad layout differs from today's in only three buttons.
+
+**Next**
+
+Build whichever answers come back. Not asked: buildings that look their part (art, and tiers past IV) and character creation with a tutorial (likely Phase 4), both larger than a builder question; the builds pass waits on the feel pass.
+
 ## 2026-10-31: Session 68, pick up and put down on the hero screen
 
 **What changed**
