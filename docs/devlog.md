@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 66, the Old Cellar opens the next story
+
+**What changed**
+
+Shared level (`level/floor.ts`); no message change. The critic's bug (c86cbcb), the cause of Michael's 30 Oct "clearing the first story dungeon does not unlock the next": `floorLevel` built a hand-built floor from `checkDungeon`'s own spec, `{ seed, pieces, floor, floors, hand }`, so what Wren's menu chose (`story`, `difficulty`, `modifier`) never reached the level. The welcome sent that spec, and the browser's `runWon` check in `Game.ts` found no story to mark cleared.
+- `floorLevel` lays the given spec's `difficulty`, `story` and `modifier` over the checked one; the seed, pieces and joins stay the check's.
+- `portalChoice.test.ts`, a new case: every floor of the hand-built story keeps its story, difficulty and modifier, and a spec's Hard and Cursed come through. Fails without the change.
+
+**Learned**
+
+The same drop also kept difficulty and modifiers off any hand-built floor. Today's one hand-built story, the Old Cellar, is Normal with no modifier, so its fights are unchanged; a later hand-built story at Hard or Haunted would have played at Normal with none.
+
+**Next**
+
+Found in play: menus with an Xbox pad (Michael, 30 Oct). Then the gate playtest, which is Michael's.
+
 ## 2026-10-31: Session 65, the village ring a second time
 
 **What changed**
@@ -17,7 +33,7 @@ Michael's "resetting the portal with the portal keeper" was beside the point: Wr
 
 **Next**
 
-The critic's other bug: `checkDungeon` drops a story floor's `story`, `difficulty` and `modifier`, so clearing the Old Cellar opens nothing.
+The critic's other bug: `checkDungeon` drops a story floor's `story`, `difficulty` and `modifier`, so clearing the Old Cellar opens nothing (Session 66).
 
 ## 2026-10-31: Session 64, a slow page's burst is not folded
 
