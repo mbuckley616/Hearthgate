@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 67, B closes menus and a board reset takes two presses
+
+**What changed**
+
+Client only (`input/bindings.ts`, `game/Game.ts`, `ui/EquipScreen.ts`) and one tuning value. Two thirds of Michael's 30 Oct "Menus with an Xbox pad":
+- B (button 1) is `menuBack` as well as `dodge`, so it closes the hero screen, the store, the stash, Wren's menu, the tavern's board, a keeper's card and the village map, and resumes from the pause card, as Esc does. `Game.update` notes whether a menu or the run's summary was up when B went down, and drops that frame's dodge press, so the press that closes a menu never rolls the hero (a keeper's card, which read B as its own leave, also no longer steps back twice).
+- On the talents and champion boards E or RB arms the reset: the note under the board says "Press E or RB again to reset the whole board", and a second press inside `input.resetConfirmSec` (2 s, on the panel) resets. Moving the cursor or changing tab disarms it. The mouse's Reset buttons are unchanged.
+- The controls list gains "Close a menu: Esc · Tab · B"; the pause card says B resumes.
+- `tests/padmenus.e2e.ts`: a stand-in pad through `navigator.getGamepads`; RB's arm, reset, timeout and disarm driven straight through `EquipScreen.handle`, then B with the hero screen up closes it and the hero's mode stays out of `dodge` for 1.5 s. Passed 3 runs in 3; with the guard switched off it fails on the first frame's dodge.
+
+**Learned**
+
+The reverted attempt's flake was its way in, not the code: pressing Tab until the hero screen showed raced the page's frames at a few fps. Driving the screen's handler directly for the board and opening the screen with `setVisible` leaves only B going through the real pad poll, which is the part under test.
+
+**Next**
+
+The rest of the item: A picks a bag item up and sets it down in another space (a bag space, the safe pocket or a worn slot), X quick-equips. Then the gate playtest, which is Michael's.
+
 ## 2026-10-31: Session 66, the Old Cellar opens the next story
 
 **What changed**

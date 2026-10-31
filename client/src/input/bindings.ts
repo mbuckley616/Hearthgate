@@ -57,6 +57,8 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   attack: [2], // X / Square
   block: [6], // LT / L2
   dodge: [1], // B / Circle
+  // B also steps back out of a menu (Michael, 30 Oct); Game keeps that press from dodging.
+  menuBack: [1],
   sprint: [10], // left stick click
   jump: [3], // Y / Triangle
   interact: [0], // A / Cross

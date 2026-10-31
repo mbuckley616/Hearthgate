@@ -80,6 +80,8 @@ export class EquipScreen {
   /** Seconds until a held direction moves the cursor again. */
   private repeat = 0;
   private lastDir = '';
+  /** Seconds left in which a second E or RB resets the board; moving or changing tab disarms it (Michael, 30 Oct). */
+  private resetArmed = 0;
   private readonly preview = new HeroPreview();
   visible = false;
 
@@ -133,6 +135,13 @@ export class EquipScreen {
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
+    if (this.resetArmed > 0) {
+      this.resetArmed -= dt;
+      if (dir || this.resetArmed <= 0) {
+        this.resetArmed = 0;
+        this.render();
+      }
+    }
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
       if (this.tab === 'gear') this.step(dir);
       else if (this.tab === 'talents') this.stepTalent(dir);
@@ -146,8 +155,11 @@ export class EquipScreen {
       const id = TALENT_IDS[this.tRow];
       if (actions.pressed.has('interact')) this.profile.changeRank(style, id, 1);
       else if (actions.pressed.has('ability1')) this.profile.changeRank(style, id, -1);
-      else if (actions.pressed.has('ability2')) this.profile.resetTalents(style);
-      else return;
+      else if (actions.pressed.has('ability2')) {
+        // RB sits beside the triggers: one stray press wiped a whole board (Michael, 30 Oct), so it takes two.
+        if (!this.armReset()) return;
+        this.profile.resetTalents(style);
+      } else return;
       this.onChange();
       this.render();
       return;
@@ -166,14 +178,27 @@ export class EquipScreen {
       const id = con.perks[this.cRow];
       if (actions.pressed.has('interact')) this.profile.changeChampion(id, 1);
       else if (actions.pressed.has('ability1')) this.takeBack(() => this.profile.changeChampion(id, -1));
-      else if (actions.pressed.has('ability2')) this.takeBack(() => this.profile.resetChampion());
-      else return;
+      else if (actions.pressed.has('ability2')) {
+        if (!this.armReset()) return;
+        this.takeBack(() => this.profile.resetChampion());
+      } else return;
       this.onChange();
       this.render();
       return;
     }
     if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
     if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+  }
+
+  /** The first E or RB on a board arms the reset and says so; true when this press is the second, inside the window. */
+  private armReset(): boolean {
+    if (this.resetArmed > 0) {
+      this.resetArmed = 0;
+      return true;
+    }
+    this.resetArmed = tuning.input.resetConfirmSec;
+    this.render();
+    return false;
   }
 
   /** Champion points come back only at the shrine, for coin; elsewhere the board says where. */
@@ -206,6 +231,7 @@ export class EquipScreen {
 
   private setTab(tab: Tab): void {
     this.tab = tab;
+    this.resetArmed = 0;
     this.render();
   }
 
@@ -388,7 +414,7 @@ export class EquipScreen {
       </div>`;
     }).join('');
     return `<div class="talent-cols">${cols}</div>
-      <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or LB: take off · E or RB: reset</div>`;
+      <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or LB: take off · E or RB twice: reset</div>${this.armedNote()}`;
   }
 
   /** The three constellations (T6b): points from XP past the top level, free to move between runs until coin. */
@@ -450,6 +476,10 @@ export class EquipScreen {
       ${slotBar}
       <div class="talent-cols">${cols}</div>
       <button class="talent-respec" data-action="cpReset">Reset all</button>
-      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. ${this.atShrine() ? `Here at the shrine, taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}).` : `Points are taken back at Keeper Wren's shrine in the village, for ${tuning.village.respecCoinPerPoint} coin each.`} Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB: reset</div>`;
+      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. ${this.atShrine() ? `Here at the shrine, taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}).` : `Points are taken back at Keeper Wren's shrine in the village, for ${tuning.village.respecCoinPerPoint} coin each.`} Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB twice: reset</div>${this.armedNote()}`;
+  }
+
+  private armedNote(): string {
+    return this.resetArmed > 0 ? '<div class="talent-armed">Press E or RB again to reset the whole board</div>' : '';
   }
 }
