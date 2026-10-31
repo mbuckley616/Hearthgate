@@ -317,7 +317,7 @@ export function heroInvulnerable(p: PlayerState): boolean {
 }
 
 /** 'pending' = a remote player's hit waiting out their lag grace (see coop.ts). */
-export type HeroHitResult = 'none' | 'hit' | 'blocked' | 'parried' | 'pending';
+export type HeroHitResult = 'none' | 'hit' | 'blocked' | 'parried' | 'pending' | 'cleared';
 
 const DEG = Math.PI / 180;
 
@@ -374,6 +374,11 @@ export function knockDown(state: SimState, p: PlayerState): void {
   state.events.push({ kind: 'heroDown', playerId: p.id });
 }
 
+/** In the air and high enough over a low attack's ground (M1). Henchmen jump too, if they ever do. */
+export function clearsLow(p: PlayerState, ground: number): boolean {
+  return tuning.jump.clearsLow && !p.grounded && p.y - ground >= tuning.jump.clearHeight;
+}
+
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
   if (heroInvulnerable(p)) {
     // A dodge that slips a hit is a perfect one (C2), paid once per dodge.
@@ -386,6 +391,14 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.lagGrace > 0 && !hit.late) {
     state.pendingHits.push({ playerId: p.id, at: state.time, hit });
     return 'pending';
+  }
+  // A jump clears a low attack (M1), judged as the hit lands, after the lag grace, as a dodge is: the
+  // player sees the slam land later than the server swung it, and their own hero ahead of it, so the
+  // landing is the moment their screen showed. A hit that lands early because they rolled or raised a
+  // guard is judged then too.
+  if (hit.low !== undefined && clearsLow(p, hit.low)) {
+    state.events.push({ kind: 'cleared', playerId: p.id, x: p.x, y: p.y, z: p.z, ground: hit.low });
+    return 'cleared';
   }
   // The buckler's deflect (C5): while it is up, every hit is parried.
   if (p.mode === 'ability' && p.ability === 'deflect') {

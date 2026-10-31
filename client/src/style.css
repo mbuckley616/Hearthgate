@@ -1025,6 +1025,10 @@ canvas {
   color: #ffe9a8;
 }
 
+.hud-guard.cleared {
+  color: #bfe8ff;
+}
+
 .hud-guard.heavy {
   color: #ffb877;
 }
