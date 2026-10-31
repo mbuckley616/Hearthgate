@@ -381,9 +381,32 @@ async function main() {
     const slowSent = slow.sent - sentAt;
     check(Math.abs(slowSent - wallTicks) < wallTicks * 0.05, "at about 10 fps the ClientSession sends a command for every tick of wall time", `${slowSent} sent over ${wallTicks.toFixed(0)} ticks`);
     check(slow.stats.snaps === 0, "and running at about 10 fps it never snaps", `${slow.stats.corrections} corrections, largest ${slow.stats.maxCorrection.toFixed(3)} m`);
-    // Not a check yet: the few left (3 here, from 17 before the fix) are the server folding a frame's
-    // burst of commands as if it ran slow (inputSlots.ts maxExtra), a (Fable) item on the backlog.
+    // Not a check: the few left (3 or 4 here, from 17 before Session 54) all land in the first 0.4 s, the
+    // slots anchored on the short first frame and widening the cushion as each longer one arrives late
+    // (Session 64; started on the 150 ms frame instead, there are none).
     console.log(`info  at about 10 fps, ${slow.stats.bigCorrections} corrections over 10 cm`);
+
+    // 9c'. At 5 fps every frame's twelve commands arrive in one message, on time. The server's slots used to
+    // take a queue that long for a server running slow and fold the excess into one tick (5 to 7
+    // corrections over 10 cm, up to 54 cm); they now fold only what stands at the queue's low point
+    // between messages (inputSlots.ts, Session 64).
+    const crawl = new ClientSession(null, loadout("Golf"), ENDPOINT, "dungeon");
+    const cStart = performance.now();
+    while (!crawl.playing) {
+      if (performance.now() - cStart > 5000) throw new Error("the 5 fps ClientSession never started");
+      await sleep(5);
+    }
+    let cLast = performance.now();
+    const cT1 = performance.now();
+    while (performance.now() - cT1 < 4500) {
+      const now = performance.now();
+      const dt = Math.max(0, (now - cLast) / 1000);
+      cLast = now;
+      const el = now - cT1;
+      crawl.advance(command({ moveX: el < 3000 ? Math.sin(el / 900) : 0, moveZ: el < 3000 ? -1 : 0 }), dt);
+      await sleep(200);
+    }
+    check(crawl.stats.bigCorrections <= 1, "at 5 fps the server does not fold a frame's burst: at most one correction over 10 cm", `${crawl.stats.bigCorrections} over 10 cm of ${crawl.stats.corrections}, largest ${crawl.stats.maxCorrection.toFixed(3)} m`);
 
     // 9b. The browser's ClientSession on a generated floor, up or down a staircase. No enemies: this is about the floor.
     const fc = new ClientSession(null, loadout("Echo"), ENDPOINT, "floor", { seed: 777, pieces: 16 });
