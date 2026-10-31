@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 62, the bag cursor one space at a time
+
+**What changed**
+
+Test code only. The critic's bug (7c119bd): `sounds.e2e` held D and polled for the Ash shortbow's name; Playwright's poll waits longer each time (100, 250, 500 ms), and with the menu's repeat at 0.12 s a held D crossed several spaces between looks, carrying the cursor past the bow on a page near 12 fps. Now each step holds D only until `game.equip.cursor` changes (polled every 10 ms), then lets go, up to twelve steps, and the test asserts the bow is chosen.
+
+**Learned**
+
+Old test 3 of 3 failed in this cloud session, the new one 4 of 4 passed. Two earlier failures of the new one were not the test: Vite reloaded the page because I was editing `shared/` while it ran ("Execution context was destroyed", `game` undefined). An e2e run in a session that is also editing the code is not a measurement.
+
+**Next**
+
+D6's lava room (Michael, 30 Oct, A on the control room).
+
 ## 2026-10-31: Session 61, the ring's words fade up close
 
 **What changed**
