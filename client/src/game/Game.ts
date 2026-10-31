@@ -821,7 +821,15 @@ export class Game {
       if (skip || !(this.room instanceof VillageView) || !this.room.ceremonyRunning) this.endRite();
       actions = emptyFrame();
     }
+    // B is the pad's dodge and its menu-back alike: the press that closes a menu (or the run's summary)
+    // must not also reach the hero as a dodge.
+    const backing = actions.pressed.has('menuBack') && (this.menuUp() || this.summary.visible);
     this.handleMetaActions(actions);
+    if (backing && actions.pressed.has('dodge')) {
+      const pressed = new Set(actions.pressed);
+      pressed.delete('dodge');
+      actions = { ...actions, pressed };
+    }
     // The bag and body take the keys and the pad while they are open (T5b): the hero stands still.
     if (this.equip.visible) {
       this.equip.handle(actions, realDt);
@@ -1289,6 +1297,11 @@ export class Game {
     return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false, ability3: false, drink: false };
   }
 
+  /** Whether a screen that takes the keys is up. */
+  private menuUp(): boolean {
+    return this.equip.visible || this.store.visible || this.bank.visible || this.portalMenu.visible || this.hire.visible || this.keeperCard.visible || this.villageMap.visible;
+  }
+
   private handleMetaActions(actions: ActionFrame): void {
     // Esc, Start or A closes the pause card; the press that opened it is not the one that closes it.
     if (this.paused && performance.now() - this.pausedAt > 250 && (['menuBack', 'map', 'interact'] as const).some((a) => actions.pressed.has(a))) {
@@ -1347,7 +1360,7 @@ export class Game {
       else this.kbm.requestPointerLock();
       this.updateOverlay();
     }
-    if (actions.pressed.has('menuBack') && this.equip.visible) {
+    if (actions.pressed.has('menuBack') && this.equip.visible && this.equip.back()) {
       this.equip.setVisible(false);
       this.updateOverlay();
     }
@@ -1361,7 +1374,7 @@ export class Game {
     const card = document.createElement('div');
     card.className = 'overlay-card';
     card.addEventListener('click', (e) => e.stopPropagation());
-    card.innerHTML = '<h1>Paused</h1><p class="cta">Click outside this box, press Resume, Esc, Start or A to play</p>';
+    card.innerHTML = '<h1>Paused</h1><p class="cta">Click outside this box, press Resume, Esc, Start, A or B to play</p>';
     const buttons = document.createElement('div');
     buttons.className = 'pause-buttons';
     const drawer = document.createElement('div');
@@ -1417,6 +1430,7 @@ export class Game {
           <tr><td>Map: corner or whole floor</td><td>M · Menu / Start (in a dungeon)</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
           <tr><td>Release mouse / pause</td><td>Esc</td></tr>
+          <tr><td>Close a menu</td><td>Esc · Tab · B</td></tr>
         </table>`;
     el.addEventListener('click', (e) => e.stopPropagation());
     return el;

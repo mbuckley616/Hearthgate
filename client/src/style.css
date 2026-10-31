@@ -1422,3 +1422,10 @@ canvas {
   color: #a89f92;
   font-variant-numeric: tabular-nums;
 }
+
+.talent-armed {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0a050;
+}

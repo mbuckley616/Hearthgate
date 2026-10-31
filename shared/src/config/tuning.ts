@@ -1537,6 +1537,8 @@ export const tuning = {
     stickDeadzone: 0.18,
     /** Exponent on look-stick magnitude; >1 gives finer control near center. */
     lookStickCurve: 2.0,
+    /** A board's reset (E or RB on the talents or champion screen) takes a second press inside this window (Michael, 30 Oct). */
+    resetConfirmSec: 2,
   },
 
   /**
@@ -2311,6 +2313,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'input.stickDeadzone': [0, 0.5, 0.01],
   'input.lookStickCurve': [1, 4, 0.1],
+  'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
   'look.maxPixelRatio': [0.5, 3, 0.25],
