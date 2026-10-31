@@ -174,7 +174,7 @@ export class Hud {
         this.toast(`<b class="potion">Health potion</b><span>${ev.potions} on your belt  ·  G, 4 or d-pad left to drink</span>`, 'common');
       }
       if (ev.kind === 'findsLost' && ev.playerId === localId) {
-        this.toast(`<b>Lost ${ev.count} unbanked find${ev.count === 1 ? '' : 's'}</b><span>Bank them in a rest room next time</span>`, 'common');
+        this.toast(`<b>Lost ${ev.count} unbanked find${ev.count === 1 ? '' : 's'}</b><span>Only the gold ring home banks a run</span>`, 'common');
       }
     }
   }

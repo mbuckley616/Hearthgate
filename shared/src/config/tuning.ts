@@ -1179,6 +1179,12 @@ export const tuning = {
     bossLumber: 12,
     bossStone: 12,
     /**
+     * Bank on reaching a rest room, as P1 did. Off since Michael's 31 Oct A: finds, coin, lumber,
+     * stone and the henchmen's XP stay carried from floor to floor and bank only when the gold ring
+     * takes the party home or the Warden falls, so a wipe on floor 4 loses floors 1 to 4.
+     */
+    bankAtRest: false,
+    /**
      * Things to smash (D4; Michael, 28 Oct): a crate or barrel sprays out lumber, an urn stone, a
      * piece at a time, between these many each (Michael, 29 Oct: "in random quantities"). What is
      * picked up is carried until the floor banks (and the deeper floors' bonus with it).
@@ -1324,8 +1330,11 @@ export const tuning = {
      * after every encounter). The arena keeps run.healOnWaveClear. The rest room heals instead.
      */
     healOnClear: 0,
-    /** Of max health, given to every standing hero as the rest room banks the floor. */
-    restHeal: 1,
+    /**
+     * Of max health, given to every standing hero on reaching the rest room. Nothing since Michael's
+     * 31 Oct A: the rest room is a way out, not a free heal; potions and revives are the heal.
+     */
+    restHeal: 0,
     /**
      * Shut a fight room's doors behind the party, waiting for them and pulling in stragglers (T4).
      * Off since D8 (Michael 28 Oct: locking a party in is annoying with several players); the

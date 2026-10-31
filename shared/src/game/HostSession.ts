@@ -16,6 +16,7 @@ import type { PlayerCommand, PlayerState, SimEvent, SimState } from '../sim/type
 import { createSimState, stepSim } from '../sim/world';
 import { createSlots, nextSlotCommand, receiveInputs, type SlotConfig, type Slots } from './inputSlots';
 import { PORTAL_HOLD_S, partyOnPortal, portalsFor, type PortalState, type PortalTo } from './portal';
+import { leaveFloor, runPurse, type Purse } from '../sim/floorRun';
 
 /**
  * The input slots' numbers (inputSlots.ts). The cushion starts at the slice's coop.inputBufferTicks;
@@ -347,6 +348,17 @@ export class HostSession {
     });
   }
 
+  /** What the run carries to the next floor (Michael, 31 Oct): nothing once this floor has banked. */
+  runPurse(): Purse | null {
+    if (!this.sim.floor || this.sim.floor.home) return null;
+    return runPurse(this.sim, this.world);
+  }
+
+  /** The purse the floors before this one handed on (the room's, from the hand-off). */
+  receivePurse(purse: Purse): void {
+    if (this.sim.floor) this.sim.floor.purse = { ...purse };
+  }
+
   /** The open rings and how long the party has held one; take it once they have held it long enough. */
   private stepPortal(step: number): void {
     const rings = portalsFor(this.world, this.sim);
@@ -360,7 +372,19 @@ export class HostSession {
     this.portalHeld = Math.min(PORTAL_HOLD_S, this.portalHeld + step);
     if (this.portalHeld >= PORTAL_HOLD_S && !this.portalTaken) {
       this.portalTaken = true;
-      this.onPortal(rings[on].to);
+      const to = rings[on].to;
+      if (to !== 'dungeon' && this.sim.floor) {
+        // Off a floor the run banks at the gold ring, or picks up what lies about for deeper
+        // (Michael, 31 Oct). The events stay in this tick's (the room credits the village from
+        // them) and a snapshot carries them now, ahead of the hand-off.
+        const before = this.sim.events.length;
+        leaveFloor(this.sim, this.world, to);
+        if (this.sim.events.length > before) {
+          this.outbox.push(...this.sim.events.slice(before));
+          this.sendSnapshot();
+        }
+      }
+      this.onPortal(to);
     }
   }
 

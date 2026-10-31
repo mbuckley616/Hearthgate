@@ -200,7 +200,7 @@ async function main() {
     const floor1 = floorLevel(spec1!).dungeon!;
     check(insidePiece(floor1.pieces[floor1.def.entrance], va.me()!.x, va.me()!.z), "the party stands in the floor's entrance");
     const fights1 = await walkFloor(va, vb, floor1);
-    check(va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "rested")), "reaching the rest room together banks the party's drops");
+    check(va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "rested")) && !va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "banked")), "reaching the rest room together rests the party and banks nothing (Michael, 31 Oct)");
     const rings = va.snaps[va.snaps.length - 1].portals;
     check(rings.map((r) => r.to).join(",") === "deeper,village", "the rest room has a ring deeper and a ring home", rings.map((r) => r.to).join(","));
     const deeper = rings[0];
@@ -224,6 +224,7 @@ async function main() {
     for (const e of va.events) if (e.kind === "banked") banked.set(e.floor, { lumber: e.lumber, stone: e.stone });
     const grew = [...banked.values()].reduce((s, b) => ({ lumber: s.lumber + b.lumber, stone: s.stone + b.stone }), { lumber: 100, stone: 80 });
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren sees the village again");
+    check(banked.size === 1 && banked.has(2), "the whole run banks once, at the gold ring home from floor 2 (Michael, 31 Oct)", [...banked.keys()].join(","));
     check(
       va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === grew.lumber && va.lastVillage()?.village.stone === grew.stone && vb.lastVillage()?.village.lumber === grew.lumber && vb.lastVillage()?.yours === false,
       "the run's banks grew the host's village, and both see it",

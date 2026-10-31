@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 70, the rest room is the way out
+
+**What changed**
+
+Shared sim, `HostSession`, `FloorRoom`, client words. Michael's A on "The rest room" (control room, 31 Oct): no heal, nothing banks until home.
+- `dungeon.restHeal` is 0 and `loop.bankAtRest` (new, off) keeps P1's rest-room bank behind a switch. Reaching the rest room still raises `rested` (the banner now says "A way out · nothing is banked yet" and that the gold ring banks the run, the violet ring putting all of it at stake).
+- `floorRun.ts`: `runPurse` (pure) is the run's unbanked pay, the purse the floors before handed on plus this floor's rooms and smashing at its depth bonus; `bank` pays it, so the Warden's fall banks the whole run too; a wipe drops the purse with the finds. `leaveFloor` runs as a ring is taken: home banks (once: `FloorRunState.home`, so a failed hand-off retaken pays nothing twice), deeper picks up each player's finds still on the ground as carried.
+- `HostSession.stepPortal` calls it before `onPortal`, keeps the events in the tick's (so `FloorRoom.onEvents` credits the village) and sends a snapshot at once, so the bank reaches the browser ahead of the hand-off. `runPurse()` and `receivePurse()` for the room.
+- `FloorRoom` hands the purse to the next floor through a static map keyed by village code and floor, never create options, which a browser can send for itself.
+- Henchman XP needed nothing: it travels in the cards and banks with the run's last `banked` event. The browser's carried marks already lasted across floors.
+- Words: the wipe's toast, the hero screen's carried note, a room's clear banner ("Potions and revives are the only heal").
+- Tests: the five files that pin P1's bank and D7's heal turn the old switches on; `restRoomStakes.test.ts` (4) proves no heal and no bank on arrival, the gold ring's bank in a snapshot sent first and paid once, the purse carried deeper and banked from floor 2, and lost with a wipe. test:net's run now checks the rest room banks nothing and the run banks once, from floor 2 (105 lumber, 84 stone into the village over both floors). check 262/262, test:net all passed.
+
+**Learned**
+
+`HostSession.between` splices its events out of the tick's array, so a bank raised there would never reach `onEvents` and the village would not be credited; `leaveFloor`'s events are copied to the outbox instead and left in the tick. A test:net server outlived its run here (5 GB, still ticking) and held port 2599 for the next run; killing it was enough.
+
+**Next**
+
+"Clear the floor before the rest or boss room" (A: one fight room, two from floor 3, the count on the door), then the boss's drops and the way home (A, with Michael's note: a 10 s countdown before the ring opens), materials in the bag (A), the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
 ## 2026-10-31: Session 69, Michael's 30 Oct board notes asked
 
 **What changed**

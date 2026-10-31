@@ -474,7 +474,7 @@ export class Game {
       if (stale > 0) {
         if (this.tally) this.tally.lost += stale;
         this.applyProfile(false);
-        this.hud.toast(`<b>${stale} unbanked find${stale === 1 ? '' : 's'} lost</b><span>The floor was left before a rest room banked them</span>`, 'common');
+        this.hud.toast(`<b>${stale} unbanked find${stale === 1 ? '' : 's'} lost</b><span>The run was left before the gold ring banked them</span>`, 'common');
       }
       if (this.tally && (this.tally.banked > 0 || this.tally.lost > 0 || this.tally.deepest > 0)) this.summary.show(this.tally);
       this.tally = null;

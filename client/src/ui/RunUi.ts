@@ -104,9 +104,14 @@ export class RunUi {
       else if (ev.kind === 'waveCleared') {
         // No heal after a room since D7, so the banner names none unless the panel turns it back on.
         const heal = Math.round(tuning.dungeon.healOnClear * 100);
-        this.showBanner('Room cleared', heal > 0 ? `+${heal}% health` : 'Health comes back in the rest room');
+        this.showBanner('Room cleared', heal > 0 ? `+${heal}% health` : 'Potions and revives are the only heal');
       }
-      else if (ev.kind === 'rested') this.showBanner('Healed, and your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
+      else if (ev.kind === 'rested') {
+        // Michael, 31 Oct: the rest room is the way out; what the run carries banks only at home.
+        const heal = Math.round(tuning.dungeon.restHeal * 100);
+        const head = tuning.loop.bankAtRest ? 'Your finds are banked' : heal > 0 ? `+${heal}% health  ·  nothing is banked yet` : 'A way out  ·  nothing is banked yet';
+        this.showBanner(head, `Gold ring home banks the run  ·  violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more, all of it at stake`);
+      }
       else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
@@ -164,9 +169,10 @@ export class RunUi {
     }
     const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';
-    // What a wipe would cost (P1): finds carried since the last rest room.
-    // And the party's picked-up lumber, stone and coin, lost the same way (Michael, 29 Oct).
-    const f = sim.floor?.found;
+    // What a wipe would cost (P1): finds carried since the run left the village (Michael, 31 Oct),
+    // and the party's picked-up lumber, stone and coin with the floors before's, lost the same way.
+    const fl = sim.floor;
+    const f = fl ? { coin: fl.found.coin + (fl.purse?.coin ?? 0), lumber: fl.found.lumber + (fl.purse?.lumber ?? 0), stone: fl.found.stone + (fl.purse?.stone ?? 0) } : null;
     const found = f ? [f.coin ? `${f.coin} coin` : '', f.lumber ? `${f.lumber} lumber` : '', f.stone ? `${f.stone} stone` : ''].filter(Boolean).join(', ') : '';
     const risk = [carried > 0 ? `${carried} unbanked` : '', found].filter(Boolean).join(', ');
     this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${risk ? `  ·  carrying ${risk}` : ''}`;

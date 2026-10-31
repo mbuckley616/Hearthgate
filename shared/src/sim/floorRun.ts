@@ -48,6 +48,20 @@ export interface FloorRunState {
   loot?: FloorLoot[];
   /** The run's twist (P8), from the floor's spec: absent for none. */
   modifier?: 'cursed' | 'haunted';
+  /**
+   * Coin, lumber and stone the run earned on the floors before this one and has not banked
+   * (Michael, 31 Oct: nothing banks until the gold ring home or a win). The room hands it on.
+   */
+  purse?: Purse;
+  /** This floor has banked (the gold ring home or the Warden's fall): a second ring taken banks nothing. */
+  home?: boolean;
+}
+
+/** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
+export interface Purse {
+  coin: number;
+  lumber: number;
+  stone: number;
 }
 
 /** One piece of a smashed prop's spray on the ground: lumber and stone a unit at a time, coin in piles. */
@@ -96,7 +110,9 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       if (!f.rested && rest.kind === 'rest' && party.length > 0 && party.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
         for (const p of standing) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.restHeal);
-        bank(state, world, f);
+        // The rest room is the way out, not a vault (Michael, 31 Oct): with loop.bankAtRest off, what the
+        // party carries stays at stake until a ring takes them home (leaveFloor) or the Warden falls.
+        if (tuning.loop.bankAtRest) bank(state, world, f);
         state.events.push({ kind: 'rested' });
       }
       const room = tuning.debug.enemiesEnabled ? roomEntered(state, layout.pieces, f) : null;
@@ -179,23 +195,59 @@ export function depthMult(world: World): number {
 }
 
 /**
- * Bank the floor (P1): every player's carried finds and any still on the ground for them go home
- * with them, with coin for the fight rooms cleared here, and the village's lumber and stone.
+ * What the run has earned and not banked (P1): the purse from the floors before, plus coin for the
+ * fight rooms cleared here and what was smashed (D4, the spray still on the ground included), at
+ * this floor's depth bonus. Pure: the room reads it to hand the purse to the next floor.
  */
-function bank(state: SimState, world: World, f: FloorRunState): void {
+export function runPurse(state: SimState, world: World): Purse {
+  const f = state.floor;
+  const layout = world.level.dungeon;
+  if (!f || !layout) return { coin: 0, lumber: 0, stone: 0 };
   const l = tuning.loop;
-  const pieces = world.level.dungeon!.pieces;
   const rooms = f.cleared.length;
-  const boss = f.cleared.some((id) => pieces[id]?.kind === 'boss') ? 1 : 0;
+  const boss = f.cleared.some((id) => layout.pieces[id]?.kind === 'boss') ? 1 : 0;
   const mult = depthMult(world);
   const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
-  // Spray still on the ground goes home with the party, as finds on the ground do.
-  for (const d of f.loot ?? []) f.found[d.kind] += d.amount;
+  const found = { ...f.found };
+  for (const d of f.loot ?? []) found[d.kind] += d.amount;
+  const was = f.purse ?? { coin: 0, lumber: 0, stone: 0 };
+  return {
+    coin: was.coin + pay(l.coinPerRoom, l.bossCoin) + Math.round(found.coin * mult),
+    lumber: was.lumber + pay(l.lumberPerRoom, l.bossLumber) + Math.round(found.lumber * mult),
+    stone: was.stone + pay(l.stonePerRoom, l.bossStone) + Math.round(found.stone * mult),
+  };
+}
+
+/**
+ * The party took a ring off a floor (Michael, 31 Oct). Home banks the whole run here; deeper picks
+ * up what still lay on the ground for each player, carried as finds are, since nobody comes back
+ * for it, and the room hands runPurse() to the next floor. Called by HostSession just before the
+ * room moves the party, so the events go out first.
+ */
+export function leaveFloor(state: SimState, world: World, to: 'deeper' | 'village'): void {
+  const f = state.floor;
+  if (!f || !world.level.dungeon || f.home || state.run.phase === 'lost') return;
+  if (to === 'village') {
+    if (!tuning.loop.bankAtRest || !f.rested) bank(state, world, f);
+    return;
+  }
+  for (const d of state.drops) {
+    if (d.dropped) continue;
+    (f.carried[d.owner] ??= []).push(d.item);
+    state.events.push({ kind: 'pickup', playerId: d.owner, item: d.item, carried: true });
+  }
+  state.drops = state.drops.filter((d) => d.dropped);
+}
+
+/**
+ * Bank the run (P1): every player's carried finds and any still on the ground for them go home
+ * with them, with the run's coin (runPurse), and the village's lumber and stone.
+ */
+function bank(state: SimState, world: World, f: FloorRunState): void {
+  const { coin, lumber, stone } = runPurse(state, world);
   f.loot = [];
-  // What the party smashed (D4) pays the deeper floors' bonus too; its coin goes to each player, as a room's does.
-  const coin = pay(l.coinPerRoom, l.bossCoin) + Math.round(f.found.coin * mult);
-  const lumber = pay(l.lumberPerRoom, l.bossLumber) + Math.round(f.found.lumber * mult);
-  const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
+  f.purse = undefined;
+  f.home = true;
   const floor = world.level.dungeon!.def.spec.floor;
   // Carried finds are in the browser's bag already (D3): the bank makes them safe. Finds still on the ground come now.
   const henchmen = state.players.filter((p) => p.henchman).map((p) => ({ style: p.style, xp: Math.floor(p.xp[p.style]) }));
@@ -221,6 +273,7 @@ function loseUnbanked(state: SimState, f: FloorRunState): void {
   f.carried = {};
   f.found = { lumber: 0, stone: 0, coin: 0 };
   f.loot = [];
+  f.purse = undefined;
   state.drops = [];
 }
 

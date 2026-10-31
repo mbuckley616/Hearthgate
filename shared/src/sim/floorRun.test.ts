@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { HostSession } from '../game/HostSession';
 import { PORTAL_HOLD_S, portalsFor, type PortalTo } from '../game/portal';
@@ -13,6 +13,18 @@ import { emptyTalents } from './talents';
 import { idleCommand, type SimEvent } from './types';
 import { floorWorldNow } from './floorRun';
 import { createSimState } from './world';
+
+// These pin P1's rest-room bank and D7's full heal, kept behind loop.bankAtRest and dungeon.restHeal;
+// Michael's 31 Oct A (no heal, banking only at home or a win) is restRoomStakes.test.ts.
+const restKept = { bankAtRest: tuning.loop.bankAtRest, restHeal: tuning.dungeon.restHeal };
+beforeEach(() => {
+  tuning.loop.bankAtRest = true;
+  tuning.dungeon.restHeal = 1;
+});
+afterAll(() => {
+  tuning.loop.bankAtRest = restKept.bankAtRest;
+  tuning.dungeon.restHeal = restKept.restHeal;
+});
 
 const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
 

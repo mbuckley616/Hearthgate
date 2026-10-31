@@ -4,6 +4,7 @@ import { floorSpecFor, readRunPlan, type RunPlan } from "@hearthgate/shared/game
 import type { LevelDef } from "@hearthgate/shared/level/arena";
 import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { floorLevel } from "@hearthgate/shared/level/floor";
+import type { Purse } from "@hearthgate/shared/sim/floorRun";
 import { HostRoom } from "./HostRoom.js";
 import { VillageRoom } from "./VillageRoom.js";
 
@@ -14,6 +15,13 @@ import { VillageRoom } from "./VillageRoom.js";
  * take the party home to the village they came from. The room closes once the party has left.
  */
 export class FloorRoom extends HostRoom {
+  /**
+   * The unbanked pay a run is taking to its next floor (Michael, 31 Oct), by its village and that
+   * floor, kept here on the server between the deeper ring and the new room's creation; never in
+   * create options, which a browser can send for itself.
+   */
+  private static purses = new Map<string, Purse>();
+
   /** The village this run's party came from. */
   private home = "";
   private plan!: RunPlan;
@@ -34,6 +42,12 @@ export class FloorRoom extends HostRoom {
 
   onCreate(options: Record<string, unknown> = {}) {
     super.onCreate(options);
+    const key = `${this.home}:${this.floor}`;
+    const purse = FloorRoom.purses.get(key);
+    if (purse && this.home) {
+      FloorRoom.purses.delete(key);
+      this.host.receivePurse(purse);
+    }
     // The village keeps itself open while any floor of its party's run is.
     VillageRoom.byCode(this.home)?.runOpened();
   }
@@ -45,6 +59,8 @@ export class FloorRoom extends HostRoom {
 
   protected onPortal(to: PortalTo) {
     if (to === "deeper" && this.floor < this.plan.floors) {
+      const purse = this.host.runPurse();
+      if (purse && this.home) FloorRoom.purses.set(`${this.home}:${this.floor + 1}`, purse);
       void this.handOff("floor", "floor", null, { ...this.plan, home: this.home, floor: this.floor + 1 });
       return;
     }
