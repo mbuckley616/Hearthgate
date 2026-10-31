@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 63, a hall of embers (D6)
+
+**What changed**
+
+Shared level and sim, the floor's view and the minimap; no message change. D6 to Michael's A (control room, 30 Oct): lava only, on today's jump.
+- **Where** (`level/lava.ts`, level data from the seed like the props, so every browser and the server lay the same). From a run's second floor, on 60% of floors (by the seed's own hash, so the generator's layout and the props of every seed are untouched), one flat fight room of three cells or more a side, never the Warden's hall, gets strips across its longer run: 1.6 m wide (a running hop is about 3.2 m), 3.4 m of stone between, 3 m clear inside the walls a party enters by, none within 2.5 m of a side wall's doorway. Each strip stops 2 m short of one wall, the next short of the other: the long way round is a zigzag, the hop the quick way. The room's banner reads "A hall of embers"; no enemy wakes within a metre of a strip and no crate stands in one or across its walkway. Hand-built floors have none.
+- **The burn** (`sim/lava.ts`, in `stepSim` after the doors, never in prediction: the browser's hero takes its health from the snapshot, as from a hit). A hero on their feet in a strip loses `lava.burnFracPerS` (15%) of max health a second in pulses every `lava.tickS` (0.5 s), the first on the tick they step in, each a `heroHurt` event, so the hurt sound and numbers play; at nothing they go down (`knockDown`, now shared with `hurtHero`). One in the air is spared, and stepping out ends it. Henchmen are spared (their brains do not see lava) and enemies walk it.
+- **The look.** A molten strip just above the floor, glowing past the tone map, its crust drifting and its glow breathing, one material for the floor; each strip lights from the torch pool. Orange on the minimap.
+- `sim/lava.test.ts` (7): none on floor 1; on 120 deeper floors, between 30% and 90% have one room of lava, and every strip is 1.6 m, inside the walls, clear of doorways, with its walkway alternating, no pillar in a walkway, nobody waking or crate standing in it; the same spec lays the same strips; the burn's rate (30 in two seconds), the hop, the henchman, stepping out, and the down.
+
+**Learned**
+
+The first pulse on the step in and then every 30 ticks needs the countdown to start after the pulse, not before: subtracting first put the second pulse a tick early and five pulses in two seconds.
+
+**Next**
+
+Michael to play a lava room on the hosted build (Wren's Random, any floor past the first). Left out on purpose: lava in the editor's hand-built floors, henchmen that path round it, a chasm (B). The gate playtest is Michael's.
+
 ## 2026-10-31: Session 62, the bag cursor one space at a time
 
 **What changed**

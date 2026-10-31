@@ -2,6 +2,7 @@ import type { LevelDef, Surface, World } from './arena';
 import type { Collider } from './geometry';
 import { generateFloor, pieceBounds, type FloorDef, type FloorSpec, type Piece } from './generate';
 import { checkDungeon } from './handmade';
+import { lavaFor, type LavaStrip } from './lava';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -63,6 +64,8 @@ export interface FloorLayout {
   bounds: Rect;
   /** Things to smash (D4), by id: placed from the floor's seed, so every browser has the same. */
   props: PropInfo[];
+  /** Rooms that need jumping (D6): strips of lava in at most one fight room, from the floor's seed. */
+  lava: LavaStrip[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -91,6 +94,14 @@ export function floorLevel(spec: FloorSpec): LevelDef {
   return levelFromFloor(checked.def);
 }
 
+/** Whether (x, z) is in a strip's band across the whole room, `margin` either side: the strip and its walkway. */
+function inLavaBand(l: LavaStrip, x: number, z: number, margin: number): boolean {
+  return l.maxZ - l.minZ <= l.maxX - l.minX ? z > l.minZ - margin && z < l.maxZ + margin : x > l.minX - margin && x < l.maxX + margin;
+}
+
+/** A lava room's banner when its doors close. */
+export const LAVA_TITLE = 'A hall of embers';
+
 /** Facing into the piece from a wall on this side (yaw 0 faces +z, the slice's convention). */
 const INWARD_YAW: Record<Side, number> = { n: 0, s: 180, w: 90, e: -90 };
 
@@ -98,8 +109,15 @@ export function levelFromFloor(def: FloorDef): LevelDef {
   const pieces = def.pieces.map(pieceInfo);
   const torches: FloorLayout['torches'] = [];
   for (const info of pieces) torches.push(...torchesFor(info, def.pieces[info.id]));
+  const lava = lavaFor(def, pieces);
+  if (lava.length) {
+    const room = pieces[lava[0].piece];
+    room.title = LAVA_TITLE;
+    // Nobody wakes standing in it.
+    room.spots = room.spots.filter((sp) => !lava.some((l) => sp.x > l.minX - 1 && sp.x < l.maxX + 1 && sp.z > l.minZ - 1 && sp.z < l.maxZ + 1));
+  }
   const props: PropInfo[] = [];
-  for (const info of pieces) propsFor(info, def.spec.seed, props);
+  for (const info of pieces) propsFor(info, def.spec.seed, props, lava);
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -129,7 +147,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props },
+    dungeon: { def, pieces, torches, bounds, props, lava },
   };
 }
 
@@ -201,7 +219,7 @@ function propHash(seed: number, piece: number, k: number): number {
  * braziers so they never block a way through. None on a staircase or in the rest room. They do not
  * block movement: standing against the walls, nobody needs to walk through them.
  */
-function propsFor(info: PieceInfo, seed: number, out: PropInfo[]): void {
+function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[]): void {
   if (info.kind === 'stair' || info.kind === 'rest' || info.y !== info.top) return;
   const share = KIT[info.kind].room ? PROP_ROOM_SHARE : PROP_HALL_SHARE;
   const i = info.inner;
@@ -217,6 +235,8 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[]): void {
       if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3)) continue;
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
+      // Neither in a lava strip nor across the walkway at its end (D6): the long way round stays open.
+      if (lava.some((l) => l.piece === info.id && inLavaBand(l, x, z, 1.2))) continue;
       const pick = propHash(seed ^ 0x5bd1e995, info.id, k);
       const kind: PropKind = pick < 0.45 ? 'crate' : pick < 0.8 ? 'barrel' : 'urn';
       out.push({ id: out.length, kind, x, y: info.y, z, yaw: propHash(seed ^ 0x1b873593, info.id, k) * Math.PI * 2, piece: info.id, inward: (INWARD_YAW[side] * Math.PI) / 180, room: i });

@@ -200,6 +200,12 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
       g.fillStyle = 'rgba(255, 90, 70, 0.9)';
       dot(g, X((i.minX + i.maxX) / 2), Y((i.minZ + i.maxZ) / 2), PX * 0.9);
     }
+    // Lava (D6), so the way round reads on the map.
+    for (const l of layout.lava) {
+      if (l.piece !== p.id) continue;
+      g.fillStyle = dim ? 'rgba(170, 70, 20, 0.8)' : 'rgb(255, 120, 40)';
+      g.fillRect(X(l.minX), Y(l.minZ), (l.maxX - l.minX) * PX, (l.maxZ - l.minZ) * PX);
+    }
     for (const pl of p.pillars) {
       g.fillStyle = 'rgba(20, 16, 24, 0.7)';
       dot(g, X(pl.x), Y(pl.z), Math.max(1.5, pl.radius * PX));
