@@ -11,7 +11,7 @@ import { KeyboardMouseSource } from '../input/KeyboardMouseSource';
 import { emptyFrame, type ActionFrame } from '../input/actions';
 import { nameOf } from '../ui/gearText';
 import type { World } from '@hearthgate/shared/level/arena';
-import { TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
+import { inDoor, TALK_RANGE, type Villager } from '@hearthgate/shared/level/village';
 import { AmbientView } from '../render/AmbientView';
 import { DropView } from '../render/DropView';
 import { EnemiesView } from '../render/EnemyView';
@@ -527,7 +527,7 @@ export class Game {
   private doorInReach(me: PlayerState | null): string | null {
     const v = this.world.level.village;
     if (!v || !me || me.mode === 'down') return null;
-    const d = v.doors.find((d) => Math.hypot(d.x - me.x, d.z - me.z) <= d.radius);
+    const d = v.doors.find((d) => inDoor(d, me.x, me.z));
     if (!d) return null;
     const h = this.world.level.floorSize / 2;
     if (Math.abs(d.x) > h || Math.abs(d.z) > h) return 'step outside';

@@ -6,7 +6,7 @@ import { emptyTalents } from '../sim/talents';
 import { idleCommand, type PlayerState } from '../sim/types';
 import { createSimState } from '../sim/world';
 import { buildWorld } from './arena';
-import { TALK_RANGE, village } from './village';
+import { inDoor, TALK_RANGE, village } from './village';
 
 const world = buildWorld(village);
 const v = village.village!;
@@ -93,13 +93,29 @@ describe('the buildings’ insides (interiors, Michael 28 Oct)', () => {
     expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
     for (const h of hench) {
       expect(Math.hypot(h.x - into.toX, h.z - into.toZ)).toBeLessThan(2);
-      for (const d of v.doors) expect(Math.hypot(h.x - d.x, h.z - d.z)).toBeGreaterThan(d.radius);
+      for (const d of v.doors) expect(inDoor(d, h.x, h.z)).toBe(false);
       for (const o of [p, ...hench]) if (o !== h) expect(Math.hypot(h.x - o.x, h.z - o.z)).toBeGreaterThan(0.8);
     }
   });
 
   it('never lands a hero in a door circle, so nobody bounces back', () => {
-    for (const d of v.doors) for (const e of v.doors) expect(Math.hypot(d.toX - e.x, d.toZ - e.z)).toBeGreaterThan(e.radius);
+    for (const d of v.doors) for (const e of v.doors) expect(inDoor(e, d.toX, d.toZ)).toBe(false);
+  });
+
+  it('takes F anywhere along the shrine’s broad door, not only its middle (the critic, 30 Oct)', () => {
+    const [into] = v.doors;
+    for (const x of [-1.1, -0.6, 0, 0.6, 1.1]) {
+      const s = createSimState(village, [], world);
+      const p = addPlayer(s, world, 'p1', loadout, false);
+      p.x = x;
+      p.z = -13.6;
+      // North into the planks, pressing F the while: the hero stops against the wall and goes through.
+      walkAt(p, s, x, -16, () => p.z < -60);
+      expect(Math.hypot(p.x - into.toX, p.z - into.toZ)).toBeLessThan(0.01);
+    }
+    // Past the drawn door's edge (1.1 m) and a hero's width beyond, the wall is only a wall.
+    expect(inDoor(into, 1.6, -14.6)).toBe(false);
+    expect(inDoor(into, 0, -13.6)).toBe(false);
   });
 
   it('keeps every inside apart from the square and from each other', () => {

@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 60, the shrine's broad door
+
+**What changed**
+
+Shared level data and the door check; no message change. The critic's bug (7c119bd): the shrine's front door is drawn 2.2 m wide but took F only in a 0.8 m circle, so a hero pressed against its planks a metre off the middle got no hint and F did nothing.
+- `DoorLink.halfWidth` (optional): the door's circle slides that far either way along its face (the line across `toYawDeg`, as `through` lines henchmen up). `inDoor` in `level/village.ts` is the one test, used by `stepDoors` on the server and the door hint in `Game.doorInReach`, so the hint and the press always agree.
+- The shrine's front door has 0.6, so it reaches 1.4 m either side of its middle at the wall: the drawn door's 1.1 m and a little. The other doors are drawn 1.3 m wide and keep their circles.
+- `interior.test.ts`: a hero walking north into the planks with F held at x = -1.1, -0.6, 0, 0.6 and 1.1 goes through (fails without the change at the edges); 1.6 m off, or 1 m out in front, it does not. The no-bounce and henchmen checks use `inDoor`.
+
+**Learned**
+
+A hero against the shrine's wall stands at z = -14.6 (the wall at -15, a 0.4 m body), so the critic's (-1.0, -13.6) ends 1.0 m from the circle's centre: the depth was never the problem, only the width.
+
+**Next**
+
+The ring's words at the shrine door, then the flaky `sounds.e2e`, then D6's lava room (Michael, 30 Oct, A on the control room).
+
 ## 2026-10-30: Session 59, D6 asked
 
 **What changed**
