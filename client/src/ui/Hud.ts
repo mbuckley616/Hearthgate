@@ -145,6 +145,8 @@ export class Hud {
       }
       if (ev.kind === 'heroHurt' && ev.playerId === localId) this.hurtFlash = 1;
       if (ev.kind === 'parry' && ev.playerId === localId) this.guardPop('Parry', 'parry');
+      // A jump over a low attack (M1) says so, so a player learns which attacks a jump clears.
+      if (ev.kind === 'cleared' && ev.playerId === localId) this.guardPop('Cleared', 'cleared');
       // A string move (C1) names itself, so the strings can be learned by playing.
       if (ev.kind === 'stringMove' && ev.playerId === localId) {
         const style = sim.players.find((pl) => pl.id === localId)?.style;

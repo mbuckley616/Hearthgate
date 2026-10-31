@@ -100,6 +100,7 @@ T1 moved the combat slice over whole (`docs/slice-transplant-plan.md`): its figh
 - **Henchmen (P3).** `sim/henchman.ts`: a `PlayerState` with `henchman` and a `brain`, whose command `HostSession.tick` writes from the sim; prediction never steps it. Portals (`partyOnPortal`), the rest room's bank and `spawnDrop` pass henchmen by.
 - **Modifiers (P8).** `MODIFIERS` in `portalChoice.ts`; `SimState.floor.modifier` from the floor's spec. Cursed: `stepRevives` stops, big rooms drop twice. Haunted: `willRise` in `enemies.ts` keeps a fallen enemy and raises it once at half health; a room waits for it.
 - **The stash and the bag at risk (P9, D5).** Marta's stash is `OwnVillage.stash` in the owner's browser (`Profile`), never sent: the hello strips it and the village message replaces only lumber, stone and tiers. A floor's wipe sends `bagLost` to each player and the browser empties its bag past the safe pocket (`pocketSpaces`, the bag's first spaces), which finds never land in.
+- **The jump clears low attacks (M1).** `HeroHit.low` (the attack's ground, the enemy's feet) on the Warden's sweep and slams and the Brute's slam (`shove`); `hurtHero` lets it pass a hero in the air `jump.clearHeight` over it, judged as the hit lands after the lag grace, and pushes `cleared` (the HUD's "Cleared"). No i-frames. `jump.clearsLow` is off in the parity test.
 - **Kept on the shelf.** Hearthgate's late-snapshot projection (`docs/reference/hearthgate-shelf/interp.ts`) and its gear (`gear.ts`, Phase 3); the clock came back in T2.
 ## When unsure
 
