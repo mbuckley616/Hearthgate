@@ -1716,3 +1716,17 @@ body.on-title .run-banner {
   color: #ffb050;
   text-transform: uppercase;
 }
+
+/* Lumber and stone in the bag (Michael, 31 Oct, A): a stack a space, carried for the village. */
+.gear-cell.mats.lumber {
+  background: linear-gradient(135deg, #6b4a2b 55%, #3f2a17);
+}
+
+.gear-cell.mats.stone {
+  background: linear-gradient(135deg, #8a8a86 55%, #55554f);
+}
+
+.gear-cell.mats .gear-carried {
+  font-size: 11px;
+  color: #fff;
+}

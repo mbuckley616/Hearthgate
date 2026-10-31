@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 73, lumber and stone in the bag
+
+**What changed**
+
+Shared sim, the loadout, the bag and the hero screen. Michael's A on "Lumber, stone and potions in the bag" (control room, 31 Oct): materials in the bag in stacks of 50, picked up by whoever walks over them, a full bag leaves them on the floor; potions stay on the belt, coin stays a count.
+- `sim/bagRoom.ts`: `BagRoom` (empty spaces past the pocket, room left in the part-filled lumber and stone stacks), `bagRoomOf`, `roomFor`, `materialSpaces`. The bag is the browser's until Phase 3, so the browser sends its room on the loadout (`Loadout.bagRoom`, checked whole in `readLoadout`: at most `BAG_SIZE` spaces, a stack's room) and the server spends it: `stepLoot` hands a piece of lumber or stone only to a hero whose bag has room (`PlayerState.bagRoom`), and a carried find takes a space (`spaceTaken` in `stepDrops`). Coin is taken as before. A browser that sends no room is not limited, so bots and the arena are unchanged.
+- `loop.materialsInBag` (on) and `loop.bagStack` (50, panel 10 to 99).
+- The run's count is unchanged: what is picked up still adds to the party's `found`, carried floor to floor and banked into the run's village at the gold ring home; a wipe loses it.
+- `Profile.mats`: the lumber and stone the browser was handed (`lootTaken`), filling the bag's last empty spaces past the pocket, a stack a space; finds, a piece taken off and a stash move into the bag count those spaces as full (`gearRoom`). The bank and a lost bag empty them (`takeMaterials`).
+- The hero screen draws each stack (wood or grey, its count) and says it goes to the village at the gold ring home; "N of 28 spaces free" counts them.
+- Tests: `sim/bagRoom.test.ts` (6: stacks, a full bag leaves lumber, coin still taken, two units of room take two, a new stack of 50, the loadout's check). check 272/272, test:net all passed.
+
+**Learned**
+
+The server never needed the bag itself, only its room: the browser states it, the server spends it piece by piece, so "is there room" stays the server's call within the accepted Phase 2 exception, and a loadout sent mid-floor re-states it from the real bag. The baseline test:net left its dev server running on port 2599 in this box, so the change's test:net ran the same script on 2619.
+
+**Next**
+
+Not in: a Drop for a stack on the hero screen (to make room for a find mid-run), a "bag full" word over lumber left on the floor, and materials left in a save by a tab closed mid-run (they wait for the next bank or wipe and are then dropped uncounted). Then empty plots with Random at Portal tier III, then the gamepad layout.
+
 ## 2026-10-31: Session 72, the Warden's drops and the way home
 
 **What changed**

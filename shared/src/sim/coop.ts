@@ -1,6 +1,7 @@
 import { tuning, type Style } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { hurtHero } from './combat';
+import type { BagRoom } from './bagRoom';
 import type { Mods } from './gear';
 import { createPlayer, levelHealth } from './player';
 import { reflectFromHero } from './projectiles';
@@ -27,6 +28,8 @@ export interface Loadout {
   champion?: ChampionState;
   /** Health potions on the belt (D4), kept in the browser's save between rooms; taken on joining only. */
   potions?: number;
+  /** The bag's room for lumber, stone and finds (Michael, 31 Oct, A); absent, the hero is not limited. */
+  bagRoom?: BagRoom;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -49,6 +52,8 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   else delete p.look;
   if (l.champion) p.champion = structuredClone(l.champion);
   else delete p.champion;
+  if (l.bagRoom) p.bagRoom = { ...l.bagRoom };
+  else delete p.bagRoom;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 

@@ -1160,8 +1160,10 @@ export class Game {
         continue;
       }
       if (ev.kind === 'banked' && ev.playerId === localId) {
-        // What was carried is safe now; what still lay on the ground comes into the bag.
+        // What was carried is safe now; what still lay on the ground comes into the bag. The lumber
+        // and stone in it go to the village with the rest of the run's (the event's count has them).
         this.profile.bankCarried();
+        this.profile.takeMaterials();
         let left = 0;
         for (const item of ev.items) if (!this.profile.addItem(item)) left++;
         if (left > 0) this.hud.toast(`<b>Your bag is full</b><span>${left} banked find${left === 1 ? ' was' : 's were'} left behind</span>`, 'common');
@@ -1188,6 +1190,7 @@ export class Game {
         // Carried finds go wherever they are, worn or pocketed (D3; findsLost has counted them); then the bag.
         const finds = this.profile.loseCarried();
         const bag = this.profile.loseBag();
+        this.profile.takeMaterials();
         if (this.tally) this.tally.lost += bag;
         const lost = finds + bag;
         this.applyProfile(false);
@@ -1199,6 +1202,11 @@ export class Game {
         const worn = JSON.stringify(this.profile.data.worn);
         if (!this.profile.addItem(ev.item)) this.hud.toast(`<b>Your bag is full</b><span>${nameOf(ev.item)} was left behind</span>`, 'common');
         if (JSON.stringify(this.profile.data.worn) !== worn) this.applyProfile(false);
+        dirty = true;
+      }
+      // Lumber and stone go in the bag (Michael, 31 Oct, A); the server took only what it had room for.
+      if (ev.kind === 'lootTaken' && ev.playerId === localId && ev.loot !== 'coin' && tuning.loop.materialsInBag) {
+        this.profile.addMaterial(ev.loot, ev.amount);
         dirty = true;
       }
       if (ev.kind === 'levelUp' && ev.playerId === localId) dirty = true;

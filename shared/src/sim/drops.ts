@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
+import { spaceTaken } from './bagRoom';
 import { nextRandom } from './combat';
 import { slotted } from './champion';
 import { rollGear } from './catalogue';
@@ -64,6 +65,7 @@ export function stepDrops(state: SimState, dt: number): void {
     // at once, and so does anything a player put down themselves (D13).
     if (state.floor && !d.dropped) {
       (state.floor.carried[p.id] ??= []).push(d.item);
+      spaceTaken(p.bagRoom);
       state.events.push({ kind: 'pickup', playerId: p.id, item: d.item, carried: true });
     } else state.events.push({ kind: 'pickup', playerId: p.id, item: d.item });
     return false;

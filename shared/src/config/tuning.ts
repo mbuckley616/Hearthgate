@@ -1203,6 +1203,13 @@ export const tuning = {
     smashLumberMax: 3,
     smashStoneMin: 1,
     smashStoneMax: 3,
+    /**
+     * Lumber and stone in the bag (Michael, 31 Oct, A): a piece is taken only by a player whose bag
+     * has room, stacking to bagStack a space, so materials compete with finds for the bag's spaces.
+     * Off, they are the party's count as before (a browser that sends no room is not limited either).
+     */
+    materialsInBag: true,
+    bagStack: 50,
     /** Crates and barrels hold coin too (Michael, 29 Oct): this often, between these many, in up to three piles. */
     smashCoinChance: 0.5,
     smashCoinMin: 2,
@@ -2206,6 +2213,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],
+  'loop.bagStack': [10, 99, 1],
   'loop.stonePerRoom': [0, 40, 1],
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],

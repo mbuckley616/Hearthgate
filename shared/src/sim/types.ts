@@ -1,3 +1,4 @@
+import type { BagRoom } from './bagRoom';
 import type { ChampionState } from './champion';
 import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
@@ -101,6 +102,8 @@ export interface PlayerState {
   brain?: HenchmanBrain;
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
+  /** Room in the browser's bag for lumber, stone and finds (Michael, 31 Oct, A: sim/bagRoom.ts), from the loadout; absent in the slice. */
+  bagRoom?: BagRoom;
   /** Seconds until another potion can be drunk (D4). */
   potionCooldown?: number;
   /** The step of a weapon family's chain (C5); attackHit is then the style's step whose pose it borrows. */

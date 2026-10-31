@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
+import { roomFor } from './bagRoom';
 import { nextRandom } from './combat';
 import type { PlayerState, SimState } from './types';
 
@@ -158,7 +159,16 @@ export function stepLoot(state: SimState): void {
   const settle = l.smashSettleMs / 1000;
   f.loot = f.loot.filter((d) => {
     if (state.time - d.at < settle) return true;
-    const p = state.players.find((pl) => !pl.henchman && pl.mode !== 'down' && Math.hypot(pl.x - d.x, pl.z - d.z) <= l.lootRadius && Math.abs(pl.y - d.y) < 1.2);
+    // Lumber and stone go in a bag with room (Michael, 31 Oct, A); a full bag walks over them.
+    const inBag = l.materialsInBag && d.kind !== 'coin';
+    const p = state.players.find(
+      (pl) =>
+        !pl.henchman &&
+        pl.mode !== 'down' &&
+        Math.hypot(pl.x - d.x, pl.z - d.z) <= l.lootRadius &&
+        Math.abs(pl.y - d.y) < 1.2 &&
+        (!inBag || !pl.bagRoom || roomFor(pl.bagRoom, d.kind as 'lumber' | 'stone')),
+    );
     if (!p) return true;
     f.found[d.kind] += d.amount;
     state.events.push({ kind: 'lootTaken', playerId: p.id, loot: d.kind, amount: d.amount, x: d.x, y: d.y, z: d.z });
