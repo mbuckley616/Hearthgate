@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 64, a slow page's burst is not folded
+
+**What changed**
+
+Shared netcode (`game/inputSlots.ts`), deep-work card `fable/burst-fold`; no message change, no tuning added. The slots fold the inputs standing past the cushion and four more into one tick, for a server ticking slower than wall time. They used to judge that by the queue's length each tick, which a page at 5 to 10 fps tops up by a frame's six to twelve commands at once, on time; now they judge it by the queue's low point between one message and the next (`Slots.low`, the excess it shows folded at the next tick, presses kept). An on-time burst drains back to the cushion before the next frame and is never folded; a slow server's low point creeps up and still is; a 60 fps sender folds exactly as before, a tick later.
+- `inputSlots.test.ts` (6, new): a 5 fps page sending twelve a message is never folded and uses one seq a tick; an uneven 10 fps page is not folded; a slow server (9 ticks in 10) folds a steady sender and keeps its queue short; a slow page on a slow server folds too; a page that was bursty is folded once a slow server makes its inputs stand; a folded input's dodge is kept.
+- `test:net` 9c': a 5 fps ClientSession, at most one correction over 10 cm (0 of 25 here, largest 7 cm; main 5 and 7, largest 54 cm, in the same harness).
+- CLAUDE.md's Inputs paragraph says what the fold counts.
+
+**Learned**
+
+- At about 10 fps uneven (9c's frames) main never folded at all: 0 folds, 4 stand-ins. Its 3 or 4 corrections over 10 cm all fall in the first 0.4 s, the slots anchored on the 60 ms first frame and widening as the 150 ms ones arrive late; started on the 150 ms frame there are none. The fold was the 5 fps problem, not the 10 fps one.
+- The card's shape (a decaying allowance of the largest message, `cushion + burst` before folding) read worse in the lab: 366 corrections a minute and 738 ms in flight against main's 303 and 549 at 0 ms. This box runs two software-GL pages at 7 to 9 fps and the server beside them, so the server ticks slow too, and the allowance kept a queue that really was standing. The low point tells the two apart without a constant.
+- Lab, 60 s a condition, pages at 8 to 9 fps unthrottled (this sandbox): corrections a minute 150 / 169 / 189 / 167 at 0, 50, 150 ms and the lossy row, against main 232 / 260 / 205 / 293; over 10 cm 85 / 113 / 123 / 88 against 100 / 104 / 98 / 140. Two more 150 ms runs each: 195 and 215 (103, 103) against 259 and 279 (110, 153). The price: inputs in flight about 60 ms longer at 150 ms (840 against 770 to 790 ms), because the old fold used a burst's inputs ahead of their slots; now each is used at its own tick. A 60 fps page is unchanged.
+- `--cpu-throttle 2` here puts Alpha at 5 fps and reads 21 to 29 s in flight on main and the branch alike: that lab row measures this box, not the netcode. The first lab run of a fresh session timed out at "Bravo joined" (Vite's cold start); the second went through.
+
+**Next**
+
+The start-up stand-ins on an uneven slow page (the 0.4 s after a join or a hand-off) would want the first cushion sized from more than the first frame; small, and only on slow pages. The critic's lab on a desktop at 20 to 30 fps would say whether the extra 60 ms in flight on a slow page is felt.
+
 ## 2026-10-31: Session 63, a hall of embers (D6)
 
 **What changed**
