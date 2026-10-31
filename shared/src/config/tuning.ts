@@ -1130,9 +1130,9 @@ export const tuning = {
     maxTier: 4,
     /**
      * A new village is Wren's portal and three empty plots (Michael, 31 Oct, A), each raised by a
-     * first build costing plotLumber, plotStone and plotCoin. Off until the plots are drawn.
+     * first build costing plotLumber, plotStone and plotCoin. An old village keeps its buildings.
      */
-    startWithPlots: false,
+    startWithPlots: true,
     plotLumber: 10,
     plotStone: 8,
     plotCoin: 0,

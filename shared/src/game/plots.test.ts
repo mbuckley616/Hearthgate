@@ -34,7 +34,8 @@ describe('empty plots', () => {
   });
 
   it('a plot gives nothing until its first build, which costs a little', () => {
-    expect([storeStock(0), stashSpaces(0), pocketSpaces(0), tavernHenchmen(0), henchmanCap(0)]).toEqual([0, 0, 0, 0, 0]);
+    expect([storeStock(0), stashSpaces(0), tavernHenchmen(0), henchmanCap(0)]).toEqual([0, 0, 0, 0]);
+    expect(pocketSpaces(0)).toBe(pocketSpaces(1));
     expect(tierGives('tavern', 0)).toMatch(/empty plot/);
     const first = upgradeCost(1);
     expect(first).toEqual({ lumber: tuning.village.plotLumber, stone: tuning.village.plotStone, coin: tuning.village.plotCoin });

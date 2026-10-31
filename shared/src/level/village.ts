@@ -89,6 +89,12 @@ export function doorBuilding(v: VillageDef, d: DoorLink): Building['id'] | null 
   return null;
 }
 
+/** Where a plot's keeper waits until its first build (Michael, 31 Oct, A): out from its door, on the square. */
+export function plotSpot(b: Building): { x: number; z: number } {
+  const face = (b.door.facingYawDeg * Math.PI) / 180;
+  return { x: b.door.x + Math.sin(face) * 2, z: b.door.z + Math.cos(face) * 2 };
+}
+
 /** A ring on the ground: the whole standing party inside it for PORTAL_HOLD_S takes it. */
 export interface PortalDef {
   x: number;

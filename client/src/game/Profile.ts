@@ -161,10 +161,13 @@ export class Profile {
 
   private static loadVillage(): OwnVillage {
     try {
-      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<OwnVillage>;
+      const raw = localStorage.getItem(VILLAGE_KEY);
+      // A browser with no village yet starts one: Wren's portal and empty plots (Michael, 31 Oct, A).
+      if (raw === null) return emptyVillage(newVillageId());
+      const v = JSON.parse(raw) as Partial<OwnVillage>;
       const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
       // P1's save had only lumber and stone; it gains an id and the starting tiers.
-      const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), lumber: n(v.lumber), stone: n(v.stone) };
+      const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), tiers: { shrine: 1, store: 1, storehouse: 1, tavern: 1 }, lumber: n(v.lumber), stone: n(v.stone) };
       // The henchmen's banked XP (P12) is checked with the rest; if it is bad, the village keeps all but that.
       const tiers = { ...save.tiers, ...v.tiers };
       const read: OwnVillage = (v.hench ? readVillageSave({ ...save, tiers, hench: v.hench }) : null) ?? readVillageSave({ ...save, tiers }) ?? save;

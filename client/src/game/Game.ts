@@ -504,7 +504,8 @@ export class Game {
       // too. The card holds the keys, so the hero stands still; a hero stopped at the very edge of talk range
       // settles a hair past it, and closing on that shut the card under the next F (the smoke test, 29 Oct).
       const me = this.me();
-      const away = !me || Math.hypot(me.x - (keeper?.x ?? 0), me.z - (keeper?.z ?? 0)) > TALK_RANGE + 1.5;
+      const at = keeper ? this.spotOf(keeper) : { x: 0, z: 0 };
+      const away = !me || Math.hypot(me.x - at.x, me.z - at.z) > TALK_RANGE + 1.5;
       if (!keeper || !this.session.village || away) this.closeKeeper();
       else this.keeperCard.update(keeper.name, this.keeperLine(keeper), this.keeperChoices(keeper), this.keeperSteps(keeper));
       return this.talk.update(null, false, dt);
@@ -542,6 +543,12 @@ export class Game {
     const v = this.session.village!;
     const building = near.building!;
     const tier = v.view.tiers[building];
+    // An empty plot (Michael, 31 Oct, A): the keeper waits on it, and offers only its first build.
+    if (tier < 1) {
+      const c = upgradeCost(1);
+      const line = `This is where the ${BUILDING_NAMES[building]} will stand. Raise it for ${c.lumber} lumber and ${c.stone} stone${c.coin ? ` and ${c.coin} coin` : ''}, and I'll open: ${tierGives(building, 1)}.`;
+      return this.keeperNote ? `${line} ${this.keeperNote}` : line;
+    }
     let line = `${near.line} The ${BUILDING_NAMES[building]} stands at tier ${roman(tier)}: ${tierGives(building, tier)}.`;
     if (building === 'shrine') {
       const NEW = 'A new dungeon';
@@ -565,6 +572,7 @@ export class Game {
             ? { id: 'menu', label: 'Hire companions', detail: `${tuning.village.hireCoin} coin each` }
             : { id: 'menu', label: 'Open the stash', ...(v.yours ? { detail: 'What your bag cannot carry' } : { blocked: 'Your own things are kept in your own village' }) };
     const tier = v.view.tiers[building];
+    if (tier < 1) return [{ id: 'path', label: `Build the ${BUILDING_NAMES[building]}`, detail: `On this plot; then ${tierGives(building, 1)}` }, { id: 'leave', label: 'Leave' }];
     const top = tuning.village.maxTier;
     const build: KeeperChoice = {
       id: 'path',
@@ -584,7 +592,7 @@ export class Game {
     const problem = upgradeProblem(v.view, building, this.profile.data.coin);
     const confirm: KeeperChoice = {
       id: 'confirm',
-      label: `Confirm: build tier ${roman(tier + 1)}`,
+      label: tier < 1 ? `Confirm: build the ${BUILDING_NAMES[building]}` : `Confirm: build tier ${roman(tier + 1)}`,
       detail: `${c.lumber} lumber, ${c.stone} stone, ${c.coin} coin`,
       ...(!v.yours ? { blocked: `Only ${v.host || 'the host'} can build here` } : problem ? { blocked: `You need ${problem}` } : {}),
     };
@@ -599,7 +607,7 @@ export class Game {
     const tier = v.view.tiers[building];
     const steps: TierStep[] = [];
     for (let t = 1; t <= tuning.village.maxTier; t++) {
-      const c = t > 1 ? upgradeCost(t) : null;
+      const c = t > 1 || tier < 1 ? upgradeCost(t) : null;
       const state = t < tier ? 'built' : t === tier ? 'current' : t === tier + 1 ? 'next' : 'later';
       const short = state === 'next' ? upgradeProblem(v.view, building, this.profile.data.coin) : null;
       steps.push({
@@ -627,7 +635,7 @@ export class Game {
     if (id === 'leave' || !near?.building || !v) return this.closeKeeper();
     if (id === 'path') this.turnKeeper(near, true);
     else if (id === 'back') this.turnKeeper(near, false);
-    else if (id === 'menu') {
+    else if (id === 'menu' && v.view.tiers[near.building] >= 1) {
       this.keeperCard.close();
       this.openKeeperMenu(near);
       this.updateOverlay();
@@ -781,13 +789,19 @@ export class Game {
     let best: Villager | null = null;
     let bestD = TALK_RANGE;
     for (const n of v.villagers) {
-      const d = Math.hypot(n.x - me.x, n.z - me.z);
+      const at = this.spotOf(n);
+      const d = Math.hypot(at.x - me.x, at.z - me.z);
       if (d < bestD) {
         bestD = d;
         best = n;
       }
     }
     return best;
+  }
+
+  /** Where a villager stands: a keeper waits on their plot until its first build (Michael, 31 Oct, A). */
+  private spotOf(n: Villager): { x: number; z: number } {
+    return this.room instanceof VillageView ? this.room.keeperSpot(n) : n;
   }
 
   /** The local hero, latest state (predicted on a joiner). */

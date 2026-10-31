@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 75, empty plots, part two: the village starts with only the portal
+
+**What changed**
+
+The browser, and `village.startWithPlots` turned on. Michael's A on "The village's start" (control room, 31 Oct).
+- A browser with no village yet starts one with Wren's portal and three empty plots; a village saved before today keeps its buildings (`Profile.loadVillage`, and a P1-era save is read as built).
+- `VillageView`: each building's meshes are one group, hidden at tier 0, and a plot is drawn in its place: the footprint's turned earth, a stake at each corner with a rope between, and a board on a post by where the door will be ("General Store: a plot"). The ceremony for a first build raises the scaffold over the plot and reveals the building, as any tier does.
+- The keeper waits on the plot, 2 m out from where the door will be (`plotSpot` in `level/village.ts`, `VillageView.keeperSpot`), until the first build is revealed, then keeps the counter inside. Talking finds them there.
+- Their card says "This is where the General Store will stand. Raise it for 10 lumber and 8 stone, and I'll open: ..." and offers only "Build the General Store" and Leave; the path shows tier I's price; Confirm reads "Confirm: build the General Store". Their menu never opens at a plot. The village map shows "plot" and what tier I brings.
+- A Storehouse still a plot keeps the base pocket of 3 (not 0, as part one had it), so a new hero's first wipe never takes the bow and staff they started with.
+- Tests: a smoke e2e case (a fresh browser's village is the shrine and three plots, Aldous waits out on the square, his card offers only the build); the netcode smoke test's villages are saved as built, as they walk into the store and the tavern. check 276/276, test:net all passed, the new e2e and the solo e2e passed.
+
+**Learned**
+
+Hiding a building's group and showing a plot's keeps the ceremony as it was: holding the tier on show at 0 until the reveal gives a plot under scaffolding, then the building.
+
+**Next**
+
+The Random tab at Portal tier III (the same answer), then the gamepad layout.
+
 ## 2026-10-31: Session 74, empty plots, part one: the rules
 
 **What changed**

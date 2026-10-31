@@ -158,8 +158,11 @@ export const tavernHenchmen = (tier: number) => Math.min(3, tier);
 export const storeStock = (tier: number) => (tier < 1 ? 0 : tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier);
 /** Spaces in the storehouse's stash (P9). */
 export const stashSpaces = (tier: number) => (tier < 1 ? 0 : tuning.village.stashBase + (tier - 1) * tuning.village.stashPerTier);
-/** The bag's safe pocket (D5): its first spaces, never lost on a wipe. */
-export const pocketSpaces = (tier: number) => (tier < 1 ? 0 : Math.min(28, tuning.village.pocketBase + (tier - 1) * tuning.village.pocketPerTier));
+/**
+ * The bag's safe pocket (D5): its first spaces, never lost on a wipe. A Storehouse still a plot keeps
+ * the first tier's, so a new hero's first wipe never takes the bow and staff they started with.
+ */
+export const pocketSpaces = (tier: number) => Math.min(28, tuning.village.pocketBase + (Math.max(1, tier) - 1) * tuning.village.pocketPerTier);
 
 /** What a building does at a tier, in a villager's words. */
 export function tierGives(building: BuildingId, tier: number): string {

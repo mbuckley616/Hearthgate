@@ -172,9 +172,11 @@ async function main() {
 
     // 8b. The village, its ring into a generated run, two floors walked, and home.
     // Each brings a village save of their own (P2); the room is Vale's, who made it.
-    const valeVillage = { ...emptyVillage("vale-test"), lumber: 100, stone: 80 };
+    // Built villages, as a save from before the empty plots (Michael, 31 Oct) is: these walk into the store and the tavern.
+    const built = { shrine: 1, store: 1, storehouse: 1, tavern: 1 };
+    const valeVillage = { ...emptyVillage("vale-test"), tiers: { ...built }, lumber: 100, stone: 80 };
     const va = await bot("Vale", null, "village", valeVillage);
-    const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), lumber: 99 });
+    const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), tiers: { ...built }, lumber: 99 });
     const home = va.code;
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren is told whose village");
     check(
