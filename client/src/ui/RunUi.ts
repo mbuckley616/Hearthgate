@@ -123,9 +123,9 @@ export class RunUi {
     }
   }
 
-  update(sim: SimState, dt: number, role: 'host' | 'client', carried = 0): void {
+  update(sim: SimState, dt: number, role: 'host' | 'client', carried = 0, bagFull: 'lumber' | 'stone' | null = null): void {
     this.now += dt;
-    if (this.floor) return this.updateFloor(sim, this.floor, carried);
+    if (this.floor) return this.updateFloor(sim, this.floor, carried, bagFull);
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
 
@@ -163,7 +163,7 @@ export class RunUi {
     }
   }
 
-  private updateFloor(sim: SimState, spec: FloorSpec, carried: number): void {
+  private updateFloor(sim: SimState, spec: FloorSpec, carried: number, bagFull: 'lumber' | 'stone' | null): void {
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
     const boss = sim.enemies.find((e) => e.id === r.bossId && e.ai !== 'dead');
@@ -185,8 +185,10 @@ export class RunUi {
     // The way on, for a while after arriving; the doors' wait whenever one is holding for the party.
     const waiting = r.phase === 'ante' && r.gateWait >= 0;
     const arriving = r.phase === 'ante' && this.now - this.floorSince < 8;
-    this.prompt.style.display = waiting || arriving ? 'block' : 'none';
-    if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
+    this.prompt.style.display = waiting || arriving || bagFull ? 'block' : 'none';
+    // Standing on lumber or stone a full bag cannot take (Michael's A on materials in the bag).
+    if (bagFull) this.prompt.textContent = `Your bag is full: the ${bagFull} stays on the floor  ·  I to drop a stack or a find`;
+    else if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
     else if (arriving) this.prompt.textContent = `${where[0].toUpperCase()}${where.slice(1)}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
     // A win is a line in the corner, not a card over the hall (Michael, 31 Oct): the drops are there
     // to pick up, the gold ring opens after a count, and the run's summary waits for the village.

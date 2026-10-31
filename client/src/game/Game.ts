@@ -284,6 +284,11 @@ export class Game {
         this.sfx.item(item, true);
       },
       () => this.atShrine(),
+      (kind, n) => {
+        this.session.request({ k: 'dropMats', kind, n });
+        // The bag has room again: the server learns it with the loadout.
+        this.applyProfile(false);
+      },
     );
     this.bank = new BankScreen(this.profile, (item) => this.sfx.item(item, true));
     this.hire = new HireScreen(
@@ -978,7 +983,7 @@ export class Game {
     this.settleTrades();
     this.payHires();
     if (village) this.runUi.hide();
-    else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0);
+    else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0, this.bagFullUnder(world, localId));
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt, this.cam.camera.position));
     // M or d-pad right: the village from above in the village (P14), the floor's map in a dungeon. On
     // the hero screen d-pad right is its third tab, and the map waits.
@@ -1271,6 +1276,22 @@ export class Game {
     this.profile.village = { ...this.profile.village, lumber: v.view.lumber, stone: v.view.stone, tiers: { ...v.view.tiers }, ...(v.view.hench ? { hench: { ...v.view.hench } } : {}) };
     this.profile.save();
     this.session.setVillageSave(this.profile.village);
+  }
+
+  /**
+   * Lumber or stone under the hero that the bag has no room for (Michael's A on materials in the
+   * bag), so the HUD can say why it stays on the floor. A word only: the server decides the pickup.
+   */
+  private bagFullUnder(world: SimState, localId: string): 'lumber' | 'stone' | null {
+    const l = tuning.loop;
+    const me = world.players.find((p) => p.id === localId);
+    if (!l.materialsInBag || !me || me.mode === 'down' || !world.floor?.loot) return null;
+    for (const d of world.floor.loot) {
+      if (d.kind === 'coin' || d.waitAway === localId || world.time - d.at < l.smashSettleMs / 1000) continue;
+      if (Math.hypot(me.x - d.x, me.z - d.z) > l.lootRadius * 1.5 || Math.abs(me.y - d.y) > 1.2) continue;
+      if (!this.profile.hasRoomFor(d.kind)) return d.kind;
+    }
+    return null;
   }
 
   /** Re-send saved levels, talents and gear to the fight (refill = full health, between runs). */

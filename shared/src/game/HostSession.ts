@@ -1,6 +1,6 @@
 import { applyTuningEdit, tuningEdits } from '../config/edits';
 import { STYLES, tuning, type Style } from '../config/tuning';
-import type { World } from '../level/arena';
+import { groundHeight, type World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
 import { HIRES, henchmanCard, henchmanCommand, type HenchmanCard } from '../sim/henchman';
@@ -10,6 +10,7 @@ import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } 
 import { addPlayer, applyLoadout, removePlayer, slotsOpen } from '../sim/coop';
 import { refreshLevelHealth } from '../sim/player';
 import { dropFromBag } from '../sim/drops';
+import { dropMaterials } from '../sim/smash';
 import { createEnemy, spawnGroup } from '../sim/enemies';
 import { restartRun, skipToWave } from '../sim/run';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '../sim/types';
@@ -163,6 +164,11 @@ export class HostSession {
       case 'drop':
         this.between(() => dropFromBag(this.sim, this.world, r.id, msg.item));
         break;
+      case 'dropMats': {
+        const p = this.sim.players.find((pl) => pl.id === r.id);
+        if (p) this.between(() => dropMaterials(this.sim, groundHeight(this.world, p.x, p.z), r.id, msg.kind, msg.n));
+        break;
+      }
       case 'tune':
         // The process's tuning is shared by every room, so each room sends its own players the set (FightRoom).
         applyTuningEdit(msg.edit.path, msg.edit.value);

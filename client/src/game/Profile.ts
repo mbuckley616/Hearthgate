@@ -385,6 +385,19 @@ export class Profile {
     return took;
   }
 
+  /** Whether one more unit of lumber or stone fits in the bag (for the HUD's "bag full"; the server decides the pickup). */
+  hasRoomFor(kind: 'lumber' | 'stone'): boolean {
+    return roomFor(bagRoomOf(this.emptyPastPocket(), this.materials()), kind);
+  }
+
+  /** A stack put down on the floor (Michael's A on materials in the bag): it leaves the bag, for room. */
+  dropMaterial(kind: 'lumber' | 'stone', n: number): void {
+    const m = this.materials();
+    m[kind] = Math.max(0, m[kind] - n);
+    this.data.mats = m;
+    this.save();
+  }
+
   /** The run banked or the bag was lost: the lumber and stone leave the bag. Returns what was there. */
   takeMaterials(): Materials {
     const m = this.materials();

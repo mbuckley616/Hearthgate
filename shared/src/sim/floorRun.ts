@@ -78,6 +78,8 @@ export interface FloorLoot {
   fromZ: number;
   /** state.time when it was thrown: it lands, and can be taken, loop.smashSettleMs later. */
   at: number;
+  /** Put down from a bag (Michael's A on materials in the bag): the one who dropped it takes it again only once they have stepped away. */
+  waitAway?: string;
 }
 
 export function initialFloorRun(): FloorRunState {
@@ -247,7 +249,8 @@ export function runPurse(state: SimState, world: World): Purse {
   const mult = depthMult(world);
   const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
   const found = { ...f.found };
-  for (const d of f.loot ?? []) found[d.kind] += d.amount;
+  // Lumber and stone in the bag (Michael, 31 Oct, A): what nobody carried off the floor is not the run's.
+  for (const d of f.loot ?? []) if (!l.materialsInBag || d.kind === 'coin') found[d.kind] += d.amount;
   const was = f.purse ?? { coin: 0, lumber: 0, stone: 0 };
   return {
     coin: was.coin + pay(l.coinPerRoom, l.bossCoin) + Math.round(found.coin * mult),

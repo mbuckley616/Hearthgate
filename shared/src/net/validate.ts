@@ -234,6 +234,9 @@ export function readToHost(v: unknown): ToHost | null {
       const item = readGearItem(v.item);
       return item ? { k: 'drop', item } : null;
     }
+    case 'dropMats':
+      if ((v.kind !== 'lumber' && v.kind !== 'stone') || !Number.isInteger(v.n) || (v.n as number) < 1 || (v.n as number) > 99) return null;
+      return { k: 'dropMats', kind: v.kind, n: v.n as number };
     case 'tune': {
       const e = v.edit;
       if (!isObj(e) || typeof e.path !== 'string' || !(isNum(e.value) || isBool(e.value))) return null;

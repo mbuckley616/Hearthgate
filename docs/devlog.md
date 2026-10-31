@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 78, drop a stack of lumber or stone, and the bag-full word
+
+**What changed**
+
+The rest of Session 73 (Michael's A on "Lumber, stone and potions in the bag"), and one hole in it closed.
+- **The hole:** lumber and stone still lying on the floor banked anyway (`runPurse` counted all the spray on the ground), so a full bag cost nothing. With `loop.materialsInBag` on, only coin left lying banks; lumber and stone go home only in a bag. A deeper ring leaves them too.
+- **Drop a stack:** on the hero screen a lumber or stone cell takes Q, LB or the Drop button, as a find does. The browser takes the stack out and sends `dropMats` (kind, 1 to 99, checked in `validate.ts`); `dropMaterials` in `sim/smash.ts` lays it as one pile at the hero's feet, out of the party's found tally (then the purse from the floors before), capped by what the run has found and by a stack. The browser re-sends its loadout so the server knows the room. The one who dropped it takes it back only once they have stepped 1.8 m away (`FloorLoot.waitAway`), and a pile goes into a bag as far as its room allows, the rest staying on the floor.
+- **The bag-full word:** standing on lumber or stone the bag has no room for, the floor's prompt says "Your bag is full: the lumber stays on the floor · I to drop a stack or a find". The browser works it out from its own bag; the server still decides every pickup.
+- Tests: four in `sim/bagRoom.test.ts` (the drop and the wait, a pile taken in part, the caps, lying lumber not banked, the message's check); `smashLoot.test.ts`'s rest-room case now expects the lying lumber to stay. check 281/281, test:net all passed.
+
+**Learned**
+
+`runPurse` counting the ground's spray was written for D4, when everything picked itself up; Session 73's "a full bag leaves it on the floor" needed that rule turned off with it, and no test caught it because both were right on their own.
+
+**Next**
+
+Phase 2's builder items are done. Left: the builds pass (**(design)**, cut after the feel pass), "Buildings that look their part" (asked this run in `decisions.md`), character creation (likely Phase 4), and the gate playtest.
+
 ## 2026-10-31: Session 77, the gamepad's default layout
 
 **What changed**

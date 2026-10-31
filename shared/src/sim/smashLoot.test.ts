@@ -168,7 +168,7 @@ describe('lumber, stone and coin as drops', () => {
     return host;
   };
 
-  it('still on the ground at the rest room go home with the party, coin to each player', () => {
+  it('still on the ground at the rest room: the coin goes home with the party, the lumber nobody carried stays', () => {
     const plainHost = onFloor();
     plainHost.sim.floor!.loot = [];
     const host = onFloor();
@@ -187,7 +187,8 @@ describe('lumber, stone and coin as drops', () => {
     const more = bank(host);
     if (plain?.kind !== 'banked' || more?.kind !== 'banked') throw new Error('no bank');
     expect(more.coin - plain.coin).toBe(7);
-    expect(more.lumber - plain.lumber).toBe(1);
+    // Lumber and stone go home only in a bag (Michael, 31 Oct, A on materials in the bag).
+    expect(more.lumber - plain.lumber).toBe(0);
     expect(host.sim.floor!.loot).toEqual([]);
   });
 

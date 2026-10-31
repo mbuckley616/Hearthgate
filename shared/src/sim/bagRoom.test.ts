@@ -6,9 +6,10 @@ import { readLoadout } from '../net/validate';
 import { bagRoomOf, materialSpaces, roomFor, type BagRoom } from './bagRoom';
 import { addPlayer, type Loadout } from './coop';
 import { emptyMods } from './gear';
-import { stepLoot } from './smash';
+import { dropMaterials, stepLoot } from './smash';
 import { emptyTalents } from './talents';
-import type { FloorLoot } from './floorRun';
+import { runPurse, type FloorLoot } from './floorRun';
+import { readToHost } from '../net/validate';
 import { createSimState } from './world';
 
 /** Lumber and stone in the bag (Michael, 31 Oct, A): stacks of 50, and a full bag leaves them on the floor. */
@@ -82,5 +83,59 @@ describe('lumber and stone in the bag', () => {
     expect(readLoadout({ ...base, bagRoom: { spaces: 99, lumber: 0, stone: 0 } })).toBeNull();
     expect(readLoadout({ ...base, bagRoom: { spaces: 1, lumber: -1, stone: 0 } })).toBeNull();
     expect(readLoadout(base)?.bagRoom).toBeUndefined();
+  });
+
+  it('a dropped stack lies at your feet, leaves the tally and waits until you step away', () => {
+    const { s, p } = standOn('lumber', 0);
+    s.floor!.found.lumber = 30;
+    expect(dropMaterials(s, p.y, 'p1', 'lumber', 20)).toBe(true);
+    expect(s.floor!.found.lumber).toBe(10);
+    expect(s.floor!.loot).toHaveLength(1);
+    expect(s.floor!.loot![0]).toMatchObject({ kind: 'lumber', amount: 20, waitAway: 'p1' });
+    // Standing on it does not take it straight back.
+    stepLoot(s);
+    expect(s.floor!.loot).toHaveLength(1);
+    p.x += 5;
+    stepLoot(s);
+    expect(s.floor!.loot![0].waitAway).toBeUndefined();
+    p.x -= 5;
+    p.bagRoom = { spaces: 0, lumber: 0, stone: 0 };
+    stepLoot(s);
+    expect(s.floor!.loot).toHaveLength(1);
+    // Room for 12: the bag takes 12 of the pile and the rest stays.
+    p.bagRoom = { spaces: 0, lumber: 12, stone: 0 };
+    stepLoot(s);
+    expect(s.floor!.loot![0].amount).toBe(8);
+    expect(s.floor!.found.lumber).toBe(22);
+    expect(s.events.filter((e) => e.kind === 'lootTaken').at(-1)).toMatchObject({ amount: 12 });
+  });
+
+  it('a drop is capped by what the run has found and by a stack; nothing found, nothing dropped', () => {
+    const { s, p } = standOn('lumber', 0);
+    expect(dropMaterials(s, p.y, 'p1', 'stone', 10)).toBe(false);
+    s.floor!.found.stone = 4;
+    s.floor!.purse = { coin: 0, lumber: 0, stone: 6 };
+    expect(dropMaterials(s, p.y, 'p1', 'stone', 99)).toBe(true);
+    expect(s.floor!.loot![0].amount).toBe(10);
+    expect(s.floor!.found.stone).toBe(0);
+    expect(s.floor!.purse!.stone).toBe(0);
+  });
+
+  it('lumber and stone left lying do not bank; coin still does', () => {
+    const { s } = standOn('lumber', 0);
+    s.floor!.loot = [piece(1, 'lumber', 0, 0), piece(2, 'coin', 0, 0)];
+    s.floor!.loot[0].amount = 30;
+    const with_ = runPurse(s, world);
+    s.floor!.loot = [];
+    const without = runPurse(s, world);
+    expect(with_.lumber).toBe(without.lumber);
+    expect(with_.coin).toBeGreaterThan(without.coin);
+  });
+
+  it('the drop message is checked: a kind and a whole count from 1 to 99', () => {
+    expect(readToHost({ k: 'dropMats', kind: 'stone', n: 50 })).toEqual({ k: 'dropMats', kind: 'stone', n: 50 });
+    for (const bad of [{ kind: 'coin', n: 5 }, { kind: 'stone', n: 0 }, { kind: 'stone', n: 1.5 }, { kind: 'lumber', n: 500 }]) {
+      expect(readToHost({ k: 'dropMats', ...bad })).toBeNull();
+    }
   });
 });
