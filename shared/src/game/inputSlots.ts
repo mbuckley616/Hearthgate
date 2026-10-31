@@ -20,6 +20,13 @@ import { mergePresses, withoutPresses } from './Session';
  * ticks has stalled (a hidden tab): their slots stop advancing until they send again, and pick up
  * from the first input that arrives.
  *
+ * Inputs piling up past the cushion mean a server ticking slower than wall time (an overloaded
+ * machine), and the excess is folded into one tick. What counts is the queue's low point between
+ * one message and the next, not its length when a message lands: a page at 5 to 10 fps still makes
+ * a command per tick but sends a frame's six to twelve in one message, on time, so its queue jumps
+ * by a frame's worth and drains back to the cushion before the next frame (Session 64; folding on
+ * the jump put its hero off the prediction). A slow server's low point creeps up instead.
+ *
  * Pure and clock-free, so the unit tests can play any arrival pattern through it.
  */
 
@@ -60,6 +67,10 @@ export interface Slots {
   quiet: number;
   /** Ticks since a late arrival. */
   calm: number;
+  /** The fewest inputs waiting at a tick since the last message (Infinity before a tick has seen one). */
+  low: number;
+  /** Inputs to fold at the next tick: the standing excess the last message's gap showed. */
+  excess: number;
   /** Counters for tests and the lab. */
   stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number; resynced: number; folded: number };
 }
@@ -76,6 +87,8 @@ export function createSlots(cfg: SlotConfig): Slots {
     carry: null,
     quiet: 0,
     calm: 0,
+    low: Infinity,
+    excess: 0,
     stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0, resynced: 0, folded: 0 },
   };
 }
@@ -102,6 +115,12 @@ export function receiveInputs(s: Slots, cfg: SlotConfig, cmds: SeqCommand[]): vo
     s.queue.splice(i, 0, c);
   }
   while (s.queue.length > cfg.maxQueued) s.queue.shift();
+  if (s.low !== Infinity) {
+    // Since the last message the queue never fell below `low`: those inputs were standing, waiting
+    // on the server, and anything past the cushion and a few is the server running slow.
+    s.excess = Math.max(0, s.low - (s.cushion + cfg.maxExtra));
+    s.low = Infinity;
+  }
   if (late > 0) {
     s.stats.late += late;
     s.calm = 0;
@@ -124,17 +143,21 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     return withCarry(s, s.last);
   }
   s.calm++;
-  // More waiting than the cushion and a few more: a server running slower than wall time (an
-  // overloaded machine) while the player sends by the wall clock. Use the excess this tick, as the
-  // slice's host folded anything past four, keeping every press; left alone it grows without bound
-  // and every input lands later and later (CI found it: 0.6 s late, a bot running past its mark).
-  while (s.queue.length > s.cushion + cfg.maxExtra && s.queue[0].seq === s.next) {
+  s.low = Math.min(s.low, s.queue.length);
+  // More standing than the cushion and a few more: a server running slower than wall time while the
+  // player sends by the wall clock. Use the excess this tick, as the slice's host folded anything past
+  // four, keeping every press; left alone it grows without bound and every input lands later and
+  // later (CI found it: 0.6 s late, a bot running past its mark).
+  while (s.excess > 0 && s.queue.length > s.cushion && s.queue[0].seq === s.next) {
+    s.excess--;
+    s.low--;
     const a = s.queue.shift()!;
     s.ack = a.seq;
     s.next = a.seq + 1;
     s.carry = s.carry ? mergePresses(s.carry, a.cmd) : a.cmd;
     s.stats.folded++;
   }
+  s.excess = 0;
   if (s.calm >= cfg.calmTicks && s.cushion > cfg.baseCushion && s.queue.length > cfg.baseCushion && s.queue[0].seq === s.next) {
     // A calm spell: narrow by one, using two inputs this tick (their presses kept).
     const a = s.queue.shift()!;
