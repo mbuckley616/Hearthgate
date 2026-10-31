@@ -61,7 +61,7 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * The bag and the body (T5b; decisions.md 27 Oct): what the hero wears on RuneScape's ten slots, the
  * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
  * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
- * wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
+ * pick up and put down, J or X to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
  * between fights (Tab, or View on a pad), on a floor between rooms as well. Each weapon kind's level
  * shows on the Talents tab, and the bag and body tab shows the hero as dressed (Michael, 28 Oct).
  */
@@ -82,6 +82,10 @@ export class EquipScreen {
   private lastDir = '';
   /** Seconds left in which a second E or RB resets the board; moving or changing tab disarms it (Michael, 30 Oct). */
   private resetArmed = 0;
+  /** The grid cell whose item is picked up (F or A) to be put down elsewhere (Michael, 30 Oct). */
+  private holding: number | null = null;
+  /** Why the last put-down was refused, until the next press. */
+  private note = '';
   private readonly preview = new HeroPreview();
   visible = false;
 
@@ -111,7 +115,18 @@ export class EquipScreen {
   setVisible(v: boolean): void {
     this.visible = v;
     this.root.style.display = v ? 'flex' : 'none';
+    this.holding = null;
+    this.note = '';
     if (v) this.render();
+  }
+
+  /** Esc or B: a held item goes back where it was first; true when the screen should close. */
+  back(): boolean {
+    if (this.holding === null) return true;
+    this.holding = null;
+    this.note = '';
+    this.render();
+    return false;
   }
 
   toggle(): void {
@@ -120,7 +135,7 @@ export class EquipScreen {
 
   /**
    * Keys and pad while the screen is up (Game hands it the frame's actions and keeps the hero
-   * still): move to choose, interact to wear or take off, ability 1 to drop, the style keys for tabs.
+   * still): move to choose, interact to pick up and put down, attack to wear or take off, ability 1 to drop, the style keys for tabs.
    * On the talents: move to choose, interact adds a rank, ability 1 takes one off, ability 2 resets the board.
    */
   handle(actions: ActionFrame, dt: number): void {
@@ -186,8 +201,16 @@ export class EquipScreen {
       this.render();
       return;
     }
-    if (actions.pressed.has('interact')) this.use(this.grid[this.cursor]);
-    if (actions.pressed.has('ability1')) this.drop(this.grid[this.cursor]);
+    if (actions.pressed.has('interact')) this.pickOrPut();
+    else if (actions.pressed.has('attack')) {
+      // X (or J): wear or take off at once, as F used to.
+      this.holding = null;
+      this.note = '';
+      this.use(this.grid[this.cursor]);
+    } else if (actions.pressed.has('ability1')) {
+      this.holding = null;
+      this.drop(this.grid[this.cursor]);
+    }
   }
 
   /** The first E or RB on a board arms the reset and says so; true when this press is the second, inside the window. */
@@ -232,6 +255,8 @@ export class EquipScreen {
   private setTab(tab: Tab): void {
     this.tab = tab;
     this.resetArmed = 0;
+    this.holding = null;
+    this.note = '';
     this.render();
   }
 
@@ -257,6 +282,40 @@ export class EquipScreen {
       this.cursor = best;
       this.render();
     }
+  }
+
+  /** F or A: pick up what is here, or put the held item down here: a bag space (swapping) or the worn slot it fits. */
+  private pickOrPut(): void {
+    const at = this.grid[this.cursor];
+    if (this.holding === null) {
+      if (this.itemAt(at)) this.holding = this.cursor;
+      this.note = '';
+      this.render();
+      return;
+    }
+    const from = this.grid[this.holding];
+    const item = this.itemAt(from);
+    let done = this.holding === this.cursor || !item;
+    if (!done && item) {
+      if (from.area === 'bag' && at.area === 'bag') {
+        this.profile.swap({ area: 'bag', i: from.space }, { area: 'bag', i: at.space });
+        done = true;
+      } else if (from.area === 'bag' && at.area === 'worn') {
+        if (entryOf(item).slot === at.slot) {
+          this.profile.wear(from.space);
+          done = true;
+        } else this.note = `That goes on your ${BODY_SLOT_NAMES[entryOf(item).slot].toLowerCase()}, not your ${BODY_SLOT_NAMES[at.slot].toLowerCase()}.`;
+      } else if (from.area === 'worn' && at.area === 'bag') {
+        done = this.profile.takeOffTo(from.slot, at.space);
+        if (!done) this.note = from.slot === 'weapon' && !this.itemAt(at) ? 'A hero always has a weapon in hand: swap it for another.' : `Only another ${BODY_SLOT_NAMES[from.slot].toLowerCase()} piece can swap with it.`;
+      } else this.note = 'Each piece has its own slot.';
+    }
+    if (done) {
+      if (this.holding !== this.cursor && item) this.onChange();
+      this.holding = null;
+      this.note = '';
+    }
+    this.render();
   }
 
   private use(c: Cell): void {
@@ -342,7 +401,7 @@ export class EquipScreen {
     const carried = this.profile.isCarried(item) ? ' carried' : '';
     const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : pocket ? 'pocket' : '';
     const at = `grid-column:${c.col + 1};grid-row:${c.row + 1}`;
-    const chosen = i === this.cursor ? ' chosen' : '';
+    const chosen = (i === this.cursor ? ' chosen' : '') + (i === this.holding ? ' held' : '');
     if (!item) return `<button class="gear-cell empty ${c.area}${pocket}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
     const e = entryOf(item);
     const icon = gearIconUrl(e);
@@ -367,14 +426,20 @@ export class EquipScreen {
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
          ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this floor and lost if the party wipes, even worn, until a rest room or the ring home banks it.</div>' : ''}
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or X: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or X: take off'}</div>`
       : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
     const free = this.profile.data.bag.filter((i) => !i).length;
+    const heldItem = this.holding === null ? null : this.itemAt(this.grid[this.holding]);
+    const holding = heldItem
+      ? `<div class="gear-held">Holding <b class="${heldItem.rarity}">${nameOf(heldItem)}</b>: F or A puts it down here · Esc or B puts it back</div>`
+      : '';
+    const note = this.note ? `<div class="gear-warn">${this.note}</div>` : '';
     return `<div class="gear-layout">
         <div class="gear-grid">${grid}</div>
         <div class="gear-detail">
           <div class="hero-preview-slot"></div>
           <h3>${c.area === 'bag' ? 'Bag' : BODY_SLOT_NAMES[c.slot]}</h3>
+          ${holding}${note}
           ${detail}
           ${penalty}
           <div class="muted gear-free">${free} of 28 spaces free · move to choose (WASD, arrows, stick)</div>

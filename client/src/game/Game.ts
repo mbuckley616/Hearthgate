@@ -1360,7 +1360,7 @@ export class Game {
       else this.kbm.requestPointerLock();
       this.updateOverlay();
     }
-    if (actions.pressed.has('menuBack') && this.equip.visible) {
+    if (actions.pressed.has('menuBack') && this.equip.visible && this.equip.back()) {
       this.equip.setVisible(false);
       this.updateOverlay();
     }

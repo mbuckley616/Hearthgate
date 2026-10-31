@@ -426,7 +426,8 @@ test("the bag and the body: wear a bow from the bag by keys alone, and 1 is an a
   // Held, as a player holds it: a slow headless frame can miss a tap shorter than itself.
   const detail = page.locator(".gear-detail .item-name");
   await holdUntil(page, "KeyD", async () => (await detail.count()) > 0 && (await detail.textContent()) === "Ash shortbow", 5_000);
-  await page.keyboard.press("KeyF");
+  // J (X on a pad) wears it at once; F picks it up to put down elsewhere (Michael, 30 Oct).
+  await page.keyboard.press("KeyJ");
   await expect.poll(style).toBe("bow");
   // The hero is drawn in what they wear (T5c): the server has the look, and the view holds the ash bow.
   const drawn = () =>

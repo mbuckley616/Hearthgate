@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 68, pick up and put down on the hero screen
+
+**What changed**
+
+Client only (`ui/EquipScreen.ts`, `game/Profile.ts`, `game/Game.ts`). The rest of Michael's 30 Oct "Menus with an Xbox pad", as he asked it: A picks an item up and drops it in another space, X quick-equips.
+- On the bag and body tab, F or A picks up the item under the cursor (its cell marked as held, "Holding Ash shortbow: F or A puts it down here · Esc or B puts it back" over the detail) and a second F or A puts it down: in another bag space, swapping with what is there (the safe pocket's spaces too), or on the worn slot it fits, which wears it. A worn piece goes into an empty bag space, or swaps with a piece for its slot there; the weapon only swaps, as a hero always holds one. A put-down that cannot go there says why and stays held. Esc or B puts a held item back first and closes the screen on the next press, as the stash does; Tab, a tab change or closing the screen drops the hold.
+- J or X (`attack`) wears or takes off at once, what F did before. Q or LB still drops at your feet. The hints say so.
+- `Profile.takeOffTo(slot, space)` for the worn-to-bag put-down.
+- `tests/padmenus.e2e.ts` gains the moves: the bow to the last bag space, refused on the head and put back by B with the screen still open, then worn from there with the sword taking its space. Passed 3 runs in 3. `smoke.e2e`'s bag test wears the bow with J now.
+
+**Learned**
+
+The stash (P9) already had this exact pick-up-and-put-down and its `back()`, so the hero screen copies its keys and its words; both screens now behave alike under the thumb. `sounds.e2e` and `smoke.e2e`'s bag test fail here on the committed base as well (a held D carries the cursor past the bow on this box's slow pages), so they could not judge this change; the new test drives the screen's handler directly and does not depend on frame rate.
+
+**Next**
+
+Nothing in Phase 2 is the builder's: what is left is (Fable), unanswered (design), or the gate playtest, which is Michael's.
+
 ## 2026-10-31: Session 67, B closes menus and a board reset takes two presses
 
 **What changed**
