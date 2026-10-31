@@ -111,6 +111,10 @@ export class FxView {
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(0xfff0b0));
           this.ring(ev.x, ev.z, 1.6, 0xfff0b0, 0.9, 0.35, ev.y - 1.1);
           break;
+        case 'cleared':
+          // The low attack passing under the jumper's feet: a thin pale ring on the floor below them.
+          this.ring(ev.x, ev.z, 1.2, 0xbfe8ff, 0.7, 0.35, ev.ground);
+          break;
         case 'block':
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.5, 0), ev.broke ? 26 : 12, new THREE.Color(ev.broke ? 0xff9a6a : 0xd8d0c0));
           break;

@@ -106,6 +106,25 @@ Shared netcode (`game/inputSlots.ts`), deep-work card `fable/burst-fold`; no mes
 **Next**
 
 The start-up stand-ins on an uneven slow page (the 0.4 s after a join or a hand-off) would want the first cushion sized from more than the first frame; small, and only on slow pages. The critic's lab on a desktop at 20 to 30 fps would say whether the extra 60 ms in flight on a slow page is felt.
+## 2026-10-31: Session 64, the jump clears low attacks (M1)
+
+**What changed**
+
+Shared sim and the HUD; no message change beyond one new event. M1 to Michael's A (control room, 30 Oct): a jump clears low attacks above about half a metre, no i-frames; the air dodge and double jump wait.
+- **Which attacks are low.** Everything that goes through `shove` in `enemies.ts`: the Warden's sweep, slam and far slam, and the Brute's slam (a slam is a slam, so the Brute's counts with the Warden's). The grunt's slash and every arrow are not low and still hit a jumper. The Crypt Hound's rush will tag itself the same way when it is built: `low` on its `HeroHit`.
+- **The tag** is `HeroHit.low`, the enemy's feet height as it swung: the attack runs along that ground, so a hero over a ledge's lip is measured from the floor the slam struck, not their own. Set only while `jump.clearsLow` is on.
+- **The check** (`clearsLow` in `combat.ts`, inside `hurtHero`): in the air and `jump.clearHeight` (0.5 m, panel 0 to 1.5) over the attack's ground, the hit does nothing and pushes a `cleared` event. The HUD shows "Cleared" under the crosshair (pale blue, the parry's slot) and a thin ring passes on the floor beneath. A 1 m jump is above 0.5 m for about 0.4 s of its 0.58 s.
+- **When it is judged: as the hit lands, after `coop.lagGraceMs`.** The grace exists so what was on time on the player's screen counts; that screen draws the Warden behind the server and the hero ahead of it, so the slam lands there later than the server swung it. A dodge and a parry are already judged at landing, and the jump now agrees with them: a jump pressed in the 150 ms after the swing clears it, a hero in the air at the swing who has come down by the landing is hit. A hit that lands early because the player rolled or guarded is judged at that moment, as before.
+- **Prediction** is untouched: the browser never resolves an enemy's hit on its hero, so the server's verdict reaches it as the snapshot's health and mode, as every hit does. The switch is off in the parity test, and with it off no hit carries the tag, so the golden hashes did not move.
+- `sim/jumpClears.test.ts` (10): the Warden's sweep, slam and far slam and the Brute's slam cleared above the height with a `cleared` event and no damage; a 0.3 m hop and standing still are hit; an arrow and a slash still hit a jumper; height measured from the attack's ground; a remote player cleared by a jump after the swing and hit after coming down; off for the slice (no tag, the hit lands); the same inputs twice give the same state. Six of them fail with the check disabled.
+
+**Learned**
+
+Measured on the lag lab locally (30 s a condition, the container drawing at about 12 fps, so noisy): corrections a minute at 0, 50 and 150 ms were 210, 184, 142 on main and 136, 178, 156 here, snaps 0 on both. The lab's bots do not jump, so this says only that nothing else moved.
+
+**Next**
+
+Michael to jump a Warden slam on the hosted build. Not in, by his answer: the air dodge and the double jump (after D6's rooms). The Hound's rush tags itself `low` when the Crypt roster is built.
 
 ## 2026-10-31: Session 63, a hall of embers (D6)
 

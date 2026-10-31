@@ -255,8 +255,11 @@ function heroesInCone(state: SimState, x: number, z: number, yaw: number, r: num
   return heroesInCircle(state, x, z, r, y).filter((p) => Math.abs(wrapAngle(Math.atan2(p.x - x, p.z - z) - yaw)) <= (arcDeg * DEG) / 2);
 }
 
+/** The Warden's sweep and slams and the Brute's slam: heavy, and low (M1), along the ground at the enemy's feet. */
 function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: number, fromZ: number, damage: number, push: number): void {
-  for (const p of victims) hurtHero(state, p, { damage, heavy: true, push, fromX, fromZ, enemyId: e.id });
+  // Tagged only while the switch is on, so the slice's pending hits (and the parity hashes) keep their shape.
+  const low = tuning.jump.clearsLow ? { low: e.y } : {};
+  for (const p of victims) hurtHero(state, p, { damage, heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
 }
 
 /** Grunt slash: light, in front. */
