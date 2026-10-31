@@ -187,6 +187,10 @@ async function main() {
     // Small floors from a fixed seed, so the walk is short and the same every time.
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 12 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 4242 } });
+    // The bots walk the shortest way, which may pass no fight: the way out's lock (Michael, 31 Oct;
+    // exitLock.test.ts) waits for none here. The tuning travels to the browsers as every edit does.
+    va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExit", value: 0 } });
+    va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExitDeep", value: 0 } });
     const ring = village.village!.portal;
     // Round the well (it stands between the spawn and the shrine), then into the ring.
     await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);

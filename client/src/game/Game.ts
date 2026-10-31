@@ -32,6 +32,7 @@ import { rollGear } from '@hearthgate/shared/sim/catalogue';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { slotsOpen } from '@hearthgate/shared/sim/coop';
 import { worldNow } from '@hearthgate/shared/sim/world';
+import { clearsLeft } from '@hearthgate/shared/sim/floorRun';
 import { flowTier } from '@hearthgate/shared/sim/flow';
 import { CrtOverlay } from '../ui/CrtOverlay';
 import { EquipScreen } from '../ui/EquipScreen';
@@ -998,7 +999,7 @@ export class Game {
     const aim = this.cam.basis();
     this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !this.hire.visible && !this.keeperCard.visible && !this.villageMap.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
-      this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position);
+      this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position, clearsLeft(this.world, world));
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
     }
     if (this.room instanceof VillageView) this.room.setEye(this.cam.camera.position);

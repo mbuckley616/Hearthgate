@@ -350,7 +350,8 @@ export function buildFloorWorld(level: LevelDef): World {
     }
   }
   const roomColliders = gatesOf.map((g) => (g.length ? [...colliders, ...g] : colliders));
-  return { level, colliders, collidersOpen: colliders, surfaces, roomColliders };
+  const exitGates = (gatesOf[layout.def.exit] ?? []).map((g) => ({ ...g, id: g.id.replace('gate-', 'exitgate-') }));
+  return { level, colliders, collidersOpen: colliders, surfaces, roomColliders, exitGates, collidersLocked: [...colliders, ...exitGates] };
 }
 
 /** The piece a point stands in, or -1 (inside a wall between two). */

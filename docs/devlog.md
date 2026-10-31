@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-10-31: Session 71, the way out waits for a fight
+
+**What changed**
+
+Shared level and sim, the floor's view. Michael's A on "Clear the floor before the rest or boss room?" (control room, 31 Oct).
+- `floorRun.clearsLeft`: fight rooms still owed before the way out (the rest room, or the Warden's hall on the last floor) opens: `dungeon.clearsBeforeExit` (1), `clearsBeforeExitDeep` (2) from floor `clearsDeepFrom` (3), never more than the floor's fight rooms, the Warden's hall not counted. All three on the panel.
+- `buildFloorWorld` keeps the exit's doorway gates as `World.exitGates` and the open floor with them shut as `collidersLocked`; `floorWorldNow` adds them while `clearsLeft` is above 0 (to a fight room's shut set too). It reads only `SimState.floor.cleared`, so the server, prediction and the camera agree as they do for a fight room's doors; the arena never has a floor, so the parity hashes are untouched.
+- `FloorView`: the exit's portcullis drops while it is locked, and gold words over the doorway say "Clear N more fight rooms", redrawn only when the count changes.
+- Tests: `exitLock.test.ts` (3): a hero running at the rest room's door from outside stays out until one room is cleared and walks in after; floor 3 asks two, capped by the floor; the Warden's hall is shut the same way. test:net's bots walk the shortest route, which may pass no fight, so the smoke test tunes the lock to 0 for its walks. check 265/265, test:net all passed.
+
+**Learned**
+
+Every piece already had its doorway gates built (only fight rooms ever used them), so the lock is the rest room's own gates and its portcullis meshes were already in the view.
+
+**Next**
+
+The boss's drops and the way home (A, with Michael's note: a 10 s countdown before the ring opens), then materials in the bag (A), the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
 ## 2026-10-31: Session 70, the rest room is the way out
 
 **What changed**

@@ -86,11 +86,31 @@ export function initialFloorRun(): FloorRunState {
 
 const active = (phase: string) => phase === 'intro' || phase === 'wave' || phase === 'rest';
 
-/** The world as it stands this tick: the fight room's doors shut while it is being fought. */
+/**
+ * Fight rooms still to clear before the rest room's or the Warden's door opens (Michael, 31 Oct):
+ * dungeon.clearsBeforeExit, more from clearsDeepFrom, never more than the floor's fight rooms
+ * (the Warden's hall is the door, not one of them). 0 when the door is open.
+ */
+export function clearsLeft(world: World, state: SimState): number {
+  const layout = world.level.dungeon;
+  const f = state.floor;
+  if (!layout || !f) return 0;
+  const d = tuning.dungeon;
+  const fights = layout.pieces.filter((p) => p.fight && p.kind !== 'boss' && p.id !== layout.def.exit);
+  const need = Math.min(fights.length, Math.max(0, Math.round(layout.def.spec.floor >= d.clearsDeepFrom ? d.clearsBeforeExitDeep : d.clearsBeforeExit)));
+  const done = f.cleared.filter((id) => fights.some((p) => p.id === id)).length;
+  return Math.max(0, need - done);
+}
+
+/** The world as it stands this tick: the fight room's doors shut while it is being fought, the way out's until enough are cleared. */
 export function floorWorldNow(world: World, state: SimState): World {
   const room = state.floor?.room ?? -1;
-  if (!state.run.gateClosed || room < 0 || !world.roomColliders) return { ...world, colliders: world.collidersOpen };
-  return { ...world, colliders: world.roomColliders[room] };
+  const fighting = state.run.gateClosed && room >= 0 && !!world.roomColliders;
+  const base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
+    return { ...world, colliders: fighting ? [...base, ...world.exitGates] : world.collidersLocked! };
+  }
+  return { ...world, colliders: base };
 }
 
 export function stepFloorRun(state: SimState, dt: number, world: World): void {

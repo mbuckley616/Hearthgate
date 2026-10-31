@@ -1336,6 +1336,14 @@ export const tuning = {
      */
     restHeal: 0,
     /**
+     * Fight rooms to clear before the rest room's or the Warden's door opens (Michael, 31 Oct, A):
+     * no floor can be walked straight through, but rushing stays a choice. From floor
+     * clearsDeepFrom, clearsBeforeExitDeep. Never more than the floor has.
+     */
+    clearsBeforeExit: 1,
+    clearsBeforeExitDeep: 2,
+    clearsDeepFrom: 3,
+    /**
      * Shut a fight room's doors behind the party, waiting for them and pulling in stragglers (T4).
      * Off since D8 (Michael 28 Oct: locking a party in is annoying with several players); the
      * kit keeps its gates for a room that wants them.
@@ -1709,6 +1717,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],
   'dungeon.restHeal': [0, 1, 0.05],
+  'dungeon.clearsBeforeExit': [0, 5, 1],
+  'dungeon.clearsBeforeExitDeep': [0, 5, 1],
+  'dungeon.clearsDeepFrom': [1, 5, 1],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 60, 1],
