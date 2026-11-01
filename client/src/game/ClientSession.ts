@@ -38,6 +38,13 @@ function villageOnly(v: VillageSave): VillageSave {
   return { id: v.id, lumber: v.lumber, stone: v.stone, tiers: { ...v.tiers }, ...(v.hench ? { hench: { ...v.hench } } : {}) };
 }
 
+/** The events the save reads (`Game.progress`): a hand-off must not drop them with the old room's effects. */
+const SAVE_EVENTS: ReadonlySet<SimEvent['kind']> = new Set(['banked', 'findsLost', 'bagLost', 'pickup', 'lootTaken', 'levelUp', 'potionTaken', 'drank', 'runWon', 'runLost']);
+
+export function keptAcrossHandoff(ev: SimEvent): boolean {
+  return SAVE_EVENTS.has(ev.kind);
+}
+
 function clockConfig(): ClockConfig {
   const c = tuning.coop;
   return {
@@ -136,6 +143,8 @@ export class ClientSession implements Session {
   private sync: ClockSync = createClockSync(clockConfig());
   /** Host events, released when the drawn time reaches them. */
   private inbox: { t: number; ev: SimEvent }[] = [];
+  /** The old room's own events still waiting to be drawn when a hand-off came, for the save alone. */
+  private departed: { id: string; events: SimEvent[] } | null = null;
   /** Visual-only offset that eases out prediction corrections. */
   private err = { x: 0, y: 0, z: 0 };
   private loadout: Loadout;
@@ -350,6 +359,13 @@ export class ClientSession implements Session {
     return this.sync.delay;
   }
 
+  /** What the old room still owed this player's save when it handed off, with who they were there; once. */
+  takeDeparted(): { id: string; events: SimEvent[] } | null {
+    const d = this.departed;
+    this.departed = null;
+    return d;
+  }
+
   private releaseInbox(): SimEvent[] {
     if (this.inbox.length === 0) return [];
     const t = this.renderTime();
@@ -420,6 +436,10 @@ export class ClientSession implements Session {
    * correction.
    */
   private leaveRoom(): void {
+    // The gold ring banks as it fires, so its `banked` rides the snapshot just ahead of the hand-off
+    // and is still waiting for the drawn time: the effects may go, but what the save needs may not.
+    const kept = this.inbox.map((e) => e.ev).filter(keptAcrossHandoff);
+    if (kept.length && this.localId) this.departed = { id: this.localId, events: [...(this.departed?.events ?? []), ...kept] };
     this.state = 'joining';
     this.localId = '';
     this.snaps = [];

@@ -828,6 +828,9 @@ export class Game {
     this.lastTime = now;
 
     let actions = this.input.poll(realDt);
+    // Before the next room's level: arriving in a village forgets carried finds the old room never banked.
+    const departed = this.session.takeDeparted();
+    if (departed) this.progress(departed.events, 0, departed.id);
     if (this.session.levelVersion !== this.shownLevel) this.enterLevel();
     if (this.session.playing) this.playedOnce = true;
     this.loading.update(!this.title.visible && !this.session.playing && !this.session.ended, !this.playedOnce, this.session.status());
@@ -1166,10 +1169,10 @@ export class Game {
   }
 
   /** Levels and loot: save what the fight earned (brief: "in co-op each player keeps their own"). */
-  private progress(events: SimEvent[], realDt: number): void {
+  private progress(events: SimEvent[], realDt: number, localId = this.session.localId): void {
+    // Between rooms there is no hero, but the old room's last events are still this player's (a hand-off).
     const p = this.me();
-    if (!p) return;
-    const localId = this.session.localId;
+    if (!p && events.length === 0) return;
     let dirty = false;
     for (const ev of events) {
       // On a floor a find goes in the bag at once, marked carried (D3): wearable now, lost on a wipe until banked.
@@ -1251,7 +1254,7 @@ export class Game {
     this.saveTimer += realDt;
     if (dirty || this.saveTimer > 5) {
       this.saveTimer = 0;
-      this.profile.syncFrom(p);
+      if (p) this.profile.syncFrom(p);
       this.profile.save();
       this.session.keepLoadout(this.profile.loadout());
     }

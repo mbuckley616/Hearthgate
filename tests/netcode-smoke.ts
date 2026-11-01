@@ -370,6 +370,18 @@ async function main() {
     check(cs.stats.snaps === 0, "the ClientSession never snapped", `${cs.stats.snapshots} snapshots, ${cs.stats.corrections} corrections, largest ${cs.stats.maxCorrection.toFixed(3)} m`);
     check(Math.hypot(hero.x - lastSnap.x, hero.z - lastSnap.z) < 1e-6, "standing still, it is drawn exactly where the server has it", `${hero.x.toFixed(3)}, ${hero.z.toFixed(3)}`);
 
+    // 9d. The gold ring banks as it fires, so its `banked` arrives just ahead of the hand-off and is still
+    // waiting for the drawn time: leaving the room keeps it for the save (critic, 1 Nov), not the effects.
+    {
+      const was = cs.localId;
+      const raw = cs as unknown as { inbox: { t: number; ev: unknown }[]; leaveRoom(): void };
+      const banked = { kind: "banked", playerId: was, items: [], kept: 0, coin: 12, lumber: 1, stone: 1, floor: 1 };
+      raw.inbox.push({ t: 1e9, ev: { kind: "heroHurt", playerId: was, damage: 5, x: 0, z: 0, heavy: false } }, { t: 1e9, ev: banked });
+      raw.leaveRoom();
+      const gone = cs.takeDeparted();
+      check(gone?.id === was && gone.events.length === 1 && (gone.events[0] as { coin?: number }).coin === 12 && cs.takeDeparted() === null, "a hand-off keeps the old room's undrawn `banked` for the save, once, and drops its effects", JSON.stringify(gone?.events.map((e) => e.kind)));
+    }
+
     // 9c. A slow, uneven page (about 10 fps, frames of 40 to 150 ms, the critic's 28 Oct throttled lab): a
     // frame's time is stepped whole, so the client sends a command for every tick of wall time and the
     // server never stands in for one it lacks. Frames past 100 ms used to lose their ends.

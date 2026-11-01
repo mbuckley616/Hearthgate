@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-01: Session 80, the gold ring home pays the browser again
+
+**What changed**
+
+The critic's bug (1 Nov, auto/build 46f3070): the gold ring banks as it fires, so its `banked` event rides the snapshot just ahead of `handoff`, and the browser holds server events until the drawn time reaches them (80 to 150 ms). `ClientSession.leaveRoom` emptied that inbox, so the coin, the banking of carried finds, the bag's lumber and stone and the run tally were all lost, and arriving in the village then threw the still-carried finds away as unbanked. Now `leaveRoom` keeps the old room's undrawn events that the save reads (`keptAcrossHandoff`: banked, findsLost, bagLost, pickup, lootTaken, levelUp, potions, runWon, runLost) with the player's id there; `Game.update` takes them (`takeDeparted`) before it rebuilds for the next room, so the bank lands before the village's arrival forgets unbanked finds. `progress` takes the id and runs without a hero between rooms. Effects (hurts, sounds) of the old room are still dropped. Check 9d in `test:net`: an undrawn `banked` and `heroHurt` at the hand-off leave only the `banked`, once.
+
+**Learned**
+
+The smoke e2e's floor walk ("the rest room's ring home") times out at 120 s on this box with or without the change, so a coin assertion there could not be proven here and was left out; the check sits in `test:net` against the real `ClientSession` instead. The last few seconds of XP before a hand-off are still not synced into the save (the hero is gone by then); the 5 s save timer usually covers it.
+
+**Next**
+
+Phase 2's other items wait on Michael: "Buildings that look their part" and character creation (both pending), then the gate playtest.
+
 ## 2026-11-01: Session 79, character creation asked: Phase 2 or Phase 4
 
 **What changed**
