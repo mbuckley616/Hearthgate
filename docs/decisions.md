@@ -7,19 +7,21 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-01: Character creation, the intro and the tutorial: Phase 2 or Phase 4? (builder, Session 79)
 Your note (30 Oct): a first-start intro (a slideshow of images with text), a character screen (race: Human balanced, Elf fast but weaker in defence and strength, Dwarf defence and power but slower; a hair style or colour; a starting kind, Warrior, Ranger or Mage), and a tutorial that walks through choosing a dungeon and entering the portal, its first dungeon a tutorial one with a standard Brute as boss that unlocks today's first story dungeon. It sits in Phase 2's backlog, marked "likely Phase 4". It is the last Phase 2 item besides the builds pass and the building looks, so where it goes decides whether Phase 2's list is empty for your gate evening. Races change the fight's numbers (speed, defence, power), so they would sit behind a switch the parity test turns off; today a hero is one figure with three weapons and no class, so a "starting kind" would be the weapon set you begin with.
 - **A** (recommended): move it to Phase 4 (first playable), where a new player meeting the game for the first time is the gate; the Phase 2 gate evening is yours, who knows the game. The backlog item moves; nothing is built now.
 - **B**: build the tutorial dungeon only now (the Brute boss, unlocking the Old Cellar), and move the intro and the character screen to Phase 4.
 - **C**: build all of it in Phase 2, before the gate: the builder proposes the race numbers for you to approve first.
+Michael: **A, move it all to Phase 4**. (2026-11-01)
 
 ### 2026-10-31: Buildings that look their part (builder, Session 78)
 Your note (30 Oct): the storehouse like a bank, the store like a store, the tavern like a tavern or inn, and big visual steps at major tiers ("Cobblestone at Tier 4, Marble at Tier 7 for the bank/storehouse"). Today the three share one timber-and-plaster house told apart by colour, a sign and a pennant a tier, and tiers stop at IV (`village.maxTier`); tiers past IV would need prices and something each tier gives, which is a bigger call than the look.
 - **A** (recommended): a look for each building now, within today's four tiers. The Storehouse a squat stone strongroom with an iron-banded door and a coin sign; the General Store a shopfront with an awning, crates and a barrel out front; the Tavern an inn with a hanging sign, a chimney and a bench. Each changes once at tier III: timber to cobblestone, a second storey or wing. Marble waits for tiers past IV, asked when those tiers are planned.
 - **B**: A's three looks, and raise every building to tier VII now, with a step at IV (cobblestone) and VII (marble); the builder proposes prices and what tiers V to VII give, for you to approve first.
 - **C**: the three looks only, no change by tier beyond today's pennants.
-
-## Answered
+Michael: **A, a look each now, one step at tier III**. (2026-11-01)
 
 ### 2026-10-31: The rest room: no heal, no bank, and what it is for (builder, Session 69)
 Your board notes (30 Oct) on two items: rest rooms should heal nothing ("not a free heal") and should not bank ("a judgement call to continue risking what you've collected or to go deeper"), while staying "a checkpoint to give you an out on the dungeon and to pocket what you have". Today the rest room heals the party to full (`dungeon.restHeal`, on the panel) and banks every find, coin, lumber and stone on arrival, so a wipe deeper loses only that floor's. The two answers are one question: what does reaching a rest room give?
