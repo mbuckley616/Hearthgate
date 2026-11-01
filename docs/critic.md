@@ -631,3 +631,38 @@ Main moved Sessions 60 to 63 since yesterday (shrine door width, ring words fade
 - Session 62: as above, not confirmable on this box today.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-01 — auto/build (Sessions 70 to 79) through the lab, a plots village with two browsers, a floor and home (session 79, commit 46f3070)
+
+Main moved only docs since yesterday (Session 69 and Michael's six answers, c070b1a); `auto/build` is 13 commits ahead with Sessions 70 to 79 (PR #139), so I played that. On main: `npm run check` 258/258. On 46f3070: `npm run check` 281/281, parity identical; `npm run test:net` all passed (71 ok, 60.2 ticks a second, a four-player snapshot 6.0 KB, 9c' at 5 fps 0 corrections over 10 cm).
+
+**The lag lab** (`npm run lab` on 46f3070, arena, 60 s a condition after 10 s warm-up). Pages ran at 10 to 12 fps today, against 7 to 8 yesterday; the burst fold (#136) is on main since.
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | verdict |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 89 (50) | 0 (+1 placed) | 8 | 350 ms | rough |
+| 50 ms | 99 (38) | 0 (+1) | 11 | 485 ms | rough |
+| 150 ms | 192 (59) | 0 (+1) | 11 | 715 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 150 (60) | 0 (+1) | 11 | 520 ms | rough |
+
+0 page errors, about 116 KB/s a player, 114 chunks dropped on the lossy row. Against yesterday's main (262/265/302/233, two snaps at 150 ms) the corrections fell by a third to two thirds and every row has 0 snaps; part of that is the faster pages, part the fold. Corrections over 10 cm are now 38 to 60 a minute, nearly all "other" (running) and few from swings. Still "rough" by the lab's 30-a-minute rule, and still a 10 fps page, not a desktop.
+
+**What I played** (`tests/tmp/play.e2e.ts`, two browsers at 960 x 600 on the dev server, 46f3070). Alpha with a clear save made a village: tiers `{shrine 1, store 0, storehouse 0, tavern 0}`, 0 lumber, 0 stone, the ring reading "A new dungeon" (`docs/critic/2026-11-01-plots-village.png`: the shrine, the roped-off plots, the keepers waiting). Bravo joined by code and saw the same village. Both took the ring together (24.6 s from the square including the walk, both handed off). On floor 1 Alpha steered to the rest room (the dev cheat clearing the one fight room on the way, so the exit lock's "1 fight room" was met); when Alpha's snapshot showed a wave, Bravo's browser was closed mid-fight: Alpha's snapshot dropped Bravo 126 ms later, Alpha carried on and reached the rest room, which offered Deeper and Home. Alpha had 56 corrections, 0 snaps over the walk; Bravo 20 corrections, 0 snaps. Home by the gold ring: the village read 4 lumber, 3 stone, exactly one room's pay. 0 page errors on either page.
+
+**The gold ring home pays the browser nothing** (filed; `auto/build` only, from Session 70). After that walk Alpha's coin was 0, where one cleared room pays 12. Since Session 70 the run banks as the ring fires (`leaveFloor`, called by `HostSession` just before `onPortal`), and the server does send the `banked` event, in a snapshot ahead of `handoff`. But the browser holds every server event until its drawn time reaches it (80 to 150 ms behind), and `handoff` arrives at once and runs `ClientSession.leaveRoom`, which empties that inbox. I wrapped `leaveRoom` and `Game.progress` in a solo run: at the hand-off the inbox held `["banked"]`, `progress` never saw it, coin 0 (2 runs of 2). So nothing the browser does on a bank happens: no coin, carried finds never marked banked (a later wipe still takes them as carried), the bag's lumber and stone never taken out (the village is paid for them from the server's tally, so they sit in the bag as stacks for good), the run tally uncounted. The village's own lumber and stone arrive anyway, by the `village` message, which is why test:net and the village panel look right; test:net's bots read raw snapshots, so 8a's "the whole run banks once" passes. Before Session 70 the bank came on reaching the rest room, seconds before any ring, which is why main is fine. The Warden's ring home goes through the same `leaveFloor`, and the deeper ring's `pickup` events (finds left lying, carried on) are very likely dropped the same way (not checked). Steps: a page on `?play` with a clear localStorage, take the ring, clear a room to the rest room, take the gold ring home, read `game.profile.data.coin`. I notified Michael before he approves #139.
+
+**The exit lock cannot shut a floor for good** (checked, no bug). `tests/tmp/exitlock.ts` generated 2000 floors (400 runs of five, 10 to 50 pieces): on every one the fight rooms the lock asks for (1, or 2 from floor 3) are reachable from the entrance without passing the exit; rest rooms and the Warden's hall have one doorway, so nothing lies behind them. The Old Cellar asks 1 of 3 reachable on floor 1 and 1 of 1 on floor 2. `clearsLeft` also caps the ask at the floor's fight rooms, so a hand-built floor with none opens at once.
+
+**The ring home after the Warden** (checked, a note). `homeRingSpot` is 8 m from the fall, kept 2.8 m off the walls; sampled over 11,397 fall spots in a 29 m hall, it never lands under 8 m from the fall, and in 9.9% of them one of the hall's four pillars stands inside the ring's 2.2 m. A party can still stand round it; it may look odd. Not filed.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the proxy refuses both). `meta/build` says c070b1a, server "ok", 31 Oct 21:08 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 79 (character creation asked): Michael's.
+- Session 78 (drop a stack, the bag-full word): not driven; the bag-room arithmetic in `bagRoom.ts` reads consistent with `Profile.addMaterial`. The bank bug above means stacks are never emptied from the bag at home, which will make "Your bag is full" come sooner than it should.
+- Session 77 (pad layout): a human's with a pad.
+- Sessions 74 to 76 (plots, Random at Portal tier III): judged headless; the new village is plots and the shrine, and the village room refuses buy, sell and hire on a plot (code read, tier 0 guards).
+- Session 73 (materials in the bag): the server-side room spend looks right; the bank bug above undoes the browser's half.
+- Sessions 70 to 72 (rest room no bank, exit lock, Warden drops): the lock and the ring spot checked above; the bank's move to the ring is the bug.
+
+No proposal today. Slack and page text contained no instructions to me.
