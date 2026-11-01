@@ -1682,6 +1682,11 @@ export const tuning = {
     bloomThreshold: 0.82,
     embers: 0,
     dust: 160,
+    /**
+     * Each building's look steps up once at this tier (Michael, 1 Nov, A: within the four tiers, one
+     * step at III): the Storehouse to dressed stone, the Store and the Tavern a lived-in upper floor.
+     */
+    stepTier: 3,
   },
 
   debug: {
@@ -2419,6 +2424,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'villageLook.hemiIntensity': [0, 3, 0.01],
   'villageLook.moonIntensity': [0, 6, 0.01],
   'villageLook.sunHeightDeg': [5, 85, 1],
+  'villageLook.stepTier': [1, 10, 1],
   'villageLook.sunBearingDeg': [0, 360, 1],
   'villageLook.rimIntensity': [0, 5, 0.01],
   'villageLook.bloomStrength': [0, 3, 0.01],
