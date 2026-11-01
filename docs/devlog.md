@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-01: Session 79, character creation asked: Phase 2 or Phase 4
+
+**What changed**
+
+Docs only. Phase 2 had nothing buildable: "Buildings that look their part" is still pending, the builds pass waits on the feel pass being played, and the gate is Michael's. The last open item, character creation with the intro and the tutorial (Michael, 30 Oct, marked "likely Phase 4"), had never been asked, so it is now under Pending in `decisions.md` with three options (A, move it to Phase 4, recommended). check 281/281, test:net all passed on the base.
+
+**Learned**
+
+Races would be the first thing to change the fight per hero rather than per weapon or gear, so whichever phase takes them, their numbers go behind a switch the parity test turns off, as gear's did.
+
+**Next**
+
+Build "Buildings that look their part" when it is answered; move or build character creation by the answer. After that Phase 2's list is the gate playtest.
+
 ## 2026-10-31: Session 78, drop a stack of lumber or stone, and the bag-full word
 
 **What changed**
