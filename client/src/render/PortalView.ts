@@ -132,7 +132,7 @@ export class PortalView {
 }
 
 /** The words over a ring, gold on a dark band, for a sprite. */
-function labelTexture(text: string): { texture: THREE.CanvasTexture; aspect: number } {
+export function labelTexture(text: string): { texture: THREE.CanvasTexture; aspect: number } {
   const c = document.createElement('canvas');
   const g = c.getContext('2d')!;
   const font = 'bold 44px Georgia, serif';

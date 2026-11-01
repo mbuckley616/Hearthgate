@@ -1,5 +1,6 @@
 import type { World } from '../level/arena';
-import { openMiddle } from '../level/floor';
+import { tuning } from '../config/tuning';
+import { openMiddle, type PieceInfo } from '../level/floor';
 import type { PortalDef } from '../level/village';
 import type { SimState } from '../sim/types';
 
@@ -38,9 +39,11 @@ export function portalsFor(world: World, state: SimState): Ring[] {
   if (!layout) return over ? [{ ...ARENA_EXIT_PORTAL, y: 0, to: 'village' }] : [];
   if (state.run.phase === 'lost') return [];
   if (over) {
-    // Home from the Warden's hall.
+    // Home from the Warden's hall (Michael, 31 Oct): a count after the fall, and away from it, so
+    // nobody steps through on top of the drops before picking them up.
     const room = layout.pieces[state.floor && state.floor.room >= 0 ? state.floor.room : layout.def.exit];
-    return [{ ...openMiddle(room), y: room.y, radius: FLOOR_RING_RADIUS, to: 'village' }];
+    if (state.run.timer < tuning.loop.homeRingDelayS) return [];
+    return [{ ...homeRingSpot(room, state.run.dropX, state.run.dropZ), y: room.y, radius: FLOOR_RING_RADIUS, to: 'village' }];
   }
   const rest = layout.pieces[layout.def.exit];
   if (rest.kind !== 'rest' || state.run.phase !== 'ante') return [];
@@ -50,6 +53,33 @@ export function portalsFor(world: World, state: SimState): Ring[] {
   const spec = layout.def.spec;
   if (spec.floor >= spec.floors) return [homeRing];
   return [{ ...deeper, y: rest.y, radius: FLOOR_RING_RADIUS, to: 'deeper' }, homeRing];
+}
+
+/** Seconds until the ring home opens where the Warden fell, or 0 once it is open (or there is none to wait for). */
+export function homeRingIn(world: World, state: SimState): number {
+  if (!world.level.dungeon || state.run.phase !== 'won') return 0;
+  return Math.max(0, tuning.loop.homeRingDelayS - state.run.timer);
+}
+
+/**
+ * Where the ring home opens in the Warden's hall: loop.homeRingOffset from where it fell, toward
+ * the hall's middle (or its doorway, if it fell there), kept off the walls.
+ */
+function homeRingSpot(room: PieceInfo, x: number, z: number): { x: number; z: number } {
+  const mid = openMiddle(room);
+  let dx = mid.x - x;
+  let dz = mid.z - z;
+  if (Math.hypot(dx, dz) < 0.5) {
+    const door = room.doors.find((d) => d.open);
+    dx = door ? door.x - x : 1;
+    dz = door ? door.z - z : 0;
+  }
+  const len = Math.hypot(dx, dz) || 1;
+  const off = tuning.loop.homeRingOffset;
+  const b = room.bounds;
+  const inset = FLOOR_RING_RADIUS + 0.6;
+  const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
+  return { x: clamp(x + (dx / len) * off, b.minX + inset, b.maxX - inset), z: clamp(z + (dz / len) * off, b.minZ + inset, b.maxZ - inset) };
 }
 
 /** The first open ring, or null: the village's and the arena's have one at most. */

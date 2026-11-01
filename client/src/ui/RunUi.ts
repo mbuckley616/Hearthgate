@@ -17,6 +17,9 @@ function formatTime(s: number): string {
  * antechamber prompt and the victory / defeat card. On a generated floor (T4)
  * the same pieces speak of rooms and floors instead of waves.
  */
+/** How long "Dungeon cleared" stays once the ring home has opened. */
+const CLEARED_AFTER_S = 4;
+
 export class RunUi {
   private banner = document.createElement('div');
   private bannerTitle = document.createElement('div');
@@ -27,6 +30,8 @@ export class RunUi {
   private bossName = document.createElement('div');
   private timer = document.createElement('div');
   private prompt = document.createElement('div');
+  /** "Dungeon cleared" in the corner after the Warden's fall on a floor, with the ring's count (Michael, 31 Oct). */
+  private cleared = document.createElement('div');
   private end = document.createElement('div');
   private endTitle = document.createElement('div');
   private endBody = document.createElement('div');
@@ -74,13 +79,14 @@ export class RunUi {
     card.append(this.endTitle, this.endBody, this.again, this.home);
     this.end.appendChild(card);
 
-    document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end);
+    this.cleared.className = 'run-cleared';
+    document.body.append(this.banner, this.boss, this.timer, this.prompt, this.end, this.cleared);
   }
 
   /** In the village (T3) there is no run: no banner, timer, prompt or end card. */
   hide(): void {
     this.banner.style.opacity = '0';
-    for (const el of [this.boss, this.timer, this.prompt, this.end]) el.style.display = 'none';
+    for (const el of [this.boss, this.timer, this.prompt, this.end, this.cleared]) el.style.display = 'none';
   }
 
   setFloor(spec: FloorSpec | null): void {
@@ -104,17 +110,22 @@ export class RunUi {
       else if (ev.kind === 'waveCleared') {
         // No heal after a room since D7, so the banner names none unless the panel turns it back on.
         const heal = Math.round(tuning.dungeon.healOnClear * 100);
-        this.showBanner('Room cleared', heal > 0 ? `+${heal}% health` : 'Health comes back in the rest room');
+        this.showBanner('Room cleared', heal > 0 ? `+${heal}% health` : 'Potions and revives are the only heal');
       }
-      else if (ev.kind === 'rested') this.showBanner('Healed, and your finds are banked', `Violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more  ·  gold ring home`);
+      else if (ev.kind === 'rested') {
+        // Michael, 31 Oct: the rest room is the way out; what the run carries banks only at home.
+        const heal = Math.round(tuning.dungeon.restHeal * 100);
+        const head = tuning.loop.bankAtRest ? 'Your finds are banked' : heal > 0 ? `+${heal}% health  ·  nothing is banked yet` : 'A way out  ·  nothing is banked yet';
+        this.showBanner(head, `Gold ring home banks the run  ·  violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more, all of it at stake`);
+      }
       else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
 
-  update(sim: SimState, dt: number, role: 'host' | 'client', carried = 0): void {
+  update(sim: SimState, dt: number, role: 'host' | 'client', carried = 0, bagFull: 'lumber' | 'stone' | null = null): void {
     this.now += dt;
-    if (this.floor) return this.updateFloor(sim, this.floor, carried);
+    if (this.floor) return this.updateFloor(sim, this.floor, carried, bagFull);
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
 
@@ -152,7 +163,7 @@ export class RunUi {
     }
   }
 
-  private updateFloor(sim: SimState, spec: FloorSpec, carried: number): void {
+  private updateFloor(sim: SimState, spec: FloorSpec, carried: number, bagFull: 'lumber' | 'stone' | null): void {
     const r = sim.run;
     this.banner.style.opacity = this.now < this.bannerUntil ? '1' : '0';
     const boss = sim.enemies.find((e) => e.id === r.bossId && e.ai !== 'dead');
@@ -164,19 +175,29 @@ export class RunUi {
     }
     const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';
-    // What a wipe would cost (P1): finds carried since the last rest room.
-    // And the party's picked-up lumber, stone and coin, lost the same way (Michael, 29 Oct).
-    const f = sim.floor?.found;
+    // What a wipe would cost (P1): finds carried since the run left the village (Michael, 31 Oct),
+    // and the party's picked-up lumber, stone and coin with the floors before's, lost the same way.
+    const fl = sim.floor;
+    const f = fl ? { coin: fl.found.coin + (fl.purse?.coin ?? 0), lumber: fl.found.lumber + (fl.purse?.lumber ?? 0), stone: fl.found.stone + (fl.purse?.stone ?? 0) } : null;
     const found = f ? [f.coin ? `${f.coin} coin` : '', f.lumber ? `${f.lumber} lumber` : '', f.stone ? `${f.stone} stone` : ''].filter(Boolean).join(', ') : '';
     const risk = [carried > 0 ? `${carried} unbanked` : '', found].filter(Boolean).join(', ');
     this.timer.textContent = `${formatTime(r.elapsed)}  ·  ${where}${risk ? `  ·  carrying ${risk}` : ''}`;
     // The way on, for a while after arriving; the doors' wait whenever one is holding for the party.
     const waiting = r.phase === 'ante' && r.gateWait >= 0;
     const arriving = r.phase === 'ante' && this.now - this.floorSince < 8;
-    this.prompt.style.display = waiting || arriving ? 'block' : 'none';
-    if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
+    this.prompt.style.display = waiting || arriving || bagFull ? 'block' : 'none';
+    // Standing on lumber or stone a full bag cannot take (Michael's A on materials in the bag).
+    if (bagFull) this.prompt.textContent = `Your bag is full: the ${bagFull} stays on the floor  ·  I to drop a stack or a find`;
+    else if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
     else if (arriving) this.prompt.textContent = `${where[0].toUpperCase()}${where.slice(1)}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
-    const over = r.phase === 'won' || r.phase === 'lost';
+    // A win is a line in the corner, not a card over the hall (Michael, 31 Oct): the drops are there
+    // to pick up, the gold ring opens after a count, and the run's summary waits for the village.
+    const won = r.phase === 'won';
+    const ringIn = won ? Math.max(0, tuning.loop.homeRingDelayS - r.timer) : 0;
+    const showCleared = won && (ringIn > 0 || r.timer - tuning.loop.homeRingDelayS < CLEARED_AFTER_S);
+    this.cleared.style.display = showCleared ? 'block' : 'none';
+    if (showCleared) this.cleared.textContent = ringIn > 0 ? `Dungeon cleared  ·  ${formatTime(r.elapsed)}  ·  the way home opens in ${Math.ceil(ringIn)}` : `Dungeon cleared  ·  the gold ring home is open`;
+    const over = r.phase === 'lost';
     this.end.style.display = over ? 'flex' : 'none';
     this.home.style.display = over ? '' : 'none';
     if (over) {

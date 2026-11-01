@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
+import { roomFor } from './bagRoom';
 import { nextRandom } from './combat';
 import type { PlayerState, SimState } from './types';
 
@@ -158,12 +159,55 @@ export function stepLoot(state: SimState): void {
   const settle = l.smashSettleMs / 1000;
   f.loot = f.loot.filter((d) => {
     if (state.time - d.at < settle) return true;
-    const p = state.players.find((pl) => !pl.henchman && pl.mode !== 'down' && Math.hypot(pl.x - d.x, pl.z - d.z) <= l.lootRadius && Math.abs(pl.y - d.y) < 1.2);
+    if (d.waitAway) {
+      const owner = state.players.find((pl) => pl.id === d.waitAway);
+      if (owner && Math.hypot(owner.x - d.x, owner.z - d.z) <= l.lootRadius * 2) return true;
+      delete d.waitAway;
+    }
+    // Lumber and stone go in a bag with room (Michael, 31 Oct, A); a full bag walks over them.
+    const inBag = l.materialsInBag && d.kind !== 'coin';
+    const p = state.players.find(
+      (pl) =>
+        !pl.henchman &&
+        pl.mode !== 'down' &&
+        Math.hypot(pl.x - d.x, pl.z - d.z) <= l.lootRadius &&
+        Math.abs(pl.y - d.y) < 1.2 &&
+        (!inBag || !pl.bagRoom || roomFor(pl.bagRoom, d.kind as 'lumber' | 'stone')),
+    );
     if (!p) return true;
-    f.found[d.kind] += d.amount;
-    state.events.push({ kind: 'lootTaken', playerId: p.id, loot: d.kind, amount: d.amount, x: d.x, y: d.y, z: d.z });
-    return false;
+    // A dropped pile is many units: the bag takes what it has room for, the rest stays.
+    let took = d.amount;
+    if (inBag && p.bagRoom) for (took = 1; took < d.amount && roomFor(p.bagRoom, d.kind as 'lumber' | 'stone'); ) took++;
+    f.found[d.kind] += took;
+    state.events.push({ kind: 'lootTaken', playerId: p.id, loot: d.kind, amount: took, x: d.x, y: d.y, z: d.z });
+    if (took >= d.amount) return false;
+    d.amount -= took;
+    return true;
   });
+}
+
+/**
+ * A stack of lumber or stone put down from the bag at the player's feet (Michael's A on materials
+ * in the bag: room for a find instead). It leaves the party's found tally, so it banks only if
+ * someone picks it up again; the one who dropped it can, once they have stepped away. The bag is
+ * the browser's until Phase 3 (rule 1's accepted exception), so the amount is capped by what the
+ * party has found on this run and by a stack.
+ */
+export function dropMaterials(state: SimState, groundY: number, playerId: string, kind: 'lumber' | 'stone', n: number): boolean {
+  const f = state.floor;
+  const p = state.players.find((pl) => pl.id === playerId);
+  if (!f || !p || p.henchman || p.mode === 'down' || !tuning.loop.materialsInBag) return false;
+  // What the bag holds came from this floor's finds or the floors before (the purse handed down).
+  const before = f.purse?.[kind] ?? 0;
+  const amount = Math.min(Math.floor(n), tuning.loop.bagStack, f.found[kind] + before);
+  if (amount <= 0) return false;
+  const here = Math.min(amount, f.found[kind]);
+  f.found[kind] -= here;
+  if (amount > here) f.purse![kind] = before - (amount - here);
+  // Negative ids keep clear of the smashed props' (prop id times eight, plus the piece).
+  const id = -state.nextId++;
+  (f.loot ??= []).push({ id, kind, amount, x: p.x, y: groundY, z: p.z, fromX: p.x, fromZ: p.z, at: state.time - tuning.loop.smashSettleMs / 1000, waitAway: playerId });
+  return true;
 }
 
 /** Drink a potion (G, 4 or d-pad left): some health back at once, if there is one to drink and health to gain. */

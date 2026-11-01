@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { HostSession } from '../game/HostSession';
-import { PORTAL_HOLD_S, portalsFor, type PortalTo } from '../game/portal';
+import { PORTAL_HOLD_S, homeRingIn, portalsFor, type PortalTo } from '../game/portal';
+import { CATALOGUE, type GearItem } from './catalogue';
 import { arena, buildWorld } from '../level/arena';
 import { floorLevel, insidePiece, openMiddle, type PieceInfo } from '../level/floor';
 import type { FloorSpec } from '../level/generate';
@@ -13,6 +14,18 @@ import { emptyTalents } from './talents';
 import { idleCommand, type SimEvent } from './types';
 import { floorWorldNow } from './floorRun';
 import { createSimState } from './world';
+
+// These pin P1's rest-room bank and D7's full heal, kept behind loop.bankAtRest and dungeon.restHeal;
+// Michael's 31 Oct A (no heal, banking only at home or a win) is restRoomStakes.test.ts.
+const restKept = { bankAtRest: tuning.loop.bankAtRest, restHeal: tuning.dungeon.restHeal };
+beforeEach(() => {
+  tuning.loop.bankAtRest = true;
+  tuning.dungeon.restHeal = 1;
+});
+afterAll(() => {
+  tuning.loop.bankAtRest = restKept.bankAtRest;
+  tuning.dungeon.restHeal = restKept.restHeal;
+});
 
 const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
 
@@ -140,10 +153,22 @@ describe('a generated floor’s run (T4)', () => {
       f.tick(2);
     }
     expect(f.host.sim.run.phase).toBe('won');
+    // Michael, 31 Oct: the ring waits out its count, then opens away from where the Warden fell.
+    expect(portalsFor(f.world, f.host.sim)).toEqual([]);
+    expect(homeRingIn(f.world, f.host.sim)).toBeGreaterThan(tuning.loop.homeRingDelayS - 1);
+    f.tick(Math.ceil(tuning.loop.homeRingDelayS * 60) + 2);
+    expect(homeRingIn(f.world, f.host.sim)).toBe(0);
     const rings = portalsFor(f.world, f.host.sim);
     expect(rings).toHaveLength(1);
     expect(rings[0].to).toBe('village');
     expect(insidePiece(boss, rings[0].x, rings[0].z)).toBe(true);
+    const r = f.host.sim.run;
+    expect(Math.hypot(rings[0].x - r.dropX, rings[0].z - r.dropZ)).toBeGreaterThan(tuning.loop.homeRingOffset - 3);
+    // The Warden's special drops: one each at Normal, of a better material than the rooms give.
+    const mine = f.host.sim.drops.filter((d) => d.owner === f.host.sim.players[0].id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].item.rarity).toBe('rare');
+    expect(CATALOGUE.get((mine[0].item as GearItem).id)!.tier).toBeGreaterThanOrEqual(tuning.loop.bossDropMinTier);
   });
 
   it('ends the run where the party wipes: it stays down, no ring, and each goes home by the end card (D10)', () => {

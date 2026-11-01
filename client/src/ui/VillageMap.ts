@@ -39,7 +39,7 @@ export class VillageMap {
     card.className = 'village-map-card';
     const head = document.createElement('div');
     head.className = 'village-map-head';
-    head.innerHTML = '<h2>The village</h2><span>Arrows or stick: choose a building  ·  M, Start, Esc or B to close</span>';
+    head.innerHTML = '<h2>The village</h2><span>Arrows or stick: choose a building  ·  M, d-pad right, Esc or B to close</span>';
     const body = document.createElement('div');
     body.className = 'village-map-body';
     this.plan.className = 'village-map-plan';
@@ -79,7 +79,7 @@ export class VillageMap {
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
     // M or Start again, or B on a pad (the dodge button).
-    if (actions.pressed.has('map') || actions.pressed.has('dodge')) return this.onClose();
+    if (actions.pressed.has('map') || actions.pressed.has('pause') || actions.pressed.has('dodge')) return this.onClose();
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
     const fwd = x > 0.5 || y < -0.5 || actions.pressed.has('zoomOut');
@@ -112,7 +112,7 @@ export class VillageMap {
         return `<g class="vm-building${b.id === chosen ? ' chosen' : ''}" data-b="${b.id}">
           <rect x="${b.minX}" y="${b.minZ}" width="${b.maxX - b.minX}" height="${b.maxZ - b.minZ}" rx="0.4"/>
           <text x="${cx}" y="${cz - 0.4}" class="vm-name">${BUILDING_NAMES[b.id]}</text>
-          <text x="${cx}" y="${cz + 1.6}" class="vm-tier">${roman(tier)}</text>
+          <text x="${cx}" y="${cz + 1.6}" class="vm-tier">${tier < 1 ? 'plot' : roman(tier)}</text>
         </g>`;
       })
       .join('');
@@ -130,7 +130,7 @@ export class VillageMap {
   private details(b: BuildingId, d: VillageMapData): string {
     const tier = d.view.tiers[b];
     const keeper = d.def.villagers.find((v) => v.building === b)?.name ?? 'its keeper';
-    const now = `<p>Tier <b>${roman(tier)}</b>: ${tierGives(b, tier)}.</p>`;
+    const now = tier < 1 ? `<p>${capital(tierGives(b, tier))}.</p>` : `<p>Tier <b>${roman(tier)}</b>: ${tierGives(b, tier)}.</p>`;
     const stock = `<p class="vm-stock">The village holds <b>${d.view.lumber}</b> lumber and <b>${d.view.stone}</b> stone; you carry <b>${d.coin}</b> coin.</p>`;
     if (tier >= tuning.village.maxTier) return `<h3>${BUILDING_NAMES[b]}</h3>${now}<p>As high as it goes for now.</p>${stock}`;
     const c = upgradeCost(tier + 1);

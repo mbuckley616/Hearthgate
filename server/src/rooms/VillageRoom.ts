@@ -1,7 +1,7 @@
 import type { Client } from "@colyseus/core";
 import { planChoice, planRun } from "@hearthgate/shared/game/runPlan";
-import { choiceDifficulty, maxDifficulty } from "@hearthgate/shared/game/portalChoice";
-import { applyUpgrade, bankHenchmen, henchmanCap, tavernHenchmen, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
+import { choiceDifficulty, maxDifficulty, randomOpen } from "@hearthgate/shared/game/portalChoice";
+import { applyUpgrade, bankHenchmen, henchmanCap, tavernHenchmen, plotsOf, upgradeProblem, villageView, type VillageSave } from "@hearthgate/shared/game/villageSave";
 import type { HenchmanCard } from "@hearthgate/shared/sim/henchman";
 import type { Style } from "@hearthgate/shared/config/tuning";
 import { tuning } from "@hearthgate/shared/config/tuning";
@@ -77,7 +77,10 @@ export class VillageRoom extends HostRoom {
    * to say: progress lives in its save until Phase 3.
    */
   private onPortalChoice(msg: Extract<ToHost, { k: "portal" }>) {
-    if (choiceDifficulty(msg.choice) > maxDifficulty(this.save?.tiers.shrine ?? 1)) return;
+    const shrine = this.save?.tiers.shrine ?? 1;
+    if (choiceDifficulty(msg.choice) > maxDifficulty(shrine)) return;
+    // A random dungeon waits for the Portal's third tier (Michael, 31 Oct, A).
+    if (msg.choice.kind === "random" && !randomOpen(shrine)) return;
     this.host.choice = msg.choice;
     this.host.destination = null;
   }
@@ -113,6 +116,7 @@ export class VillageRoom extends HostRoom {
 
   /** Anyone in the village may buy (the design doc: visitors use everything); the room says the price. */
   private onBuy(client: Client, msg: Extract<ToHost, { k: "buy" }>) {
+    if ((this.save?.tiers.store ?? 1) < 1) return;
     const shelves = this.shelves();
     const item = shelves.find((i) => i.uid === msg.uid);
     if (!item || msg.coin < buyPrice(item)) return;
@@ -125,6 +129,8 @@ export class VillageRoom extends HostRoom {
 
   /** Aldous buys anything from a bag at his price; the browser takes it out of the bag on the answer. */
   private onSell(client: Client, msg: Extract<ToHost, { k: "sell" }>) {
+    // An empty plot has no Aldous behind a counter yet (Michael, 31 Oct, A).
+    if ((this.save?.tiers.store ?? 1) < 1) return;
     const done: ToPeer = { k: "sold", uid: msg.item.uid, coin: sellPrice(msg.item) };
     client.send(MSG, done);
   }
@@ -139,6 +145,7 @@ export class VillageRoom extends HostRoom {
     const cost = applyUpgrade(this.save, msg.building);
     // A higher Tavern lifts its hires' cap at once (P12), and its top tier quickens them.
     if (msg.building === "tavern") this.settleHenchmen();
+    this.settlePlots();
     this.log(`${msg.building} raised to tier ${this.save.tiers[msg.building]}`);
     const done: ToPeer = { k: "upgraded", building: msg.building, tier: this.save.tiers[msg.building], coin: cost.coin };
     client.send(MSG, done);
@@ -149,6 +156,7 @@ export class VillageRoom extends HostRoom {
     if (msg.version !== PROTOCOL_VERSION) return;
     if (!this.save && msg.village) {
       this.save = msg.village;
+      this.settlePlots();
       this.log(`the village of ${msg.loadout.name || "a player"}: ${this.save.lumber} lumber, ${this.save.stone} stone`);
     }
     if (this.save && msg.village?.id === this.save.id) {
@@ -187,6 +195,14 @@ export class VillageRoom extends HostRoom {
     if (!this.save) return;
     const tier = this.save.tiers.tavern;
     this.host.settleHenchmen(henchmanCap(tier), this.save.hench ?? {}, tier >= 4);
+  }
+
+  /** The buildings still a plot keep their doors shut (Michael, 31 Oct, A): the sim reads it in stepDoors. */
+  private settlePlots() {
+    if (!this.save) return;
+    const plots = plotsOf(this.save.tiers);
+    if (plots.length > 0) this.host.sim.plots = plots;
+    else delete this.host.sim.plots;
   }
 
   private sendVillage(client: Client) {

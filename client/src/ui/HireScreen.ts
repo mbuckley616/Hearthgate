@@ -124,7 +124,7 @@ export class HireScreen {
       const h = HIRES[kit];
       const with_ = this.hired.has(kit);
       const action = with_
-        ? `<button class="hire-act" data-kit="${kit}" data-act="dismiss">With you · let go <kbd>X</kbd></button>`
+        ? `<button class="hire-act" data-kit="${kit}" data-act="dismiss">With you · let go <kbd>J</kbd> <kbd>RT</kbd></button>`
         : `<button class="hire-act" data-kit="${kit}">Hire · ${tuning.village.hireCoin} coin <kbd>F</kbd></button>`;
       return `<div class="hire-card${i === this.at ? ' chosen' : ''}${with_ ? ' with' : ''}" data-kit="${kit}">
           <b>${h.name}</b>

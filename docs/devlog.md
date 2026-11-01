@@ -2,6 +2,202 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-01: Session 80, the gold ring home pays the browser again
+
+**What changed**
+
+The critic's bug (1 Nov, auto/build 46f3070): the gold ring banks as it fires, so its `banked` event rides the snapshot just ahead of `handoff`, and the browser holds server events until the drawn time reaches them (80 to 150 ms). `ClientSession.leaveRoom` emptied that inbox, so the coin, the banking of carried finds, the bag's lumber and stone and the run tally were all lost, and arriving in the village then threw the still-carried finds away as unbanked. Now `leaveRoom` keeps the old room's undrawn events that the save reads (`keptAcrossHandoff`: banked, findsLost, bagLost, pickup, lootTaken, levelUp, potions, runWon, runLost) with the player's id there; `Game.update` takes them (`takeDeparted`) before it rebuilds for the next room, so the bank lands before the village's arrival forgets unbanked finds. `progress` takes the id and runs without a hero between rooms. Effects (hurts, sounds) of the old room are still dropped. Check 9d in `test:net`: an undrawn `banked` and `heroHurt` at the hand-off leave only the `banked`, once.
+
+**Learned**
+
+The smoke e2e's floor walk ("the rest room's ring home") times out at 120 s on this box with or without the change, so a coin assertion there could not be proven here and was left out; the check sits in `test:net` against the real `ClientSession` instead. The last few seconds of XP before a hand-off are still not synced into the save (the hero is gone by then); the 5 s save timer usually covers it.
+
+**Next**
+
+Phase 2's other items wait on Michael: "Buildings that look their part" and character creation (both pending), then the gate playtest.
+
+## 2026-11-01: Session 79, character creation asked: Phase 2 or Phase 4
+
+**What changed**
+
+Docs only. Phase 2 had nothing buildable: "Buildings that look their part" is still pending, the builds pass waits on the feel pass being played, and the gate is Michael's. The last open item, character creation with the intro and the tutorial (Michael, 30 Oct, marked "likely Phase 4"), had never been asked, so it is now under Pending in `decisions.md` with three options (A, move it to Phase 4, recommended). check 281/281, test:net all passed on the base.
+
+**Learned**
+
+Races would be the first thing to change the fight per hero rather than per weapon or gear, so whichever phase takes them, their numbers go behind a switch the parity test turns off, as gear's did.
+
+**Next**
+
+Build "Buildings that look their part" when it is answered; move or build character creation by the answer. After that Phase 2's list is the gate playtest.
+
+## 2026-10-31: Session 78, drop a stack of lumber or stone, and the bag-full word
+
+**What changed**
+
+The rest of Session 73 (Michael's A on "Lumber, stone and potions in the bag"), and one hole in it closed.
+- **The hole:** lumber and stone still lying on the floor banked anyway (`runPurse` counted all the spray on the ground), so a full bag cost nothing. With `loop.materialsInBag` on, only coin left lying banks; lumber and stone go home only in a bag. A deeper ring leaves them too.
+- **Drop a stack:** on the hero screen a lumber or stone cell takes Q, LB or the Drop button, as a find does. The browser takes the stack out and sends `dropMats` (kind, 1 to 99, checked in `validate.ts`); `dropMaterials` in `sim/smash.ts` lays it as one pile at the hero's feet, out of the party's found tally (then the purse from the floors before), capped by what the run has found and by a stack. The browser re-sends its loadout so the server knows the room. The one who dropped it takes it back only once they have stepped 1.8 m away (`FloorLoot.waitAway`), and a pile goes into a bag as far as its room allows, the rest staying on the floor.
+- **The bag-full word:** standing on lumber or stone the bag has no room for, the floor's prompt says "Your bag is full: the lumber stays on the floor · I to drop a stack or a find". The browser works it out from its own bag; the server still decides every pickup.
+- Tests: four in `sim/bagRoom.test.ts` (the drop and the wait, a pile taken in part, the caps, lying lumber not banked, the message's check); `smashLoot.test.ts`'s rest-room case now expects the lying lumber to stay. check 281/281, test:net all passed.
+
+**Learned**
+
+`runPurse` counting the ground's spray was written for D4, when everything picked itself up; Session 73's "a full bag leaves it on the floor" needed that rule turned off with it, and no test caught it because both were right on their own.
+
+**Next**
+
+Phase 2's builder items are done. Left: the builds pass (**(design)**, cut after the feel pass), "Buildings that look their part" (asked this run in `decisions.md`), character creation (likely Phase 4), and the gate playtest.
+
+## 2026-10-31: Session 77, the gamepad's default layout
+
+**What changed**
+
+Input and the screens that name the buttons. Michael's A on "The gamepad's default layout" (control room, 31 Oct): his layout exactly.
+- `bindings.ts`: RT attacks (a hold is the heavy, as before); X is the off-hand's ability (RT's until now); Start pauses; d-pad right opens the map (the village from above, or the floor's corner and whole). LT block, LB and RB the abilities, the stick clicks, Y, B, A, View and the d-pad's up, down and left are as they were.
+- A new `pause` action (Start; the keyboard's pause stays Esc): Start opens the pause card with its settings when no screen is up, and Start, A or B closes it. The map waits while a screen or the pause card is up, so d-pad right stays the hero screen's third tab there.
+- The hero screen's "wear at once" follows attack to RT ("J or RT"), as do the stash's and the tavern's quick actions; the controls list, the village map's header and Fenn's "let go" say so.
+- Tests: a pad e2e case (a stand-in pad: Start pauses and resumes, d-pad right opens the village map and B closes it, RT starts a swing); the earlier pad case still passes. check 277/277.
+
+**Learned**
+
+Two actions on one button work when one of them waits for the screen it belongs to: d-pad left was already drink and the first tab, and d-pad right is now the map and the third.
+
+**Next**
+
+Phase 2's builder items are done: what is left is the builds pass and "buildings that look their part" (both **(design)**, not yet asked), and the gate playtest. Left from this run: a Drop for a lumber or stone stack, a "bag full" word over materials left on the floor.
+
+## 2026-10-31: Session 76, Wren's Random tab opens at Portal tier III
+
+**What changed**
+
+Wren's portal menu and the village room. The second half of Michael's A on "The village's start and the Random tab" (control room, 31 Oct).
+- `randomOpen` in `game/portalChoice.ts`: the Random tab opens at `village.randomFromTier` (3, panel 1 to 4). `VillageRoom.onPortalChoice` refuses a random choice below it, so the lock is the server's.
+- `PortalScreen`: the Random tab is still there to look at, dashed and dimmed, and shows "Opens at Portal tier III" and how to get there; F does nothing on it. The story dungeons are as they were. Every village today has a tier I shrine, so Random is shut for everyone until a shrine is raised twice.
+- Tests: `randomOpen` by tier in `game/plots.test.ts`; the netcode smoke test's village has a tier III shrine, and the refused difficulty is now Legendary. check 277/277, test:net all passed.
+
+**Learned**
+
+Nothing new; the shrine's cap on difficulty already showed how the menu and the room share one rule.
+
+**Next**
+
+The gamepad layout (Michael's A: RT attacks, X the off-hand, Start pauses, d-pad right the map).
+
+## 2026-10-31: Session 75, empty plots, part two: the village starts with only the portal
+
+**What changed**
+
+The browser, and `village.startWithPlots` turned on. Michael's A on "The village's start" (control room, 31 Oct).
+- A browser with no village yet starts one with Wren's portal and three empty plots; a village saved before today keeps its buildings (`Profile.loadVillage`, and a P1-era save is read as built).
+- `VillageView`: each building's meshes are one group, hidden at tier 0, and a plot is drawn in its place: the footprint's turned earth, a stake at each corner with a rope between, and a board on a post by where the door will be ("General Store: a plot"). The ceremony for a first build raises the scaffold over the plot and reveals the building, as any tier does.
+- The keeper waits on the plot, 2 m out from where the door will be (`plotSpot` in `level/village.ts`, `VillageView.keeperSpot`), until the first build is revealed, then keeps the counter inside. Talking finds them there.
+- Their card says "This is where the General Store will stand. Raise it for 10 lumber and 8 stone, and I'll open: ..." and offers only "Build the General Store" and Leave; the path shows tier I's price; Confirm reads "Confirm: build the General Store". Their menu never opens at a plot. The village map shows "plot" and what tier I brings.
+- A Storehouse still a plot keeps the base pocket of 3 (not 0, as part one had it), so a new hero's first wipe never takes the bow and staff they started with.
+- Tests: a smoke e2e case (a fresh browser's village is the shrine and three plots, Aldous waits out on the square, his card offers only the build); the netcode smoke test's villages are saved as built, as they walk into the store and the tavern. check 276/276, test:net all passed, the new e2e and the solo e2e passed.
+
+**Learned**
+
+Hiding a building's group and showing a plot's keeps the ceremony as it was: holding the tier on show at 0 until the reveal gives a plot under scaffolding, then the building.
+
+**Next**
+
+The Random tab at Portal tier III (the same answer), then the gamepad layout.
+
+## 2026-10-31: Session 74, empty plots, part one: the rules
+
+**What changed**
+
+Shared village save, the sim's doors, the village room. Michael's A on "The village's start and the Random tab" (control room, 31 Oct): a new village is Wren's portal and empty plots for the other three, each raised by a first build; the Random tab opens at Portal tier III. This session is the plots' rules, behind `village.startWithPlots` (off), so nothing changes in play until part two draws them.
+- `villageSave.ts`: tier 0 is an empty plot, allowed for all but the shrine (`minTier`); `emptyVillage` starts the store, storehouse and tavern at 0 with the switch on; a save that leaves a tier out had it built, so an old village keeps its buildings. A plot gives nothing (`storeStock`, `stashSpaces`, `pocketSpaces`, `tavernHenchmen`, `henchmanCap` all 0) and says "an empty plot, waiting to be built"; its first build costs `village.plotLumber` (10), `plotStone` (8) and `plotCoin` (0), on the panel. `plotsOf` lists them.
+- `SimState.plots`, set by `VillageRoom.settlePlots` from the save on the first hello and every build: `stepDoors` leaves a plot's front door shut (`doorBuilding` in `level/village.ts` finds a door's building). `VillageRoom` refuses buy and sell at a plot's store; the Tavern's hires were already capped by tier.
+- Tests: `game/plots.test.ts` (4: the start, reading saves, the first build's price and what a plot gives, a plot's door). check 276/276; test:net all passed (on the second run; the first lost a bot walking to Wren, with three orphaned smoke servers on the box).
+
+**Learned**
+
+Keeping the building's collider on a plot keeps the world's colliders the same for prediction and the server, so a plot can be a fenced, marked footprint and nothing in movement changes. In this box the smoke test leaves its server running after it passes, so each later run needs another port.
+
+**Next**
+
+Part two, the browser: draw each plot (a fenced footprint and a sign) instead of the building, the keeper waiting on it whose card offers only the build, the map and the store, stash and tavern menus closed at a plot; then turn `village.startWithPlots` on. Then the Random tab at Portal tier III.
+
+## 2026-10-31: Session 73, lumber and stone in the bag
+
+**What changed**
+
+Shared sim, the loadout, the bag and the hero screen. Michael's A on "Lumber, stone and potions in the bag" (control room, 31 Oct): materials in the bag in stacks of 50, picked up by whoever walks over them, a full bag leaves them on the floor; potions stay on the belt, coin stays a count.
+- `sim/bagRoom.ts`: `BagRoom` (empty spaces past the pocket, room left in the part-filled lumber and stone stacks), `bagRoomOf`, `roomFor`, `materialSpaces`. The bag is the browser's until Phase 3, so the browser sends its room on the loadout (`Loadout.bagRoom`, checked whole in `readLoadout`: at most `BAG_SIZE` spaces, a stack's room) and the server spends it: `stepLoot` hands a piece of lumber or stone only to a hero whose bag has room (`PlayerState.bagRoom`), and a carried find takes a space (`spaceTaken` in `stepDrops`). Coin is taken as before. A browser that sends no room is not limited, so bots and the arena are unchanged.
+- `loop.materialsInBag` (on) and `loop.bagStack` (50, panel 10 to 99).
+- The run's count is unchanged: what is picked up still adds to the party's `found`, carried floor to floor and banked into the run's village at the gold ring home; a wipe loses it.
+- `Profile.mats`: the lumber and stone the browser was handed (`lootTaken`), filling the bag's last empty spaces past the pocket, a stack a space; finds, a piece taken off and a stash move into the bag count those spaces as full (`gearRoom`). The bank and a lost bag empty them (`takeMaterials`).
+- The hero screen draws each stack (wood or grey, its count) and says it goes to the village at the gold ring home; "N of 28 spaces free" counts them.
+- Tests: `sim/bagRoom.test.ts` (6: stacks, a full bag leaves lumber, coin still taken, two units of room take two, a new stack of 50, the loadout's check). check 272/272, test:net all passed.
+
+**Learned**
+
+The server never needed the bag itself, only its room: the browser states it, the server spends it piece by piece, so "is there room" stays the server's call within the accepted Phase 2 exception, and a loadout sent mid-floor re-states it from the real bag. The baseline test:net left its dev server running on port 2599 in this box, so the change's test:net ran the same script on 2619.
+
+**Next**
+
+Not in: a Drop for a stack on the hero screen (to make room for a find mid-run), a "bag full" word over lumber left on the floor, and materials left in a save by a tab closed mid-run (they wait for the next bank or wipe and are then dropped uncounted). Then empty plots with Random at Portal tier III, then the gamepad layout.
+
+## 2026-10-31: Session 72, the Warden's drops and the way home
+
+**What changed**
+
+Shared sim and portals, the run's corner. Michael's A on "The boss's drops and the way home" (control room, 31 Oct), with his note: "a small delay on the ring appearing as well, with a countdown timer ... like a 10 second count".
+- The Warden's hall drops `bossDropCount` rares a player (Easy and Normal 1, Hard 2, Nightmare and Legendary 3, at most `loop.bossDropsMax`), a step apart, each of a material from `loop.bossDropMinTier` (IV) up: `rollGear` and `spawnDrop` take an optional `minTier`, so every other roll is unchanged. Cursed's extra drop stays.
+- The Warden's fall no longer banks at once, which would have swept the drops into the bags (option B). The drops lie on the floor and the gold ring banks the whole run as it is taken (`leaveFloor`), as a rest room's does.
+- `portalsFor`: on a won floor the ring waits `loop.homeRingDelayS` (10 s) after the fall, then opens `loop.homeRingOffset` (8 m) from where the Warden fell, toward the hall's middle (or its doorway), kept off the walls. `homeRingIn` gives the count.
+- `RunUi`: no Victory card over a won floor. "Dungeon cleared · 4:12 · the way home opens in 7" in the top-right corner under the timer, then "the gold ring home is open" for 4 s. The run's summary still greets the party in the village. A wipe keeps its card and its button home.
+- Tests: the Warden test waits out the count, finds the ring in the hall at least 5 m from the fall, and one tier IV+ rare each at Normal; `bossDrops.test.ts` for the count by difficulty. check 266/266, test:net all passed.
+
+**Learned**
+
+Michael's A put the drops on the floor and the old bank at the fall would have quietly made it B; banking at the ring makes the rest room and the Warden's hall the same rule: only the way home banks.
+
+**Next**
+
+Materials in the bag (A: lumber and stone stack to 50 in bag spaces, picked up by whoever walks over them, a full bag leaves them; potions stay on the belt; coin stays a count), then the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
+## 2026-10-31: Session 71, the way out waits for a fight
+
+**What changed**
+
+Shared level and sim, the floor's view. Michael's A on "Clear the floor before the rest or boss room?" (control room, 31 Oct).
+- `floorRun.clearsLeft`: fight rooms still owed before the way out (the rest room, or the Warden's hall on the last floor) opens: `dungeon.clearsBeforeExit` (1), `clearsBeforeExitDeep` (2) from floor `clearsDeepFrom` (3), never more than the floor's fight rooms, the Warden's hall not counted. All three on the panel.
+- `buildFloorWorld` keeps the exit's doorway gates as `World.exitGates` and the open floor with them shut as `collidersLocked`; `floorWorldNow` adds them while `clearsLeft` is above 0 (to a fight room's shut set too). It reads only `SimState.floor.cleared`, so the server, prediction and the camera agree as they do for a fight room's doors; the arena never has a floor, so the parity hashes are untouched.
+- `FloorView`: the exit's portcullis drops while it is locked, and gold words over the doorway say "Clear N more fight rooms", redrawn only when the count changes.
+- Tests: `exitLock.test.ts` (3): a hero running at the rest room's door from outside stays out until one room is cleared and walks in after; floor 3 asks two, capped by the floor; the Warden's hall is shut the same way. test:net's bots walk the shortest route, which may pass no fight, so the smoke test tunes the lock to 0 for its walks. check 265/265, test:net all passed.
+
+**Learned**
+
+Every piece already had its doorway gates built (only fight rooms ever used them), so the lock is the rest room's own gates and its portcullis meshes were already in the view.
+
+**Next**
+
+The boss's drops and the way home (A, with Michael's note: a 10 s countdown before the ring opens), then materials in the bag (A), the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
+## 2026-10-31: Session 70, the rest room is the way out
+
+**What changed**
+
+Shared sim, `HostSession`, `FloorRoom`, client words. Michael's A on "The rest room" (control room, 31 Oct): no heal, nothing banks until home.
+- `dungeon.restHeal` is 0 and `loop.bankAtRest` (new, off) keeps P1's rest-room bank behind a switch. Reaching the rest room still raises `rested` (the banner now says "A way out · nothing is banked yet" and that the gold ring banks the run, the violet ring putting all of it at stake).
+- `floorRun.ts`: `runPurse` (pure) is the run's unbanked pay, the purse the floors before handed on plus this floor's rooms and smashing at its depth bonus; `bank` pays it, so the Warden's fall banks the whole run too; a wipe drops the purse with the finds. `leaveFloor` runs as a ring is taken: home banks (once: `FloorRunState.home`, so a failed hand-off retaken pays nothing twice), deeper picks up each player's finds still on the ground as carried.
+- `HostSession.stepPortal` calls it before `onPortal`, keeps the events in the tick's (so `FloorRoom.onEvents` credits the village) and sends a snapshot at once, so the bank reaches the browser ahead of the hand-off. `runPurse()` and `receivePurse()` for the room.
+- `FloorRoom` hands the purse to the next floor through a static map keyed by village code and floor, never create options, which a browser can send for itself.
+- Henchman XP needed nothing: it travels in the cards and banks with the run's last `banked` event. The browser's carried marks already lasted across floors.
+- Words: the wipe's toast, the hero screen's carried note, a room's clear banner ("Potions and revives are the only heal").
+- Tests: the five files that pin P1's bank and D7's heal turn the old switches on; `restRoomStakes.test.ts` (4) proves no heal and no bank on arrival, the gold ring's bank in a snapshot sent first and paid once, the purse carried deeper and banked from floor 2, and lost with a wipe. test:net's run now checks the rest room banks nothing and the run banks once, from floor 2 (105 lumber, 84 stone into the village over both floors). check 262/262, test:net all passed.
+
+**Learned**
+
+`HostSession.between` splices its events out of the tick's array, so a bank raised there would never reach `onEvents` and the village would not be credited; `leaveFloor`'s events are copied to the outbox instead and left in the tick. A test:net server outlived its run here (5 GB, still ticking) and held port 2599 for the next run; killing it was enough.
+
+**Next**
+
+"Clear the floor before the rest or boss room" (A: one fight room, two from floor 3, the count on the door), then the boss's drops and the way home (A, with Michael's note: a 10 s countdown before the ring opens), materials in the bag (A), the village's start and Random at Portal tier III (A), his gamepad layout (A).
+
 ## 2026-10-31: Session 69, Michael's 30 Oct board notes asked
 
 **What changed**

@@ -1129,6 +1129,16 @@ export const tuning = {
   village: {
     maxTier: 4,
     /**
+     * A new village is Wren's portal and three empty plots (Michael, 31 Oct, A), each raised by a
+     * first build costing plotLumber, plotStone and plotCoin. An old village keeps its buildings.
+     */
+    startWithPlots: true,
+    /** Wren's Random tab opens at this Portal tier (Michael, 31 Oct, A: tier III); story dungeons before it. */
+    randomFromTier: 3,
+    plotLumber: 10,
+    plotStone: 8,
+    plotCoin: 0,
+    /**
      * Raising a building to tier 2 costs this (P4; Michael, 28 Oct: lumber, stone and coin); each
      * tier after costs upgradeGrowth times the one before. About a run buys tier 2 of one building.
      */
@@ -1179,6 +1189,22 @@ export const tuning = {
     bossLumber: 12,
     bossStone: 12,
     /**
+     * Bank on reaching a rest room, as P1 did. Off since Michael's 31 Oct A: finds, coin, lumber,
+     * stone and the henchmen's XP stay carried from floor to floor and bank only when the gold ring
+     * takes the party home or the Warden falls, so a wipe on floor 4 loses floors 1 to 4.
+     */
+    bankAtRest: false,
+    /**
+     * The Warden's fall on a generated floor (Michael, 31 Oct, A): each player gets one rare a
+     * difficulty step past Normal (Easy and Normal 1, Hard 2, Nightmare and up 3), at most
+     * bossDropsMax, of a material from bossDropMinTier up, above what the rooms drop.
+     */
+    bossDropsMax: 3,
+    bossDropMinTier: 4,
+    /** The gold ring home opens this long after the Warden falls (his note: "like a 10 second count"), this far from where it fell (m). */
+    homeRingDelayS: 10,
+    homeRingOffset: 8,
+    /**
      * Things to smash (D4; Michael, 28 Oct): a crate or barrel sprays out lumber, an urn stone, a
      * piece at a time, between these many each (Michael, 29 Oct: "in random quantities"). What is
      * picked up is carried until the floor banks (and the deeper floors' bonus with it).
@@ -1187,6 +1213,13 @@ export const tuning = {
     smashLumberMax: 3,
     smashStoneMin: 1,
     smashStoneMax: 3,
+    /**
+     * Lumber and stone in the bag (Michael, 31 Oct, A): a piece is taken only by a player whose bag
+     * has room, stacking to bagStack a space, so materials compete with finds for the bag's spaces.
+     * Off, they are the party's count as before (a browser that sends no room is not limited either).
+     */
+    materialsInBag: true,
+    bagStack: 50,
     /** Crates and barrels hold coin too (Michael, 29 Oct): this often, between these many, in up to three piles. */
     smashCoinChance: 0.5,
     smashCoinMin: 2,
@@ -1324,8 +1357,19 @@ export const tuning = {
      * after every encounter). The arena keeps run.healOnWaveClear. The rest room heals instead.
      */
     healOnClear: 0,
-    /** Of max health, given to every standing hero as the rest room banks the floor. */
-    restHeal: 1,
+    /**
+     * Of max health, given to every standing hero on reaching the rest room. Nothing since Michael's
+     * 31 Oct A: the rest room is a way out, not a free heal; potions and revives are the heal.
+     */
+    restHeal: 0,
+    /**
+     * Fight rooms to clear before the rest room's or the Warden's door opens (Michael, 31 Oct, A):
+     * no floor can be walked straight through, but rushing stays a choice. From floor
+     * clearsDeepFrom, clearsBeforeExitDeep. Never more than the floor has.
+     */
+    clearsBeforeExit: 1,
+    clearsBeforeExitDeep: 2,
+    clearsDeepFrom: 3,
     /**
      * Shut a fight room's doors behind the party, waiting for them and pulling in stragglers (T4).
      * Off since D8 (Michael 28 Oct: locking a party in is annoying with several players); the
@@ -1700,6 +1744,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.hauntedHp': [0.1, 1, 0.05],
   'dungeon.healOnClear': [0, 1, 0.05],
   'dungeon.restHeal': [0, 1, 0.05],
+  'dungeon.clearsBeforeExit': [0, 5, 1],
+  'dungeon.clearsBeforeExitDeep': [0, 5, 1],
+  'dungeon.clearsDeepFrom': [1, 5, 1],
   'dungeon.seed': [0, 99999, 1],
   'dungeon.pieces': [0, 50, 1],
   'sim.maxStepsPerFrame': [1, 60, 1],
@@ -2161,6 +2208,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'village.upgradeLumber': [0, 500, 5],
   'village.upgradeStone': [0, 500, 5],
   'village.upgradeCoin': [0, 1000, 10],
+  'village.plotLumber': [0, 200, 1],
+  'village.plotStone': [0, 200, 1],
+  'village.plotCoin': [0, 500, 5],
+  'village.randomFromTier': [1, 4, 1],
   'village.upgradeGrowth': [1, 5, 0.1],
   'village.stockBase': [1, 20, 1],
   'village.stockPerTier': [0, 10, 1],
@@ -2176,10 +2227,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.depthBonus': [0, 1, 0.05],
   'loop.coinPerRoom': [0, 100, 1],
   'loop.lumberPerRoom': [0, 40, 1],
+  'loop.bagStack': [10, 99, 1],
   'loop.stonePerRoom': [0, 40, 1],
   'loop.bossCoin': [0, 500, 5],
   'loop.bossLumber': [0, 100, 1],
   'loop.bossStone': [0, 100, 1],
+  'loop.bossDropsMax': [1, 5, 1],
+  'loop.bossDropMinTier': [1, 5, 1],
+  'loop.homeRingDelayS': [0, 30, 1],
+  'loop.homeRingOffset': [0, 20, 0.5],
   'loop.smashLumberMin': [0, 10, 1],
   'loop.smashLumberMax': [0, 10, 1],
   'loop.smashStoneMin': [0, 10, 1],

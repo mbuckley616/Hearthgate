@@ -5,6 +5,7 @@ import type { PieceInfo } from '@hearthgate/shared/level/floor';
 import type { Collider } from '@hearthgate/shared/level/geometry';
 import { DOOR_H } from '@hearthgate/shared/level/kit';
 import { buildBrazier } from './decor';
+import { labelTexture } from './PortalView';
 import { floorTextures, pillarTextures, wallTextures } from './textures';
 
 const DEG = Math.PI / 180;
@@ -49,6 +50,11 @@ export class FloorView {
   private lights: { light: THREE.PointLight; fire: Fire | null }[] = [];
   private gates = new Map<number, Gate[]>();
   private shut = -1;
+  /** The way out (the rest room or the Warden's hall), its portcullis down while fights are still owed (Michael, 31 Oct). */
+  private exit = -1;
+  private locked = false;
+  private lockLabel: THREE.Sprite | null = null;
+  private lockShown = -1;
   private focus = new THREE.Vector3();
   private relightIn = 0;
   private colliderDebug: THREE.Group;
@@ -169,18 +175,45 @@ export class FloorView {
     this.colliderDebug = buildColliderDebug([...world.colliders, ...[...(world.roomColliders ?? [])].flat().filter((c) => c.id.startsWith('gate-'))]);
     this.colliderDebug.visible = false;
     this.group.add(this.colliderDebug);
+
+    // The words over the way out while it is shut, set when the count changes (sync).
+    this.exit = layout.def.exit;
+    const exitGates = world.exitGates ?? [];
+    if (exitGates.length > 0) {
+      const g = exitGates[0];
+      if (g.kind === 'box') {
+        this.lockLabel = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+        this.lockLabel.position.set((g.min.x + g.max.x) / 2, g.max.y + 0.6, (g.min.z + g.max.z) / 2);
+        this.lockLabel.renderOrder = 3;
+        this.lockLabel.visible = false;
+        this.group.add(this.lockLabel);
+      }
+    }
   }
 
   /** Which fight room is shut (-1 for none), and where the hero is, for the nearest fires' lights. */
-  sync(shutRoom: number, focus: THREE.Vector3): void {
+  sync(shutRoom: number, focus: THREE.Vector3, clearsLeft = 0): void {
     this.shut = shutRoom;
     this.focus.copy(focus);
+    this.locked = clearsLeft > 0;
+    if (this.lockLabel && clearsLeft !== this.lockShown) {
+      this.lockShown = clearsLeft;
+      this.lockLabel.visible = clearsLeft > 0;
+      if (clearsLeft > 0) {
+        const mat = this.lockLabel.material;
+        mat.map?.dispose();
+        const { texture, aspect } = labelTexture(`Clear ${clearsLeft} more fight room${clearsLeft === 1 ? '' : 's'}`);
+        mat.map = texture;
+        mat.needsUpdate = true;
+        this.lockLabel.scale.set(0.45 * aspect, 0.45, 1);
+      }
+    }
   }
 
   update(dt: number, time: number, occluders: ReadonlySet<string>, _gateClosed = false): void {
     // Gates drop fast and rise slowly, and vanish once up: the walls are lower than a raised portcullis.
     for (const [room, gates] of this.gates) {
-      const down = room === this.shut;
+      const down = room === this.shut || (room === this.exit && this.locked);
       for (const g of gates) {
         g.drop += ((down ? 1 : 0) - g.drop) * (1 - Math.exp(-(down ? 9 : 1.5) * dt));
         g.group.visible = g.drop > 0.02;

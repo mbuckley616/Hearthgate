@@ -8,7 +8,7 @@ import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
 import { drinkPotion, smashArc } from './smash';
 import type { PropInfo } from '../level/floor';
-import { inDoor } from '../level/village';
+import { doorBuilding, inDoor } from '../level/village';
 import { dodgeCancelMs, dodgeRechargeCut, emptyTalents, familyOf, heroHit, moveSpeedMult } from './talents';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -722,8 +722,11 @@ export function stepPlayer(
  * side's arrival lies outside the other's circle, so nobody bounces back.
  */
 export function stepDoors(state: SimState, world: World, commands: Record<string, PlayerCommand> = {}): void {
-  const doors = world.level.village?.doors;
-  if (!doors) return;
+  const village = world.level.village;
+  if (!village) return;
+  // An empty plot's door leads nowhere yet (Michael, 31 Oct, A).
+  const plots = state.plots ?? [];
+  const doors = plots.length > 0 ? village.doors.filter((d) => !plots.includes(doorBuilding(village, d) ?? '')) : village.doors;
   // A henchman keeps to its nearest player (P3), and a door is a jump a walk cannot follow: when that
   // player takes one, the henchman comes through with them.
   const leaders = new Map<PlayerState, PlayerState>();

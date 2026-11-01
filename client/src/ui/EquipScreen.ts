@@ -42,6 +42,8 @@ const BODY_AT: Record<BodySlot, [number, number]> = {
   feet: [1, 4],
   ring: [2, 4],
 };
+const matLine = (p: { kind: 'lumber' | 'stone'; n: number }) => `${p.n} ${p.kind} (a stack holds ${tuning.loop.bagStack})`;
+
 /** The bag is four across, seven down, to the right of the body. */
 const BAG_COLS = 4;
 const BAG_LEFT = 4;
@@ -61,7 +63,7 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * The bag and the body (T5b; decisions.md 27 Oct): what the hero wears on RuneScape's ten slots, the
  * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
  * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
- * pick up and put down, J or X to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
+ * pick up and put down, J or RT to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
  * between fights (Tab, or View on a pad), on a floor between rooms as well. Each weapon kind's level
  * shows on the Talents tab, and the bag and body tab shows the hero as dressed (Michael, 28 Oct).
  */
@@ -98,6 +100,8 @@ export class EquipScreen {
     private onDrop: (item: GearItem) => void = () => {},
     /** Whether champion points can be taken back here: at Keeper Wren's shrine (P5; Michael, 28 Oct). */
     private atShrine: () => boolean = () => true,
+    /** A stack of lumber or stone put down from the bag: Game asks the server to lay it at the hero's feet. */
+    private onDropMats: (kind: 'lumber' | 'stone', n: number) => void = () => {},
   ) {
     this.root.className = 'equip';
     const card = document.createElement('div');
@@ -328,7 +332,15 @@ export class EquipScreen {
   private drop(c: Cell): void {
     if (c.area !== 'bag') return;
     const item = this.profile.data.bag[c.space];
-    if (!item) return;
+    if (!item) {
+      // A stack of lumber or stone, put down to make room for a find (Michael's A on materials in the bag).
+      const pile = this.profile.materialStacks().get(c.space);
+      if (!pile) return;
+      this.profile.dropMaterial(pile.kind, pile.n);
+      this.onDropMats(pile.kind, pile.n);
+      this.render();
+      return;
+    }
     this.onDrop(item);
     this.profile.drop(c.space);
     this.render();
@@ -397,11 +409,14 @@ export class EquipScreen {
     const item = this.itemAt(c);
     // The bag's first spaces are its safe pocket (D5): marked, and named while empty.
     const pocket = c.area === 'bag' && c.space < this.profile.pocketSize() ? ' pocket' : '';
-    // A find carried on this floor (D3): marked until a rest room banks it.
+    // A find carried on this run (D3): marked until the gold ring home banks it.
     const carried = this.profile.isCarried(item) ? ' carried' : '';
     const label = c.area === 'worn' ? BODY_SLOT_NAMES[c.slot] : pocket ? 'pocket' : '';
     const at = `grid-column:${c.col + 1};grid-row:${c.row + 1}`;
     const chosen = (i === this.cursor ? ' chosen' : '') + (i === this.holding ? ' held' : '');
+    // Lumber and stone fill the bag's last empty spaces, a stack a space (Michael, 31 Oct, A).
+    const pile = !item && c.area === 'bag' ? this.profile.materialStacks().get(c.space) : undefined;
+    if (pile) return `<button class="gear-cell bag mats ${pile.kind} carried${chosen}" style="${at}" data-action="cell" data-cell="${i}" title="${pile.n} ${pile.kind}"><span class="gear-short">${pile.kind === 'lumber' ? 'Lumber' : 'Stone'}</span><span class="gear-carried">${pile.n}</span></button>`;
     if (!item) return `<button class="gear-cell empty ${c.area}${pocket}${chosen}" style="${at}" data-action="cell" data-cell="${i}"><span class="gear-slot">${label}</span></button>`;
     const e = entryOf(item);
     const icon = gearIconUrl(e);
@@ -425,10 +440,12 @@ export class EquipScreen {
     const detail = item
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
-         ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this floor and lost if the party wipes, even worn, until a rest room or the ring home banks it.</div>' : ''}
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or X: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or X: take off'}</div>`
-      : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
-    const free = this.profile.data.bag.filter((i) => !i).length;
+         ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this run and lost if the party wipes, even worn, until the gold ring home banks it.</div>' : ''}
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}</div>`
+      : c.area === 'bag' && this.profile.materialStacks().has(c.space)
+        ? `<div class="item-name">${matLine(this.profile.materialStacks().get(c.space)!)}</div><div class="gear-warn">Carried for the village: it goes to the village when the gold ring home banks the run, and is lost if the party wipes.</div><div class="gear-hint">Q or LB: drop it at your feet, to make room</div>`
+        : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
+    const free = this.profile.data.bag.filter((i) => !i).length - this.profile.materialStacks().size;
     const heldItem = this.holding === null ? null : this.itemAt(this.grid[this.holding]);
     const holding = heldItem
       ? `<div class="gear-held">Holding <b class="${heldItem.rarity}">${nameOf(heldItem)}</b>: F or A puts it down here · Esc or B puts it back</div>`
@@ -443,7 +460,7 @@ export class EquipScreen {
           ${detail}
           ${penalty}
           <div class="muted gear-free">${free} of 28 spaces free · move to choose (WASD, arrows, stick)</div>
-          ${c.area === 'bag' && item ? '<button data-action="drop">Drop</button>' : ''}
+          ${c.area === 'bag' && (item || this.profile.materialStacks().has(c.space)) ? '<button data-action="drop">Drop</button>' : ''}
         </div>
       </div>`;
   }

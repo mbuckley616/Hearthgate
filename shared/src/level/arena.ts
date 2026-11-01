@@ -113,6 +113,10 @@ export interface World {
   surfaces: Surface[];
   /** A generated floor's colliders with one fight room's doors shut, by piece (floor.ts). */
   roomColliders?: Collider[][];
+  /** A generated floor's way out (the rest room's or the Warden's doorways), shut until enough fights are cleared (Michael, 31 Oct). */
+  exitGates?: Collider[];
+  /** The open floor with the way out shut. */
+  collidersLocked?: Collider[];
 }
 
 export function buildWorld(level: LevelDef): World {

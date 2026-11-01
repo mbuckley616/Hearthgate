@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { HIRES } from '@hearthgate/shared/sim/henchman';
 import type { World } from '@hearthgate/shared/level/arena';
-import type { Building, InteriorDef, Villager } from '@hearthgate/shared/level/village';
+import { plotSpot, type Building, type InteriorDef, type Villager } from '@hearthgate/shared/level/village';
 import { createPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { HeroView } from './HeroView';
@@ -49,6 +49,9 @@ interface TierMarks {
   /** The tier on show; `wanted` is the village's, which a ceremony holds back until its reveal. */
   tier: number;
   wanted: number;
+  /** The building itself, and the marked plot shown instead at tier 0 (the shrine has none). */
+  body: THREE.Group;
+  plot: THREE.Group | null;
 }
 
 export class VillageView {
@@ -56,6 +59,7 @@ export class VillageView {
   /** No torches or braziers burn in the afternoon. */
   readonly fireSources: THREE.Vector3[] = [];
   private villagers: VillagerFigure[] = [];
+  private buildings: readonly Building[] = [];
   /** The Tavern's hires standing by the hearth (P10), hidden while one is with the party. */
   private hires: { kit: Style; view: HeroView; state: PlayerState }[] = [];
   /** Candle and hearth light in the interiors, wobbling a little each frame. */
@@ -89,6 +93,7 @@ export class VillageView {
 
     this.buildGround(h, v.buildings, v.well);
     this.buildPalisade(h, level.wallHeight);
+    this.buildings = v.buildings;
     for (const b of v.buildings) this.buildBuilding(b);
     this.buildWell(v.well.x, v.well.z, v.well.radius);
     this.buildWood(h);
@@ -133,6 +138,70 @@ export class VillageView {
   /** Show only the shell around the camera, if it is in an interior's. */
   setEye(eye: THREE.Vector3): void {
     for (const s of this.shells) s.mesh.visible = s.box.containsPoint(eye);
+  }
+
+  /** Where a villager stands now: a keeper on their plot until its first build is revealed. */
+  keeperSpot(n: Villager): { x: number; z: number } {
+    const m = n.building ? this.tierMarks.get(n.building) : undefined;
+    const b = this.buildings.find((x) => x.id === n.building);
+    return m && b && m.plot && m.tier < 1 ? plotSpot(b) : { x: n.x, z: n.z };
+  }
+
+  private idOf(m: TierMarks): Building['id'] | undefined {
+    for (const [id, x] of this.tierMarks) if (x === m) return id;
+    return undefined;
+  }
+
+  /**
+   * An empty plot (Michael, 31 Oct, A): stakes and a rope round the building's footprint, the earth
+   * turned inside it, and a board on a post by where the door will be, naming what is to stand there.
+   */
+  private buildPlot(b: Building): THREE.Group {
+    const root = new THREE.Group();
+    root.visible = false;
+    const cx = (b.minX + b.maxX) / 2;
+    const cz = (b.minZ + b.maxZ) / 2;
+    const w = b.maxX - b.minX;
+    const d = b.maxZ - b.minZ;
+    const earth = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), new THREE.MeshStandardMaterial({ color: 0x5a4330, roughness: 1 }));
+    earth.position.set(cx, 0.03, cz);
+    earth.receiveShadow = true;
+    root.add(earth);
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a44, roughness: 0.95 });
+    const stake = new THREE.CylinderGeometry(0.06, 0.08, 0.9, 5).translate(0, 0.45, 0);
+    const corners: [number, number][] = [
+      [b.minX, b.minZ],
+      [b.maxX, b.minZ],
+      [b.maxX, b.maxZ],
+      [b.minX, b.maxZ],
+    ];
+    const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a, roughness: 0.9 });
+    corners.forEach(([x, z], i) => {
+      const post = new THREE.Mesh(stake, wood);
+      post.position.set(x, 0, z);
+      post.castShadow = true;
+      root.add(post);
+      const [nx, nz] = corners[(i + 1) % 4];
+      const len = Math.hypot(nx - x, nz - z);
+      const line = new THREE.Mesh(new THREE.BoxGeometry(len, 0.03, 0.03), rope);
+      line.position.set((x + nx) / 2, 0.75, (z + nz) / 2);
+      line.rotation.y = -Math.atan2(nz - z, nx - x);
+      root.add(line);
+    });
+    const face = b.door.facingYawDeg * DEG;
+    const out = new THREE.Vector3(Math.sin(face), 0, Math.cos(face));
+    const side = new THREE.Vector3(Math.cos(face), 0, -Math.sin(face));
+    const at = new THREE.Vector3(b.door.x, 0, b.door.z).addScaledVector(out, 0.8).addScaledVector(side, 1.6);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.9, 5).translate(0, 0.95, 0), wood);
+    post.position.copy(at);
+    post.castShadow = true;
+    root.add(post);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshStandardMaterial({ map: signTexture(`${b.name}: a plot`), roughness: 0.8, side: THREE.DoubleSide }));
+    board.position.copy(at).setY(1.6).addScaledVector(out, 0.1);
+    board.rotation.y = face;
+    root.add(board);
+    this.group.add(root);
+    return root;
   }
 
   get villagerDefs(): readonly Villager[] {
@@ -249,17 +318,20 @@ export class VillageView {
     const cz = (b.minZ + b.maxZ) / 2;
     const shrine = b.id === 'shrine';
     const plinth = shrine ? b.height : 0.7;
+    // Everything of the building but its scaffold, hidden while it is an empty plot (Michael, 31 Oct, A).
+    const body = new THREE.Group();
+    this.group.add(body);
 
     const stone = new THREE.Mesh(new THREE.BoxGeometry(w, plinth, d), standard(fieldstoneTextures(Math.max(w, d), plinth), 2));
     stone.position.set(cx, plinth / 2, cz);
     stone.castShadow = stone.receiveShadow = true;
-    this.group.add(stone);
+    body.add(stone);
     if (!shrine) {
       const upper = b.height - plinth;
       const walls = new THREE.Mesh(new THREE.BoxGeometry(w - 0.1, upper, d - 0.1), standard(timberTextures(Math.max(w, d), upper), 1.5, 0.85));
       walls.position.set(cx, plinth + upper / 2, cz);
       walls.castShadow = walls.receiveShadow = true;
-      this.group.add(walls);
+      body.add(walls);
     }
 
     // A pitched roof, its ridge along the longer side, overhanging the walls.
@@ -280,7 +352,7 @@ export class VillageView {
     roof.position.set(cx, b.height, cz);
     if (alongX) roof.rotation.y = Math.PI / 2;
     roof.castShadow = roof.receiveShadow = true;
-    this.group.add(roof);
+    body.add(roof);
 
     // The door: planks in a dark frame, standing a little proud of the face it is on.
     const face = b.door.facingYawDeg * DEG;
@@ -291,20 +363,20 @@ export class VillageView {
     door.position.set(b.door.x, doorH / 2, b.door.z).addScaledVector(out, 0.05);
     door.rotation.y = face;
     door.castShadow = true;
-    this.group.add(door);
+    body.add(door);
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.9 });
     const frame = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.3, 0.22, 0.2), frameMat);
     frame.position.set(b.door.x, doorH + 0.1, b.door.z).addScaledVector(out, 0.06);
     frame.rotation.y = face;
-    this.group.add(frame);
+    body.add(frame);
 
     // A painted sign over the door with the building's name.
     const side = new THREE.Vector3(Math.cos(face), 0, -Math.sin(face));
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshStandardMaterial({ map: signTexture(b.name), roughness: 0.8 }));
     sign.position.set(b.door.x, doorH + 0.75, b.door.z).addScaledVector(out, 0.08);
     sign.rotation.y = face;
-    this.group.add(sign);
-    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1, wanted: 1 });
+    body.add(sign);
+    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1, wanted: 1, body, plot: shrine ? null : this.buildPlot(b) });
     this.buildScaffold(b);
 
     if (shrine) this.buildShrineFront(b, out, side);
@@ -727,6 +799,15 @@ export class VillageView {
   private showTier(m: TierMarks, tier: number): void {
     if (tier === m.tier) return;
     m.tier = tier;
+    m.body.visible = tier >= 1;
+    if (m.plot) m.plot.visible = tier < 1;
+    // The keeper waits on the plot until it is built, then keeps the counter inside.
+    for (const v of this.villagers) {
+      if (v.def.building !== this.idOf(m)) continue;
+      const at = this.keeperSpot(v.def);
+      v.state.x = at.x;
+      v.state.z = at.z;
+    }
     m.flags.forEach((f, i) => (f.visible = i < tier));
     m.sign.material.map?.dispose();
     m.sign.material.map = signTexture(tier > 1 ? `${m.name} ${ROMAN[tier] ?? tier}` : m.name);

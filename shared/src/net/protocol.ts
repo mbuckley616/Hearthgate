@@ -41,6 +41,8 @@ export type ToHost =
   | { k: 'home' }
   /** An item from the bag put on the floor at the player's feet (D13); the browser has already taken it out. */
   | { k: 'drop'; item: GearItem }
+  /** A stack of lumber or stone put down at the player's feet (materials in the bag); the browser has already taken it out. */
+  | { k: 'dropMats'; kind: 'lumber' | 'stone'; n: number }
   | { k: 'tune'; edit: TuneEdit }
   | { k: 'cheat'; cheat: Cheat }
   /** Keeper Wren (T4b): where the village's ring leads, a hand-built dungeon or (null) a generated run. */

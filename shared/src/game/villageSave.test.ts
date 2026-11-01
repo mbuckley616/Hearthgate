@@ -46,7 +46,7 @@ describe('raising a building (P4)', () => {
   });
 
   it('says what is missing, pays lumber and stone, and stops at the top tier', () => {
-    const rich = { ...emptyVillage('x'), lumber: 1000, stone: 1000 };
+    const rich = { ...emptyVillage('x'), tiers: { shrine: 1, store: 1, storehouse: 1, tavern: 1 }, lumber: 1000, stone: 1000 };
     expect(upgradeProblem(villageView(rich), 'store', 0)).toBe(`${v.upgradeCoin} more coin`);
     expect(upgradeProblem({ ...villageView(rich), lumber: 1 }, 'store', 1e6)).toBe(`${v.upgradeLumber - 1} more lumber`);
     expect(upgradeProblem(villageView(rich), 'store', 1e6)).toBeNull();

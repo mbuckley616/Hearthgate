@@ -527,3 +527,23 @@ async function steer(page: Page, to: "exit" | "home") {
     await page.waitForTimeout(250);
   }
 }
+
+test("a new village is Wren's portal and three plots: the keeper waits outside and offers only the build", async ({ page }) => {
+  const errors: string[] = [];
+  await page.goto("/?play");
+  await page.evaluate(() => localStorage.clear());
+  await open(page, "play", errors);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { game: any }).game.session.village?.view.tiers)).toEqual({ shrine: 1, store: 0, storehouse: 0, tavern: 0 });
+  const plot = await page.evaluate(() => {
+    const g = (window as unknown as { game: any }).game;
+    const aldous = g.world.level.village.villagers.find((n: any) => n.building === "store");
+    const at = g.room.keeperSpot(aldous);
+    return { inside: [aldous.x, aldous.z], at: [at.x, at.z], choices: g.keeperChoices(aldous).map((c: any) => c.id), line: g.keeperLine(aldous) };
+  });
+  // Out on the square by the store's door (x 11), not at the counter inside (x 80).
+  expect(Math.abs(plot.at[0])).toBeLessThan(15);
+  expect(Math.abs(plot.inside[0])).toBeGreaterThan(50);
+  expect(plot.choices).toEqual(["path", "leave"]);
+  expect(plot.line).toMatch(/will stand/);
+  expect(errors).toEqual([]);
+});

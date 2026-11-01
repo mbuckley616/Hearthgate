@@ -1,7 +1,7 @@
 import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
-import { BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
+import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
@@ -159,6 +159,18 @@ export function readLoadout(v: unknown): Loadout | null {
     const n = Math.min(tuning.loop.potionMax, Math.trunc(v.potions));
     if (n > 0) loadout.potions = n;
   }
+  // The bag's room (Michael, 31 Oct, A): whole counts, never past what a bag of BAG_SIZE spaces holds.
+  if (v.bagRoom !== undefined) {
+    const r = v.bagRoom as Record<string, unknown> | null;
+    if (!r || typeof r !== 'object') return null;
+    const stack = tuning.loop.bagStack;
+    const whole = (x: unknown, max: number) => (isNum(x) && x >= 0 && x <= max ? Math.trunc(x) : null);
+    const spaces = whole(r.spaces, BAG_SIZE);
+    const lumber = whole(r.lumber, stack);
+    const stone = whole(r.stone, stack);
+    if (spaces === null || lumber === null || stone === null) return null;
+    loadout.bagRoom = { spaces, lumber, stone };
+  }
   return loadout;
 }
 
@@ -222,6 +234,9 @@ export function readToHost(v: unknown): ToHost | null {
       const item = readGearItem(v.item);
       return item ? { k: 'drop', item } : null;
     }
+    case 'dropMats':
+      if ((v.kind !== 'lumber' && v.kind !== 'stone') || !Number.isInteger(v.n) || (v.n as number) < 1 || (v.n as number) > 99) return null;
+      return { k: 'dropMats', kind: v.kind, n: v.n as number };
     case 'tune': {
       const e = v.edit;
       if (!isObj(e) || typeof e.path !== 'string' || !(isNum(e.value) || isBool(e.value))) return null;

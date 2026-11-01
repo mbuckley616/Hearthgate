@@ -1,9 +1,10 @@
-import { DIFFICULTIES, MAX_FLOORS, MODIFIERS, MODIFIER_IDS, SIZES, SIZE_IDS, STORY, maxDifficulty, type ModifierId, type PortalChoice, type SizeId, type StoryDungeon } from '@hearthgate/shared/game/portalChoice';
+import { DIFFICULTIES, MAX_FLOORS, MODIFIERS, MODIFIER_IDS, SIZES, SIZE_IDS, STORY, maxDifficulty, randomOpen, type ModifierId, type PortalChoice, type SizeId, type StoryDungeon } from '@hearthgate/shared/game/portalChoice';
 import { BODY_SLOT_NAMES, CATALOGUE, type BodySlot } from '@hearthgate/shared/sim/catalogue';
-import type { EnemyKind } from '@hearthgate/shared/config/tuning';
+import { tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { HandDungeon } from '@hearthgate/shared/level/handmade';
 import type { ActionFrame } from '../input/actions';
 import { gearIconUrl } from './gearIcons';
+import { roman } from './villageWords';
 
 type Tab = 'story' | 'random';
 /** The Random tab's rows, in order; the theme is shown but locked until dungeon types arrive. */
@@ -134,6 +135,7 @@ export class PortalScreen {
   /** F or A: open the chosen portal (a locked story dungeon stays shut). */
   private choose(): void {
     if (this.tab === 'random') {
+      if (!randomOpen(this.shrineTier)) return;
       this.onChoose({ kind: 'random', floors: this.floors, size: this.size, difficulty: this.difficulty, modifier: this.modifier });
       return;
     }
@@ -224,11 +226,13 @@ export class PortalScreen {
   private render(): void {
     const tabs = `<div class="portal-tabs">
         <button class="portal-tab${this.tab === 'story' ? ' on' : ''}" data-act="tab" data-tab="story">Story dungeons</button>
-        <button class="portal-tab${this.tab === 'random' ? ' on' : ''}" data-act="tab" data-tab="random">Random dungeon</button>
+        <button class="portal-tab${this.tab === 'random' ? ' on' : ''}${randomOpen(this.shrineTier) ? '' : ' locked'}" data-act="tab" data-tab="random">Random dungeon</button>
         <span class="muted">Q / E to switch · Esc to leave</span>
       </div>`;
     if (this.tab === 'random') {
-      this.body.innerHTML = `${tabs}<div class="portal-random">${this.randomHtml()}</div>`;
+      // Locked until the Portal's third tier (Michael, 31 Oct, A): the tab says when, the story list stays open.
+      const shut = `<div class="portal-random portal-shut"><p><b>Opens at Portal tier ${roman(tuning.village.randomFromTier)}</b></p><p class="muted">Raise the Portal Shrine at Keeper Wren's to let the portal reshape itself. Until then, the story dungeons.</p></div>`;
+      this.body.innerHTML = `${tabs}${randomOpen(this.shrineTier) ? `<div class="portal-random">${this.randomHtml()}</div>` : shut}`;
       return;
     }
     const list = STORY.map((s, i) => this.storyRow(s, i)).join('');

@@ -16,6 +16,7 @@ import {
 } from '@hearthgate/shared/sim/catalogue';
 import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
+import { bagRoomOf, materialSpaces, roomFor, type Materials } from '@hearthgate/shared/sim/bagRoom';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { emptyVillage, pocketSpaces, readVillageSave, stashSpaces, type VillageSave } from '@hearthgate/shared/game/villageSave';
@@ -67,6 +68,11 @@ export interface ProfileData {
   storyCleared?: string[];
   /** Finds carried on this floor (D3), by uid: in the bag or worn, but lost on a wipe until banked. */
   carried?: string[];
+  /**
+   * Lumber and stone picked up on this run (Michael, 31 Oct, A): stacks of loop.bagStack filling the
+   * bag's last empty spaces, always carried (they go to the village when the run banks, or with the bag).
+   */
+  mats?: Materials;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -155,10 +161,13 @@ export class Profile {
 
   private static loadVillage(): OwnVillage {
     try {
-      const v = JSON.parse(localStorage.getItem(VILLAGE_KEY) ?? '{}') as Partial<OwnVillage>;
+      const raw = localStorage.getItem(VILLAGE_KEY);
+      // A browser with no village yet starts one: Wren's portal and empty plots (Michael, 31 Oct, A).
+      if (raw === null) return emptyVillage(newVillageId());
+      const v = JSON.parse(raw) as Partial<OwnVillage>;
       const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0);
       // P1's save had only lumber and stone; it gains an id and the starting tiers.
-      const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), lumber: n(v.lumber), stone: n(v.stone) };
+      const save = { ...emptyVillage(typeof v.id === 'string' ? v.id : newVillageId()), tiers: { shrine: 1, store: 1, storehouse: 1, tavern: 1 }, lumber: n(v.lumber), stone: n(v.stone) };
       // The henchmen's banked XP (P12) is checked with the rest; if it is bad, the village keeps all but that.
       const tiers = { ...save.tiers, ...v.tiers };
       const read: OwnVillage = (v.hench ? readVillageSave({ ...save, tiers, hench: v.hench }) : null) ?? readVillageSave({ ...save, tiers }) ?? save;
@@ -235,7 +244,7 @@ export class Profile {
     const slot = entryOf(item).slot;
     let kept = true;
     if (!this.data.worn[slot] && slot !== 'weapon') this.data.worn[slot] = item;
-    else kept = placeInBag(this.data.bag, item, this.pocketSize());
+    else kept = this.gearRoom() > 0 && placeInBag(this.data.bag, item, this.pocketSize());
     this.save();
     return kept;
   }
@@ -253,7 +262,7 @@ export class Profile {
   /** Take off a worn piece into the bag (not if the bag is full). The weapon stays: a hero always has one in hand. */
   takeOff(slot: BodySlot): boolean {
     const item = this.data.worn[slot];
-    if (!item || slot === 'weapon' || !placeInBag(this.data.bag, item, this.pocketSize())) return false;
+    if (!item || slot === 'weapon' || this.gearRoom() <= 0 || !placeInBag(this.data.bag, item, this.pocketSize())) return false;
     delete this.data.worn[slot];
     this.save();
     return true;
@@ -272,7 +281,7 @@ export class Profile {
       this.wear(space);
       return true;
     }
-    if (slot === 'weapon') return false;
+    if (slot === 'weapon' || !this.roomAt(space)) return false;
     this.data.bag[space] = worn;
     delete this.data.worn[slot];
     this.save();
@@ -304,6 +313,9 @@ export class Profile {
     const from = this.spaceOf(a);
     const to = this.spaceOf(b);
     const held = from[a.i] ?? null;
+    // From the stash into an empty bag space (or the other way) changes what the bag holds.
+    if (held && a.area === 'stash' && b.area === 'bag' && !to[b.i] && !this.roomAt(b.i)) return;
+    if (!held && b.area === 'stash' && a.area === 'bag' && to[b.i] && !this.roomAt(a.i)) return;
     from[a.i] = to[b.i] ?? null;
     to[b.i] = held;
     this.save();
@@ -315,7 +327,7 @@ export class Profile {
     if (!item) return false;
     const to = at.area === 'bag' ? this.stash() : this.data.bag;
     const free = at.area === 'bag' ? to.indexOf(null) : to.findIndex((s, n) => n >= this.pocketSize() && !s);
-    if (free < 0) return false;
+    if (free < 0 || (at.area === 'stash' && this.gearRoom() <= 0)) return false;
     to[free] = item;
     this.spaceOf(at)[at.i] = null;
     this.save();
@@ -325,6 +337,73 @@ export class Profile {
   /** Whether this item is a carried find (D3), not yet banked. */
   isCarried(item: GearItem | null | undefined): boolean {
     return !!item && (this.data.carried ?? []).includes(item.uid);
+  }
+
+  /** Empty bag spaces past the pocket that lumber and stone do not fill: room for another find. */
+  gearRoom(): number {
+    return this.emptyPastPocket() - materialSpaces(this.materials());
+  }
+
+  /** Whether an item may go into this empty bag space: the pocket always, past it only with room. */
+  private roomAt(space: number): boolean {
+    return space < this.pocketSize() || this.gearRoom() > 0;
+  }
+
+  private emptyPastPocket(): number {
+    return this.data.bag.filter((s, n) => n >= this.pocketSize() && !s).length;
+  }
+
+  /** Lumber and stone in the bag. */
+  materials(): Materials {
+    return { lumber: this.data.mats?.lumber ?? 0, stone: this.data.mats?.stone ?? 0 };
+  }
+
+  /**
+   * The bag spaces lumber and stone fill (Michael, 31 Oct, A), for the hero screen: the last empty
+   * spaces past the pocket, each with its kind and count.
+   */
+  materialStacks(): Map<number, { kind: 'lumber' | 'stone'; n: number }> {
+    const out = new Map<number, { kind: 'lumber' | 'stone'; n: number }>();
+    const stack = tuning.loop.bagStack;
+    const piles: { kind: 'lumber' | 'stone'; n: number }[] = [];
+    for (const kind of ['lumber', 'stone'] as const) {
+      for (let left = this.materials()[kind]; left > 0; left -= stack) piles.push({ kind, n: Math.min(stack, left) });
+    }
+    for (let i = this.data.bag.length - 1; i >= this.pocketSize() && piles.length > 0; i--) if (!this.data.bag[i]) out.set(i, piles.shift()!);
+    return out;
+  }
+
+  /** The server handed this browser lumber or stone it had room for. What will not fit is left out. */
+  addMaterial(kind: 'lumber' | 'stone', n: number): number {
+    const m = this.materials();
+    const room = bagRoomOf(this.emptyPastPocket(), m);
+    let took = 0;
+    while (took < n && roomFor(room, kind)) took++;
+    m[kind] += took;
+    this.data.mats = m;
+    this.save();
+    return took;
+  }
+
+  /** Whether one more unit of lumber or stone fits in the bag (for the HUD's "bag full"; the server decides the pickup). */
+  hasRoomFor(kind: 'lumber' | 'stone'): boolean {
+    return roomFor(bagRoomOf(this.emptyPastPocket(), this.materials()), kind);
+  }
+
+  /** A stack put down on the floor (Michael's A on materials in the bag): it leaves the bag, for room. */
+  dropMaterial(kind: 'lumber' | 'stone', n: number): void {
+    const m = this.materials();
+    m[kind] = Math.max(0, m[kind] - n);
+    this.data.mats = m;
+    this.save();
+  }
+
+  /** The run banked or the bag was lost: the lumber and stone leave the bag. Returns what was there. */
+  takeMaterials(): Materials {
+    const m = this.materials();
+    delete this.data.mats;
+    this.save();
+    return m;
   }
 
   /** The floor banked (D3): what was carried is the player's for good. */
@@ -508,6 +587,7 @@ export class Profile {
       look: lookOf(this.data.worn),
       champion: { xp: this.champion.xp, ranks, slots: (this.champion.slots ?? []).slice(0, slotCount()) },
       ...(this.data.potions ? { potions: this.data.potions } : {}),
+      bagRoom: bagRoomOf(this.emptyPastPocket(), this.materials()),
     };
   }
 

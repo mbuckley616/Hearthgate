@@ -21,7 +21,7 @@ import type { SimState } from './types';
  * reinforcements once it is mostly down; clearing it opens the doors. Health comes back only in
  * the rest room (D7), not after every room as the slice's waves gave it.
  * The last floor's Warden ends the run; a wipe ends it anywhere. The rest room at the end of every
- * other floor banks the party's drops; its rings (game/portal.ts) lead deeper or home.
+ * other floor is the way out; its rings (game/portal.ts) lead deeper or home, and only home banks.
  *
  * Reuses the slice's RunState for the phase, timers, gate and boss (so the HUD, sound and revives
  * read it as they do in the arena); what only a floor has lives in SimState.floor, which the arena
@@ -48,6 +48,20 @@ export interface FloorRunState {
   loot?: FloorLoot[];
   /** The run's twist (P8), from the floor's spec: absent for none. */
   modifier?: 'cursed' | 'haunted';
+  /**
+   * Coin, lumber and stone the run earned on the floors before this one and has not banked
+   * (Michael, 31 Oct: nothing banks until the gold ring home or a win). The room hands it on.
+   */
+  purse?: Purse;
+  /** This floor has banked (the gold ring home or the Warden's fall): a second ring taken banks nothing. */
+  home?: boolean;
+}
+
+/** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
+export interface Purse {
+  coin: number;
+  lumber: number;
+  stone: number;
 }
 
 /** One piece of a smashed prop's spray on the ground: lumber and stone a unit at a time, coin in piles. */
@@ -64,6 +78,8 @@ export interface FloorLoot {
   fromZ: number;
   /** state.time when it was thrown: it lands, and can be taken, loop.smashSettleMs later. */
   at: number;
+  /** Put down from a bag (Michael's A on materials in the bag): the one who dropped it takes it again only once they have stepped away. */
+  waitAway?: string;
 }
 
 export function initialFloorRun(): FloorRunState {
@@ -72,11 +88,31 @@ export function initialFloorRun(): FloorRunState {
 
 const active = (phase: string) => phase === 'intro' || phase === 'wave' || phase === 'rest';
 
-/** The world as it stands this tick: the fight room's doors shut while it is being fought. */
+/**
+ * Fight rooms still to clear before the rest room's or the Warden's door opens (Michael, 31 Oct):
+ * dungeon.clearsBeforeExit, more from clearsDeepFrom, never more than the floor's fight rooms
+ * (the Warden's hall is the door, not one of them). 0 when the door is open.
+ */
+export function clearsLeft(world: World, state: SimState): number {
+  const layout = world.level.dungeon;
+  const f = state.floor;
+  if (!layout || !f) return 0;
+  const d = tuning.dungeon;
+  const fights = layout.pieces.filter((p) => p.fight && p.kind !== 'boss' && p.id !== layout.def.exit);
+  const need = Math.min(fights.length, Math.max(0, Math.round(layout.def.spec.floor >= d.clearsDeepFrom ? d.clearsBeforeExitDeep : d.clearsBeforeExit)));
+  const done = f.cleared.filter((id) => fights.some((p) => p.id === id)).length;
+  return Math.max(0, need - done);
+}
+
+/** The world as it stands this tick: the fight room's doors shut while it is being fought, the way out's until enough are cleared. */
 export function floorWorldNow(world: World, state: SimState): World {
   const room = state.floor?.room ?? -1;
-  if (!state.run.gateClosed || room < 0 || !world.roomColliders) return { ...world, colliders: world.collidersOpen };
-  return { ...world, colliders: world.roomColliders[room] };
+  const fighting = state.run.gateClosed && room >= 0 && !!world.roomColliders;
+  const base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
+    return { ...world, colliders: fighting ? [...base, ...world.exitGates] : world.collidersLocked! };
+  }
+  return { ...world, colliders: base };
 }
 
 export function stepFloorRun(state: SimState, dt: number, world: World): void {
@@ -96,7 +132,9 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       if (!f.rested && rest.kind === 'rest' && party.length > 0 && party.every((p) => insidePiece(rest, p.x, p.z))) {
         f.rested = true;
         for (const p of standing) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * tuning.dungeon.restHeal);
-        bank(state, world, f);
+        // The rest room is the way out, not a vault (Michael, 31 Oct): with loop.bankAtRest off, what the
+        // party carries stays at stake until a ring takes them home (leaveFloor) or the Warden falls.
+        if (tuning.loop.bankAtRest) bank(state, world, f);
         state.events.push({ kind: 'rested' });
       }
       const room = tuning.debug.enemiesEnabled ? roomEntered(state, layout.pieces, f) : null;
@@ -142,14 +180,16 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       r.gateClosed = false;
       // The big rooms drop loot where the last enemy fell; the Warden's is rare.
       if (room.kind === 'large' || room.kind === 'arena' || room.kind === 'greatHall' || room.kind === 'cavern' || room.kind === 'boss') {
-        spawnDrop(state, world, r.dropX, r.dropZ, room.kind === 'boss', depthMult(world));
+        if (room.kind === 'boss') bossDrops(state, world, r.dropX, r.dropZ);
+        else spawnDrop(state, world, r.dropX, r.dropZ, false, depthMult(world));
         // Cursed (P8): double loot, for no revives.
         if (f.modifier === 'cursed') spawnDrop(state, world, r.dropX + 0.8, r.dropZ, room.kind === 'boss', depthMult(world));
       }
       if (room.kind === 'boss') {
         r.phase = 'won';
         r.timer = 0;
-        bank(state, world, f);
+        // The Warden's drops lie on the floor to be picked up (Michael, 31 Oct, A); the ring home,
+        // open after its count, banks the run with them (leaveFloor).
         state.events.push({ kind: 'runWon', time: r.elapsed });
       } else {
         r.phase = 'ante';
@@ -171,6 +211,22 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
   }
 }
 
+/** How many special drops the Warden leaves each player (Michael, 31 Oct): by the portal's difficulty. */
+export function bossDropCount(world: World): number {
+  const d = world.level.dungeon?.def.spec.difficulty ?? 1;
+  return Math.max(1, Math.min(Math.round(tuning.loop.bossDropsMax), d));
+}
+
+/** The Warden's drops, a step apart around where it fell, so their beams stand apart. */
+function bossDrops(state: SimState, world: World, x: number, z: number): void {
+  const n = bossDropCount(world);
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + 0.4;
+    const r = n > 1 ? 1.6 : 0;
+    spawnDrop(state, world, x + Math.cos(a) * r, z + Math.sin(a) * r, true, depthMult(world), Math.round(tuning.loop.bossDropMinTier));
+  }
+}
+
 /** What a floor pays over the first: depthBonus more for each floor deeper (P1). */
 export function depthMult(world: World): number {
   const spec = world.level.dungeon?.def.spec;
@@ -179,23 +235,60 @@ export function depthMult(world: World): number {
 }
 
 /**
- * Bank the floor (P1): every player's carried finds and any still on the ground for them go home
- * with them, with coin for the fight rooms cleared here, and the village's lumber and stone.
+ * What the run has earned and not banked (P1): the purse from the floors before, plus coin for the
+ * fight rooms cleared here and what was smashed (D4, the spray still on the ground included), at
+ * this floor's depth bonus. Pure: the room reads it to hand the purse to the next floor.
  */
-function bank(state: SimState, world: World, f: FloorRunState): void {
+export function runPurse(state: SimState, world: World): Purse {
+  const f = state.floor;
+  const layout = world.level.dungeon;
+  if (!f || !layout) return { coin: 0, lumber: 0, stone: 0 };
   const l = tuning.loop;
-  const pieces = world.level.dungeon!.pieces;
   const rooms = f.cleared.length;
-  const boss = f.cleared.some((id) => pieces[id]?.kind === 'boss') ? 1 : 0;
+  const boss = f.cleared.some((id) => layout.pieces[id]?.kind === 'boss') ? 1 : 0;
   const mult = depthMult(world);
   const pay = (perRoom: number, forBoss: number) => Math.round((rooms * perRoom + boss * forBoss) * mult);
-  // Spray still on the ground goes home with the party, as finds on the ground do.
-  for (const d of f.loot ?? []) f.found[d.kind] += d.amount;
+  const found = { ...f.found };
+  // Lumber and stone in the bag (Michael, 31 Oct, A): what nobody carried off the floor is not the run's.
+  for (const d of f.loot ?? []) if (!l.materialsInBag || d.kind === 'coin') found[d.kind] += d.amount;
+  const was = f.purse ?? { coin: 0, lumber: 0, stone: 0 };
+  return {
+    coin: was.coin + pay(l.coinPerRoom, l.bossCoin) + Math.round(found.coin * mult),
+    lumber: was.lumber + pay(l.lumberPerRoom, l.bossLumber) + Math.round(found.lumber * mult),
+    stone: was.stone + pay(l.stonePerRoom, l.bossStone) + Math.round(found.stone * mult),
+  };
+}
+
+/**
+ * The party took a ring off a floor (Michael, 31 Oct). Home banks the whole run here; deeper picks
+ * up what still lay on the ground for each player, carried as finds are, since nobody comes back
+ * for it, and the room hands runPurse() to the next floor. Called by HostSession just before the
+ * room moves the party, so the events go out first.
+ */
+export function leaveFloor(state: SimState, world: World, to: 'deeper' | 'village'): void {
+  const f = state.floor;
+  if (!f || !world.level.dungeon || f.home || state.run.phase === 'lost') return;
+  if (to === 'village') {
+    if (!tuning.loop.bankAtRest || !f.rested) bank(state, world, f);
+    return;
+  }
+  for (const d of state.drops) {
+    if (d.dropped) continue;
+    (f.carried[d.owner] ??= []).push(d.item);
+    state.events.push({ kind: 'pickup', playerId: d.owner, item: d.item, carried: true });
+  }
+  state.drops = state.drops.filter((d) => d.dropped);
+}
+
+/**
+ * Bank the run (P1): every player's carried finds and any still on the ground for them go home
+ * with them, with the run's coin (runPurse), and the village's lumber and stone.
+ */
+function bank(state: SimState, world: World, f: FloorRunState): void {
+  const { coin, lumber, stone } = runPurse(state, world);
   f.loot = [];
-  // What the party smashed (D4) pays the deeper floors' bonus too; its coin goes to each player, as a room's does.
-  const coin = pay(l.coinPerRoom, l.bossCoin) + Math.round(f.found.coin * mult);
-  const lumber = pay(l.lumberPerRoom, l.bossLumber) + Math.round(f.found.lumber * mult);
-  const stone = pay(l.stonePerRoom, l.bossStone) + Math.round(f.found.stone * mult);
+  f.purse = undefined;
+  f.home = true;
   const floor = world.level.dungeon!.def.spec.floor;
   // Carried finds are in the browser's bag already (D3): the bank makes them safe. Finds still on the ground come now.
   const henchmen = state.players.filter((p) => p.henchman).map((p) => ({ style: p.style, xp: Math.floor(p.xp[p.style]) }));
@@ -221,6 +314,7 @@ function loseUnbanked(state: SimState, f: FloorRunState): void {
   f.carried = {};
   f.found = { lumber: 0, stone: 0, coin: 0 };
   f.loot = [];
+  f.purse = undefined;
   state.drops = [];
 }
 

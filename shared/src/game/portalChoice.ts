@@ -1,4 +1,4 @@
-import type { EnemyKind } from '../config/tuning';
+import { tuning, type EnemyKind } from '../config/tuning';
 import type { BodySlot } from '../sim/catalogue';
 import { DUNGEONS } from '../level/dungeons';
 import type { HandDungeon } from '../level/handmade';
@@ -22,6 +22,9 @@ export const DIFFICULTIES = [
 export function maxDifficulty(shrineTier: number): number {
   return Math.max(1, Math.min(DIFFICULTIES.length - 1, shrineTier));
 }
+
+/** Whether Wren's Random tab is open at this Portal tier (Michael, 31 Oct, A). */
+export const randomOpen = (shrineTier: number) => shrineTier >= tuning.village.randomFromTier;
 
 export const difficultyMult = (d: number | undefined) => DIFFICULTIES[Math.max(0, Math.min(DIFFICULTIES.length - 1, d ?? 1))].mult;
 

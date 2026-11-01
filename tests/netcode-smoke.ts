@@ -172,9 +172,12 @@ async function main() {
 
     // 8b. The village, its ring into a generated run, two floors walked, and home.
     // Each brings a village save of their own (P2); the room is Vale's, who made it.
-    const valeVillage = { ...emptyVillage("vale-test"), lumber: 100, stone: 80 };
+    // Built villages, as a save from before the empty plots (Michael, 31 Oct) is: these walk into the store and the tavern.
+    // The shrine at III, where Wren's Random tab opens (Michael, 31 Oct, A).
+    const built = { shrine: 3, store: 1, storehouse: 1, tavern: 1 };
+    const valeVillage = { ...emptyVillage("vale-test"), tiers: { ...built }, lumber: 100, stone: 80 };
     const va = await bot("Vale", null, "village", valeVillage);
-    const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), lumber: 99 });
+    const vb = await bot("Wren", va.code, "village", { ...emptyVillage("wren-test"), tiers: { ...built }, lumber: 99 });
     const home = va.code;
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren is told whose village");
     check(
@@ -187,6 +190,10 @@ async function main() {
     // Small floors from a fixed seed, so the walk is short and the same every time.
     va.send({ k: "tune", edit: { path: "dungeon.pieces", value: 12 } });
     va.send({ k: "tune", edit: { path: "dungeon.seed", value: 4242 } });
+    // The bots walk the shortest way, which may pass no fight: the way out's lock (Michael, 31 Oct;
+    // exitLock.test.ts) waits for none here. The tuning travels to the browsers as every edit does.
+    va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExit", value: 0 } });
+    va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExitDeep", value: 0 } });
     const ring = village.village!.portal;
     // Round the well (it stands between the spawn and the shrine), then into the ring.
     await Promise.all([va.walkTo(-3.2, 2, 1), vb.walkTo(3.2, 2, 1)]);
@@ -200,7 +207,7 @@ async function main() {
     const floor1 = floorLevel(spec1!).dungeon!;
     check(insidePiece(floor1.pieces[floor1.def.entrance], va.me()!.x, va.me()!.z), "the party stands in the floor's entrance");
     const fights1 = await walkFloor(va, vb, floor1);
-    check(va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "rested")), "reaching the rest room together banks the party's drops");
+    check(va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "rested")) && !va.messages.some((m) => m.k === "snap" && m.ev.some((e) => e.kind === "banked")), "reaching the rest room together rests the party and banks nothing (Michael, 31 Oct)");
     const rings = va.snaps[va.snaps.length - 1].portals;
     check(rings.map((r) => r.to).join(",") === "deeper,village", "the rest room has a ring deeper and a ring home", rings.map((r) => r.to).join(","));
     const deeper = rings[0];
@@ -224,6 +231,7 @@ async function main() {
     for (const e of va.events) if (e.kind === "banked") banked.set(e.floor, { lumber: e.lumber, stone: e.stone });
     const grew = [...banked.values()].reduce((s, b) => ({ lumber: s.lumber + b.lumber, stone: s.stone + b.stone }), { lumber: 100, stone: 80 });
     await vb.until(() => vb.lastVillage() !== undefined, 2000, "Wren sees the village again");
+    check(banked.size === 1 && banked.has(2), "the whole run banks once, at the gold ring home from floor 2 (Michael, 31 Oct)", [...banked.keys()].join(","));
     check(
       va.lastVillage()?.yours === true && va.lastVillage()?.village.lumber === grew.lumber && va.lastVillage()?.village.stone === grew.stone && vb.lastVillage()?.village.lumber === grew.lumber && vb.lastVillage()?.yours === false,
       "the run's banks grew the host's village, and both see it",
@@ -262,11 +270,11 @@ async function main() {
     await vb.until(() => vb.messages.some((m) => m.k === "sold"), 2000, "Wren's sale");
     const sold = vb.messages.find((m) => m.k === "sold");
     check(sold?.k === "sold" && sold.uid === "wren-1" && sold.coin === sellPrice(want), "Aldous buys it back at his price", JSON.stringify(sold));
-    // P7: Keeper Wren's menu. The shrine is tier 1 here, so Hard is refused and Normal is taken.
+    // P7: Keeper Wren's menu. The shrine is tier III here, so Legendary is refused and Normal is taken.
     const ringLabel = () => va.snaps[va.snaps.length - 1].portals[0]?.label;
-    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 2, modifier: null } });
+    vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 4, modifier: null } });
     await va.drive(10);
-    check(ringLabel() !== "A small dungeon, 2 floors, Hard", "a difficulty past the shrine's tier is refused", ringLabel());
+    check(!/Legendary/.test(ringLabel() ?? ""), "a difficulty past the shrine's tier is refused", ringLabel());
     vb.send({ k: "portal", choice: { kind: "random", floors: 2, size: "small", difficulty: 1, modifier: null } });
     await va.until(() => ringLabel() === "A small dungeon, 2 floors, Normal", 2000, "the ring takes the random choice");
     va.send({ k: "portal", choice: { kind: "story", id: "mossgate" } });
@@ -361,6 +369,18 @@ async function main() {
     const lastSnap = cs.view().curr.players.find((p) => p.id === cs.localId)!;
     check(cs.stats.snaps === 0, "the ClientSession never snapped", `${cs.stats.snapshots} snapshots, ${cs.stats.corrections} corrections, largest ${cs.stats.maxCorrection.toFixed(3)} m`);
     check(Math.hypot(hero.x - lastSnap.x, hero.z - lastSnap.z) < 1e-6, "standing still, it is drawn exactly where the server has it", `${hero.x.toFixed(3)}, ${hero.z.toFixed(3)}`);
+
+    // 9d. The gold ring banks as it fires, so its `banked` arrives just ahead of the hand-off and is still
+    // waiting for the drawn time: leaving the room keeps it for the save (critic, 1 Nov), not the effects.
+    {
+      const was = cs.localId;
+      const raw = cs as unknown as { inbox: { t: number; ev: unknown }[]; leaveRoom(): void };
+      const banked = { kind: "banked", playerId: was, items: [], kept: 0, coin: 12, lumber: 1, stone: 1, floor: 1 };
+      raw.inbox.push({ t: 1e9, ev: { kind: "heroHurt", playerId: was, damage: 5, x: 0, z: 0, heavy: false } }, { t: 1e9, ev: banked });
+      raw.leaveRoom();
+      const gone = cs.takeDeparted();
+      check(gone?.id === was && gone.events.length === 1 && (gone.events[0] as { coin?: number }).coin === 12 && cs.takeDeparted() === null, "a hand-off keeps the old room's undrawn `banked` for the save, once, and drops its effects", JSON.stringify(gone?.events.map((e) => e.kind)));
+    }
 
     // 9c. A slow, uneven page (about 10 fps, frames of 40 to 150 ms, the critic's 28 Oct throttled lab): a
     // frame's time is stepped whole, so the client sends a command for every tick of wall time and the
