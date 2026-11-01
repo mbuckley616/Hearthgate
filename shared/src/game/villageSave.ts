@@ -164,6 +164,35 @@ export const stashSpaces = (tier: number) => (tier < 1 ? 0 : tuning.village.stas
  */
 export const pocketSpaces = (tier: number) => Math.min(28, tuning.village.pocketBase + (Math.max(1, tier) - 1) * tuning.village.pocketPerTier);
 
+/**
+ * How a building looks at a tier (Michael, 1 Nov, A): each its own trade from the first build, and one
+ * step at villageLook.stepTier. Only the views read it; the shrine keeps its stone at every tier.
+ */
+export interface BuildingLook {
+  /** Walls of dressed stone rather than timber and plaster (the Storehouse's strongroom). */
+  stone: boolean;
+  /** A stone ground floor under the timber (the Tavern's). */
+  stoneBase: boolean;
+  /** Dormers on the roof: rooms upstairs (the Store's and the Tavern's second storey). */
+  dormers: boolean;
+  /** Chimneys on the ridge. */
+  chimneys: number;
+}
+
+export function buildingLook(building: BuildingId, tier: number): BuildingLook {
+  const up = tier >= tuning.villageLook.stepTier;
+  switch (building) {
+    case 'shrine':
+      return { stone: true, stoneBase: false, dormers: false, chimneys: 0 };
+    case 'storehouse':
+      return { stone: up, stoneBase: false, dormers: false, chimneys: 0 };
+    case 'store':
+      return { stone: false, stoneBase: false, dormers: up, chimneys: up ? 1 : 0 };
+    case 'tavern':
+      return { stone: false, stoneBase: up, dormers: up, chimneys: up ? 2 : 1 };
+  }
+}
+
 /** What a building does at a tier, in a villager's words. */
 export function tierGives(building: BuildingId, tier: number): string {
   if (tier < 1) return 'an empty plot, waiting to be built';

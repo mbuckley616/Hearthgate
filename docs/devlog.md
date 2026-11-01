@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-01: Session 81, buildings that look their part
+
+**What changed**
+
+Michael's A on "Buildings that look their part" (1 Nov): a look for each building within today's four tiers, one step at tier III, marble waiting for tiers past IV.
+- **Each its trade from the first build** (`VillageView.buildTrade`): the Storehouse sits squat on a 1.5 m stone footing with an iron-banded door, barred windows and a gold coin on a bracket; the General Store has a red-and-cream awning on two posts over its shopfront, a window either side and crates and a barrel out front; the Tavern has the Rusted Stag's hanging sign on an iron arm, lit windows and a chimney.
+- **The step at tier III** (`buildingLook` in `game/villageSave.ts`, the one table the views read; `villageLook.stepTier`, 3, on the panel): the Storehouse's timber gives way to dressed stone with pale quoins up each corner; the Store gains dormers (rooms upstairs) and a chimney; the Tavern a stone ground floor with quoins, dormers and a second chimney. The step shows with the tier's reveal, so an upgrade ceremony to III raises the scaffold over the old look and takes it down on the new one.
+- Client and look only: no collider, door or server change; the shrine is untouched.
+
+**Learned**
+
+Everything added stays inside each building's footprint (dormers on the slopes, not a wing), so the village's colliders, doors and the scaffold's size need nothing. Checked by eye in headless Chromium at tiers I and III from two angles. A `test:net` run that is killed leaves its server on port 2599, and the next run fails with EADDRINUSE until it is stopped.
+
+**Next**
+
+Phase 2's list is now the builds pass (waiting on the feel pass being played) and Michael's gate evening.
+
 ## 2026-11-01: Session 80, the gold ring home pays the browser again
 
 **What changed**
