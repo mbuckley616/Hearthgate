@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-02: local session, the Phase 2 gate evening filed, and the builder's lock on a branch
+
+**What changed**
+
+Michael played the gate evening solo with three henchmen on the hosted build and passed it ("Pass; bugs first"). Filed in `playtest-notes.md` with his notes against the three gate questions. Four of the notes changed rules already built, so they were asked in chat (decisions.md, "After the Phase 2 gate evening"): the gate passes; Brutes and bosses get about 4 s of hyper-armour after a stagger; henchmen keep their strength but are harder to get (none at Tavern tier I, one a tier after, more coin), which was not the recommendation; and each difficulty also multiplies enemy damage and health. The backlog closes Phase 2 and makes the E1 section current. Three bugs are under Found in play (bodies and a hero through walls, the D-pad on the hero screen, late deaths and drops in a crowd), then G1 to G3 for the three calls and G4 and G5 (a boss for every story dungeon, more dungeon styles and features) as design items.
+
+The builder's lock: its tag push had been refused (HTTP 403) on every run since 31 Oct, because the cloud's git proxy refuses tag pushes and lets `auto/*` branch pushes through. The builder routine's prompt now takes the lock as the branch `auto/builder-lock`, a chain of empty commits saying `taken` or `released`, moved only by fast-forward pushes, so of two runs racing, the second is refused as non-fast-forward. CLAUDE.md's builder line says so.
+
+**Learned**
+
+Michael's own diagnosis of the skeleton behind the wall: on Haunted an enemy knocked outside the play area rises there. Reading the code: a dead enemy's knockback slide and a hero's lunge both move a body far in one tick, and `resolveCircle` afterwards can push it out on the far side of a thin wall; the lunge also takes a soft target with no line-of-sight check, which is how he was pulled through after it. Difficulty today only adds enemies (`DIFFICULTIES[].mult` on a room's budget), which with +10 health a level is why story dungeons felt "very very easy".
+
+**Next**
+
+The builder takes the three Found-in-play bugs, then G1 to G3, once this branch is on main (until then it still sees Phase 2 as current and the gate unrecorded). E1a is **(Fable)**: the producer cards it for Michael to start. The builds pass, G4 and G5 are design items to ask.
+
 ## 2026-11-02: Session 83, the shut gate's words read whole
 
 **What changed**
