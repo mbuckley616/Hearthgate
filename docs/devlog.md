@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-02: Session 83, the shut gate's words read whole
+
+**What changed**
+
+The critic's bug (2 Nov, fae1ee7): the words over a shut rest or boss gate sat 0.6 m above the gate, inside the 1.3 m of wall over the 3.2 m doorway, so only "Clear" stood out of the stone. `FloorView` now hangs them inside the doorway, 0.7 m under the lintel, sized to fit nine tenths of the doorway's width (0.45 m tall at most), drawn over the bars rather than cut by them, and shown only within `look.exitLabelRange` (14 m, on the panel) of the gate, since they now draw through walls. Client and look only.
+
+**Learned**
+
+Checked by eye in headless Chromium on seed 4242's floor 1, standing at the gate head-on and turned half a radian: "Clear 1 more fight room" reads in full from both. A sprite in a doorway's plane with the depth test on would fight the bars for every pixel, so depth testing is off and the range keeps it from showing through other rooms.
+
+**Next**
+
+Phase 2's list is the builds pass (waiting on the feel pass being played) and Michael's gate evening.
+
 ## 2026-11-02: Session 82, the smoke walk reaches the rest room again
 
 **What changed**

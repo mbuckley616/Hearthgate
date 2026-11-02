@@ -1599,6 +1599,8 @@ export const tuning = {
    */
   look: {
     exposure: 1.35,
+    /** Metres from a shut rest or boss gate within which its "Clear N more" words show (they draw through walls). */
+    exitLabelRange: 14,
     /** Device pixel ratio cap, used only when pixelSize is 1 (retro pixels off). */
     maxPixelRatio: 2,
     /** Screen pixels per game pixel: the scene renders this much smaller and is scaled up with hard edges. 1 = off. */
@@ -2386,6 +2388,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
+  'look.exitLabelRange': [4, 40, 1],
   'look.maxPixelRatio': [0.5, 3, 0.25],
   'look.pixelSize': [1, 6, 1],
   'audio.masterVolume': [0, 1, 0.01],
