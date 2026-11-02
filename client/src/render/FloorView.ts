@@ -55,6 +55,7 @@ export class FloorView {
   private locked = false;
   private lockLabel: THREE.Sprite | null = null;
   private lockShown = -1;
+  private lockWidth = 0;
   private focus = new THREE.Vector3();
   private relightIn = 0;
   private colliderDebug: THREE.Group;
@@ -182,8 +183,11 @@ export class FloorView {
     if (exitGates.length > 0) {
       const g = exitGates[0];
       if (g.kind === 'box') {
-        this.lockLabel = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
-        this.lockLabel.position.set((g.min.x + g.max.x) / 2, g.max.y + 0.6, (g.min.z + g.max.z) / 2);
+        // Inside the doorway under the lintel (above the gate it sank into the wall and only "Clear"
+        // showed), drawn over the bars, and shown only near the gate so it is not read through walls.
+        this.lockLabel = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: false, toneMapped: false }));
+        this.lockLabel.position.set((g.min.x + g.max.x) / 2, g.max.y - 0.7, (g.min.z + g.max.z) / 2);
+        this.lockWidth = Math.max(g.max.x - g.min.x, g.max.z - g.min.z) * 0.9;
         this.lockLabel.renderOrder = 3;
         this.lockLabel.visible = false;
         this.group.add(this.lockLabel);
@@ -198,15 +202,19 @@ export class FloorView {
     this.locked = clearsLeft > 0;
     if (this.lockLabel && clearsLeft !== this.lockShown) {
       this.lockShown = clearsLeft;
-      this.lockLabel.visible = clearsLeft > 0;
       if (clearsLeft > 0) {
         const mat = this.lockLabel.material;
         mat.map?.dispose();
         const { texture, aspect } = labelTexture(`Clear ${clearsLeft} more fight room${clearsLeft === 1 ? '' : 's'}`);
         mat.map = texture;
         mat.needsUpdate = true;
-        this.lockLabel.scale.set(0.45 * aspect, 0.45, 1);
+        const h = Math.min(0.45, this.lockWidth / aspect);
+        this.lockLabel.scale.set(h * aspect, h, 1);
       }
+    }
+    if (this.lockLabel) {
+      const range = tuning.look.exitLabelRange;
+      this.lockLabel.visible = clearsLeft > 0 && this.lockLabel.position.distanceToSquared(focus) < range * range;
     }
   }
 

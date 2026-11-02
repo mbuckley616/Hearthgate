@@ -3,6 +3,7 @@ import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { HIRES } from '@hearthgate/shared/sim/henchman';
 import type { World } from '@hearthgate/shared/level/arena';
 import { plotSpot, type Building, type InteriorDef, type Villager } from '@hearthgate/shared/level/village';
+import { buildingLook } from '@hearthgate/shared/game/villageSave';
 import { createPlayer } from '@hearthgate/shared/sim/player';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { HeroView } from './HeroView';
@@ -52,6 +53,9 @@ interface TierMarks {
   /** The building itself, and the marked plot shown instead at tier 0 (the shrine has none). */
   body: THREE.Group;
   plot: THREE.Group | null;
+  /** The look's parts before and after its step at tier III (Michael, 1 Nov, A). */
+  low: THREE.Object3D[];
+  high: THREE.Object3D[];
 }
 
 export class VillageView {
@@ -317,7 +321,9 @@ export class VillageView {
     const cx = (b.minX + b.maxX) / 2;
     const cz = (b.minZ + b.maxZ) / 2;
     const shrine = b.id === 'shrine';
-    const plinth = shrine ? b.height : 0.7;
+    // The Storehouse sits squat on a tall stone footing, a strongroom from its first build.
+    const plinth = shrine ? b.height : b.id === 'storehouse' ? 1.5 : 0.7;
+    const look = { low: [] as THREE.Object3D[], high: [] as THREE.Object3D[] };
     // Everything of the building but its scaffold, hidden while it is an empty plot (Michael, 31 Oct, A).
     const body = new THREE.Group();
     this.group.add(body);
@@ -332,6 +338,29 @@ export class VillageView {
       walls.position.set(cx, plinth + upper / 2, cz);
       walls.castShadow = walls.receiveShadow = true;
       body.add(walls);
+      // Tier III's step (Michael, 1 Nov, A): the timber gives way to dressed stone, all of the
+      // Storehouse's walls and the Tavern's ground floor.
+      const hi = buildingLook(b.id, tuning.village.maxTier);
+      if (hi.stone || hi.stoneBase) {
+        const sh = hi.stone ? upper : Math.min(upper, 2.2);
+        const stoneWalls = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, sh, d - 0.06), standard(fieldstoneTextures(Math.max(w, d), sh), 2));
+        stoneWalls.material.color.setHex(0xd8d2c6);
+        stoneWalls.position.set(cx, plinth + sh / 2, cz);
+        stoneWalls.castShadow = stoneWalls.receiveShadow = true;
+        body.add(stoneWalls);
+        look.high.push(stoneWalls);
+        if (hi.stone) look.low.push(walls);
+        // Pale quoins up each corner, so the step reads from across the square.
+        const quoin = new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.85 });
+        for (const qx of [b.minX, b.maxX])
+          for (const qz of [b.minZ, b.maxZ]) {
+            const q = new THREE.Mesh(new THREE.BoxGeometry(0.5, plinth + sh, 0.5), quoin);
+            q.position.set(qx, (plinth + sh) / 2, qz);
+            q.castShadow = true;
+            body.add(q);
+            look.high.push(q);
+          }
+      }
     }
 
     // A pitched roof, its ridge along the longer side, overhanging the walls.
@@ -376,7 +405,9 @@ export class VillageView {
     sign.position.set(b.door.x, doorH + 0.75, b.door.z).addScaledVector(out, 0.08);
     sign.rotation.y = face;
     body.add(sign);
-    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1, wanted: 1, body, plot: shrine ? null : this.buildPlot(b) });
+    if (!shrine) this.buildTrade(b, body, look, { cx, cz, alongX, span, length, rise, out, side, face, doorW, doorH });
+    this.tierMarks.set(b.id, { flags: this.buildPennants(b, cx, cz, alongX, length, rise, colour[b.id]), sign, name: b.name, tier: 1, wanted: 1, body, plot: shrine ? null : this.buildPlot(b), ...look });
+    for (const o of look.high) o.visible = false;
     this.buildScaffold(b);
 
     if (shrine) this.buildShrineFront(b, out, side);
@@ -749,6 +780,110 @@ export class VillageView {
     this.light(0xffb060, 9, 14, cx, ringY - 0.3, ringZ, 0.1);
   }
 
+  /**
+   * Each building dressed for its trade (Michael, 1 Nov, A): the Storehouse an iron-banded door, barred
+   * windows and a coin sign; the General Store an awning over a shopfront with its goods out front; the
+   * Tavern a hanging sign and a chimney. Tier III's step adds rooms upstairs (dormers) and chimneys, as
+   * buildingLook says; the parts of each look go in `look`, low before the step and high after it.
+   */
+  private buildTrade(
+    b: Building,
+    body: THREE.Group,
+    look: { low: THREE.Object3D[]; high: THREE.Object3D[] },
+    f: { cx: number; cz: number; alongX: boolean; span: number; length: number; rise: number; out: THREE.Vector3; side: THREE.Vector3; face: number; doorW: number; doorH: number },
+  ): void {
+    const { out, side, face, doorW, doorH } = f;
+    // A point on the door's face: `a` along it, `y` up, `o` out from it.
+    const at = (a: number, y: number, o: number) => new THREE.Vector3(b.door.x, y, b.door.z).addScaledVector(side, a).addScaledVector(out, o);
+    const put = (mesh: THREE.Object3D, p: THREE.Vector3, list?: THREE.Object3D[]) => {
+      mesh.position.copy(p);
+      mesh.rotation.y = face;
+      mesh.castShadow = true;
+      body.add(mesh);
+      list?.push(mesh);
+      return mesh;
+    };
+    const wood = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x2a2a30, emissive: 0xffb860, emissiveIntensity: 0.35, roughness: 0.4 });
+    const pane = (a: number, y: number, bars: boolean) => {
+      put(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 0.06), glass), at(a, y, 0.04));
+      put(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.16), wood), at(a, y - 0.46, 0.08));
+      if (bars) for (const k of [-0.25, 0, 0.25]) put(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 0.05), IRON()), at(a + k, y, 0.1));
+    };
+
+    if (b.id === 'storehouse') {
+      // Iron bands across the door and studs down its middle: what is kept here stays kept.
+      for (const y of [0.45, 1.15, 1.85]) put(new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.04, 0.1, 0.06), IRON()), at(0, y, 0.12));
+      pane(-2.2, 2.4, true);
+      pane(2.2, 2.4, true);
+      // A coin on a bracket beside the door, gold enough to read across the square.
+      put(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.0), IRON()), at(1.3, 3.3, 0.5));
+      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 20).rotateX(Math.PI / 2), GOLD());
+      put(coin, at(1.3, 2.75, 0.85)).rotation.y = face + Math.PI / 2;
+    } else if (b.id === 'store') {
+      // A striped awning over the shopfront, its windows either side of the door, goods out front.
+      const awning = new THREE.Mesh(new THREE.BoxGeometry(f.length - 1.6, 0.08, 1.6), new THREE.MeshStandardMaterial({ map: stripeTexture(), roughness: 0.8 }));
+      awning.rotation.x = 0.32;
+      const g = new THREE.Group();
+      g.add(awning);
+      put(g, at(0, doorH + 0.25, 0.8));
+      for (const s of [-1, 1]) put(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, doorH + 0.1, 6), wood), at(s * (f.length / 2 - 1.1), (doorH + 0.1) / 2, 1.5));
+      pane(-2.1, 1.6, false);
+      pane(2.1, 1.6, false);
+      const plank = standard(plankTextures(1, 1), 1);
+      put(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.6), plank), at(-2.1, 0.4, 0.75));
+      put(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), plank), at(-1.9, 1.05, 0.75)).rotation.y = face + 0.3;
+      put(new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.9, 10), plank), at(2.2, 0.45, 0.75));
+    } else if (b.id === 'tavern') {
+      // An inn's hanging sign on an iron arm, swung out over the street.
+      put(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.4), IRON()), at(-doorW / 2 - 1.2, 3.4, 0.7));
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshStandardMaterial({ map: innSignTexture(), roughness: 0.8, side: THREE.DoubleSide }));
+      put(board, at(-doorW / 2 - 1.2, 2.85, 1.2)).rotation.y = face + Math.PI / 2;
+      pane(-3.1, 1.7, false);
+      pane(2.2, 1.7, false);
+    }
+
+    // Chimneys and dormers: what tier III adds, or the Tavern's first chimney from the start.
+    const lo = buildingLook(b.id, 1);
+    const hi = buildingLook(b.id, tuning.village.maxTier);
+    const ridge = (along: number, across: number, y: number) =>
+      new THREE.Vector3(f.cx + (f.alongX ? along : across), y, f.cz + (f.alongX ? across : along));
+    const stoneMat = standard(fieldstoneTextures(1, 2), 2);
+    for (let i = 0; i < hi.chimneys; i++) {
+      const along = (i === 0 ? 1 : -1) * (f.length / 2 - 1.4);
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.8, f.rise + 1.4, 0.8), stoneMat);
+      c.position.copy(ridge(along, f.span * 0.12, b.height + (f.rise + 1.4) / 2));
+      c.castShadow = true;
+      body.add(c);
+      if (i >= lo.chimneys) look.high.push(c);
+    }
+    if (hi.dormers) {
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x6a3a2a, roughness: 0.85 });
+      const wall = new THREE.MeshStandardMaterial({ color: 0xe0d0b0, roughness: 0.9 });
+      const tri = new THREE.Shape([new THREE.Vector2(-0.7, 0), new THREE.Vector2(0.7, 0), new THREE.Vector2(0, 0.55)]);
+      const cap = new THREE.ExtrudeGeometry(tri, { depth: 1.4, bevelEnabled: false }).translate(0, 0, -0.7);
+      for (const across of [-1, 1])
+        for (const along of [-0.25, 0.25]) {
+          // Each sits on a slope, half way up it, looking out over the eave.
+          const g = new THREE.Group();
+          const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), wall);
+          box.position.y = 0.6;
+          const top = new THREE.Mesh(cap, roofMat);
+          top.position.y = 1.2;
+          const lit = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.55), glass);
+          lit.position.set(0, 0.7, 0.61);
+          g.add(box, top, lit);
+          // Its foot a little under the slope, so no gap shows beneath its window.
+          g.position.copy(ridge(along * f.length, across * f.span * 0.3, b.height + f.rise * 0.2));
+          // Facing straight down its slope.
+          g.rotation.y = f.alongX ? (across > 0 ? 0 : Math.PI) : across > 0 ? Math.PI / 2 : -Math.PI / 2;
+          g.traverse((o) => (o.castShadow = true));
+          body.add(g);
+          look.high.push(g);
+        }
+    }
+  }
+
   /** A row of pennants along the roof's ridge, one a tier; the top tier's is gold. */
   private buildPennants(b: Building, cx: number, cz: number, alongX: boolean, length: number, rise: number, rgb: [number, number, number]): THREE.Object3D[] {
     // Big enough to count from across the square: a 2 m pole and a metre of cloth.
@@ -809,6 +944,9 @@ export class VillageView {
       v.state.z = at.z;
     }
     m.flags.forEach((f, i) => (f.visible = i < tier));
+    const up = tier >= tuning.villageLook.stepTier;
+    for (const o of m.low) o.visible = !up;
+    for (const o of m.high) o.visible = up;
     m.sign.material.map?.dispose();
     m.sign.material.map = signTexture(tier > 1 ? `${m.name} ${ROMAN[tier] ?? tier}` : m.name);
     m.sign.material.needsUpdate = true;
@@ -1160,6 +1298,54 @@ function signTexture(text: string): THREE.CanvasTexture {
   g.fillStyle = '#f3d79a';
   // A long name with its tier ("General Store III") is squeezed to the board rather than cut off.
   g.fillText(text, c.width / 2, c.height / 2 + 1, c.width - 14);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  return tex;
+}
+
+/** The store's awning: red and cream stripes. */
+function stripeTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 16;
+  const g = c.getContext('2d')!;
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = i % 2 ? '#efe2c4' : '#a8382a';
+    g.fillRect(i * 8, 0, 8, 16);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  return tex;
+}
+
+/** The Tavern's hanging sign: a stag's head and antlers in rust on dark wood (the Rusted Stag). */
+function innSignTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 48;
+  c.height = 32;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#3a2416';
+  g.fillRect(0, 0, 48, 32);
+  g.strokeStyle = '#1e120a';
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, 46, 30);
+  g.strokeStyle = g.fillStyle = '#c0602a';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.ellipse(24, 20, 5, 7, 0, 0, Math.PI * 2);
+  g.fill();
+  for (const s of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(24 + s * 4, 14);
+    g.lineTo(24 + s * 12, 5);
+    g.moveTo(24 + s * 8, 9);
+    g.lineTo(24 + s * 6, 4);
+    g.moveTo(24 + s * 10, 7);
+    g.lineTo(24 + s * 15, 8);
+    g.stroke();
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.NearestFilter;

@@ -4,7 +4,7 @@ import { PROTOCOL_VERSION } from '../net/protocol';
 import { readToHost } from '../net/validate';
 import { emptyMods } from '../sim/gear';
 import { emptyTalents } from '../sim/talents';
-import { applyUpgrade, emptyVillage, readVillageSave, tierGives, upgradeCost, upgradeProblem, villageView } from './villageSave';
+import { applyUpgrade, buildingLook, emptyVillage, readVillageSave, tierGives, upgradeCost, upgradeProblem, villageView } from './villageSave';
 
 const loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
 const save = { ...emptyVillage('abc123'), lumber: 40, stone: 12, tiers: { shrine: 2, store: 1, storehouse: 1, tavern: 3 } };
@@ -66,5 +66,33 @@ describe('raising a building (P4)', () => {
     expect(readToHost({ k: 'upgrade', building: 'tavern', coin: 120.7 })).toEqual({ k: 'upgrade', building: 'tavern', coin: 120 });
     expect(readToHost({ k: 'upgrade', building: 'forge', coin: 1 })).toBeNull();
     expect(readToHost({ k: 'upgrade', building: 'store', coin: -1 })).toBeNull();
+  });
+});
+
+describe('buildings that look their part (Michael, 1 Nov, A)', () => {
+  it('steps each building once, at tier III, and never the shrine', () => {
+    expect(tuning.villageLook.stepTier).toBe(3);
+    for (const t of [1, 2]) {
+      expect(buildingLook('storehouse', t).stone).toBe(false);
+      expect(buildingLook('store', t).dormers).toBe(false);
+      expect(buildingLook('tavern', t)).toMatchObject({ stoneBase: false, dormers: false, chimneys: 1 });
+    }
+    for (const t of [3, 4]) {
+      expect(buildingLook('storehouse', t).stone).toBe(true);
+      expect(buildingLook('store', t)).toMatchObject({ dormers: true, chimneys: 1 });
+      expect(buildingLook('tavern', t)).toMatchObject({ stoneBase: true, dormers: true, chimneys: 2 });
+    }
+    expect(buildingLook('shrine', 1)).toEqual(buildingLook('shrine', 4));
+  });
+
+  it('follows the step tier the panel sets', () => {
+    const was = tuning.villageLook.stepTier;
+    tuning.villageLook.stepTier = 4;
+    try {
+      expect(buildingLook('storehouse', 3).stone).toBe(false);
+      expect(buildingLook('storehouse', 4).stone).toBe(true);
+    } finally {
+      tuning.villageLook.stepTier = was;
+    }
   });
 });
