@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-02: Session 82, the smoke walk reaches the rest room again
+
+**What changed**
+
+The critic's bug (2 Nov, fae1ee7): the smoke e2e's floor walk ("the rest room's ring home") had timed out at 120 s since Session 71's exit lock, because seed 4242's way to the rest room passes no fight room, so the gate never opened. The test now tunes `dungeon.clearsBeforeExit` to 0 with the small floor and puts it back to 1 afterwards. Test code only.
+
+**Learned**
+
+The walk now passes in 1.4 min on this box. Session 80's note that this test timed out "with or without the change" was this lock, not the box.
+
+**Next**
+
+The locked exit's words that read only "Clear".
+
 ## 2026-11-01: Session 81, buildings that look their part
 
 **What changed**

@@ -263,8 +263,9 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
   await expect(page.locator(".keeper-card")).toBeHidden();
   await outOfShrine(page);
 
-  // Small floors from one seed (the dev server takes the panel's edits), so the walk is short.
-  await tune(page, { "dungeon.pieces": 10, "dungeon.seed": 4242 });
+  // Small floors from one seed (the dev server takes the panel's edits), so the walk is short. This seed's
+  // way to the rest room passes no fight room, so the exit lock (Session 71) is off for the walk.
+  await tune(page, { "dungeon.pieces": 10, "dungeon.seed": 4242, "dungeon.clearsBeforeExit": 0 });
   try {
     // Into the ring and hold still: two seconds later the party is handed onto a generated floor.
     await intoRing(page);
@@ -283,7 +284,7 @@ test("the village: talk to the keeper, take the ring onto a generated floor, wal
     expect(back.stats.snaps).toBe(0);
     expect(errors).toEqual([]);
   } finally {
-    await tune(page, { "dungeon.pieces": 0, "dungeon.seed": 0 });
+    await tune(page, { "dungeon.pieces": 0, "dungeon.seed": 0, "dungeon.clearsBeforeExit": 1 });
   }
 });
 
