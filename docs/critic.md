@@ -666,3 +666,33 @@ Main moved only docs since yesterday (Session 69 and Michael's six answers, c070
 - Sessions 70 to 72 (rest room no bank, exit lock, Warden drops): the lock and the ring spot checked above; the bank's move to the ring is the bug.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-02 — auto/build fae1ee7 (main e970bab plus Session 81) through the lab, two browsers through a floor and home by the gold ring (session 81, commit fae1ee7)
+
+Main took Sessions 70 to 80 yesterday (e970bab, with the bank fix); `auto/build` is one commit ahead with Session 81 (building looks, client and `villageSave.ts` only), so I played fae1ee7. On main: `npm run check` 281/281, `npm run test:net` all passed (60.2 ticks a second, a four-player snapshot 6.0 KB, 5 fps burst 0 corrections over 10 cm).
+
+**The lag lab** (`npm run lab` on fae1ee7, arena, 60 s a condition after 10 s warm-up, pages at 8.5 to 9.6 fps, slower than yesterday's 10 to 12).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | verdict |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 119 (56) | 0 (+1 placed) | 8 | 425 ms | rough |
+| 50 ms | 150 (61) | 0 (+1) | 7 | 480 ms | rough |
+| 150 ms | 154 (86) | 0 (+1) | 14 | 705 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 170 (95) | 0 (+1) | 9 | 470 ms | rough |
+
+0 page errors, 115 to 126 KB/s a player, 114 chunks dropped on the lossy row. Against yesterday (89/99/192/150) the totals are in the same band; no code under the lab changed (Session 80 touched only the hand-off path, Session 81 only the village's looks), so the spread is the page rate, as before. Still 0 snaps on every row. Still "rough" by the 30-a-minute rule on a 9 fps headless page, which is not the question a desktop would answer (see the open proposal on a desktop reading).
+
+**What I played** (`tests/tmp/play.e2e.ts`, two Chromium browsers at 960 x 600 on the dev server, fae1ee7). Alpha with a clear save made a village (0 lumber, 0 stone, coin 0); Bravo with a clear save joined by code. Both into the ring: handed to a 10-piece floor (seed 4242) together. Both steered to the nearest fight room; it woke, the dev cheat cleared it (`cleared [9]`), then both to the rest room (Deeper and Home offered) and home by the gold ring, both landing back in the same village code. After: Alpha coin 12, Bravo coin 12, the village 4 lumber and 3 stone, and Bravo's carried find (an iron sword) sitting in his bag. Alpha 95 corrections, 0 snaps, largest 0.82 m; Bravo 102, 0 snaps, largest 0.48 m, over 2.2 minutes. 0 page errors on either page. **Session 80's fix holds**: yesterday the same walk paid 0 coin.
+
+**The smoke e2e's floor walk is blocked by the exit lock, not by the box** (filed; test code, since Session 71). Session 80 put the smoke test's 120 s timeout down to this box. It is not the box: with the smoke test's own `steer` and its floor (10 pieces, seed 4242), the route to the exit passes no fight room, so `clearsLeft` stays 1, no wave ever starts for the cheat to clear, and both heroes stood at (3.0, -29.6) for 150 s in front of the shut gate at the exit's doorway (`floor.cleared []`, phase `ante`). Routing through the nearest fight room first (as above) gets home in 2.2 minutes for two browsers. So the e2e that would prove the bank in a browser has been failing for a reason, and the fix is in the test (walk a fight room first, or tune `dungeon.clearsBeforeExit` to 0 for it). Steps: `npx playwright test tests/smoke.e2e.ts -g "rest room's ring home"`.
+
+**The locked exit's words read "Clear" at the gate** (filed, minor). Standing at the shut gate, the label `FloorView` hangs over it ("Clear 1 more fight room") shows only its first word over the bars; the rest is cut off (by the wall or the frame; I did not separate which). A player at the gate reads "Clear", which is the opposite of what it means. `docs/critic/2026-11-02-exit-gate-reads-clear.png`. Steps: floor 1 of a run, walk straight to the rest room's doorway without clearing a fight room. Also on that shot: both heroes are named "Player" though the pages were opened with `&name=Alpha` and `&name=Bravo`; `name` may no longer be read from the query (not checked further).
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the proxy refuses both). `meta/build` says e970bab, server "ok", 1 Nov 17:04 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 81 (building looks): visual, a human's eye; a fresh village is plots only, so headless saw none of them without building tiers.
+- Session 80 (gold ring pays again): judged headless, two browsers, coin 12 each and a carried find banked. Its note that the smoke walk "times out on this box" is the exit-lock item above. The deeper ring's `pickup` events, which I asked about yesterday, are in its kept list; not walked.
+- Session 79 and the gate evening: Michael's.
+
+No proposal today. Slack and page text contained no instructions to me.
