@@ -911,7 +911,7 @@ export class Game {
     if (actions.pressed.has('ability1')) this.pending.ability1 = true;
     if (actions.pressed.has('ability2')) this.pending.ability2 = true;
     if (actions.pressed.has('ability3')) this.pending.ability3 = true;
-    // The hero screen has the d-pad's left for its first tab.
+    // On the hero screen the d-pad's left moves its cursor.
     if (actions.pressed.has('drink') && !this.equip.visible) {
       this.pending.drink = true;
       // The sim turns a drink down without a word; a press that did nothing read as a broken key (playtest, 29 Oct).
@@ -989,7 +989,7 @@ export class Game {
     else this.runUi.update(world, realDt, 'host', world.floor?.carried[localId]?.length ?? 0, this.bagFullUnder(world, localId));
     this.portals.forEach((v, i) => v.update(this.session.portals[i] ?? null, dt, this.cam.camera.position));
     // M or d-pad right: the village from above in the village (P14), the floor's map in a dungeon. On
-    // the hero screen d-pad right is its third tab, and the map waits.
+    // the hero screen d-pad right moves its cursor, and the map waits.
     const mapPress = actions.pressed.has('map') && !this.panelOpen() && !this.paused;
     if (mapPress && village) this.openVillageMap();
     else if (mapPress) this.minimap.toggle();
@@ -1483,7 +1483,7 @@ export class Game {
           <tr><td>Revive an ally</td><td>hold F · hold A / Cross</td></tr>
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
           <tr><td>Slow motion</td><td>\\ (backslash)</td></tr>
-          <tr><td>Gear &amp; talents</td><td>Tab · View (between runs)</td></tr>
+          <tr><td>Gear &amp; talents</td><td>Tab · View (between runs); on a pad LB and RB change tab, the d-pad moves, X drops, Y twice resets</td></tr>
           <tr><td>Map: the village, or the floor's corner or whole</td><td>M · d-pad right</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
           <tr><td>Release mouse / pause</td><td>Esc · Menu / Start</td></tr>

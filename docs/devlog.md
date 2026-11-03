@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 85, the d-pad moves in the hero screen
+
+**What changed**
+
+The gate evening's bug (Michael, 2 Nov): on the hero screen the d-pad changed tabs (left, up, right were the three tabs) instead of moving the cursor. Now, on a pad only:
+- **The d-pad moves the cursor** in the bag, the worn slots and both boards, with the stick's repeat (`menuUp`/`Down`/`Left`/`Right`, buttons 12 to 15, read as held in `EquipScreen.handle`). Off the screen they are still zoom, drink and the map, which already wait while it is up.
+- **LB and RB step through the tabs** (`tabPrev`, `tabNext`), round from the first to the last; they are also ability 1 and 2, so the screen reads them first and nothing else happens on that press.
+- **X drops** (or takes a rank off, or unslots) and **Y twice resets a board**, the jobs LB and RB had; the two-press reset of 30 Oct is kept, on Y. The hints and the controls table say so.
+The keyboard is unchanged: 1 to 3 for tabs, Q drops, E twice resets. The new pad-only actions have no keys.
+
+**Learned**
+
+`tests/padmenus.e2e.ts` has a new test that presses each pad button through the screen's handler with exactly the actions `gamepadBindings` gives it (imported from Vite in the page). Holding a stand-in pad's button and polling the screen was flaky in headless Chromium here (a press sometimes not seen within 5 s), so the handler is driven directly, as the first pad test does. A cold first run of the file can time out the existing B test too; it passes warm.
+
+**Next**
+
+Late deaths and drops in a crowd (measure first), then G1 to G3.
+
 ## 2026-11-03: Session 84, bodies and heroes stay inside the walls
 
 **What changed**

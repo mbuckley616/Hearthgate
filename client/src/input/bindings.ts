@@ -23,6 +23,14 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   tab1: ['Digit1'],
   tab2: ['Digit2'],
   tab3: ['Digit3'],
+  tabPrev: [],
+  tabNext: [],
+  menuUp: [],
+  menuDown: [],
+  menuLeft: [],
+  menuRight: [],
+  menuTake: [],
+  menuReset: [],
   // T for target: Tab is the hero screen's (Michael, 28 Oct).
   lockOn: ['KeyT', 'Mouse1'],
   interact: ['KeyF'],
@@ -72,9 +80,16 @@ export const gamepadBindings: Partial<Record<ButtonAction, number[]>> = {
   ability3: [2], // X / Square, the off-hand's
   drink: [14], // d-pad left, off the hero screen (D4)
   lockOn: [11], // right stick click
-  tab1: [14], // d-pad left, on the hero screen
-  tab2: [12], // d-pad up
-  tab3: [15], // d-pad right
+  // The hero screen (Michael, 2 Nov): LB and RB (also the abilities) change its tab, the d-pad
+  // (also drink, zoom and the map) moves its cursor, X drops, Y twice resets a board.
+  tabPrev: [4],
+  tabNext: [5],
+  menuUp: [12],
+  menuDown: [13],
+  menuLeft: [14],
+  menuRight: [15],
+  menuTake: [2],
+  menuReset: [3],
   // Off the hero screen, d-pad up and down move the camera in and out.
   zoomIn: [12],
   zoomOut: [13],
