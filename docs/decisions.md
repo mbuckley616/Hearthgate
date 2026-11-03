@@ -7,6 +7,13 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-03: Which story dungeon is which dungeon type? (deep-work session, E1a)
+E1a gives every run a dungeon type, shown on Wren's tab and over the ring. Only the Haunted Crypt has a roster, so every enemy today is a skeleton. Two of the five story dungeons are written as goblin places (The Old Cellar: "Goblins have found it first"; The Saltmarsh Warrens: "a goblin chief") and Emberhall is a dwarven hall, but all three fight skeletons.
+- **A** (recommended, built on `auto/fable-e1a-roles`): all five are Haunted Crypts for now, since that is what they fight; the Old Cellar's and the Saltmarsh's words are rewritten to the dead, and the Warrens get story dungeons of their own when their roster lands (E1i).
+- **B**: each takes the type its words say (Old Cellar and Saltmarsh Goblin Warrens, Emberhall Forge-Depths, Mossgate and the Hollow Crown the Crypt), still fighting skeletons until those rosters exist: the name and the enemies disagree for a while.
+- **C**: as B, but the goblin and forge ones stay locked on the Story tab until their rosters exist.
+Also built, no question unless you want one: the Random tab lists all eight types; the Crypt is open, the shared three say "not yet", the regional four say "Verdant Vale only" and the like, all dimmed.
+
 ## Answered
 
 ### 2026-11-02: After the Phase 2 gate evening: the gate, boss poise, henchmen, difficulty (Claude (local))

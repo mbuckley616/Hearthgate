@@ -1,20 +1,21 @@
 import { DIFFICULTIES, MAX_FLOORS, MODIFIERS, MODIFIER_IDS, SIZES, SIZE_IDS, STORY, maxDifficulty, randomOpen, type ModifierId, type PortalChoice, type SizeId, type StoryDungeon } from '@hearthgate/shared/game/portalChoice';
 import { BODY_SLOT_NAMES, CATALOGUE, type BodySlot } from '@hearthgate/shared/sim/catalogue';
-import { tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
+import { tuning } from '@hearthgate/shared/config/tuning';
+import { DUNGEON_TYPES, DUNGEON_TYPE_IDS, type DungeonType } from '@hearthgate/shared/level/dungeonTypes';
+import { dressing } from '@hearthgate/shared/sim/roles';
 import type { HandDungeon } from '@hearthgate/shared/level/handmade';
 import type { ActionFrame } from '../input/actions';
 import { gearIconUrl } from './gearIcons';
 import { roman } from './villageWords';
 
 type Tab = 'story' | 'random';
-/** The Random tab's rows, in order; the theme is shown but locked until dungeon types arrive. */
-const ROWS = ['floors', 'size', 'theme', 'difficulty', 'modifier'] as const;
+/** The Random tab's rows, in order. */
+const ROWS = ['floors', 'size', 'type', 'difficulty', 'modifier'] as const;
 /** The modifier row's choices (P8): none, then each twist. */
 const MODIFIER_CHOICES: readonly (ModifierId | null)[] = [null, ...MODIFIER_IDS];
 
-const ENEMY_NAMES: Record<EnemyKind, string> = { grunt: 'Grunts', archer: 'Archers', brute: 'Brutes', warden: 'The Warden' };
-/** Themes to come (Michael's mockup), shown locked: today every dungeon is the crypt. */
-const THEMES = ['Crypt', 'Caves', 'Ruins', 'Forest', 'Tombs', 'Volcanic', 'Frost', 'Swamp', 'Arcane'];
+/** The design doc's eight dungeon types (E1a): those with a roster open, the rest shown locked. */
+const OPEN_TYPES = DUNGEON_TYPE_IDS.filter((t) => DUNGEON_TYPES[t].open);
 
 /** One icon for each reward slot: its first catalogue entry, as the bag would draw it. */
 function slotIcon(slot: BodySlot): string {
@@ -30,7 +31,7 @@ function slotIcon(slot: BodySlot): string {
  * Keeper Wren's portal menu (P7; Michael's mockup, 28 Oct): two tabs. Story lists the curated dungeons
  * in order, each opening when the one before is cleared, with its levels, words, rewards and key
  * enemies; the player's own hand-built dungeons follow. Random shapes a run: floors, size and a
- * difficulty the shrine's tier caps; themes wait, locked. Keys and pad first (rule 4): Q and E (LB, RB)
+ * difficulty the shrine's tier caps; the dungeon type, of the eight those with a roster (E1a). Keys and pad first (rule 4): Q and E (LB, RB)
  * change tab, up and down choose, left and right change a setting, F or A opens the portal, Esc, Tab
  * or B leave. Clicking works too.
  */
@@ -44,6 +45,7 @@ export class PortalScreen {
   private size: SizeId = 'medium';
   private difficulty = 1;
   private modifier: ModifierId | null = null;
+  private type: DungeonType = OPEN_TYPES[0];
   private repeat = 0;
   private lastDir = '';
   private cleared = new Set<string>();
@@ -129,6 +131,7 @@ export class PortalScreen {
     if (row === 'floors') this.floors = Math.max(1, Math.min(MAX_FLOORS, this.floors + by));
     if (row === 'size') this.size = SIZE_IDS[Math.max(0, Math.min(SIZE_IDS.length - 1, SIZE_IDS.indexOf(this.size) + by))];
     if (row === 'difficulty') this.difficulty = Math.max(0, Math.min(maxDifficulty(this.shrineTier), this.difficulty + by));
+    if (row === 'type') this.type = OPEN_TYPES[Math.max(0, Math.min(OPEN_TYPES.length - 1, OPEN_TYPES.indexOf(this.type) + by))];
     if (row === 'modifier') this.modifier = MODIFIER_CHOICES[Math.max(0, Math.min(MODIFIER_CHOICES.length - 1, MODIFIER_CHOICES.indexOf(this.modifier) + by))];
   }
 
@@ -136,7 +139,7 @@ export class PortalScreen {
   private choose(): void {
     if (this.tab === 'random') {
       if (!randomOpen(this.shrineTier)) return;
-      this.onChoose({ kind: 'random', floors: this.floors, size: this.size, difficulty: this.difficulty, modifier: this.modifier });
+      this.onChoose({ kind: 'random', floors: this.floors, size: this.size, difficulty: this.difficulty, modifier: this.modifier, type: this.type });
       return;
     }
     if (this.storyAt >= STORY.length) {
@@ -159,6 +162,7 @@ export class PortalScreen {
       if (row === 'difficulty' && Number(el.dataset.value) <= maxDifficulty(this.shrineTier)) this.difficulty = Number(el.dataset.value);
       if (row === 'floors') this.change('floors', el.dataset.value === '+' ? 1 : -1);
       if (row === 'modifier') this.modifier = el.dataset.value ? (el.dataset.value as ModifierId) : null;
+      if (row === 'type' && OPEN_TYPES.includes(el.dataset.value as DungeonType)) this.type = el.dataset.value as DungeonType;
     }
     if (act === 'open') this.choose();
     this.render();
@@ -186,12 +190,12 @@ export class PortalScreen {
     const open = this.isOpen(this.storyAt);
     const floors = 'hand' in s.run ? s.run.hand.floors.length : s.run.floors;
     const rewards = s.rewards.map((slot) => `<span class="portal-reward" title="${BODY_SLOT_NAMES[slot]}">${slotIcon(slot)}<small>${BODY_SLOT_NAMES[slot]}</small></span>`).join('');
-    const enemies = s.enemies.map((k) => `<span class="portal-enemy">${ENEMY_NAMES[k]}</span>`).join('');
+    const enemies = s.enemies.map((k) => `<span class="portal-enemy">${dressing(k, s.type).plural}</span>`).join('');
     const action = open
       ? `<button class="portal-open" data-act="open">Open portal <kbd>F</kbd></button>`
       : `<div class="portal-locked">Clear ${STORY[this.storyAt - 1].name} to open this one.</div>`;
     const twist = s.run.modifier ? ` · <span class="portal-twist">${MODIFIERS[s.run.modifier].name}: ${MODIFIERS[s.run.modifier].words}</span>` : '';
-    return `<h3>${s.name}</h3><div class="muted">Lv. ${s.levels[0]}–${s.levels[1]} · ${floors} floor${floors === 1 ? '' : 's'} · ${DIFFICULTIES[s.run.difficulty].name}${twist}</div>
+    return `<h3>${s.name}</h3><div class="muted">${DUNGEON_TYPES[s.type].name} · Lv. ${s.levels[0]}–${s.levels[1]} · ${floors} floor${floors === 1 ? '' : 's'} · ${DIFFICULTIES[s.run.difficulty].name}${twist}</div>
       <p>${s.blurb}</p>
       <h4>Potential rewards</h4><div class="portal-rewards">${rewards}</div>
       <h4>Key enemies</h4><div class="portal-enemies">${enemies}</div>
@@ -204,7 +208,12 @@ export class PortalScreen {
     const sizes = SIZE_IDS.map(
       (id) => `<button class="portal-opt${this.size === id ? ' on' : ''}" data-act="set" data-row="size" data-value="${id}">${SIZES[id].name}<small>${SIZES[id].rooms}</small></button>`,
     ).join('');
-    const themes = THEMES.map((t, i) => `<span class="portal-theme${i === 0 ? ' on' : ' locked'}">${t}${i === 0 ? '' : '<small>later</small>'}</span>`).join('');
+    // Every type is listed so the eight are known; a locked one says why instead of its flavour.
+    const types = DUNGEON_TYPE_IDS.map((t) => {
+      const d = DUNGEON_TYPES[t];
+      const why = d.open ? d.flavour : d.region === 'any' ? 'not yet' : `${d.region} only`;
+      return `<button class="portal-opt portal-type${this.type === t ? ' on' : ''}${d.open ? '' : ' locked'}" data-act="set" data-row="type" data-value="${t}">${d.name}<small>${why}</small></button>`;
+    }).join('');
     const mods = MODIFIER_CHOICES.map(
       (m) => `<button class="portal-opt${this.modifier === m ? ' on' : ''}" data-act="set" data-row="modifier" data-value="${m ?? ''}">${m ? MODIFIERS[m].name : 'None'}<small>${m ? MODIFIERS[m].words : 'as it comes'}</small></button>`,
     ).join('');
@@ -217,7 +226,7 @@ export class PortalScreen {
       <div class="portal-row${chosen('floors')}"><h4>1. Floor count</h4><div class="portal-floors">
         <button class="portal-step" data-act="set" data-row="floors" data-value="-">◀</button><b>${this.floors}</b><button class="portal-step" data-act="set" data-row="floors" data-value="+">▶</button><small>1 – ${MAX_FLOORS}</small></div></div>
       <div class="portal-row${chosen('size')}"><h4>2. Dungeon size</h4><div class="portal-opts">${sizes}</div></div>
-      <div class="portal-row${chosen('theme')}"><h4>3. Theme</h4><div class="portal-themes">${themes}</div></div>
+      <div class="portal-row${chosen('type')}"><h4>3. Dungeon type</h4><div class="portal-opts portal-types">${types}</div></div>
       <div class="portal-row${chosen('difficulty')}"><h4>4. Difficulty <span class="muted">stronger enemies, better rewards</span></h4><div class="portal-opts">${diffs}</div></div>
       <div class="portal-row${chosen('modifier')}"><h4>5. Modifier <span class="muted">a twist on the run</span></h4><div class="portal-opts">${mods}</div></div>
       <button class="portal-open" data-act="open">Reshape portal <kbd>F</kbd></button>`;

@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 89, enemy roles and dungeon types (E1a, deep-work session)
+
+**What changed**
+
+The groundwork for the Crypt roster (card `fable/e1a-roles`, branch `auto/fable-e1a-roles`). Nothing a player fights changes; the parity hashes are identical, not re-recorded.
+- **Roles.** `shared/src/sim/roles.ts`: the eight roles of the design doc plus `boss`, `KIND_ROLE` (grunt fodder, archer archer, brute heavy, Warden boss), and `ROSTERS`, a dungeon type's names for its kinds. `enemies.ts` steps each enemy through `brainFor(kind)`, its role's brain (`ROLE_BRAINS`); the role, not the kind, now decides who gets up armoured (G1), who never rises again under Haunted, and whose body gives way when pushed. Shield, charger, caster, leader and elite have no brain yet: each arrives with its first enemy (E1b to E1f), and the unit test fails if a kind is dressed as a role with none.
+- **The colour language.** `telegraphColour(e)`: red a strike (a Skeleton Warrior's cut, the Warden's sweep), orange heavy (the Bone Brute's and the Warden's slams, anything armoured after a stagger), yellow a projectile or charge (the archer's line, which was red), violet magic (nothing uses it yet). `TelegraphView` draws in it and `Sfx` plays a sound a colour: the slice's growl for a strike, a low growl and rumble for a heavy, a rising whistle for a shot, a shimmer for magic. So the Brute's slam circle is orange now and the archer's line yellow.
+- **Dungeon types.** `shared/src/level/dungeonTypes.ts`: the design doc's eight, only the Haunted Crypt open. `DungeonType` is optional on `RunPlan`, `FloorSpec` and a random `PortalChoice`, absent meaning the Crypt, so old saves, hand-built dungeons, the arena and a browser from before all read as the Crypt. `readPortalChoice` (so `validate.ts`) refuses a locked or unknown type; `readRunPlan` ignores one. The type names the run and never touches the generator.
+- **Wren's tab and the ring.** The Random tab's Theme row (nine made-up themes) is now "Dungeon type": the eight, the Crypt open, the shared three "not yet", the regional four "Verdant Vale only" and so on, dimmed; left and right move among the open ones, a click works too. Each story dungeon has its type (all five the Crypt, decision pending) shown on its card, and its key enemies by the Crypt's names (Skeleton Warriors, Skeleton Archers, Bone Brutes). The ring's words say it: "A small Haunted Crypt, 2 floors, Normal", "Mossgate Barrow, a Haunted Crypt"; arriving on a floor, "Haunted Crypt, floor 1 of 3".
+
+**Learned**
+
+The parity hash is the JSON of the whole state, events included, so a telegraph event cannot carry its colour without moving the golden hashes; the sound looks the enemy up in the drawn world instead, with the growl when it is not there. A `FloorSpec` echoes into the floor it builds (`FloorDef.spec`), so "the same floor" in the test is everything but that echo. `roles.test.ts`: every kind resolves to its role's brain, the Crypt's names, the colours, eight types with one open, three seeds built the same with and without a type, story types carried to every floor and over the ring, a locked type refused from a browser and ignored from create options. check 299 (was 290), parity identical, test:net all passed.
+
+**Next**
+
+Michael's answer on which story dungeon is which type (decisions.md, Pending; built as A). Then E1b, the Skeleton Shieldbearer, the first new brain.
+
 ## 2026-11-03: Session 88, henchmen harder to get
 
 **What changed**

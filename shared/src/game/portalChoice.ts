@@ -2,6 +2,7 @@ import { tuning, type EnemyKind } from '../config/tuning';
 import type { BodySlot } from '../sim/catalogue';
 import { DUNGEONS } from '../level/dungeons';
 import type { HandDungeon } from '../level/handmade';
+import { DUNGEON_TYPES, dungeonTypeOf, isDungeonType, type DungeonType } from '../level/dungeonTypes';
 
 /**
  * Where Keeper Wren's ring leads (P7; Michael, 28 Oct, decisions.md "Wren's portal menu"): a story
@@ -55,6 +56,8 @@ export interface StoryDungeon {
   levels: [number, number];
   blurb: string;
   enemies: EnemyKind[];
+  /** Its dungeon type (E1a): the roster it is dressed in, named on Wren's tab and over the ring. */
+  type: DungeonType;
   /** What it tends to give: shown as the bag shows those slots. */
   rewards: BodySlot[];
   /** A generated run from a fixed seed, or a hand-built dungeon (T4b) exactly as laid out. */
@@ -75,8 +78,9 @@ export const STORY: readonly StoryDungeon[] = [
           id: 'old-cellar',
           name: 'The Old Cellar',
           levels: [1, 3] as [number, number],
-          blurb: 'Beneath the old inn, the cellar runs further than any cellar should. Goblins have found it first.',
+          blurb: 'Beneath the old inn, the cellar runs further than any cellar should, down to where the old dead were laid. They have found it first.',
           enemies: ['grunt', 'archer'] as EnemyKind[],
+          type: 'hauntedCrypt' as DungeonType,
           rewards: ['weapon', 'body', 'feet'] as BodySlot[],
           run: { hand: cellar, difficulty: 1 },
         },
@@ -88,6 +92,7 @@ export const STORY: readonly StoryDungeon[] = [
     levels: [2, 5],
     blurb: 'An old barrow under the hill, its doors split by roots. The dead were buried with their arms, and something wants them back.',
     enemies: ['grunt', 'archer'],
+    type: 'hauntedCrypt',
     rewards: ['weapon', 'head', 'shield'],
     run: { seed: 5101, floors: 2, size: 'small', difficulty: 1 },
   },
@@ -95,8 +100,9 @@ export const STORY: readonly StoryDungeon[] = [
     id: 'saltmarsh',
     name: 'The Saltmarsh Warrens',
     levels: [4, 8],
-    blurb: 'Tunnels dug under the marsh by a goblin chief who thinks himself a king. His court is large, and loud.',
+    blurb: 'Tunnels under the marsh where a drowned chief still thinks himself a king. His court is large, and does not lie still.',
     enemies: ['grunt', 'archer', 'brute'],
+    type: 'hauntedCrypt',
     rewards: ['weapon', 'legs', 'hands'],
     run: { seed: 5202, floors: 3, size: 'medium', difficulty: 1 },
   },
@@ -106,6 +112,7 @@ export const STORY: readonly StoryDungeon[] = [
     levels: [7, 12],
     blurb: 'A dwarven hall left to burn out. The fires never quite did, and what moved in likes the warmth.',
     enemies: ['grunt', 'brute'],
+    type: 'hauntedCrypt',
     rewards: ['body', 'shield', 'ring'],
     run: { seed: 5303, floors: 3, size: 'medium', difficulty: 2, modifier: 'haunted' },
   },
@@ -115,12 +122,15 @@ export const STORY: readonly StoryDungeon[] = [
     levels: [10, 16],
     blurb: 'A sunken keep where a warden still keeps watch over a throne no one sits on. Five floors down, and every one guarded.',
     enemies: ['grunt', 'archer', 'brute', 'warden'],
+    type: 'hauntedCrypt',
     rewards: ['weapon', 'neck', 'cape'],
     run: { seed: 5404, floors: 5, size: 'large', difficulty: 2 },
   },
 ];
 
-export type PortalChoice = { kind: 'story'; id: string } | { kind: 'random'; floors: number; size: SizeId; difficulty: number; modifier: ModifierId | null };
+export type PortalChoice =
+  | { kind: 'story'; id: string }
+  | { kind: 'random'; floors: number; size: SizeId; difficulty: number; modifier: ModifierId | null; type?: DungeonType };
 
 /** A choice from a browser, or null: a story id there is, or numbers within the menu's bounds. */
 export function readPortalChoice(v: unknown): PortalChoice | null {
@@ -134,7 +144,10 @@ export function readPortalChoice(v: unknown): PortalChoice | null {
   if (floors === null || difficulty === null || !SIZE_IDS.includes(o.size as SizeId)) return null;
   const modifier = o.modifier === undefined || o.modifier === null ? null : MODIFIER_IDS.includes(o.modifier as ModifierId) ? (o.modifier as ModifierId) : undefined;
   if (modifier === undefined) return null;
-  return { kind: 'random', floors, size: o.size as SizeId, difficulty, modifier };
+  // A browser from before E1a sends no type: the Crypt. A type that is not open yet is refused.
+  const type = o.type === undefined ? 'hauntedCrypt' : isDungeonType(o.type) && DUNGEON_TYPES[o.type].open ? o.type : null;
+  if (type === null) return null;
+  return { kind: 'random', floors, size: o.size as SizeId, difficulty, modifier, type };
 }
 
 /** The difficulty a choice runs at. */
@@ -144,6 +157,9 @@ export function choiceDifficulty(c: PortalChoice): number {
 
 /** The words over the village's ring for a choice. */
 export function choiceLabel(c: PortalChoice): string {
-  if (c.kind === 'story') return STORY.find((s) => s.id === c.id)?.name ?? 'A story dungeon';
-  return `A ${SIZES[c.size].name.toLowerCase()} dungeon, ${c.floors} floor${c.floors === 1 ? '' : 's'}, ${DIFFICULTIES[c.difficulty].name}${c.modifier ? `, ${MODIFIERS[c.modifier].name}` : ''}`;
+  if (c.kind === 'story') {
+    const s = STORY.find((d) => d.id === c.id);
+    return s ? `${s.name}, a ${DUNGEON_TYPES[s.type].name}` : 'A story dungeon';
+  }
+  return `A ${SIZES[c.size].name.toLowerCase()} ${DUNGEON_TYPES[dungeonTypeOf(c)].name}, ${c.floors} floor${c.floors === 1 ? '' : 's'}, ${DIFFICULTIES[c.difficulty].name}${c.modifier ? `, ${MODIFIERS[c.modifier].name}` : ''}`;
 }

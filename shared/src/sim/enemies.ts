@@ -7,6 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
+import { roleOf, type EnemyRole } from './roles';
 
 const DEG = Math.PI / 180;
 const STEER_ACCEL = 18;
@@ -275,7 +276,7 @@ function gruntStrike(state: SimState, e: EnemyState, target: PlayerState | null)
   hurtHero(state, target, { damage: g.damage, fromX: e.x, fromZ: e.z, enemyId: e.id });
 }
 
-interface Intent {
+export interface Intent {
   /** Desired direction (unnormalised; magnitude up to 1 = full speed). */
   x: number;
   z: number;
@@ -653,12 +654,24 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
   return want;
 }
 
-const BRAINS: Record<EnemyKind, (state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number) => Intent> = {
-  grunt: gruntBrain,
+export type Brain = (state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number) => Intent;
+
+/**
+ * One brain a role (E1a): every kind steps through its role's, so a dungeon type's roster is a
+ * dressing of these. Shield, charger, caster, leader and elite arrive with their first enemies
+ * (E1b to E1f); until then no kind is dressed as them.
+ */
+const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
+  fodder: gruntBrain,
   archer: archerBrain,
-  brute: bruteBrain,
-  warden: wardenBrain,
+  heavy: bruteBrain,
+  boss: wardenBrain,
 };
+
+/** The brain a kind steps through: its role's. */
+export function brainFor(kind: EnemyKind): Brain | undefined {
+  return ROLE_BRAINS[roleOf(kind)];
+}
 
 /** Cooldown after an attack, per kind. */
 function attackCooldown(e: EnemyState): number {
@@ -676,7 +689,7 @@ function attackCooldown(e: EnemyState): number {
 
 /** Haunted (P8): a fallen enemy that has not yet got up, and will. The Warden falls once. */
 export function willRise(state: SimState, e: EnemyState): boolean {
-  return state.floor?.modifier === 'haunted' && e.ai === 'dead' && !e.risen && e.kind !== 'warden';
+  return state.floor?.modifier === 'haunted' && e.ai === 'dead' && !e.risen && roleOf(e.kind) !== 'boss';
 }
 
 export function stepEnemies(state: SimState, dt: number, world: World): void {
@@ -777,7 +790,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
       case 'stagger':
         if (e.aiTime >= c.staggerMs / 1000) {
           e.poise = stats.maxPoise;
-          if (c.postStaggerArmour && (e.kind === 'brute' || e.kind === 'warden')) e.armour = c.postStaggerArmourMs / 1000;
+          if (c.postStaggerArmour && (roleOf(e.kind) === 'heavy' || roleOf(e.kind) === 'boss')) e.armour = c.postStaggerArmourMs / 1000;
           setAi(e, 'chase');
         }
         break;
@@ -789,7 +802,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         }
         break;
       default:
-        want = BRAINS[e.kind](state, world, e, target, edt);
+        want = brainFor(e.kind)!(state, world, e, target, edt);
     }
 
     // Spread out from other enemies.
@@ -858,7 +871,7 @@ export function separateBodies(e: EnemyState, p: PlayerState): void {
   const min = s.radius + tuning.movement.radius;
   if (d < min && d > 1e-4) {
     // Big enemies shove the hero more than they get shoved.
-    const share = e.kind === 'grunt' || e.kind === 'archer' ? 0.7 : 0.15;
+    const share = roleOf(e.kind) === 'fodder' || roleOf(e.kind) === 'archer' ? 0.7 : 0.15;
     const overlap = min - d;
     e.x += (dx / d) * overlap * share;
     e.z += (dz / d) * overlap * share;
