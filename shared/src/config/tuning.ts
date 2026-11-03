@@ -658,6 +658,13 @@ export const tuning = {
      * see (Michael's bodies outside the walls, 2 Nov). Off in the parity test: the slice had neither.
      */
     sweepFastMoves: true,
+    /**
+     * A Brute or a boss getting up from a broken stagger has this long of hyper-armour: hits do
+     * damage but build no poise and interrupt nothing, so a wound-up attack always comes out
+     * (Michael, 2 Nov: the party gets its window, then the boss gets its turn). Off in the parity test.
+     */
+    postStaggerArmour: true,
+    postStaggerArmourMs: 4000,
     /** Sword slam (hit 5) lands in the last part of its active phase. */
     slamHitFrom: 0.75,
     /** Combo counter resets after this long without a hit. */
@@ -1998,6 +2005,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combat.poiseRegenPerSec': [0, 20, 0.5],
   'combat.flinchMs': [0, 800, 10],
   'combat.knockbackFriction': [1, 30, 0.5],
+  'combat.postStaggerArmourMs': [0, 10000, 100],
   'combat.slamHitFrom': [0, 1, 0.05],
   'combat.comboResetMs': [200, 6000, 100],
 

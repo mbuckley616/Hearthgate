@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 87, Brutes and the Warden get up armoured
+
+**What changed**
+
+G1, Michael's call on boss poise (2 Nov): a Brute or the Warden getting up from a broken stagger has `combat.postStaggerArmourMs` (4000, panel 0 to 10000) of hyper-armour, `EnemyState.armour` (seconds left, optional, gone when it runs out). While it lasts a hit still does damage but drains no poise, pushes nothing, freezes nothing and cannot flinch it; a parry stops the blow but does not stagger it or drain the Warden's poise; a launched corpse does not stagger it. So an attack it winds up always comes out. Its telegraphs draw orange instead of red while armoured (`TelegraphView`), the colour language's heavy. Grunts and archers are unchanged. `combat.postStaggerArmour` is off in the parity test (hashes unchanged).
+
+**Learned**
+
+The armour counts down only on ticks the enemy is not in hitstop, so a flurry of hits stretches it a little (each heavy adds its hitstop); the panel value is the floor of the window, not the ceiling. `sim/staggerArmour.test.ts`: a Brute and the Warden broken, risen, hit five times (hurt, poise untouched, not staggered, not pushed), then broken again once the armour is gone; a grunt and a switched-off Brute rise without it.
+
+**Next**
+
+G2, henchmen harder to get; G3, difficulty that hits harder.
+
 ## 2026-11-03: Session 86, measuring the crowded fight
 
 **What changed**

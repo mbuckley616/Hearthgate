@@ -729,6 +729,10 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     const friction = Math.exp(-c.knockbackFriction * dt);
     e.kbx *= friction;
     e.kbz *= friction;
+    if (e.armour !== undefined) {
+      e.armour -= dt;
+      if (e.armour <= 0) delete e.armour;
+    }
 
     const slow = e.slowTime > 0 ? 1 - tuning.magicCombo.burstSlowFrac : 1;
     e.slowTime = Math.max(0, e.slowTime - dt);
@@ -773,6 +777,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
       case 'stagger':
         if (e.aiTime >= c.staggerMs / 1000) {
           e.poise = stats.maxPoise;
+          if (c.postStaggerArmour && (e.kind === 'brute' || e.kind === 'warden')) e.armour = c.postStaggerArmourMs / 1000;
           setAi(e, 'chase');
         }
         break;
