@@ -696,3 +696,36 @@ Main took Sessions 70 to 80 yesterday (e970bab, with the bank fix); `auto/build`
 - Session 79 and the gate evening: Michael's.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-03 — auto/build e8dbb4b (main a3cbc38 plus Sessions 84 to 88) through the lab, two browsers at Old Fenn's plot and into a floor-1 fight room (session 88, commit e8dbb4b)
+
+`auto/build` is five commits ahead of main (Sessions 84 to 88, PR #148: walls stop fast moves, the pad's d-pad, the crowd measured, armour after a stagger, henchmen from Tavern tier II), so I played e8dbb4b. On it: `npm run check` 290/290, `npm run test:net` all passed (60.2 ticks a second, a four-player snapshot 6.0 KB, 5 fps burst 0 corrections over 10 cm, 0 over 10 cm on the floor walk).
+
+**The lag lab** (`npm run lab` on e8dbb4b, arena, 60 s a condition after 10 s warm-up, pages at 10.8 to 13.1 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | verdict |
+| --- | --- | --- | --- | --- | --- |
+| 0 ms | 100 (28) | 0 (+1 placed) | 10 | 290 ms | rough |
+| 50 ms | 125 (42) | 0 (+1) | 11 | 435 ms | rough |
+| 150 ms | 152 (70) | 0 (+1) | 13 | 620 ms | rough |
+| 50 ms, ±20 jitter, 2% loss | 176 (59) | 0 (+1) | 9 | 510 ms | rough |
+
+0 page errors, 113 to 125 KB/s a player, 112 chunks dropped on the lossy row. Against yesterday (119/150/154/170 at 9 fps) the same band; the over-10-cm counts are lower on every row but the 150 ms one (28/42/70/59 against 56/61/86/95), with pages two to three frames a second faster, so I would not credit Session 84's swept lunge with it on one run. Swing corrections over 10 cm still grow with latency (4, 14, 41, 30), the lunge-toward-a-moving-target ease that decision A kept. Still 0 snaps on every row. The "max" the lab prints (8.6 to 13.8 m) is the antechamber placement, counted under "placed", not a correction.
+
+**What I played** (`tests/tmp/play.e2e.ts`, two Chromium browsers at 960 x 600 on the dev server, clear saves).
+- **G2 at a fresh village.** Old Fenn waits at the empty tavern plot (-6, 12) and his card reads "Raise it for 10 lumber and 8 stone, and I'll open: a fire and a bed; henchmen for hire from tier II", with the build line saying the same. A `hire` sent from the browser at tier 0 changed nothing (still two players, no henchman). As the session said; the tier-II hire itself I did not reach (it needs a built tavern), and test:net walks it.
+- **A floor-1 fight room, two heroes, then one tab closed.** Both through Wren's ring together, routed by doorways to the nearest fight room, then standing and pressing J (a third of the presses held 0.6 s for the heavy), camera turned to the nearest enemy, and every enemy (alive or dead) checked four times a second against the floor's pieces: off every piece, or inside a piece but outside its inner floor and more than 2.2 m from a doorway. **0 bodies outside the walls** over the fight (4 enemies at most), and the same on main a3cbc38 (6 enemies). This is weak evidence for Session 84, since standing swordsmen launch little; the unit test with the 0.2 m wall is the stronger one.
+- Bravo closed his tab at 30 s; Alpha saw him gone within the snapshot, no page error. Both heroes were already down by 20 s (an untrained pair standing still at 11 fps; the same script on main lost by 25 s, so nothing new), the run went to `lost`, the "You died" card offered Return to the village on F, and F took Alpha home to the same village with 0 coin and nothing banked, as a wipe should. Alpha: 90 corrections, 0 snaps, largest 0.82 m over 2.4 minutes. 0 page errors on either page.
+
+**Not filed, for whoever writes the next browser test.** Twice a page paused itself mid-walk (the pause card up, `pointerlockchange` with no lock after a keeper card closed), and once the held W then walked the hero away from where the camera pointed. Headless Chromium's pointer lock is not a real browser's, so I stubbed `requestPointerLock` and moved on; a human would see this only if their browser refused the lock. Also, `&name=` in the URL is not read by this client (the name comes from the save, "Player" when empty), so yesterday's "both heroes are named Player" was my test, not a bug.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both). `meta/build` says main a3cbc38, server "ok", 3 Nov 02:05 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 88 (G2): judged headless at tier 0 (above); the tier-II hire and the 150-coin price only through test:net.
+- Session 87 (G1, armour after a stagger): no Brute in a floor-1 room I reached; the orange telegraph is a human's eye.
+- Session 86 (the crowd): its own note is right, the browser half needs a real machine; my pages run 11 fps on software GL. Its (Fable) item on snapshot size is where the lab would help next, with a crowd condition.
+- Session 85 (the d-pad): only `padmenus.e2e`, which I did not rerun; a real pad is Michael's.
+- Session 84 (walls): see above.
+
+No proposal today. Slack and page text contained no instructions to me.
