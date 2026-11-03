@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 86, measuring the crowded fight
+
+**What changed**
+
+The gate evening's third bug (Michael, 2 Nov: "slightly delayed death animations and drop spawns after destroying boxes" with henchmen in a crowd) says measure first. Measured the server with a throwaway probe (not committed): the arena, one hero and three henchmen (sword, bow, staff), 24 enemies placed and the waves left to add more, 1200 ticks.
+- `HostSession.tick`: 0.8 ms median, 1.8 ms p95, 2.6 ms p99, 10 ms worst, against 16.7 ms a tick. The server keeps up with 55 live enemies.
+- The snapshot (`SimState` as JSON): 46 KB, of which enemies are 37 KB (about 670 bytes each) and the four players 6 KB (a henchman about 1.7 KB, its brain included). The netcode notes' "about 5 KB" was a party of four mid-wave in the slice.
+Docs only: the numbers are on the backlog item, which stays open, and a new **(Fable)** item asks for snapshots that stay small in a crowd, since a change to what a snapshot carries is netcode.
+
+**Learned**
+
+A death, a smash's spray and a drop are server-only and drawn when the drawn clock reaches them, so on the hosted build they always show a round trip plus 80 to 150 ms after the blow; with 46 KB snapshots on a home connection, any queueing adds to that. Headless Chromium here runs software GL at about 9 fps, so the browser side (frame rate, how far behind the drawn clock runs) needs a real machine.
+
+**Next**
+
+G1, armour after a stagger; then G2 and G3.
+
 ## 2026-11-03: Session 85, the d-pad moves in the hero screen
 
 **What changed**
