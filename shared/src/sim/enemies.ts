@@ -1,5 +1,5 @@
 import { enemyStats, tuning, type EnemyKind } from '../config/tuning';
-import { resolveCircle, sphereCast } from '../level/geometry';
+import { resolveCircle, sphereCast, sweptDistance } from '../level/geometry';
 import { groundHeight, rampPaths, type World } from '../level/arena';
 import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 
@@ -711,11 +711,28 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         });
       }
     }
-    e.x += e.kbx * dt;
-    e.z += e.kbz * dt;
+    let kx = e.kbx * dt;
+    let kz = e.kbz * dt;
+    if (c.sweepFastMoves) {
+      // A launch slides up to a metre a tick: stop it at the wall rather than through it.
+      const len = Math.hypot(kx, kz);
+      const free = sweptDistance(e.x, e.y, e.z, kx, kz, stats.radius, world.colliders);
+      if (free < len) {
+        kx *= free / len;
+        kz *= free / len;
+        e.kbx = 0;
+        e.kbz = 0;
+      }
+    }
+    e.x += kx;
+    e.z += kz;
     const friction = Math.exp(-c.knockbackFriction * dt);
     e.kbx *= friction;
     e.kbz *= friction;
+    if (e.armour !== undefined) {
+      e.armour -= dt;
+      if (e.armour <= 0) delete e.armour;
+    }
 
     const slow = e.slowTime > 0 ? 1 - tuning.magicCombo.burstSlowFrac : 1;
     e.slowTime = Math.max(0, e.slowTime - dt);
@@ -760,6 +777,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
       case 'stagger':
         if (e.aiTime >= c.staggerMs / 1000) {
           e.poise = stats.maxPoise;
+          if (c.postStaggerArmour && (e.kind === 'brute' || e.kind === 'warden')) e.armour = c.postStaggerArmourMs / 1000;
           setAi(e, 'chase');
         }
         break;

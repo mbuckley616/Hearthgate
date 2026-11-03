@@ -99,6 +99,7 @@ export class HireScreen {
   private hire(kit: Style): void {
     if (this.hired.has(kit)) return this.say(`${HIRES[kit].name} is with you already. X or Q lets them go.`);
     const room = tavernHenchmen(this.tier);
+    if (room === 0) return this.say(`A tier I tavern has no one to send yet. Raise it to tier II with Old Fenn.`);
     if (this.hired.size >= room) return this.say(`A tier ${roman(this.tier)} tavern sends ${room} at a time. Raise it with Old Fenn for more.`);
     if (this.coin < tuning.village.hireCoin) return this.say(`${HIRES[kit].name} asks ${tuning.village.hireCoin} coin; you have ${this.coin}.`);
     this.onHire(kit);

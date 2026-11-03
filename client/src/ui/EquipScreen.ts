@@ -27,6 +27,7 @@ import { HeroPreview } from './HeroPreview';
 /** The weapon kinds, by the style each fights with (one hero, any weapon: T5). */
 const STYLE_NAMES: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
 type Tab = 'gear' | 'talents' | 'champion';
+const TABS: readonly Tab[] = ['gear', 'talents', 'champion'];
 /** Where each worn slot sits on the silhouette (column, row), as RuneScape lays out its body. */
 const BODY_AT: Record<BodySlot, [number, number]> = {
   head: [1, 0],
@@ -63,7 +64,7 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * The bag and the body (T5b; decisions.md 27 Oct): what the hero wears on RuneScape's ten slots, the
  * 28-space bag, and what the chosen item does; the levels each weapon kind has earned; the talent
  * boards. Keyboard and pad first (rule 4): move (WASD, the arrows or the stick) to choose, F or A to
- * pick up and put down, J or RT to wear or take off, Q or LB to drop, 1 and 2 (or the d-pad) for the tabs. Clicking works too. Open
+ * pick up and put down, J or RT to wear or take off, Q or X to drop, 1 to 3 (or LB and RB) for the tabs; the d-pad moves like the stick. Clicking works too. Open
  * between fights (Tab, or View on a pad), on a floor between rooms as well. Each weapon kind's level
  * shows on the Talents tab, and the bag and body tab shows the hero as dressed (Michael, 28 Oct).
  */
@@ -82,7 +83,7 @@ export class EquipScreen {
   /** Seconds until a held direction moves the cursor again. */
   private repeat = 0;
   private lastDir = '';
-  /** Seconds left in which a second E or RB resets the board; moving or changing tab disarms it (Michael, 30 Oct). */
+  /** Seconds left in which a second E or Y resets the board; moving or changing tab disarms it (Michael, 30 Oct). */
   private resetArmed = 0;
   /** The grid cell whose item is picked up (F or A) to be put down elsewhere (Michael, 30 Oct). */
   private holding: number | null = null;
@@ -146,13 +147,29 @@ export class EquipScreen {
     if (!this.visible) return;
     if (this.tab === 'gear') this.preview.frame(dt);
     // 1, 2 and 3 are also the abilities (C3): on this screen they only change tab.
-    const tab = actions.pressed.has('tab1') ? 'gear' : actions.pressed.has('tab2') ? 'talents' : actions.pressed.has('tab3') ? 'champion' : null;
+    // On a pad LB and RB step through the tabs (Michael, 2 Nov); they are also ability 1 and 2, so they are read first.
+    const stepTab = actions.pressed.has('tabPrev') ? -1 : actions.pressed.has('tabNext') ? 1 : 0;
+    const tab = actions.pressed.has('tab1')
+      ? 'gear'
+      : actions.pressed.has('tab2')
+        ? 'talents'
+        : actions.pressed.has('tab3')
+          ? 'champion'
+          : stepTab
+            ? TABS[(TABS.indexOf(this.tab) + stepTab + TABS.length) % TABS.length]
+            : null;
     if (tab) {
       this.setTab(tab);
       return;
     }
-    const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
-    const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
+    const held = actions.held;
+    const padX = (held.has('menuRight') ? 1 : 0) - (held.has('menuLeft') ? 1 : 0);
+    const padY = (held.has('menuUp') ? 1 : 0) - (held.has('menuDown') ? 1 : 0);
+    const x = actions.move.x + padX + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
+    const y = actions.move.y + padY + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
+    // Q (or X on a pad) drops or takes off; E (or Y) resets. LB and RB changed tab above.
+    const take = actions.pressed.has('ability1') || actions.pressed.has('menuTake');
+    const reset = actions.pressed.has('ability2') || actions.pressed.has('menuReset');
     const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
     if (this.resetArmed > 0) {
       this.resetArmed -= dt;
@@ -173,9 +190,9 @@ export class EquipScreen {
       const style = STYLES[this.tCol];
       const id = TALENT_IDS[this.tRow];
       if (actions.pressed.has('interact')) this.profile.changeRank(style, id, 1);
-      else if (actions.pressed.has('ability1')) this.profile.changeRank(style, id, -1);
-      else if (actions.pressed.has('ability2')) {
-        // RB sits beside the triggers: one stray press wiped a whole board (Michael, 30 Oct), so it takes two.
+      else if (take) this.profile.changeRank(style, id, -1);
+      else if (reset) {
+        // One stray press wiped a whole board (Michael, 30 Oct), so it takes two.
         if (!this.armReset()) return;
         this.profile.resetTalents(style);
       } else return;
@@ -185,19 +202,19 @@ export class EquipScreen {
     }
     if (this.tab === 'champion') {
       const con = CONSTELLATIONS[this.cCol];
-      // Below the ranked perks, the constellation's slotted ones: F or A slots or unslots, Q or LB unslots.
+      // Below the ranked perks, the constellation's slotted ones: F or A slots or unslots, Q or X unslots.
       if (this.cRow >= con.perks.length) {
         const sid = con.slotted[this.cRow - con.perks.length];
         const isIn = this.profile.champion.slots?.includes(sid) ?? false;
-        if (actions.pressed.has('interact') || (actions.pressed.has('ability1') && isIn)) this.slot(sid);
+        if (actions.pressed.has('interact') || (take && isIn)) this.slot(sid);
         else return;
         this.render();
         return;
       }
       const id = con.perks[this.cRow];
       if (actions.pressed.has('interact')) this.profile.changeChampion(id, 1);
-      else if (actions.pressed.has('ability1')) this.takeBack(() => this.profile.changeChampion(id, -1));
-      else if (actions.pressed.has('ability2')) {
+      else if (take) this.takeBack(() => this.profile.changeChampion(id, -1));
+      else if (reset) {
         if (!this.armReset()) return;
         this.takeBack(() => this.profile.resetChampion());
       } else return;
@@ -211,13 +228,13 @@ export class EquipScreen {
       this.holding = null;
       this.note = '';
       this.use(this.grid[this.cursor]);
-    } else if (actions.pressed.has('ability1')) {
+    } else if (take) {
       this.holding = null;
       this.drop(this.grid[this.cursor]);
     }
   }
 
-  /** The first E or RB on a board arms the reset and says so; true when this press is the second, inside the window. */
+  /** The first E or Y on a board arms the reset and says so; true when this press is the second, inside the window. */
   private armReset(): boolean {
     if (this.resetArmed > 0) {
       this.resetArmed = 0;
@@ -441,9 +458,9 @@ export class EquipScreen {
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
          ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this run and lost if the party wipes, even worn, until the gold ring home banks it.</div>' : ''}
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or LB: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or X: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}</div>`
       : c.area === 'bag' && this.profile.materialStacks().has(c.space)
-        ? `<div class="item-name">${matLine(this.profile.materialStacks().get(c.space)!)}</div><div class="gear-warn">Carried for the village: it goes to the village when the gold ring home banks the run, and is lost if the party wipes.</div><div class="gear-hint">Q or LB: drop it at your feet, to make room</div>`
+        ? `<div class="item-name">${matLine(this.profile.materialStacks().get(c.space)!)}</div><div class="gear-warn">Carried for the village: it goes to the village when the gold ring home banks the run, and is lost if the party wipes.</div><div class="gear-hint">Q or X: drop it at your feet, to make room</div>`
         : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
     const free = this.profile.data.bag.filter((i) => !i).length - this.profile.materialStacks().size;
     const heldItem = this.holding === null ? null : this.itemAt(this.grid[this.holding]);
@@ -496,7 +513,7 @@ export class EquipScreen {
       </div>`;
     }).join('');
     return `<div class="talent-cols">${cols}</div>
-      <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or LB: take off · E or RB twice: reset</div>${this.armedNote()}`;
+      <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or X: take off · E or Y twice: reset</div>${this.armedNote()}`;
   }
 
   /** The three constellations (T6b): points from XP past the top level, free to move between runs until coin. */
@@ -558,10 +575,10 @@ export class EquipScreen {
       ${slotBar}
       <div class="talent-cols">${cols}</div>
       <button class="talent-respec" data-action="cpReset">Reset all</button>
-      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. ${this.atShrine() ? `Here at the shrine, taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}).` : `Points are taken back at Keeper Wren's shrine in the village, for ${tuning.village.respecCoinPerPoint} coin each.`} Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or LB: take off · E or RB twice: reset</div>${this.armedNote()}`;
+      <div class="muted talent-note">Every weapon's XP past level ${maxLevel()} earns champion points, shared by all your characters. Together they add at most +${Math.round(tuning.champion.ceilingDamage * 100)}% damage and +${Math.round(tuning.champion.ceilingHealth * 100)}% health. ${this.atShrine() ? `Here at the shrine, taking a point back costs ${tuning.village.respecCoinPerPoint} coin (you have ${this.profile.data.coin}).` : `Points are taken back at Keeper Wren's shrine in the village, for ${tuning.village.respecCoinPerPoint} coin each.`} Points spent in a constellation open its slotted perks; four can be slotted at once. Move to choose · F or A: add or slot · Q or X: take off · E or Y twice: reset</div>${this.armedNote()}`;
   }
 
   private armedNote(): string {
-    return this.resetArmed > 0 ? '<div class="talent-armed">Press E or RB again to reset the whole board</div>' : '';
+    return this.resetArmed > 0 ? '<div class="talent-armed">Press E or Y again to reset the whole board</div>' : '';
   }
 }

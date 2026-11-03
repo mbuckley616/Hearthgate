@@ -152,8 +152,8 @@ export function applyUpgrade(save: VillageSave, building: BuildingId): Cost {
 
 /** The highest portal tier the shrine opens (P7): one above its own. */
 export const shrinePortalTier = (tier: number) => tier + 1;
-/** Henchmen the tavern hires (P10): one a tier to three; tier 4 makes them quicker. */
-export const tavernHenchmen = (tier: number) => Math.min(3, tier);
+/** Henchmen the tavern hires: none at tier I, then one a tier to three (G2; Michael, 2 Nov); tier 4 makes them quicker. */
+export const tavernHenchmen = (tier: number) => Math.max(0, Math.min(3, tier - 1));
 /** Items the store stocks a day (P5). */
 export const storeStock = (tier: number) => (tier < 1 ? 0 : tuning.village.stockBase + (tier - 1) * tuning.village.stockPerTier);
 /** Spaces in the storehouse's stash (P9). */
@@ -206,6 +206,7 @@ export function tierGives(building: BuildingId, tier: number): string {
     case 'tavern': {
       const n = tavernHenchmen(tier);
       const cap = `, up to level ${henchmanCap(tier)}`;
+      if (n === 0) return 'a fire and a bed; henchmen for hire from tier II';
       return tier >= 4 ? `three henchmen, quicker on their feet${cap}` : `${n} ${n === 1 ? 'henchman' : 'henchmen'} for hire${cap}`;
     }
   }

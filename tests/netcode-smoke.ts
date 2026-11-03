@@ -280,18 +280,28 @@ async function main() {
     va.send({ k: "portal", choice: { kind: "story", id: "mossgate" } });
     await va.until(() => ringLabel() === "Mossgate Barrow", 2000, "the ring takes the story choice");
     check(true, "anyone may choose at Wren's: a random dungeon, then a story one, and the ring says so");
-    // P10: Old Fenn's hires. A tier-1 tavern sends one at a time; raising it sends two, and a friend
-    // joining the full party takes a henchman's slot.
+    // P10: Old Fenn's hires (G2, Michael, 2 Nov: none at tier I, then one a tier). A tier-1 tavern
+    // sends no one; tier 2 sends one at a time, tier 3 two; and a friend joining the full party takes a henchman's slot.
+    const henchIn = () => va.snaps[va.snaps.length - 1].s.players.filter((p) => p.henchman).length;
+    va.send({ k: "hire", kit: "sword", coin: 999 });
+    await va.drive(10);
+    check(henchIn() === 0 && !va.messages.some((m) => m.k === "hired"), "a tier-1 tavern sends no henchman", `${henchIn()}`);
+    va.send({ k: "upgrade", building: "tavern", coin: 9999 });
+    await va.until(() => va.lastVillage()?.village.tiers.tavern === 2, 2000, "the tavern at tier 2");
     va.send({ k: "hire", kit: "sword", coin: 999 });
     await va.until(() => va.messages.some((m) => m.k === "hired"), 2000, "Vale's first hire");
     va.send({ k: "hire", kit: "bow", coin: 999 });
     await va.drive(10);
-    const henchIn = () => va.snaps[va.snaps.length - 1].s.players.filter((p) => p.henchman).length;
-    check(henchIn() === 1, "a tier-1 tavern sends one henchman at a time", `${henchIn()}`);
+    check(henchIn() === 1, "a tier-2 tavern sends one henchman at a time", `${henchIn()}`);
+    // Tier 3 costs more than the test village has left: free for this one raise.
+    va.send({ k: "tune", edit: { path: "village.upgradeLumber", value: 0 } });
+    va.send({ k: "tune", edit: { path: "village.upgradeStone", value: 0 } });
     va.send({ k: "upgrade", building: "tavern", coin: 9999 });
-    await va.until(() => va.lastVillage()?.village.tiers.tavern === 2, 2000, "the tavern at tier 2");
+    await va.until(() => va.lastVillage()?.village.tiers.tavern === 3, 2000, "the tavern at tier 3");
+    va.send({ k: "tune", edit: { path: "village.upgradeLumber", value: 40 } });
+    va.send({ k: "tune", edit: { path: "village.upgradeStone", value: 30 } });
     va.send({ k: "hire", kit: "bow", coin: 999 });
-    await va.until(() => henchIn() === 2, 2000, "a second hire at tier 2");
+    await va.until(() => henchIn() === 2, 2000, "a second hire at tier 3");
     const vc = await bot("Wynn", home, "village");
     await va.until(() => va.snaps[va.snaps.length - 1].s.players.length === 4 && henchIn() === 1, 3000, "Wynn takes a henchman's slot");
     check(vc.state.players.length === 4 && henchIn() === 1, "a friend joining a full party takes a henchman's slot", `${henchIn()} henchmen`);
@@ -309,7 +319,8 @@ async function main() {
     bots.length = 0;
 
     // 8c. Keeper Wren and a hand-built dungeon.
-    const ha = await bot("Hale", null, "village");
+    // A tier-2 tavern, the first that hires (G2).
+    const ha = await bot("Hale", null, "village", { ...emptyVillage("hale-test"), tiers: { shrine: 1, store: 0, storehouse: 0, tavern: 2 } });
     const hb = await bot("Ivy", ha.code, "village");
     const cellar = DUNGEONS.find((d) => d.name === "The Old Cellar")!;
     const broken = { ...cellar, floors: [{ pieces: cellar.floors[0].pieces.filter((p) => p.kind !== "entrance") }, ...cellar.floors.slice(1)] };

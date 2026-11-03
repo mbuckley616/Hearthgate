@@ -2,6 +2,87 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 88, henchmen harder to get
+
+**What changed**
+
+G2, Michael's call on henchmen (2 Nov: the same strength, harder to get). `tavernHenchmen` is now none at tier I, then one a tier (1, 2, 3 at II, III, IV), and `village.hireCoin` is 150 (was 60, on the panel). At tier I Old Fenn's card shows "Hire companions" blocked with "Hire from tier II", the hire screen says the same if reached, and the tavern's words at tier I are "a fire and a bed; henchmen for hire from tier II". The server's `onHire` already capped by `tavernHenchmen`, so it refuses a hire at tier I with no change of its own. Their fighting is unchanged, and a village saved before keeps the henchmen it has hired: only a new hire is checked.
+
+**Learned**
+
+The netcode smoke's tavern steps now walk the new rule: no hire at tier I, one at II, two at III (tuning tier III's lumber and stone to nothing for that one raise, since the test village has spent its own), and Hale's village, which hires the henchman that follows the party through every ring, starts with its tavern at II. `test:net` all passed.
+
+**Next**
+
+G3, difficulty that hits harder; then the E1 roster once E1a's deep-work session lands.
+
+## 2026-11-03: Session 87, Brutes and the Warden get up armoured
+
+**What changed**
+
+G1, Michael's call on boss poise (2 Nov): a Brute or the Warden getting up from a broken stagger has `combat.postStaggerArmourMs` (4000, panel 0 to 10000) of hyper-armour, `EnemyState.armour` (seconds left, optional, gone when it runs out). While it lasts a hit still does damage but drains no poise, pushes nothing, freezes nothing and cannot flinch it; a parry stops the blow but does not stagger it or drain the Warden's poise; a launched corpse does not stagger it. So an attack it winds up always comes out. Its telegraphs draw orange instead of red while armoured (`TelegraphView`), the colour language's heavy. Grunts and archers are unchanged. `combat.postStaggerArmour` is off in the parity test (hashes unchanged).
+
+**Learned**
+
+The armour counts down only on ticks the enemy is not in hitstop, so a flurry of hits stretches it a little (each heavy adds its hitstop); the panel value is the floor of the window, not the ceiling. `sim/staggerArmour.test.ts`: a Brute and the Warden broken, risen, hit five times (hurt, poise untouched, not staggered, not pushed), then broken again once the armour is gone; a grunt and a switched-off Brute rise without it.
+
+**Next**
+
+G2, henchmen harder to get; G3, difficulty that hits harder.
+
+## 2026-11-03: Session 86, measuring the crowded fight
+
+**What changed**
+
+The gate evening's third bug (Michael, 2 Nov: "slightly delayed death animations and drop spawns after destroying boxes" with henchmen in a crowd) says measure first. Measured the server with a throwaway probe (not committed): the arena, one hero and three henchmen (sword, bow, staff), 24 enemies placed and the waves left to add more, 1200 ticks.
+- `HostSession.tick`: 0.8 ms median, 1.8 ms p95, 2.6 ms p99, 10 ms worst, against 16.7 ms a tick. The server keeps up with 55 live enemies.
+- The snapshot (`SimState` as JSON): 46 KB, of which enemies are 37 KB (about 670 bytes each) and the four players 6 KB (a henchman about 1.7 KB, its brain included). The netcode notes' "about 5 KB" was a party of four mid-wave in the slice.
+Docs only: the numbers are on the backlog item, which stays open, and a new **(Fable)** item asks for snapshots that stay small in a crowd, since a change to what a snapshot carries is netcode.
+
+**Learned**
+
+A death, a smash's spray and a drop are server-only and drawn when the drawn clock reaches them, so on the hosted build they always show a round trip plus 80 to 150 ms after the blow; with 46 KB snapshots on a home connection, any queueing adds to that. Headless Chromium here runs software GL at about 9 fps, so the browser side (frame rate, how far behind the drawn clock runs) needs a real machine.
+
+**Next**
+
+G1, armour after a stagger; then G2 and G3.
+
+## 2026-11-03: Session 85, the d-pad moves in the hero screen
+
+**What changed**
+
+The gate evening's bug (Michael, 2 Nov): on the hero screen the d-pad changed tabs (left, up, right were the three tabs) instead of moving the cursor. Now, on a pad only:
+- **The d-pad moves the cursor** in the bag, the worn slots and both boards, with the stick's repeat (`menuUp`/`Down`/`Left`/`Right`, buttons 12 to 15, read as held in `EquipScreen.handle`). Off the screen they are still zoom, drink and the map, which already wait while it is up.
+- **LB and RB step through the tabs** (`tabPrev`, `tabNext`), round from the first to the last; they are also ability 1 and 2, so the screen reads them first and nothing else happens on that press.
+- **X drops** (or takes a rank off, or unslots) and **Y twice resets a board**, the jobs LB and RB had; the two-press reset of 30 Oct is kept, on Y. The hints and the controls table say so.
+The keyboard is unchanged: 1 to 3 for tabs, Q drops, E twice resets. The new pad-only actions have no keys.
+
+**Learned**
+
+`tests/padmenus.e2e.ts` has a new test that presses each pad button through the screen's handler with exactly the actions `gamepadBindings` gives it (imported from Vite in the page). Holding a stand-in pad's button and polling the screen was flaky in headless Chromium here (a press sometimes not seen within 5 s), so the handler is driven directly, as the first pad test does. A cold first run of the file can time out the existing B test too; it passes warm.
+
+**Next**
+
+Late deaths and drops in a crowd (measure first), then G1 to G3.
+
+## 2026-11-03: Session 84, bodies and heroes stay inside the walls
+
+**What changed**
+
+The gate evening's bug (Michael, 2 Nov): skeletons knocked behind a wall rose there on Haunted, and a hero attacking one through the wall snapped out after it. Under one switch, `combat.sweepFastMoves` (on; the parity test turns it off):
+- **A knockback or launch slide stops at the wall.** `sweptDistance` (`level/geometry.ts`) casts a probe of half the body's radius along the tick's move and cuts the move at the first movement-blocking collider; `stepEnemies` uses it on `kbx`/`kbz` and drops the slide where it meets stone.
+- **So does a hero's lunge**, in `stepPlayer`'s attack step, which prediction runs too, so the server and the browser cut it at the same point.
+- **Soft targeting picks only what the hero can see** (`pickSoftTarget`'s chest-to-chest line, walls and pillars blocking), for attacks and abilities alike; a lock-on still takes its target, and its lunge stops at the wall.
+`sim/sweptMoves.test.ts` puts a 0.2 m wall in the arena: a warhammer heavy's launch tunnels through it with the switch off and stops short with it on; a sword swing at a grunt behind it takes no soft target, and a locked one never carries the hero past it. The free-aim test's archer had stood in the antechamber with its grunt behind the antechamber's wall; it now stands in the arena.
+
+**Learned**
+
+A launch starts at about 45 m/s (5 m against a friction of 9; 67 m/s with the warhammer), so a corpse moves 0.75 to 1.1 m in its first tick, more than a body's radius plus half a thin wall, and `resolveCircle` then pushes it out of the far side. The probe is half the body's radius so a body resting against a wall after `resolveCircle` is not already touching it and can still slide away. The item's safety net (put back a body found outside the walkable area) was not built: `pieceAt` returns -1 inside a doorway as well as outside the floor, so it cannot tell them apart, and with the cause gone it is only worth adding if a body is seen outside again.
+
+**Next**
+
+The D-pad on the hero screen, then the crowd measurement, then G1 to G3.
+
 ## 2026-11-02: local session, the Phase 2 gate evening filed, and the builder's lock on a branch
 
 **What changed**

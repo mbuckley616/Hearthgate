@@ -1,6 +1,6 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
-import { resolveCircle, type Collider } from '../level/geometry';
+import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
@@ -116,7 +116,7 @@ function setStringMove(p: PlayerState, s: string, heavy: boolean): void {
   else delete p.attackCharge;
 }
 
-function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number, prior = ''): void {
+function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: PlayerCommand, moveMag: number, colliders: readonly Collider[], prior = ''): void {
   p.mode = 'attack';
   p.attackHit = hitIndex;
   // A weapon family (C5) borrows a pose for each step of its own chain.
@@ -156,7 +156,7 @@ function startAttack(state: SimState, p: PlayerState, hitIndex: number, cmd: Pla
   // Free aim (D12) has none: the shot faces the aim exactly.
   const free = freeAim(p, cmd);
   if (free) p.yaw = Math.atan2(cmd.aimX, cmd.aimZ);
-  const target = free ? null : pickSoftTarget(state, p, cmd, targetingRange(p));
+  const target = free ? null : pickSoftTarget(state, p, cmd, targetingRange(p), colliders);
   p.attackTarget = target ? target.id : -1;
   if (target) p.yaw = turnToward(p.yaw, Math.atan2(target.x - p.x, target.z - p.z), tuning.combo.maxTurnDeg * DEG);
   aimLunge(state, p);
@@ -523,7 +523,7 @@ export function stepPlayer(
     } else if (slot !== null && inRecovery && abilityReady(p, slot)) {
       // Abilities cancel recovery too.
       p.queuedAbility = -1;
-      startAbility(state, p, slot, cmd);
+      startAbility(state, p, slot, cmd, colliders);
     } else if (p.queuedSwap && inRecovery) {
       // Swapping style also cancels recovery, so it works as a mid-fight tactic.
       p.style = p.queuedSwap;
@@ -552,8 +552,8 @@ export function stepPlayer(
     p.queuedAbility = -1;
     const slot = abilitySlot ?? queued;
     if (wantDodge && canDodge) startDodge(state, p, cmd, moveMag);
-    else if (slot !== null && p.grounded && abilityReady(p, slot)) startAbility(state, p, slot, cmd);
-    else if ((cmd.attack || p.attackQueued) && p.grounded) startAttack(state, p, 0, cmd, moveMag);
+    else if (slot !== null && p.grounded && abilityReady(p, slot)) startAbility(state, p, slot, cmd, colliders);
+    else if ((cmd.attack || p.attackQueued) && p.grounded) startAttack(state, p, 0, cmd, moveMag, colliders);
     else if (cmd.block && p.grounded) raiseGuard(state, p);
     else if (cmd.jump && p.grounded) {
       const j = tuning.jump;
@@ -567,8 +567,8 @@ export function stepPlayer(
       p.queuedSwap = null;
     }
     if (wantDodge && canDodge) startDodge(state, p, cmd, moveMag);
-    else if (abilitySlot !== null && abilityReady(p, abilitySlot)) startAbility(state, p, abilitySlot, cmd);
-    else if (cmd.attack) startAttack(state, p, 0, cmd, moveMag);
+    else if (abilitySlot !== null && abilityReady(p, abilitySlot)) startAbility(state, p, abilitySlot, cmd, colliders);
+    else if (cmd.attack) startAttack(state, p, 0, cmd, moveMag, colliders);
     else if (!cmd.block) p.mode = 'move';
   }
 
@@ -617,6 +617,7 @@ export function stepPlayer(
         const stop = tuning.targeting.lungeStopShort + enemyStats(target.kind).radius + tuning.movement.radius;
         step = Math.min(step, Math.max(0, Math.hypot(target.x - p.x, target.z - p.z) - stop));
       }
+      if (tuning.combat.sweepFastMoves && step > 0) step = sweptDistance(p.x, p.y, p.z, Math.sin(p.yaw) * step, Math.cos(p.yaw) * step, mv.radius, colliders);
       p.x += Math.sin(p.yaw) * step;
       p.z += Math.cos(p.yaw) * step;
       p.vx = 0;
@@ -634,7 +635,7 @@ export function stepPlayer(
       // A held Q/E beats the next swing in the chain.
       p.queuedAbility = -1;
       p.attackQueued = false;
-      startAbility(state, p, heldSlot, cmd);
+      startAbility(state, p, heldSlot, cmd, colliders);
     } else if (p.attackTime >= chainOpen && p.queuedSwap) {
       // So does a held hero swap.
       p.style = p.queuedSwap;
@@ -649,8 +650,8 @@ export function stepPlayer(
         // The next light is the step after the string so far; a string as long as the chain starts again.
         const s = p.attackString ?? '';
         const prior = s.length >= length ? '' : s;
-        startAttack(state, p, prior.length, cmd, moveMag, prior);
-      } else startAttack(state, p, ((p.attackStep ?? p.attackHit) + 1) % length, cmd, moveMag);
+        startAttack(state, p, prior.length, cmd, moveMag, colliders, prior);
+      } else startAttack(state, p, ((p.attackStep ?? p.attackHit) + 1) % length, cmd, moveMag, colliders);
     } else if (p.attackTime >= chainOpen + hit.recovery) {
       p.mode = 'move';
       p.attackQueued = false;

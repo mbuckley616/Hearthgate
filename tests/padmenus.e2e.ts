@@ -149,3 +149,65 @@ test("Michael's pad layout: Start pauses and resumes, d-pad right opens the vill
   await tap(7, swinging);
   expect(errors).toEqual([]);
 });
+
+test("the hero screen on a pad: the d-pad moves the cursor, LB and RB change tab, X drops, Y twice resets (Michael, 2 Nov)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?play");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/?play");
+  await expect.poll(() => page.evaluate(() => (window as unknown as { game: any }).game.session.playing), { timeout: 20_000 }).toBe(true);
+  const out = await page.evaluate(async () => {
+    // The pad's buttons as GamepadSource reads them: every action bound to the button, held and pressed.
+    const { gamepadBindings } = await import("/src/input/bindings.ts");
+    const actionsOf = (button: number) => Object.entries(gamepadBindings as Record<string, number[]>).filter(([, b]) => b.includes(button)).map(([a]) => a);
+    const g = (window as unknown as { game: any }).game;
+    let resets = 0;
+    const reset = g.profile.resetTalents.bind(g.profile);
+    g.profile.resetTalents = (s: string) => {
+      resets++;
+      reset(s);
+    };
+    const press = (button: number) => {
+      const a = actionsOf(button);
+      g.equip.handle({ move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, held: new Set(a), pressed: new Set(a) }, 0.016);
+      g.equip.handle({ move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, held: new Set(), pressed: new Set() }, 0.5);
+    };
+    const bag = () => JSON.stringify(g.profile.data.bag);
+    g.equip.setVisible(true);
+    g.equip.setTab("gear");
+    const first = g.equip.grid.findIndex((c: any) => c.area === "bag" && c.space === 0);
+    g.equip.cursor = first;
+    const r: Record<string, unknown> = {};
+    const bag0 = bag();
+    press(15); // d-pad right
+    r.right = g.equip.cursor !== first && g.equip.tab === "gear";
+    const atRight = g.equip.cursor;
+    press(13); // d-pad down
+    r.down = g.equip.cursor !== atRight;
+    press(14); // d-pad left
+    press(12); // d-pad up
+    r.back = g.equip.cursor === first && g.equip.tab === "gear";
+    press(4); // LB: round to the last tab, dropping nothing
+    r.lb = g.equip.tab === "champion" && bag() === bag0;
+    press(5); // RB
+    press(5);
+    r.rb = g.equip.tab === "talents" && resets === 0;
+    press(5);
+    press(4);
+    r.noReset = g.equip.tab === "talents" && resets === 0;
+    press(3); // Y arms
+    r.armed = resets === 0 && !!document.querySelector(".talent-armed");
+    g.equip.handle({ move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, held: new Set(actionsOf(3)), pressed: new Set(actionsOf(3)) }, 0.016);
+    r.reset = resets === 1;
+    // X drops the bag item under the cursor.
+    g.equip.setTab("gear");
+    g.equip.cursor = first;
+    press(2);
+    r.drop = bag() !== bag0;
+    g.equip.setVisible(false);
+    return r;
+  });
+  expect(out).toEqual({ right: true, down: true, back: true, lb: true, rb: true, noReset: true, armed: true, reset: true, drop: true });
+  expect(errors).toEqual([]);
+});

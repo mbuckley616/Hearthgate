@@ -652,6 +652,19 @@ export const tuning = {
     stepHeight: 0.35,
     /** Knockback slides with this exponential friction (1/s). */
     knockbackFriction: 9,
+    /**
+     * Fast moves (a knockback or launch slide, a hero's lunge) stop at the first wall in their path
+     * instead of tunnelling through a thin one, and soft targeting picks only enemies the hero can
+     * see (Michael's bodies outside the walls, 2 Nov). Off in the parity test: the slice had neither.
+     */
+    sweepFastMoves: true,
+    /**
+     * A Brute or a boss getting up from a broken stagger has this long of hyper-armour: hits do
+     * damage but build no poise and interrupt nothing, so a wound-up attack always comes out
+     * (Michael, 2 Nov: the party gets its window, then the boss gets its turn). Off in the parity test.
+     */
+    postStaggerArmour: true,
+    postStaggerArmourMs: 4000,
     /** Sword slam (hit 5) lands in the last part of its active phase. */
     slamHitFrom: 0.75,
     /** Combo counter resets after this long without a hit. */
@@ -1165,8 +1178,8 @@ export const tuning = {
     sellShare: 0.3,
     /** A champion point taken back costs this much coin (P5; decisions.md 27 Oct: free until coin came). */
     respecCoinPerPoint: 15,
-    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. */
-    hireCoin: 60,
+    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. 150 since G2 (Michael, 2 Nov: harder to get). */
+    hireCoin: 150,
     /**
      * A henchman's level is capped by the Tavern (P12; Michael, 29 Oct): this many levels a tier, and
      * the top tier lets them reach progression.maxLevel.
@@ -1992,6 +2005,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combat.poiseRegenPerSec': [0, 20, 0.5],
   'combat.flinchMs': [0, 800, 10],
   'combat.knockbackFriction': [1, 30, 0.5],
+  'combat.postStaggerArmourMs': [0, 10000, 100],
   'combat.slamHitFrom': [0, 1, 0.05],
   'combat.comboResetMs': [200, 6000, 100],
 

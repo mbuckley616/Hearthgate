@@ -263,6 +263,11 @@ export interface EnemyState {
   shatterUntil: number;
   skewerUntil: number;
   detonateUntil: number;
+  /**
+   * Seconds of hyper-armour left after getting up from a broken stagger (G1; Michael, 2 Nov): hits
+   * still hurt but neither build poise nor interrupt. Brutes and bosses only; absent otherwise.
+   */
+  armour?: number;
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;

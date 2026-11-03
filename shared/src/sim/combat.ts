@@ -149,7 +149,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     e.shatterUntil = state.time + comboWindow(hero);
     if (hero?.champion) e.shatterBy = hero.id;
   }
-  if (hit.freezeTime) {
+  if (hit.freezeTime && !e.armour) {
     e.frozen = Math.max(e.frozen, hit.freezeTime * (isLight(e) ? 1 : 0.5));
     state.events.push({ kind: 'freeze', enemyId: e.id });
   }
@@ -164,6 +164,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
       e.launched = { by: hero.id, damage: damage * l.damageShare, struck: [] };
       push = Math.max(push, l.distanceM * (familyOf(hero) === 'warhammer' ? l.warhammerMult : 1) * stats.knockbackTaken);
     }
+  } else if (e.armour) {
+    // Armour after a stagger (G1): the hit hurts, and nothing else.
+    push = 0;
   } else if (!staggered) {
     e.poise -= hit.poise * (1 + poiseBonus);
     // A roar is a commitment: it can't be staggered out of (poise still drains).
@@ -300,7 +303,7 @@ export function stepLaunched(state: SimState): void {
         z: o.z - dirZ * or,
         projectile: true,
       });
-      if (isTargetable(o) && o.ai !== 'roar') staggerEnemy(state, o);
+      if (isTargetable(o) && o.ai !== 'roar' && !o.armour) staggerEnemy(state, o);
     }
   }
 }
@@ -343,7 +346,9 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   if (e) {
     e.hitstop = Math.max(e.hitstop, g.parryHitstopMs / 1000);
     e.lastHitAt = state.time;
-    if (e.kind === 'warden') {
+    if (e.armour) {
+      // Armoured after a stagger (G1): the parry stops the blow, but the attack goes on.
+    } else if (e.kind === 'warden') {
       e.poise -= g.parryWardenPoise;
       if (e.poise <= 0 && e.ai !== 'roar') staggerEnemy(state, e);
     } else if (e.ai !== 'stagger') {

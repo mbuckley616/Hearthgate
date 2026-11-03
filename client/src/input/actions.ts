@@ -18,6 +18,16 @@ export const BUTTON_ACTIONS = [
   'tab1',
   'tab2',
   'tab3',
+  // The hero screen on a pad (Michael, 2 Nov): LB and RB step through the tabs, the d-pad moves the
+  // cursor, X drops or takes a rank off and Y (twice) resets a board. Pad-only, so Q, E and the keys stay as they were.
+  'tabPrev',
+  'tabNext',
+  'menuUp',
+  'menuDown',
+  'menuLeft',
+  'menuRight',
+  'menuTake',
+  'menuReset',
   'lockOn',
   'interact',
   'debugPanel',
