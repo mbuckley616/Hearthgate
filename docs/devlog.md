@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 84, bodies and heroes stay inside the walls
+
+**What changed**
+
+The gate evening's bug (Michael, 2 Nov): skeletons knocked behind a wall rose there on Haunted, and a hero attacking one through the wall snapped out after it. Under one switch, `combat.sweepFastMoves` (on; the parity test turns it off):
+- **A knockback or launch slide stops at the wall.** `sweptDistance` (`level/geometry.ts`) casts a probe of half the body's radius along the tick's move and cuts the move at the first movement-blocking collider; `stepEnemies` uses it on `kbx`/`kbz` and drops the slide where it meets stone.
+- **So does a hero's lunge**, in `stepPlayer`'s attack step, which prediction runs too, so the server and the browser cut it at the same point.
+- **Soft targeting picks only what the hero can see** (`pickSoftTarget`'s chest-to-chest line, walls and pillars blocking), for attacks and abilities alike; a lock-on still takes its target, and its lunge stops at the wall.
+`sim/sweptMoves.test.ts` puts a 0.2 m wall in the arena: a warhammer heavy's launch tunnels through it with the switch off and stops short with it on; a sword swing at a grunt behind it takes no soft target, and a locked one never carries the hero past it. The free-aim test's archer had stood in the antechamber with its grunt behind the antechamber's wall; it now stands in the arena.
+
+**Learned**
+
+A launch starts at about 45 m/s (5 m against a friction of 9; 67 m/s with the warhammer), so a corpse moves 0.75 to 1.1 m in its first tick, more than a body's radius plus half a thin wall, and `resolveCircle` then pushes it out of the far side. The probe is half the body's radius so a body resting against a wall after `resolveCircle` is not already touching it and can still slide away. The item's safety net (put back a body found outside the walkable area) was not built: `pieceAt` returns -1 inside a doorway as well as outside the floor, so it cannot tell them apart, and with the cause gone it is only worth adding if a body is seen outside again.
+
+**Next**
+
+The D-pad on the hero screen, then the crowd measurement, then G1 to G3.
+
 ## 2026-11-02: local session, the Phase 2 gate evening filed, and the builder's lock on a branch
 
 **What changed**

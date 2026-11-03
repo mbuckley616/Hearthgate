@@ -125,6 +125,22 @@ export function sphereCast(
   return best;
 }
 
+/**
+ * How far (m) a body standing at (x, y, z) may move along the flat direction (dx, dz) before it
+ * meets a movement-blocking collider, capped at the move's length. A move longer than a thin wall's
+ * half thickness in one tick (a launched corpse, a lunge stretched to a target) used to end past the
+ * wall's middle, and `resolveCircle` then pushed the body out on the far side. The probe is half the
+ * body's radius at the bottom of the band `resolveCircle` checks, so a body resting against a wall
+ * is not already touching it and can still move away.
+ */
+export function sweptDistance(x: number, y: number, z: number, dx: number, dz: number, radius: number, colliders: readonly Collider[]): number {
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-6) return len;
+  const probe = radius * 0.5;
+  const hit = sphereCast({ x, y: y + 0.3 + probe, z }, { x: dx / len, y: 0, z: dz / len }, len, probe, colliders, (c) => c.blocksMovement);
+  return hit >= len ? len : Math.max(0, hit - 0.02);
+}
+
 /** Does the segment a→b, thickened by `radius`, touch the collider? */
 export function segmentTouches(a: Vec3, b: Vec3, radius: number, c: Collider): boolean {
   const dx = b.x - a.x;

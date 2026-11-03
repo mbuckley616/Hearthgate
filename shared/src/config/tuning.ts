@@ -652,6 +652,12 @@ export const tuning = {
     stepHeight: 0.35,
     /** Knockback slides with this exponential friction (1/s). */
     knockbackFriction: 9,
+    /**
+     * Fast moves (a knockback or launch slide, a hero's lunge) stop at the first wall in their path
+     * instead of tunnelling through a thin one, and soft targeting picks only enemies the hero can
+     * see (Michael's bodies outside the walls, 2 Nov). Off in the parity test: the slice had neither.
+     */
+    sweepFastMoves: true,
     /** Sword slam (hit 5) lands in the last part of its active phase. */
     slamHitFrom: 0.75,
     /** Combo counter resets after this long without a hit. */

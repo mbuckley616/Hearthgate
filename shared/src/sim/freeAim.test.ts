@@ -20,6 +20,9 @@ function shoot(aim: Partial<PlayerCommand>, lock = false) {
   p.style = 'bow';
   p.invulnTime = 0;
   p.yaw = 0;
+  // Out in the arena: from the antechamber the grunt would stand behind its wall, out of sight.
+  p.x = -3;
+  p.z = -2;
   const e = createEnemy(s, world, 'grunt', p.x + 2, p.z + 8, Math.PI);
   e.x = p.x + 2;
   e.z = p.z + 8;

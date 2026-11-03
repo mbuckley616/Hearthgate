@@ -19,7 +19,7 @@ export function abilityReady(p: PlayerState, slot: 0 | 1 | 2): boolean {
   return p.cooldowns[p.style][slot] <= 0;
 }
 
-export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, cmd: PlayerCommand): void {
+export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, cmd: PlayerCommand, colliders: readonly Collider[] = []): void {
   const kind = slot === 2 ? OFFHAND_ABILITY[p.mods.offhand!] : ABILITIES[p.style][slot];
   const timing = abilityTiming(kind);
   p.mode = 'ability';
@@ -36,7 +36,7 @@ export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, c
   p.vz = 0;
   // Face the soft target (or the locked one, or the aim) for directional abilities; shots also pitch toward it.
   // Free aim (D12): the reticle, as for an attack.
-  const target = freeAim(p, cmd) ? null : pickSoftTarget(state, p, cmd, targetingRange(p));
+  const target = freeAim(p, cmd) ? null : pickSoftTarget(state, p, cmd, targetingRange(p), colliders);
   p.attackTarget = target ? target.id : -1;
   const yaw = target ? Math.atan2(target.x - p.x, target.z - p.z) : Math.atan2(cmd.aimX, cmd.aimZ);
   if (kind !== 'blink' && (target || Math.hypot(cmd.aimX, cmd.aimZ) > 0.01)) p.yaw = yaw;
@@ -293,7 +293,7 @@ export function freeAim(p: PlayerState, cmd: PlayerCommand): boolean {
   return cmd.aimPitch !== undefined && cmd.lockTarget < 0 && p.style !== 'sword' && Math.hypot(cmd.aimX, cmd.aimZ) > 0.01;
 }
 
-export function pickSoftTarget(state: SimState, p: PlayerState, cmd: PlayerCommand, range: number): EnemyState | null {
+export function pickSoftTarget(state: SimState, p: PlayerState, cmd: PlayerCommand, range: number, colliders: readonly Collider[] = []): EnemyState | null {
   const tg = tuning.targeting;
   const lock = state.enemies.find((e) => e.id === cmd.lockTarget && isTargetable(e));
   if (lock && Math.hypot(lock.x - p.x, lock.z - p.z) <= range * 1.25) return lock;
@@ -306,6 +306,8 @@ export function pickSoftTarget(state: SimState, p: PlayerState, cmd: PlayerComma
     if (d > range) continue;
     const off = Math.abs(Math.atan2(Math.sin(Math.atan2(e.x - p.x, e.z - p.z) - aimYaw), Math.cos(Math.atan2(e.x - p.x, e.z - p.z) - aimYaw)));
     if (off > (tg.coneDeg * DEG) / 2) continue;
+    // Behind a wall: a lunge toward it would only press the hero into the stone.
+    if (tuning.combat.sweepFastMoves && !canSee(p, e, d, colliders)) continue;
     // Prefer close and centred.
     const score = d * (1 + off * 2);
     if (score < bestScore) {
@@ -314,6 +316,16 @@ export function pickSoftTarget(state: SimState, p: PlayerState, cmd: PlayerComma
     }
   }
   return best;
+}
+
+/** Is the enemy in plain view of the hero, chest to chest, past walls and pillars? */
+function canSee(p: PlayerState, e: EnemyState, d: number, colliders: readonly Collider[]): boolean {
+  if (d < 0.5 || colliders.length === 0) return true;
+  const from = { x: p.x, y: p.y + 1.1, z: p.z };
+  const dy = e.y + 1.1 - from.y;
+  const len = Math.hypot(d, dy);
+  const hit = sphereCast(from, { x: (e.x - p.x) / len, y: dy / len, z: (e.z - p.z) / len }, len, 0.12, colliders, (c) => c.blocksMovement);
+  return hit >= len - (enemyStats(e.kind).radius + 0.2);
 }
 
 /** Range used for soft targeting by the current style. */
