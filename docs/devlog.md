@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 90, E1a's question answered (deep-work session)
+
+**What changed**
+
+Michael answered the one question E1a left (decisions.md, "Which story dungeon is which dungeon type?"): **A**, all five story dungeons are Haunted Crypts for now, with the Old Cellar's and the Saltmarsh Warrens' words rewritten to the dead, which is how Session 89 built it. No code changed; the question moved to Answered with his line, the backlog item says so, and the branch goes to review.
+
+**Learned**
+
+Building the recommended answer before asking cost nothing here: the answer needed no second pass.
+
+**Next**
+
+Review and merge of PR #150. Then E1b, the Skeleton Shieldbearer, the first new brain.
+
 ## 2026-11-03: Session 89, enemy roles and dungeon types (E1a, deep-work session)
 
 **What changed**
