@@ -9,6 +9,18 @@ answer here. Answered entries override the backlog.
 
 ## Answered
 
+### 2026-11-02: After the Phase 2 gate evening: the gate, boss poise, henchmen, difficulty (Claude (local))
+Michael played the gate evening solo with three henchmen (playtest-notes.md, 2 Nov). Four of his notes change rules already built, so they were asked in chat as four cards, with a recommendation each.
+- **The gate:** pass, with the two bugs fixed first (recommended), or not yet.
+- **Boss poise:** today the Warden's poise is 40 (a Brute's 22); a break staggers 1.5 s, poise refills, and four attackers break it again, so "the Warden basically never gets an attack off." Asked: hyper-armour after a stagger (recommended); each stagger within about 10 s needs twice the poise; or leave it to E1g's phases.
+- **Henchmen:** "incredibly effective and useful, almost to a fault." Asked: about a third less damage, a pause between strings and slower to read a telegraph, the unlock unchanged (recommended); the same strength but harder to get; or unchanged, with E1's enemies bringing the challenge.
+- **Difficulty:** story dungeons "very very easy"; today a difficulty only adds enemies (`DIFFICULTIES[].mult` scales a room's budget), while a hero gains 10 health a level. Asked: each step also raises enemy damage and health, story dungeons stepping up along their list (recommended); enemies scaled to the party's level; or wait for E1.
+Michael (2026-11-02, in chat):
+- **The gate: passed, bugs first.** Phase 2 is closed. The builder fixes the skeleton in the wall and the D-pad in the hero screen, then E1 begins.
+- **Boss poise: armour after a stagger.** When a Brute or a boss gets up from a broken stagger it has a few seconds (about 4, on the panel) of hyper-armour: hits still do damage but cannot interrupt it or build poise, and an attack it has wound up always comes out. The party gets its window, then the boss gets its turn.
+- **Henchmen: the same strength, harder to get** (not the recommendation). Their fighting is unchanged. The first hire needs the Tavern at tier II and costs more coin, and each tier after adds a seat: none at tier I, one at II, two at III, three at IV.
+- **Difficulty: enemies hit harder.** Each difficulty step also multiplies enemy damage and health (Normal 1x, Hard 1.5x, Nightmare 2x, the list's own `mult`), and the story dungeons step up along their list. Behind a switch the parity test turns off.
+
 ### 2026-11-01: Character creation, the intro and the tutorial: Phase 2 or Phase 4? (builder, Session 79)
 Your note (30 Oct): a first-start intro (a slideshow of images with text), a character screen (race: Human balanced, Elf fast but weaker in defence and strength, Dwarf defence and power but slower; a hair style or colour; a starting kind, Warrior, Ranger or Mage), and a tutorial that walks through choosing a dungeon and entering the portal, its first dungeon a tutorial one with a standard Brute as boss that unlocks today's first story dungeon. It sits in Phase 2's backlog, marked "likely Phase 4". It is the last Phase 2 item besides the builds pass and the building looks, so where it goes decides whether Phase 2's list is empty for your gate evening. Races change the fight's numbers (speed, defence, power), so they would sit behind a switch the parity test turns off; today a hero is one figure with three weapons and no class, so a "starting kind" would be the weapon set you begin with.
 - **A** (recommended): move it to Phase 4 (first playable), where a new player meeting the game for the first time is the gate; the Phase 2 gate evening is yours, who knows the game. The backlog item moves; nothing is built now.

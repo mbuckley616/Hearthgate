@@ -179,3 +179,26 @@ Other notes
 
 Decisions
 - Keepers A, henchmen A, village map A, melee abilities A, health with level A then flat +10 (decisions.md, 29 Oct). The gate playtest is still to come.
+
+## 2026-11-02: Phase 2 gate: Michael solo with three henchmen on the hosted build (main c03093d)
+
+Michael's notes, given in chat to a local session (`auto/local-gate-playtest`) and filed by it. Played solo, through the hosted server, with three henchmen: story dungeons first, then Random runs up to Haunted on Nightmare.
+Ping (HUD): not recorded
+Corrections (HUD, after 5 minutes): not recorded
+Session length: not recorded; several runs, story and Random
+
+Gate questions (Phase 2)
+1. Over three to five runs in one evening, did the loop hold you: did you want another run each time you got home? — Not answered in so many words. He kept going, and went to Haunted on Nightmare to find a challenge. "Dungeon styles and designs, while they work great procedurally, already are starting to feel a little dry and repetitive."
+2. Did the henchmen pull their weight without feeling like a friend: useful, but taking hits you would have dodged? — More than their weight: "Henchmen are incredibly effective and useful, almost to a fault. If they remain as-is, there needs to be a harder path to unlocking them, or we just need to focus on expanding the enemy types and mechanics."
+3. Did anything break the evening: a lost item, a stuck portal, a village that forgot what you built, a crash? — Nothing broke it, but one near-miss: "A skeleton fell between a wall when descending a staircase and was almost impossible to reach, which would have locked me in the dungeon." And some lag: "A bit laggy when a lot of enemies were present & using henchmen, but not horrific - just slightly delayed death animations and drop spawns after destroying boxes."
+
+Other notes
+- "Story mode gameplay feels very very easy, especially if you have henchmen." Haunted on Nightmare was the first thing that felt "even close to difficult" with three henchmen.
+- "You can bully any single-target brute or boss with henchmen, because of how poise works & attack interrupting. The Warden basically never gets an attack off because we are all constantly raining down attacks on him. It was fun the first time, but gets lame quickly, as there's no real threat and you're just spamming attack."
+- "Using D Pad in inventory menu doesn't work, it tries to tab between the different select menu tabs. Flipping between tabs there should be controlled by RB and LB on the controller."
+- "We really need to add more styles, more dungeon features, more enemy types, everything."
+- "Warden is great as a first boss, but we also at least need 1 unique boss for every story dungeon, and maybe a few mini bosses / special bosses."
+
+Decisions
+- **Gate: passed** (Michael, 2 Nov 2026, in chat): "Pass; bugs first." Phase 2 is closed. The skeleton in the wall and the D-pad come first, then E1, the Crypt roster.
+- Bosses and Brutes get armour after a stagger; henchmen stay as strong but are harder to get; difficulty makes enemies hit harder (decisions.md, 2 Nov).
