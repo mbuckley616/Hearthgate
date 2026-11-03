@@ -35,6 +35,8 @@ describe('empty plots', () => {
 
   it('a plot gives nothing until its first build, which costs a little', () => {
     expect([storeStock(0), stashSpaces(0), tavernHenchmen(0), henchmanCap(0)]).toEqual([0, 0, 0, 0]);
+    // G2 (Michael, 2 Nov): none at tier I, then one a tier.
+    expect([1, 2, 3, 4].map(tavernHenchmen)).toEqual([0, 1, 2, 3]);
     expect(pocketSpaces(0)).toBe(pocketSpaces(1));
     expect(tierGives('tavern', 0)).toMatch(/empty plot/);
     const first = upgradeCost(1);

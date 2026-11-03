@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-03: Session 88, henchmen harder to get
+
+**What changed**
+
+G2, Michael's call on henchmen (2 Nov: the same strength, harder to get). `tavernHenchmen` is now none at tier I, then one a tier (1, 2, 3 at II, III, IV), and `village.hireCoin` is 150 (was 60, on the panel). At tier I Old Fenn's card shows "Hire companions" blocked with "Hire from tier II", the hire screen says the same if reached, and the tavern's words at tier I are "a fire and a bed; henchmen for hire from tier II". The server's `onHire` already capped by `tavernHenchmen`, so it refuses a hire at tier I with no change of its own. Their fighting is unchanged, and a village saved before keeps the henchmen it has hired: only a new hire is checked.
+
+**Learned**
+
+The netcode smoke's tavern steps now walk the new rule: no hire at tier I, one at II, two at III (tuning tier III's lumber and stone to nothing for that one raise, since the test village has spent its own), and Hale's village, which hires the henchman that follows the party through every ring, starts with its tavern at II. `test:net` all passed.
+
+**Next**
+
+G3, difficulty that hits harder; then the E1 roster once E1a's deep-work session lands.
+
 ## 2026-11-03: Session 87, Brutes and the Warden get up armoured
 
 **What changed**

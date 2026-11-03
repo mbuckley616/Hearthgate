@@ -574,7 +574,9 @@ export class Game {
         : building === 'store'
           ? { id: 'menu', label: 'Browse the shelves', detail: 'Buy, and sell from your bag' }
           : building === 'tavern'
-            ? { id: 'menu', label: 'Hire companions', detail: `${tuning.village.hireCoin} coin each` }
+            ? v.view.tiers.tavern >= 2
+              ? { id: 'menu', label: 'Hire companions', detail: `${tuning.village.hireCoin} coin each` }
+              : { id: 'menu', label: 'Hire companions', blocked: 'Hire from tier II' }
             : { id: 'menu', label: 'Open the stash', ...(v.yours ? { detail: 'What your bag cannot carry' } : { blocked: 'Your own things are kept in your own village' }) };
     const tier = v.view.tiers[building];
     if (tier < 1) return [{ id: 'path', label: `Build the ${BUILDING_NAMES[building]}`, detail: `On this plot; then ${tierGives(building, 1)}` }, { id: 'leave', label: 'Leave' }];

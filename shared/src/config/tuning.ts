@@ -1178,8 +1178,8 @@ export const tuning = {
     sellShare: 0.3,
     /** A champion point taken back costs this much coin (P5; decisions.md 27 Oct: free until coin came). */
     respecCoinPerPoint: 15,
-    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. */
-    hireCoin: 60,
+    /** Hiring a henchman at the Tavern (P10), paid once; they stay with the party until dismissed. 150 since G2 (Michael, 2 Nov: harder to get). */
+    hireCoin: 150,
     /**
      * A henchman's level is capped by the Tavern (P12; Michael, 29 Oct): this many levels a tier, and
      * the top tier lets them reach progression.maxLevel.
