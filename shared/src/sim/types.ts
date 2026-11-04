@@ -400,6 +400,8 @@ export type SimEvent =
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
+  /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
+  | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }

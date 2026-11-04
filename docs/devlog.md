@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 106, the Wraith's circle is heard landing (E1d polish)
+
+**What changed**
+
+The last polish line on E1d. A Wraith's circle had the magic telegraph's shimmer as it was cast and nothing as it landed, so a player who stepped out heard no miss and one who was caught heard nothing either. Now the caster brain pushes a `circleLanded` event (the enemy, where, and how many it caught) as the circle lands, caught or not, and `Sfx` plays it as a cold thump with a hiss of frost. The `chilled` event, which had no sound, now cracks like ice: full for the hero it caught, quieter for a teammate. Server-side events reach every browser in the snapshot as before; the tint (Session 105) and the corner's line still come from the state.
+
+**Learned**
+
+The arena never has a Wraith, so a new sim event from its brain leaves the parity hashes alone. The arrow test now also proves a broken channel lands nothing, so no landing sound plays for a circle that is gone.
+
+`wraith.test.ts`: the landing is one `circleLanded` at the circle with `caught: 1`; a hero who stepped out still hears it land, `caught: 0`; a broken channel pushes none. check 348 green, parity identical, test:net all passed, the client builds. Not yet heard in a browser.
+
+**Next**
+
+E1d is done, polish included. G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions; G5's B (room shapes and set pieces) starts once the tile is answered or dropped. Nothing else in E1 is the builder's.
+
 ## 2026-11-04: Session 105, frost on a Chilled hero (E1d polish)
 
 **What changed**

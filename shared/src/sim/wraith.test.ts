@@ -56,6 +56,8 @@ describe('the Wraith (E1d)', () => {
     for (let i = 0; i < landTicks() && w.ai === 'chant'; i++) stepEnemies(s, DT, world);
     expect(w.ai).not.toBe('chant');
     expect(p.chill).toBeCloseTo(tuning.chill.durationS, 5);
+    const landed = s.events.filter((ev) => ev.kind === 'circleLanded');
+    expect(landed).toEqual([{ kind: 'circleLanded', enemyId: w.id, x: c.x, z: c.z, caught: 1 }]);
   });
 
   it('misses a hero who stepped out of it in time', () => {
@@ -64,6 +66,8 @@ describe('the Wraith (E1d)', () => {
     p.x = c.x + c.radius + 0.5;
     for (let i = 0; i < landTicks() && w.ai === 'chant'; i++) stepEnemies(s, DT, world);
     expect(p.chill).toBeUndefined();
+    // It still lands, and is heard landing, on nobody.
+    expect(s.events.filter((ev) => ev.kind === 'circleLanded').map((ev) => (ev as { caught: number }).caught)).toEqual([0]);
   });
 
   it('an arrow mid-channel breaks it, and nobody is Chilled', () => {
@@ -75,6 +79,7 @@ describe('the Wraith (E1d)', () => {
     expect(w.tele.shape).toBe('none');
     for (let i = 0; i < landTicks(); i++) stepEnemies(s, DT, world);
     expect(p.chill).toBeUndefined();
+    expect(s.events.some((ev) => ev.kind === 'circleLanded')).toBe(false);
   });
 
   it('stands behind the line when a room draws it', () => {

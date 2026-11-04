@@ -1025,6 +1025,7 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
     case 'chant': {
       e.yaw = turnToward(e.yaw, Math.atan2(e.tele.x - e.x, e.tele.z - e.z), w.turnRateDeg * DEG * edt);
       if (e.aiTime >= w.channelMs / 1000 + tuning.coop.lagGraceMs / 1000) {
+        let caught = 0;
         for (const p of state.players) {
           if (tuning.debug.passiveEnemies || p.mode === 'down' || Math.hypot(p.x - e.tele.x, p.z - e.tele.z) > e.tele.radius) continue;
           // A dodge's i-frames slip it, as they slip a hit.
@@ -1032,7 +1033,9 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
           // It lands on the floor: a hero high enough in the air is over it, by the jump's rule.
           if (clearsLow(p, e.y)) continue;
           chillHero(state, p);
+          caught++;
         }
+        state.events.push({ kind: 'circleLanded', enemyId: e.id, x: e.tele.x, z: e.tele.z, caught });
         e.tele.shape = 'none';
         setAi(e, 'recover');
         e.recoverTime = w.recoveryMs / 1000;
