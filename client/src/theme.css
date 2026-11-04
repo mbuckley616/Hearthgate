@@ -802,6 +802,15 @@ body.on-title .run-banner {
   text-shadow: 0 1px 0 #000;
 }
 
+/* Chilled (E1d): frost blue, under the belt. */
+.hud-chill {
+  display: none;
+  margin-top: 6px;
+  font: 600 11px/1 ui-monospace, Consolas, monospace;
+  color: #9fd8ff;
+  text-shadow: 0 1px 0 #000;
+}
+
 .hud-potion kbd {
   font: inherit;
   color: #fff4dc;

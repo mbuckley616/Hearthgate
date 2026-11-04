@@ -112,6 +112,12 @@ export interface PlayerState {
   ward?: { hits: number; until: number };
   /** Standing in lava (D6): seconds to the next burn. Absent off it. The server's alone (sim/lava.ts). */
   burn?: number;
+  /**
+   * Chilled (E1d, Michael's A, 4 Nov): seconds left. Moves `chill.slow` slower and cannot sprint;
+   * attacks, dodges and abilities are untouched. Set by the server (a Wraith's circle), counted down in
+   * stepPlayer, so prediction runs it down the same way. Absent when not chilled.
+   */
+  chill?: number;
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -392,6 +398,8 @@ export type SimEvent =
   | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
   /** A jump cleared a low attack (M1): the server's alone, as every hit on a hero is. */
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
+  /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
+  | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }

@@ -37,6 +37,9 @@ export class Hud {
   /** Health potions on the belt and the key that drinks one (D4). */
   private potion = document.createElement('div');
   private shownPotions = -1;
+  /** Chilled (E1d): a line under the bars while it lasts, with the seconds left. */
+  private chill = document.createElement('div');
+  private shownChill = -1;
   private hits = 0;
   private sinceHit = Infinity;
   private hurtFlash = 0;
@@ -64,6 +67,7 @@ export class Hud {
     bars.className = 'hud-bars';
     this.draught.className = 'hud-draught';
     this.potion.className = 'hud-potion';
+    this.chill.className = 'hud-chill';
     this.flow.className = 'hud-flow';
     this.flowFill.className = 'hud-flow-fill';
     this.flowLabel.className = 'hud-flow-label';
@@ -77,7 +81,7 @@ export class Hud {
     xpTrack.className = 'hud-level-track';
     xpTrack.appendChild(this.levelXp);
     this.level.append(this.levelText, xpTrack);
-    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.chill);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -289,6 +293,12 @@ export class Hud {
     }
     this.draught.style.display = p.draughts === undefined ? 'none' : 'block';
     if (p.draughts !== undefined) this.draught.textContent = `Revive Draught ×${p.draughts}`;
+    const chill = p.chill === undefined ? 0 : Math.ceil(p.chill);
+    if (chill !== this.shownChill) {
+      this.shownChill = chill;
+      this.chill.style.display = chill > 0 ? 'block' : 'none';
+      this.chill.textContent = `❄ Chilled  ·  slowed, no sprint  ·  ${chill}`;
+    }
     const potions = p.potions ?? 0;
     if (potions !== this.shownPotions) {
       this.shownPotions = potions;

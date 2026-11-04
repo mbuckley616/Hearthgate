@@ -392,6 +392,10 @@ export function stepPlayer(
   const dg = tuning.dodge;
   refreshLevelHealth(p);
   p.invulnTime = Math.max(0, p.invulnTime - dt);
+  if (p.chill !== undefined) {
+    p.chill -= dt;
+    if (p.chill <= 1e-9) delete p.chill;
+  }
   if (cmd.aimPitch !== undefined) p.aimPitch = cmd.aimPitch;
   else delete p.aimPitch;
 
@@ -678,7 +682,8 @@ export function stepPlayer(
           : mv.strafeSpeedFrac + (mv.backpedalSpeedFrac - mv.strafeSpeedFrac) * -fwd;
     }
     // Sprint is a forward run only.
-    const sprinting = cmd.sprint && p.grounded && (!mv.faceCamera || fwd > 0.5);
+    // A Chilled hero cannot sprint (E1d).
+    const sprinting = cmd.sprint && p.grounded && p.chill === undefined && (!mv.faceCamera || fwd > 0.5);
     const runSpeed = sprinting ? mv.sprintSpeed : mv.runSpeed;
     const speed = (run ? runSpeed : mv.walkSpeed * Math.min(1, moveMag / mv.runThreshold)) * dirScale * moveSpeedMult(p);
     steer(p, cmd, moveMag, speed, dt, !mv.faceCamera);

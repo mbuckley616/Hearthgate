@@ -698,6 +698,14 @@ export const tuning = {
    * Rooms that need jumping (D6, Michael 30 Oct: A): a hero standing in a lava strip burns, a share of
    * their health a second, paid in pulses; one in the air does not. The server's alone, as hits are.
    */
+  /** Chill on a hero (E1d, Michael's A, 4 Nov): a Wraith's circle slows, nothing more. */
+  chill: {
+    /** The share of speed it takes. */
+    slow: 0.35,
+    /** How long it lasts (s); a second Chill restarts it. */
+    durationS: 3,
+  },
+
   /**
    * Traps (G5, Michael's D: traps first). Spikes strike on a cycle: an orange warning of `spikeWarnS`,
    * then the strike, judged `coop.lagGraceMs` later so a step off that was on time on the player's
@@ -2227,6 +2235,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'launch.minSpeed': [0, 10, 0.5],
   'launch.arcHeightM': [0, 3, 0.1],
   'launch.arcSeconds': [0.1, 1.5, 0.05],
+  'chill.slow': [0, 0.9, 0.01],
+  'chill.durationS': [0, 10, 0.1],
   'traps.spikeCycleS': [1.5, 8, 0.1],
   'traps.spikeWarnS': [0.3, 3, 0.05],
   'traps.spikeUpS': [0.2, 3, 0.05],

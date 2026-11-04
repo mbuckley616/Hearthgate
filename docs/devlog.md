@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 103, Chill on a hero (E1d, part one)
+
+**What changed**
+
+Michael answered the Chill question with A: a Chilled hero moves 35% slower for 3 s and cannot sprint, and attacks, dodges and abilities are unchanged. The Wraith is a whole kind (brain, figure, channel, sound), too much for the time left in this run, so this session builds the state it applies. `PlayerState.chill` holds the seconds left, absent when warm. `chillHero` (`sim/chill.ts`) is the server's call. It sets `chill.durationS` (3) and pushes a `chilled` event; a second Chill restarts the clock, it does not stack. `stepPlayer` counts it down, so prediction runs it out on the same tick as the server. `moveSpeedMult` takes `chill.slow` (0.35) off whatever the hero's speed is, which covers running, walking, the guard's strafe and the cast walk. A Chilled sprint is a run. The dodge is untouched. The HUD shows a frost-blue line under the belt while it lasts: "Chilled · slowed, no sprint · 3". Both numbers are on the panel and go through the server. Nothing applies Chill yet, so nothing changes in play until the Wraith arrives.
+
+**Learned**
+
+The snapshot's hero is cloned whole into prediction (`structuredClone`), so a new optional field on `PlayerState` needs nothing in `ClientSession`. The arena's run lane is short: a second of sprint from z = -6 meets geometry, so the test runs half a second.
+
+`chill.test.ts`: a Chilled run covers 0.65 of a warm one, give or take 0.05. A Chilled sprint equals a Chilled run, while a warm sprint beats a warm run. Chill lasts 3 s to the tick and then is gone, and a copy stepped the same way agrees to the bit. A dodge's distance barely changes. check 343 (was 339), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+The Wraith itself: a `wraith` kind in the caster role that floats at range and channels a violet circle at a hero's feet, broken by any hit, calling `chillHero` on whoever stands in it when it lands. With it come the hero's frost tint, the caster in `SPECIALISTS` standing `back`, and its figure and sound. G4b and G5's collapsing tile wait on their questions.
+
 ## 2026-11-04: Session 102, swinging blades (G5)
 
 **What changed**
