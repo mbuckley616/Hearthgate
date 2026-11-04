@@ -424,7 +424,7 @@ export class Game {
       disposeTree(this.trapView.group);
     }
     const d = this.world.level.dungeon;
-    this.trapView = d && (d.spikes.length || d.blades.length) ? new TrapView(d.spikes, d.blades) : null;
+    this.trapView = d && (d.spikes.length || d.blades.length || d.crumble.length) ? new TrapView(d.spikes, d.blades, d.crumble) : null;
     if (this.trapView) this.gfx.scene.add(this.trapView.group);
   }
 
@@ -993,7 +993,7 @@ export class Game {
       this.presentTime,
     );
     this.propView?.update(world.floor, this.presentTime, world.time);
-    this.trapView?.update(world.time);
+    this.trapView?.update(world.time, world.floor);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();
@@ -1041,6 +1041,8 @@ export class Game {
     }
     if (this.room instanceof VillageView) this.room.setEye(this.cam.camera.position);
     this.room.update(realDt, this.presentTime, this.cam.occluders, world.run.gateClosed);
+    // The Hollow King's last phase dims the hall (G4b) until he falls.
+    this.gfx.setDimmed(world.enemies.some((e) => e.kind === 'king' && e.phase >= 3 && e.ai !== 'dead'), realDt);
     if (draw) this.gfx.render();
     this.crt.update();
     this.music.setMood(Game.moodFor(world));

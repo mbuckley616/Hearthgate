@@ -18,7 +18,11 @@ describe('enemy roles (E1a)', () => {
     expect(roleOf('archer')).toBe('archer');
     expect(roleOf('brute')).toBe('heavy');
     expect(roleOf('warden')).toBe('boss');
-    expect(new Set(KINDS.map((k) => brainFor(k))).size).toBe(new Set(KINDS.map(roleOf)).size);
+    // Bosses each keep a brain of their own (G4b: the Hollow King beside the Warden); every other role shares one.
+    const bosses = KINDS.filter((k) => roleOf(k) === 'boss');
+    const rest = KINDS.filter((k) => roleOf(k) !== 'boss');
+    expect(new Set(rest.map((k) => brainFor(k))).size).toBe(new Set(rest.map(roleOf)).size);
+    expect(new Set(bosses.map((k) => brainFor(k))).size).toBe(bosses.length);
   });
 
   it('keeps every kind’s numbers in tuning', () => {

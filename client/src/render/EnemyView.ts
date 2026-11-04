@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
+import { kingPace } from '@hearthgate/shared/sim/enemies';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
   DEG,
@@ -35,7 +36,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -69,6 +70,15 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
     windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
     slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
+  },
+  // The Hollow King (G4b): a long blade raised high for each cut of his string, and his crown drawn
+  // back over the shoulder and flung.
+  king: {
+    guard: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.26, bladeYaw: 30, bladePitch: 55, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 8 }),
+    windup: pose(BASE, { handYaw: -70, handHeight: 0.6, handReach: 0.16, bladeYaw: -150, bladePitch: 70, offYaw: 25, offHeight: 0.25, offReach: 0.38, twist: -35, lean: 2, crouch: 0.1 }),
+    slash1: pose(BASE, { handYaw: 25, handHeight: -0.05, handReach: 0.45, bladeYaw: 40, bladePitch: -40, offYaw: 55, offReach: 0.2, twist: 35, lean: 26, crouch: 0.12 }),
+    throwWind: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 30, bladePitch: 55, offYaw: 80, offHeight: 0.55, offReach: 0.15, twist: 30, lean: -4, crouch: 0.06 }),
+    throw: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 30, bladePitch: 55, offYaw: -10, offHeight: 0.25, offReach: 0.5, twist: -30, lean: 22, crouch: 0.1 }),
   },
   // The Barrow Knight (E1f) holds its shield as a Shieldbearer, set lower into the rush.
   knight: {
@@ -139,6 +149,8 @@ export class EnemyView {
   /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
   private crown = new THREE.Group();
   private crowned = false;
+  /** The Hollow King's crown in flight (G4b), drawn from the root along the line he threw it down. */
+  private flying: THREE.Group | null = null;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
   private hpBack: THREE.Sprite;
@@ -213,6 +225,13 @@ export class EnemyView {
     this.crown.position.y = kind === 'brute' ? 0.12 : 0.22;
     this.crown.visible = false;
     this.head.add(this.crown);
+    if (kind === 'king') {
+      // His own crown, thrown (G4b): the same band, drawn larger so it reads at speed.
+      this.flying = this.crown.clone();
+      this.flying.scale.setScalar(SCALE.king * 1.8);
+      this.flying.visible = false;
+      this.root.add(this.flying);
+    }
 
     for (const a of Object.values(this.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
     for (const l of Object.values(this.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
@@ -561,6 +580,29 @@ export class EnemyView {
       this.crown.visible = this.crowned;
       this.body.scale.setScalar(SCALE[curr.kind] * (this.crowned ? 1.15 : 1));
     }
+    if (this.flying) {
+      // The King wears his crown except while it flies; in flight it spins along its line.
+      const c = curr.crown && curr.ai === 'charge' ? curr.crown : null;
+      // Phase 3's sweep (G4b): the crown flies round him at the arc's edge, across it as the cut lands.
+      const sweeping = curr.ai === 'sweep' && curr.tele.shape === 'cone';
+      this.crown.visible = !c && !sweeping;
+      this.flying.visible = !!c || sweeping;
+      if (sweeping) {
+        const k = tuning.king;
+        const a = curr.tele.yaw + ((Math.min(1, curr.aiTime / (k.sweepActiveMs / 1000)) - 0.5) * curr.tele.arcDeg * Math.PI) / 180;
+        const wx = Math.sin(a) * curr.tele.radius * 0.85;
+        const wz = Math.cos(a) * curr.tele.radius * 0.85;
+        this.flying.position.set(wx * Math.cos(yaw) - wz * Math.sin(yaw), 1.4, wx * Math.sin(yaw) + wz * Math.cos(yaw));
+        this.flying.rotation.y += dt * 18;
+      } else if (c) {
+        const p = prev.crown && prev.ai === 'charge' ? prev.crown.d : c.d;
+        const d = p + (c.d - p) * alpha;
+        const wx = Math.sin(curr.tele.yaw) * d;
+        const wz = Math.cos(curr.tele.yaw) * d;
+        this.flying.position.set(wx * Math.cos(yaw) - wz * Math.sin(yaw), 1.4, wx * Math.sin(yaw) + wz * Math.cos(yaw));
+        this.flying.rotation.y += dt * 18;
+      }
+    }
     // Hitstop jitter on the target sells the impact.
     if (curr.hitstop > 0) this.body.position.set((Math.random() - 0.5) * 0.06, 0, (Math.random() - 0.5) * 0.06);
     else this.body.position.set(0, 0, 0);
@@ -746,6 +788,30 @@ export class EnemyView {
       case 'wraith':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
+      case 'king': {
+        const k = tuning.king;
+        switch (e.ai) {
+          case 'windup': {
+            const ms = e.chain ? k.stringNextMs : k.stringTelegraphMs;
+            into(this.from, P.windup, t / ((ms / 1000) * 0.6));
+            out.handHeight += Math.sin(this.time * 40) * 0.008;
+            return out;
+          }
+          case 'slash1':
+            return into(P.windup, P.slash1, t / (k.stringActiveMs / 1000), easeOut);
+          case 'chargeWindup':
+            return into(this.from, P.throwWind, t / ((k.crownTelegraphMs / 1000) * 0.6));
+          case 'charge':
+            return into(P.throwWind, P.throw, t / 0.12, easeOut);
+          case 'chant':
+            return into(this.from, P.throwWind, t / 0.4);
+          case 'sweepWindup':
+            return into(this.from, P.throwWind, t / ((k.sweepTelegraphMs / 1000) * 0.6));
+          case 'sweep':
+            return into(P.throwWind, P.throw, t / (k.sweepActiveMs / 1000), easeOut);
+        }
+        break;
+      }
       case 'shieldbearer':
       case 'knight': {
         const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
@@ -827,18 +893,22 @@ export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
   switch (e.ai) {
     case 'windup':
+      if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
+      if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
+      if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;
     case 'sweepWindup':
+      if (e.kind === 'king') return clamp01(t / ((tuning.king.sweepTelegraphMs * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((tuning.warden.sweepTelegraphMs / 1000) * wardenScale(e)));
     case 'roar':
       return 1;

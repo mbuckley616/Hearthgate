@@ -272,6 +272,13 @@ export interface EnemyState {
   attack: string;
   /** Warden, phase 3's rolling slam (E1g): circles already landed; absent outside one. */
   chain?: number;
+  /**
+   * The Hollow King's crown in flight (G4b): how far along its line, whether it is on its way back,
+   * and the heroes it has struck this way (each once out and once back). Absent unless thrown.
+   */
+  crown?: { d: number; length: number; back: boolean; struck: string[] };
+  /** The Hollow King's violet circles (G4b, phase 2): one under each hero standing as he cast. */
+  circles?: { x: number; z: number }[];
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;
@@ -402,6 +409,9 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
+  /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
+  | { kind: 'tileCracked'; x: number; z: number }
+  | { kind: 'tileFell'; x: number; z: number; caught: number }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }
@@ -422,7 +432,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }

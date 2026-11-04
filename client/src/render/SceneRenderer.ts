@@ -124,6 +124,15 @@ export class SceneRenderer {
     this.renderer.domElement.style.imageRendering = tuning.look.pixelSize > 1 ? 'pixelated' : 'auto';
   }
 
+  /** How dim the hall is now (G4b: the Hollow King's third phase), 0 to 1, eased toward its target. */
+  private dim = 0;
+
+  /** Ease the hall toward dimmed (the Hollow King's last phase) or back, over `look.kingDimS`. */
+  setDimmed(dimmed: boolean, dt: number): void {
+    const step = dt / Math.max(0.01, tuning.look.kingDimS);
+    this.dim = dimmed ? Math.min(1, this.dim + step) : Math.max(0, this.dim - step);
+  }
+
   render(): void {
     this.syncLook();
     this.composer.render();
@@ -160,7 +169,7 @@ export class SceneRenderer {
     } else {
       this.moon.position.set(-8, 22, 6);
     }
-    this.renderer.toneMappingExposure = look.exposure;
+    this.renderer.toneMappingExposure = look.exposure * (1 - this.dim * tuning.look.kingDim);
     if (pixelRatio() !== this.renderer.getPixelRatio() || look.pixelSize !== this.shownPixelSize) this.resize(window.innerWidth, window.innerHeight);
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     this.retro.sync(size.x, size.y);
