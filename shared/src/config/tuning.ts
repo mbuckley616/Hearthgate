@@ -801,6 +801,41 @@ export const tuning = {
   },
 
   /** Brute: tanky, high poise; telegraphed overhead slam (brief: 1,000 ms ground circle). */
+  /**
+   * The Skeleton Shieldbearer (E1b, the shield role): a front arc that blocks swings and arrows, a
+   * short bash that staggers, a slow turn. Weak to a flank or a backstab, a heavy that breaks its
+   * guard, and magic, which its shield does not stop.
+   */
+  shieldbearer: {
+    maxHp: 80,
+    maxPoise: 10,
+    radius: 0.46,
+    height: 1.6,
+    moveSpeed: 2.6,
+    /** Slow, so a hero who circles it reaches its side. */
+    turnRateDeg: 140,
+    windupTurnRateDeg: 50,
+    /** Closes to this range, then winds up the bash. */
+    attackRange: 1.9,
+    /** Red, as a strike: the shield drawn back. */
+    telegraphMs: 700,
+    /** The bash: a short shove line in front, heavy, so it staggers whoever it meets. */
+    bashReach: 2.6,
+    bashArcDeg: 40,
+    bashDamage: 12,
+    bashPush: 2.2,
+    bashActiveMs: 160,
+    recoveryMs: 900,
+    attackCooldownMs: 1500,
+    /** The arc its shield covers, centred on where it faces. */
+    guardArcDeg: 130,
+    /** How long a heavy that meets its shield leaves the guard down. */
+    guardBreakMs: 2500,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 0.6,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -2166,6 +2201,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'archer.spawnMs': [0, 3000, 10],
   'archer.deathMs': [0, 4800, 10],
   'archer.knockbackTaken': [0, 2, 0.01],
+  'shieldbearer.maxHp': [5, 600, 5],
+  'shieldbearer.maxPoise': [1, 60, 0.5],
+  'shieldbearer.moveSpeed': [0.5, 8, 0.1],
+  'shieldbearer.turnRateDeg': [20, 720, 10],
+  'shieldbearer.windupTurnRateDeg': [0, 360, 5],
+  'shieldbearer.attackRange': [0.5, 4, 0.05],
+  'shieldbearer.telegraphMs': [100, 2000, 10],
+  'shieldbearer.bashReach': [0.5, 5, 0.05],
+  'shieldbearer.bashArcDeg': [5, 120, 1],
+  'shieldbearer.bashDamage': [0, 60, 1],
+  'shieldbearer.bashPush': [0, 8, 0.1],
+  'shieldbearer.recoveryMs': [0, 3000, 10],
+  'shieldbearer.attackCooldownMs': [0, 5000, 50],
+  'shieldbearer.guardArcDeg': [0, 360, 5],
+  'shieldbearer.guardBreakMs': [0, 8000, 100],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2637,7 +2687,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

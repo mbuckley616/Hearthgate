@@ -4,6 +4,7 @@ import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
+import { roleOf } from './roles';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -84,6 +85,32 @@ function isLight(e: EnemyState): boolean {
   return e.kind === 'grunt' || e.kind === 'archer';
 }
 
+/**
+ * A Shieldbearer's front (E1b): a hit coming at its face inside the guard's arc is blocked, a spark and
+ * nothing else, unless it is magic (the shield does not stop it), or a held heavy (C1, a charged
+ * string step; a light chain's own finisher is still blocked), which breaks the guard for
+ * `guardBreakMs` and lands. Its side and back are open; so is a guard already broken or a
+ * staggered or frozen body. Judged in damageEnemy, so prediction's swing on the snapshot's enemy agrees.
+ */
+function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerState | undefined): boolean {
+  if (roleOf(e.kind) !== 'shield' || hit.dot || hit.style === 'staff') return false;
+  if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (e.guardDownUntil ?? -1) > state.time) return false;
+  const sb = tuning.shieldbearer;
+  // The hit's push points from the attacker through the enemy: against its facing means from the front.
+  const len = Math.hypot(hit.dirX, hit.dirZ);
+  if (len < 1e-6) return false;
+  const facing = (hit.dirX * Math.sin(e.yaw) + hit.dirZ * Math.cos(e.yaw)) / len;
+  if (-facing < Math.cos(((sb.guardArcDeg / 2) * Math.PI) / 180)) return false;
+  if (hit.heavy && !hit.projectile && (hero?.attackCharge ?? 0) > 0) {
+    e.guardDownUntil = state.time + sb.guardBreakMs / 1000;
+    state.events.push({ kind: 'guardBroken', enemyId: e.id });
+    return false;
+  }
+  e.hitstop = Math.max(e.hitstop, hitstopFor(false));
+  state.events.push({ kind: 'guarded', enemyId: e.id, x: hit.x, y: hit.y, z: hit.z });
+  return true;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -116,6 +143,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
   const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
+  if (shieldTakes(state, e, hit, hero)) return true;
   const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;

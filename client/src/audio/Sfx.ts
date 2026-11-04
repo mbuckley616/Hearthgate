@@ -78,6 +78,15 @@ export class Sfx {
           this.tone('triangle', 1760, 1700, 0.5, 0.22, 0.002);
           this.tone('sine', 2640, 2600, 0.35, 0.12, 0.002);
           break;
+        case 'guarded':
+          // Wood and iron turning a blade (E1b): a dull knock with a short ring.
+          this.impact(false);
+          this.tone('square', 600, 540, 0.1, 0.05, 0.002);
+          break;
+        case 'guardBroken':
+          this.impact(true);
+          this.tone('square', 200, 120, 0.18, 0.08, 0.002);
+          break;
         case 'block':
           this.impact(ev.broke);
           this.tone('square', ev.broke ? 220 : 520, ev.broke ? 140 : 480, 0.12, 0.06, 0.002);

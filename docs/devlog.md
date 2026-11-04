@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 92, the Skeleton Shieldbearer (E1b)
+
+**What changed**
+
+The Crypt's first new enemy and the first new role brain. `shieldbearer` is an `EnemyKind` dressed as the shield role (`KIND_ROLE`, "Skeleton Shieldbearer" in the Crypt's roster), with its numbers in `tuning.shieldbearer` and panel ranges for each.
+- **The shield.** In `damageEnemy` (`shieldTakes`), a hit whose push comes at its face inside `guardArcDeg` (130) is blocked: no damage, no poise, a short hitstop and a `guarded` event, which draws a pale deflect spark and plays a dull knock. That covers swings, arrows and henchmen alike. Its side and back are open. Magic (the staff) goes through the shield. A held heavy (C1, a charged string step) breaks the guard (a `guardBroken` event, an orange spark and a low crack) and lands, and the front stays open for `guardBreakMs` (2.5 s). A light chain's own finisher is still blocked, so tapping at its face does nothing. A staggered or frozen Shieldbearer is open too. Because it is judged in `damageEnemy`, the browser's prediction of its own swing agrees with the server.
+- **The bash.** It walks its shield in (2.6 m/s), turning slowly (140°/s against a Skeleton Warrior's 420, and 50°/s while winding up), so a hero who circles it reaches its side. In range, with an attack token, it draws a red line 2.6 m ahead for 0.7 s, then bashes that line: 12 damage, heavy, so the hero is staggered and shoved 2.2 m.
+- **The look.** The Skeleton Warrior's figure with its round shield grown into a tall one (shin to skull) and a rusted helm; the shield is held square in front, drawn back in the windup and driven forward in the bash.
+- **Where it appears.** Bigger rooms on generated floors may roll one, at most two a room, at a budget cost of 3. That uses the same random draws as before, so a seed builds the same floor and rooms, with some grunts and archers now Shieldbearers. This holds until E1h composes rooms by role. It is named among the key enemies of the Saltmarsh Warrens, Emberhall and the Hollow Crown. The arena never spawns one, so the parity hashes are untouched.
+
+**Learned**
+
+`damageEnemy`'s return value is ignored by every caller, and each swing remembers who it hit (`attackHitIds`), so a blocked hit can return true and still count as contact without the swing hitting again on the next tick. A hit's push direction (`dirX`, `dirZ`) is set for melee and projectiles alike, which made it the simplest measure of "from the front".
+
+`shieldbearer.test.ts`: the role and brain, the Crypt's name and a red tell; a three-hit chain from the front blocked (finisher included) while the same hit from the side and from behind lands; an arrow from the front blocked and a bolt of magic not; a held heavy breaks the guard and lands, the front stays open until `guardBreakMs` runs out, then blocks again; the windup draws its line and the bash takes exactly `bashDamage` and staggers the hero (mode `hurt`). check 308 (was 302), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1c, the Crypt Hound. Not looked at in a browser on this box (headless software GL); the critic's next run will see whether the shield reads from the front and the bash's line is clear.
+
 ## 2026-11-04: Session 91, a harder portal's enemies hit harder (G3)
 
 **What changed**

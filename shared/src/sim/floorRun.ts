@@ -368,7 +368,8 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   state.events.push({ kind: 'waveStart', wave: r.wave, title: room.title, boss });
 }
 
-const COST: Record<'grunt' | 'archer' | 'brute', number> = { grunt: 1, archer: 2, brute: 4 };
+type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer';
+const COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3 };
 
 /** A room's enemy budget: its floor area, deeper floors and more players raising it (tuning.dungeon). */
 export function roomBudget(room: PieceInfo, floor: number, players: number): number {
@@ -396,12 +397,16 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
   const far = spots.slice(0, Math.max(3, Math.ceil(spots.length / 2)));
   const kinds: EnemyKind[] = [];
   let brutes = 0;
+  let shields = 0;
   while (budget >= 1) {
     const roll = nextRandom(state);
-    let kind: 'grunt' | 'archer' | 'brute' = 'grunt';
+    let kind: RoomKind = 'grunt';
     if (big && budget >= COST.brute && brutes < 1 + Math.floor(spec.floor / 2) && roll < 0.18) kind = 'brute';
+    // A Shieldbearer (E1b) or two in a bigger room, until E1h composes rooms by role.
+    else if (big && budget >= COST.shieldbearer && shields < 2 && roll > 0.88) kind = 'shieldbearer';
     else if (budget >= COST.archer && roll < 0.45 && (big || archers * 2 < kinds.length)) kind = 'archer';
     if (kind === 'brute') brutes++;
+    if (kind === 'shieldbearer') shields++;
     if (kind === 'archer') archers++;
     kinds.push(kind);
     budget -= COST[kind];

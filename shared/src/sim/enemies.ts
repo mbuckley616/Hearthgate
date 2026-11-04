@@ -545,6 +545,67 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
+/**
+ * The Skeleton Shieldbearer (E1b, the shield role): walks in behind its shield, turning slowly, and
+ * bashes a short line in front, a heavy that staggers whoever it meets. Its block is in damageEnemy.
+ */
+function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const sb = tuning.shieldbearer;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      if (!e.hasToken && e.cooldown <= 0 && sameLevel && tokenHolders(state) < tokenCap(state)) e.hasToken = true;
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      // Without a token it still walks its shield at you, holding where the grunts wait.
+      const stop = e.hasToken ? sb.attackRange * 0.8 : tuning.grunt.holdDistance;
+      if (!sameLevel || dist > stop) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      }
+      e.yaw = turnToward(e.yaw, sameLevel ? toTarget : Math.atan2(gx, gz), sb.turnRateDeg * DEG * edt);
+      if (sameLevel && e.hasToken && dist <= sb.attackRange && Math.abs(wrapAngle(toTarget - e.yaw)) < 30 * DEG) {
+        setAi(e, 'windup');
+        e.attack = 'bash';
+        e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * sb.bashReach, z: e.z + Math.cos(e.yaw) * sb.bashReach, radius: sb.bashReach, yaw: e.yaw, arcDeg: 0 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'windup':
+      e.yaw = turnToward(e.yaw, toTarget, sb.windupTurnRateDeg * DEG * edt);
+      e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * sb.bashReach, z: e.z + Math.cos(e.yaw) * sb.bashReach, radius: sb.bashReach, yaw: e.yaw, arcDeg: 0 };
+      if (e.aiTime >= sb.telegraphMs / 1000) {
+        setAi(e, 'slash1');
+        e.tele.shape = 'none';
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        if (!tuning.debug.passiveEnemies) {
+          const victims = heroesInCone(state, e.x, e.z, e.yaw, sb.bashReach, sb.bashArcDeg, e.y);
+          for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, sb.bashDamage), heavy: true, push: sb.bashPush, fromX: e.x, fromZ: e.z, enemyId: e.id });
+        }
+      }
+      break;
+    case 'slash1':
+      // A step into the bash.
+      want.x = Math.sin(e.yaw) * 0.8;
+      want.z = Math.cos(e.yaw) * 0.8;
+      if (e.aiTime >= sb.bashActiveMs / 1000) {
+        setAi(e, 'recover');
+        e.recoverTime = sb.recoveryMs / 1000;
+      }
+      break;
+  }
+  return want;
+}
+
 function setSlamTele(e: EnemyState, offset: number, radius: number): void {
   e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * offset, z: e.z + Math.cos(e.yaw) * offset, radius, yaw: e.yaw, arcDeg: 360 };
 }
@@ -679,6 +740,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   archer: archerBrain,
   heavy: bruteBrain,
   boss: wardenBrain,
+  shield: shieldBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -695,6 +757,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.archer.cooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
+    case 'shieldbearer':
+      return tuning.shieldbearer.attackCooldownMs / 1000;
     case 'warden':
       return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
   }

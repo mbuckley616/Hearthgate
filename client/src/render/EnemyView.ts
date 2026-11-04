@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -63,6 +63,12 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     slash1: pose(BASE, { handYaw: 20, handHeight: -0.05, handReach: 0.42, bladeYaw: 40, bladePitch: -40, offYaw: 55, offReach: 0.2, twist: 30, lean: 26, crouch: 0.12 }),
     between: pose(BASE, { handYaw: 35, handHeight: 0.25, handReach: 0.3, bladeYaw: 110, bladePitch: 20, offYaw: 55, offHeight: 0.05, offReach: 0.22, twist: 35, lean: 14, crouch: 0.08 }),
     slash2: pose(BASE, { handYaw: -70, handHeight: 0.2, handReach: 0.45, bladeYaw: -80, bladePitch: 0, offYaw: 35, offHeight: 0.1, twist: -35, lean: 22, crouch: 0.1 }),
+  },
+  // Its shield held square in front (E1b); drawn back for the bash, then driven forward.
+  shieldbearer: {
+    guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
+    windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
+    slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
   },
   // Bow in the left hand, string hand at the cheek when aiming.
   archer: {
@@ -155,6 +161,11 @@ export class EnemyView {
     if (kind === 'warden') this.buildWarden(mat, mesh);
     else if (kind === 'brute') this.buildBrute(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
+    if (kind === 'shieldbearer' && this.shield) {
+      // A tall shield that covers it from shin to skull, and a rusted helm: read as "not from the front".
+      this.shield.scale.set(1.5, 2.4, 1);
+      this.head.add(mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x6a5a4e, { metalness: 0.6, roughness: 0.6 }), 0, 0.03, 0));
+    }
 
     for (const a of Object.values(this.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
     for (const l of Object.values(this.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
@@ -607,6 +618,18 @@ export class EnemyView {
             return into(P.between, P.slash2, t / (g.slashActiveMs / 1000), easeOut);
         }
         break;
+      case 'shieldbearer': {
+        const sb = tuning.shieldbearer;
+        switch (e.ai) {
+          case 'windup':
+            into(this.from, P.windup, t / ((sb.telegraphMs / 1000) * 0.6));
+            out.offHeight += Math.sin(this.time * 40) * 0.008;
+            return out;
+          case 'slash1':
+            return into(P.windup, P.slash1, t / (sb.bashActiveMs / 1000), easeOut);
+        }
+        break;
+      }
       case 'archer':
         switch (e.ai) {
           case 'aim':
@@ -672,7 +695,7 @@ export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
   switch (e.ai) {
     case 'windup':
-      return clamp01(t / (tuning.grunt.telegraphMs / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
