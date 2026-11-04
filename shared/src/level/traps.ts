@@ -1,4 +1,5 @@
 import type { FloorDef } from './generate';
+import type { BoxCollider } from './geometry';
 import type { PieceInfo } from './floor';
 import type { LavaStrip } from './lava';
 
@@ -140,3 +141,76 @@ export function bladeOffset(b: BladeTrap, time: number, periodS: number): number
 
 /** Half the blade's thickness along the hall (m): a body this close to its line is in its way. */
 export const BLADE_HALF = 0.45;
+
+/**
+ * A collapsing tile (G5; Michael's B, 4 Nov): a cracked slab that shakes once a hero steps on it and
+ * then falls away. Whoever is on it as it falls takes a share of their health and is put back at its
+ * edge; an enemy on it is gone. The hole stays for the rest of the floor and blocks the way like a
+ * wall (`crumbleCollider`, added by `floorWorldNow` once `SimState.floor.fallen` lists it), so a room
+ * changes shape as it is fought. Which tiles shake and fall is the sim's; where they are is the seed's.
+ */
+export interface CrumbleTile {
+  x: number;
+  z: number;
+  y: number;
+  piece: number;
+}
+
+/** A tile's side (m), as a spike tile's. */
+export const CRUMBLE_SIZE = 2;
+const CRUMBLE_ROOM_SHARE = 0.3;
+const CRUMBLE_TILES = 2;
+/** Tiles keep this far apart (m), so two holes never wall off a room's middle between them. */
+const CRUMBLE_APART = 5;
+
+/**
+ * The floor's collapsing tiles: two in some flat fight rooms that have neither lava nor spikes (never
+ * the boss's hall, never a hall, which a hole could close), on open floor away from the doorways. None
+ * on a hand-built floor.
+ */
+export function crumbleFor(def: FloorDef, pieces: PieceInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[]): CrumbleTile[] {
+  const spec = def.spec;
+  if (spec.hand) return [];
+  const out: CrumbleTile[] = [];
+  const h = CRUMBLE_SIZE / 2;
+  for (const p of pieces) {
+    if (p.y !== p.top || !p.fight || p.kind === 'boss' || lava.some((l) => l.piece === p.id) || spikes.some((t) => t.piece === p.id)) continue;
+    const k = p.id * 8 + 3;
+    if (trapHash(spec.seed, k) >= CRUMBLE_ROOM_SHARE) continue;
+    const tiles: CrumbleTile[] = [];
+    for (let i = 0; i < p.spots.length && tiles.length < CRUMBLE_TILES; i++) {
+      const sp = p.spots[Math.floor(trapHash(spec.seed, k + 16 + i) * p.spots.length)];
+      if (p.doors.some((d) => d.open && Math.hypot(d.x - sp.x, d.z - sp.z) < DOOR_CLEAR + 2 + h)) continue;
+      if (tiles.some((t) => Math.hypot(t.x - sp.x, t.z - sp.z) < CRUMBLE_APART)) continue;
+      // A clear stride of floor all round it, so a hero put back at its edge stands in the room.
+      if (sp.x - h - 1.2 < p.inner.minX || sp.x + h + 1.2 > p.inner.maxX || sp.z - h - 1.2 < p.inner.minZ || sp.z + h + 1.2 > p.inner.maxZ) continue;
+      tiles.push({ x: sp.x, z: sp.z, y: p.y, piece: p.id });
+    }
+    out.push(...tiles);
+  }
+  return out;
+}
+
+/** The tile (x, z) stands on, if any, at floor height y. */
+export function crumbleAt(tiles: readonly CrumbleTile[], x: number, y: number, z: number): number {
+  const h = CRUMBLE_SIZE / 2;
+  for (let i = 0; i < tiles.length; i++) {
+    const t = tiles[i];
+    if (Math.abs(x - t.x) <= h && Math.abs(z - t.z) <= h && Math.abs(y - t.y) < 0.3) return i;
+  }
+  return -1;
+}
+
+/** A fallen tile's hole as a wall: nothing walks into it (a jump does not clear it either). */
+export function crumbleCollider(t: CrumbleTile, i: number): BoxCollider {
+  const h = CRUMBLE_SIZE / 2;
+  return {
+    kind: 'box',
+    id: `crumble-${i}`,
+    min: { x: t.x - h, y: t.y - 2, z: t.z - h },
+    max: { x: t.x + h, y: t.y + 4, z: t.z + h },
+    blocksMovement: true,
+    blocksCamera: false,
+    fadeable: false,
+  };
+}

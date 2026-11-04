@@ -726,6 +726,10 @@ export const tuning = {
     bladeEnemyDamage: 40,
     /** Metres it throws an enemy it meets, the way it swings. */
     bladePush: 3,
+    /** A collapsing tile (G5, Michael's B): it shakes this long once stepped on (the lag grace is added), then falls for good. */
+    crumbleShakeS: 0.6,
+    /** A hero's share of max health a fall takes. */
+    crumbleHeroFrac: 0.25,
   },
 
   lava: {
@@ -2835,6 +2839,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'look.exposure': [0.2, 3, 0.01],
   'look.kingDim': [0, 0.9, 0.05],
+  'traps.crumbleShakeS': [0.1, 3, 0.05],
+  'traps.crumbleHeroFrac': [0, 1, 0.05],
   'look.kingDimS': [0, 5, 0.1],
   'look.chillTint': [0, 1, 0.01],
   'look.chillTintFadeS': [0, 1.5, 0.05],

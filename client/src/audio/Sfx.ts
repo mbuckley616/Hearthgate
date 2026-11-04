@@ -133,6 +133,16 @@ export class Sfx {
           this.crackle();
           this.tone('sine', 1600, 500, 0.5, 0.12, 0.01);
           break;
+        case 'tileCracked':
+          // A collapsing tile (G5) starts to give: stone grinding and a crack.
+          this.crackle(0.3);
+          this.noiseBurst('lowpass', 300, 120, 1, 0.5, 0.18);
+          break;
+        case 'tileFell':
+          // It goes: a deep rumble and the slab breaking far below.
+          this.rumble(0.45);
+          this.later(0.35, () => this.noiseBurst('lowpass', 900, 200, 1, 0.4, 0.25));
+          break;
         case 'circleLanded':
           // A Wraith's circle lands (E1d): a cold thump and a hiss of frost, its own sound so a miss is heard too.
           this.noiseBurst('lowpass', 500, 160, 1, 0.3, 0.3);

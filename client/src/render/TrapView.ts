@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { tuning } from '@hearthgate/shared/config/tuning';
-import { bladeOffset, SPIKE_SIZE, spikeClock, type BladeTrap, type SpikeTile } from '@hearthgate/shared/level/traps';
-import { spikeStrikeAt } from '@hearthgate/shared/sim/traps';
+import { bladeOffset, CRUMBLE_SIZE, SPIKE_SIZE, spikeClock, type BladeTrap, type CrumbleTile, type SpikeTile } from '@hearthgate/shared/level/traps';
+import { crumbleFallsAfter, spikeStrikeAt } from '@hearthgate/shared/sim/traps';
+import type { FloorRunState } from '@hearthgate/shared/sim/floorRun';
 import { glowMaterial } from './props';
 
 /** The colour language's heavy (TelegraphView): orange, nothing will stop it. */
@@ -20,8 +21,9 @@ export class TrapView {
   readonly group = new THREE.Group();
   private readonly tiles: { tile: SpikeTile; glow: THREE.Mesh; spikes: THREE.Group }[] = [];
   private readonly blades: { blade: BladeTrap; arm: THREE.Group }[] = [];
+  private readonly crumble: { tile: CrumbleTile; slab: THREE.Mesh; cracks: THREE.Mesh; pit: THREE.Mesh }[] = [];
 
-  constructor(spikes: readonly SpikeTile[], blades: readonly BladeTrap[] = []) {
+  constructor(spikes: readonly SpikeTile[], blades: readonly BladeTrap[] = [], crumble: readonly CrumbleTile[] = []) {
     const grate = new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.55, metalness: 0.7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     const iron = new THREE.MeshStandardMaterial({ color: 0x9a948c, roughness: 0.35, metalness: 0.85 });
     const grateGeo = new THREE.PlaneGeometry(SPIKE_SIZE, SPIKE_SIZE).rotateX(-Math.PI / 2);
@@ -49,6 +51,27 @@ export class TrapView {
       this.tiles.push({ tile, glow, spikes: set });
     }
 
+    // Collapsing tiles (G5): a pale cracked slab a little proud of the floor; orange cracks glow through
+    // it as it shakes; once fallen, a black pit with a lip, for the rest of the floor.
+    const slabGeo = new THREE.BoxGeometry(CRUMBLE_SIZE * 0.98, 0.08, CRUMBLE_SIZE * 0.98);
+    const slabMat = new THREE.MeshStandardMaterial({ color: 0x8a8070, roughness: 0.95 });
+    const crackGeo = new THREE.PlaneGeometry(CRUMBLE_SIZE * 0.9, CRUMBLE_SIZE * 0.9).rotateX(-Math.PI / 2);
+    const pitGeo = new THREE.PlaneGeometry(CRUMBLE_SIZE, CRUMBLE_SIZE).rotateX(-Math.PI / 2);
+    const pitMat = new THREE.MeshBasicMaterial({ color: 0x050407, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    for (const tile of crumble) {
+      const slab = new THREE.Mesh(slabGeo, slabMat);
+      slab.position.set(tile.x, tile.y + 0.02, tile.z);
+      slab.receiveShadow = true;
+      const cracks = new THREE.Mesh(crackGeo, glowMaterial(WARN, 0));
+      cracks.position.set(tile.x, tile.y + 0.075, tile.z);
+      cracks.visible = false;
+      const pit = new THREE.Mesh(pitGeo, pitMat);
+      pit.position.set(tile.x, tile.y + 0.03, tile.z);
+      pit.visible = false;
+      this.group.add(slab, cracks, pit);
+      this.crumble.push({ tile, slab, cracks, pit });
+    }
+
     // Blades: an iron arm from a pivot under the ceiling, a broad crescent at its foot that sweeps low.
     const armGeo = new THREE.CylinderGeometry(0.05, 0.05, ARM, 6).translate(0, -ARM / 2, 0);
     const bladeGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.05, 20, 1, false, -0.9, 1.8).rotateX(Math.PI / 2).translate(0, -ARM + 0.55, 0);
@@ -69,8 +92,23 @@ export class TrapView {
     }
   }
 
-  update(simTime: number): void {
+  update(simTime: number, floor?: FloorRunState): void {
     const t = tuning.traps;
+    for (let i = 0; i < this.crumble.length; i++) {
+      const v = this.crumble[i];
+      const fallen = !!floor?.fallen?.includes(i);
+      const shaking = floor?.crumbling?.find((c) => c.id === i);
+      v.slab.visible = !fallen;
+      v.pit.visible = fallen;
+      v.cracks.visible = !!shaking;
+      if (shaking) {
+        // Harder as the fall nears; the cracks brighten with it.
+        const k = Math.min(1, Math.max(0, (simTime - shaking.at) / crumbleFallsAfter()));
+        const j = 0.015 + 0.04 * k;
+        v.slab.position.set(v.tile.x + Math.sin(simTime * 61) * j, v.tile.y + 0.02 - 0.05 * k, v.tile.z + Math.cos(simTime * 53) * j);
+        (v.cracks.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.6 * k;
+      } else v.slab.position.set(v.tile.x, v.tile.y + 0.02, v.tile.z);
+    }
     for (const v of this.blades) {
       // The arm's angle that puts its foot at the sim's offset across the hall.
       const off = t.enabled ? bladeOffset(v.blade, simTime, t.bladePeriodS) : 0;

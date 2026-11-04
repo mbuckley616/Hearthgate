@@ -1,6 +1,6 @@
 import { tuning } from '../config/tuning';
 import type { World } from '../level/arena';
-import { BLADE_HALF, bladeOffset, SPIKE_SIZE, spikeAt, spikeClock, type BladeTrap, type SpikeTile } from '../level/traps';
+import { BLADE_HALF, bladeOffset, CRUMBLE_SIZE, crumbleAt, SPIKE_SIZE, spikeAt, spikeClock, type BladeTrap, type SpikeTile } from '../level/traps';
 import { clearsLow, damageEnemy, heroInvulnerable, isTargetable, knockDown } from './combat';
 import type { SimState } from './types';
 
@@ -27,6 +27,7 @@ export function spikeStruck(tile: SpikeTile, time: number, dt: number): boolean 
 export function stepTraps(state: SimState, world: World, dt: number): void {
   if (!tuning.traps.enabled) return;
   stepBlades(state, world, dt);
+  stepCrumble(state, world, dt);
   const spikes = world.level.dungeon?.spikes;
   if (!spikes?.length) return;
   const t = tuning.traps;
@@ -111,5 +112,66 @@ function stepBlades(state: SimState, world: World, dt: number): void {
       if (b.alongX) e.kbx = v;
       else e.kbz = v;
     }
+  }
+}
+
+/** When a stepped-on tile falls: its shake, then the lag grace, so a step off that was on time on the player's screen counts. */
+export function crumbleFallsAfter(): number {
+  return tuning.traps.crumbleShakeS + tuning.coop.lagGraceMs / 1000;
+}
+
+/**
+ * Collapsing tiles (G5; Michael's B, 4 Nov): a hero (not a henchman) on their feet on a whole tile
+ * starts it shaking; `crumbleFallsAfter` later it falls for good. A hero on it then (not high enough
+ * in the air, by the jump's rule) loses `traps.crumbleHeroFrac` of their health and is put back on
+ * the nearest side of its edge; a henchman is only put back; an enemy on it is gone. From then on its
+ * hole is a wall (`floorWorldNow`). In stepSim and never in prediction.
+ */
+function stepCrumble(state: SimState, world: World, dt: number): void {
+  const tiles = world.level.dungeon?.crumble;
+  const f = state.floor;
+  if (!tiles?.length || !f) return;
+  const t = tuning.traps;
+  const fallen = (f.fallen ??= []);
+  const crumbling = (f.crumbling ??= []);
+  for (const p of state.players) {
+    if (p.henchman || p.mode === 'down' || p.hp <= 0 || !p.grounded) continue;
+    const i = crumbleAt(tiles, p.x, p.y, p.z);
+    if (i < 0 || fallen.includes(i) || crumbling.some((c) => c.id === i)) continue;
+    crumbling.push({ id: i, at: state.time });
+    state.events.push({ kind: 'tileCracked', x: tiles[i].x, z: tiles[i].z });
+  }
+  const now = state.time + dt;
+  for (let c = crumbling.length - 1; c >= 0; c--) {
+    if (now - crumbling[c].at < crumbleFallsAfter()) continue;
+    const i = crumbling[c].id;
+    crumbling.splice(c, 1);
+    fallen.push(i);
+    const tile = tiles[i];
+    const h = CRUMBLE_SIZE / 2;
+    const on = (x: number, z: number) => Math.abs(x - tile.x) <= h && Math.abs(z - tile.z) <= h;
+    let caught = 0;
+    for (const p of state.players) {
+      if (p.hp <= 0 || !on(p.x, p.z) || p.y - tile.y > 1.5 || p.y - tile.y < -0.3) continue;
+      // Back at the edge it was nearest, a stride off the hole.
+      const dx = p.x - tile.x;
+      const dz = p.z - tile.z;
+      if (Math.abs(dx) >= Math.abs(dz)) p.x = tile.x + Math.sign(dx || 1) * (h + 0.6);
+      else p.z = tile.z + Math.sign(dz || 1) * (h + 0.6);
+      p.vx = 0;
+      p.vz = 0;
+      if (p.henchman || p.mode === 'down' || clearsLow(p, tile.y) || heroInvulnerable(p)) continue;
+      caught++;
+      const damage = p.maxHp * t.crumbleHeroFrac;
+      p.hp = Math.max(0, p.hp - damage);
+      state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy: true });
+      if (p.hp <= 0) knockDown(state, p);
+    }
+    for (const e of state.enemies) {
+      if (!isTargetable(e) || !on(e.x, e.z) || Math.abs(e.y - tile.y) > 0.3) continue;
+      caught++;
+      damageEnemy(state, e, { attackerId: '', damage: e.hp + 1, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 0, x: e.x, y: e.y, z: e.z, dot: true });
+    }
+    state.events.push({ kind: 'tileFell', x: tile.x, z: tile.z, caught });
   }
 }

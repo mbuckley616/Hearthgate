@@ -58,6 +58,10 @@ export interface FloorRunState {
   purse?: Purse;
   /** This floor has banked (the gold ring home or the Warden's fall): a second ring taken banks nothing. */
   home?: boolean;
+  /** Collapsing tiles (G5) a hero has stepped on, by index in the layout's `crumble`, and when: each falls `traps.crumbleShakeS` later. */
+  crumbling?: { id: number; at: number }[];
+  /** Tiles that have fallen: holes for the rest of the floor, walls to everyone (`floorWorldNow`). */
+  fallen?: number[];
 }
 
 /** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
@@ -111,9 +115,14 @@ export function clearsLeft(world: World, state: SimState): number {
 export function floorWorldNow(world: World, state: SimState): World {
   const room = state.floor?.room ?? -1;
   const fighting = state.run.gateClosed && room >= 0 && !!world.roomColliders;
-  const base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  let base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  // A fallen tile's hole (G5) is a wall to everyone from then on, prediction and the camera included.
+  const fallen = state.floor?.fallen;
+  const walls = world.level.dungeon?.crumbleWalls;
+  const holes = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  if (holes.length) base = [...base, ...holes];
   if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
-    return { ...world, colliders: fighting ? [...base, ...world.exitGates] : world.collidersLocked! };
+    return { ...world, colliders: fighting || holes.length ? [...base, ...world.exitGates] : world.collidersLocked! };
   }
   return { ...world, colliders: base };
 }

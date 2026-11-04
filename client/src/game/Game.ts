@@ -424,7 +424,7 @@ export class Game {
       disposeTree(this.trapView.group);
     }
     const d = this.world.level.dungeon;
-    this.trapView = d && (d.spikes.length || d.blades.length) ? new TrapView(d.spikes, d.blades) : null;
+    this.trapView = d && (d.spikes.length || d.blades.length || d.crumble.length) ? new TrapView(d.spikes, d.blades, d.crumble) : null;
     if (this.trapView) this.gfx.scene.add(this.trapView.group);
   }
 
@@ -993,7 +993,7 @@ export class Game {
       this.presentTime,
     );
     this.propView?.update(world.floor, this.presentTime, world.time);
-    this.trapView?.update(world.time);
+    this.trapView?.update(world.time, world.floor);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();

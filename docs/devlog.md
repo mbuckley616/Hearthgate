@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 109, collapsing floor tiles (G5, Michael's B)
+
+**What changed**
+
+G5's third trap, built to Michael's B (control room, 4 Nov). Of the fight rooms with neither lava nor spikes, about three in ten get two collapsing tiles: 1.5 tiles in 0.84 rooms a 24-piece floor, on 56 of 100 seeds. They are never in the boss's hall and never in a hall, where a hole could close the way. Each tile is 2 m, on open floor at least 5 m from a doorway and 5 m from the room's other tile, with a stride of floor all round it (`crumbleFor`, from the seed's own stream, so the generator, props and other traps are untouched). Spawn spots on them are dropped.
+- **Stepped on.** A hero (not a henchman) on their feet on a tile starts it shaking (`tileCracked`). It falls after `traps.crumbleShakeS` (0.6 s) plus the lag grace, so a step off that was on time on the player's screen counts.
+- **Falls.** A hero on it then loses `traps.crumbleHeroFrac` (25%) of their health and is put back a stride off its nearest edge. A hero high enough in the air (the jump's rule) or in a dodge's i-frames is only put back, and so is a henchman. An enemy on it is gone, so a pack lured onto it falls with it. `tileFell` counts who went.
+- **The hole stays.** `SimState.floor.fallen` lists it for the rest of the floor, and `floorWorldNow` adds its wall (`crumbleWalls`, made with the layout). Server, prediction and camera all read colliders from there, so nobody walks into it and prediction agrees. The room changes shape as it is fought.
+- **Seen and heard.** A pale slab a little proud of the floor. Through the shake it jitters harder and orange cracks (the colour language's heavy) brighten in it. Once fallen it is a black pit. A grind and crack as it gives, and a rumble as it goes.
+
+**Learned**
+
+`floorWorldNow` returned the prebuilt locked set while the floor's exit was shut and no fight was on, which would have dropped the holes. It now builds the set when there are holes, and still allocates nothing on a floor without them.
+
+`crumble.test.ts` (5): tiles only in fight rooms, clear of doorways and spawn spots, the same from the same seed; a hero on it starts the shake, it has not fallen at 0.6 s and has after the grace, a quarter of their health goes and they stand off the edge; a hero who stepped off in time is spared and a grunt left on it dies (`caught: 1`); the hole adds one collider, walking into it ends outside it, and it never shakes again; nothing with traps off. check 362, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B: room shapes and set pieces, one per builder session, then C (secrets and side rooms). The collapsing tile, the Hollow King and the Wraith all want a first look in a browser.
+
 ## 2026-11-04: Session 108, the Hollow King's second and third phases (G4b)
 
 **What changed**
