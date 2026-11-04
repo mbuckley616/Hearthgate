@@ -1,3 +1,4 @@
+import { SPIKE_SIZE } from '@hearthgate/shared/level/traps';
 import type { PortalState } from '@hearthgate/shared/game/portal';
 import type { FloorLayout, PieceInfo } from '@hearthgate/shared/level/floor';
 import { STEP_H } from '@hearthgate/shared/level/kit';
@@ -205,6 +206,16 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
       if (l.piece !== p.id) continue;
       g.fillStyle = dim ? 'rgba(170, 70, 20, 0.8)' : 'rgb(255, 120, 40)';
       g.fillRect(X(l.minX), Y(l.minZ), (l.maxX - l.minX) * PX, (l.maxZ - l.minZ) * PX);
+    }
+    // Spikes (G5): dark squares with a thin orange edge.
+    for (const t of layout.spikes) {
+      if (t.piece !== p.id) continue;
+      const h = (SPIKE_SIZE / 2) * PX;
+      g.fillStyle = 'rgba(30, 24, 22, 0.85)';
+      g.fillRect(X(t.x) - h, Y(t.z) - h, h * 2, h * 2);
+      g.strokeStyle = dim ? 'rgba(170, 90, 20, 0.7)' : 'rgb(255, 138, 26)';
+      g.lineWidth = 1;
+      g.strokeRect(X(t.x) - h, Y(t.z) - h, h * 2, h * 2);
     }
     for (const pl of p.pillars) {
       g.fillStyle = 'rgba(20, 16, 24, 0.7)';

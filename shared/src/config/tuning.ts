@@ -698,6 +698,36 @@ export const tuning = {
    * Rooms that need jumping (D6, Michael 30 Oct: A): a hero standing in a lava strip burns, a share of
    * their health a second, paid in pulses; one in the air does not. The server's alone, as hits are.
    */
+  /** Chill on a hero (E1d, Michael's A, 4 Nov): a Wraith's circle slows, nothing more. */
+  chill: {
+    /** The share of speed it takes. */
+    slow: 0.35,
+    /** How long it lasts (s); a second Chill restarts it. */
+    durationS: 3,
+  },
+
+  /**
+   * Traps (G5, Michael's D: traps first). Spikes strike on a cycle: an orange warning of `spikeWarnS`,
+   * then the strike, judged `coop.lagGraceMs` later so a step off that was on time on the player's
+   * screen counts, then up for `spikeUpS`. A hero in the air clears them; enemies are hurt too.
+   */
+  traps: {
+    enabled: true,
+    spikeCycleS: 3.2,
+    spikeWarnS: 0.9,
+    spikeUpS: 0.7,
+    /** A hero's share of max health a strike takes. */
+    spikeHeroFrac: 0.15,
+    /** What a strike deals an enemy (before nothing: traps ignore the portal's multiplier). */
+    spikeEnemyDamage: 30,
+    /** A swinging blade's full swing, there and back (s). */
+    bladePeriodS: 2.6,
+    bladeHeroFrac: 0.2,
+    bladeEnemyDamage: 40,
+    /** Metres it throws an enemy it meets, the way it swings. */
+    bladePush: 3,
+  },
+
   lava: {
     /** Share of max health a second. */
     burnFracPerS: 0.15,
@@ -896,6 +926,33 @@ export const tuning = {
   },
 
   /**
+   * The Wraith (E1d, the caster): floats at range and channels a violet circle at a hero's feet that
+   * Chills whoever stands in it as it lands (`chill`). Any hit breaks the channel: ranged beats magic.
+   */
+  wraith: {
+    maxHp: 45,
+    maxPoise: 3,
+    radius: 0.4,
+    height: 1.7,
+    moveSpeed: 2.6,
+    turnRateDeg: 280,
+    /** It keeps about this far from the nearest hero. */
+    keepDistance: 9,
+    /** It casts at a hero within this. */
+    castRange: 14,
+    circleRadius: 2,
+    /** The channel, from the circle appearing to its landing (the lag grace is added on top). */
+    channelMs: 1600,
+    cooldownMs: 3500,
+    recoveryMs: 700,
+    /** How long a broken channel leaves it reeling. */
+    brokenMs: 900,
+    spawnMs: 700,
+    deathMs: 1500,
+    knockbackTaken: 1.2,
+  },
+
+  /**
    * The Barrow Knight (E1f, the elite): a Shieldbearer and a Hound in one. It rushes along its yellow
    * line behind its shield (nothing reaches it from the front then, not even a heavy or magic), meets a
    * wall as a Hound does, and otherwise fights as a Shieldbearer. One a room, from Hard or floor 2.
@@ -931,6 +988,20 @@ export const tuning = {
     spawnMs: 800,
     deathMs: 1800,
     knockbackTaken: 0.4,
+  },
+
+  /**
+   * Mini-bosses (G4, Michael's A, 4 Nov): a named elite, a Barrow Knight (a Bone Brute before the
+   * Knight's tier) with a crown, a name and more health, at most one a floor. It waits in the fight
+   * room nearest the rest room's door, so the last room before the rest is the floor's hard one.
+   * Generated floors only; the arena never meets one.
+   */
+  miniboss: {
+    enabled: true,
+    /** Its health over its kind's (after the portal's and the party's scaling). */
+    healthMult: 3,
+    /** From this room tier a Knight wears the crown; below it a Brute does. */
+    knightFromTier: 1,
   },
 
   brute: {
@@ -1784,6 +1855,9 @@ export const tuning = {
    */
   look: {
     exposure: 1.35,
+    /** A Chilled hero's frost shell (E1d): its brightest, and the seconds it fades in and out over. */
+    chillTint: 0.3,
+    chillTintFadeS: 0.35,
     /** Metres from a shut rest or boss gate within which its "Clear N more" words show (they draw through walls). */
     exitLabelRange: 14,
     /** Device pixel ratio cap, used only when pixelSize is 1 (retro pixels off). */
@@ -2191,6 +2265,17 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'launch.minSpeed': [0, 10, 0.5],
   'launch.arcHeightM': [0, 3, 0.1],
   'launch.arcSeconds': [0.1, 1.5, 0.05],
+  'chill.slow': [0, 0.9, 0.01],
+  'chill.durationS': [0, 10, 0.1],
+  'traps.spikeCycleS': [1.5, 8, 0.1],
+  'traps.spikeWarnS': [0.3, 3, 0.05],
+  'traps.spikeUpS': [0.2, 3, 0.05],
+  'traps.spikeHeroFrac': [0, 1, 0.01],
+  'traps.spikeEnemyDamage': [0, 200, 1],
+  'traps.bladePeriodS': [1, 8, 0.1],
+  'traps.bladeHeroFrac': [0, 1, 0.01],
+  'traps.bladeEnemyDamage': [0, 200, 1],
+  'traps.bladePush': [0, 10, 0.1],
   'lava.burnFracPerS': [0, 1, 0.01],
   'lava.tickS': [0.1, 2, 0.05],
 
@@ -2388,6 +2473,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'knight.chargeLength': [2, 25, 0.5],
   'knight.chargeDamage': [0, 80, 1],
   'knight.wallStunMs': [0, 6000, 100],
+  'wraith.maxHp': [5, 600, 5],
+  'wraith.keepDistance': [2, 20, 0.5],
+  'wraith.castRange': [2, 30, 0.5],
+  'wraith.circleRadius': [0.5, 5, 0.1],
+  'wraith.channelMs': [200, 5000, 50],
+  'wraith.cooldownMs': [0, 10000, 100],
+  'wraith.brokenMs': [0, 4000, 100],
+  'miniboss.healthMult': [1, 10, 0.1],
+  'miniboss.knightFromTier': [0, 8, 1],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2643,6 +2737,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
+  'look.chillTint': [0, 1, 0.01],
+  'look.chillTintFadeS': [0, 1.5, 0.05],
   'look.exitLabelRange': [4, 40, 1],
   'look.maxPixelRatio': [0.5, 3, 0.25],
   'look.pixelSize': [1, 6, 1],
@@ -2872,7 +2968,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

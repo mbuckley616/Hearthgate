@@ -3,6 +3,7 @@ import type { Collider } from './geometry';
 import { generateFloor, pieceBounds, type FloorDef, type FloorSpec, type Piece } from './generate';
 import { checkDungeon } from './handmade';
 import { lavaFor, type LavaStrip } from './lava';
+import { bladesFor, spikesFor, SPIKE_SIZE, type BladeTrap, type SpikeTile } from './traps';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -66,6 +67,10 @@ export interface FloorLayout {
   props: PropInfo[];
   /** Rooms that need jumping (D6): strips of lava in at most one fight room, from the floor's seed. */
   lava: LavaStrip[];
+  /** Traps (G5): spike tiles in some fight rooms and long halls, from the floor's seed. */
+  spikes: SpikeTile[];
+  /** Swinging blades in some halls (G5). */
+  blades: BladeTrap[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -120,8 +125,15 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     // Nobody wakes standing in it.
     room.spots = room.spots.filter((sp) => !lava.some((l) => sp.x > l.minX - 1 && sp.x < l.maxX + 1 && sp.z > l.minZ - 1 && sp.z < l.maxZ + 1));
   }
+  const spikes = spikesFor(def, pieces, lava);
+  // Nobody wakes standing on spikes either.
+  for (const t of spikes) {
+    const room = pieces[t.piece];
+    room.spots = room.spots.filter((sp) => Math.abs(sp.x - t.x) > SPIKE_SIZE / 2 + 0.6 || Math.abs(sp.z - t.z) > SPIKE_SIZE / 2 + 0.6);
+  }
+  const blades = bladesFor(def, pieces, spikes);
   const props: PropInfo[] = [];
-  for (const info of pieces) propsFor(info, def.spec.seed, props, lava);
+  for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes);
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -151,7 +163,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades },
   };
 }
 
@@ -223,7 +235,7 @@ function propHash(seed: number, piece: number, k: number): number {
  * braziers so they never block a way through. None on a staircase or in the rest room. They do not
  * block movement: standing against the walls, nobody needs to walk through them.
  */
-function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[]): void {
+function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[]): void {
   if (info.kind === 'stair' || info.kind === 'rest' || info.y !== info.top) return;
   const share = KIT[info.kind].room ? PROP_ROOM_SHARE : PROP_HALL_SHARE;
   const i = info.inner;
@@ -241,6 +253,8 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
       // Neither in a lava strip nor across the walkway at its end (D6): the long way round stays open.
       if (lava.some((l) => l.piece === info.id && inLavaBand(l, x, z, 1.2))) continue;
+      // Nor on spikes (G5).
+      if (spikes.some((t) => t.piece === info.id && Math.abs(t.x - x) < SPIKE_SIZE / 2 + 0.8 && Math.abs(t.z - z) < SPIKE_SIZE / 2 + 0.8)) continue;
       const pick = propHash(seed ^ 0x5bd1e995, info.id, k);
       const kind: PropKind = pick < 0.45 ? 'crate' : pick < 0.8 ? 'barrel' : 'urn';
       out.push({ id: out.length, kind, x, y: info.y, z, yaw: propHash(seed ^ 0x1b873593, info.id, k) * Math.PI * 2, piece: info.id, inward: (INWARD_YAW[side] * Math.PI) / 180, room: i });

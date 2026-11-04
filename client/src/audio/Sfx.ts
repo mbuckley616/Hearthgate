@@ -133,6 +133,16 @@ export class Sfx {
           this.crackle();
           this.tone('sine', 1600, 500, 0.5, 0.12, 0.01);
           break;
+        case 'circleLanded':
+          // A Wraith's circle lands (E1d): a cold thump and a hiss of frost, its own sound so a miss is heard too.
+          this.noiseBurst('lowpass', 500, 160, 1, 0.3, 0.3);
+          this.tone('sine', 520, 260, 0.35, 0.1, 0.005);
+          this.noiseBurst('highpass', 4000, 7000, 1, 0.35, 0.12);
+          break;
+        case 'chilled':
+          // Caught in it: a brittle crack for the Chilled hero, quieter for a teammate.
+          this.crackle(ev.playerId === localId ? 0.35 : 0.12);
+          break;
         case 'freeze':
           if (hits++ < 3) this.crackle(0.25);
           break;

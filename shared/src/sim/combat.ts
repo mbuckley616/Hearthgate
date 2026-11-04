@@ -131,6 +131,15 @@ function clearTelegraph(e: EnemyState): void {
  * Apply a hit to an enemy: damage (bonus while staggered), poise and stagger,
  * knockback or flinch, hitstop and the hit event. Returns false if it couldn't be hit.
  */
+/** A hit on a channelling Wraith breaks the channel (E1d: ranged beats magic). */
+export function breakChannel(e: EnemyState): void {
+  if (roleOf(e.kind) !== 'caster' || e.ai !== 'chant') return;
+  e.tele.shape = 'none';
+  e.ai = 'recover';
+  e.aiTime = 0;
+  e.recoverTime = tuning.wraith.brokenMs / 1000;
+}
+
 export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boolean {
   if (!isTargetable(e)) return false;
   const c = tuning.combat;
@@ -148,6 +157,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
   const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
   if (shieldTakes(state, e, hit, hero)) return true;
+  // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
+  breakChannel(e);
   const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;

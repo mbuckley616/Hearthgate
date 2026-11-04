@@ -17,7 +17,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test -w shared",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm test && tsx tests/nameplate-fit.ts",
+    "check": "npm run typecheck && npm test && tsx tests/nameplate-fit.ts && tsx tests/frost-tint.ts",
     "test:net": "tsx tests/netcode-smoke.ts && tsx tests/server-exit.ts",
     "lab": "tsx tests/lab/run.ts",
     "gate:party": "tsx tests/gate-party.ts",
