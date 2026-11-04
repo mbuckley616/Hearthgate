@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 99, a teammate's name plate that keeps its size
+
+**What changed**
+
+A name plate (a teammate's, a henchman's, a villager's) is sized against the camera as it is drawn (`Nameplate`, from the sprite's `onBeforeRender`, so every owner of a plate gets it without passing the camera in). Its height on screen is capped at `camera.nameplateMaxScreen` (0.06 of the viewport, about its size at the usual 5.5 m camera distance), and it fades out between `camera.nameplateFadeNear` (2.5 m) and `camera.nameplateHideNear` (1.2 m) from the camera, so a teammate standing between the camera and your hero no longer covers your hero and the enemy with their name and bar. Further off it keeps its world size and shrinks with distance as before. All three are on the panel, browser-only (the camera section). The math is `client/src/render/plateFit.ts`, pure and allocation-free.
+
+**Learned**
+
+The renderer takes a sprite's model matrix after `onBeforeRender`, so a scale changed there must be followed by `updateMatrixWorld` to show the same frame. At 960 x 600 the old plate was 173 px tall at 1.2 m from the camera; capped, it is at most 36 px tall and 144 px wide.
+
+`tests/nameplate-fit.ts`, now the end of `npm run check`: near the camera (0.3 to 4 m) the plate is never taller than the cap or a fifth of the screen wide, the cap is about the plate at the usual distance, at 20 m it is untouched, and it fades between the two distances. Against the old fixed size the first check fails. check 327 plus the new check, the client builds. Not yet seen in a browser; the critic's two-browser steps will show it.
+
+**Next**
+
+Nothing else in E1 is the builder's: E1d waits on the Chill answer, G4, G5 and E1i are **(design)**, the snapshot item is **(Fable)**, and the late-deaths measurement needs a real machine.
+
 ## 2026-11-04: Session 98, test servers that stop when their test does
 
 **What changed**

@@ -1740,6 +1740,15 @@ export const tuning = {
     occluderProbeRadius: 0.3,
     nearPlane: 0.1,
     farPlane: 200,
+    /**
+     * A teammate's name plate is drawn over everything, so one standing just in front of the camera
+     * would fill a third of the screen (the critic, 4 Nov). Its height is capped at this share of the
+     * viewport (about its size at the usual camera distance), and it fades out between these two
+     * distances from the camera (m).
+     */
+    nameplateMaxScreen: 0.06,
+    nameplateFadeNear: 2.5,
+    nameplateHideNear: 1.2,
   },
 
   /** Procedural animation for the primitive knight; goes away with real animation clips. */
@@ -2584,6 +2593,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gear.hunterSlowMs': [0, 6000, 100],
 
   'camera.distance': [2, 12, 0.1],
+  'camera.nameplateMaxScreen': [0.02, 0.2, 0.005],
+  'camera.nameplateFadeNear': [0, 6, 0.1],
+  'camera.nameplateHideNear': [0, 4, 0.1],
   'camera.zoomMin': [0.2, 1, 0.05],
   'camera.zoomMax': [1, 4, 0.05],
   'camera.zoomStep': [1.01, 1.5, 0.01],
