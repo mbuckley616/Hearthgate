@@ -933,6 +933,20 @@ export const tuning = {
     knockbackTaken: 0.4,
   },
 
+  /**
+   * Mini-bosses (G4, Michael's A, 4 Nov): a named elite, a Barrow Knight (a Bone Brute before the
+   * Knight's tier) with a crown, a name and more health, at most one a floor. It waits in the fight
+   * room nearest the rest room's door, so the last room before the rest is the floor's hard one.
+   * Generated floors only; the arena never meets one.
+   */
+  miniboss: {
+    enabled: true,
+    /** Its health over its kind's (after the portal's and the party's scaling). */
+    healthMult: 3,
+    /** From this room tier a Knight wears the crown; below it a Brute does. */
+    knightFromTier: 1,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -2388,6 +2402,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'knight.chargeLength': [2, 25, 0.5],
   'knight.chargeDamage': [0, 80, 1],
   'knight.wallStunMs': [0, 6000, 100],
+  'miniboss.healthMult': [1, 10, 0.1],
+  'miniboss.knightFromTier': [0, 8, 1],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],

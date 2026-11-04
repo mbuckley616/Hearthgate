@@ -6,7 +6,10 @@ import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
-import { composeRoom, type Place } from './roomMix';
+import { composeRoom, roomTier, type Place } from './roomMix';
+import { minibossNames } from './roles';
+import { dungeonTypeOf } from '../level/dungeonTypes';
+import type { EnemyState } from './types';
 import { difficultyMult } from '../game/portalChoice';
 import type { GearItem } from './catalogue';
 import type { Item } from './gear';
@@ -363,7 +366,13 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
     r.bossId = e.id;
     r.waveSize = 1;
   } else {
+    r.bossId = -1;
     r.waveSize = spawnRoomGroup(state, world, room, 'first');
+    if (tuning.miniboss.enabled && room.id === guardRoomOf(world)) {
+      // Its bar is the boss bar, under its name.
+      r.bossId = spawnMiniboss(state, world, room).id;
+      r.waveSize++;
+    }
   }
   state.events.push({ kind: 'waveStart', wave: r.wave, title: room.title, boss });
 }
@@ -419,4 +428,59 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
     }
   }
   return group.length;
+}
+
+/**
+ * The fight room that guards the rest room's door (G4, Michael's A): the fight room fewest doorways
+ * from the rest room, the lower id on a tie. -1 when the floor ends at the Warden's hall instead, or
+ * has no fight room. Pure: from the floor's layout alone, so every browser agrees.
+ */
+export function guardRoomOf(world: World): number {
+  const def = world.level.dungeon?.def;
+  if (!def || def.pieces[def.exit]?.kind !== 'rest') return -1;
+  const dist = def.pieces.map(() => Infinity);
+  dist[def.exit] = 0;
+  const queue = [def.exit];
+  while (queue.length) {
+    const p = queue.shift()!;
+    for (const sk of def.pieces[p].sockets) {
+      if (sk.link >= 0 && dist[sk.link] === Infinity) {
+        dist[sk.link] = dist[p] + 1;
+        queue.push(sk.link);
+      }
+    }
+  }
+  let best = -1;
+  for (const p of def.pieces) {
+    if (!p.fight || p.kind === 'boss' || p.id === def.exit || dist[p.id] === Infinity) continue;
+    if (best < 0 || dist[p.id] < dist[best]) best = p.id;
+  }
+  return best;
+}
+
+/**
+ * The floor's mini-boss (G4): a Barrow Knight from `miniboss.knightFromTier` (a Bone Brute below it)
+ * with a name and `miniboss.healthMult` its health, standing at the room's spot nearest the rest room.
+ */
+function spawnMiniboss(state: SimState, world: World, room: PieceInfo): EnemyState {
+  const layout = world.level.dungeon!;
+  const spec = layout.def.spec;
+  const big = room.kind !== 'small' && room.kind !== 'guard';
+  const tier = roomTier({ big, floor: spec.floor, difficulty: spec.difficulty ?? 1 });
+  const kind = tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute';
+  const exit = layout.pieces[layout.def.exit].bounds;
+  const ex = (exit.minX + exit.maxX) / 2;
+  const ez = (exit.minZ + exit.maxZ) / 2;
+  const spot = [...room.spots].sort((a, b) => Math.hypot(a.x - ex, a.z - ez) - Math.hypot(b.x - ex, b.z - ez))[0] ?? {
+    x: (room.inner.minX + room.inner.maxX) / 2,
+    z: (room.inner.minZ + room.inner.maxZ) / 2,
+  };
+  const avgX = state.players.reduce((s, p) => s + p.x, 0) / Math.max(1, state.players.length);
+  const avgZ = state.players.reduce((s, p) => s + p.z, 0) / Math.max(1, state.players.length);
+  const e = createEnemy(state, world, kind, spot.x, spot.z, Math.atan2(avgX - spot.x, avgZ - spot.z));
+  const names = minibossNames(dungeonTypeOf(spec));
+  e.named = names[Math.floor(nextRandom(state) * names.length) % names.length];
+  e.maxHp *= tuning.miniboss.healthMult;
+  e.hp = e.maxHp;
+  return e;
 }

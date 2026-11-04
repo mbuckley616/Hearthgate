@@ -131,6 +131,9 @@ export class EnemyView {
   private eyes: THREE.MeshBasicMaterial;
   private materials: THREE.MeshStandardMaterial[] = [];
   private stars = new THREE.Group();
+  /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
+  private crown = new THREE.Group();
+  private crowned = false;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
   private hpBack: THREE.Sprite;
@@ -190,6 +193,17 @@ export class EnemyView {
       this.shield.scale.set(1.5, 2.4, 1);
       this.head.add(mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x6a5a4e, { metalness: 0.6, roughness: 0.6 }), 0, 0.03, 0));
     }
+
+    // A mini-boss's crown (G4): a gold band with five points, above whatever the kind wears.
+    const gold = mat(0xd9a93a, { metalness: 0.85, roughness: 0.3, emissive: 0x3a2400 });
+    this.crown.add(mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.06, 14, 1, true), gold));
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      this.crown.add(mesh(new THREE.ConeGeometry(0.03, 0.1, 4), gold, Math.cos(a) * 0.14, 0.07, Math.sin(a) * 0.14));
+    }
+    this.crown.position.y = kind === 'brute' ? 0.12 : 0.22;
+    this.crown.visible = false;
+    this.head.add(this.crown);
 
     for (const a of Object.values(this.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
     for (const l of Object.values(this.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
@@ -532,6 +546,12 @@ export class EnemyView {
     this.root.position.set(prev.x + (curr.x - prev.x) * alpha, prev.y + (curr.y - prev.y) * alpha, prev.z + (curr.z - prev.z) * alpha);
     const yaw = lerpAngle(prev.yaw, curr.yaw, alpha);
     this.root.rotation.y = yaw;
+    if (!!curr.named !== this.crowned) {
+      // A named elite stands a head taller than its kind.
+      this.crowned = !!curr.named;
+      this.crown.visible = this.crowned;
+      this.body.scale.setScalar(SCALE[curr.kind] * (this.crowned ? 1.15 : 1));
+    }
     // Hitstop jitter on the target sells the impact.
     if (curr.hitstop > 0) this.body.position.set((Math.random() - 0.5) * 0.06, 0, (Math.random() - 0.5) * 0.06);
     else this.body.position.set(0, 0, 0);
@@ -659,8 +679,8 @@ export class EnemyView {
       tuck: 0,
     });
 
-    // Health bar (not for the boss).
-    const hurt = curr.kind !== 'warden' && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
+    // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar).
+    const hurt = curr.kind !== 'warden' && !curr.named && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
     this.hpBack.visible = this.hpFill.visible = hurt;
     if (hurt) {
       const top = stats.height + 0.3;

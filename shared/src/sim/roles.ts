@@ -80,3 +80,15 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
 export function dressing(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): Dressing {
   return (ROSTERS[type] ?? ROSTERS[DEFAULT_DUNGEON_TYPE]!)[kind];
 }
+
+/**
+ * Mini-bosses' names (G4) by dungeon type: a named elite takes one from the floor's seeded stream. A
+ * type without its own list borrows the Crypt's, as with rosters.
+ */
+export const MINIBOSS_NAMES: Partial<Record<DungeonType, readonly string[]>> = {
+  hauntedCrypt: ['Sir Aldous the Hollow', 'Lady Merrow of the Barrows', 'The Ashen Steward', 'Old Grevil, Bone-Crowned', 'Captain Hesk', 'The Pale Reeve'],
+};
+
+export function minibossNames(type: DungeonType = DEFAULT_DUNGEON_TYPE): readonly string[] {
+  return MINIBOSS_NAMES[type] ?? MINIBOSS_NAMES[DEFAULT_DUNGEON_TYPE]!;
+}

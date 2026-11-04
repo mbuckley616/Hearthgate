@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 100, mini-bosses guard the rest room (G4)
+
+**What changed**
+
+Michael answered G4 with A on the control room. This session builds its mini-boss half. Every floor that ends in a rest room now has one named elite. It waits in the fight room fewest doorways from the rest room (`guardRoomOf`, from the layout alone, so the server and every browser agree), and stands at that room's spot nearest the rest room. Below `miniboss.knightFromTier` (1) it is a Bone Brute, so Normal floor 1 gets a Brute. From there up it is a Barrow Knight. It has `miniboss.healthMult` (3) times its kind's health, after the portal's and the party's scaling, and a name drawn from the Crypt's six (`MINIBOSS_NAMES` in `roles.ts`, e.g. "Sir Aldous the Hollow"). Its health shows on the boss bar under that name in place of the small bar over its head. In the browser it wears a gold crown and stands 15% taller than its kind. The Warden's floor has none, and the arena never meets one, so parity is unchanged. `EnemyState.named` is optional and absent on every other enemy. `miniboss.enabled` switches it off. Both numbers are on the panel and go through the server.
+
+**Learned**
+
+`run.bossId` was only ever set, never reset, on a generated floor. Nothing in the sim reads it; the boss bar does. So a non-boss room now sets it to -1 before it spawns, and the mini-boss sets it after. The rooms before still clear the same way: the mini-boss is one more body in the room's count.
+
+`miniboss.test.ts`: over 12 seeds the guard room is a fight room, never the exit or the Warden's hall, and the same each time; floor 3 of 3 has none. Normal floor 1's guard room meets one named Brute at three times a Brute's health, on the boss bar. A Hard floor 2 meets a Knight there and nobody named in another room. The switch keeps it away. check 331 (was 327), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G4b, the Hollow Crown's own boss. Then G5 in Michael's D order: traps first. E1d (the Wraith) is ready now that Chill is answered (A: 35% slower for 3 s, no sprint).
+
 ## 2026-11-04: Session 99, a teammate's name plate that keeps its size
 
 **What changed**

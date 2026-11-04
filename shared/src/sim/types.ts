@@ -251,6 +251,8 @@ export interface EnemyState {
   maxHp: number;
   /** Haunted (P8): has fallen once and got up again; the next fall is for good. */
   risen?: true;
+  /** A mini-boss (G4): its name, over the boss bar and under its crown. Absent on every other enemy. */
+  named?: string;
   /** Launched corpse (K1): who killed it, what it deals, and the enemies it has already met. */
   launched?: { by: string; damage: number; struck: number[] };
   tele: Telegraph;
