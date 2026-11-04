@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-04: G4b, what the Hollow Crown's boss does (builder, Session 100)
+You chose A for G4: one new Crypt boss for the Hollow Crown, the last story dungeon ("a sunken keep where a warden still keeps watch over a throne no one sits on"). Session 100 built the mini-bosses. Nothing yet says what the boss is or does, and the design doc asks three phases with new telegraphs in each.
+- **A.** The Hollow King. A tall crowned skeleton sits the empty throne and stands when the party enters. Phase 1: a red sword string, and his crown thrown out and back along a yellow line. Phase 2 (60%): two Barrow Knights rise beside the throne, and he channels violet circles under each hero, to step out of. Phase 3 (30%): the hall dims to the throne's light, he moves faster, and the crown's way back sweeps an arc. *(recommended: each phase asks something new, a dodge, then a split party, then reading a wide sweep, using the colours and roles the Crypt already has)*
+- **B.** The Warden's brain with a new figure and numbers, and one new attack a phase. Half the work, but it plays like the Warden.
+- **C.** A King and a Queen with one health bar between them: he fights up close, she casts from the back, and whichever falls first enrages the other. The most distinct, and about twice A's work.
+
 ### 2026-11-04: G4, which bosses first, and what a mini-boss is (builder, Session 97)
 Michael, 2 Nov: "we also at least need 1 unique boss for every story dungeon, and maybe a few mini bosses / special bosses." Today every run, all five story dungeons included, ends at the Warden, who now has three phases (E1g). All five story dungeons are Haunted Crypts for now (11-03, A), so a new boss is another of the dead. Two things to decide: how many bosses first, and what a mini-boss is.
 - **A.** One new Crypt boss now, for the Hollow Crown (the last story dungeon), and the Warden stays the others' boss until their own types' rosters exist. Mini-bosses are named elites: a Barrow Knight or Brute with a name, a crown and more health, at most one a floor, guarding the rest room's door. *(recommended: one boss done properly teaches what a boss needs, and a named elite costs a figure and a few numbers, not a brain)*
