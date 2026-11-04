@@ -21,6 +21,7 @@ import {
   type UpperPose,
 } from './rig';
 import { WeaponTrail } from './WeaponTrail';
+import { frostStep } from './frost';
 import { levelFor, maxLevel } from '@hearthgate/shared/sim/gear';
 import { heroHit } from '@hearthgate/shared/sim/talents';
 
@@ -317,6 +318,9 @@ export class HeroView {
   private arrowHead: THREE.MeshStandardMaterial;
   private staff: Staff;
   private swapFx: THREE.Mesh;
+  /** A Chilled hero's frost shell (E1d): a pale blue over the whole figure while the slow lasts. */
+  private frost: THREE.Mesh;
+  private frostLevel = 0;
   /** World-space effects owned by the hero (weapon trails); add to the scene, not to root. */
   readonly effects = new THREE.Group();
   private swordTrail = new WeaponTrail(0xfff1d6);
@@ -421,6 +425,14 @@ export class HeroView {
     this.swapFx.position.y = 0.9;
     this.swapFx.visible = false;
     this.root.add(this.swapFx);
+    // Frost: an additive shell hugging the body, so every outfit and every worn look takes the same tint
+    // without touching its materials (they are shared between heroes).
+    this.frost = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), glowMaterial(FROST, 0));
+    this.frost.position.y = 0.9;
+    this.frost.scale.set(0.42, 0.95, 0.42);
+    this.frost.castShadow = false;
+    this.frost.visible = false;
+    this.root.add(this.frost);
     this.effects.add(this.swordTrail.mesh, this.staffTrail.mesh);
 
     // A slice of a sphere in front of the hero, facing outward.
@@ -661,6 +673,11 @@ export class HeroView {
       this.swapFx.visible = false;
       this.rig.scale.setScalar(this.vanish);
     }
+
+    // Frost, from the snapshot's (or prediction's) Chill: it fades with the slow, never outlasting it.
+    this.frostLevel = frostStep(this.frostLevel, curr.chill, tuning.look.chillTint, tuning.look.chillTintFadeS, dt);
+    this.frost.visible = this.frostLevel > 0.005;
+    if (this.frost.visible) (this.frost.material as THREE.MeshBasicMaterial).opacity = this.frostLevel * (0.85 + 0.15 * Math.sin(this.time * 5));
 
     this.poseArms(p, curr);
     poseLegs(this.pelvis, this.outfit.legs, BODY, {

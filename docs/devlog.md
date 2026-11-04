@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 105, frost on a Chilled hero (E1d polish)
+
+**What changed**
+
+The polish Session 104 left on E1d. A Chilled hero now wears frost: a pale blue (`FROST`, the staff's frost colour) additive shell over the whole figure in `HeroView`, built once and shown only while the hero's `chill` lasts. It rises over `look.chillTintFadeS` (0.35 s) as the Chill lands and is held down to the Chill's own fall over its last 0.35 s, so it is gone when the slow is, and a second Chill restarting the clock does not make it blink. A slow shimmer keeps it from reading as a flat colour. Its brightness is `look.chillTint` (0.3); both are on the panel and stay in the browser (the `look` section is local). The frame step is `frostStep` (`client/src/render/frost.ts`), pure. A shell rather than tinting the figure's materials, because those are shared between heroes and swapped by the wardrobe.
+
+**Learned**
+
+The view reads `chill` from the same `PlayerState` the corner's line does, so a teammate's frost follows the snapshot and the player's own follows prediction, which counts Chill down on the server's tick. Nothing in the sim, server or net changed, so parity and test:net are untouched.
+
+`tests/frost-tint.ts` (in `npm run check`): no frost on a warm hero; in to its peak within the fade and never past it; gone when the Chill ends; a second Chill at 2.8 s keeps it above a third of its peak and back to full. check 348 shared tests plus the two client checks green, the client builds. Not yet seen in a browser. The circle's own landing sound is the other polish line and stays open.
+
+**Next**
+
+The Wraith's landing sound (it uses the magic telegraph's today). G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions; G5's B (room shapes and set pieces) starts once the tile is answered or dropped.
+
 ## 2026-11-04: Session 104, the Wraith (E1d)
 
 **What changed**

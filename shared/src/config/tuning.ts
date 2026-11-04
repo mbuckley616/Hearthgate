@@ -1855,6 +1855,9 @@ export const tuning = {
    */
   look: {
     exposure: 1.35,
+    /** A Chilled hero's frost shell (E1d): its brightest, and the seconds it fades in and out over. */
+    chillTint: 0.3,
+    chillTintFadeS: 0.35,
     /** Metres from a shut rest or boss gate within which its "Clear N more" words show (they draw through walls). */
     exitLabelRange: 14,
     /** Device pixel ratio cap, used only when pixelSize is 1 (retro pixels off). */
@@ -2734,6 +2737,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
+  'look.chillTint': [0, 1, 0.01],
+  'look.chillTintFadeS': [0, 1.5, 0.05],
   'look.exitLabelRange': [4, 40, 1],
   'look.maxPixelRatio': [0.5, 3, 0.25],
   'look.pixelSize': [1, 6, 1],
