@@ -95,6 +95,25 @@ export class TelegraphView {
       m.fill.scale.setScalar(t.radius * Math.max(0.02, progress));
       (m.outline.material as THREE.MeshBasicMaterial).opacity = 0.75 * pulse;
       (m.fill.material as THREE.MeshBasicMaterial).opacity = 0.18 + progress * 0.3;
+      // The Hollow King's circles (G4b): one under each hero; the first is his telegraph, the rest drawn alike.
+      const extra = e.circles ?? [];
+      for (let i = 1; i < extra.length; i++) {
+        const key = -(e.id * 8 + i);
+        live.add(key);
+        let c = this.markers.get(key);
+        if (!c) {
+          c = this.create('circle', 360);
+          this.markers.set(key, c);
+          this.group.add(c.group);
+        }
+        (c.fill.material as THREE.MeshBasicMaterial).color.setHex(colour);
+        (c.outline.material as THREE.MeshBasicMaterial).color.setHex(colour);
+        c.group.position.set(extra[i].x, groundHeight(this.world, extra[i].x, extra[i].z) + 0.05, extra[i].z);
+        c.outline.scale.setScalar(t.radius);
+        c.fill.scale.setScalar(t.radius * Math.max(0.02, progress));
+        (c.outline.material as THREE.MeshBasicMaterial).opacity = 0.75 * pulse;
+        (c.fill.material as THREE.MeshBasicMaterial).opacity = 0.18 + progress * 0.3;
+      }
     }
     for (const [id, m] of this.markers) {
       if (live.has(id)) continue;

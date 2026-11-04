@@ -830,20 +830,19 @@ function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldown
  * E1g's second phase: skeletons rise from the hall's edges, evenly round the Warden, each as far out
  * as `raiseRadius` allows before a wall (and in sight of the Warden, so never in the next room).
  */
-function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number): void {
-  const w = tuning.warden;
-  const r = enemyStats('grunt').radius;
+function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number, kind: EnemyKind = 'grunt', radius = tuning.warden.raiseRadius): void {
+  const r = enemyStats(kind).radius;
   const start = Math.atan2(-e.x, -e.z);
   for (let i = 0; i < n; i++) {
     const a = start + (i / Math.max(1, n)) * Math.PI * 2;
     const ux = Math.sin(a);
     const uz = Math.cos(a);
     const from = { x: e.x, y: e.y + 1.3, z: e.z };
-    const clear = sphereCast(from, { x: ux, y: 0, z: uz }, w.raiseRadius, r, world.colliders, (c) => c.blocksMovement);
-    let d = Math.min(w.raiseRadius, clear - r - 0.3);
+    const clear = sphereCast(from, { x: ux, y: 0, z: uz }, radius, r, world.colliders, (c) => c.blocksMovement);
+    let d = Math.min(radius, clear - r - 0.3);
     while (d > 2.5 && !isOpen(world, e.x + ux * d, e.z + uz * d, r, false)) d -= 0.5;
     if (d <= 2.5) d = 3.2;
-    const g = createEnemy(state, world, 'grunt', e.x + ux * d, e.z + uz * d, a + Math.PI);
+    const g = createEnemy(state, world, kind, e.x + ux * d, e.z + uz * d, a + Math.PI);
     state.events.push({ kind: 'enemyRose', enemyId: g.id, x: g.x, z: g.z });
   }
 }
@@ -1003,6 +1002,13 @@ function setCrownTele(world: World, e: EnemyState): void {
   e.tele = { shape: 'line', x: e.x + ux * l, z: e.z + uz * l, radius: l, yaw: e.yaw, arcDeg: 0 };
 }
 
+/** The King's pace (G4b): phase 3 winds up quicker, moves faster and waits less. */
+export function kingPace(e: EnemyState): { teleScale: number; speed: number; cooldownMs: number } {
+  const k = tuning.king;
+  if (e.phase >= 3) return { teleScale: k.phase3TelegraphScale, speed: k.phase3SpeedScale, cooldownMs: k.phase3CooldownMs };
+  return { teleScale: 1, speed: 1, cooldownMs: k.cooldownMs };
+}
+
 /** Where the King's crown is now, along the line it was thrown down. */
 export function crownAt(e: EnemyState): { x: number; z: number } | null {
   if (!e.crown) return null;
@@ -1018,8 +1024,21 @@ export function crownAt(e: EnemyState): { x: number; z: number } | null {
 function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const k = tuning.king;
   const want: Intent = { x: 0, z: 0 };
-  // A crown in flight is lost to a stagger; it is back on his head when he gets up.
+  // A crown in flight is lost to a stagger, and circles cast fade; the crown is back on his head when he gets up.
   if (e.crown && e.ai !== 'charge') delete e.crown;
+  if (e.circles && e.ai !== 'chant') delete e.circles;
+  const { teleScale, speed } = kingPace(e);
+  if (e.ai === 'roar') {
+    if (e.aiTime >= k.roarMs / 1000) {
+      // Phase 2's roar raises his knights round the hall; phase 3's dims it and quickens him.
+      if (e.phase === 1) raiseFromEdges(state, world, e, Math.round(k.knights), 'knight', k.raiseRadius);
+      e.phase = Math.min(3, e.phase + 1);
+      e.summoned = true;
+      setAi(e, 'recover');
+      e.recoverTime = 0.4;
+    }
+    return want;
+  }
   if (!target) return want;
   const dx = target.x - e.x;
   const dz = target.z - e.z;
@@ -1031,15 +1050,39 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
       const gx = goal.x - e.x;
       const gz = goal.z - e.z;
       const gd = Math.max(Math.hypot(gx, gz), 1e-3);
-      if (dist > k.stringRange - 0.6) {
-        want.x = gx / gd;
-        want.z = gz / gd;
+      const at = e.phase === 1 ? k.phase2At : e.phase === 2 ? k.phase3At : -1;
+      if (e.hp <= e.maxHp * at) {
+        setAi(e, 'roar');
+        e.tele.shape = 'none';
+        delete e.chain;
+        state.events.push({ kind: 'roar', enemyId: e.id, phase: e.phase + 1, king: true });
+        break;
       }
-      e.yaw = turnToward(e.yaw, toTarget, k.turnRateDeg * DEG * edt);
+      if (dist > k.stringRange - 0.6) {
+        want.x = (gx / gd) * speed;
+        want.z = (gz / gd) * speed;
+      }
+      e.yaw = turnToward(e.yaw, toTarget, k.turnRateDeg * DEG * edt * speed);
       if (e.cooldown > 0) break;
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       const facing = Math.abs(wrapAngle(toTarget - e.yaw)) < 40 * DEG;
-      if (sameLevel && facing && dist <= k.stringRange) {
+      const standing = state.players.filter((p) => p.mode !== 'down' && Math.hypot(p.x - e.x, p.z - e.z) <= k.circlesRange && Math.abs(p.y - e.y) < LEVEL_GAP);
+      if (e.phase >= 2 && standing.length > 0 && nextRandom(state) < k.circlesChance) {
+        // Phase 2 on (G4b): a violet circle under every hero at once, so the party must all move.
+        e.attack = 'circles';
+        delete e.chain;
+        e.circles = standing.map((p) => ({ x: p.x, z: p.z }));
+        setAi(e, 'chant');
+        e.tele = { shape: 'circle', x: e.circles[0].x, z: e.circles[0].z, radius: k.circlesRadius, yaw: 0, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (e.phase >= 3 && sameLevel && dist <= k.sweepRadius && nextRandom(state) < k.sweepChance) {
+        // Phase 3: the crown swept round him at arm's length, a wide yellow arc.
+        e.attack = 'crownSweep';
+        delete e.chain;
+        setAi(e, 'sweepWindup');
+        e.tele = { shape: 'cone', x: e.x, z: e.z, radius: k.sweepRadius, yaw: e.yaw, arcDeg: k.sweepArcDeg };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (sameLevel && facing && dist <= k.stringRange) {
         e.attack = 'string';
         e.chain = 0;
         setAi(e, 'windup');
@@ -1055,7 +1098,7 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
       break;
     }
     case 'windup': {
-      const ms = e.chain ? k.stringNextMs : k.stringTelegraphMs;
+      const ms = (e.chain ? k.stringNextMs : k.stringTelegraphMs) * teleScale;
       if (e.aiTime < (ms / 1000) * 0.5) {
         e.yaw = turnToward(e.yaw, toTarget, k.turnRateDeg * DEG * edt);
         setStringTele(e);
@@ -1091,11 +1134,11 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
       }
       break;
     case 'chargeWindup':
-      if (e.aiTime < (k.crownTelegraphMs / 1000) * 0.5) {
+      if (e.aiTime < (k.crownTelegraphMs / 1000) * teleScale * 0.5) {
         e.yaw = turnToward(e.yaw, toTarget, k.turnRateDeg * DEG * edt);
         setCrownTele(world, e);
       }
-      if (e.aiTime >= k.crownTelegraphMs / 1000) {
+      if (e.aiTime >= (k.crownTelegraphMs / 1000) * teleScale) {
         setAi(e, 'charge');
         e.crown = { d: 0, length: e.tele.radius, back: false, struck: [] };
         state.events.push({ kind: 'enemySwing', enemyId: e.id });
@@ -1127,6 +1170,53 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
       }
       break;
     }
+    case 'chant': {
+      // The circles stay where they were cast; they land after the channel and the lag grace, as a
+      // Wraith's does, so a step out that was on time on the player's screen counts.
+      if (e.aiTime >= k.circlesChannelMs / 1000 + tuning.coop.lagGraceMs / 1000) {
+        for (const c of e.circles ?? []) {
+          let caught = 0;
+          for (const p of state.players) {
+            if (tuning.debug.passiveEnemies || p.mode === 'down' || Math.hypot(p.x - c.x, p.z - c.z) > k.circlesRadius) continue;
+            if (heroInvulnerable(p) || clearsLow(p, e.y)) continue;
+            hurtHero(state, p, { damage: hitDamage(e, k.circlesDamage), fromX: c.x, fromZ: c.z, enemyId: e.id, late: true });
+            chillHero(state, p);
+            caught++;
+          }
+          state.events.push({ kind: 'circleLanded', enemyId: e.id, x: c.x, z: c.z, caught });
+        }
+        delete e.circles;
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = k.circlesRecoveryMs / 1000;
+      }
+      break;
+    }
+    case 'sweepWindup':
+      if (e.aiTime < (k.sweepTelegraphMs / 1000) * teleScale * 0.5) {
+        e.yaw = turnToward(e.yaw, toTarget, k.turnRateDeg * DEG * edt);
+        e.tele.x = e.x;
+        e.tele.z = e.z;
+        e.tele.yaw = e.yaw;
+      }
+      if (e.aiTime >= (k.sweepTelegraphMs / 1000) * teleScale) {
+        setAi(e, 'sweep');
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        if (!tuning.debug.passiveEnemies) {
+          const t = e.tele;
+          for (const p of heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y)) {
+            hurtHero(state, p, { damage: hitDamage(e, k.sweepDamage), push: k.knockbackDealt, fromX: e.x, fromZ: e.z, enemyId: e.id });
+          }
+        }
+      }
+      break;
+    case 'sweep':
+      if (e.aiTime >= k.sweepActiveMs / 1000) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = k.sweepRecoveryMs / 1000;
+      }
+      break;
   }
   return want;
 }
@@ -1237,7 +1327,7 @@ function attackCooldown(e: EnemyState): number {
     case 'warden':
       return wardenPace(e).cooldownMs / 1000;
     case 'king':
-      return tuning.king.cooldownMs / 1000;
+      return kingPace(e).cooldownMs / 1000;
   }
 }
 

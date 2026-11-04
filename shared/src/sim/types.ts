@@ -277,6 +277,8 @@ export interface EnemyState {
    * and the heroes it has struck this way (each once out and once back). Absent unless thrown.
    */
   crown?: { d: number; length: number; back: boolean; struck: string[] };
+  /** The Hollow King's violet circles (G4b, phase 2): one under each hero standing as he cast. */
+  circles?: { x: number; z: number }[];
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;
@@ -427,7 +429,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }

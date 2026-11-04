@@ -1041,6 +1041,8 @@ export class Game {
     }
     if (this.room instanceof VillageView) this.room.setEye(this.cam.camera.position);
     this.room.update(realDt, this.presentTime, this.cam.occluders, world.run.gateClosed);
+    // The Hollow King's last phase dims the hall (G4b) until he falls.
+    this.gfx.setDimmed(world.enemies.some((e) => e.kind === 'king' && e.phase >= 3 && e.ai !== 'dead'), realDt);
     if (draw) this.gfx.render();
     this.crt.update();
     this.music.setMood(Game.moodFor(world));

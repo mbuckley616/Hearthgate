@@ -103,4 +103,74 @@ describe('the Hollow King (G4b)', () => {
     stepEnemies(s, DT, world);
     expect(k.crown).toBeUndefined();
   });
+
+  it('at 60% roars and two Barrow Knights rise round the hall', () => {
+    const { s, k } = scene(12);
+    k.hp = k.maxHp * 0.59;
+    stepEnemies(s, DT, world);
+    expect(k.ai).toBe('roar');
+    expect(s.events.find((e) => e.kind === 'roar')).toEqual({ kind: 'roar', enemyId: k.id, phase: 2, king: true });
+    stepUntil(s, () => k.ai !== 'roar');
+    expect(k.phase).toBe(2);
+    const knights = s.enemies.filter((e) => e.kind === 'knight');
+    expect(knights).toHaveLength(2);
+    for (const n of knights) expect(Math.hypot(n.x - k.x, n.z - k.z)).toBeGreaterThan(2.4);
+  });
+
+  it('from phase 2 puts a violet circle under every hero, which Chills and hurts whoever stays', () => {
+    const { s, p, k } = scene(12);
+    const q = addPlayer(s, world, 'p2', loadout, false);
+    Object.assign(q, { x: 6, z: 8, mode: 'move', invulnTime: 0, invulnerable: false, lagGrace: 0, hp: 1000, maxHp: 1000 });
+    Object.assign(k, { phase: 2 });
+    tuning.king.circlesChance = 1;
+    try {
+      stepUntil(s, () => k.ai === 'chant');
+      expect(k.attack).toBe('circles');
+      expect(telegraphColour(k)).toBe('magic');
+      expect(k.circles).toEqual([
+        { x: p.x, z: p.z },
+        { x: q.x, z: q.z },
+      ]);
+      // One steps out in time; the other stays.
+      q.x += tuning.king.circlesRadius + 1;
+      stepUntil(s, () => k.ai !== 'chant');
+    } finally {
+      tuning.king.circlesChance = 0.3;
+    }
+    expect(p.chill).toBeGreaterThan(0);
+    expect(p.hp).toBeLessThan(1000);
+    expect(q.chill).toBeUndefined();
+    expect(q.hp).toBe(1000);
+    expect(s.events.filter((e) => e.kind === 'circleLanded').map((e) => (e as { caught: number }).caught)).toEqual([1, 0]);
+    expect(k.circles).toBeUndefined();
+  });
+
+  it('at 30% roars again: quicker, and his crown sweeps a wide yellow arc that a hero behind it is outside', () => {
+    const { s, p, k } = scene(5);
+    Object.assign(k, { phase: 2, hp: k.maxHp * 0.29 });
+    stepEnemies(s, DT, world);
+    expect(s.events.find((e) => e.kind === 'roar')).toMatchObject({ phase: 3, king: true });
+    stepUntil(s, () => k.ai !== 'roar');
+    expect(k.phase).toBe(3);
+    tuning.king.sweepChance = 1;
+    const circles = tuning.king.circlesChance;
+    tuning.king.circlesChance = 0;
+    try {
+      stepUntil(s, () => k.ai === 'sweepWindup');
+      expect(k.attack).toBe('crownSweep');
+      expect(k.tele).toMatchObject({ shape: 'cone', radius: tuning.king.sweepRadius, arcDeg: tuning.king.sweepArcDeg });
+      expect(telegraphColour(k)).toBe('projectile');
+      let ticks = 0;
+      stepUntil(s, () => {
+        ticks++;
+        return k.ai !== 'sweepWindup';
+      });
+      // Wound up at phase 3's pace, a quarter quicker than its full telegraph.
+      expect(Math.abs(ticks - (tuning.king.sweepTelegraphMs * tuning.king.phase3TelegraphScale) / 1000 / DT)).toBeLessThanOrEqual(2);
+      expect(p.hp).toBeLessThan(1000);
+    } finally {
+      tuning.king.sweepChance = 0.4;
+      tuning.king.circlesChance = circles;
+    }
+  });
 });

@@ -53,7 +53,7 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   if (e.armour) return 'heavy';
   const role = roleOf(e.kind);
   // The Hollow King (G4b): his sword string a strike, his thrown crown yellow.
-  if (e.kind === 'king') return e.attack === 'crown' ? 'projectile' : 'strike';
+  if (e.kind === 'king') return e.attack === 'circles' ? 'magic' : e.attack === 'crown' || e.attack === 'crownSweep' ? 'projectile' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }

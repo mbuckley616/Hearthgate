@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
+import { kingPace } from '@hearthgate/shared/sim/enemies';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
   DEG,
@@ -582,9 +583,18 @@ export class EnemyView {
     if (this.flying) {
       // The King wears his crown except while it flies; in flight it spins along its line.
       const c = curr.crown && curr.ai === 'charge' ? curr.crown : null;
-      this.crown.visible = !c;
-      this.flying.visible = !!c;
-      if (c) {
+      // Phase 3's sweep (G4b): the crown flies round him at the arc's edge, across it as the cut lands.
+      const sweeping = curr.ai === 'sweep' && curr.tele.shape === 'cone';
+      this.crown.visible = !c && !sweeping;
+      this.flying.visible = !!c || sweeping;
+      if (sweeping) {
+        const k = tuning.king;
+        const a = curr.tele.yaw + ((Math.min(1, curr.aiTime / (k.sweepActiveMs / 1000)) - 0.5) * curr.tele.arcDeg * Math.PI) / 180;
+        const wx = Math.sin(a) * curr.tele.radius * 0.85;
+        const wz = Math.cos(a) * curr.tele.radius * 0.85;
+        this.flying.position.set(wx * Math.cos(yaw) - wz * Math.sin(yaw), 1.4, wx * Math.sin(yaw) + wz * Math.cos(yaw));
+        this.flying.rotation.y += dt * 18;
+      } else if (c) {
         const p = prev.crown && prev.ai === 'charge' ? prev.crown.d : c.d;
         const d = p + (c.d - p) * alpha;
         const wx = Math.sin(curr.tele.yaw) * d;
@@ -793,6 +803,12 @@ export class EnemyView {
             return into(this.from, P.throwWind, t / ((k.crownTelegraphMs / 1000) * 0.6));
           case 'charge':
             return into(P.throwWind, P.throw, t / 0.12, easeOut);
+          case 'chant':
+            return into(this.from, P.throwWind, t / 0.4);
+          case 'sweepWindup':
+            return into(this.from, P.throwWind, t / ((k.sweepTelegraphMs / 1000) * 0.6));
+          case 'sweep':
+            return into(P.throwWind, P.throw, t / (k.sweepActiveMs / 1000), easeOut);
         }
         break;
       }
@@ -877,20 +893,22 @@ export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
   switch (e.ai) {
     case 'windup':
-      if (e.kind === 'king') return clamp01(t / ((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) / 1000));
+      if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
-      if (e.kind === 'king') return clamp01(t / (tuning.king.crownTelegraphMs / 1000));
+      if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
+      if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;
     case 'sweepWindup':
+      if (e.kind === 'king') return clamp01(t / ((tuning.king.sweepTelegraphMs * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((tuning.warden.sweepTelegraphMs / 1000) * wardenScale(e)));
     case 'roar':
       return 1;

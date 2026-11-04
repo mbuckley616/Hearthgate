@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 108, the Hollow King's second and third phases (G4b)
+
+**What changed**
+
+The rest of Michael's A for the Hollow Crown's boss. Each phase now asks for something new: a dodge, then a split party, then reading a wide sweep in the dark.
+- **Phase 2, at 60%.** He roars ("The King calls his knights") and two Barrow Knights rise round the hall (`raiseFromEdges` now takes a kind and a radius; the Warden's call is unchanged). From then on, about three turns in ten (`king.circlesChance`) he puts a violet circle (1.8 m) under every standing hero at once. Each circle lands 1.4 s later, after the lag grace, for 14 damage and a Chill, so the whole party has to move. A dodge or a high enough jump slips it, as with the Wraith's. Each circle is heard landing (`circleLanded`), and `TelegraphView` draws the extra circles beside his own telegraph.
+- **Phase 3, at 30%.** He roars again ("The hall goes dark"). The hall dims to 60% of its exposure over 1.5 s (`look.kingDim`, `kingDimS`, browser only) until he falls. His wind-ups take 0.75 of their time, he moves 1.3x faster, and his cooldown is 500 ms. Within 7.5 m, four turns in ten, his crown sweeps a 240-degree yellow arc round him (22 damage, `crownSweep`), drawn as the crown flying across the arc's edge.
+- **Panel.** Every new number is in `tuning.king` with a range.
+
+**Learned**
+
+The King's circles hit through `hurtHero` with `late: true`. They already waited out the lag grace before landing, so a second grace would let a hero who was caught step out after the fact. Circles that are cast fade if he is staggered mid-channel, just as a thrown crown is dropped.
+
+`king.test.ts` (9, was 6): at 60% the roar names phase 2 and two Knights rise away from him; the circles go under both heroes, are violet, Chill and hurt the one who stayed and spare the one who stepped out (`caught` 1 then 0); at 30% the roar names phase 3, and the yellow 240-degree sweep winds up at 0.75 pace and hits. check 357, parity identical, test:net all passed, the client builds. None of it seen in a browser yet: the dim, the extra circles and the sweeping crown are the things to look at.
+
+**Next**
+
+G4b is built; it needs a look in a browser, at the end of the Hollow Crown (5 floors on Hard) or through a hand-built floor with `?floor&hand=` and story set. Then G5's collapsing tile, as Michael's B.
+
 ## 2026-11-04: Session 107, the Hollow King, phase one (G4b part one)
 
 **What changed**
