@@ -1,11 +1,21 @@
 import * as THREE from 'three';
 import { groundHeight, type World } from '@hearthgate/shared/level/arena';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
+import { telegraphColour, type TelegraphColour } from '@hearthgate/shared/sim/roles';
 import { windupProgress } from './EnemyView';
 
 const DANGER = 0xff3a22;
-/** Orange: an attack that will come out whatever is done to its maker (G1's armour after a stagger). */
-const HEAVY = 0xff8a1a;
+/**
+ * The colour language (E1a; Michael, 29 Oct), the same in every dungeon: red a strike, orange heavy or
+ * unblockable (a slam, or anything from an enemy armoured after a stagger), yellow a projectile or a
+ * charge, violet magic or a state.
+ */
+const COLOURS: Record<TelegraphColour, number> = {
+  strike: DANGER,
+  heavy: 0xff8a1a,
+  projectile: 0xffd23a,
+  magic: 0xb05cff,
+};
 
 interface Marker {
   shape: string;
@@ -56,7 +66,7 @@ export class TelegraphView {
         this.group.add(m.group);
       }
       const progress = windupProgress(e);
-      const colour = e.armour ? HEAVY : DANGER;
+      const colour = COLOURS[telegraphColour(e)];
       (m.fill.material as THREE.MeshBasicMaterial).color.setHex(colour);
       (m.outline.material as THREE.MeshBasicMaterial).color.setHex(colour);
       const pulse = 0.85 + 0.15 * Math.sin(time * 14);

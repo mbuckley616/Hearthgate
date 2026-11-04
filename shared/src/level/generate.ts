@@ -1,5 +1,6 @@
 import type { HandFloor } from './handmade';
 import { CELL, KIT, OPPOSITE, SIDE_DIR, rotSide, rotSize, rotSocket, type PieceKind, type Side } from './kit';
+import type { DungeonType } from './dungeonTypes';
 
 /**
  * The dungeon generator (T4). A floor grows from its entrance by fitting kit pieces (kit.ts) to
@@ -28,6 +29,8 @@ export interface FloorSpec {
   story?: string;
   /** The run's twist (P8): Cursed or Haunted. */
   modifier?: 'cursed' | 'haunted';
+  /** The run's dungeon type (E1a): its name and its roster, never its layout. The Haunted Crypt when absent. */
+  type?: DungeonType;
 }
 
 export interface PlacedSocket {

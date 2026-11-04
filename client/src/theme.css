@@ -1521,8 +1521,7 @@ body.on-title .run-banner {
   cursor: pointer;
 }
 
-.portal-opts,
-.portal-themes {
+.portal-opts {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1532,8 +1531,7 @@ body.on-title .run-banner {
   padding: 4px 14px;
 }
 
-.portal-opt small,
-.portal-theme small {
+.portal-opt small {
   display: block;
   color: #a8a2b0;
   font-size: 11px;
@@ -1545,21 +1543,17 @@ body.on-title .run-banner {
   color: #fff4dc;
 }
 
-.portal-opt.locked,
-.portal-theme.locked {
+.portal-opt.locked {
   opacity: 0.45;
 }
 
-.portal-theme {
-  min-width: 84px;
-  padding: 8px 10px;
-  text-align: center;
-  border: 1px solid #3a2858;
-  background: rgba(20, 12, 34, 0.9);
+.portal-type.locked {
+  cursor: not-allowed;
 }
 
-.portal-theme.on {
-  border-color: #b58aff;
+.portal-type {
+  min-width: 132px;
+  text-align: left;
 }
 
 @media (max-width: 760px) {

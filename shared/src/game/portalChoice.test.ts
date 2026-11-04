@@ -17,12 +17,12 @@ describe("Keeper Wren's portal menu (P7)", () => {
   it('takes a story id there is, or a random shape within the bounds', () => {
     expect(readPortalChoice({ kind: 'story', id: STORY[0].id })).toEqual({ kind: 'story', id: STORY[0].id });
     expect(readPortalChoice({ kind: 'story', id: 'atlantis' })).toBeNull();
-    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null })).toEqual({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null });
+    expect(readPortalChoice({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null })).toEqual({ kind: 'random', floors: 3, size: 'large', difficulty: 2, modifier: null, type: 'hauntedCrypt' });
     expect(readPortalChoice({ kind: 'random', floors: MAX_FLOORS + 1, size: 'large', difficulty: 2, modifier: null })).toBeNull();
     expect(readPortalChoice({ kind: 'random', floors: 3, size: 'huge', difficulty: 2, modifier: null })).toBeNull();
     expect(readPortalChoice({ kind: 'random', floors: 3, size: 'small', difficulty: 9, modifier: null })).toBeNull();
     expect(readToHost({ k: 'portal', choice: { kind: 'random', floors: 1, size: 'small', difficulty: 0, modifier: null } })).not.toBeNull();
-    expect(choiceLabel({ kind: 'random', floors: 1, size: 'small', difficulty: 0, modifier: null })).toBe('A small dungeon, 1 floor, Easy');
+    expect(choiceLabel({ kind: 'random', floors: 1, size: 'small', difficulty: 0, modifier: null })).toBe('A small Haunted Crypt, 1 floor, Easy');
   });
 
   it('plans a random run as shaped, and a story run as written, every floor carrying both', () => {

@@ -944,7 +944,7 @@ export class Game {
     // React to what happened.
     this.cameraFeel(events, localId);
     this.fx.handle(events, world);
-    this.sfx.handle(events, localId);
+    this.sfx.handle(events, localId, world);
     this.hud.handle(events, localId, world);
     this.runUi.handle(events);
     this.progress(events, realDt);

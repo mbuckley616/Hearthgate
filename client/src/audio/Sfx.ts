@@ -1,6 +1,7 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { entryOf, type GearItem } from '@hearthgate/shared/sim/catalogue';
-import type { SimEvent } from '@hearthgate/shared/sim/types';
+import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
+import { telegraphColour, type TelegraphColour } from '@hearthgate/shared/sim/roles';
 
 /**
  * Our own sound, synthesised with Web Audio (no recordings; Michael's call in
@@ -41,7 +42,7 @@ export class Sfx {
     return this.ctx;
   }
 
-  handle(events: SimEvent[], localId: string): void {
+  handle(events: SimEvent[], localId: string, world?: SimState): void {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running' || events.length === 0) return;
     this.master!.gain.value = tuning.hitFeel.sfxVolume * tuning.audio.masterVolume;
@@ -93,9 +94,12 @@ export class Sfx {
         case 'door':
           this.door(ev.playerId === localId ? 1 : 0.4);
           break;
-        case 'enemyTelegraph':
-          this.growl();
+        case 'enemyTelegraph': {
+          // A sound a colour (E1a), so a tell is heard as well as seen: the enemy as the drawn world has it.
+          const e = world?.enemies.find((en) => en.id === ev.enemyId);
+          this.tell(e ? telegraphColour(e) : 'strike');
           break;
+        }
         case 'enemySwing':
           this.swoosh(0.18, 900, 0.3);
           break;
@@ -404,5 +408,18 @@ export class Sfx {
 
   private growl(): void {
     this.tone('sawtooth', 120, 180, 0.3, 0.12, 0.05);
+  }
+
+  /** A telegraph's sound by its colour: the slice's growl for a strike, lower and longer for a heavy, a rising whistle for a projectile or charge, a shimmer for magic. */
+  private tell(colour: TelegraphColour): void {
+    if (colour === 'strike') this.growl();
+    else if (colour === 'heavy') {
+      this.tone('sawtooth', 70, 110, 0.5, 0.16, 0.08);
+      this.rumble(0.2);
+    } else if (colour === 'projectile') this.tone('triangle', 600, 1300, 0.28, 0.09, 0.02);
+    else {
+      this.tone('sine', 900, 1400, 0.45, 0.08, 0.1);
+      this.tone('sine', 1350, 2100, 0.45, 0.05, 0.12);
+    }
   }
 }
