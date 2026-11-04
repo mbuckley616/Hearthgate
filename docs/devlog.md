@@ -2,6 +2,66 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 109, collapsing floor tiles (G5, Michael's B)
+
+**What changed**
+
+G5's third trap, built to Michael's B (control room, 4 Nov). Of the fight rooms with neither lava nor spikes, about three in ten get two collapsing tiles: 1.5 tiles in 0.84 rooms a 24-piece floor, on 56 of 100 seeds. They are never in the boss's hall and never in a hall, where a hole could close the way. Each tile is 2 m, on open floor at least 5 m from a doorway and 5 m from the room's other tile, with a stride of floor all round it (`crumbleFor`, from the seed's own stream, so the generator, props and other traps are untouched). Spawn spots on them are dropped.
+- **Stepped on.** A hero (not a henchman) on their feet on a tile starts it shaking (`tileCracked`). It falls after `traps.crumbleShakeS` (0.6 s) plus the lag grace, so a step off that was on time on the player's screen counts.
+- **Falls.** A hero on it then loses `traps.crumbleHeroFrac` (25%) of their health and is put back a stride off its nearest edge. A hero high enough in the air (the jump's rule) or in a dodge's i-frames is only put back, and so is a henchman. An enemy on it is gone, so a pack lured onto it falls with it. `tileFell` counts who went.
+- **The hole stays.** `SimState.floor.fallen` lists it for the rest of the floor, and `floorWorldNow` adds its wall (`crumbleWalls`, made with the layout). Server, prediction and camera all read colliders from there, so nobody walks into it and prediction agrees. The room changes shape as it is fought.
+- **Seen and heard.** A pale slab a little proud of the floor. Through the shake it jitters harder and orange cracks (the colour language's heavy) brighten in it. Once fallen it is a black pit. A grind and crack as it gives, and a rumble as it goes.
+
+**Learned**
+
+`floorWorldNow` returned the prebuilt locked set while the floor's exit was shut and no fight was on, which would have dropped the holes. It now builds the set when there are holes, and still allocates nothing on a floor without them.
+
+`crumble.test.ts` (5): tiles only in fight rooms, clear of doorways and spawn spots, the same from the same seed; a hero on it starts the shake, it has not fallen at 0.6 s and has after the grace, a quarter of their health goes and they stand off the edge; a hero who stepped off in time is spared and a grunt left on it dies (`caught: 1`); the hole adds one collider, walking into it ends outside it, and it never shakes again; nothing with traps off. check 362, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B: room shapes and set pieces, one per builder session, then C (secrets and side rooms). The collapsing tile, the Hollow King and the Wraith all want a first look in a browser.
+
+## 2026-11-04: Session 108, the Hollow King's second and third phases (G4b)
+
+**What changed**
+
+The rest of Michael's A for the Hollow Crown's boss. Each phase now asks for something new: a dodge, then a split party, then reading a wide sweep in the dark.
+- **Phase 2, at 60%.** He roars ("The King calls his knights") and two Barrow Knights rise round the hall (`raiseFromEdges` now takes a kind and a radius; the Warden's call is unchanged). From then on, about three turns in ten (`king.circlesChance`) he puts a violet circle (1.8 m) under every standing hero at once. Each circle lands 1.4 s later, after the lag grace, for 14 damage and a Chill, so the whole party has to move. A dodge or a high enough jump slips it, as with the Wraith's. Each circle is heard landing (`circleLanded`), and `TelegraphView` draws the extra circles beside his own telegraph.
+- **Phase 3, at 30%.** He roars again ("The hall goes dark"). The hall dims to 60% of its exposure over 1.5 s (`look.kingDim`, `kingDimS`, browser only) until he falls. His wind-ups take 0.75 of their time, he moves 1.3x faster, and his cooldown is 500 ms. Within 7.5 m, four turns in ten, his crown sweeps a 240-degree yellow arc round him (22 damage, `crownSweep`), drawn as the crown flying across the arc's edge.
+- **Panel.** Every new number is in `tuning.king` with a range.
+
+**Learned**
+
+The King's circles hit through `hurtHero` with `late: true`. They already waited out the lag grace before landing, so a second grace would let a hero who was caught step out after the fact. Circles that are cast fade if he is staggered mid-channel, just as a thrown crown is dropped.
+
+`king.test.ts` (9, was 6): at 60% the roar names phase 2 and two Knights rise away from him; the circles go under both heroes, are violet, Chill and hurt the one who stayed and spare the one who stepped out (`caught` 1 then 0); at 30% the roar names phase 3, and the yellow 240-degree sweep winds up at 0.75 pace and hits. check 357, parity identical, test:net all passed, the client builds. None of it seen in a browser yet: the dim, the extra circles and the sweeping crown are the things to look at.
+
+**Next**
+
+G4b is built; it needs a look in a browser, at the end of the Hollow Crown (5 floors on Hard) or through a hand-built floor with `?floor&hand=` and story set. Then G5's collapsing tile, as Michael's B.
+
+## 2026-11-04: Session 107, the Hollow King, phase one (G4b part one)
+
+**What changed**
+
+Michael answered G4b on the control room (A, the Hollow King) and the collapsing tile (B, the hole stays for the floor); both answers reach this branch through the control room ahead of the producer's copy into decisions.md. This session is the King's first part.
+- **The kind.** `king`, a new `EnemyKind` in the boss role, "The Hollow King" in the Crypt. Its numbers are `tuning.king` (2400 health, 40 poise, a 1.6x figure), with panel ranges for the string, the crown and the cooldown. A boss keeps a brain of its own (`brainFor` picks `kingBrain` before the role's), so the Warden's is untouched.
+- **Where.** `bossOf(story)` in `floorRun.ts`: the Hollow Crown's last hall makes the King and every other run's the Warden, behind `king.hollowCrown`. The Hollow Crown's enemy list on Wren's card names him in the Warden's place, and the boss bar reads "The Hollow King".
+- **Phase 1.** Up close, a sword string of three cuts, each a red cone (3.8 m, 110 degrees, 16 damage) that turns with the hero for the first half of its wind-up, the first wound up 0.7 s and the next two 0.38 s. At 6 to 15 m with a clear line, his crown thrown down a yellow line that stops at a wall: 0.9 s to wind up, out and back at 16 m/s, striking each hero it passes once each way (20 damage). He stands still until it is back in his hand, and a stagger drops it.
+- **Boss rules follow the role, not the name.** The boss's drop spot, `bossDown` and the parry's poise cost (`parryWardenPoise`) now apply to any boss, so the King's fall banks the run as the Warden's does. The arena has only the Warden, so the parity hashes stay the same.
+- **Seen as.** A skeleton at 1.6x with a long blade and the gold crown the mini-bosses wear. The thrown crown is a copy drawn 1.8x larger, spinning along the line from the root (`EnemyView.flying`), with its own wind-up and throw poses.
+
+**Learned**
+
+The roles test asked every role for exactly one brain. Bosses now have one each, so the test says that.
+
+`king.test.ts`: the boss role, its own brain, a red string and a yellow crown; `bossOf` picks him for the Hollow Crown only, and the Warden comes back with the switch off; three swings up close hurt the hero in front; the crown flies out past 9 m and back while he stands still; a sidestep after the line locks takes no damage; a stagger drops the crown in flight. check 354 (was 348), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G4b part two: phase 2 at 60% (two Barrow Knights rise and violet circles under each hero) and phase 3 at 30% (the hall dims, faster, the crown sweeps an arc), each roar's banner naming its phase. Then G5's collapsing tile as Michael's B.
+
 ## 2026-11-04: Session 106, the Wraith's circle is heard landing (E1d polish)
 
 **What changed**

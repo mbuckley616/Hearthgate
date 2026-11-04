@@ -1,4 +1,4 @@
-import { tuning } from '../config/tuning';
+import { tuning, type EnemyKind } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
@@ -58,6 +58,10 @@ export interface FloorRunState {
   purse?: Purse;
   /** This floor has banked (the gold ring home or the Warden's fall): a second ring taken banks nothing. */
   home?: boolean;
+  /** Collapsing tiles (G5) a hero has stepped on, by index in the layout's `crumble`, and when: each falls `traps.crumbleShakeS` later. */
+  crumbling?: { id: number; at: number }[];
+  /** Tiles that have fallen: holes for the rest of the floor, walls to everyone (`floorWorldNow`). */
+  fallen?: number[];
 }
 
 /** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
@@ -111,9 +115,14 @@ export function clearsLeft(world: World, state: SimState): number {
 export function floorWorldNow(world: World, state: SimState): World {
   const room = state.floor?.room ?? -1;
   const fighting = state.run.gateClosed && room >= 0 && !!world.roomColliders;
-  const base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  let base = fighting ? world.roomColliders![room] : world.collidersOpen;
+  // A fallen tile's hole (G5) is a wall to everyone from then on, prediction and the camera included.
+  const fallen = state.floor?.fallen;
+  const walls = world.level.dungeon?.crumbleWalls;
+  const holes = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  if (holes.length) base = [...base, ...holes];
   if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
-    return { ...world, colliders: fighting ? [...base, ...world.exitGates] : world.collidersLocked! };
+    return { ...world, colliders: fighting || holes.length ? [...base, ...world.exitGates] : world.collidersLocked! };
   }
   return { ...world, colliders: base };
 }
@@ -350,6 +359,14 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
   }
 }
 
+/**
+ * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, the Warden for every
+ * other dungeon until its type's roster brings one.
+ */
+export function bossOf(story: string | undefined): EnemyKind {
+  return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
+}
+
 function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const r = state.run;
   const f = state.floor!;
@@ -362,7 +379,7 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const boss = room.kind === 'boss';
   if (boss) {
     const c = { x: (room.inner.minX + room.inner.maxX) / 2, z: (room.inner.minZ + room.inner.maxZ) / 2 };
-    const e = createEnemy(state, world, 'warden', c.x, c.z, 0);
+    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story), c.x, c.z, 0);
     r.bossId = e.id;
     r.waveSize = 1;
   } else {

@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-04: G5's B, which room shapes and set pieces first (builder, Session 109)
+G5's traps are built (spikes, swinging blades, collapsing tiles, your B). Next is B, "room shapes and set pieces", but nothing yet says which. Today a floor's fight rooms are eight rectangles of different sizes, some with pillars, braziers or a lava strip.
+- **A.** New room shapes in the kit: an L-shaped room, a round chamber, and a long gallery with side alcoves. Each changes how a fight moves, and the generator joins them as it joins the rest.
+- **B.** Set pieces inside the rooms we have, placed from the seed: rows of sarcophagi that give cover from bows and Wraiths, a raised dais ringed by a sunken floor, and a fallen ceiling that leaves an island of rubble.
+- **C.** One of each kind a session, alternating: the sarcophagus rows first (the Crypt's look, and cover changes how ranged enemies fight), then the round chamber, then the dais, then the L-room. *(recommended: every session adds something a player sees at once, and the Crypt's ranged roster gets a counter first)*
+
 ## Answered
 
 ### 2026-11-04: G5's B, which room shapes and set pieces first (builder, Session 109)

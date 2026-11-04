@@ -3,7 +3,8 @@ import type { Collider } from './geometry';
 import { generateFloor, pieceBounds, type FloorDef, type FloorSpec, type Piece } from './generate';
 import { checkDungeon } from './handmade';
 import { lavaFor, type LavaStrip } from './lava';
-import { bladesFor, spikesFor, SPIKE_SIZE, type BladeTrap, type SpikeTile } from './traps';
+import { bladesFor, crumbleCollider, crumbleFor, CRUMBLE_SIZE, spikesFor, SPIKE_SIZE, type BladeTrap, type CrumbleTile, type SpikeTile } from './traps';
+import type { BoxCollider } from './geometry';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -71,6 +72,9 @@ export interface FloorLayout {
   spikes: SpikeTile[];
   /** Swinging blades in some halls (G5). */
   blades: BladeTrap[];
+  /** Collapsing tiles in some fight rooms (G5), and each one's hole as a wall once it has fallen. */
+  crumble: CrumbleTile[];
+  crumbleWalls: BoxCollider[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -132,6 +136,13 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     room.spots = room.spots.filter((sp) => Math.abs(sp.x - t.x) > SPIKE_SIZE / 2 + 0.6 || Math.abs(sp.z - t.z) > SPIKE_SIZE / 2 + 0.6);
   }
   const blades = bladesFor(def, pieces, spikes);
+  const crumble = crumbleFor(def, pieces, lava, spikes);
+  // Nobody wakes on a tile that will fall.
+  for (const t of crumble) {
+    const room = pieces[t.piece];
+    room.spots = room.spots.filter((sp) => Math.abs(sp.x - t.x) > CRUMBLE_SIZE / 2 + 0.6 || Math.abs(sp.z - t.z) > CRUMBLE_SIZE / 2 + 0.6);
+  }
+  const crumbleWalls = crumble.map(crumbleCollider);
   const props: PropInfo[] = [];
   for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes);
   const bounds = {
@@ -163,7 +174,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls },
   };
 }
 

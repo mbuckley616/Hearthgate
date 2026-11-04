@@ -304,11 +304,12 @@ function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): voi
   clearTelegraph(e);
   // Drops appear where the last enemy fell; the Warden's spot wins once it's down.
   const r = state.run;
-  if (!r.bossDown || e.kind === 'warden') {
+  const boss = roleOf(e.kind) === 'boss';
+  if (!r.bossDown || boss) {
     r.dropX = e.x;
     r.dropZ = e.z;
   }
-  if (e.kind === 'warden') r.bossDown = true;
+  if (boss) r.bossDown = true;
 }
 
 /**
@@ -391,7 +392,7 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
     e.lastHitAt = state.time;
     if (e.armour) {
       // Armoured after a stagger (G1): the parry stops the blow, but the attack goes on.
-    } else if (e.kind === 'warden') {
+    } else if (roleOf(e.kind) === 'boss') {
       e.poise -= g.parryWardenPoise;
       if (e.poise <= 0 && e.ai !== 'roar') staggerEnemy(state, e);
     } else if (e.ai !== 'stagger') {

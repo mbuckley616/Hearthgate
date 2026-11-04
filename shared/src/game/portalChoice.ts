@@ -121,7 +121,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'The Hollow Crown',
     levels: [10, 16],
     blurb: 'A sunken keep where a warden still keeps watch over a throne no one sits on. Five floors down, and every one guarded.',
-    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'priest', 'knight', 'brute', 'warden'],
+    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'priest', 'knight', 'brute', 'king'],
     type: 'hauntedCrypt',
     rewards: ['weapon', 'neck', 'cape'],
     run: { seed: 5404, floors: 5, size: 'large', difficulty: 2 },

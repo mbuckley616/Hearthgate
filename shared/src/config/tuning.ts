@@ -726,6 +726,10 @@ export const tuning = {
     bladeEnemyDamage: 40,
     /** Metres it throws an enemy it meets, the way it swings. */
     bladePush: 3,
+    /** A collapsing tile (G5, Michael's B): it shakes this long once stepped on (the lag grace is added), then falls for good. */
+    crumbleShakeS: 0.6,
+    /** A hero's share of max health a fall takes. */
+    crumbleHeroFrac: 0.25,
   },
 
   lava: {
@@ -1080,6 +1084,77 @@ export const tuning = {
     spawnMs: 1500,
     deathMs: 3000,
     knockbackTaken: 0.1,
+  },
+
+  /**
+   * The Hollow King (G4b; Michael's A, 4 Nov): the Hollow Crown's own boss, in place of the Warden at
+   * the end of its run. Phase 1 is a three-step sword string (red cones) up close and, at range, his
+   * crown thrown along a yellow line, out and back, striking each hero it passes once a way. Phases 2
+   * and 3 (Barrow Knights and violet circles; a dimmed hall and a sweeping crown) come next.
+   */
+  king: {
+    /** He ends the Hollow Crown's run; off, the Warden does, as before G4b. */
+    hollowCrown: true,
+    maxHp: 2400,
+    maxPoise: 40,
+    radius: 0.8,
+    height: 2.7,
+    moveSpeed: 2.8,
+    turnRateDeg: 170,
+    /** The sword string: `stringSteps` cones, the first telegraphed `stringTelegraphMs`, each after `stringNextMs`. */
+    stringRange: 3.4,
+    stringReach: 3.8,
+    stringArcDeg: 110,
+    stringSteps: 3,
+    stringTelegraphMs: 700,
+    stringNextMs: 380,
+    stringActiveMs: 160,
+    stringDamage: 16,
+    stringRecoveryMs: 800,
+    /** The thrown crown: from `crownMinRange`, along a line `crownRange` long, at `crownSpeed`, `crownRadius` wide. */
+    crownMinRange: 6,
+    crownRange: 15,
+    crownTelegraphMs: 900,
+    crownSpeed: 16,
+    crownRadius: 0.9,
+    crownDamage: 20,
+    crownPush: 1.5,
+    crownRecoveryMs: 600,
+    cooldownMs: 1000,
+    /**
+     * Phase 2 at `phase2At` of his health: a roar raises `knights` Barrow Knights round the hall, and
+     * from then on some of his turns (`circlesChance`) put a violet circle under every hero standing,
+     * landing after `circlesChannelMs` (and the lag grace) for `circlesDamage` and a Chill.
+     */
+    phase2At: 0.6,
+    phase3At: 0.3,
+    roarMs: 1600,
+    knights: 2,
+    raiseRadius: 8,
+    circlesChance: 0.3,
+    circlesRange: 18,
+    circlesRadius: 1.8,
+    circlesChannelMs: 1400,
+    circlesDamage: 14,
+    circlesRecoveryMs: 700,
+    /**
+     * Phase 3 at `phase3At`: the hall dims (in the browser, `kingDim` of the exposure), he is quicker
+     * (`phase3*`), and his crown can sweep a wide arc round him (`sweep*`, yellow) instead of a cut.
+     */
+    phase3TelegraphScale: 0.75,
+    phase3SpeedScale: 1.3,
+    phase3CooldownMs: 500,
+    sweepChance: 0.4,
+    sweepRadius: 7.5,
+    sweepArcDeg: 240,
+    sweepTelegraphMs: 1000,
+    sweepActiveMs: 240,
+    sweepDamage: 22,
+    sweepRecoveryMs: 800,
+    knockbackDealt: 1.2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.15,
   },
 
   /**
@@ -1855,6 +1930,9 @@ export const tuning = {
    */
   look: {
     exposure: 1.35,
+    /** How far the Hollow King's third phase dims the hall (G4b): this share of the exposure, eased in over `kingDimS`. */
+    kingDim: 0.4,
+    kingDimS: 1.5,
     /** A Chilled hero's frost shell (E1d): its brightest, and the seconds it fades in and out over. */
     chillTint: 0.3,
     chillTintFadeS: 0.35,
@@ -2474,6 +2552,29 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'knight.chargeDamage': [0, 80, 1],
   'knight.wallStunMs': [0, 6000, 100],
   'wraith.maxHp': [5, 600, 5],
+  'king.maxHp': [100, 8000, 50],
+  'king.stringTelegraphMs': [100, 2000, 10],
+  'king.stringNextMs': [50, 1500, 10],
+  'king.stringDamage': [0, 80, 1],
+  'king.crownMinRange': [2, 20, 0.5],
+  'king.crownRange': [4, 30, 0.5],
+  'king.crownTelegraphMs': [100, 3000, 50],
+  'king.crownSpeed': [2, 40, 0.5],
+  'king.crownDamage': [0, 80, 1],
+  'king.cooldownMs': [0, 5000, 50],
+  'king.phase2At': [0, 1, 0.05],
+  'king.phase3At': [0, 1, 0.05],
+  'king.knights': [0, 4, 1],
+  'king.circlesChance': [0, 1, 0.05],
+  'king.circlesRadius': [0.5, 5, 0.1],
+  'king.circlesChannelMs': [200, 4000, 50],
+  'king.circlesDamage': [0, 80, 1],
+  'king.phase3SpeedScale': [1, 2, 0.05],
+  'king.phase3TelegraphScale': [0.3, 1, 0.05],
+  'king.sweepChance': [0, 1, 0.05],
+  'king.sweepRadius': [2, 14, 0.5],
+  'king.sweepArcDeg': [60, 360, 10],
+  'king.sweepDamage': [0, 80, 1],
   'wraith.keepDistance': [2, 20, 0.5],
   'wraith.castRange': [2, 30, 0.5],
   'wraith.circleRadius': [0.5, 5, 0.1],
@@ -2737,6 +2838,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'input.resetConfirmSec': [0.5, 5, 0.1],
 
   'look.exposure': [0.2, 3, 0.01],
+  'look.kingDim': [0, 0.9, 0.05],
+  'traps.crumbleShakeS': [0.1, 3, 0.05],
+  'traps.crumbleHeroFrac': [0, 1, 0.05],
+  'look.kingDimS': [0, 5, 0.1],
   'look.chillTint': [0, 1, 0.01],
   'look.chillTintFadeS': [0, 1.5, 0.05],
   'look.exitLabelRange': [4, 40, 1],
@@ -2968,7 +3073,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
