@@ -7,12 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-04: G4, which bosses first, and what a mini-boss is (builder, Session 97)
 Michael, 2 Nov: "we also at least need 1 unique boss for every story dungeon, and maybe a few mini bosses / special bosses." Today every run, all five story dungeons included, ends at the Warden, who now has three phases (E1g). All five story dungeons are Haunted Crypts for now (11-03, A), so a new boss is another of the dead. Two things to decide: how many bosses first, and what a mini-boss is.
 - **A.** One new Crypt boss now, for the Hollow Crown (the last story dungeon), and the Warden stays the others' boss until their own types' rosters exist. Mini-bosses are named elites: a Barrow Knight or Brute with a name, a crown and more health, at most one a floor, guarding the rest room's door. *(recommended: one boss done properly teaches what a boss needs, and a named elite costs a figure and a few numbers, not a brain)*
 - **B.** A boss for each of the five now, all dead things (a drowned captain for the Saltmarsh, a smith's ghost for Emberhall, and so on), each with two phases. Mini-bosses as in A.
 - **C.** As A, but a mini-boss is a room of its own: a small arena on deeper floors, with a sealed door and a named elite plus its pack, and a drop of its own.
 - **D.** Bosses wait for each dungeon type's roster (E1i and after). Only the mini-bosses now, as in A.
+Michael: **A, one new Crypt boss (Hollow Crown); named elites**. (2026-11-04, on the control room)
 
 ### 2026-11-04: G5, which dungeon features first (builder, Session 97)
 Michael, 2 Nov: the procedural floors "already are starting to feel a little dry and repetitive." Enemy types are E1 (the Crypt's roster is built bar the Wraith), and the styles are the dungeon types. What is missing is features: nothing on the floor but walls, ramps, props and lava (D6). Which first?
@@ -20,6 +23,7 @@ Michael, 2 Nov: the procedural floors "already are starting to feel a little dry
 - **B.** Room shapes and set pieces: a crypt with sarcophagi that open as the fight starts, a bridge over a pit, a flooded hall that slows everyone, a ring of pillars round a raised dais.
 - **C.** Secrets and side rooms: a cracked wall a heavy breaks open to a treasure closet, a lever that opens a locked vault, a shrine that blesses the party for the floor.
 - **D.** A, then B, then C, one each per builder session in that order.
+Michael: **D, A then B then C, one per builder session**. (2026-11-04, on the control room)
 
 ### 2026-11-04: What does Chill do to a hero? (builder, Session 93, E1d)
 E1d's Wraith channels a violet circle at a hero's feet that "Chills whoever stands in it when it lands" (decisions.md, 29 Oct, "E1, the enemy design pass"). The design doc defines Chilled only on enemies (a setup that Shatter consumes); nothing says what it does to a hero, and no hero state exists yet (the ten states are in the builds pass, still **(design)**). Options:
@@ -27,8 +31,7 @@ E1d's Wraith channels a violet circle at a hero's feet that "Chills whoever stan
 - **B.** As A, and attacks and dodges also play 20% slower for the 3 s, so a Chilled hero fights badly as well as moves badly.
 - **C.** Stacking: one Chill is A; a second within 3 s freezes the hero solid for 1 s (no i-frames), which makes two Wraiths a real threat.
 - **D.** A hit, not a state: the circle deals magic damage and nothing lingers, until the builds pass designs hero states.
-
-## Answered
+Michael: **A, slowed 35% for 3 s, no sprint**. (2026-11-04, on the control room)
 
 ### 2026-11-03: Which story dungeon is which dungeon type? (deep-work session, E1a)
 E1a gives every run a dungeon type, shown on Wren's tab and over the ring. Only the Haunted Crypt has a roster, so every enemy today is a skeleton. Two of the five story dungeons are written as goblin places (The Old Cellar: "Goblins have found it first"; The Saltmarsh Warrens: "a goblin chief") and Emberhall is a dwarven hall, but all three fight skeletons.
