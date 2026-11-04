@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 93, the Crypt Hound (E1c)
+
+**What changed**
+
+The charger role's first enemy. `hound` is an `EnemyKind` dressed as the charger ("Crypt Hound"), with its numbers in `tuning.hound` and panel ranges for each.
+- **The rush.** It keeps 2.5 to 9 m from a hero, circling. With an attack token and a clear line of sight it winds up for 0.8 s and draws a yellow lane 11 m long along where it faces. For the first 60% of the windup the lane follows the hero, then it locks. Then it rushes the lane at 13 m/s, moving its body itself (faster than steering allows) and steering nothing. The first hero it meets takes 14, heavy, and is shoved 3.5 m (mode `hurt`); the rush ends there. A rush that meets nothing runs its 11 m and recovers.
+- **The wall.** If the rush is blocked (a wall, a pillar, a step up), the Hound is stunned: a stagger cut to `wallStunMs` (2.2 s), with the stagger's damage bonus and the dizzy stars. That is the punish window, so a sidestep after the lane locks is the answer, ideally with a wall behind you.
+- **The look.** A long, low dog skeleton: spine and ribs, four legs, a long skull with the burning eyes and a hanging jaw, a tail. It is built on the body, not on the biped rig, whose limbs are made and hidden so the shared update has something to pose. Its legs do not walk yet.
+- **Lines on the ground.** `TelegraphView` now draws a body's own line (the Hound's rush and the Shieldbearer's bash) as a lane on the ground about a body wide, widening as it fires. An archer's line is still the aim line at bow height.
+- **Where it appears.** Bigger rooms on generated floors may roll one or two (budget cost 2), with the same draws as before, so seeds build the same floors. It is named among the Saltmarsh Warrens' and the Hollow Crown's key enemies. The arena never spawns one, so parity is unchanged.
+
+**Learned**
+
+A stagger's length is `combat.staggerMs` for everyone. Starting the stagger with `aiTime` set to `staggerMs - wallStunMs` gives the wall stun its own length and reuses everything else the stagger does (poise refill, the views, the damage bonus) without a new state. The arena's middle has pillars, so a test rush is set up along the open edge.
+
+`hound.test.ts`: the role, the brain and the yellow tell; the windup draws a lane `chargeLength` long, and a hero standing in it takes `chargeDamage` and is staggered; a sidestep after the lock leaves the hero untouched and the Hound stunned against the wall for `wallStunMs`; a rush into open floor runs its length and recovers. check 312 (was 308), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1d, the Wraith (the caster), which needs Chill, its first state. Neither new figure has been seen in a browser yet (this box draws in software GL); the critic's next run should look at both, and the Hound's legs want a gait.
+
 ## 2026-11-04: Session 92, the Skeleton Shieldbearer (E1b)
 
 **What changed**

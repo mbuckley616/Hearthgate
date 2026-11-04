@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -70,6 +70,8 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
     slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
   },
+  // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
+  hound: { guard: BASE },
   // Bow in the left hand, string hand at the cheek when aiming.
   archer: {
     guard: pose(BASE, { handYaw: -30, handHeight: 0.05, handReach: 0.26, bladeYaw: 70, bladePitch: 65, offYaw: 55, offHeight: -0.02, offReach: 0.3, lean: 12 }),
@@ -160,6 +162,7 @@ export class EnemyView {
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
     else if (kind === 'brute') this.buildBrute(mat, mesh);
+    else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
     if (kind === 'shieldbearer' && this.shield) {
       // A tall shield that covers it from shin to skull, and a rusted helm: read as "not from the front".
@@ -183,6 +186,11 @@ export class EnemyView {
     }
     this.stars.visible = false;
     this.head.add(this.stars);
+    if (kind === 'hound') {
+      // Its skull is low and in front, not on the rig's neck.
+      this.body.add(this.stars);
+      this.stars.position.set(0, 1.0, 0.55);
+    }
 
     this.root.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = true;
@@ -345,6 +353,54 @@ export class EnemyView {
       this.shield = shield;
       this.chest.add(shield);
     }
+  }
+
+  /**
+   * The Crypt Hound (E1c): a long, low skeleton of a dog, built on the body rather than the biped rig
+   * (whose limbs are made and hidden, so the shared update has something to pose): spine and ribs,
+   * four legs, a long skull with the burning eyes, a jaw and a tail.
+   */
+  private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    const boneDark = mat(0x8f8266, { roughness: 0.8 });
+    const socket = new THREE.MeshBasicMaterial({ color: 0x0a0608 });
+    this.limbs(mat, mesh, 0xd6c9a8, 0x8f8266, 0x8f8266, 0.6);
+    for (const part of [...Object.values(this.arms), ...Object.values(this.legs)]) for (const m of Object.values(part)) m.visible = false;
+    const dog = new THREE.Group();
+    // Spine from haunch to shoulder, a ribcage hung under it.
+    const spine = mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.95, 6), boneDark, 0, 0.62, 0);
+    spine.rotation.x = Math.PI / 2;
+    dog.add(spine);
+    for (let i = 0; i < 4; i++) {
+      const rib = mesh(new THREE.TorusGeometry(0.15 - i * 0.015, 0.016, 5, 12, Math.PI * 1.4), bone, 0, 0.52, 0.22 - i * 0.1);
+      rib.rotation.z = Math.PI * 0.8;
+      dog.add(rib);
+    }
+    dog.add(mesh(new THREE.TorusGeometry(0.09, 0.03, 6, 10).rotateX(Math.PI / 2), bone, 0, 0.6, -0.42));
+    // Four legs, a knee bent each way.
+    for (const [x, z] of [[-0.12, 0.32], [0.12, 0.32], [-0.12, -0.4], [0.12, -0.4]] as const) {
+      const upper = mesh(segmentGeo(0.028, 0.034, 0.32), bone, x, 0.6, z);
+      upper.rotation.x = z > 0 ? 0.2 : -0.25;
+      const lower = mesh(segmentGeo(0.022, 0.028, 0.3), bone, x, 0.3, z + (z > 0 ? -0.06 : 0.08));
+      lower.rotation.x = z > 0 ? -0.15 : 0.3;
+      dog.add(upper, lower, mesh(new THREE.BoxGeometry(0.06, 0.03, 0.1), bone, x, 0.02, z + 0.02));
+    }
+    // A long skull with dark sockets, the burning eyes and a hanging jaw.
+    const skull = mesh(new THREE.BoxGeometry(0.16, 0.13, 0.3), bone, 0, 0.78, 0.58);
+    const snout = mesh(new THREE.BoxGeometry(0.1, 0.07, 0.16), bone, 0, 0.75, 0.78);
+    const jaw = mesh(new THREE.BoxGeometry(0.09, 0.03, 0.24), boneDark, 0, 0.68, 0.7);
+    jaw.rotation.x = 0.25;
+    dog.add(skull, snout, jaw);
+    for (const side of [-1, 1]) {
+      dog.add(mesh(new THREE.SphereGeometry(0.03, 8, 6), socket, side * 0.055, 0.81, 0.69));
+      dog.add(mesh(new THREE.SphereGeometry(0.016, 6, 4), this.eyes, side * 0.055, 0.81, 0.715));
+      const ear = mesh(new THREE.ConeGeometry(0.03, 0.09, 4), boneDark, side * 0.06, 0.88, 0.5);
+      ear.rotation.x = -0.4;
+      dog.add(ear);
+    }
+    // A tail of three bones.
+    for (let i = 0; i < 3; i++) dog.add(mesh(new THREE.SphereGeometry(0.025 - i * 0.005, 6, 4), boneDark, 0, 0.62 - i * 0.03, -0.52 - i * 0.07));
+    this.body.add(dog);
   }
 
   /** Grey ogre with a studded club. */
@@ -700,6 +756,10 @@ export function windupProgress(e: EnemyState): number {
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
+    case 'chargeWindup':
+      return clamp01(t / (tuning.hound.telegraphMs / 1000));
+    case 'charge':
+      return 1;
     case 'sweepWindup':
       return clamp01(t / ((tuning.warden.sweepTelegraphMs / 1000) * wardenScale(e)));
     case 'roar':

@@ -836,6 +836,38 @@ export const tuning = {
     knockbackTaken: 0.6,
   },
 
+  /**
+   * The Crypt Hound (E1c, the charger): winds up with a yellow line along its path, rushes it and
+   * knocks down whoever it meets; a wall it meets stuns it for a punish window. A sidestep is the answer.
+   */
+  hound: {
+    maxHp: 45,
+    maxPoise: 5,
+    radius: 0.45,
+    height: 1.0,
+    moveSpeed: 4.4,
+    turnRateDeg: 320,
+    /** It starts a rush at a hero closer than this and farther than chargeMinRange, in its line of sight. */
+    chargeRange: 9,
+    chargeMinRange: 2.5,
+    /** The line follows the hero for the first trackFrac of the windup, then locks: sidestep late. */
+    telegraphMs: 800,
+    trackFrac: 0.6,
+    chargeSpeed: 13,
+    /** How far the rush runs, and so how long the line is. */
+    chargeLength: 11,
+    chargeDamage: 14,
+    /** Metres of shove: knocked down and away. */
+    chargePush: 3.5,
+    /** The punish window after it meets a wall. */
+    wallStunMs: 2200,
+    recoveryMs: 700,
+    cooldownMs: 2200,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -2216,6 +2248,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'shieldbearer.attackCooldownMs': [0, 5000, 50],
   'shieldbearer.guardArcDeg': [0, 360, 5],
   'shieldbearer.guardBreakMs': [0, 8000, 100],
+  'hound.maxHp': [5, 400, 5],
+  'hound.maxPoise': [1, 40, 0.5],
+  'hound.moveSpeed': [0.5, 10, 0.1],
+  'hound.turnRateDeg': [20, 720, 10],
+  'hound.chargeRange': [2, 20, 0.5],
+  'hound.chargeMinRange': [0, 10, 0.5],
+  'hound.telegraphMs': [100, 2000, 10],
+  'hound.trackFrac': [0, 1, 0.05],
+  'hound.chargeSpeed': [2, 30, 0.5],
+  'hound.chargeLength': [2, 25, 0.5],
+  'hound.chargeDamage': [0, 60, 1],
+  'hound.chargePush': [0, 8, 0.1],
+  'hound.wallStunMs': [0, 6000, 100],
+  'hound.recoveryMs': [0, 3000, 10],
+  'hound.cooldownMs': [0, 8000, 50],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2687,7 +2734,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

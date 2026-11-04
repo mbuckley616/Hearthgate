@@ -186,6 +186,8 @@ export type EnemyAi =
   | 'sweepWindup'
   | 'sweep'
   | 'roar'
+  | 'chargeWindup'
+  | 'charge'
   | 'recover'
   | 'stagger'
   | 'dead';

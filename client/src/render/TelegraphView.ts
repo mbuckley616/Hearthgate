@@ -4,6 +4,9 @@ import type { EnemyState } from '@hearthgate/shared/sim/types';
 import { telegraphColour, type TelegraphColour } from '@hearthgate/shared/sim/roles';
 import { windupProgress } from './EnemyView';
 
+/** A ground lane's width, in unit beams: about a body wide. */
+const LANE_WIDTH = 16;
+
 const DANGER = 0xff3a22;
 /**
  * The colour language (E1a; Michael, 29 Oct), the same in every dungeon: red a strike, orange heavy or
@@ -71,13 +74,16 @@ export class TelegraphView {
       (m.outline.material as THREE.MeshBasicMaterial).color.setHex(colour);
       const pulse = 0.85 + 0.15 * Math.sin(time * 14);
       if (t.shape === 'line') {
-        // Aim line from the archer's bow to where the shot will go; it brightens as it fires.
-        const from = new THREE.Vector3(e.x, e.y + 1.3, e.z);
-        const to = new THREE.Vector3(t.x, groundHeight(this.world, t.x, t.z) + 1.1, t.z);
+        // Aim line from the archer's bow to where the shot will go; it brightens as it fires. A body's
+        // own line (a Shieldbearer's bash, a Hound's rush, E1b and E1c) is a lane along the ground instead.
+        const lane = e.kind !== 'archer';
+        const from = new THREE.Vector3(e.x, lane ? e.y + 0.06 : e.y + 1.3, e.z);
+        const to = new THREE.Vector3(t.x, groundHeight(this.world, t.x, t.z) + (lane ? 0.06 : 1.1), t.z);
         const len = from.distanceTo(to);
         m.group.position.copy(from);
         m.group.lookAt(to);
-        m.fill.scale.set(1 + progress * 1.5, 1 + progress * 1.5, len);
+        if (lane) m.fill.scale.set(LANE_WIDTH * (0.6 + progress * 0.4), 0.3, len);
+        else m.fill.scale.set(1 + progress * 1.5, 1 + progress * 1.5, len);
         (m.fill.material as THREE.MeshBasicMaterial).opacity = (0.25 + progress * 0.65) * pulse;
         m.outline.visible = false;
         continue;

@@ -606,6 +606,106 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
   return want;
 }
 
+/** The Hound's line: from it, along where it faces, as far as the rush will run. */
+function setChargeTele(e: EnemyState): void {
+  const l = tuning.hound.chargeLength;
+  e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * l, z: e.z + Math.cos(e.yaw) * l, radius: l, yaw: e.yaw, arcDeg: 0 };
+}
+
+/**
+ * The Crypt Hound (E1c, the charger): keeps its distance, then winds up a yellow line at a hero and
+ * rushes along it. The first hero it meets is knocked down; a wall it meets stuns it (a stagger cut to
+ * `wallStunMs`), the punish window. It steers nothing during the rush: a sidestep after the line
+ * locks makes it miss.
+ */
+function chargerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const h = tuning.hound;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      // Close the distance to a rush's length, or back off from a hero too close to rush.
+      if (!sameLevel || routed || dist > h.chargeRange * 0.8) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < h.chargeMinRange) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      } else {
+        want.x = (-dz / Math.max(dist, 1e-3)) * e.strafeDir * 0.4;
+        want.z = (dx / Math.max(dist, 1e-3)) * e.strafeDir * 0.4;
+      }
+      e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : toTarget, h.turnRateDeg * DEG * edt);
+      const inRange = sameLevel && !routed && dist <= h.chargeRange && dist >= h.chargeMinRange;
+      if (inRange && !e.hasToken && e.cooldown <= 0 && tokenHolders(state) < tokenCap(state) && lineOfSight(world, e, target)) {
+        e.hasToken = true;
+        setAi(e, 'chargeWindup');
+        e.attack = 'charge';
+        setChargeTele(e);
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'chargeWindup':
+      if (e.aiTime < (h.telegraphMs / 1000) * h.trackFrac) e.yaw = turnToward(e.yaw, toTarget, h.turnRateDeg * DEG * edt);
+      setChargeTele(e);
+      if (e.aiTime >= h.telegraphMs / 1000) {
+        setAi(e, 'charge');
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+      }
+      break;
+    case 'charge': {
+      // The rush moves the body itself, faster than steering allows, and stops at what it meets.
+      const step = h.chargeSpeed * edt;
+      const ux = Math.sin(e.yaw);
+      const uz = Math.cos(e.yaw);
+      const pos = { x: e.x + ux * step, z: e.z + uz * step };
+      resolveCircle(pos, h.radius, e.y + 0.3, e.y + h.height, world.colliders);
+      const blocked = groundHeight(world, pos.x, pos.z) > e.y + tuning.combat.stepHeight;
+      const moved = blocked ? 0 : (pos.x - e.x) * ux + (pos.z - e.z) * uz;
+      e.vx = 0;
+      e.vz = 0;
+      if (!blocked) {
+        e.x = pos.x;
+        e.z = pos.z;
+      }
+      const hit = tuning.debug.passiveEnemies
+        ? undefined
+        : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
+      if (hit) {
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id });
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = h.recoveryMs / 1000;
+      } else if (moved < step * 0.5) {
+        // A wall: stunned, the stagger's window cut to wallStunMs.
+        e.tele.shape = 'none';
+        e.hasToken = false;
+        e.poise = 0;
+        e.ai = 'stagger';
+        e.aiTime = (tuning.combat.staggerMs - h.wallStunMs) / 1000;
+        state.events.push({ kind: 'stagger', enemyId: e.id, x: e.x, z: e.z });
+      } else if (e.aiTime * h.chargeSpeed >= h.chargeLength) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = h.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
 function setSlamTele(e: EnemyState, offset: number, radius: number): void {
   e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * offset, z: e.z + Math.cos(e.yaw) * offset, radius, yaw: e.yaw, arcDeg: 360 };
 }
@@ -741,6 +841,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   heavy: bruteBrain,
   boss: wardenBrain,
   shield: shieldBrain,
+  charger: chargerBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -759,6 +860,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':
       return tuning.shieldbearer.attackCooldownMs / 1000;
+    case 'hound':
+      return tuning.hound.cooldownMs / 1000;
     case 'warden':
       return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
   }
