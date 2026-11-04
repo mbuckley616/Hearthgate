@@ -7,6 +7,13 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-04: What does Chill do to a hero? (builder, Session 93, E1d)
+E1d's Wraith channels a violet circle at a hero's feet that "Chills whoever stands in it when it lands" (decisions.md, 29 Oct, "E1, the enemy design pass"). The design doc defines Chilled only on enemies (a setup that Shatter consumes); nothing says what it does to a hero, and no hero state exists yet (the ten states are in the builds pass, still **(design)**). Options:
+- **A.** Slowed: the hero moves 35% slower for 3 s and cannot sprint; attacks, dodges and abilities are unchanged. Shows as a frost tint and an icon in the corner. *(recommended: easy to read, and the answer to a Wraith is to step out or kill it first, which is the role's lesson)*
+- **B.** As A, and attacks and dodges also play 20% slower for the 3 s, so a Chilled hero fights badly as well as moves badly.
+- **C.** Stacking: one Chill is A; a second within 3 s freezes the hero solid for 1 s (no i-frames), which makes two Wraiths a real threat.
+- **D.** A hit, not a state: the circle deals magic damage and nothing lingers, until the builds pass designs hero states.
+
 ## Answered
 
 ### 2026-11-03: Which story dungeon is which dungeon type? (deep-work session, E1a)
