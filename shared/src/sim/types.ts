@@ -186,6 +186,9 @@ export type EnemyAi =
   | 'sweepWindup'
   | 'sweep'
   | 'roar'
+  | 'chargeWindup'
+  | 'charge'
+  | 'chant'
   | 'recover'
   | 'stagger'
   | 'dead';
@@ -253,12 +256,14 @@ export interface EnemyState {
   tele: Telegraph;
   /** Recovery length for the attack just made (s). */
   recoverTime: number;
-  /** Warden: 1, or 2 after the roar. */
+  /** Warden: 1, or 2 after the roar (and 3 after the second, E1g). */
   phase: number;
   /** Warden: has roared and summoned. */
   summoned: boolean;
-  /** Warden: which attack the current windup is ('sweep' | 'slam' | 'farSlam'). */
+  /** Warden: which attack the current windup is ('sweep' | 'slam' | 'farSlam' | 'chainSlam'). */
   attack: string;
+  /** Warden, phase 3's rolling slam (E1g): circles already landed; absent outside one. */
+  chain?: number;
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;
@@ -268,6 +273,12 @@ export interface EnemyState {
    * still hurt but neither build poise nor interrupt. Brutes and bosses only; absent otherwise.
    */
   armour?: number;
+  /** The remains a Bone Priest is chanting over (E1e). Leader role only, while it chants. */
+  raiseId?: number;
+  /** A Shieldbearer's guard is down until this sim time (E1b): a heavy broke it. Shield role only. */
+  guardDownUntil?: number;
+  /** What its hits are multiplied by: a harder portal's (G3). Absent means 1, as in the slice. */
+  hitMult?: number;
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -395,7 +406,11 @@ export type SimEvent =
   | { kind: 'freeze'; enemyId: number }
   | { kind: 'enemyShot'; enemyId: number }
   | { kind: 'enemySlam'; enemyId: number; x: number; z: number; radius: number; boss: boolean }
-  | { kind: 'roar'; enemyId: number }
+  /** A Shieldbearer's shield met a hit (E1b): a deflect spark and sound, no damage. */
+  | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
+  /** A heavy broke a Shieldbearer's guard (E1b). */
+  | { kind: 'guardBroken'; enemyId: number }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }

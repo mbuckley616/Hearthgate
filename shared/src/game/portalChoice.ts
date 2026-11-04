@@ -10,7 +10,7 @@ import { DUNGEON_TYPES, dungeonTypeOf, isDungeonType, type DungeonType } from '.
  * floors, its size, its difficulty, the difficulty capped by the Portal Shrine's tier).
  */
 
-/** How hard a run is: more enemies in every room, and that much more of everything it pays. */
+/** How hard a run is: more enemies in every room, each that much tougher and harder-hitting (G3), and that much more of everything it pays. */
 export const DIFFICULTIES = [
   { name: 'Easy', mult: 0.75 },
   { name: 'Normal', mult: 1 },
@@ -101,7 +101,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'The Saltmarsh Warrens',
     levels: [4, 8],
     blurb: 'Tunnels under the marsh where a drowned chief still thinks himself a king. His court is large, and does not lie still.',
-    enemies: ['grunt', 'archer', 'brute'],
+    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'brute'],
     type: 'hauntedCrypt',
     rewards: ['weapon', 'legs', 'hands'],
     run: { seed: 5202, floors: 3, size: 'medium', difficulty: 1 },
@@ -111,7 +111,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'Emberhall',
     levels: [7, 12],
     blurb: 'A dwarven hall left to burn out. The fires never quite did, and what moved in likes the warmth.',
-    enemies: ['grunt', 'brute'],
+    enemies: ['grunt', 'shieldbearer', 'priest', 'brute'],
     type: 'hauntedCrypt',
     rewards: ['body', 'shield', 'ring'],
     run: { seed: 5303, floors: 3, size: 'medium', difficulty: 2, modifier: 'haunted' },
@@ -121,7 +121,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'The Hollow Crown',
     levels: [10, 16],
     blurb: 'A sunken keep where a warden still keeps watch over a throne no one sits on. Five floors down, and every one guarded.',
-    enemies: ['grunt', 'archer', 'brute', 'warden'],
+    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'priest', 'knight', 'brute', 'warden'],
     type: 'hauntedCrypt',
     rewards: ['weapon', 'neck', 'cape'],
     run: { seed: 5404, floors: 5, size: 'large', difficulty: 2 },

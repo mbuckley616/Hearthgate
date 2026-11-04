@@ -1,9 +1,19 @@
 import * as THREE from 'three';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
+import { tuning } from '@hearthgate/shared/config/tuning';
+import { plateFit, type PlateFit, type PlateFitConfig } from './plateFit';
 
 const W = 256;
 const H = 64;
+const WORLD_W = 1.6;
+const WORLD_H = 0.4;
+
+// Scratch for the per-draw fit, shared by every plate: one is drawn at a time.
+const camPos = new THREE.Vector3();
+const platePos = new THREE.Vector3();
+const fit: PlateFit = { scale: 1, opacity: 1 };
+const fitCfg: PlateFitConfig = { worldHeight: WORLD_H, maxScreen: 0, fadeNear: 0, hideNear: 0 };
 
 /** Name and health above another player's hero; turns red with a revive bar when they're down. */
 export class Nameplate {
@@ -20,8 +30,30 @@ export class Nameplate {
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.texture, depthTest: false, transparent: true }));
-    this.sprite.scale.set(1.6, 0.4, 1);
+    this.sprite.scale.set(WORLD_W, WORLD_H, 1);
     this.sprite.renderOrder = 10;
+    // Sized against the camera that draws it, as it is drawn, so every plate (the party's, the
+    // village's) is capped without its owner passing the camera in.
+    this.sprite.onBeforeRender = (_renderer, _scene, camera) => this.fit(camera);
+  }
+
+  private fit(camera: THREE.Camera): void {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const c = tuning.camera;
+    fitCfg.maxScreen = c.nameplateMaxScreen;
+    fitCfg.fadeNear = c.nameplateFadeNear;
+    fitCfg.hideNear = c.nameplateHideNear;
+    camPos.setFromMatrixPosition(camera.matrixWorld);
+    platePos.setFromMatrixPosition(this.sprite.matrixWorld);
+    plateFit(camPos.distanceTo(platePos), camera.fov, fitCfg, fit);
+    const sx = WORLD_W * fit.scale;
+    const sy = WORLD_H * fit.scale;
+    const m = this.sprite.material as THREE.SpriteMaterial;
+    m.opacity = fit.opacity;
+    if (this.sprite.scale.x === sx && this.sprite.scale.y === sy) return;
+    this.sprite.scale.set(sx, sy, 1);
+    // The renderer takes the model matrix after this hook, so the new size shows this frame.
+    this.sprite.updateMatrixWorld(true);
   }
 
   update(p: PlayerState, reviveMs: number): void {

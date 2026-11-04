@@ -801,6 +801,138 @@ export const tuning = {
   },
 
   /** Brute: tanky, high poise; telegraphed overhead slam (brief: 1,000 ms ground circle). */
+  /**
+   * The Skeleton Shieldbearer (E1b, the shield role): a front arc that blocks swings and arrows, a
+   * short bash that staggers, a slow turn. Weak to a flank or a backstab, a heavy that breaks its
+   * guard, and magic, which its shield does not stop.
+   */
+  shieldbearer: {
+    maxHp: 80,
+    maxPoise: 10,
+    radius: 0.46,
+    height: 1.6,
+    moveSpeed: 2.6,
+    /** Slow, so a hero who circles it reaches its side. */
+    turnRateDeg: 140,
+    windupTurnRateDeg: 50,
+    /** Closes to this range, then winds up the bash. */
+    attackRange: 1.9,
+    /** Red, as a strike: the shield drawn back. */
+    telegraphMs: 700,
+    /** The bash: a short shove line in front, heavy, so it staggers whoever it meets. */
+    bashReach: 2.6,
+    bashArcDeg: 40,
+    bashDamage: 12,
+    bashPush: 2.2,
+    bashActiveMs: 160,
+    recoveryMs: 900,
+    attackCooldownMs: 1500,
+    /** The arc its shield covers, centred on where it faces. */
+    guardArcDeg: 130,
+    /** How long a heavy that meets its shield leaves the guard down. */
+    guardBreakMs: 2500,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * The Crypt Hound (E1c, the charger): winds up with a yellow line along its path, rushes it and
+   * knocks down whoever it meets; a wall it meets stuns it for a punish window. A sidestep is the answer.
+   */
+  hound: {
+    maxHp: 45,
+    maxPoise: 5,
+    radius: 0.45,
+    height: 1.0,
+    moveSpeed: 4.4,
+    turnRateDeg: 320,
+    /** It starts a rush at a hero closer than this and farther than chargeMinRange, in its line of sight. */
+    chargeRange: 9,
+    chargeMinRange: 2.5,
+    /** The line follows the hero for the first trackFrac of the windup, then locks: sidestep late. */
+    telegraphMs: 800,
+    trackFrac: 0.6,
+    chargeSpeed: 13,
+    /** How far the rush runs, and so how long the line is. */
+    chargeLength: 11,
+    chargeDamage: 14,
+    /** Metres of shove: knocked down and away. */
+    chargePush: 3.5,
+    /** The punish window after it meets a wall. */
+    wallStunMs: 2200,
+    recoveryMs: 700,
+    cooldownMs: 2200,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1,
+  },
+
+  /**
+   * The Bone Priest (E1e, the leader): hangs behind its group and every few seconds chants over a
+   * fallen skeleton, which stands up again at part health. It fights no one; it dies first.
+   */
+  priest: {
+    maxHp: 55,
+    maxPoise: 4,
+    radius: 0.4,
+    height: 1.65,
+    moveSpeed: 2.5,
+    turnRateDeg: 300,
+    /** It keeps about this far from the nearest hero, behind the pack. */
+    keepDistance: 8,
+    /** Remains farther than this from it are out of its reach. */
+    raiseRange: 12,
+    /** Between one raising and the next (its cooldown). */
+    raiseEveryMs: 4000,
+    /** The chant: a violet glow on the remains, then they stand. */
+    chantMs: 1500,
+    /** The health a raised skeleton stands with, of its full. */
+    raiseHp: 0.5,
+    recoveryMs: 500,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 1,
+  },
+
+  /**
+   * The Barrow Knight (E1f, the elite): a Shieldbearer and a Hound in one. It rushes along its yellow
+   * line behind its shield (nothing reaches it from the front then, not even a heavy or magic), meets a
+   * wall as a Hound does, and otherwise fights as a Shieldbearer. One a room, from Hard or floor 2.
+   */
+  knight: {
+    maxHp: 160,
+    maxPoise: 18,
+    radius: 0.5,
+    height: 1.8,
+    moveSpeed: 2.8,
+    turnRateDeg: 130,
+    windupTurnRateDeg: 45,
+    attackRange: 2.0,
+    telegraphMs: 750,
+    bashReach: 2.8,
+    bashArcDeg: 45,
+    bashDamage: 16,
+    bashPush: 2.6,
+    bashActiveMs: 180,
+    recoveryMs: 900,
+    attackCooldownMs: 1800,
+    guardArcDeg: 130,
+    guardBreakMs: 2000,
+    chargeRange: 10,
+    chargeMinRange: 4,
+    chargeTelegraphMs: 900,
+    trackFrac: 0.6,
+    chargeSpeed: 11,
+    chargeLength: 12,
+    chargeDamage: 20,
+    chargePush: 4,
+    wallStunMs: 2600,
+    spawnMs: 800,
+    deathMs: 1800,
+    knockbackTaken: 0.4,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -855,6 +987,24 @@ export const tuning = {
     phase2SpeedScale: 1.25,
     roarMs: 1600,
     summonCount: 3,
+    /**
+     * E1g, three phases: at `phase2At` of its health it roars and raises the dead from the hall's edges;
+     * at `phase3At` it roars again and fights faster, with a rolling slam of `chainSlams` circles.
+     * The slice's Warden has one roar at half health and two phases, so the parity test turns it off.
+     */
+    threePhases: true,
+    phase2At: 0.6,
+    phase3At: 0.3,
+    /** How far from the Warden the dead rise, at most; nearer where a wall is closer. */
+    raiseRadius: 9,
+    phase3CooldownMs: 450,
+    phase3TelegraphScale: 0.75,
+    phase3SpeedScale: 1.3,
+    /** Phase 3's rolling slam: each circle `chainStepM` beyond the last, each telegraphed `chainTelegraphMs`. */
+    chainSlams: 3,
+    chainStepM: 3.4,
+    chainTelegraphMs: 500,
+    chainChance: 0.5,
     knockbackDealt: 2.8,
     spawnMs: 1500,
     deathMs: 3000,
@@ -1339,6 +1489,12 @@ export const tuning = {
   dungeon: {
     /** The dungeon's difficulty until the portal offers a choice: floors per run are 2 + tier (3 to 5). */
     tier: 1,
+    /**
+     * A portal's difficulty (portalChoice.ts DIFFICULTIES) also multiplies every enemy's health and
+     * the damage it deals by the difficulty's own mult, set where the enemy is made (Michael, 2 Nov:
+     * the story dungeons were "very very easy"). Floors only; off in the parity test.
+     */
+    difficultyScalesEnemies: true,
     /** Pieces on a tier-1 run's first floor with new heroes. */
     basePieces: 14,
     piecesPerFloor: 6,
@@ -1355,6 +1511,13 @@ export const tuning = {
     budgetPerFloor: 0.35,
     /** Each player past the first adds this much budget (the slice: one grunt a wave). */
     budgetPerExtraPlayer: 2,
+    /**
+     * E1h: a big fight room draws `rolesBase` specialist roles (shield, charger, leader, heavy, archer),
+     * `rolesPerTier` more for each difficulty past Normal and each floor past the first, up to `maxRoles`.
+     */
+    rolesBase: 1,
+    rolesPerTier: 1,
+    maxRoles: 4,
     /** The rest comes as reinforcements once the first group is mostly down. */
     firstGroupShare: 0.7,
     /**
@@ -1577,6 +1740,15 @@ export const tuning = {
     occluderProbeRadius: 0.3,
     nearPlane: 0.1,
     farPlane: 200,
+    /**
+     * A teammate's name plate is drawn over everything, so one standing just in front of the camera
+     * would fill a third of the screen (the critic, 4 Nov). Its height is capped at this share of the
+     * viewport (about its size at the usual camera distance), and it fades out between these two
+     * distances from the camera (m).
+     */
+    nameplateMaxScreen: 0.06,
+    nameplateFadeNear: 2.5,
+    nameplateHideNear: 1.2,
   },
 
   /** Procedural animation for the primitive knight; goes away with real animation clips. */
@@ -1737,6 +1909,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.budgetPerCell': [0.1, 3, 0.05],
   'dungeon.budgetPerFloor': [0, 1, 0.05],
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
+  'dungeon.rolesBase': [0, 5, 1],
+  'dungeon.rolesPerTier': [0, 3, 0.5],
+  'dungeon.maxRoles': [0, 5, 1],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
   'dungeon.attackersPerHero': [1, 6, 1],
   'hirelings.reactMs': [0, 2000, 10],
@@ -2160,6 +2335,59 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'archer.spawnMs': [0, 3000, 10],
   'archer.deathMs': [0, 4800, 10],
   'archer.knockbackTaken': [0, 2, 0.01],
+  'shieldbearer.maxHp': [5, 600, 5],
+  'shieldbearer.maxPoise': [1, 60, 0.5],
+  'shieldbearer.moveSpeed': [0.5, 8, 0.1],
+  'shieldbearer.turnRateDeg': [20, 720, 10],
+  'shieldbearer.windupTurnRateDeg': [0, 360, 5],
+  'shieldbearer.attackRange': [0.5, 4, 0.05],
+  'shieldbearer.telegraphMs': [100, 2000, 10],
+  'shieldbearer.bashReach': [0.5, 5, 0.05],
+  'shieldbearer.bashArcDeg': [5, 120, 1],
+  'shieldbearer.bashDamage': [0, 60, 1],
+  'shieldbearer.bashPush': [0, 8, 0.1],
+  'shieldbearer.recoveryMs': [0, 3000, 10],
+  'shieldbearer.attackCooldownMs': [0, 5000, 50],
+  'shieldbearer.guardArcDeg': [0, 360, 5],
+  'shieldbearer.guardBreakMs': [0, 8000, 100],
+  'hound.maxHp': [5, 400, 5],
+  'hound.maxPoise': [1, 40, 0.5],
+  'hound.moveSpeed': [0.5, 10, 0.1],
+  'hound.turnRateDeg': [20, 720, 10],
+  'hound.chargeRange': [2, 20, 0.5],
+  'hound.chargeMinRange': [0, 10, 0.5],
+  'hound.telegraphMs': [100, 2000, 10],
+  'hound.trackFrac': [0, 1, 0.05],
+  'hound.chargeSpeed': [2, 30, 0.5],
+  'hound.chargeLength': [2, 25, 0.5],
+  'hound.chargeDamage': [0, 60, 1],
+  'hound.chargePush': [0, 8, 0.1],
+  'hound.wallStunMs': [0, 6000, 100],
+  'hound.recoveryMs': [0, 3000, 10],
+  'hound.cooldownMs': [0, 8000, 50],
+  'priest.maxHp': [5, 400, 5],
+  'priest.maxPoise': [1, 40, 0.5],
+  'priest.moveSpeed': [0.5, 8, 0.1],
+  'priest.keepDistance': [2, 16, 0.5],
+  'priest.raiseRange': [2, 30, 0.5],
+  'priest.raiseEveryMs': [500, 15000, 100],
+  'priest.chantMs': [100, 5000, 50],
+  'priest.raiseHp': [0.05, 1, 0.05],
+  'priest.recoveryMs': [0, 3000, 10],
+  'knight.maxHp': [5, 1200, 5],
+  'knight.maxPoise': [1, 80, 0.5],
+  'knight.moveSpeed': [0.5, 8, 0.1],
+  'knight.turnRateDeg': [20, 720, 10],
+  'knight.bashDamage': [0, 80, 1],
+  'knight.guardArcDeg': [0, 360, 5],
+  'knight.guardBreakMs': [0, 8000, 100],
+  'knight.chargeRange': [2, 20, 0.5],
+  'knight.chargeMinRange': [0, 10, 0.5],
+  'knight.chargeTelegraphMs': [100, 2000, 10],
+  'knight.chargeSpeed': [2, 30, 0.5],
+  'knight.chargeLength': [2, 25, 0.5],
+  'knight.chargeDamage': [0, 80, 1],
+  'knight.wallStunMs': [0, 6000, 100],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2206,6 +2434,16 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'warden.phase2SpeedScale': [0.5, 3, 0.05],
   'warden.roarMs': [0, 4800, 10],
   'warden.summonCount': [0, 12, 1],
+  'warden.phase2At': [0.05, 1, 0.05],
+  'warden.phase3At': [0, 0.95, 0.05],
+  'warden.raiseRadius': [3, 20, 0.5],
+  'warden.phase3CooldownMs': [0, 3000, 10],
+  'warden.phase3TelegraphScale': [0.3, 2, 0.01],
+  'warden.phase3SpeedScale': [0.5, 3, 0.05],
+  'warden.chainSlams': [1, 6, 1],
+  'warden.chainStepM': [1, 8, 0.1],
+  'warden.chainTelegraphMs': [150, 2000, 10],
+  'warden.chainChance': [0, 1, 0.05],
   'warden.knockbackDealt': [0, 10, 0.1],
   'warden.spawnMs': [0, 4500, 10],
   'warden.deathMs': [0, 9000, 10],
@@ -2355,6 +2593,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gear.hunterSlowMs': [0, 6000, 100],
 
   'camera.distance': [2, 12, 0.1],
+  'camera.nameplateMaxScreen': [0.02, 0.2, 0.005],
+  'camera.nameplateFadeNear': [0, 6, 0.1],
+  'camera.nameplateHideNear': [0, 4, 0.1],
   'camera.zoomMin': [0.2, 1, 0.05],
   'camera.zoomMax': [1, 4, 0.05],
   'camera.zoomStep': [1.01, 1.5, 0.01],
@@ -2631,7 +2872,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
