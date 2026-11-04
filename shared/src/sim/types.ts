@@ -268,6 +268,8 @@ export interface EnemyState {
    * still hurt but neither build poise nor interrupt. Brutes and bosses only; absent otherwise.
    */
   armour?: number;
+  /** What its hits are multiplied by: a harder portal's (G3). Absent means 1, as in the slice. */
+  hitMult?: number;
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;

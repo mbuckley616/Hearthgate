@@ -8,6 +8,7 @@ const BRAZIER_RADIUS = 0.45;
 import { damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
+import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
 const STEER_ACCEL = 18;
@@ -39,6 +40,15 @@ function setAi(e: EnemyState, ai: EnemyAi): void {
 function healthScale(state: SimState): number {
   return 1 + Math.max(0, state.players.length - 1) * tuning.run.extraPlayerHealth;
 }
+
+/** A harder portal's enemies have more health and hit harder (G3): the difficulty's mult, floors only. */
+function difficultyScale(world: World): number {
+  const spec = world.level.dungeon?.def.spec;
+  return spec && tuning.dungeon.difficultyScalesEnemies ? difficultyMult(spec.difficulty) : 1;
+}
+
+/** What an enemy's hit deals: its attack's number, times a harder portal's (G3). */
+const hitDamage = (e: EnemyState, damage: number) => damage * (e.hitMult ?? 1);
 
 /**
  * Is (x, z) open ground for a body of this radius: inside the arena, on the
@@ -73,7 +83,8 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
     pos = { ...[...spots].sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0] };
   }
   resolveCircle(pos, s.radius, (onLedge ? world.level.ledge.height : 0) + 0.3, s.height, world.colliders);
-  const maxHp = s.maxHp * healthScale(state);
+  const hard = difficultyScale(world);
+  const maxHp = s.maxHp * healthScale(state) * hard;
   const e: EnemyState = {
     id: state.nextId++,
     kind,
@@ -111,6 +122,8 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
     skewerUntil: -1,
     detonateUntil: -1,
   };
+  // Kept off the state at 1, so the arena's enemies keep the slice's shape (and its parity hashes).
+  if (hard !== 1) e.hitMult = hard;
   state.enemies.push(e);
   state.events.push({ kind: 'enemySpawn', enemyId: e.id, x: e.x, z: e.z });
   return e;
@@ -260,7 +273,7 @@ function heroesInCone(state: SimState, x: number, z: number, yaw: number, r: num
 function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: number, fromZ: number, damage: number, push: number): void {
   // Tagged only while the switch is on, so the slice's pending hits (and the parity hashes) keep their shape.
   const low = tuning.jump.clearsLow ? { low: e.y } : {};
-  for (const p of victims) hurtHero(state, p, { damage, heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
+  for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, damage), heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
 }
 
 /** Grunt slash: light, in front. */
@@ -273,7 +286,7 @@ function gruntStrike(state: SimState, e: EnemyState, target: PlayerState | null)
   const dz = target.z - e.z;
   if (Math.hypot(dx, dz) > g.reach + tuning.movement.radius) return;
   if (Math.abs(wrapAngle(Math.atan2(dx, dz) - e.yaw)) > (g.arcDeg * DEG) / 2) return;
-  hurtHero(state, target, { damage: g.damage, fromX: e.x, fromZ: e.z, enemyId: e.id });
+  hurtHero(state, target, { damage: hitDamage(e, g.damage), fromX: e.x, fromZ: e.z, enemyId: e.id });
 }
 
 export interface Intent {
@@ -459,7 +472,7 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
     stuck: false,
     charged: false,
     radius: 0,
-    damage: a.damage,
+    damage: hitDamage(e, a.damage),
     poise: 0,
     knockback: 0,
     heavy: false,

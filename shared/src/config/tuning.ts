@@ -1339,6 +1339,12 @@ export const tuning = {
   dungeon: {
     /** The dungeon's difficulty until the portal offers a choice: floors per run are 2 + tier (3 to 5). */
     tier: 1,
+    /**
+     * A portal's difficulty (portalChoice.ts DIFFICULTIES) also multiplies every enemy's health and
+     * the damage it deals by the difficulty's own mult, set where the enemy is made (Michael, 2 Nov:
+     * the story dungeons were "very very easy"). Floors only; off in the parity test.
+     */
+    difficultyScalesEnemies: true,
     /** Pieces on a tier-1 run's first floor with new heroes. */
     basePieces: 14,
     piecesPerFloor: 6,

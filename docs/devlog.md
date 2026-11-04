@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 91, a harder portal's enemies hit harder (G3)
+
+**What changed**
+
+A portal's difficulty now makes every enemy on its floors tougher, not only more of them (Michael, 2 Nov: the story dungeons were "very very easy"). `createEnemy` multiplies an enemy's health by the difficulty's own `DIFFICULTIES[].mult` (Easy 0.75, Normal 1, Hard 1.5, Nightmare 2, Legendary 2.5) and keeps it as `EnemyState.hitMult`, which the grunt's slash, every shove (the Bone Brute's slam, the Warden's sweep and slams) and an archer's arrow multiply their damage by. The room budget's scaling stays as it was, so a Nightmare room has twice the enemies, each with twice the health and twice the bite. Floors only (the multiplier comes from the floor's `FloorSpec.difficulty`), set on the server where an enemy is made, and behind `tuning.dungeon.difficultyScalesEnemies`; the arena never sets it and `hitMult` is left off the state at 1, so the parity hashes are untouched. The story dungeons' difficulties are unchanged: the Old Cellar, Mossgate and the Saltmarsh Warrens at Normal, Emberhall and the Hollow Crown at Hard, which already steps up along the list with the first at Normal and the last two at Hard; the Hard two now bite at 1.5x. Raising any of them further would also lock it behind a higher shrine, since the shrine caps a story dungeon's difficulty as it does a random one's.
+
+**Learned**
+
+A freshly joined hero is invulnerable for a moment (`invulnTime`), so a test that wants a hit to land clears it first. `npm run test:net` left its dev server running on 2599 after the setup run, and the next run failed with EADDRINUSE until it was stopped; worth knowing before reading a red test:net as a regression.
+
+`difficultyScale.test.ts`: the same seed's grunt has twice the health and twice the slash on Nightmare as on Normal; Easy, Hard and Legendary follow the list and no difficulty reads as Normal; the switch off scales nothing, and the arena's enemies carry no `hitMult`. check 302 (was 299), parity identical, test:net all passed.
+
+**Next**
+
+E1b, the Skeleton Shieldbearer. Michael may want a story dungeon past Hard (the Hollow Crown at Nightmare); that is a one-number change in `STORY`, but it raises the shrine tier that opens it.
+
 ## 2026-11-03: Session 90, E1a's question answered (deep-work session)
 
 **What changed**

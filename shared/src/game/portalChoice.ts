@@ -10,7 +10,7 @@ import { DUNGEON_TYPES, dungeonTypeOf, isDungeonType, type DungeonType } from '.
  * floors, its size, its difficulty, the difficulty capped by the Portal Shrine's tier).
  */
 
-/** How hard a run is: more enemies in every room, and that much more of everything it pays. */
+/** How hard a run is: more enemies in every room, each that much tougher and harder-hitting (G3), and that much more of everything it pays. */
 export const DIFFICULTIES = [
   { name: 'Easy', mult: 0.75 },
   { name: 'Normal', mult: 1 },
