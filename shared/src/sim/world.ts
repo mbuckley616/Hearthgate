@@ -6,6 +6,7 @@ import { floorWorldNow, initialFloorRun } from './floorRun';
 import { unstickHenchmen } from './henchman';
 import { createPlayer, stepDoors, stepPlayer } from './player';
 import { stepLava } from './lava';
+import { stepTraps } from './traps';
 import { stepProjectiles } from './projectiles';
 import { initialRun, stepRun } from './run';
 import { idleCommand, type PlayerCommand, type SimState } from './types';
@@ -52,6 +53,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   }
   stepDoors(state, w, commands);
   stepLava(state, world, dt);
+  stepTraps(state, world, dt);
   unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
   stepPendingHits(state);

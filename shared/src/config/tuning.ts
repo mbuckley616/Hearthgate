@@ -698,6 +698,22 @@ export const tuning = {
    * Rooms that need jumping (D6, Michael 30 Oct: A): a hero standing in a lava strip burns, a share of
    * their health a second, paid in pulses; one in the air does not. The server's alone, as hits are.
    */
+  /**
+   * Traps (G5, Michael's D: traps first). Spikes strike on a cycle: an orange warning of `spikeWarnS`,
+   * then the strike, judged `coop.lagGraceMs` later so a step off that was on time on the player's
+   * screen counts, then up for `spikeUpS`. A hero in the air clears them; enemies are hurt too.
+   */
+  traps: {
+    enabled: true,
+    spikeCycleS: 3.2,
+    spikeWarnS: 0.9,
+    spikeUpS: 0.7,
+    /** A hero's share of max health a strike takes. */
+    spikeHeroFrac: 0.15,
+    /** What a strike deals an enemy (before nothing: traps ignore the portal's multiplier). */
+    spikeEnemyDamage: 30,
+  },
+
   lava: {
     /** Share of max health a second. */
     burnFracPerS: 0.15,
@@ -2205,6 +2221,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'launch.minSpeed': [0, 10, 0.5],
   'launch.arcHeightM': [0, 3, 0.1],
   'launch.arcSeconds': [0.1, 1.5, 0.05],
+  'traps.spikeCycleS': [1.5, 8, 0.1],
+  'traps.spikeWarnS': [0.3, 3, 0.05],
+  'traps.spikeUpS': [0.2, 3, 0.05],
+  'traps.spikeHeroFrac': [0, 1, 0.01],
+  'traps.spikeEnemyDamage': [0, 200, 1],
   'lava.burnFracPerS': [0, 1, 0.01],
   'lava.tickS': [0.1, 2, 0.05],
 

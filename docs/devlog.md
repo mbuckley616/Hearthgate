@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 101, spikes (G5, traps first)
+
+**What changed**
+
+Michael answered G5 with D on the control room: traps, then room shapes and set pieces, then secrets, one per builder session. This session builds the first trap, spikes.
+- **Where.** Spikes are level data placed from the floor's seed, like the lava and the props (`level/traps.ts`, `spikesFor`, in `FloorLayout.spikes`). Some flat fight rooms get up to three 2 m tiles on open floor, at least 3 m from a doorway, struck in turn. Some long halls get a row across the middle, struck together, so the walk through is timed. Never in the Warden's hall, the rest room, the lava room or a hand-built floor. Spawn spots and props keep off the tiles. Over 100 seeds of a 24-piece floor 2, 98 floors have spikes, about 2.4 rooms and 1 hall each, 9 tiles a floor.
+- **When.** Every tile runs one cycle from the sim's clock: an orange glow for `traps.spikeWarnS` (0.9 s; orange is the colour language's heavy, nothing stops it), then the strike, then spikes up for `traps.spikeUpS` (0.7 s), every `traps.spikeCycleS` (3.2 s). Each tile's place in the cycle is a share, so a panel change to the cycle never moves the level.
+- **What it does.** The strike lands `coop.lagGraceMs` after the warning ends, so a step off that was on time on the player's screen counts. It takes `traps.spikeHeroFrac` (15%) of a hero's health and `traps.spikeEnemyDamage` (30) from an enemy, so a pack can be lured across. It comes from below: no shield or guard stops it. A hero high enough in the air clears it by the jump's rule (M1) and is told "Cleared". It runs in stepSim only, as lava does. Henchmen are spared, since their brains do not see traps yet. `traps.enabled` switches it off. The arena has none, so parity is unchanged.
+- **Seen as.** `TrapView` draws an iron grate, the orange glow brightening and quickening through the warning, and nine spikes that snap up. The minimap marks tiles with an orange edge.
+
+**Learned**
+
+`stepSim` moves `state.time` on at the end of the step, so a step covers time to time + dt. `stepTraps` judges the strike in that window, and the view draws from the snapshot's time, the same clock.
+
+`traps.test.ts`: over 30 seeds the tiles lie only in fight rooms and long halls, inside the walls, clear of doorways, spawn spots and the lava room, and the same each time. None on a hand-built floor. A hero on a tile loses 15% once, on the tick the warning plus the grace runs out. One beside it, or high in the air, is untouched, and the one in the air gets "Cleared". An enemy on it loses 30. The switch stops it. check 336 (was 331), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's other two traps: swinging blades in halls and a collapsing floor tile. Then E1d, the Wraith, with Chill as Michael's A. G4b, the Hollow Crown's boss, waits on the question Session 100 asked.
+
 ## 2026-11-04: Session 100, mini-bosses guard the rest room (G4)
 
 **What changed**

@@ -18,6 +18,7 @@ import { EnemiesView } from '../render/EnemyView';
 import { FxView } from '../render/FxView';
 import { HeroView } from '../render/HeroView';
 import { Nameplate } from '../render/Nameplate';
+import { TrapView } from '../render/TrapView';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
 import { FloorView } from '../render/FloorView';
@@ -159,6 +160,7 @@ export class Game {
   private readonly drops = new DropView();
   /** A generated floor's crates, barrels and urns, and the potions out of them (D4); null elsewhere. */
   private propView: PropView | null = null;
+  private trapView: TrapView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
   /** Aldous's General Store (P5), opened by a second F (or A) to him. */
@@ -416,6 +418,14 @@ export class Game {
     const props = this.world.level.dungeon?.props;
     this.propView = props ? new PropView(props) : null;
     if (this.propView) this.gfx.scene.add(this.propView.group);
+    // The floor's traps (G5) go with its props.
+    if (this.trapView) {
+      this.gfx.scene.remove(this.trapView.group);
+      disposeTree(this.trapView.group);
+    }
+    const spikes = this.world.level.dungeon?.spikes;
+    this.trapView = spikes?.length ? new TrapView(spikes) : null;
+    if (this.trapView) this.gfx.scene.add(this.trapView.group);
   }
 
   private buildRoomView(): RoomView | VillageView | FloorView {
@@ -983,6 +993,7 @@ export class Game {
       this.presentTime,
     );
     this.propView?.update(world.floor, this.presentTime, world.time);
+    this.trapView?.update(world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();
