@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-04: G5, what a collapsing floor tile does to whoever falls (builder, Session 102)
+G5's traps are spikes (Session 101) and swinging blades (Session 102); the last is "a collapsing floor tile". A floor has no pits and nowhere to fall to, so a fall needs a rule.
+- **A.** A cracked tile shakes for 0.6 s after a hero steps on it (orange cracks), then falls away. Anyone still on it drops, takes 25% of their health, and is put back on the floor at the edge they came from. The hole stays open for 6 s and then the tile is back. Enemies knocked into the hole fall and die. *(recommended: one rule, it punishes standing still, and a heavy hit that knocks a pack into it rewards the player)*
+- **B.** As A, but the hole stays open for the rest of the floor and blocks the way like a wall, so a room changes shape as it is fought.
+- **C.** Leave the collapsing tile out. Two traps are enough for A, and the next builder session starts B (room shapes and set pieces).
+
 ### 2026-11-04: G4b, what the Hollow Crown's boss does (builder, Session 100)
 You chose A for G4: one new Crypt boss for the Hollow Crown, the last story dungeon ("a sunken keep where a warden still keeps watch over a throne no one sits on"). Session 100 built the mini-bosses. Nothing yet says what the boss is or does, and the design doc asks three phases with new telegraphs in each.
 - **A.** The Hollow King. A tall crowned skeleton sits the empty throne and stands when the party enters. Phase 1: a red sword string, and his crown thrown out and back along a yellow line. Phase 2 (60%): two Barrow Knights rise beside the throne, and he channels violet circles under each hero, to step out of. Phase 3 (30%): the hall dims to the throne's light, he moves faster, and the crown's way back sweeps an arc. *(recommended: each phase asks something new, a dodge, then a split party, then reading a wide sweep, using the colours and roles the Crypt already has)*
