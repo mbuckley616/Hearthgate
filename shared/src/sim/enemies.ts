@@ -5,7 +5,8 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 
 /** A floor's brazier as its collider stands (floor.ts). */
 const BRAZIER_RADIUS = 0.45;
-import { damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
+import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
+import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { difficultyMult } from '../game/portalChoice';
@@ -987,6 +988,61 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
   return want;
 }
 
+/**
+ * The Wraith (E1d, the caster): keeps its distance as the Priest does, and when a hero is in reach
+ * channels a violet circle at their feet. The circle stays where it was cast; as it lands (after the
+ * channel and the lag grace, so a step out that was on time on the player's screen counts) whoever
+ * stands in it is Chilled. Any hit breaks the channel (`breakChannel`, from damageEnemy).
+ */
+function casterBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const w = tuning.wraith;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      if (routed || dist > w.keepDistance + 2) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < w.keepDistance) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), w.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0 || dist > w.castRange || routed) break;
+      setAi(e, 'chant');
+      e.tele = { shape: 'circle', x: target.x, z: target.z, radius: w.circleRadius, yaw: 0, arcDeg: 360 };
+      state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      break;
+    }
+    case 'chant': {
+      e.yaw = turnToward(e.yaw, Math.atan2(e.tele.x - e.x, e.tele.z - e.z), w.turnRateDeg * DEG * edt);
+      if (e.aiTime >= w.channelMs / 1000 + tuning.coop.lagGraceMs / 1000) {
+        for (const p of state.players) {
+          if (tuning.debug.passiveEnemies || p.mode === 'down' || Math.hypot(p.x - e.tele.x, p.z - e.tele.z) > e.tele.radius) continue;
+          // A dodge's i-frames slip it, as they slip a hit.
+          if (heroInvulnerable(p)) continue;
+          // It lands on the floor: a hero high enough in the air is over it, by the jump's rule.
+          if (clearsLow(p, e.y)) continue;
+          chillHero(state, p);
+        }
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = w.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
 export type Brain = (state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number) => Intent;
 
 /**
@@ -1003,6 +1059,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   charger: chargerBrain,
   leader: leaderBrain,
   elite: eliteBrain,
+  caster: casterBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -1027,6 +1084,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.priest.raiseEveryMs / 1000;
     case 'knight':
       return tuning.knight.attackCooldownMs / 1000;
+    case 'wraith':
+      return tuning.wraith.cooldownMs / 1000;
     case 'warden':
       return wardenPace(e).cooldownMs / 1000;
   }

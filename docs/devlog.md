@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 104, the Wraith (E1d)
+
+**What changed**
+
+The Crypt's caster, the last of its roster bar E1i's second dungeon.
+- **The kind.** `wraith` is a new `EnemyKind` in the caster role (`KIND_ROLE`), called "Wraith" in the Crypt. Its numbers are `tuning.wraith`: 45 health, 3 poise, and panel ranges for health, distances, circle, channel, cooldown and the broken stagger. `casterBrain` keeps 9 m from the nearest hero, as the Priest keeps its distance. With a hero within 14 m on an open line and its 3.5 s cooldown spent, it channels a violet circle (2 m) at that hero's feet. The circle stays where it was cast. It lands after `wraith.channelMs` (1.6 s) plus the lag grace, so a step out that was on time on the player's screen counts. Whoever is in it then and on the ground is Chilled (`chillHero`, Session 103: 35% slower, no sprint, 3 s). A dodge's i-frames slip it, and so does a jump high enough.
+- **Ranged beats magic.** Any hit that lands breaks the channel (`breakChannel`, in `damageEnemy` after a shield's block): the circle goes and it reels for `wraith.brokenMs` (0.9 s). An arrow is the natural answer from range.
+- **In rooms.** The Wraith costs 3 and joins `SPECIALISTS`, standing `back` with the bows and the Priest behind the shields.
+- **Seen as.** The Priest's robe and hood, no legs, floating 0.35 m up with a slow bob. It channels with the Priest's raised hands. The circle draws violet through the existing colour language and sound (`telegraphColour`'s magic).
+
+**Learned**
+
+A sixth specialist changes each room's seeded shuffle, so floors compose differently from before. D1's "a deeper floor fills it more" counted bodies. A Knight, a Priest and two Shieldbearers fill floor 3's great hall with 8 bodies against floor 1's 10, at 21 budget against 13. The test now compares budget spent, which is what it meant. The roles test lists the Wraith with the back line. Spawn protection (`invulnTime`) now also covers a landing circle, as it covers a hit.
+
+`wraith.test.ts`: the caster role, a brain, violet; a hero standing in the circle as it lands is Chilled for 3 s; one who stepped out is not; a hit mid-channel breaks it (`recover`, no circle) and nobody is Chilled; a room that draws it stands it at the back. check 348 (was 343), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+The Crypt's roster is complete. Polish left on E1d: a frost tint on a Chilled hero's figure. G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions. G5's B (room shapes and set pieces) can start once the tile is answered or dropped.
+
 ## 2026-11-04: Session 103, Chill on a hero (E1d, part one)
 
 **What changed**

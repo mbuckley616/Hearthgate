@@ -926,6 +926,33 @@ export const tuning = {
   },
 
   /**
+   * The Wraith (E1d, the caster): floats at range and channels a violet circle at a hero's feet that
+   * Chills whoever stands in it as it lands (`chill`). Any hit breaks the channel: ranged beats magic.
+   */
+  wraith: {
+    maxHp: 45,
+    maxPoise: 3,
+    radius: 0.4,
+    height: 1.7,
+    moveSpeed: 2.6,
+    turnRateDeg: 280,
+    /** It keeps about this far from the nearest hero. */
+    keepDistance: 9,
+    /** It casts at a hero within this. */
+    castRange: 14,
+    circleRadius: 2,
+    /** The channel, from the circle appearing to its landing (the lag grace is added on top). */
+    channelMs: 1600,
+    cooldownMs: 3500,
+    recoveryMs: 700,
+    /** How long a broken channel leaves it reeling. */
+    brokenMs: 900,
+    spawnMs: 700,
+    deathMs: 1500,
+    knockbackTaken: 1.2,
+  },
+
+  /**
    * The Barrow Knight (E1f, the elite): a Shieldbearer and a Hound in one. It rushes along its yellow
    * line behind its shield (nothing reaches it from the front then, not even a heavy or magic), meets a
    * wall as a Hound does, and otherwise fights as a Shieldbearer. One a room, from Hard or floor 2.
@@ -2443,6 +2470,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'knight.chargeLength': [2, 25, 0.5],
   'knight.chargeDamage': [0, 80, 1],
   'knight.wallStunMs': [0, 6000, 100],
+  'wraith.maxHp': [5, 600, 5],
+  'wraith.keepDistance': [2, 20, 0.5],
+  'wraith.castRange': [2, 30, 0.5],
+  'wraith.circleRadius': [0.5, 5, 0.1],
+  'wraith.channelMs': [200, 5000, 50],
+  'wraith.cooldownMs': [0, 10000, 100],
+  'wraith.brokenMs': [0, 4000, 100],
   'miniboss.healthMult': [1, 10, 0.1],
   'miniboss.knightFromTier': [0, 8, 1],
   'brute.maxHp': [0, 960, 5],
@@ -2929,7 +2963,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

@@ -3,8 +3,8 @@ import { KIND_ROLE } from './roles';
 import type { EnemyRole } from './roles';
 
 /** The kinds a generated floor's fight room can hold (the Crypt's roster, E1b to E1f). */
-export type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
-export const ROOM_COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6 };
+export type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith';
+export const ROOM_COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6, wraith: 3 };
 
 /**
  * Where a body stands when the room's fight starts, from the heroes' side of the room: `front` holds
@@ -33,9 +33,9 @@ export function roomTier(ctx: RoomContext): number {
   return Math.max(0, ctx.difficulty - 1) + Math.max(0, ctx.floor - 1);
 }
 
-/** The specialist roles a room may draw from, the elite apart. The caster joins with the Wraith (E1d). */
-const SPECIALISTS: readonly RoomKind[] = ['shieldbearer', 'hound', 'priest', 'brute', 'archer'];
-const PLACE: Record<RoomKind, Place> = { grunt: 'front', shieldbearer: 'front', brute: 'front', knight: 'front', archer: 'back', priest: 'back', hound: 'far' };
+/** The specialist roles a room may draw from, the elite apart. The caster is the Wraith (E1d). */
+const SPECIALISTS: readonly RoomKind[] = ['shieldbearer', 'hound', 'priest', 'brute', 'archer', 'wraith'];
+const PLACE: Record<RoomKind, Place> = { grunt: 'front', shieldbearer: 'front', brute: 'front', knight: 'front', archer: 'back', priest: 'back', wraith: 'back', hound: 'far' };
 /** Fallen bodies a Bone Priest can raise (`raisable` in enemies.ts). */
 const RAISABLE: readonly RoomKind[] = ['grunt', 'archer', 'shieldbearer'];
 

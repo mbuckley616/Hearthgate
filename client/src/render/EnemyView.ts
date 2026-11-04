@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -84,6 +84,11 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   },
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
+  // The Wraith (E1d) channels with the Priest's raised hands.
+  wraith: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
+  },
   // Bow in the left hand, string hand at the cheek when aiming.
   archer: {
     guard: pose(BASE, { handYaw: -30, handHeight: 0.05, handReach: 0.26, bladeYaw: 70, bladePitch: 65, offYaw: 55, offHeight: -0.02, offReach: 0.3, lean: 12 }),
@@ -179,7 +184,11 @@ export class EnemyView {
     else if (kind === 'brute') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
-    if (kind === 'priest') this.dressPriest(mat, mesh);
+    if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
+    if (kind === 'wraith') {
+      // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
+      for (const l of Object.values(this.legs)) for (const o of [l.thigh, l.shin, l.knee, l.foot]) o.visible = false;
+    }
     if (kind === 'knight') {
       // A crown of pale fire marks the elite out (E1f): five flames round the brow.
       const fire = glowMaterial(0xcfe8ff, 0.9);
@@ -626,7 +635,8 @@ export class EnemyView {
         rise += tuning.launch.arcHeightM * 4 * a * (1 - a);
       }
     } else this.flew = false;
-    this.rig.position.y = rise;
+    // A Wraith hangs in the air and bobs, until it falls.
+    this.rig.position.y = rise + (curr.kind === 'wraith' && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
 
     this.pelvis.position.y = DIMS.hipHeight - p.crouch;
@@ -733,6 +743,7 @@ export class EnemyView {
         }
         break;
       case 'priest':
+      case 'wraith':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
       case 'shieldbearer':
