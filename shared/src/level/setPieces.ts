@@ -133,6 +133,7 @@ export function sarcophagiFor(
       if (doors.some((d) => rects.some((r) => segmentRectDistance(r, d.x, d.z, mid.x, mid.z) < WAY_CLEAR))) continue;
       if (p.pillars.some((pl) => rectDistance(all, pl.x, pl.z) < pl.radius + 1.4)) continue;
       if (p.braziers.some((b) => rectDistance(all, b.x, b.z) < 1.8)) continue;
+      if (p.blocks.some((b) => overlaps(all, b, WALL_CLEAR))) continue;
       if (traps.some((t) => overlaps(all, t, 1.2))) continue;
       if (rows.some((r) => overlaps(all, r, 2.5))) continue;
       rows.push(all);

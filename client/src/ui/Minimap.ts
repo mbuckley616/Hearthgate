@@ -218,6 +218,11 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
       g.lineWidth = 1;
       g.strokeRect(X(t.x) - h, Y(t.z) - h, h * 2, h * 2);
     }
+    // The round chamber's masonry (G5's B): the room's dark, so the circle reads.
+    for (const r of p.blocks) {
+      g.fillStyle = 'rgb(14, 12, 16)';
+      g.fillRect(X(r.minX), Y(r.minZ), (r.maxX - r.minX) * PX, (r.maxZ - r.minZ) * PX);
+    }
     // Tombs (G5's B): pale stone blocks, cover worth finding on the map.
     for (const t of layout.sarcophagi) {
       if (t.piece !== p.id) continue;

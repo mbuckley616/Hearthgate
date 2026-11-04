@@ -57,6 +57,13 @@ export interface PieceInfo {
   ramp: (Rect & { up: Side }) | null;
   /** The rest room's two rings: deeper, then home (game/portal.ts). */
   rings: { x: number; z: number }[];
+  /** Solid masonry inside the walls (G5's B: the round chamber's corners), drawn and collided as wall. */
+  blocks: Rect[];
+}
+
+/** Is (x, z) within `margin` of any of the piece's masonry? */
+export function nearBlock(info: PieceInfo, x: number, z: number, margin: number): boolean {
+  return info.blocks.some((r) => rectDistance(r, x, z) < margin);
 }
 
 export interface FloorLayout {
@@ -219,7 +226,12 @@ function pieceInfo(p: Piece): PieceInfo {
   }
   // Either side of the rest room's fire, facing its one door.
   const rings = p.kind === 'rest' ? [at(4.5, 7), at(13.5, 7)] : [];
-  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings };
+  const blocks = (def.blocks ?? []).map((r) => {
+    const a = at(r.minX, r.minZ);
+    const c = at(r.maxX, r.maxZ);
+    return { minX: Math.min(a.x, c.x), maxX: Math.max(a.x, c.x), minZ: Math.min(a.z, c.z), maxZ: Math.max(a.z, c.z) };
+  });
+  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings, blocks };
   if (def.room || p.kind === 'rest' || p.kind === 'entrance') info.spots = spotsFor(info);
   return info;
 }
@@ -232,6 +244,7 @@ function spotsFor(info: PieceInfo): { x: number; z: number }[] {
     for (let z = i.minZ + 2; z <= i.maxZ - 2 + 1e-6; z += 2.5) {
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1.4)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.8)) continue;
+      if (nearBlock(info, x, z, 1.4)) continue;
       if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3.8)) continue;
       out.push({ x, z });
     }
@@ -276,6 +289,7 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
       if (tombs.some((t) => t.piece === info.id && rectDistance(sarcRect(t), x, z) < 1)) continue;
+      if (nearBlock(info, x, z, 0.6)) continue;
       // Neither in a lava strip nor across the walkway at its end (D6): the long way round stays open.
       if (lava.some((l) => l.piece === info.id && inLavaBand(l, x, z, 1.2))) continue;
       // Nor on spikes (G5).
@@ -301,6 +315,8 @@ function torchesFor(info: PieceInfo, p: Piece): FloorLayout['torches'] {
       const x = side === 'n' || side === 's' ? along : side === 'w' ? b.minX + WALL_T : b.maxX - WALL_T;
       const z = side === 'e' || side === 'w' ? along : side === 'n' ? b.minZ + WALL_T : b.maxZ - WALL_T;
       if (info.doors.some((d) => d.side === side && Math.hypot(d.x - x, d.z - z) < CELL / 2)) continue;
+      // Not buried in the round chamber's masonry.
+      if (nearBlock(info, x, z, 0.3)) continue;
       // On a staircase the torch hangs over the middle of the climb.
       const y = (info.y + info.top) / 2 + 3;
       out.push({ x, y, z, facingYawDeg: INWARD_YAW[side] });
@@ -367,6 +383,8 @@ export function buildFloorWorld(level: LevelDef): World {
     info.pillars.forEach((p, i) =>
       colliders.push({ kind: 'cylinder', id: `pillar-${info.id}-${i}`, x: p.x, z: p.z, radius: p.radius, yMin: 0, yMax: info.y + 5.5, blocksMovement: true, blocksCamera: false, fadeable: true }),
     );
+    // The round chamber's masonry (G5's B): wall blocks, so they are drawn and fade as walls do.
+    info.blocks.forEach((r, k) => colliders.push(box(`wall-${info.id}-block-${k}`, r.minX, r.maxX, 0, info.top + WALL_H, r.minZ, r.maxZ)));
     info.braziers.forEach((br, i) =>
       colliders.push({ kind: 'cylinder', id: `brazier-${info.id}-${i}`, x: br.x, z: br.z, radius: 0.45, yMin: 0, yMax: info.y + 1.2, blocksMovement: true, blocksCamera: false, fadeable: false }),
     );

@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 111, the round chamber (G5's B, Michael's C)
+
+**What changed**
+
+The second of G5's B, in Michael's order: a new room shape. `round` is a 4 x 4 cell kit piece (24 m) titled "The round chamber", with four doorways, one on each side. Its corners are filled with stepped masonry (`PieceDef.blocks`, 48 blocks made by `roundBlocks` in `kit.ts`), so its floor is a circle 23 m across. The edge steps out at most 0.8 m past the circle, and each doorway opens straight into it. Four braziers stand round the middle. With no corner to be pinned in, a fight there circles. The generator grows it off a hall, as it grows the other rooms (weight 1.4 beside the hall of pillars' 2.4). Over 100 floor-1 seeds of 24 pieces there are 62 of them, on 48 floors.
+- **Masonry is wall.** Its blocks are wall colliders (`wall-<piece>-block-<k>`), so the server, prediction, the camera's fade and `FloorView`'s wall drawing take them with no new code. The minimap draws them dark.
+- **Everything else keeps clear.** Spawn spots stay 1.4 m from the masonry, and props, torches, collapsing tiles and tomb rows keep clear of it. Lava never picks a round room, because its walkway at the strip's end could be walled off. The editor's palette has it as "Round chamber (for four)".
+- Adding a piece changes which floor a seed builds. The arena is untouched, so the parity hashes stay the same.
+
+**Learned**
+
+The curve is cut into slices along whichever axis it is shallower to. Cutting along one axis only left notches nearly 5 m deep near the walls. A slice that overlaps a doorway is left out whole, so the floor in front of a door can sit up to 1.1 m outside the circle. That is a doorway alcove, not a gap.
+
+`roundRoom.test.ts` (3): no block reaches inside the circle; just outside it, all round, is masonry except in front of a doorway; on 60 seeds it turns up, with its spots inside the circle and clear of the masonry, props and torches out of it, no lava, and the bots' route through the floor never running into it. check 369, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B continues: the dais (a raised floor ringed by a sunken one), then the L-room. Then C, secrets and side rooms.
+
 ## 2026-11-04: Session 110, tomb rows (G5's B, Michael's C)
 
 **What changed**

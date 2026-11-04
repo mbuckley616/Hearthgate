@@ -54,6 +54,7 @@ export type PieceKind =
   | 'pillared'
   | 'greatHall'
   | 'cavern'
+  | 'round'
   | 'rest'
   | 'boss';
 
@@ -78,9 +79,66 @@ export interface PieceDef {
   title: string;
   pillars: { x: number; z: number; radius: number }[];
   braziers: { x: number; z: number }[];
+  /** Solid masonry inside the walls (G5's B: the round chamber's corners), as rects in the piece's own metres. */
+  blocks?: { minX: number; maxX: number; minZ: number; maxZ: number }[];
 }
 
 const s = (side: Side, at: number, rise = 0): SocketDef => ({ side, at, rise });
+
+const ROUND_SOCKETS = [s('n', 1), s('e', 2), s('s', 2), s('w', 1)];
+
+/** Slices of the round chamber's corner masonry (m): the floor's edge steps out at most this far past the circle. */
+const ROUND_STEP = 0.8;
+
+/**
+ * The masonry that makes a square piece round: in each corner, one block for the part wholly outside
+ * the circle and thin slices following the curve between it and the wall's middle, cut along whichever
+ * axis the curve is shallower to, so no step is deeper than ROUND_STEP. Slices in front of a doorway
+ * are left out, so every doorway opens into the circle.
+ */
+function roundBlocks(size: number, sockets: SocketDef[]): NonNullable<PieceDef['blocks']> {
+  const lo = WALL_T;
+  const hi = size - WALL_T;
+  const c = size / 2;
+  const r = c - WALL_T;
+  const k = r / Math.SQRT2;
+  const out: NonNullable<PieceDef['blocks']> = [];
+  // Doorway spans along each side, with a little room either side.
+  const spans = (side: Side) => sockets.filter((sk) => sk.side === side).map((sk) => [sk.at * CELL + CELL / 2 - DOOR_W / 2 - 0.3, sk.at * CELL + CELL / 2 + DOOR_W / 2 + 0.3]);
+  const clear = (side: Side, a: number, b: number) => !spans(side).some(([s0, s1]) => a < s1 && b > s0);
+  /** How far in from the wall the circle is at `off` from the middle along the wall. */
+  const depth = (off: number) => c - Math.sqrt(Math.max(0, r * r - off * off));
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      // The corner square outside the circle.
+      const cx0 = sx < 0 ? lo : c + k;
+      const cz0 = sz < 0 ? lo : c + k;
+      out.push({ minX: cx0, maxX: sx < 0 ? c - k : hi, minZ: cz0, maxZ: sz < 0 ? c - k : hi });
+      // Slices off the north or south wall, across x from the corner square toward the middle.
+      for (let a = k; a > 1e-6; a -= ROUND_STEP) {
+        const b = Math.max(0, a - ROUND_STEP);
+        // The circle is nearest the wall at the slice's inner end, so the slice stops there and stays outside it.
+        const d = depth(b) - WALL_T;
+        if (d < 0.1) continue;
+        const x0 = sx < 0 ? c - a : c + b;
+        const x1 = sx < 0 ? c - b : c + a;
+        if (!clear(sz < 0 ? 'n' : 's', x0, x1)) continue;
+        out.push(sz < 0 ? { minX: x0, maxX: x1, minZ: lo, maxZ: lo + d } : { minX: x0, maxX: x1, minZ: hi - d, maxZ: hi });
+      }
+      // And off the west or east wall, across z.
+      for (let a = k; a > 1e-6; a -= ROUND_STEP) {
+        const b = Math.max(0, a - ROUND_STEP);
+        const d = depth(b) - WALL_T;
+        if (d < 0.1) continue;
+        const z0 = sz < 0 ? c - a : c + b;
+        const z1 = sz < 0 ? c - b : c + a;
+        if (!clear(sx < 0 ? 'w' : 'e', z0, z1)) continue;
+        out.push(sx < 0 ? { minX: lo, maxX: lo + d, minZ: z0, maxZ: z1 } : { minX: hi - d, maxX: hi, minZ: z0, maxZ: z1 });
+      }
+    }
+  }
+  return out;
+}
 
 /** The kit. Sizes in cells; pillars and braziers in metres from the piece's north-west corner. */
 export const KIT: Record<PieceKind, PieceDef> = {
@@ -223,6 +281,24 @@ export const KIT: Record<PieceKind, PieceDef> = {
       { x: 2.6, z: 39.4 },
       { x: 39.4, z: 39.4 },
     ],
+  },
+  // G5's B (Michael's C, 4 Nov): a round chamber, its corners filled with stepped masonry, so a fight
+  // in it circles and nobody can be pinned in a corner. Four fires round the middle light it.
+  round: {
+    kind: 'round',
+    w: 4,
+    d: 4,
+    sockets: ROUND_SOCKETS,
+    room: true,
+    title: 'The round chamber',
+    pillars: [],
+    braziers: [
+      { x: 6.7, z: 6.7 },
+      { x: 17.3, z: 6.7 },
+      { x: 6.7, z: 17.3 },
+      { x: 17.3, z: 17.3 },
+    ],
+    blocks: roundBlocks(4 * CELL, ROUND_SOCKETS),
   },
   // A dead end the party reaches at the far side of a floor: the rings to go deeper or go home.
   rest: { kind: 'rest', w: 3, d: 3, sockets: [s('s', 1)], room: false, title: 'A place to rest', pillars: [], braziers: [{ x: 9, z: 9 }] },
