@@ -272,6 +272,11 @@ export interface EnemyState {
   attack: string;
   /** Warden, phase 3's rolling slam (E1g): circles already landed; absent outside one. */
   chain?: number;
+  /**
+   * The Hollow King's crown in flight (G4b): how far along its line, whether it is on its way back,
+   * and the heroes it has struck this way (each once out and once back). Absent unless thrown.
+   */
+  crown?: { d: number; length: number; back: boolean; struck: string[] };
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;

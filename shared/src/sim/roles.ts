@@ -39,6 +39,7 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   priest: 'leader',
   knight: 'elite',
   wraith: 'caster',
+  king: 'boss',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -51,6 +52,8 @@ export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
 export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: number }): TelegraphColour {
   if (e.armour) return 'heavy';
   const role = roleOf(e.kind);
+  // The Hollow King (G4b): his sword string a strike, his thrown crown yellow.
+  if (e.kind === 'king') return e.attack === 'crown' ? 'projectile' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }
@@ -76,6 +79,7 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     priest: { name: 'Bone Priest', plural: 'Bone Priests' },
     knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
     wraith: { name: 'Wraith', plural: 'Wraiths' },
+    king: { name: 'The Hollow King', plural: 'The Hollow King' },
   },
 };
 

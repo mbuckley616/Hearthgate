@@ -1,4 +1,4 @@
-import { tuning } from '../config/tuning';
+import { tuning, type EnemyKind } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
 import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
@@ -350,6 +350,14 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
   }
 }
 
+/**
+ * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, the Warden for every
+ * other dungeon until its type's roster brings one.
+ */
+export function bossOf(story: string | undefined): EnemyKind {
+  return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
+}
+
 function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const r = state.run;
   const f = state.floor!;
@@ -362,7 +370,7 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const boss = room.kind === 'boss';
   if (boss) {
     const c = { x: (room.inner.minX + room.inner.maxX) / 2, z: (room.inner.minZ + room.inner.maxZ) / 2 };
-    const e = createEnemy(state, world, 'warden', c.x, c.z, 0);
+    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story), c.x, c.z, 0);
     r.bossId = e.id;
     r.waveSize = 1;
   } else {

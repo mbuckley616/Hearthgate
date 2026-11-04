@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 107, the Hollow King, phase one (G4b part one)
+
+**What changed**
+
+Michael answered G4b on the control room (A, the Hollow King) and the collapsing tile (B, the hole stays for the floor); both answers reach this branch through the control room ahead of the producer's copy into decisions.md. This session is the King's first part.
+- **The kind.** `king`, a new `EnemyKind` in the boss role, "The Hollow King" in the Crypt. Its numbers are `tuning.king` (2400 health, 40 poise, a 1.6x figure), with panel ranges for the string, the crown and the cooldown. A boss keeps a brain of its own (`brainFor` picks `kingBrain` before the role's), so the Warden's is untouched.
+- **Where.** `bossOf(story)` in `floorRun.ts`: the Hollow Crown's last hall makes the King and every other run's the Warden, behind `king.hollowCrown`. The Hollow Crown's enemy list on Wren's card names him in the Warden's place, and the boss bar reads "The Hollow King".
+- **Phase 1.** Up close, a sword string of three cuts, each a red cone (3.8 m, 110 degrees, 16 damage) that turns with the hero for the first half of its wind-up, the first wound up 0.7 s and the next two 0.38 s. At 6 to 15 m with a clear line, his crown thrown down a yellow line that stops at a wall: 0.9 s to wind up, out and back at 16 m/s, striking each hero it passes once each way (20 damage). He stands still until it is back in his hand, and a stagger drops it.
+- **Boss rules follow the role, not the name.** The boss's drop spot, `bossDown` and the parry's poise cost (`parryWardenPoise`) now apply to any boss, so the King's fall banks the run as the Warden's does. The arena has only the Warden, so the parity hashes stay the same.
+- **Seen as.** A skeleton at 1.6x with a long blade and the gold crown the mini-bosses wear. The thrown crown is a copy drawn 1.8x larger, spinning along the line from the root (`EnemyView.flying`), with its own wind-up and throw poses.
+
+**Learned**
+
+The roles test asked every role for exactly one brain. Bosses now have one each, so the test says that.
+
+`king.test.ts`: the boss role, its own brain, a red string and a yellow crown; `bossOf` picks him for the Hollow Crown only, and the Warden comes back with the switch off; three swings up close hurt the hero in front; the crown flies out past 9 m and back while he stands still; a sidestep after the line locks takes no damage; a stagger drops the crown in flight. check 354 (was 348), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G4b part two: phase 2 at 60% (two Barrow Knights rise and violet circles under each hero) and phase 3 at 30% (the hall dims, faster, the crown sweeps an arc), each roar's banner naming its phase. Then G5's collapsing tile as Michael's B.
+
 ## 2026-11-04: Session 106, the Wraith's circle is heard landing (E1d polish)
 
 **What changed**

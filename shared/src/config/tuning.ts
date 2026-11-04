@@ -1083,6 +1083,47 @@ export const tuning = {
   },
 
   /**
+   * The Hollow King (G4b; Michael's A, 4 Nov): the Hollow Crown's own boss, in place of the Warden at
+   * the end of its run. Phase 1 is a three-step sword string (red cones) up close and, at range, his
+   * crown thrown along a yellow line, out and back, striking each hero it passes once a way. Phases 2
+   * and 3 (Barrow Knights and violet circles; a dimmed hall and a sweeping crown) come next.
+   */
+  king: {
+    /** He ends the Hollow Crown's run; off, the Warden does, as before G4b. */
+    hollowCrown: true,
+    maxHp: 2400,
+    maxPoise: 40,
+    radius: 0.8,
+    height: 2.7,
+    moveSpeed: 2.8,
+    turnRateDeg: 170,
+    /** The sword string: `stringSteps` cones, the first telegraphed `stringTelegraphMs`, each after `stringNextMs`. */
+    stringRange: 3.4,
+    stringReach: 3.8,
+    stringArcDeg: 110,
+    stringSteps: 3,
+    stringTelegraphMs: 700,
+    stringNextMs: 380,
+    stringActiveMs: 160,
+    stringDamage: 16,
+    stringRecoveryMs: 800,
+    /** The thrown crown: from `crownMinRange`, along a line `crownRange` long, at `crownSpeed`, `crownRadius` wide. */
+    crownMinRange: 6,
+    crownRange: 15,
+    crownTelegraphMs: 900,
+    crownSpeed: 16,
+    crownRadius: 0.9,
+    crownDamage: 20,
+    crownPush: 1.5,
+    crownRecoveryMs: 600,
+    cooldownMs: 1000,
+    knockbackDealt: 1.2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.15,
+  },
+
+  /**
    * Style levels (brief: "Progression taste"): damage dealt with a hero earns
    * that hero XP. Cumulative XP per level; level 3 in one hero should take
    * about one run (a run is roughly 4,000 damage in total).
@@ -2474,6 +2515,16 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'knight.chargeDamage': [0, 80, 1],
   'knight.wallStunMs': [0, 6000, 100],
   'wraith.maxHp': [5, 600, 5],
+  'king.maxHp': [100, 8000, 50],
+  'king.stringTelegraphMs': [100, 2000, 10],
+  'king.stringNextMs': [50, 1500, 10],
+  'king.stringDamage': [0, 80, 1],
+  'king.crownMinRange': [2, 20, 0.5],
+  'king.crownRange': [4, 30, 0.5],
+  'king.crownTelegraphMs': [100, 3000, 50],
+  'king.crownSpeed': [2, 40, 0.5],
+  'king.crownDamage': [0, 80, 1],
+  'king.cooldownMs': [0, 5000, 50],
   'wraith.keepDistance': [2, 20, 0.5],
   'wraith.castRange': [2, 30, 0.5],
   'wraith.circleRadius': [0.5, 5, 0.1],
@@ -2968,7 +3019,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
