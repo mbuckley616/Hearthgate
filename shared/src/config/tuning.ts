@@ -987,6 +987,24 @@ export const tuning = {
     phase2SpeedScale: 1.25,
     roarMs: 1600,
     summonCount: 3,
+    /**
+     * E1g, three phases: at `phase2At` of its health it roars and raises the dead from the hall's edges;
+     * at `phase3At` it roars again and fights faster, with a rolling slam of `chainSlams` circles.
+     * The slice's Warden has one roar at half health and two phases, so the parity test turns it off.
+     */
+    threePhases: true,
+    phase2At: 0.6,
+    phase3At: 0.3,
+    /** How far from the Warden the dead rise, at most; nearer where a wall is closer. */
+    raiseRadius: 9,
+    phase3CooldownMs: 450,
+    phase3TelegraphScale: 0.75,
+    phase3SpeedScale: 1.3,
+    /** Phase 3's rolling slam: each circle `chainStepM` beyond the last, each telegraphed `chainTelegraphMs`. */
+    chainSlams: 3,
+    chainStepM: 3.4,
+    chainTelegraphMs: 500,
+    chainChance: 0.5,
     knockbackDealt: 2.8,
     spawnMs: 1500,
     deathMs: 3000,
@@ -2397,6 +2415,16 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'warden.phase2SpeedScale': [0.5, 3, 0.05],
   'warden.roarMs': [0, 4800, 10],
   'warden.summonCount': [0, 12, 1],
+  'warden.phase2At': [0.05, 1, 0.05],
+  'warden.phase3At': [0, 0.95, 0.05],
+  'warden.raiseRadius': [3, 20, 0.5],
+  'warden.phase3CooldownMs': [0, 3000, 10],
+  'warden.phase3TelegraphScale': [0.3, 2, 0.01],
+  'warden.phase3SpeedScale': [0.5, 3, 0.05],
+  'warden.chainSlams': [1, 6, 1],
+  'warden.chainStepM': [1, 8, 0.1],
+  'warden.chainTelegraphMs': [150, 2000, 10],
+  'warden.chainChance': [0, 1, 0.05],
   'warden.knockbackDealt': [0, 10, 0.1],
   'warden.spawnMs': [0, 4500, 10],
   'warden.deathMs': [0, 9000, 10],

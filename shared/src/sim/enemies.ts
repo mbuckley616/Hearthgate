@@ -814,23 +814,60 @@ function slamLands(state: SimState, e: EnemyState, damage: number, push: number,
   shove(state, e, heroesInCircle(state, t.x, t.z, t.radius, e.y), t.x, t.z, damage, push);
 }
 
+/** The Warden's pace in its phase: the slice's two, or E1g's three (phase 2 adds the dead, phase 3 the speed). */
+function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldownMs: number } {
+  const w = tuning.warden;
+  if (w.threePhases) {
+    if (e.phase >= 3) return { teleScale: w.phase3TelegraphScale, speed: w.phase3SpeedScale, cooldownMs: w.phase3CooldownMs };
+    return { teleScale: 1, speed: 1, cooldownMs: w.cooldownMs };
+  }
+  if (e.phase >= 2) return { teleScale: w.phase2TelegraphScale, speed: w.phase2SpeedScale, cooldownMs: w.phase2CooldownMs };
+  return { teleScale: 1, speed: 1, cooldownMs: w.cooldownMs };
+}
+
+/**
+ * E1g's second phase: skeletons rise from the hall's edges, evenly round the Warden, each as far out
+ * as `raiseRadius` allows before a wall (and in sight of the Warden, so never in the next room).
+ */
+function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number): void {
+  const w = tuning.warden;
+  const r = enemyStats('grunt').radius;
+  const start = Math.atan2(-e.x, -e.z);
+  for (let i = 0; i < n; i++) {
+    const a = start + (i / Math.max(1, n)) * Math.PI * 2;
+    const ux = Math.sin(a);
+    const uz = Math.cos(a);
+    const from = { x: e.x, y: e.y + 1.3, z: e.z };
+    const clear = sphereCast(from, { x: ux, y: 0, z: uz }, w.raiseRadius, r, world.colliders, (c) => c.blocksMovement);
+    let d = Math.min(w.raiseRadius, clear - r - 0.3);
+    while (d > 2.5 && !isOpen(world, e.x + ux * d, e.z + uz * d, r, false)) d -= 0.5;
+    if (d <= 2.5) d = 3.2;
+    const g = createEnemy(state, world, 'grunt', e.x + ux * d, e.z + uz * d, a + Math.PI);
+    state.events.push({ kind: 'enemyRose', enemyId: g.id, x: g.x, z: g.z });
+  }
+}
+
 function wardenBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const w = tuning.warden;
   const want: Intent = { x: 0, z: 0 };
-  const p2 = e.phase >= 2;
-  const teleScale = p2 ? w.phase2TelegraphScale : 1;
-  const speed = p2 ? w.phase2SpeedScale : 1;
+  const { teleScale, speed } = wardenPace(e);
   if (e.ai === 'roar') {
     if (e.aiTime >= w.roarMs / 1000) {
-      // Summon at the end of the roar, then the fight gets faster.
-      // Summons fan out on the arena side of the Warden.
       const n = Math.round(w.summonCount) + Math.max(0, state.players.length - 1);
-      const toCentre = Math.atan2(-e.x, -e.z);
-      for (let i = 0; i < n; i++) {
-        const a = toCentre + ((i - (n - 1) / 2) / Math.max(1, n)) * 2.4;
-        createEnemy(state, world, 'grunt', e.x + Math.sin(a) * 3.2, e.z + Math.cos(a) * 3.2, a);
+      if (w.threePhases) {
+        // E1g: the first roar raises the dead round the hall; the second only quickens it.
+        if (e.phase === 1) raiseFromEdges(state, world, e, n);
+        e.phase = Math.min(3, e.phase + 1);
+      } else {
+        // Summon at the end of the roar, then the fight gets faster.
+        // Summons fan out on the arena side of the Warden.
+        const toCentre = Math.atan2(-e.x, -e.z);
+        for (let i = 0; i < n; i++) {
+          const a = toCentre + ((i - (n - 1) / 2) / Math.max(1, n)) * 2.4;
+          createEnemy(state, world, 'grunt', e.x + Math.sin(a) * 3.2, e.z + Math.cos(a) * 3.2, a);
+        }
+        e.phase = 2;
       }
-      e.phase = 2;
       e.summoned = true;
       setAi(e, 'recover');
       e.recoverTime = 0.4;
@@ -844,7 +881,16 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
   const toTarget = Math.atan2(dx, dz);
   switch (e.ai) {
     case 'chase': {
-      if (!e.summoned && e.hp <= e.maxHp * 0.5) {
+      if (w.threePhases) {
+        const at = e.phase === 1 ? w.phase2At : e.phase === 2 ? w.phase3At : -1;
+        if (e.hp <= e.maxHp * at) {
+          setAi(e, 'roar');
+          e.tele.shape = 'none';
+          delete e.chain;
+          state.events.push({ kind: 'roar', enemyId: e.id, phase: e.phase + 1 });
+          break;
+        }
+      } else if (!e.summoned && e.hp <= e.maxHp * 0.5) {
         setAi(e, 'roar');
         e.tele.shape = 'none';
         state.events.push({ kind: 'roar', enemyId: e.id });
@@ -863,6 +909,12 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (sameLevel && dist <= w.sweepRange && Math.abs(wrapAngle(toTarget - e.yaw)) < 40 * DEG) {
         e.attack = nextRandom(state) < 0.55 ? 'sweep' : 'slam';
+        // Phase 3 (E1g): some slams roll on toward the hero, a circle at a time.
+        delete e.chain;
+        if (e.attack === 'slam' && w.threePhases && e.phase >= 3 && nextRandom(state) < w.chainChance) {
+          e.attack = 'chainSlam';
+          e.chain = 0;
+        }
         if (e.attack === 'sweep') {
           setAi(e, 'sweepWindup');
           e.tele = { shape: 'cone', x: e.x, z: e.z, radius: w.sweepRadius, yaw: e.yaw, arcDeg: w.sweepArcDeg };
@@ -905,17 +957,27 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       }
       break;
     case 'slamWindup':
-      if (e.attack === 'slam' && e.aiTime < (w.slamTelegraphMs / 1000) * teleScale * 0.4) {
+      if ((e.attack === 'slam' || (e.attack === 'chainSlam' && !e.chain)) && e.aiTime < (w.slamTelegraphMs / 1000) * teleScale * 0.4) {
         e.yaw = turnToward(e.yaw, toTarget, w.turnRateDeg * DEG * edt);
         setSlamTele(e, w.slamOffset, w.slamRadius);
       }
-      if (e.aiTime >= (w.slamTelegraphMs / 1000) * teleScale) {
+      // A rolling slam's later circles are locked to the first's line and come quicker.
+      if (e.aiTime >= (e.chain ? w.chainTelegraphMs : w.slamTelegraphMs * teleScale) / 1000) {
         setAi(e, 'slam');
         slamLands(state, e, w.slamDamage, w.knockbackDealt, true);
       }
       break;
     case 'slam':
       if (e.aiTime >= w.slamActiveMs / 1000) {
+        if (e.attack === 'chainSlam' && (e.chain ?? 0) + 1 < Math.round(w.chainSlams)) {
+          e.chain = (e.chain ?? 0) + 1;
+          e.tele.x += Math.sin(e.yaw) * w.chainStepM;
+          e.tele.z += Math.cos(e.yaw) * w.chainStepM;
+          setAi(e, 'slamWindup');
+          state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+          break;
+        }
+        delete e.chain;
         setAi(e, 'recover');
         e.recoverTime = w.slamRecoveryMs / 1000;
         e.tele.shape = 'none';
@@ -966,7 +1028,7 @@ function attackCooldown(e: EnemyState): number {
     case 'knight':
       return tuning.knight.attackCooldownMs / 1000;
     case 'warden':
-      return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
+      return wardenPace(e).cooldownMs / 1000;
   }
 }
 

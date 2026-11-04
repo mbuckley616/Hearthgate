@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 96, the Warden's three phases (E1g)
+
+**What changed**
+
+The Warden fights in three phases now, behind `warden.threePhases` (on; the parity test turns it off, so the arena's slice Warden still roars once at half health).
+- **Phase 2, at 60% (`phase2At`).** It roars, the banner reads "The Warden calls the dead", and skeletons rise from the edges of the hall: `summonCount` plus one a player beyond the first, spread evenly all round it, each as far out as `raiseRadius` (9 m) allows before a wall, with the Bone Priest's rise effect. Its pace stays phase 1's, so the dead are the change.
+- **Phase 3, at 30% (`phase3At`).** It roars again ("The Warden rages"). Telegraphs play at 0.75x (`phase3TelegraphScale`), it moves 1.3x, and its cooldown drops to 450 ms. No second raising.
+- **The rolling slam.** In phase 3, half its slams (`chainChance`) roll: the first circle is telegraphed and tracks as a normal slam, then two more land `chainStepM` (3.4 m) further along the same locked line, each with its own 500 ms orange circle (`chainTelegraphMs`). They are slams, so low: a jump clears them (M1). A stagger mid-roll ends it.
+- **Announced.** The `roar` event carries the phase it begins, and `RunUi` names each one. The slice's roar has no phase and keeps "It calls for help". Every new number has a panel range.
+
+**Learned**
+
+`wardenPace` now gives the telegraph scale, the speed and the cooldown for each phase in one place, and `attackCooldown` reads it, so the two-phase and three-phase Wardens cannot drift apart. The rolling slam's counter is deleted, not set to undefined, when it ends, so the slice's Warden state keeps its shape and its hash.
+
+`wardenPhases.test.ts`: the 60% roar raises the dead more than 4 m out and all round, the 30% roar quickens it without a second raising, and there is no third roar; the rolling slam lands three circles `chainStepM` apart on one line, each telegraphed, then recovers clean; switched off, it is the slice (one roar at half health, no rising, two phases). check 323 (was 320), parity identical, the client builds.
+
+**Next**
+
+E1h, Crypt rooms that split a party's attention. E1d waits on the Chill question. Nobody has seen the three phases in a browser yet; the gate's "one fight shows all three" wants a real Warden fight, or the critic's.
+
 ## 2026-11-04: Session 95, the Barrow Knight (E1f)
 
 **What changed**

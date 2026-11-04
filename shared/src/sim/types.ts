@@ -256,12 +256,14 @@ export interface EnemyState {
   tele: Telegraph;
   /** Recovery length for the attack just made (s). */
   recoverTime: number;
-  /** Warden: 1, or 2 after the roar. */
+  /** Warden: 1, or 2 after the roar (and 3 after the second, E1g). */
   phase: number;
   /** Warden: has roared and summoned. */
   summoned: boolean;
-  /** Warden: which attack the current windup is ('sweep' | 'slam' | 'farSlam'). */
+  /** Warden: which attack the current windup is ('sweep' | 'slam' | 'farSlam' | 'chainSlam'). */
   attack: string;
+  /** Warden, phase 3's rolling slam (E1g): circles already landed; absent outside one. */
+  chain?: number;
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;
@@ -408,7 +410,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }
