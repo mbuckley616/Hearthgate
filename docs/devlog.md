@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 110, tomb rows (G5's B, Michael's C)
+
+**What changed**
+
+The first of G5's B, built to Michael's C (control room, 4 Nov). The order is one a session: the sarcophagus rows, then the round chamber, then the dais, then the L-room. Some big fight rooms (15 m or more each way inside the walls, never the boss's hall or the lava room) now have one or two rows of three stone tombs. Each tomb is 1 x 2.2 m and 1.3 m tall, with 1.1 m gaps between them. Over 100 floor-1 seeds of 24 pieces, 127 of 459 big fight rooms have rows, on 78 floors, and such a room's banner reads "A hall of tombs" (`level/setPieces.ts`, placed from the seed's own stream, so the generator, props, lava and traps are untouched).
+- **Cover.** The tombs are solid to walking, to an archer's line of sight and to arrows in flight. That includes the heroes' own arrows. A jump (1 m) does not clear them. A hero crouched behind one is out of an archer's line, so it does not draw. The Wraith now casts only at a hero it can see, using the same check the archer uses. A pillar hides a hero from it too, which it did not before.
+- **The way stays open.** Rows keep 1.4 m from the walls, 4 m from a doorway and clear of the room's middle. They also stay 1.6 m clear of the straight line from each doorway to the middle, which is the route bots and henchmen take, and clear of pillars, fires, spikes and collapsing tiles. Spawn spots and props near a tomb are dropped.
+- **Seen.** A plinth, a stone chest and an overhanging lid with a worn figure carved on it, built once in `FloorView`. Pale blocks on the minimap.
+
+**Learned**
+
+The Wraith never checked its line of sight before casting. With pillars only in some rooms, nobody noticed. With cover added to rooms, a caster that saw through stone would have made the tombs pointless against it.
+
+`tombs.test.ts` (4): over 60 seeds the rows land only in fight rooms that are not the boss's hall or the lava room, the same from the same seed, inside the walls and clear of doorways, spawn spots, props, traps and the middle, and the bots' route from the way in to the way out never crosses one; a tomb is taller than a jump; a Wraith casts at a hero in the open and not at one behind a tomb; an archer draws on a hero in the open and not on one behind a tomb. check 366, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B continues: the round chamber next (a new kit piece), then the dais, then the L-room, one a session. Then C, secrets and side rooms.
+
 ## 2026-11-04: Session 109, collapsing floor tiles (G5, Michael's B)
 
 **What changed**

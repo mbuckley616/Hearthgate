@@ -5,6 +5,7 @@ import { checkDungeon } from './handmade';
 import { lavaFor, type LavaStrip } from './lava';
 import { bladesFor, crumbleCollider, crumbleFor, CRUMBLE_SIZE, spikesFor, SPIKE_SIZE, type BladeTrap, type CrumbleTile, type SpikeTile } from './traps';
 import type { BoxCollider } from './geometry';
+import { rectDistance, sarcCollider, sarcophagiFor, sarcRect, type Sarcophagus } from './setPieces';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -75,6 +76,8 @@ export interface FloorLayout {
   /** Collapsing tiles in some fight rooms (G5), and each one's hole as a wall once it has fallen. */
   crumble: CrumbleTile[];
   crumbleWalls: BoxCollider[];
+  /** Set pieces (G5's B): rows of stone tombs in some big fight rooms, cover from bows and casters. */
+  sarcophagi: Sarcophagus[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -114,6 +117,8 @@ function inLavaBand(l: LavaStrip, x: number, z: number, margin: number): boolean
 
 /** A lava room's banner when its doors close. */
 export const LAVA_TITLE = 'A hall of embers';
+/** A room with tomb rows (G5's B). */
+export const TOMBS_TITLE = 'A hall of tombs';
 
 /** Facing into the piece from a wall on this side (yaw 0 faces +z, the slice's convention). */
 const INWARD_YAW: Record<Side, number> = { n: 0, s: 180, w: 90, e: -90 };
@@ -143,8 +148,16 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     room.spots = room.spots.filter((sp) => Math.abs(sp.x - t.x) > CRUMBLE_SIZE / 2 + 0.6 || Math.abs(sp.z - t.z) > CRUMBLE_SIZE / 2 + 0.6);
   }
   const crumbleWalls = crumble.map(crumbleCollider);
+  const sarcophagi = sarcophagiFor(def, pieces, lava, spikes, crumble, openMiddle);
+  // Nobody wakes inside a tomb, nor pressed against one.
+  for (const t of sarcophagi) {
+    const room = pieces[t.piece];
+    room.title = TOMBS_TITLE;
+    const r = sarcRect(t);
+    room.spots = room.spots.filter((sp) => rectDistance(r, sp.x, sp.z) > 0.9);
+  }
   const props: PropInfo[] = [];
-  for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes);
+  for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes, sarcophagi);
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -174,7 +187,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi },
   };
 }
 
@@ -246,7 +259,7 @@ function propHash(seed: number, piece: number, k: number): number {
  * braziers so they never block a way through. None on a staircase or in the rest room. They do not
  * block movement: standing against the walls, nobody needs to walk through them.
  */
-function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[]): void {
+function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[], tombs: readonly Sarcophagus[]): void {
   if (info.kind === 'stair' || info.kind === 'rest' || info.y !== info.top) return;
   const share = KIT[info.kind].room ? PROP_ROOM_SHARE : PROP_HALL_SHARE;
   const i = info.inner;
@@ -262,6 +275,7 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly
       if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3)) continue;
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
+      if (tombs.some((t) => t.piece === info.id && rectDistance(sarcRect(t), x, z) < 1)) continue;
       // Neither in a lava strip nor across the walkway at its end (D6): the long way round stays open.
       if (lava.some((l) => l.piece === info.id && inLavaBand(l, x, z, 1.2))) continue;
       // Nor on spikes (G5).
@@ -374,6 +388,8 @@ export function buildFloorWorld(level: LevelDef): World {
       surfaces.push({ kind: 'flat', ...b, height: info.y });
     }
   }
+  // The tombs (G5's B) stand from y = 0 like a pillar: solid to walking, sight and arrows alike.
+  layout.sarcophagi.forEach((t, i) => colliders.push(sarcCollider(t, i)));
   const roomColliders = gatesOf.map((g) => (g.length ? [...colliders, ...g] : colliders));
   const exitGates = (gatesOf[layout.def.exit] ?? []).map((g) => ({ ...g, id: g.id.replace('gate-', 'exitgate-') }));
   return { level, colliders, collidersOpen: colliders, surfaces, roomColliders, exitGates, collidersLocked: [...colliders, ...exitGates] };

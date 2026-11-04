@@ -1249,7 +1249,8 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
         want.z = -dz / Math.max(dist, 1e-3);
       }
       e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), w.turnRateDeg * DEG * edt);
-      if (e.cooldown > 0 || dist > w.castRange || routed) break;
+      // It casts at what it can see (G5's B): a hero behind a tomb or a pillar is out of its sight.
+      if (e.cooldown > 0 || dist > w.castRange || routed || !lineOfSight(world, e, target)) break;
       setAi(e, 'chant');
       e.tele = { shape: 'circle', x: target.x, z: target.z, radius: w.circleRadius, yaw: 0, arcDeg: 360 };
       state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });

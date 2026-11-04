@@ -4,6 +4,7 @@ import type { World } from '@hearthgate/shared/level/arena';
 import type { PieceInfo } from '@hearthgate/shared/level/floor';
 import type { Collider } from '@hearthgate/shared/level/geometry';
 import { DOOR_H } from '@hearthgate/shared/level/kit';
+import { SARC_HEIGHT, SARC_LONG, SARC_WIDE } from '@hearthgate/shared/level/setPieces';
 import { buildBrazier } from './decor';
 import { labelTexture } from './PortalView';
 import { floorTextures, pillarTextures, wallTextures } from './textures';
@@ -121,6 +122,35 @@ export class FloorView {
         this.group.add(group);
         this.addFire(new THREE.Vector3(b.x, p.y + 1.6, b.z), flame, 0.8);
         this.fireSources.push(new THREE.Vector3(b.x, p.y + 1.3, b.z));
+      }
+    }
+
+    // Tombs (G5's B): a plinth, the chest and an overhanging lid, one shared material and geometry set.
+    if (layout.sarcophagi.length) {
+      const stone = new THREE.MeshStandardMaterial({ color: 0x8a8274, roughness: 0.95 });
+      const lidMat = new THREE.MeshStandardMaterial({ color: 0x9c9384, roughness: 0.85 });
+      const plinthGeo = new THREE.BoxGeometry(SARC_WIDE, 0.2, SARC_LONG);
+      const chestGeo = new THREE.BoxGeometry(SARC_WIDE - 0.12, SARC_HEIGHT - 0.38, SARC_LONG - 0.12);
+      const lidGeo = new THREE.BoxGeometry(SARC_WIDE + 0.06, 0.18, SARC_LONG + 0.06);
+      const effigyGeo = new THREE.BoxGeometry(0.36, 0.12, SARC_LONG * 0.62);
+      for (const t of layout.sarcophagi) {
+        const tomb = new THREE.Group();
+        const plinth = new THREE.Mesh(plinthGeo, stone);
+        plinth.position.y = 0.1;
+        const chest = new THREE.Mesh(chestGeo, stone);
+        chest.position.y = 0.2 + (SARC_HEIGHT - 0.38) / 2;
+        const lid = new THREE.Mesh(lidGeo, lidMat);
+        lid.position.y = SARC_HEIGHT - 0.09;
+        // A worn figure carved on the lid, so a tomb reads as a tomb and not a crate.
+        const effigy = new THREE.Mesh(effigyGeo, lidMat);
+        effigy.position.y = SARC_HEIGHT + 0.06;
+        tomb.add(plinth, chest, lid, effigy);
+        tomb.position.set(t.x, t.y, t.z);
+        if (t.alongX) tomb.rotation.y = Math.PI / 2;
+        tomb.traverse((o) => {
+          if (o instanceof THREE.Mesh) o.castShadow = o.receiveShadow = true;
+        });
+        this.group.add(tomb);
       }
     }
 

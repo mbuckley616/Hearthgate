@@ -3,6 +3,7 @@ import type { PortalState } from '@hearthgate/shared/game/portal';
 import type { FloorLayout, PieceInfo } from '@hearthgate/shared/level/floor';
 import { STEP_H } from '@hearthgate/shared/level/kit';
 import type { PlayerState, SimState } from '@hearthgate/shared/sim/types';
+import { sarcRect } from '@hearthgate/shared/level/setPieces';
 
 /** Pixels per metre on the drawn floor plan (it is scaled again when shown). */
 const PX = 4;
@@ -216,6 +217,13 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
       g.strokeStyle = dim ? 'rgba(170, 90, 20, 0.7)' : 'rgb(255, 138, 26)';
       g.lineWidth = 1;
       g.strokeRect(X(t.x) - h, Y(t.z) - h, h * 2, h * 2);
+    }
+    // Tombs (G5's B): pale stone blocks, cover worth finding on the map.
+    for (const t of layout.sarcophagi) {
+      if (t.piece !== p.id) continue;
+      const r = sarcRect(t);
+      g.fillStyle = dim ? 'rgba(120, 112, 100, 0.7)' : 'rgb(176, 166, 148)';
+      g.fillRect(X(r.minX), Y(r.minZ), (r.maxX - r.minX) * PX, (r.maxZ - r.minZ) * PX);
     }
     for (const pl of p.pillars) {
       g.fillStyle = 'rgba(20, 16, 24, 0.7)';
