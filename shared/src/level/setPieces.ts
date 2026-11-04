@@ -156,3 +156,96 @@ export function sarcCollider(s: Sarcophagus, i: number): BoxCollider {
     fadeable: false,
   };
 }
+
+/**
+ * The dais (G5's B, Michael's C: the third set piece). A square of stone in the middle of a big fight
+ * room, raised in two steps. Each step is lower than anyone's stride (`combat.stepHeight`), so heroes,
+ * henchmen and enemies all walk up it from any side with no path of their own, and the top is well
+ * inside the height every attack reaches (enemies' 0.9 m level gap), so it changes how a fight moves
+ * without changing who can hit whom. A floor never goes below a room's floor (`groundHeight` takes the
+ * highest surface), so the "sunken ring" round it is the room's own floor, a step below the dais.
+ */
+export interface Dais {
+  /** Its centre, and the room's floor height. */
+  x: number;
+  z: number;
+  y: number;
+  piece: number;
+  /** The lower step's side (m); the top is `DAIS_LEDGE` in from it all round. */
+  size: number;
+}
+
+/**
+ * The lower step's side (m), largest first: a room ringed by pillars (the halls of pillars, the great
+ * hall) takes a smaller one inside its ring, the ring of pillars round a raised dais. The top is set in a stride from the step's edge, and each step's rise
+ * (m) is under the 0.35 m stride.
+ */
+export const DAIS_SIZES = [8, 6.5, 5];
+export const DAIS_LEDGE = 1.5;
+export const DAIS_STEP = 0.3;
+/** The share of the rooms that could take one that do. */
+const DAIS_ROOM_SHARE = 0.4;
+
+/** The dais's lower step (`inner` false) or its top (`inner` true). */
+export function daisRect(d: Dais, inner = false): Rect {
+  const h = (inner ? d.size - DAIS_LEDGE * 2 : d.size) / 2;
+  return { minX: d.x - h, maxX: d.x + h, minZ: d.z - h, maxZ: d.z + h };
+}
+
+/** Ground height of the dais at a point, or the room's floor off it. */
+export function daisHeight(d: Dais, x: number, z: number): number {
+  if (rectDistance(daisRect(d, true), x, z) === 0) return d.y + DAIS_STEP * 2;
+  if (rectDistance(daisRect(d), x, z) === 0) return d.y + DAIS_STEP;
+  return d.y;
+}
+
+/**
+ * The floor's daises: at most one a room, in the middle of some big flat fight rooms that hold no
+ * other set piece (never the boss's hall, the lava room or a room with tombs), clear of the pillars,
+ * fires, masonry, traps and doorways. None on a hand-built floor.
+ */
+export function daisesFor(
+  def: FloorDef,
+  pieces: PieceInfo[],
+  lava: readonly LavaStrip[],
+  spikes: readonly SpikeTile[],
+  crumble: readonly CrumbleTile[],
+  tombs: readonly Sarcophagus[],
+): Dais[] {
+  const spec = def.spec;
+  if (spec.hand) return [];
+  const out: Dais[] = [];
+  for (const p of pieces) {
+    if (!p.fight || p.kind === 'boss' || p.y !== p.top || lava.some((l) => l.piece === p.id) || tombs.some((t) => t.piece === p.id)) continue;
+    const i = p.inner;
+    if (i.maxX - i.minX < MIN_ROOM || i.maxZ - i.minZ < MIN_ROOM) continue;
+    // Its own key in the set-piece stream, clear of the tombs' (piece * 16 + up to 25).
+    if (setHash(spec.seed, 0x4000 + p.id) >= DAIS_ROOM_SHARE) continue;
+    const traps: Rect[] = [
+      ...spikes.filter((t) => t.piece === p.id).map((t) => ({ minX: t.x - SPIKE_SIZE / 2, maxX: t.x + SPIKE_SIZE / 2, minZ: t.z - SPIKE_SIZE / 2, maxZ: t.z + SPIKE_SIZE / 2 })),
+      ...crumble.filter((t) => t.piece === p.id).map((t) => ({ minX: t.x - CRUMBLE_SIZE / 2, maxX: t.x + CRUMBLE_SIZE / 2, minZ: t.z - CRUMBLE_SIZE / 2, maxZ: t.z + CRUMBLE_SIZE / 2 })),
+    ];
+    const fits = (d: Dais): boolean => {
+      const r = daisRect(d);
+      if (r.minX - WALL_CLEAR < i.minX || r.maxX + WALL_CLEAR > i.maxX || r.minZ - WALL_CLEAR < i.minZ || r.maxZ + WALL_CLEAR > i.maxZ) return false;
+      if (p.doors.some((dr) => dr.open && rectDistance(r, dr.x, dr.z) < 3)) return false;
+      // A stride between a step and a pillar or a fire, so nobody is wedged between them.
+      if (p.pillars.some((pl) => rectDistance(r, pl.x, pl.z) < pl.radius + 1.2)) return false;
+      if (p.braziers.some((b) => rectDistance(r, b.x, b.z) < 1.2)) return false;
+      if (p.blocks.some((b) => overlaps(r, b, 1.2))) return false;
+      return !traps.some((t) => overlaps(r, t, 1));
+    };
+    const at = { x: (i.minX + i.maxX) / 2, z: (i.minZ + i.maxZ) / 2, y: p.y, piece: p.id };
+    const d = DAIS_SIZES.map((size) => ({ ...at, size })).find(fits);
+    if (d) out.push(d);
+  }
+  return out;
+}
+
+/** The dais as two flat surfaces for `groundHeight`, the top over the lower step. */
+export function daisSurfaces(d: Dais): { kind: 'flat'; minX: number; maxX: number; minZ: number; maxZ: number; height: number }[] {
+  return [
+    { kind: 'flat', ...daisRect(d), height: d.y + DAIS_STEP },
+    { kind: 'flat', ...daisRect(d, true), height: d.y + DAIS_STEP * 2 },
+  ];
+}

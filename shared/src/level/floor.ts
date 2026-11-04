@@ -5,7 +5,7 @@ import { checkDungeon } from './handmade';
 import { lavaFor, type LavaStrip } from './lava';
 import { bladesFor, crumbleCollider, crumbleFor, CRUMBLE_SIZE, spikesFor, SPIKE_SIZE, type BladeTrap, type CrumbleTile, type SpikeTile } from './traps';
 import type { BoxCollider } from './geometry';
-import { rectDistance, sarcCollider, sarcophagiFor, sarcRect, type Sarcophagus } from './setPieces';
+import { daisesFor, daisRect, daisSurfaces, rectDistance, sarcCollider, sarcophagiFor, sarcRect, type Dais, type Sarcophagus } from './setPieces';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -85,6 +85,8 @@ export interface FloorLayout {
   crumbleWalls: BoxCollider[];
   /** Set pieces (G5's B): rows of stone tombs in some big fight rooms, cover from bows and casters. */
   sarcophagi: Sarcophagus[];
+  /** A dais raised in two steps in the middle of some big fight rooms (G5's B). */
+  daises: Dais[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -126,6 +128,8 @@ function inLavaBand(l: LavaStrip, x: number, z: number, margin: number): boolean
 export const LAVA_TITLE = 'A hall of embers';
 /** A room with tomb rows (G5's B). */
 export const TOMBS_TITLE = 'A hall of tombs';
+/** A room with a dais (G5's B). */
+export const DAIS_TITLE = 'The raised dais';
 
 /** Facing into the piece from a wall on this side (yaw 0 faces +z, the slice's convention). */
 const INWARD_YAW: Record<Side, number> = { n: 0, s: 180, w: 90, e: -90 };
@@ -163,6 +167,14 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     const r = sarcRect(t);
     room.spots = room.spots.filter((sp) => rectDistance(r, sp.x, sp.z) > 0.9);
   }
+  // After the props' and tombs' places are settled, so adding it moved neither; it takes rooms without tombs.
+  const daises = daisesFor(def, pieces, lava, spikes, crumble, sarcophagi);
+  // Nobody wakes on its steps: a room's spots stay on its own floor, and the dais is the ground to take.
+  for (const d of daises) {
+    const room = pieces[d.piece];
+    room.title = DAIS_TITLE;
+    room.spots = room.spots.filter((sp) => rectDistance(daisRect(d), sp.x, sp.z) > 0.6);
+  }
   const props: PropInfo[] = [];
   for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes, sarcophagi);
   const bounds = {
@@ -194,7 +206,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi, daises },
   };
 }
 
@@ -408,6 +420,8 @@ export function buildFloorWorld(level: LevelDef): World {
   }
   // The tombs (G5's B) stand from y = 0 like a pillar: solid to walking, sight and arrows alike.
   layout.sarcophagi.forEach((t, i) => colliders.push(sarcCollider(t, i)));
+  // The dais (G5's B) is ground, not wall: two steps anyone walks up, so the camera and arrows pass over it.
+  for (const d of layout.daises) surfaces.push(...daisSurfaces(d));
   const roomColliders = gatesOf.map((g) => (g.length ? [...colliders, ...g] : colliders));
   const exitGates = (gatesOf[layout.def.exit] ?? []).map((g) => ({ ...g, id: g.id.replace('gate-', 'exitgate-') }));
   return { level, colliders, collidersOpen: colliders, surfaces, roomColliders, exitGates, collidersLocked: [...colliders, ...exitGates] };

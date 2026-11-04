@@ -3,7 +3,7 @@ import type { PortalState } from '@hearthgate/shared/game/portal';
 import type { FloorLayout, PieceInfo } from '@hearthgate/shared/level/floor';
 import { STEP_H } from '@hearthgate/shared/level/kit';
 import type { PlayerState, SimState } from '@hearthgate/shared/sim/types';
-import { sarcRect } from '@hearthgate/shared/level/setPieces';
+import { daisRect, sarcRect } from '@hearthgate/shared/level/setPieces';
 
 /** Pixels per metre on the drawn floor plan (it is scaled again when shown). */
 const PX = 4;
@@ -222,6 +222,15 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
     for (const r of p.blocks) {
       g.fillStyle = 'rgb(14, 12, 16)';
       g.fillRect(X(r.minX), Y(r.minZ), (r.maxX - r.minX) * PX, (r.maxZ - r.minZ) * PX);
+    }
+    // The dais (G5's B): a lighter square on the floor, its top lighter still.
+    for (const d of layout.daises) {
+      if (d.piece !== p.id) continue;
+      for (const [inner, fill] of [[false, dim ? 'rgba(90, 84, 76, 0.6)' : 'rgb(110, 102, 92)'], [true, dim ? 'rgba(110, 104, 94, 0.7)' : 'rgb(140, 132, 118)']] as const) {
+        const r = daisRect(d, inner);
+        g.fillStyle = fill;
+        g.fillRect(X(r.minX), Y(r.minZ), (r.maxX - r.minX) * PX, (r.maxZ - r.minZ) * PX);
+      }
     }
     // Tombs (G5's B): pale stone blocks, cover worth finding on the map.
     for (const t of layout.sarcophagi) {

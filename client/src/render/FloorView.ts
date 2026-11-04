@@ -4,7 +4,7 @@ import type { World } from '@hearthgate/shared/level/arena';
 import type { PieceInfo } from '@hearthgate/shared/level/floor';
 import type { Collider } from '@hearthgate/shared/level/geometry';
 import { DOOR_H } from '@hearthgate/shared/level/kit';
-import { SARC_HEIGHT, SARC_LONG, SARC_WIDE } from '@hearthgate/shared/level/setPieces';
+import { DAIS_LEDGE, DAIS_STEP, SARC_HEIGHT, SARC_LONG, SARC_WIDE } from '@hearthgate/shared/level/setPieces';
 import { buildBrazier } from './decor';
 import { labelTexture } from './PortalView';
 import { floorTextures, pillarTextures, wallTextures } from './textures';
@@ -151,6 +151,30 @@ export class FloorView {
           if (o instanceof THREE.Mesh) o.castShadow = o.receiveShadow = true;
         });
         this.group.add(tomb);
+      }
+    }
+
+    // The dais (G5's B): two dressed-stone steps, a worn slab on top with a darker inlaid border so
+    // the top reads as the place to stand. Its height is the sim's (`daisSurfaces`), so feet land on it.
+    if (layout.daises.length) {
+      const step = new THREE.MeshStandardMaterial({ color: 0x7a7468, roughness: 0.92 });
+      const top = new THREE.MeshStandardMaterial({ color: 0x8f877a, roughness: 0.8 });
+      const inlay = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.95 });
+      for (const d of layout.daises) {
+        const inner = d.size - DAIS_LEDGE * 2;
+        const lower = new THREE.Mesh(new THREE.BoxGeometry(d.size, DAIS_STEP, d.size), step);
+        lower.position.set(d.x, d.y + DAIS_STEP / 2, d.z);
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(inner, DAIS_STEP * 2, inner), top);
+        upper.position.set(d.x, d.y + DAIS_STEP, d.z);
+        const border = new THREE.Mesh(new THREE.BoxGeometry(inner - 0.3, 0.02, inner - 0.3), inlay);
+        border.position.set(d.x, d.y + DAIS_STEP * 2 + 0.01, d.z);
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(inner - 0.6, 0.03, inner - 0.6), top);
+        slab.position.set(d.x, d.y + DAIS_STEP * 2 + 0.015, d.z);
+        for (const m of [lower, upper, border, slab]) {
+          m.castShadow = m === lower || m === upper;
+          m.receiveShadow = true;
+          this.group.add(m);
+        }
       }
     }
 

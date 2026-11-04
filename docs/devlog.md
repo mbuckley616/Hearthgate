@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 112, the dais (G5's B, Michael's C)
+
+**What changed**
+
+The third of G5's B, in Michael's order: a raised dais. Some big fight rooms (15 m or more each way inside the walls) now have a square of dressed stone in the middle, raised in two steps of 0.3 m each (`level/setPieces.ts`, `daisesFor`). It is placed from the seed's own stream, so the generator, props, lava, traps and tombs are untouched. The room's banner reads "The raised dais". Over 100 floor-1 seeds of 24 pieces there are 77 of them, on 58 floors.
+- **Fits the room.** The lower step is 8 m square, with the top set 1.5 m in from its edge. A room ringed by pillars takes a smaller one inside the ring: 6.5 m, or 5 m in the halls of pillars and the great hall. In the round chamber it stands between the four fires. It is never in the boss's hall, the lava room or a room with tombs. It keeps clear of doorways (3 m), pillars and fires (a stride), the masonry and the traps.
+- **Ground, not wall.** Its two steps are flat surfaces (`daisSurfaces`) that `groundHeight` reads, so the server, prediction and telegraphs all put feet on it with no new code. Each step is under the 0.35 m stride, so heroes, henchmen and enemies walk up it from any side without pathing of their own. The top (0.6 m) is inside every attack's reach (enemies' 0.9 m level gap), so it changes how a fight moves, not who can hit whom. Nobody wakes on its steps. Spawn spots within 0.6 m of it are dropped, and every room keeps at least four.
+- **Seen.** Two stone steps, a worn slab on top with a darker inlaid border, built once in `FloorView`. On the minimap it is a lighter square with a lighter top.
+- No ring of sunken floor round it. `groundHeight` takes the highest surface under a point, so ground can never sit below a room's own floor. The "sunken ring" is the room's floor, a step below the dais. A true moat would need a change to the ground model.
+
+**Learned**
+
+The generator's test holds every spawn spot to its room's floor height. Spots on the steps broke that, and enemies waking on a step edge would have looked wrong anyway, so they are dropped rather than the test loosened. Every big room but the pit has pillars or fires a few metres from its middle, so an 8 m dais alone landed only in guard rooms and round chambers. The smaller sizes are what put it inside the pillar rings.
+
+`dais.test.ts` (3): over 100 seeds it lands only in fight rooms that are not the boss's hall, the lava room or a tomb room, the same from the same seed, inside the walls and clear of doorways, pillars, fires, traps, props and spawn spots, with the ground reading top, step and floor, and the bots' middle on its top; a hero runs up both steps and off the far side; a grunt walks up to a hero on top and hits them. check 372, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B ends with the L-room (a new kit piece). Then C, secrets and side rooms.
+
 ## 2026-11-04: Session 111, the round chamber (G5's B, Michael's C)
 
 **What changed**
