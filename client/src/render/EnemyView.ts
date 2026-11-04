@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -69,6 +69,11 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
     windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
     slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
+  },
+  // Staff in hand (E1e); both arms raised over the remains while it chants.
+  priest: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
   },
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
@@ -164,6 +169,7 @@ export class EnemyView {
     else if (kind === 'brute') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
+    if (kind === 'priest') this.dressPriest(mat, mesh);
     if (kind === 'shieldbearer' && this.shield) {
       // A tall shield that covers it from shin to skull, and a rusted helm: read as "not from the front".
       this.shield.scale.set(1.5, 2.4, 1);
@@ -353,6 +359,23 @@ export class EnemyView {
       this.shield = shield;
       this.chest.add(shield);
     }
+  }
+
+  /** The Bone Priest (E1e): a Skeleton Warrior's bones in a long robe and hood, a staff topped with a skull for its sword and shield. */
+  private dressPriest(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    if (this.shield) this.shield.visible = false;
+    for (const c of [...this.weapon.children]) if (c !== this.glint) this.weapon.remove(c);
+    const robe = mat(0x2a1e30, { roughness: 1, side: THREE.DoubleSide });
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    this.pelvis.add(mesh(new THREE.CylinderGeometry(0.16, 0.3, 0.75, 10, 1, true), robe, 0, -0.38, 0));
+    this.chest.add(mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.45, 10, 1, true), robe, 0, 0.18, 0));
+    const hood = mesh(new THREE.SphereGeometry(0.16, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), robe, 0, 0.02, -0.02);
+    hood.scale.set(1, 1.1, 1.15);
+    this.head.add(hood);
+    const wood = mat(0x3a2a1e);
+    this.weapon.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 1.3, 6), wood, 0, 0.35, 0), mesh(new THREE.SphereGeometry(0.06, 10, 8), bone, 0, 1.04, 0));
+    // A violet light in the staff's skull, as its tell is violet.
+    this.weapon.add(mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: 0xb070ff, toneMapped: false }), 0, 1.04, 0.05));
   }
 
   /**
@@ -674,6 +697,9 @@ export class EnemyView {
             return into(P.between, P.slash2, t / (g.slashActiveMs / 1000), easeOut);
         }
         break;
+      case 'priest':
+        if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
+        break;
       case 'shieldbearer': {
         const sb = tuning.shieldbearer;
         switch (e.ai) {
@@ -758,6 +784,8 @@ export function windupProgress(e: EnemyState): number {
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       return clamp01(t / (tuning.hound.telegraphMs / 1000));
+    case 'chant':
+      return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;
     case 'sweepWindup':

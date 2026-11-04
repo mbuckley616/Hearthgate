@@ -868,6 +868,33 @@ export const tuning = {
     knockbackTaken: 1,
   },
 
+  /**
+   * The Bone Priest (E1e, the leader): hangs behind its group and every few seconds chants over a
+   * fallen skeleton, which stands up again at part health. It fights no one; it dies first.
+   */
+  priest: {
+    maxHp: 55,
+    maxPoise: 4,
+    radius: 0.4,
+    height: 1.65,
+    moveSpeed: 2.5,
+    turnRateDeg: 300,
+    /** It keeps about this far from the nearest hero, behind the pack. */
+    keepDistance: 8,
+    /** Remains farther than this from it are out of its reach. */
+    raiseRange: 12,
+    /** Between one raising and the next (its cooldown). */
+    raiseEveryMs: 4000,
+    /** The chant: a violet glow on the remains, then they stand. */
+    chantMs: 1500,
+    /** The health a raised skeleton stands with, of its full. */
+    raiseHp: 0.5,
+    recoveryMs: 500,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 1,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -2263,6 +2290,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'hound.wallStunMs': [0, 6000, 100],
   'hound.recoveryMs': [0, 3000, 10],
   'hound.cooldownMs': [0, 8000, 50],
+  'priest.maxHp': [5, 400, 5],
+  'priest.maxPoise': [1, 40, 0.5],
+  'priest.moveSpeed': [0.5, 8, 0.1],
+  'priest.keepDistance': [2, 16, 0.5],
+  'priest.raiseRange': [2, 30, 0.5],
+  'priest.raiseEveryMs': [500, 15000, 100],
+  'priest.chantMs': [100, 5000, 50],
+  'priest.raiseHp': [0.05, 1, 0.05],
+  'priest.recoveryMs': [0, 3000, 10],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2734,7 +2770,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

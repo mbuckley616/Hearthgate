@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 94, the Bone Priest (E1e)
+
+**What changed**
+
+The leader role's first enemy. `priest` is an `EnemyKind` dressed as the leader ("Bone Priest"), with its numbers in `tuning.priest` and panel ranges.
+- **The raising.** It keeps 8 m from the nearest hero, behind its pack, and fights no one. Every 4 s (`raiseEveryMs`) it picks the nearest fallen skeleton within 12 m (a Skeleton Warrior, Archer or Shieldbearer, not a Hound, a Brute or a boss) and chants for 1.5 s, with its arms raised and a violet circle on the remains (the magic tell and its shimmer). Then the remains stand again at half health (`raiseHp`), with Haunted's rise event and effect. A stagger breaks the chant. Killing the Priest stops it all.
+- **Remains.** While a living Priest is in the room, a fallen skeleton is kept past its death time (`raisable`), so it is there to raise. Once the Priest falls, the remains go as usual. A room's clear count is unchanged: it counts the living, so the Priest holds the room and its remains do not. Under Haunted, Haunted's own rise comes first, and one the Priest has raised does not rise again under Haunted (`risen`).
+- **The look.** A skeleton in a long dark robe and hood, carrying a staff topped with a skull and a violet light, in place of the warrior's sword and shield.
+- **Where it appears.** One a room at most, in bigger rooms that already hold two others (budget cost 3), with the same draws as before. It is named among Emberhall's and the Hollow Crown's key enemies. The arena never spawns one.
+
+**Learned**
+
+The kill already resets `aiTime`, so "dead for half a second" (the Priest waits that long before choosing remains, so a body is seen to fall) is just `aiTime`. A raised skeleton killed again grants its XP again, from damage, so a Priest left alive is a slow XP source. That is worth watching in play: the answer could be no XP from a raised body, or a cap on raisings a Priest has.
+
+`priest.test.ts`: the role, the brain and the violet tell; a warrior killed three times stands again each time at `raiseHp`, and after the Priest falls its next death is its last; the Priest keeps its distance; a raised one is never Haunted's to raise. check 316 (was 312), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1f, the Barrow Knight (elite), which is the Shieldbearer and the Hound in one. E1d waits on the Chill question.
+
 ## 2026-11-04: Session 93, the Crypt Hound (E1c)
 
 **What changed**

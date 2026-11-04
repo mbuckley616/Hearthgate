@@ -706,6 +706,77 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
   return want;
 }
 
+/**
+ * The Bone Priest (E1e, the leader): keeps `keepDistance` from the nearest hero, behind its pack, and
+ * every `raiseEveryMs` chants over the nearest fallen skeleton in reach, a violet circle on the remains
+ * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
+ */
+function leaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const pr = tuning.priest;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      if (routed || dist > pr.keepDistance + 2) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < pr.keepDistance) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pr.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0) break;
+      let best: EnemyState | undefined;
+      for (const o of state.enemies) {
+        if (o.aiTime < 0.5 || !raisable(state, o)) continue;
+        const d = Math.hypot(o.x - e.x, o.z - e.z);
+        if (d <= pr.raiseRange && (!best || d < Math.hypot(best.x - e.x, best.z - e.z))) best = o;
+      }
+      if (best) {
+        setAi(e, 'chant');
+        e.raiseId = best.id;
+        e.tele = { shape: 'circle', x: best.x, z: best.z, radius: 1.2, yaw: 0, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'chant': {
+      const remains = state.enemies.find((o) => o.id === e.raiseId);
+      if (!remains || remains.ai !== 'dead') {
+        e.tele.shape = 'none';
+        e.raiseId = undefined;
+        setAi(e, 'chase');
+        break;
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(remains.x - e.x, remains.z - e.z), pr.turnRateDeg * DEG * edt);
+      if (e.aiTime >= pr.chantMs / 1000) {
+        remains.risen = true;
+        remains.hp = remains.maxHp * pr.raiseHp;
+        remains.poise = enemyStats(remains.kind).maxPoise;
+        remains.hasToken = false;
+        remains.frozen = 0;
+        remains.bleedTicks = 0;
+        setAi(remains, 'spawn');
+        state.events.push({ kind: 'enemyRose', enemyId: remains.id, x: remains.x, z: remains.z });
+        e.tele.shape = 'none';
+        e.raiseId = undefined;
+        setAi(e, 'recover');
+        e.recoverTime = pr.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
 function setSlamTele(e: EnemyState, offset: number, radius: number): void {
   e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * offset, z: e.z + Math.cos(e.yaw) * offset, radius, yaw: e.yaw, arcDeg: 360 };
 }
@@ -842,6 +913,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   boss: wardenBrain,
   shield: shieldBrain,
   charger: chargerBrain,
+  leader: leaderBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -862,9 +934,23 @@ function attackCooldown(e: EnemyState): number {
       return tuning.shieldbearer.attackCooldownMs / 1000;
     case 'hound':
       return tuning.hound.cooldownMs / 1000;
+    case 'priest':
+      return tuning.priest.raiseEveryMs / 1000;
     case 'warden':
       return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
   }
+}
+
+/**
+ * Remains a Bone Priest can raise (E1e): a fallen skeleton (fodder, archer or shield) while a living
+ * Priest is in the room, kept past its death time until the Priest falls. Haunted's own rise comes
+ * first, and one a Priest has raised does not rise again under Haunted.
+ */
+export function raisable(state: SimState, e: EnemyState): boolean {
+  if (e.ai !== 'dead' || willRise(state, e)) return false;
+  const role = roleOf(e.kind);
+  if (role !== 'fodder' && role !== 'archer' && role !== 'shield') return false;
+  return state.enemies.some((o) => roleOf(o.kind) === 'leader' && o.ai !== 'dead');
 }
 
 /** Haunted (P8): a fallen enemy that has not yet got up, and will. The Warden falls once. */
@@ -1034,7 +1120,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     setAi(e, 'spawn');
     state.events.push({ kind: 'enemyRose', enemyId: e.id, x: e.x, z: e.z });
   }
-  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e)));
+  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e) && !raisable(state, e)));
 }
 
 /**

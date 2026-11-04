@@ -188,6 +188,7 @@ export type EnemyAi =
   | 'roar'
   | 'chargeWindup'
   | 'charge'
+  | 'chant'
   | 'recover'
   | 'stagger'
   | 'dead';
@@ -270,6 +271,8 @@ export interface EnemyState {
    * still hurt but neither build poise nor interrupt. Brutes and bosses only; absent otherwise.
    */
   armour?: number;
+  /** The remains a Bone Priest is chanting over (E1e). Leader role only, while it chants. */
+  raiseId?: number;
   /** A Shieldbearer's guard is down until this sim time (E1b): a heavy broke it. Shield role only. */
   guardDownUntil?: number;
   /** What its hits are multiplied by: a harder portal's (G3). Absent means 1, as in the slice. */
