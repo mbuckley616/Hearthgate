@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 102, swinging blades (G5)
+
+**What changed**
+
+The second trap. A blade hangs from a pivot under the ceiling in some flat straight halls (`hall`, `hallLong`, a third of them, never one with spikes) and swings across the hall, so the walk through is timed. Its arm is 3.4 m, and the steel crescent at its foot sweeps low. Level data from the seed again (`bladesFor`, `FloorLayout.blades`). Over 100 seeds of a 24-piece floor 2, 84 floors have one or more, 1.7 a floor.
+- **The swing** is `bladeOffset`, a sine across the hall over `traps.bladePeriodS` (2.6 s there and back), from the sim's clock. Server and browser compute the same swing, and the view sets the arm's angle so its foot is where the sim says.
+- **The hit.** A body within the blade's thickness of its line is hit as the blade passes through it, once each way. This is judged from where the blade was last tick and where it is now, so nothing is kept between ticks. A hero takes `traps.bladeHeroFrac` (20%), or clears it in the air by the jump's rule and gets "Cleared". An enemy takes `traps.bladeEnemyDamage` (40) and is thrown `traps.bladePush` (3 m) the way the blade swings, so a hall with a blade is a place to fight in. Server only, henchmen spared, under `traps.enabled`, like the spikes.
+
+**Learned**
+
+A blade has no wind-up, so it needs no warning glow: the swing itself is the tell, which suits a hall you walk through rather than fight in. The pass rule (the blade's offset crossing the body's) gives exactly two hits a swing with no per-player cooldown in the state.
+
+`traps.test.ts` gains three: blades only in straight halls without spikes, reaching inside the walls, the same each time; a hero in its way is hit exactly twice a swing, untouched 1.5 m along the hall or high in the air; an enemy in its way loses 40 and is thrown along the swing. check 339 (was 336), parity identical, test:net not needed (no server or net file), the client builds. Neither trap has been seen in a browser yet. The crescent's shape and hang were worked out on paper, so the critic's run should look at a bladed hall.
+
+**Next**
+
+The collapsing floor tile, the last of G5's A. Then E1d, the Wraith (Chill as Michael's A). G4b waits on its question.
+
 ## 2026-11-04: Session 101, spikes (G5, traps first)
 
 **What changed**

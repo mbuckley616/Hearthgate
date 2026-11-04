@@ -93,3 +93,50 @@ export function spikeClock(tile: SpikeTile, time: number, cycleS: number): numbe
   const c = (time + tile.phase * cycleS) % cycleS;
   return c < 0 ? c + cycleS : c;
 }
+
+/**
+ * A swinging blade (G5): a pendulum hung over a hall's middle, swinging across it, so the walk
+ * through is timed. The blade sweeps low; it is its own tell.
+ */
+export interface BladeTrap {
+  /** The pivot over the floor, and the floor's height. */
+  x: number;
+  z: number;
+  y: number;
+  piece: number;
+  /** It swings along x (the hall runs along z), or along z. */
+  alongX: boolean;
+  /** How far either side of the middle the blade reaches (m). */
+  reach: number;
+  /** Where in its swing it starts, a share of the period. */
+  phase: number;
+}
+
+const BLADE_SHARE = 0.35;
+
+/** The floor's blades: one in some flat straight halls without spikes. None on a hand-built floor. */
+export function bladesFor(def: FloorDef, pieces: PieceInfo[], spikes: readonly SpikeTile[]): BladeTrap[] {
+  const spec = def.spec;
+  if (spec.hand) return [];
+  const out: BladeTrap[] = [];
+  for (const p of pieces) {
+    if ((p.kind !== 'hall' && p.kind !== 'hallLong') || p.y !== p.top || spikes.some((t) => t.piece === p.id)) continue;
+    if (trapHash(spec.seed, p.id * 8 + 5) >= BLADE_SHARE) continue;
+    const door = p.doors.find((d) => d.open);
+    if (!door) continue;
+    // The hall runs between its doorways; the blade swings across it.
+    const alongX = door.side === 'n' || door.side === 's';
+    const i = p.inner;
+    const width = alongX ? i.maxX - i.minX : i.maxZ - i.minZ;
+    out.push({ x: (i.minX + i.maxX) / 2, z: (i.minZ + i.maxZ) / 2, y: p.y, piece: p.id, alongX, reach: width / 2 - 0.4, phase: trapHash(spec.seed, p.id * 8 + 6) });
+  }
+  return out;
+}
+
+/** The blade's offset from the middle across the hall at sim time `time` (m). */
+export function bladeOffset(b: BladeTrap, time: number, periodS: number): number {
+  return b.reach * Math.sin(2 * Math.PI * (time / periodS + b.phase));
+}
+
+/** Half the blade's thickness along the hall (m): a body this close to its line is in its way. */
+export const BLADE_HALF = 0.45;

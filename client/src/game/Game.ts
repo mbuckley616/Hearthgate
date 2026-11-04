@@ -423,8 +423,8 @@ export class Game {
       this.gfx.scene.remove(this.trapView.group);
       disposeTree(this.trapView.group);
     }
-    const spikes = this.world.level.dungeon?.spikes;
-    this.trapView = spikes?.length ? new TrapView(spikes) : null;
+    const d = this.world.level.dungeon;
+    this.trapView = d && (d.spikes.length || d.blades.length) ? new TrapView(d.spikes, d.blades) : null;
     if (this.trapView) this.gfx.scene.add(this.trapView.group);
   }
 

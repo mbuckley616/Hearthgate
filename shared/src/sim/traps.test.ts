@@ -116,3 +116,85 @@ describe('spikes (G5)', () => {
     expect(p.hp).toBe(p.maxHp);
   });
 });
+
+describe('swinging blades (G5)', () => {
+  function bladedFloor() {
+    for (let seed = 1; seed < 200; seed++) {
+      const level = floorLevel({ seed, pieces: 24, floor: 1, floors: 3 });
+      const blade = level.dungeon!.blades[0];
+      if (!blade) continue;
+      const world = buildWorld(level);
+      return { level, world, state: createSimState(level, ['p1'], world), blade };
+    }
+    throw new Error('no blade in 200 seeds');
+  }
+  /** Step the traps for one full swing. */
+  const swing = (f: ReturnType<typeof bladedFloor>, each = () => {}) => {
+    const n = Math.ceil(tuning.traps.bladePeriodS / DT);
+    for (let i = 0; i < n; i++) {
+      each();
+      stepTraps(f.state, f.world, DT);
+      f.state.time += DT;
+    }
+  };
+
+  it('hangs in some straight halls, never one with spikes, the same every time', () => {
+    let n = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = floorLevel({ seed, pieces: 24, floor: 1, floors: 3 }).dungeon!;
+      n += layout.blades.length;
+      for (const b of layout.blades) {
+        const p = layout.pieces[b.piece];
+        expect(['hall', 'hallLong']).toContain(p.kind);
+        expect(layout.spikes.some((t) => t.piece === b.piece)).toBe(false);
+        expect(insidePiece(p, b.x + (b.alongX ? b.reach : 0), b.z + (b.alongX ? 0 : b.reach))).toBe(true);
+      }
+      expect(floorLevel({ seed, pieces: 24, floor: 1, floors: 3 }).dungeon!.blades).toEqual(layout.blades);
+    }
+    expect(n).toBeGreaterThan(10);
+  });
+
+  it('hits a hero in its way twice a swing (there and back), and misses one beside its line or in the air', () => {
+    const f = bladedFloor();
+    const p = f.state.players[0];
+    Object.assign(p, { x: f.blade.x, z: f.blade.z, y: f.blade.y, grounded: true, mode: 'move', invulnerable: false, invulnTime: 0 });
+    let hits = 0;
+    swing(f, () => {
+      p.hp = p.maxHp;
+      p.mode = 'move';
+    });
+    // Count by stepping again and watching health.
+    f.state.time = 0;
+    swing(f, () => {
+      if (p.hp < p.maxHp) hits++;
+      p.hp = p.maxHp;
+    });
+    expect(hits).toBe(2);
+    // Beside the blade's line, along the hall.
+    const off = 1.5;
+    Object.assign(p, f.blade.alongX ? { x: f.blade.x, z: f.blade.z + off } : { x: f.blade.x + off, z: f.blade.z });
+    swing(f);
+    expect(p.hp).toBe(p.maxHp);
+    Object.assign(p, { x: f.blade.x, z: f.blade.z, y: f.blade.y + tuning.jump.clearHeight + 0.2, grounded: false });
+    swing(f);
+    expect(p.hp).toBe(p.maxHp);
+  });
+
+  it('cuts an enemy and throws it the way it swings', () => {
+    const f = bladedFloor();
+    f.state.players[0].x = f.blade.x + 50;
+    const e = createEnemy(f.state, f.world, 'grunt', f.blade.x, f.blade.z, 0);
+    e.ai = 'chase';
+    e.x = f.blade.x;
+    e.z = f.blade.z;
+    const full = e.hp;
+    let thrown = false;
+    swing(f, () => {
+      if (Math.abs(f.blade.alongX ? e.kbx : e.kbz) > 0) thrown = true;
+      e.x = f.blade.x;
+      e.z = f.blade.z;
+    });
+    expect(e.hp).toBeLessThanOrEqual(full - tuning.traps.bladeEnemyDamage);
+    expect(thrown).toBe(true);
+  });
+});

@@ -712,6 +712,12 @@ export const tuning = {
     spikeHeroFrac: 0.15,
     /** What a strike deals an enemy (before nothing: traps ignore the portal's multiplier). */
     spikeEnemyDamage: 30,
+    /** A swinging blade's full swing, there and back (s). */
+    bladePeriodS: 2.6,
+    bladeHeroFrac: 0.2,
+    bladeEnemyDamage: 40,
+    /** Metres it throws an enemy it meets, the way it swings. */
+    bladePush: 3,
   },
 
   lava: {
@@ -2226,6 +2232,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'traps.spikeUpS': [0.2, 3, 0.05],
   'traps.spikeHeroFrac': [0, 1, 0.01],
   'traps.spikeEnemyDamage': [0, 200, 1],
+  'traps.bladePeriodS': [1, 8, 0.1],
+  'traps.bladeHeroFrac': [0, 1, 0.01],
+  'traps.bladeEnemyDamage': [0, 200, 1],
+  'traps.bladePush': [0, 10, 0.1],
   'lava.burnFracPerS': [0, 1, 0.01],
   'lava.tickS': [0.1, 2, 0.05],
 

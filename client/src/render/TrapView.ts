@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { tuning } from '@hearthgate/shared/config/tuning';
-import { SPIKE_SIZE, spikeClock, type SpikeTile } from '@hearthgate/shared/level/traps';
+import { bladeOffset, SPIKE_SIZE, spikeClock, type BladeTrap, type SpikeTile } from '@hearthgate/shared/level/traps';
 import { spikeStrikeAt } from '@hearthgate/shared/sim/traps';
 import { glowMaterial } from './props';
 
@@ -8,6 +8,8 @@ import { glowMaterial } from './props';
 const WARN = 0xff8a1a;
 const SPIKES_PER_SIDE = 3;
 const SPIKE_H = 0.55;
+/** A blade's arm, pivot to edge (m). */
+const ARM = 3.4;
 
 /**
  * Spike tiles (G5): an iron grate in the floor, a glow in the colour language's orange through the
@@ -17,8 +19,9 @@ const SPIKE_H = 0.55;
 export class TrapView {
   readonly group = new THREE.Group();
   private readonly tiles: { tile: SpikeTile; glow: THREE.Mesh; spikes: THREE.Group }[] = [];
+  private readonly blades: { blade: BladeTrap; arm: THREE.Group }[] = [];
 
-  constructor(spikes: readonly SpikeTile[]) {
+  constructor(spikes: readonly SpikeTile[], blades: readonly BladeTrap[] = []) {
     const grate = new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.55, metalness: 0.7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
     const iron = new THREE.MeshStandardMaterial({ color: 0x9a948c, roughness: 0.35, metalness: 0.85 });
     const grateGeo = new THREE.PlaneGeometry(SPIKE_SIZE, SPIKE_SIZE).rotateX(-Math.PI / 2);
@@ -45,10 +48,34 @@ export class TrapView {
       this.group.add(base, glow, set);
       this.tiles.push({ tile, glow, spikes: set });
     }
+
+    // Blades: an iron arm from a pivot under the ceiling, a broad crescent at its foot that sweeps low.
+    const armGeo = new THREE.CylinderGeometry(0.05, 0.05, ARM, 6).translate(0, -ARM / 2, 0);
+    const bladeGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.05, 20, 1, false, -0.9, 1.8).rotateX(Math.PI / 2).translate(0, -ARM + 0.55, 0);
+    const steel = new THREE.MeshStandardMaterial({ color: 0xc8ccd2, roughness: 0.25, metalness: 0.95 });
+    for (const blade of blades) {
+      const pivot = new THREE.Group();
+      pivot.position.set(blade.x, blade.y + ARM + 0.25, blade.z);
+      // The swing's plane is across the hall: turn the arm's frame to it.
+      if (!blade.alongX) pivot.rotation.y = -Math.PI / 2;
+      const arm = new THREE.Group();
+      const rod = new THREE.Mesh(armGeo, iron);
+      const edge = new THREE.Mesh(bladeGeo, steel);
+      rod.castShadow = edge.castShadow = true;
+      arm.add(rod, edge);
+      pivot.add(arm);
+      this.group.add(pivot);
+      this.blades.push({ blade, arm });
+    }
   }
 
   update(simTime: number): void {
     const t = tuning.traps;
+    for (const v of this.blades) {
+      // The arm's angle that puts its foot at the sim's offset across the hall.
+      const off = t.enabled ? bladeOffset(v.blade, simTime, t.bladePeriodS) : 0;
+      v.arm.rotation.z = Math.asin(Math.max(-1, Math.min(1, off / ARM)));
+    }
     const on = t.enabled;
     const warn = t.spikeWarnS;
     // Up from the moment the warning ends, through the lag grace the server waits, for spikeUpS.
