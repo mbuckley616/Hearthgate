@@ -59,6 +59,8 @@ export interface PieceInfo {
   rings: { x: number; z: number }[];
   /** Solid masonry inside the walls (G5's B: the round chamber's corners), drawn and collided as wall. */
   blocks: Rect[];
+  /** The L-room's point out from its inside corner (kit.ts `elbow`). */
+  elbow?: { x: number; z: number };
 }
 
 /** Is (x, z) within `margin` of any of the piece's masonry? */
@@ -244,6 +246,7 @@ function pieceInfo(p: Piece): PieceInfo {
     return { minX: Math.min(a.x, c.x), maxX: Math.max(a.x, c.x), minZ: Math.min(a.z, c.z), maxZ: Math.max(a.z, c.z) };
   });
   const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings, blocks };
+  if (def.elbow) info.elbow = at(def.elbow.x, def.elbow.z);
   if (def.room || p.kind === 'rest' || p.kind === 'entrance') info.spots = spotsFor(info);
   return info;
 }
@@ -438,6 +441,8 @@ export function pieceAt(layout: FloorLayout, x: number, z: number): number {
 
 /** A clear point in the middle of a piece: its centre, or the spot nearest it when a pillar or a fire stands there. */
 export function openMiddle(p: PieceInfo): { x: number; z: number } {
+  // The L-room's middle is its masonry's corner; the elbow sees down both arms.
+  if (p.elbow) return p.elbow;
   const c = { x: (p.inner.minX + p.inner.maxX) / 2, z: (p.inner.minZ + p.inner.maxZ) / 2 };
   const blocked = p.pillars.some((pl) => Math.hypot(pl.x - c.x, pl.z - c.z) < pl.radius + 1.2) || p.braziers.some((b) => Math.hypot(b.x - c.x, b.z - c.z) < 1.6);
   if (!blocked || p.spots.length === 0) return c;

@@ -55,6 +55,7 @@ export type PieceKind =
   | 'greatHall'
   | 'cavern'
   | 'round'
+  | 'ell'
   | 'rest'
   | 'boss';
 
@@ -81,6 +82,12 @@ export interface PieceDef {
   braziers: { x: number; z: number }[];
   /** Solid masonry inside the walls (G5's B: the round chamber's corners), as rects in the piece's own metres. */
   blocks?: { minX: number; maxX: number; minZ: number; maxZ: number }[];
+  /**
+   * A room bent round its masonry (G5's B: the L-room): the point out from the inside corner that sees
+   * down both arms. The room's middle for a bot's route, and where an enemy heads when the corner stands
+   * between it and its goal.
+   */
+  elbow?: { x: number; z: number };
 }
 
 const s = (side: Side, at: number, rise = 0): SocketDef => ({ side, at, rise });
@@ -299,6 +306,21 @@ export const KIT: Record<PieceKind, PieceDef> = {
       { x: 17.3, z: 17.3 },
     ],
     blocks: roundBlocks(4 * CELL, ROUND_SOCKETS),
+  },
+  // G5's B (Michael's C, 4 Nov): the L-room, a 4 x 4 cell room with its north-east quarter solid, so a
+  // fight in it has a corner to fall back round and enemies come at it from two arms. Each arm is two
+  // cells wide, a room for four; a doorway at the end of each arm and one on each outer side.
+  ell: {
+    kind: 'ell',
+    w: 4,
+    d: 4,
+    sockets: [s('n', 0), s('w', 1), s('s', 2), s('e', 3)],
+    room: true,
+    title: 'The crooked hall',
+    pillars: [],
+    braziers: [{ x: 2.6, z: 21.4 }],
+    blocks: [{ minX: 2 * CELL, maxX: 4 * CELL - WALL_T, minZ: WALL_T, maxZ: 2 * CELL }],
+    elbow: { x: 2 * CELL - 2.2, z: 2 * CELL + 2.2 },
   },
   // A dead end the party reaches at the far side of a floor: the rings to go deeper or go home.
   rest: { kind: 'rest', w: 3, d: 3, sockets: [s('s', 1)], room: false, title: 'A place to rest', pillars: [], braziers: [{ x: 9, z: 9 }] },

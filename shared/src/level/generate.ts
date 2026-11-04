@@ -114,6 +114,8 @@ const FROM_HALL: [PieceKind, number][] = [
   ['cavern', 0.7],
   // G5's B (Michael's C, 4 Nov): the round chamber.
   ['round', 1.4],
+  // And the L-room.
+  ['ell', 1.4],
 ];
 /** At most this many of the big rooms on one floor. */
 const CAP: Partial<Record<PieceKind, number>> = { cavern: 1, greatHall: 3 };

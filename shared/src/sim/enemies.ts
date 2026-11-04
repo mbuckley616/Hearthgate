@@ -228,6 +228,11 @@ function around(piece: PieceInfo, e: EnemyState, goal: { x: number; z: number })
   const ux = dx / len;
   const uz = dz / len;
   const r = enemyStats(e.kind).radius;
+  // The L-room (G5's B): with its masonry's corner in the way, head for the elbow first, from where
+  // the goal is in view down the other arm. Walking straight held an enemy against the stone.
+  if (piece.elbow && Math.hypot(piece.elbow.x - e.x, piece.elbow.z - e.z) > 0.8 && piece.blocks.some((b) => segmentNearRect(b, e.x, e.z, goal.x, goal.z, r + 0.3))) {
+    return piece.elbow;
+  }
   let best: { x: number; z: number; along: number; side: number; clear: number } | null = null;
   const check = (x: number, z: number, radius: number) => {
     const along = (x - e.x) * ux + (z - e.z) * uz;
@@ -244,6 +249,17 @@ function around(piece: PieceInfo, e: EnemyState, goal: { x: number; z: number })
   // Pass on the far side from it; dead ahead, the side the enemy strafes to.
   const dir = o.side > 0.01 ? -1 : o.side < -0.01 ? 1 : e.strafeDir || 1;
   return { x: o.x - uz * dir * (o.clear + 0.1), z: o.z + ux * dir * (o.clear + 0.1) };
+}
+
+/** Does the segment from (ax, az) to (bx, bz) pass within `margin` of the rect? Sampled every 0.25 m. */
+function segmentNearRect(r: { minX: number; maxX: number; minZ: number; maxZ: number }, ax: number, az: number, bx: number, bz: number, margin: number): boolean {
+  const n = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25));
+  for (let i = 0; i <= n; i++) {
+    const x = ax + ((bx - ax) * i) / n;
+    const z = az + ((bz - az) * i) / n;
+    if (Math.hypot(Math.max(r.minX - x, 0, x - r.maxX), Math.max(r.minZ - z, 0, z - r.maxZ)) < margin) return true;
+  }
+  return false;
 }
 
 /** Can the enemy see the hero (walls, pillars and the ledge block the view)? */

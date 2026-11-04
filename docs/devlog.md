@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 113, the L-room (G5's B, Michael's C)
+
+**What changed**
+
+The last of G5's B, in Michael's order: the L-room. `ell` is a 4 x 4 cell kit piece (24 m) titled "The crooked hall". Its north-east quarter (unturned) is solid masonry, a 12 m block made with the round chamber's `blocks`, so the room is two arms 12 m wide meeting at a corner. It has four doorways: one at the end of each arm and one on each outer side. One fire stands in the far corner. The generator grows it off a hall at the round chamber's weight (1.4). Over 100 floor-1 seeds of 24 pieces there are 74 of them, on 55 floors.
+- **The elbow.** `PieceDef.elbow` (kept on `PieceInfo`) is a point 2.2 m out from the masonry's inside corner, and it can see down both arms. It is the room's middle for `openMiddle`, so the bots' and henchmen's way through goes round the corner and never into the stone.
+- **Enemies go round.** In `around` (enemies.ts), an enemy whose straight line to its goal runs within its radius plus 0.3 m of the masonry heads for the elbow first. Walking straight, a grunt slid along the stone at its own radius and arrived a quarter later. Going by the elbow it keeps at least 0.6 m off the stone. The round chamber has no elbow and is unchanged.
+- **Everything else keeps clear,** as in the round chamber. Spawn spots stay 1.4 m from the masonry, props, torches, traps and tombs keep off it, lava never picks it, and a dais never fits it (its middle is the corner). The editor's palette has it as "L-room (for four)".
+- Adding a piece changes which floor a seed builds. The arena is untouched, so the parity hashes stay the same.
+- **test:net's floor walk** now runs with god mode and the lava burn off. Its bots walk straight lines through the doorways and never hop or fight back. On the floor its fixed seed now builds, one burned down crossing a lava strip and the other was felled by the rest room's mini-boss before the cheat cleared the room. The walk tests the hand-offs, not the fight.
+
+**Learned**
+
+Most enemies already reach a hero round a convex corner by sliding along the wall. The elbow matters less for arriving at all than for not grinding along the stone, so the test holds the grunt's distance from the masonry as well as its hit. The smoke test's floor walk had been passing on luck: any floor 2 with lava or a mini-boss on its straight route would have stopped it.
+
+`ellRoom.test.ts` (3): the masonry is one quarter and every doorway opens clear of it; on 80 seeds it turns up with its spots, props and torches clear of the masonry, no lava and no dais, the elbow in view of every doorway and the bots' route never running into the stone; a grunt goes round by the elbow to a hero down the other arm and hits them, never within 0.6 m of the stone (this fails without the elbow). `dais.test.ts`'s grunt now only has to climb the first step, since the floor it picks changed and from that step the top is in reach. check 375, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B is done. G5's C, secrets and side rooms, has no shape yet, so it is asked in decisions.md Pending.
+
 ## 2026-11-04: Session 112, the dais (G5's B, Michael's C)
 
 **What changed**
