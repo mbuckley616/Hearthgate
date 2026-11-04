@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 97, Crypt rooms that split a party's attention (E1h)
+
+**What changed**
+
+A generated floor's fight rooms are composed by role now (`sim/roomMix.ts`, `composeRoom`), in place of Session 92 to 95's rolls for each kind.
+- **Roles first, then fodder.** A big room draws `dungeon.rolesBase` (1) specialist roles from a seeded shuffle of shield, charger, leader, heavy and archer, plus `dungeon.rolesPerTier` (1) for each tier, up to `dungeon.maxRoles` (4). A room's tier is one for each difficulty past Normal and one for each floor past the first (`roomTier`). From tier 2, Shieldbearers and Hounds come in pairs where the budget allows. Bows come in pairs. The rest of the budget is grunts, with a bow now and then, and never more bows than blades. A room of grunts takes its first bow once two blades can screen it.
+- **Each with its reason.** A Bone Priest is added last, and only when the room holds two or more bodies it can raise. The Barrow Knight joins big rooms from tier 1, after the roles, and only if the budget still has a pack's worth left, so a tight room gains a problem before it gains a Knight. Small and guard rooms are fodder and bows, with one Shieldbearer or Hound from tier 2.
+- **Where they stand.** Each kind has a place. The front line (grunts, Shieldbearers, Brutes, the Knight) takes the nearer of the room's far spots. Bows and the Priest take the farthest spots, behind it. Hounds take the room's far end. The heroes meet the shields first and the bows behind them, and the Hounds have the room's length to rush.
+- **Harder in kind.** Over five seeds' big rooms on floor 1, Normal averages 2.6 roles a room and no Knight, and Nightmare averages 4.8 roles, with a Knight in 5 of 9. Floor 3 on Nightmare averages 5.9, with a Knight in 8 of 9. G3's health and damage multiplier is unchanged. It is the portal's, and Michael's call. The arena never composes, so parity is unchanged.
+
+**Learned**
+
+A first group is small: a pillared room on Normal has about 7 to spend and a guard room 4. A Knight (6) placed first ate whole rooms, so it comes after the roles. The `test:net` harness leaves its server behind: `bootServer`'s `server.kill()` sends SIGTERM to the tsx wrapper, and both processes stay alive and ticking after "all passed". One left from this run's first check had grown to 6 GB in 10 minutes and held port 2599, so the second run failed with EADDRINUSE until it was killed. That is a harness bug in `tests/bots.ts` (spawn detached and kill the group, or SIGKILL after a grace). It is for the critic or the next builder run. It is not in the backlog yet.
+
+`roomMix.test.ts`: five seeds' floors on Normal, where every room with a budget of 4 or more is a mix, a Priest only comes with two raisable bodies, and no room has more bows than blades; every kind in its place; Nightmare's big rooms hold more than one role more than Normal's and the elite, and Normal floor 1 never does; the composition stays within its budget and repeats from the same stream. check 327 (was 323), test:net all passed (after the stale server was killed), the client builds.
+
+**Next**
+
+E1d waits on the Chill question; with the caster in, it joins `SPECIALISTS` and stands `back` behind a shield. After it, E1i (the Warrens) is **(design)**, so the Crypt roster's builder work is done until Chill is answered. The harness leak above wants a line in the backlog.
+
 ## 2026-11-04: Session 96, the Warden's three phases (E1g)
 
 **What changed**

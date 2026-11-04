@@ -1511,6 +1511,13 @@ export const tuning = {
     budgetPerFloor: 0.35,
     /** Each player past the first adds this much budget (the slice: one grunt a wave). */
     budgetPerExtraPlayer: 2,
+    /**
+     * E1h: a big fight room draws `rolesBase` specialist roles (shield, charger, leader, heavy, archer),
+     * `rolesPerTier` more for each difficulty past Normal and each floor past the first, up to `maxRoles`.
+     */
+    rolesBase: 1,
+    rolesPerTier: 1,
+    maxRoles: 4,
     /** The rest comes as reinforcements once the first group is mostly down. */
     firstGroupShare: 0.7,
     /**
@@ -1893,6 +1900,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'dungeon.budgetPerCell': [0.1, 3, 0.05],
   'dungeon.budgetPerFloor': [0, 1, 0.05],
   'dungeon.budgetPerExtraPlayer': [0, 5, 0.5],
+  'dungeon.rolesBase': [0, 5, 1],
+  'dungeon.rolesPerTier': [0, 3, 0.5],
+  'dungeon.maxRoles': [0, 5, 1],
   'dungeon.firstGroupShare': [0.2, 1, 0.05],
   'dungeon.attackersPerHero': [1, 6, 1],
   'hirelings.reactMs': [0, 2000, 10],

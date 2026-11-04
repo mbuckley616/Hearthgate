@@ -6,8 +6,8 @@ import { nextRandom } from './combat';
 import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
+import { composeRoom, type Place } from './roomMix';
 import { difficultyMult } from '../game/portalChoice';
-import type { EnemyKind } from '../config/tuning';
 import type { GearItem } from './catalogue';
 import type { Item } from './gear';
 import type { SimState } from './types';
@@ -368,9 +368,6 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   state.events.push({ kind: 'waveStart', wave: r.wave, title: room.title, boss });
 }
 
-type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
-const COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6 };
-
 /** A room's enemy budget: its floor area, deeper floors and more players raising it (tuning.dungeon). */
 export function roomBudget(room: PieceInfo, floor: number, players: number): number {
   const d = tuning.dungeon;
@@ -379,59 +376,47 @@ export function roomBudget(room: PieceInfo, floor: number, players: number): num
 }
 
 /**
- * Spend part of the room's budget on enemies at its spots farthest from the heroes, as the slice
- * spawns a wave on the far side of the arena. Any room mixes grunts and archers (D1: a guard room of
- * grunts alone was a queue); brutes come in the bigger ones. Returns how many spawned.
+ * Spend part of the room's budget on a group composed by role (E1h, `composeRoom`) at its spots
+ * farthest from the heroes, as the slice spawns a wave on the far side of the arena: the front line on
+ * the nearer of those spots, the bows and the Priest behind it, Hounds at the far end. Returns how many
+ * spawned.
  */
 function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'first' | 'reinforce'): number {
   const spec = world.level.dungeon!.def.spec;
   const share = part === 'first' ? tuning.dungeon.firstGroupShare : 1 - tuning.dungeon.firstGroupShare;
   // A harder portal (P7) fills every room more.
-  let budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share * difficultyMult(spec.difficulty)));
+  const budget = Math.max(1, Math.round(roomBudget(room, spec.floor, state.players.length) * share * difficultyMult(spec.difficulty)));
   const big = room.kind !== 'small' && room.kind !== 'guard';
-  // A guard room keeps at least two blades for every bow, so its archers have someone to hide behind.
-  let archers = 0;
   const avgX = state.players.reduce((s, p) => s + p.x, 0) / Math.max(1, state.players.length);
   const avgZ = state.players.reduce((s, p) => s + p.z, 0) / Math.max(1, state.players.length);
   const spots = [...room.spots].sort((a, b) => Math.hypot(b.x - avgX, b.z - avgZ) - Math.hypot(a.x - avgX, a.z - avgZ));
   const far = spots.slice(0, Math.max(3, Math.ceil(spots.length / 2)));
-  const kinds: EnemyKind[] = [];
-  let brutes = 0;
-  let shields = 0;
-  let hounds = 0;
-  let priests = 0;
-  let knights = 0;
-  const elite = (spec.difficulty ?? 1) >= 2 || spec.floor >= 2;
-  while (budget >= 1) {
-    const roll = nextRandom(state);
-    let kind: RoomKind = 'grunt';
-    if (big && budget >= COST.brute && brutes < 1 + Math.floor(spec.floor / 2) && roll < 0.18) kind = 'brute';
-    // A Shieldbearer (E1b) or two in a bigger room, until E1h composes rooms by role.
-    else if (big && budget >= COST.shieldbearer && shields < 2 && roll > 0.88) kind = 'shieldbearer';
-    // And a Crypt Hound (E1c), which wants a big room's length to rush.
-    else if (big && budget >= COST.hound && hounds < 2 && roll > 0.8 && roll <= 0.88) kind = 'hound';
-    // And a Bone Priest (E1e), one a room, with a pack for it to raise.
-    // A Barrow Knight (E1f), the elite: one a room at most, from Hard or the second floor on.
-    else if (big && elite && budget >= COST.knight && knights < 1 && roll > 0.72 && roll <= 0.76) kind = 'knight';
-    else if (big && budget >= COST.priest && priests < 1 && kinds.length >= 2 && roll > 0.76 && roll <= 0.8) kind = 'priest';
-    else if (budget >= COST.archer && roll < 0.45 && (big || archers * 2 < kinds.length)) kind = 'archer';
-    if (kind === 'brute') brutes++;
-    if (kind === 'shieldbearer') shields++;
-    if (kind === 'hound') hounds++;
-    if (kind === 'priest') priests++;
-    if (kind === 'knight') knights++;
-    if (kind === 'archer') archers++;
-    kinds.push(kind);
-    budget -= COST[kind];
+  const group = composeRoom(budget, { big, floor: spec.floor, difficulty: spec.difficulty ?? 1 }, () => nextRandom(state));
+  // Farthest first for the far end and the back line; the front line from the nearest of the far spots.
+  const order: Place[] = ['far', 'back', 'front'];
+  const used = new Map<number, number>();
+  let fromFar = 0;
+  let fromNear = far.length - 1;
+  for (const place of order) {
+    for (const g of group.filter((p) => p.place === place)) {
+      let idx: number;
+      if (place === 'front') {
+        idx = ((fromNear % far.length) + far.length) % far.length;
+        fromNear--;
+      } else {
+        idx = fromFar % far.length;
+        fromFar++;
+      }
+      const n = used.get(idx) ?? 0;
+      used.set(idx, n + 1);
+      const pt = far[idx];
+      const a = nextRandom(state) * Math.PI * 2;
+      // Several on one spot stand round it.
+      const ring = n === 0 ? 0 : 1.2;
+      const x = pt.x + Math.cos(a) * ring;
+      const z = pt.z + Math.sin(a) * ring;
+      createEnemy(state, world, g.kind, x, z, Math.atan2(avgX - x, avgZ - z));
+    }
   }
-  kinds.forEach((kind, i) => {
-    const pt = far[i % far.length];
-    const a = nextRandom(state) * Math.PI * 2;
-    // Several on one spot stand round it.
-    const ring = i < far.length ? 0 : 1.2;
-    const x = pt.x + Math.cos(a) * ring;
-    const z = pt.z + Math.sin(a) * ring;
-    createEnemy(state, world, kind, x, z, Math.atan2(avgX - x, avgZ - z));
-  });
-  return kinds.length;
+  return group.length;
 }
