@@ -550,7 +550,7 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
  * bashes a short line in front, a heavy that staggers whoever it meets. Its block is in damageEnemy.
  */
 function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const sb = tuning.shieldbearer;
+  const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -607,8 +607,14 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
 }
 
 /** The Hound's line: from it, along where it faces, as far as the rush will run. */
+/** A rush's numbers: the Hound's, or the Barrow Knight's (E1f). */
+function rushOf(e: EnemyState) {
+  const k = tuning.knight;
+  return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
+}
+
 function setChargeTele(e: EnemyState): void {
-  const l = tuning.hound.chargeLength;
+  const l = rushOf(e).chargeLength;
   e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * l, z: e.z + Math.cos(e.yaw) * l, radius: l, yaw: e.yaw, arcDeg: 0 };
 }
 
@@ -619,7 +625,7 @@ function setChargeTele(e: EnemyState): void {
  * locks makes it miss.
  */
 function chargerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const h = tuning.hound;
+  const h = rushOf(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -777,6 +783,26 @@ function leaderBrain(state: SimState, world: World, e: EnemyState, target: Playe
   return want;
 }
 
+/**
+ * The Barrow Knight (E1f, the elite): from far off it rushes as a Hound does, behind its shield; close
+ * in it fights as a Shieldbearer, bash and all.
+ */
+function eliteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  if (e.ai === 'chargeWindup' || e.ai === 'charge') return chargerBrain(state, world, e, target, edt);
+  if (e.ai === 'chase' && target) {
+    const k = tuning.knight;
+    const dist = Math.hypot(target.x - e.x, target.z - e.z);
+    if (dist >= k.chargeMinRange && dist <= k.chargeRange) {
+      // Ask the rush first; if it does not start, the shield's step stands and its turn alone counts.
+      const yaw = e.yaw;
+      const want = chargerBrain(state, world, e, target, edt);
+      if ((e.ai as EnemyAi) === 'chargeWindup') return want;
+      e.yaw = yaw;
+    }
+  }
+  return shieldBrain(state, world, e, target, edt);
+}
+
 function setSlamTele(e: EnemyState, offset: number, radius: number): void {
   e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * offset, z: e.z + Math.cos(e.yaw) * offset, radius, yaw: e.yaw, arcDeg: 360 };
 }
@@ -914,6 +940,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   shield: shieldBrain,
   charger: chargerBrain,
   leader: leaderBrain,
+  elite: eliteBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -936,6 +963,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.hound.cooldownMs / 1000;
     case 'priest':
       return tuning.priest.raiseEveryMs / 1000;
+    case 'knight':
+      return tuning.knight.attackCooldownMs / 1000;
     case 'warden':
       return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
   }

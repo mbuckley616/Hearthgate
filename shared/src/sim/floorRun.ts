@@ -368,8 +368,8 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   state.events.push({ kind: 'waveStart', wave: r.wave, title: room.title, boss });
 }
 
-type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer' | 'hound' | 'priest';
-const COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3 };
+type RoomKind = 'grunt' | 'archer' | 'brute' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
+const COST: Record<RoomKind, number> = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6 };
 
 /** A room's enemy budget: its floor area, deeper floors and more players raising it (tuning.dungeon). */
 export function roomBudget(room: PieceInfo, floor: number, players: number): number {
@@ -400,6 +400,8 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
   let shields = 0;
   let hounds = 0;
   let priests = 0;
+  let knights = 0;
+  const elite = (spec.difficulty ?? 1) >= 2 || spec.floor >= 2;
   while (budget >= 1) {
     const roll = nextRandom(state);
     let kind: RoomKind = 'grunt';
@@ -409,12 +411,15 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
     // And a Crypt Hound (E1c), which wants a big room's length to rush.
     else if (big && budget >= COST.hound && hounds < 2 && roll > 0.8 && roll <= 0.88) kind = 'hound';
     // And a Bone Priest (E1e), one a room, with a pack for it to raise.
+    // A Barrow Knight (E1f), the elite: one a room at most, from Hard or the second floor on.
+    else if (big && elite && budget >= COST.knight && knights < 1 && roll > 0.72 && roll <= 0.76) kind = 'knight';
     else if (big && budget >= COST.priest && priests < 1 && kinds.length >= 2 && roll > 0.76 && roll <= 0.8) kind = 'priest';
     else if (budget >= COST.archer && roll < 0.45 && (big || archers * 2 < kinds.length)) kind = 'archer';
     if (kind === 'brute') brutes++;
     if (kind === 'shieldbearer') shields++;
     if (kind === 'hound') hounds++;
     if (kind === 'priest') priests++;
+    if (kind === 'knight') knights++;
     if (kind === 'archer') archers++;
     kinds.push(kind);
     budget -= COST[kind];

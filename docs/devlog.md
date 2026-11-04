@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 95, the Barrow Knight (E1f)
+
+**What changed**
+
+The elite role's first enemy, built from the Shieldbearer and the Hound. `knight` is an `EnemyKind` dressed as the elite ("Barrow Knight"), with its own numbers in `tuning.knight` (160 health, poise 18, knockback taken 0.4) and panel ranges.
+- **The rush.** From 4 to 10 m it winds up a yellow lane (0.9 s, tracking for the first 60%) and rushes it at 11 m/s for up to 12 m: 20 damage and a 4 m shove to the first hero it meets. During the windup and the rush it can be hurt only from the side or behind. From the front, nothing gets through, a held heavy and magic included. A wall stuns it for 2.6 s, as a Hound is stunned.
+- **Close in.** It fights as a Shieldbearer: the 130° front block (magic through it, a held heavy breaks it for 2 s) and a 16-damage bash.
+- **Shared brains.** The Hound's and the Shieldbearer's brains read their numbers from the kind (`rushOf`, and the shield's section), and `eliteBrain` asks the rush first and otherwise takes the shield's step. Its turn is undone when the rush does not start, so the Knight never turns twice in a tick.
+- **The look.** The Shieldbearer's tall shield and helm on a larger skeleton (1.2x), set low into the rush, with a crown of five pale-fire flames round the brow to mark it out.
+- **Where it appears.** At most one a room, in bigger rooms, and only on Hard or harder, or from a run's second floor on (budget cost 6), with the same draws as before. It is named among the Hollow Crown's key enemies.
+
+**Learned**
+
+`noUnusedLocals` aside, TypeScript narrows `e.ai` after a `===` check, so a brain that calls another brain and then asks what state it left must cast back to `EnemyAi`.
+
+`knight.test.ts`: the role and the brain; mid-rush, a held heavy and a bolt of magic from the front do nothing while the side and back take full damage; a sidestep after the lock leaves the hero untouched and the Knight stunned against the wall for `wallStunMs`; close in, a light from the front is blocked, magic is not, and its bash lands for `bashDamage`. check 320 (was 316), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1g, the Warden's three phases. E1d waits on the Chill question. None of the four new figures has been seen in a browser yet.
+
 ## 2026-11-04: Session 94, the Bone Priest (E1e)
 
 **What changed**

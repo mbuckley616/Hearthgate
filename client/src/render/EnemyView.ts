@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -69,6 +69,13 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
     windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
     slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
+  },
+  // The Barrow Knight (E1f) holds its shield as a Shieldbearer, set lower into the rush.
+  knight: {
+    guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
+    windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
+    slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
+    rush: pose(BASE, { handYaw: -50, handHeight: 0.0, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: 0, offHeight: 0.18, offReach: 0.45, twist: 5, lean: 34, crouch: 0.2 }),
   },
   // Staff in hand (E1e); both arms raised over the remains while it chants.
   priest: {
@@ -170,7 +177,15 @@ export class EnemyView {
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
     if (kind === 'priest') this.dressPriest(mat, mesh);
-    if (kind === 'shieldbearer' && this.shield) {
+    if (kind === 'knight') {
+      // A crown of pale fire marks the elite out (E1f): five flames round the brow.
+      const fire = glowMaterial(0xcfe8ff, 0.9);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        this.head.add(mesh(new THREE.ConeGeometry(0.025, 0.12, 5), fire, Math.cos(a) * 0.11, 0.17, Math.sin(a) * 0.11));
+      }
+    }
+    if ((kind === 'shieldbearer' || kind === 'knight') && this.shield) {
       // A tall shield that covers it from shin to skull, and a rusted helm: read as "not from the front".
       this.shield.scale.set(1.5, 2.4, 1);
       this.head.add(mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x6a5a4e, { metalness: 0.6, roughness: 0.6 }), 0, 0.03, 0));
@@ -700,9 +715,13 @@ export class EnemyView {
       case 'priest':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
-      case 'shieldbearer': {
-        const sb = tuning.shieldbearer;
+      case 'shieldbearer':
+      case 'knight': {
+        const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
         switch (e.ai) {
+          case 'chargeWindup':
+          case 'charge':
+            return into(this.from, P.rush, t / 0.3);
           case 'windup':
             into(this.from, P.windup, t / ((sb.telegraphMs / 1000) * 0.6));
             out.offHeight += Math.sin(this.time * 40) * 0.008;
@@ -777,13 +796,13 @@ export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
   switch (e.ai) {
     case 'windup':
-      return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
-      return clamp01(t / (tuning.hound.telegraphMs / 1000));
+      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':

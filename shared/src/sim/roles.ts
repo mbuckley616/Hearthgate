@@ -37,6 +37,7 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   shieldbearer: 'shield',
   hound: 'charger',
   priest: 'leader',
+  knight: 'elite',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -72,6 +73,7 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     shieldbearer: { name: 'Skeleton Shieldbearer', plural: 'Skeleton Shieldbearers' },
     hound: { name: 'Crypt Hound', plural: 'Crypt Hounds' },
     priest: { name: 'Bone Priest', plural: 'Bone Priests' },
+    knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
   },
 };
 

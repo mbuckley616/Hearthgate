@@ -895,6 +895,44 @@ export const tuning = {
     knockbackTaken: 1,
   },
 
+  /**
+   * The Barrow Knight (E1f, the elite): a Shieldbearer and a Hound in one. It rushes along its yellow
+   * line behind its shield (nothing reaches it from the front then, not even a heavy or magic), meets a
+   * wall as a Hound does, and otherwise fights as a Shieldbearer. One a room, from Hard or floor 2.
+   */
+  knight: {
+    maxHp: 160,
+    maxPoise: 18,
+    radius: 0.5,
+    height: 1.8,
+    moveSpeed: 2.8,
+    turnRateDeg: 130,
+    windupTurnRateDeg: 45,
+    attackRange: 2.0,
+    telegraphMs: 750,
+    bashReach: 2.8,
+    bashArcDeg: 45,
+    bashDamage: 16,
+    bashPush: 2.6,
+    bashActiveMs: 180,
+    recoveryMs: 900,
+    attackCooldownMs: 1800,
+    guardArcDeg: 130,
+    guardBreakMs: 2000,
+    chargeRange: 10,
+    chargeMinRange: 4,
+    chargeTelegraphMs: 900,
+    trackFrac: 0.6,
+    chargeSpeed: 11,
+    chargeLength: 12,
+    chargeDamage: 20,
+    chargePush: 4,
+    wallStunMs: 2600,
+    spawnMs: 800,
+    deathMs: 1800,
+    knockbackTaken: 0.4,
+  },
+
   brute: {
     maxHp: 320,
     maxPoise: 22,
@@ -2299,6 +2337,20 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'priest.chantMs': [100, 5000, 50],
   'priest.raiseHp': [0.05, 1, 0.05],
   'priest.recoveryMs': [0, 3000, 10],
+  'knight.maxHp': [5, 1200, 5],
+  'knight.maxPoise': [1, 80, 0.5],
+  'knight.moveSpeed': [0.5, 8, 0.1],
+  'knight.turnRateDeg': [20, 720, 10],
+  'knight.bashDamage': [0, 80, 1],
+  'knight.guardArcDeg': [0, 360, 5],
+  'knight.guardBreakMs': [0, 8000, 100],
+  'knight.chargeRange': [2, 20, 0.5],
+  'knight.chargeMinRange': [0, 10, 0.5],
+  'knight.chargeTelegraphMs': [100, 2000, 10],
+  'knight.chargeSpeed': [2, 30, 0.5],
+  'knight.chargeLength': [2, 25, 0.5],
+  'knight.chargeDamage': [0, 80, 1],
+  'knight.wallStunMs': [0, 6000, 100],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2770,7 +2822,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

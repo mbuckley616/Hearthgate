@@ -93,15 +93,19 @@ function isLight(e: EnemyState): boolean {
  * staggered or frozen body. Judged in damageEnemy, so prediction's swing on the snapshot's enemy agrees.
  */
 function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerState | undefined): boolean {
-  if (roleOf(e.kind) !== 'shield' || hit.dot || hit.style === 'staff') return false;
-  if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (e.guardDownUntil ?? -1) > state.time) return false;
-  const sb = tuning.shieldbearer;
+  const role = roleOf(e.kind);
+  if ((role !== 'shield' && role !== 'elite') || hit.dot) return false;
+  // The Barrow Knight's rush (E1f): nothing reaches it from the front, heavy or magic.
+  const rushing = role === 'elite' && (e.ai === 'charge' || e.ai === 'chargeWindup');
+  if (hit.style === 'staff' && !rushing) return false;
+  if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (!rushing && (e.guardDownUntil ?? -1) > state.time)) return false;
+  const sb = role === 'elite' ? tuning.knight : tuning.shieldbearer;
   // The hit's push points from the attacker through the enemy: against its facing means from the front.
   const len = Math.hypot(hit.dirX, hit.dirZ);
   if (len < 1e-6) return false;
   const facing = (hit.dirX * Math.sin(e.yaw) + hit.dirZ * Math.cos(e.yaw)) / len;
   if (-facing < Math.cos(((sb.guardArcDeg / 2) * Math.PI) / 180)) return false;
-  if (hit.heavy && !hit.projectile && (hero?.attackCharge ?? 0) > 0) {
+  if (!rushing && hit.heavy && !hit.projectile && (hero?.attackCharge ?? 0) > 0) {
     e.guardDownUntil = state.time + sb.guardBreakMs / 1000;
     state.events.push({ kind: 'guardBroken', enemyId: e.id });
     return false;
