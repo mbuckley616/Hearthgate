@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 98, test servers that stop when their test does
+
+**What changed**
+
+`bootServer` (`tests/bots.ts`) starts the server in its own process group and takes the whole group down: `kill()` signals the group, not only the tsx wrapper, and the test's exit, SIGINT, SIGTERM and SIGHUP send it SIGKILL. A test that throws, is stopped by a timeout or by Ctrl-C no longer leaves the wrapper and its node ticking on the port. Windows keeps the plain `kill()`, since it has no process groups. `tests/server-exit.ts` is the proof and now ends `npm run test:net`: a child boots the server and ends three ways (`process.exit` without `kill()`, an uncaught throw, SIGTERM from outside), and the port must stop answering within 5 s. Against the old `bots.ts` all three fail; with the fix all three pass and no `src/index.ts` process is left.
+
+**Learned**
+
+The clean path was never the leak: `server.kill()` in `netcode-smoke.ts`'s `finally` does stop it (the tsx wrapper passes SIGTERM on). The leak is every path that skips the `finally`, and Session 97's was one of those. The gate-party script and the lag lab's runs over the bot harness get the same cover.
+
+check 327, test:net all passed (smoke and server-exit), 0 server processes after.
+
+**Next**
+
+Nothing else in E1 is the builder's: E1d waits on the Chill answer, G4, G5 and E1i are **(design)**, the snapshot item is **(Fable)**, and the late-deaths item's remaining measurement needs a real machine.
+
 ## 2026-11-04: Session 97, Crypt rooms that split a party's attention (E1h)
 
 **What changed**
