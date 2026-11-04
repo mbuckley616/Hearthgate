@@ -8,6 +8,7 @@ const BRAZIER_RADIUS = 0.45;
 import { damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
+import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
 const STEER_ACCEL = 18;
@@ -39,6 +40,15 @@ function setAi(e: EnemyState, ai: EnemyAi): void {
 function healthScale(state: SimState): number {
   return 1 + Math.max(0, state.players.length - 1) * tuning.run.extraPlayerHealth;
 }
+
+/** A harder portal's enemies have more health and hit harder (G3): the difficulty's mult, floors only. */
+function difficultyScale(world: World): number {
+  const spec = world.level.dungeon?.def.spec;
+  return spec && tuning.dungeon.difficultyScalesEnemies ? difficultyMult(spec.difficulty) : 1;
+}
+
+/** What an enemy's hit deals: its attack's number, times a harder portal's (G3). */
+const hitDamage = (e: EnemyState, damage: number) => damage * (e.hitMult ?? 1);
 
 /**
  * Is (x, z) open ground for a body of this radius: inside the arena, on the
@@ -73,7 +83,8 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
     pos = { ...[...spots].sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0] };
   }
   resolveCircle(pos, s.radius, (onLedge ? world.level.ledge.height : 0) + 0.3, s.height, world.colliders);
-  const maxHp = s.maxHp * healthScale(state);
+  const hard = difficultyScale(world);
+  const maxHp = s.maxHp * healthScale(state) * hard;
   const e: EnemyState = {
     id: state.nextId++,
     kind,
@@ -111,6 +122,8 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
     skewerUntil: -1,
     detonateUntil: -1,
   };
+  // Kept off the state at 1, so the arena's enemies keep the slice's shape (and its parity hashes).
+  if (hard !== 1) e.hitMult = hard;
   state.enemies.push(e);
   state.events.push({ kind: 'enemySpawn', enemyId: e.id, x: e.x, z: e.z });
   return e;
@@ -260,7 +273,7 @@ function heroesInCone(state: SimState, x: number, z: number, yaw: number, r: num
 function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: number, fromZ: number, damage: number, push: number): void {
   // Tagged only while the switch is on, so the slice's pending hits (and the parity hashes) keep their shape.
   const low = tuning.jump.clearsLow ? { low: e.y } : {};
-  for (const p of victims) hurtHero(state, p, { damage, heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
+  for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, damage), heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
 }
 
 /** Grunt slash: light, in front. */
@@ -273,7 +286,7 @@ function gruntStrike(state: SimState, e: EnemyState, target: PlayerState | null)
   const dz = target.z - e.z;
   if (Math.hypot(dx, dz) > g.reach + tuning.movement.radius) return;
   if (Math.abs(wrapAngle(Math.atan2(dx, dz) - e.yaw)) > (g.arcDeg * DEG) / 2) return;
-  hurtHero(state, target, { damage: g.damage, fromX: e.x, fromZ: e.z, enemyId: e.id });
+  hurtHero(state, target, { damage: hitDamage(e, g.damage), fromX: e.x, fromZ: e.z, enemyId: e.id });
 }
 
 export interface Intent {
@@ -459,7 +472,7 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
     stuck: false,
     charged: false,
     radius: 0,
-    damage: a.damage,
+    damage: hitDamage(e, a.damage),
     poise: 0,
     knockback: 0,
     heavy: false,
@@ -532,6 +545,264 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
+/**
+ * The Skeleton Shieldbearer (E1b, the shield role): walks in behind its shield, turning slowly, and
+ * bashes a short line in front, a heavy that staggers whoever it meets. Its block is in damageEnemy.
+ */
+function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      if (!e.hasToken && e.cooldown <= 0 && sameLevel && tokenHolders(state) < tokenCap(state)) e.hasToken = true;
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      // Without a token it still walks its shield at you, holding where the grunts wait.
+      const stop = e.hasToken ? sb.attackRange * 0.8 : tuning.grunt.holdDistance;
+      if (!sameLevel || dist > stop) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      }
+      e.yaw = turnToward(e.yaw, sameLevel ? toTarget : Math.atan2(gx, gz), sb.turnRateDeg * DEG * edt);
+      if (sameLevel && e.hasToken && dist <= sb.attackRange && Math.abs(wrapAngle(toTarget - e.yaw)) < 30 * DEG) {
+        setAi(e, 'windup');
+        e.attack = 'bash';
+        e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * sb.bashReach, z: e.z + Math.cos(e.yaw) * sb.bashReach, radius: sb.bashReach, yaw: e.yaw, arcDeg: 0 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'windup':
+      e.yaw = turnToward(e.yaw, toTarget, sb.windupTurnRateDeg * DEG * edt);
+      e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * sb.bashReach, z: e.z + Math.cos(e.yaw) * sb.bashReach, radius: sb.bashReach, yaw: e.yaw, arcDeg: 0 };
+      if (e.aiTime >= sb.telegraphMs / 1000) {
+        setAi(e, 'slash1');
+        e.tele.shape = 'none';
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        if (!tuning.debug.passiveEnemies) {
+          const victims = heroesInCone(state, e.x, e.z, e.yaw, sb.bashReach, sb.bashArcDeg, e.y);
+          for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, sb.bashDamage), heavy: true, push: sb.bashPush, fromX: e.x, fromZ: e.z, enemyId: e.id });
+        }
+      }
+      break;
+    case 'slash1':
+      // A step into the bash.
+      want.x = Math.sin(e.yaw) * 0.8;
+      want.z = Math.cos(e.yaw) * 0.8;
+      if (e.aiTime >= sb.bashActiveMs / 1000) {
+        setAi(e, 'recover');
+        e.recoverTime = sb.recoveryMs / 1000;
+      }
+      break;
+  }
+  return want;
+}
+
+/** The Hound's line: from it, along where it faces, as far as the rush will run. */
+/** A rush's numbers: the Hound's, or the Barrow Knight's (E1f). */
+function rushOf(e: EnemyState) {
+  const k = tuning.knight;
+  return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
+}
+
+function setChargeTele(e: EnemyState): void {
+  const l = rushOf(e).chargeLength;
+  e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * l, z: e.z + Math.cos(e.yaw) * l, radius: l, yaw: e.yaw, arcDeg: 0 };
+}
+
+/**
+ * The Crypt Hound (E1c, the charger): keeps its distance, then winds up a yellow line at a hero and
+ * rushes along it. The first hero it meets is knocked down; a wall it meets stuns it (a stagger cut to
+ * `wallStunMs`), the punish window. It steers nothing during the rush: a sidestep after the line
+ * locks makes it miss.
+ */
+function chargerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const h = rushOf(e);
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      // Close the distance to a rush's length, or back off from a hero too close to rush.
+      if (!sameLevel || routed || dist > h.chargeRange * 0.8) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < h.chargeMinRange) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      } else {
+        want.x = (-dz / Math.max(dist, 1e-3)) * e.strafeDir * 0.4;
+        want.z = (dx / Math.max(dist, 1e-3)) * e.strafeDir * 0.4;
+      }
+      e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : toTarget, h.turnRateDeg * DEG * edt);
+      const inRange = sameLevel && !routed && dist <= h.chargeRange && dist >= h.chargeMinRange;
+      if (inRange && !e.hasToken && e.cooldown <= 0 && tokenHolders(state) < tokenCap(state) && lineOfSight(world, e, target)) {
+        e.hasToken = true;
+        setAi(e, 'chargeWindup');
+        e.attack = 'charge';
+        setChargeTele(e);
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'chargeWindup':
+      if (e.aiTime < (h.telegraphMs / 1000) * h.trackFrac) e.yaw = turnToward(e.yaw, toTarget, h.turnRateDeg * DEG * edt);
+      setChargeTele(e);
+      if (e.aiTime >= h.telegraphMs / 1000) {
+        setAi(e, 'charge');
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+      }
+      break;
+    case 'charge': {
+      // The rush moves the body itself, faster than steering allows, and stops at what it meets.
+      const step = h.chargeSpeed * edt;
+      const ux = Math.sin(e.yaw);
+      const uz = Math.cos(e.yaw);
+      const pos = { x: e.x + ux * step, z: e.z + uz * step };
+      resolveCircle(pos, h.radius, e.y + 0.3, e.y + h.height, world.colliders);
+      const blocked = groundHeight(world, pos.x, pos.z) > e.y + tuning.combat.stepHeight;
+      const moved = blocked ? 0 : (pos.x - e.x) * ux + (pos.z - e.z) * uz;
+      e.vx = 0;
+      e.vz = 0;
+      if (!blocked) {
+        e.x = pos.x;
+        e.z = pos.z;
+      }
+      const hit = tuning.debug.passiveEnemies
+        ? undefined
+        : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
+      if (hit) {
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id });
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = h.recoveryMs / 1000;
+      } else if (moved < step * 0.5) {
+        // A wall: stunned, the stagger's window cut to wallStunMs.
+        e.tele.shape = 'none';
+        e.hasToken = false;
+        e.poise = 0;
+        e.ai = 'stagger';
+        e.aiTime = (tuning.combat.staggerMs - h.wallStunMs) / 1000;
+        state.events.push({ kind: 'stagger', enemyId: e.id, x: e.x, z: e.z });
+      } else if (e.aiTime * h.chargeSpeed >= h.chargeLength) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = h.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
+/**
+ * The Bone Priest (E1e, the leader): keeps `keepDistance` from the nearest hero, behind its pack, and
+ * every `raiseEveryMs` chants over the nearest fallen skeleton in reach, a violet circle on the remains
+ * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
+ */
+function leaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const pr = tuning.priest;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      if (routed || dist > pr.keepDistance + 2) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < pr.keepDistance) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pr.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0) break;
+      let best: EnemyState | undefined;
+      for (const o of state.enemies) {
+        if (o.aiTime < 0.5 || !raisable(state, o)) continue;
+        const d = Math.hypot(o.x - e.x, o.z - e.z);
+        if (d <= pr.raiseRange && (!best || d < Math.hypot(best.x - e.x, best.z - e.z))) best = o;
+      }
+      if (best) {
+        setAi(e, 'chant');
+        e.raiseId = best.id;
+        e.tele = { shape: 'circle', x: best.x, z: best.z, radius: 1.2, yaw: 0, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'chant': {
+      const remains = state.enemies.find((o) => o.id === e.raiseId);
+      if (!remains || remains.ai !== 'dead') {
+        e.tele.shape = 'none';
+        e.raiseId = undefined;
+        setAi(e, 'chase');
+        break;
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(remains.x - e.x, remains.z - e.z), pr.turnRateDeg * DEG * edt);
+      if (e.aiTime >= pr.chantMs / 1000) {
+        remains.risen = true;
+        remains.hp = remains.maxHp * pr.raiseHp;
+        remains.poise = enemyStats(remains.kind).maxPoise;
+        remains.hasToken = false;
+        remains.frozen = 0;
+        remains.bleedTicks = 0;
+        setAi(remains, 'spawn');
+        state.events.push({ kind: 'enemyRose', enemyId: remains.id, x: remains.x, z: remains.z });
+        e.tele.shape = 'none';
+        e.raiseId = undefined;
+        setAi(e, 'recover');
+        e.recoverTime = pr.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
+/**
+ * The Barrow Knight (E1f, the elite): from far off it rushes as a Hound does, behind its shield; close
+ * in it fights as a Shieldbearer, bash and all.
+ */
+function eliteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  if (e.ai === 'chargeWindup' || e.ai === 'charge') return chargerBrain(state, world, e, target, edt);
+  if (e.ai === 'chase' && target) {
+    const k = tuning.knight;
+    const dist = Math.hypot(target.x - e.x, target.z - e.z);
+    if (dist >= k.chargeMinRange && dist <= k.chargeRange) {
+      // Ask the rush first; if it does not start, the shield's step stands and its turn alone counts.
+      const yaw = e.yaw;
+      const want = chargerBrain(state, world, e, target, edt);
+      if ((e.ai as EnemyAi) === 'chargeWindup') return want;
+      e.yaw = yaw;
+    }
+  }
+  return shieldBrain(state, world, e, target, edt);
+}
+
 function setSlamTele(e: EnemyState, offset: number, radius: number): void {
   e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * offset, z: e.z + Math.cos(e.yaw) * offset, radius, yaw: e.yaw, arcDeg: 360 };
 }
@@ -543,23 +814,60 @@ function slamLands(state: SimState, e: EnemyState, damage: number, push: number,
   shove(state, e, heroesInCircle(state, t.x, t.z, t.radius, e.y), t.x, t.z, damage, push);
 }
 
+/** The Warden's pace in its phase: the slice's two, or E1g's three (phase 2 adds the dead, phase 3 the speed). */
+function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldownMs: number } {
+  const w = tuning.warden;
+  if (w.threePhases) {
+    if (e.phase >= 3) return { teleScale: w.phase3TelegraphScale, speed: w.phase3SpeedScale, cooldownMs: w.phase3CooldownMs };
+    return { teleScale: 1, speed: 1, cooldownMs: w.cooldownMs };
+  }
+  if (e.phase >= 2) return { teleScale: w.phase2TelegraphScale, speed: w.phase2SpeedScale, cooldownMs: w.phase2CooldownMs };
+  return { teleScale: 1, speed: 1, cooldownMs: w.cooldownMs };
+}
+
+/**
+ * E1g's second phase: skeletons rise from the hall's edges, evenly round the Warden, each as far out
+ * as `raiseRadius` allows before a wall (and in sight of the Warden, so never in the next room).
+ */
+function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number): void {
+  const w = tuning.warden;
+  const r = enemyStats('grunt').radius;
+  const start = Math.atan2(-e.x, -e.z);
+  for (let i = 0; i < n; i++) {
+    const a = start + (i / Math.max(1, n)) * Math.PI * 2;
+    const ux = Math.sin(a);
+    const uz = Math.cos(a);
+    const from = { x: e.x, y: e.y + 1.3, z: e.z };
+    const clear = sphereCast(from, { x: ux, y: 0, z: uz }, w.raiseRadius, r, world.colliders, (c) => c.blocksMovement);
+    let d = Math.min(w.raiseRadius, clear - r - 0.3);
+    while (d > 2.5 && !isOpen(world, e.x + ux * d, e.z + uz * d, r, false)) d -= 0.5;
+    if (d <= 2.5) d = 3.2;
+    const g = createEnemy(state, world, 'grunt', e.x + ux * d, e.z + uz * d, a + Math.PI);
+    state.events.push({ kind: 'enemyRose', enemyId: g.id, x: g.x, z: g.z });
+  }
+}
+
 function wardenBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const w = tuning.warden;
   const want: Intent = { x: 0, z: 0 };
-  const p2 = e.phase >= 2;
-  const teleScale = p2 ? w.phase2TelegraphScale : 1;
-  const speed = p2 ? w.phase2SpeedScale : 1;
+  const { teleScale, speed } = wardenPace(e);
   if (e.ai === 'roar') {
     if (e.aiTime >= w.roarMs / 1000) {
-      // Summon at the end of the roar, then the fight gets faster.
-      // Summons fan out on the arena side of the Warden.
       const n = Math.round(w.summonCount) + Math.max(0, state.players.length - 1);
-      const toCentre = Math.atan2(-e.x, -e.z);
-      for (let i = 0; i < n; i++) {
-        const a = toCentre + ((i - (n - 1) / 2) / Math.max(1, n)) * 2.4;
-        createEnemy(state, world, 'grunt', e.x + Math.sin(a) * 3.2, e.z + Math.cos(a) * 3.2, a);
+      if (w.threePhases) {
+        // E1g: the first roar raises the dead round the hall; the second only quickens it.
+        if (e.phase === 1) raiseFromEdges(state, world, e, n);
+        e.phase = Math.min(3, e.phase + 1);
+      } else {
+        // Summon at the end of the roar, then the fight gets faster.
+        // Summons fan out on the arena side of the Warden.
+        const toCentre = Math.atan2(-e.x, -e.z);
+        for (let i = 0; i < n; i++) {
+          const a = toCentre + ((i - (n - 1) / 2) / Math.max(1, n)) * 2.4;
+          createEnemy(state, world, 'grunt', e.x + Math.sin(a) * 3.2, e.z + Math.cos(a) * 3.2, a);
+        }
+        e.phase = 2;
       }
-      e.phase = 2;
       e.summoned = true;
       setAi(e, 'recover');
       e.recoverTime = 0.4;
@@ -573,7 +881,16 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
   const toTarget = Math.atan2(dx, dz);
   switch (e.ai) {
     case 'chase': {
-      if (!e.summoned && e.hp <= e.maxHp * 0.5) {
+      if (w.threePhases) {
+        const at = e.phase === 1 ? w.phase2At : e.phase === 2 ? w.phase3At : -1;
+        if (e.hp <= e.maxHp * at) {
+          setAi(e, 'roar');
+          e.tele.shape = 'none';
+          delete e.chain;
+          state.events.push({ kind: 'roar', enemyId: e.id, phase: e.phase + 1 });
+          break;
+        }
+      } else if (!e.summoned && e.hp <= e.maxHp * 0.5) {
         setAi(e, 'roar');
         e.tele.shape = 'none';
         state.events.push({ kind: 'roar', enemyId: e.id });
@@ -592,6 +909,12 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (sameLevel && dist <= w.sweepRange && Math.abs(wrapAngle(toTarget - e.yaw)) < 40 * DEG) {
         e.attack = nextRandom(state) < 0.55 ? 'sweep' : 'slam';
+        // Phase 3 (E1g): some slams roll on toward the hero, a circle at a time.
+        delete e.chain;
+        if (e.attack === 'slam' && w.threePhases && e.phase >= 3 && nextRandom(state) < w.chainChance) {
+          e.attack = 'chainSlam';
+          e.chain = 0;
+        }
         if (e.attack === 'sweep') {
           setAi(e, 'sweepWindup');
           e.tele = { shape: 'cone', x: e.x, z: e.z, radius: w.sweepRadius, yaw: e.yaw, arcDeg: w.sweepArcDeg };
@@ -634,17 +957,27 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       }
       break;
     case 'slamWindup':
-      if (e.attack === 'slam' && e.aiTime < (w.slamTelegraphMs / 1000) * teleScale * 0.4) {
+      if ((e.attack === 'slam' || (e.attack === 'chainSlam' && !e.chain)) && e.aiTime < (w.slamTelegraphMs / 1000) * teleScale * 0.4) {
         e.yaw = turnToward(e.yaw, toTarget, w.turnRateDeg * DEG * edt);
         setSlamTele(e, w.slamOffset, w.slamRadius);
       }
-      if (e.aiTime >= (w.slamTelegraphMs / 1000) * teleScale) {
+      // A rolling slam's later circles are locked to the first's line and come quicker.
+      if (e.aiTime >= (e.chain ? w.chainTelegraphMs : w.slamTelegraphMs * teleScale) / 1000) {
         setAi(e, 'slam');
         slamLands(state, e, w.slamDamage, w.knockbackDealt, true);
       }
       break;
     case 'slam':
       if (e.aiTime >= w.slamActiveMs / 1000) {
+        if (e.attack === 'chainSlam' && (e.chain ?? 0) + 1 < Math.round(w.chainSlams)) {
+          e.chain = (e.chain ?? 0) + 1;
+          e.tele.x += Math.sin(e.yaw) * w.chainStepM;
+          e.tele.z += Math.cos(e.yaw) * w.chainStepM;
+          setAi(e, 'slamWindup');
+          state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+          break;
+        }
+        delete e.chain;
         setAi(e, 'recover');
         e.recoverTime = w.slamRecoveryMs / 1000;
         e.tele.shape = 'none';
@@ -666,6 +999,10 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
   archer: archerBrain,
   heavy: bruteBrain,
   boss: wardenBrain,
+  shield: shieldBrain,
+  charger: chargerBrain,
+  leader: leaderBrain,
+  elite: eliteBrain,
 };
 
 /** The brain a kind steps through: its role's. */
@@ -682,9 +1019,29 @@ function attackCooldown(e: EnemyState): number {
       return tuning.archer.cooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
+    case 'shieldbearer':
+      return tuning.shieldbearer.attackCooldownMs / 1000;
+    case 'hound':
+      return tuning.hound.cooldownMs / 1000;
+    case 'priest':
+      return tuning.priest.raiseEveryMs / 1000;
+    case 'knight':
+      return tuning.knight.attackCooldownMs / 1000;
     case 'warden':
-      return (e.phase >= 2 ? tuning.warden.phase2CooldownMs : tuning.warden.cooldownMs) / 1000;
+      return wardenPace(e).cooldownMs / 1000;
   }
+}
+
+/**
+ * Remains a Bone Priest can raise (E1e): a fallen skeleton (fodder, archer or shield) while a living
+ * Priest is in the room, kept past its death time until the Priest falls. Haunted's own rise comes
+ * first, and one a Priest has raised does not rise again under Haunted.
+ */
+export function raisable(state: SimState, e: EnemyState): boolean {
+  if (e.ai !== 'dead' || willRise(state, e)) return false;
+  const role = roleOf(e.kind);
+  if (role !== 'fodder' && role !== 'archer' && role !== 'shield') return false;
+  return state.enemies.some((o) => roleOf(o.kind) === 'leader' && o.ai !== 'dead');
 }
 
 /** Haunted (P8): a fallen enemy that has not yet got up, and will. The Warden falls once. */
@@ -854,7 +1211,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     setAi(e, 'spawn');
     state.events.push({ kind: 'enemyRose', enemyId: e.id, x: e.x, z: e.z });
   }
-  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e)));
+  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e) && !raisable(state, e)));
 }
 
 /**

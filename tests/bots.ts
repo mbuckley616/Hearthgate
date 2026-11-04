@@ -38,9 +38,33 @@ export function bootServer(port: number, dev = true): ChildProcess {
     cwd: `${root}server`,
     env: { ...process.env, PORT: String(port) },
     stdio: ["ignore", "pipe", "pipe"],
+    // Its own process group, so the tsx wrapper and the node it starts go together: a plain kill()
+    // reaches only the wrapper, and a run that never got to kill() (a throw, a timeout's SIGTERM,
+    // Ctrl-C) left both ticking, one grown to 6 GB holding the port (Session 97).
+    detached: process.platform !== "win32",
   });
   proc.stdout?.on("data", (d) => process.env.VERBOSE && process.stdout.write(`[server] ${d}`));
   proc.stderr?.on("data", (d) => process.stderr.write(`[server] ${d}`));
+  const stop = (signal: NodeJS.Signals) => {
+    if (proc.exitCode !== null || proc.signalCode !== null || proc.pid === undefined) return;
+    try {
+      if (process.platform === "win32") proc.kill(signal);
+      else process.kill(-proc.pid, signal);
+    } catch {
+      // already gone
+    }
+  };
+  proc.kill = (signal?: NodeJS.Signals | number) => {
+    stop(typeof signal === "string" ? signal : "SIGTERM");
+    return true;
+  };
+  process.on("exit", () => stop("SIGKILL"));
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+    process.once(signal, () => {
+      stop("SIGKILL");
+      process.exit(128 + (signal === "SIGINT" ? 2 : signal === "SIGTERM" ? 15 : 1));
+    });
+  }
   return proc;
 }
 

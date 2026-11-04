@@ -2,6 +2,176 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 99, a teammate's name plate that keeps its size
+
+**What changed**
+
+A name plate (a teammate's, a henchman's, a villager's) is sized against the camera as it is drawn (`Nameplate`, from the sprite's `onBeforeRender`, so every owner of a plate gets it without passing the camera in). Its height on screen is capped at `camera.nameplateMaxScreen` (0.06 of the viewport, about its size at the usual 5.5 m camera distance), and it fades out between `camera.nameplateFadeNear` (2.5 m) and `camera.nameplateHideNear` (1.2 m) from the camera, so a teammate standing between the camera and your hero no longer covers your hero and the enemy with their name and bar. Further off it keeps its world size and shrinks with distance as before. All three are on the panel, browser-only (the camera section). The math is `client/src/render/plateFit.ts`, pure and allocation-free.
+
+**Learned**
+
+The renderer takes a sprite's model matrix after `onBeforeRender`, so a scale changed there must be followed by `updateMatrixWorld` to show the same frame. At 960 x 600 the old plate was 173 px tall at 1.2 m from the camera; capped, it is at most 36 px tall and 144 px wide.
+
+`tests/nameplate-fit.ts`, now the end of `npm run check`: near the camera (0.3 to 4 m) the plate is never taller than the cap or a fifth of the screen wide, the cap is about the plate at the usual distance, at 20 m it is untouched, and it fades between the two distances. Against the old fixed size the first check fails. check 327 plus the new check, the client builds. Not yet seen in a browser; the critic's two-browser steps will show it.
+
+**Next**
+
+Nothing else in E1 is the builder's: E1d waits on the Chill answer, G4, G5 and E1i are **(design)**, the snapshot item is **(Fable)**, and the late-deaths measurement needs a real machine.
+
+## 2026-11-04: Session 98, test servers that stop when their test does
+
+**What changed**
+
+`bootServer` (`tests/bots.ts`) starts the server in its own process group and takes the whole group down: `kill()` signals the group, not only the tsx wrapper, and the test's exit, SIGINT, SIGTERM and SIGHUP send it SIGKILL. A test that throws, is stopped by a timeout or by Ctrl-C no longer leaves the wrapper and its node ticking on the port. Windows keeps the plain `kill()`, since it has no process groups. `tests/server-exit.ts` is the proof and now ends `npm run test:net`: a child boots the server and ends three ways (`process.exit` without `kill()`, an uncaught throw, SIGTERM from outside), and the port must stop answering within 5 s. Against the old `bots.ts` all three fail; with the fix all three pass and no `src/index.ts` process is left.
+
+**Learned**
+
+The clean path was never the leak: `server.kill()` in `netcode-smoke.ts`'s `finally` does stop it (the tsx wrapper passes SIGTERM on). The leak is every path that skips the `finally`, and Session 97's was one of those. `tests/gate-party.ts`, the other caller of `bootServer`, gets the same cover.
+
+check 327, test:net all passed (smoke and server-exit), 0 server processes after.
+
+**Next**
+
+Nothing else in E1 is the builder's: E1d waits on the Chill answer, G4, G5 and E1i are **(design)**, the snapshot item is **(Fable)**, and the late-deaths item's remaining measurement needs a real machine.
+
+## 2026-11-04: Session 97, Crypt rooms that split a party's attention (E1h)
+
+**What changed**
+
+A generated floor's fight rooms are composed by role now (`sim/roomMix.ts`, `composeRoom`), in place of Session 92 to 95's rolls for each kind.
+- **Roles first, then fodder.** A big room draws `dungeon.rolesBase` (1) specialist roles from a seeded shuffle of shield, charger, leader, heavy and archer, plus `dungeon.rolesPerTier` (1) for each tier, up to `dungeon.maxRoles` (4). A room's tier is one for each difficulty past Normal and one for each floor past the first (`roomTier`). From tier 2, Shieldbearers and Hounds come in pairs where the budget allows. Bows come in pairs. The rest of the budget is grunts, with a bow now and then, and never more bows than blades. A room of grunts takes its first bow once two blades can screen it.
+- **Each with its reason.** A Bone Priest is added last, and only when the room holds two or more bodies it can raise. The Barrow Knight joins big rooms from tier 1, after the roles, and only if the budget still has a pack's worth left, so a tight room gains a problem before it gains a Knight. Small and guard rooms are fodder and bows, with one Shieldbearer or Hound from tier 2.
+- **Where they stand.** Each kind has a place. The front line (grunts, Shieldbearers, Brutes, the Knight) takes the nearer of the room's far spots. Bows and the Priest take the farthest spots, behind it. Hounds take the room's far end. The heroes meet the shields first and the bows behind them, and the Hounds have the room's length to rush.
+- **Harder in kind.** Over five seeds' big rooms on floor 1, Normal averages 2.6 roles a room and no Knight, and Nightmare averages 4.8 roles, with a Knight in 5 of 9. Floor 3 on Nightmare averages 5.9, with a Knight in 8 of 9. G3's health and damage multiplier is unchanged. It is the portal's, and Michael's call. The arena never composes, so parity is unchanged.
+
+**Learned**
+
+A first group is small: a pillared room on Normal has about 7 to spend and a guard room 4. A Knight (6) placed first ate whole rooms, so it comes after the roles. The `test:net` harness leaves its server behind: `bootServer`'s `server.kill()` sends SIGTERM to the tsx wrapper, and both processes stay alive and ticking after "all passed". One left from this run's first check had grown to 6 GB in 10 minutes and held port 2599, so the second run failed with EADDRINUSE until it was killed. That is a harness bug in `tests/bots.ts` (spawn detached and kill the group, or SIGKILL after a grace). It is for the critic or the next builder run. It is not in the backlog yet.
+
+`roomMix.test.ts`: five seeds' floors on Normal, where every room with a budget of 4 or more is a mix, a Priest only comes with two raisable bodies, and no room has more bows than blades; every kind in its place; Nightmare's big rooms hold more than one role more than Normal's and the elite, and Normal floor 1 never does; the composition stays within its budget and repeats from the same stream. check 327 (was 323), test:net all passed (after the stale server was killed), the client builds.
+
+**Next**
+
+E1d waits on the Chill question; with the caster in, it joins `SPECIALISTS` and stands `back` behind a shield. After it, E1i (the Warrens) is **(design)**, so the Crypt roster's builder work is done until Chill is answered. The harness leak above wants a line in the backlog.
+
+## 2026-11-04: Session 96, the Warden's three phases (E1g)
+
+**What changed**
+
+The Warden fights in three phases now, behind `warden.threePhases` (on; the parity test turns it off, so the arena's slice Warden still roars once at half health).
+- **Phase 2, at 60% (`phase2At`).** It roars, the banner reads "The Warden calls the dead", and skeletons rise from the edges of the hall: `summonCount` plus one a player beyond the first, spread evenly all round it, each as far out as `raiseRadius` (9 m) allows before a wall, with the Bone Priest's rise effect. Its pace stays phase 1's, so the dead are the change.
+- **Phase 3, at 30% (`phase3At`).** It roars again ("The Warden rages"). Telegraphs play at 0.75x (`phase3TelegraphScale`), it moves 1.3x, and its cooldown drops to 450 ms. No second raising.
+- **The rolling slam.** In phase 3, half its slams (`chainChance`) roll: the first circle is telegraphed and tracks as a normal slam, then two more land `chainStepM` (3.4 m) further along the same locked line, each with its own 500 ms orange circle (`chainTelegraphMs`). They are slams, so low: a jump clears them (M1). A stagger mid-roll ends it.
+- **Announced.** The `roar` event carries the phase it begins, and `RunUi` names each one. The slice's roar has no phase and keeps "It calls for help". Every new number has a panel range.
+
+**Learned**
+
+`wardenPace` now gives the telegraph scale, the speed and the cooldown for each phase in one place, and `attackCooldown` reads it, so the two-phase and three-phase Wardens cannot drift apart. The rolling slam's counter is deleted, not set to undefined, when it ends, so the slice's Warden state keeps its shape and its hash.
+
+`wardenPhases.test.ts`: the 60% roar raises the dead more than 4 m out and all round, the 30% roar quickens it without a second raising, and there is no third roar; the rolling slam lands three circles `chainStepM` apart on one line, each telegraphed, then recovers clean; switched off, it is the slice (one roar at half health, no rising, two phases). check 323 (was 320), parity identical, the client builds.
+
+**Next**
+
+E1h, Crypt rooms that split a party's attention. E1d waits on the Chill question. Nobody has seen the three phases in a browser yet; the gate's "one fight shows all three" wants a real Warden fight, or the critic's.
+
+## 2026-11-04: Session 95, the Barrow Knight (E1f)
+
+**What changed**
+
+The elite role's first enemy, built from the Shieldbearer and the Hound. `knight` is an `EnemyKind` dressed as the elite ("Barrow Knight"), with its own numbers in `tuning.knight` (160 health, poise 18, knockback taken 0.4) and panel ranges.
+- **The rush.** From 4 to 10 m it winds up a yellow lane (0.9 s, tracking for the first 60%) and rushes it at 11 m/s for up to 12 m: 20 damage and a 4 m shove to the first hero it meets. During the windup and the rush it can be hurt only from the side or behind. From the front, nothing gets through, a held heavy and magic included. A wall stuns it for 2.6 s, as a Hound is stunned.
+- **Close in.** It fights as a Shieldbearer: the 130° front block (magic through it, a held heavy breaks it for 2 s) and a 16-damage bash.
+- **Shared brains.** The Hound's and the Shieldbearer's brains read their numbers from the kind (`rushOf`, and the shield's section), and `eliteBrain` asks the rush first and otherwise takes the shield's step. Its turn is undone when the rush does not start, so the Knight never turns twice in a tick.
+- **The look.** The Shieldbearer's tall shield and helm on a larger skeleton (1.2x), set low into the rush, with a crown of five pale-fire flames round the brow to mark it out.
+- **Where it appears.** At most one a room, in bigger rooms, and only on Hard or harder, or from a run's second floor on (budget cost 6), with the same draws as before. It is named among the Hollow Crown's key enemies.
+
+**Learned**
+
+`noUnusedLocals` aside, TypeScript narrows `e.ai` after a `===` check, so a brain that calls another brain and then asks what state it left must cast back to `EnemyAi`.
+
+`knight.test.ts`: the role and the brain; mid-rush, a held heavy and a bolt of magic from the front do nothing while the side and back take full damage; a sidestep after the lock leaves the hero untouched and the Knight stunned against the wall for `wallStunMs`; close in, a light from the front is blocked, magic is not, and its bash lands for `bashDamage`. check 320 (was 316), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1g, the Warden's three phases. E1d waits on the Chill question. None of the four new figures has been seen in a browser yet.
+
+## 2026-11-04: Session 94, the Bone Priest (E1e)
+
+**What changed**
+
+The leader role's first enemy. `priest` is an `EnemyKind` dressed as the leader ("Bone Priest"), with its numbers in `tuning.priest` and panel ranges.
+- **The raising.** It keeps 8 m from the nearest hero, behind its pack, and fights no one. Every 4 s (`raiseEveryMs`) it picks the nearest fallen skeleton within 12 m (a Skeleton Warrior, Archer or Shieldbearer, not a Hound, a Brute or a boss) and chants for 1.5 s, with its arms raised and a violet circle on the remains (the magic tell and its shimmer). Then the remains stand again at half health (`raiseHp`), with Haunted's rise event and effect. A stagger breaks the chant. Killing the Priest stops it all.
+- **Remains.** While a living Priest is in the room, a fallen skeleton is kept past its death time (`raisable`), so it is there to raise. Once the Priest falls, the remains go as usual. A room's clear count is unchanged: it counts the living, so the Priest holds the room and its remains do not. Under Haunted, Haunted's own rise comes first, and one the Priest has raised does not rise again under Haunted (`risen`).
+- **The look.** A skeleton in a long dark robe and hood, carrying a staff topped with a skull and a violet light, in place of the warrior's sword and shield.
+- **Where it appears.** One a room at most, in bigger rooms that already hold two others (budget cost 3), with the same draws as before. It is named among Emberhall's and the Hollow Crown's key enemies. The arena never spawns one.
+
+**Learned**
+
+The kill already resets `aiTime`, so "dead for half a second" (the Priest waits that long before choosing remains, so a body is seen to fall) is just `aiTime`. A raised skeleton killed again grants its XP again, from damage, so a Priest left alive is a slow XP source. That is worth watching in play: the answer could be no XP from a raised body, or a cap on raisings a Priest has.
+
+`priest.test.ts`: the role, the brain and the violet tell; a warrior killed three times stands again each time at `raiseHp`, and after the Priest falls its next death is its last; the Priest keeps its distance; a raised one is never Haunted's to raise. check 316 (was 312), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1f, the Barrow Knight (elite), which is the Shieldbearer and the Hound in one. E1d waits on the Chill question.
+
+## 2026-11-04: Session 93, the Crypt Hound (E1c)
+
+**What changed**
+
+The charger role's first enemy. `hound` is an `EnemyKind` dressed as the charger ("Crypt Hound"), with its numbers in `tuning.hound` and panel ranges for each.
+- **The rush.** It keeps 2.5 to 9 m from a hero, circling. With an attack token and a clear line of sight it winds up for 0.8 s and draws a yellow lane 11 m long along where it faces. For the first 60% of the windup the lane follows the hero, then it locks. Then it rushes the lane at 13 m/s, moving its body itself (faster than steering allows) and steering nothing. The first hero it meets takes 14, heavy, and is shoved 3.5 m (mode `hurt`); the rush ends there. A rush that meets nothing runs its 11 m and recovers.
+- **The wall.** If the rush is blocked (a wall, a pillar, a step up), the Hound is stunned: a stagger cut to `wallStunMs` (2.2 s), with the stagger's damage bonus and the dizzy stars. That is the punish window, so a sidestep after the lane locks is the answer, ideally with a wall behind you.
+- **The look.** A long, low dog skeleton: spine and ribs, four legs, a long skull with the burning eyes and a hanging jaw, a tail. It is built on the body, not on the biped rig, whose limbs are made and hidden so the shared update has something to pose. Its legs do not walk yet.
+- **Lines on the ground.** `TelegraphView` now draws a body's own line (the Hound's rush and the Shieldbearer's bash) as a lane on the ground about a body wide, widening as it fires. An archer's line is still the aim line at bow height.
+- **Where it appears.** Bigger rooms on generated floors may roll one or two (budget cost 2), with the same draws as before, so seeds build the same floors. It is named among the Saltmarsh Warrens' and the Hollow Crown's key enemies. The arena never spawns one, so parity is unchanged.
+
+**Learned**
+
+A stagger's length is `combat.staggerMs` for everyone. Starting the stagger with `aiTime` set to `staggerMs - wallStunMs` gives the wall stun its own length and reuses everything else the stagger does (poise refill, the views, the damage bonus) without a new state. The arena's middle has pillars, so a test rush is set up along the open edge.
+
+`hound.test.ts`: the role, the brain and the yellow tell; the windup draws a lane `chargeLength` long, and a hero standing in it takes `chargeDamage` and is staggered; a sidestep after the lock leaves the hero untouched and the Hound stunned against the wall for `wallStunMs`; a rush into open floor runs its length and recovers. check 312 (was 308), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1d, the Wraith (the caster), which needs Chill, its first state. Neither new figure has been seen in a browser yet (this box draws in software GL); the critic's next run should look at both, and the Hound's legs want a gait.
+
+## 2026-11-04: Session 92, the Skeleton Shieldbearer (E1b)
+
+**What changed**
+
+The Crypt's first new enemy and the first new role brain. `shieldbearer` is an `EnemyKind` dressed as the shield role (`KIND_ROLE`, "Skeleton Shieldbearer" in the Crypt's roster), with its numbers in `tuning.shieldbearer` and panel ranges for each.
+- **The shield.** In `damageEnemy` (`shieldTakes`), a hit whose push comes at its face inside `guardArcDeg` (130) is blocked: no damage, no poise, a short hitstop and a `guarded` event, which draws a pale deflect spark and plays a dull knock. That covers swings, arrows and henchmen alike. Its side and back are open. Magic (the staff) goes through the shield. A held heavy (C1, a charged string step) breaks the guard (a `guardBroken` event, an orange spark and a low crack) and lands, and the front stays open for `guardBreakMs` (2.5 s). A light chain's own finisher is still blocked, so tapping at its face does nothing. A staggered or frozen Shieldbearer is open too. Because it is judged in `damageEnemy`, the browser's prediction of its own swing agrees with the server.
+- **The bash.** It walks its shield in (2.6 m/s), turning slowly (140°/s against a Skeleton Warrior's 420, and 50°/s while winding up), so a hero who circles it reaches its side. In range, with an attack token, it draws a red line 2.6 m ahead for 0.7 s, then bashes that line: 12 damage, heavy, so the hero is staggered and shoved 2.2 m.
+- **The look.** The Skeleton Warrior's figure with its round shield grown into a tall one (shin to skull) and a rusted helm; the shield is held square in front, drawn back in the windup and driven forward in the bash.
+- **Where it appears.** Bigger rooms on generated floors may roll one, at most two a room, at a budget cost of 3. That uses the same random draws as before, so a seed builds the same floor and rooms, with some grunts and archers now Shieldbearers. This holds until E1h composes rooms by role. It is named among the key enemies of the Saltmarsh Warrens, Emberhall and the Hollow Crown. The arena never spawns one, so the parity hashes are untouched.
+
+**Learned**
+
+`damageEnemy`'s return value is ignored by every caller, and each swing remembers who it hit (`attackHitIds`), so a blocked hit can return true and still count as contact without the swing hitting again on the next tick. A hit's push direction (`dirX`, `dirZ`) is set for melee and projectiles alike, which made it the simplest measure of "from the front".
+
+`shieldbearer.test.ts`: the role and brain, the Crypt's name and a red tell; a three-hit chain from the front blocked (finisher included) while the same hit from the side and from behind lands; an arrow from the front blocked and a bolt of magic not; a held heavy breaks the guard and lands, the front stays open until `guardBreakMs` runs out, then blocks again; the windup draws its line and the bash takes exactly `bashDamage` and staggers the hero (mode `hurt`). check 308 (was 302), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+E1c, the Crypt Hound. Not looked at in a browser on this box (headless software GL); the critic's next run will see whether the shield reads from the front and the bash's line is clear.
+
+## 2026-11-04: Session 91, a harder portal's enemies hit harder (G3)
+
+**What changed**
+
+A portal's difficulty now makes every enemy on its floors tougher, not only more of them (Michael, 2 Nov: the story dungeons were "very very easy"). `createEnemy` multiplies an enemy's health by the difficulty's own `DIFFICULTIES[].mult` (Easy 0.75, Normal 1, Hard 1.5, Nightmare 2, Legendary 2.5) and keeps it as `EnemyState.hitMult`, which the grunt's slash, every shove (the Bone Brute's slam, the Warden's sweep and slams) and an archer's arrow multiply their damage by. The room budget's scaling stays as it was, so a Nightmare room has twice the enemies, each with twice the health and twice the bite. Floors only (the multiplier comes from the floor's `FloorSpec.difficulty`), set on the server where an enemy is made, and behind `tuning.dungeon.difficultyScalesEnemies`; the arena never sets it and `hitMult` is left off the state at 1, so the parity hashes are untouched. The story dungeons' difficulties are unchanged: the Old Cellar, Mossgate and the Saltmarsh Warrens at Normal, Emberhall and the Hollow Crown at Hard, which already steps up along the list with the first at Normal and the last two at Hard; the Hard two now bite at 1.5x. Raising any of them further would also lock it behind a higher shrine, since the shrine caps a story dungeon's difficulty as it does a random one's.
+
+**Learned**
+
+A freshly joined hero is invulnerable for a moment (`invulnTime`), so a test that wants a hit to land clears it first. `npm run test:net` left its dev server running on 2599 after the setup run, and the next run failed with EADDRINUSE until it was stopped; worth knowing before reading a red test:net as a regression.
+
+`difficultyScale.test.ts`: the same seed's grunt has twice the health and twice the slash on Nightmare as on Normal; Easy, Hard and Legendary follow the list and no difficulty reads as Normal; the switch off scales nothing, and the arena's enemies carry no `hitMult`. check 302 (was 299), parity identical, test:net all passed.
+
+**Next**
+
+E1b, the Skeleton Shieldbearer. Michael may want a story dungeon past Hard (the Hollow Crown at Nightmare); that is a one-number change in `STORY`, but it raises the shrine tier that opens it.
+
 ## 2026-11-03: Session 90, E1a's question answered (deep-work session)
 
 **What changed**

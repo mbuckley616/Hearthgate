@@ -23,7 +23,7 @@ export interface FloorSpec {
   floors: number;
   /** A hand-built floor (T4b, handmade.ts): its pieces as laid out in the editor, instead of a seed's. */
   hand?: HandFloor;
-  /** The run's difficulty (P7, portalChoice.ts DIFFICULTIES): more enemies, more pay. Normal when absent. */
+  /** The run's difficulty (P7, portalChoice.ts DIFFICULTIES): more enemies, more pay, and (G3) every enemy that much tougher. Normal when absent. */
   difficulty?: number;
   /** The story dungeon this run is (P7), so a win can open the next. */
   story?: string;

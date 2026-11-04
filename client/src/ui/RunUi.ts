@@ -100,7 +100,7 @@ export class RunUi {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'Final wave' : `Wave ${ev.wave} of ${FINAL_WAVE}`, ev.title);
       else if (ev.kind === 'waveCleared' && ev.wave < FINAL_WAVE) this.showBanner('Wave cleared', `Catch your breath  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
-      else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -119,7 +119,7 @@ export class RunUi {
         const head = tuning.loop.bankAtRest ? 'Your finds are banked' : heal > 0 ? `+${heal}% health  ·  nothing is banked yet` : 'A way out  ·  nothing is banked yet';
         this.showBanner(head, `Gold ring home banks the run  ·  violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more, all of it at stake`);
       }
-      else if (ev.kind === 'roar') this.showBanner('The Warden roars', 'It calls for help');
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -216,4 +216,11 @@ export class RunUi {
     this.bannerTitle.textContent = title;
     this.bannerUntil = this.now + BANNER_MS / 1000;
   }
+}
+
+/** Each roar names what the Warden's next phase brings (E1g); the slice's one roar calls for help. */
+function roarBanner(phase: number | undefined): [string, string] {
+  if (phase === 2) return ['The Warden calls the dead', 'They rise from the edges of the hall'];
+  if (phase === 3) return ['The Warden rages', 'Faster sweeps, and slams that roll toward you'];
+  return ['The Warden roars', 'It calls for help'];
 }

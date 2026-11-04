@@ -115,6 +115,15 @@ export class FxView {
           // The low attack passing under the jumper's feet: a thin pale ring on the floor below them.
           this.ring(ev.x, ev.z, 1.2, 0xbfe8ff, 0.7, 0.35, ev.ground);
           break;
+        case 'guarded':
+          // A Shieldbearer's shield turns the blow (E1b): a pale deflect spark, no number.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.6, 0), 14, new THREE.Color(0xe8e0c8));
+          break;
+        case 'guardBroken': {
+          const e = sim.enemies.find((o) => o.id === ev.enemyId);
+          if (e) this.spawnSparks(new THREE.Vector3(e.x, e.y + 1, e.z), new THREE.Vector3(0, 1.2, 0), 30, new THREE.Color(0xff9a6a));
+          break;
+        }
         case 'block':
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.5, 0), ev.broke ? 26 : 12, new THREE.Color(ev.broke ? 0xff9a6a : 0xd8d0c0));
           break;
