@@ -2,6 +2,128 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 106, the Wraith's circle is heard landing (E1d polish)
+
+**What changed**
+
+The last polish line on E1d. A Wraith's circle had the magic telegraph's shimmer as it was cast and nothing as it landed, so a player who stepped out heard no miss and one who was caught heard nothing either. Now the caster brain pushes a `circleLanded` event (the enemy, where, and how many it caught) as the circle lands, caught or not, and `Sfx` plays it as a cold thump with a hiss of frost. The `chilled` event, which had no sound, now cracks like ice: full for the hero it caught, quieter for a teammate. Server-side events reach every browser in the snapshot as before; the tint (Session 105) and the corner's line still come from the state.
+
+**Learned**
+
+The arena never has a Wraith, so a new sim event from its brain leaves the parity hashes alone. The arrow test now also proves a broken channel lands nothing, so no landing sound plays for a circle that is gone.
+
+`wraith.test.ts`: the landing is one `circleLanded` at the circle with `caught: 1`; a hero who stepped out still hears it land, `caught: 0`; a broken channel pushes none. check 348 green, parity identical, test:net all passed, the client builds. Not yet heard in a browser.
+
+**Next**
+
+E1d is done, polish included. G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions; G5's B (room shapes and set pieces) starts once the tile is answered or dropped. Nothing else in E1 is the builder's.
+
+## 2026-11-04: Session 105, frost on a Chilled hero (E1d polish)
+
+**What changed**
+
+The polish Session 104 left on E1d. A Chilled hero now wears frost: a pale blue (`FROST`, the staff's frost colour) additive shell over the whole figure in `HeroView`, built once and shown only while the hero's `chill` lasts. It rises over `look.chillTintFadeS` (0.35 s) as the Chill lands and is held down to the Chill's own fall over its last 0.35 s, so it is gone when the slow is, and a second Chill restarting the clock does not make it blink. A slow shimmer keeps it from reading as a flat colour. Its brightness is `look.chillTint` (0.3); both are on the panel and stay in the browser (the `look` section is local). The frame step is `frostStep` (`client/src/render/frost.ts`), pure. A shell rather than tinting the figure's materials, because those are shared between heroes and swapped by the wardrobe.
+
+**Learned**
+
+The view reads `chill` from the same `PlayerState` the corner's line does, so a teammate's frost follows the snapshot and the player's own follows prediction, which counts Chill down on the server's tick. Nothing in the sim, server or net changed, so parity and test:net are untouched.
+
+`tests/frost-tint.ts` (in `npm run check`): no frost on a warm hero; in to its peak within the fade and never past it; gone when the Chill ends; a second Chill at 2.8 s keeps it above a third of its peak and back to full. check 348 shared tests plus the two client checks green, the client builds. Not yet seen in a browser. The circle's own landing sound is the other polish line and stays open.
+
+**Next**
+
+The Wraith's landing sound (it uses the magic telegraph's today). G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions; G5's B (room shapes and set pieces) starts once the tile is answered or dropped.
+
+## 2026-11-04: Session 104, the Wraith (E1d)
+
+**What changed**
+
+The Crypt's caster, the last of its roster bar E1i's second dungeon.
+- **The kind.** `wraith` is a new `EnemyKind` in the caster role (`KIND_ROLE`), called "Wraith" in the Crypt. Its numbers are `tuning.wraith`: 45 health, 3 poise, and panel ranges for health, distances, circle, channel, cooldown and the broken stagger. `casterBrain` keeps 9 m from the nearest hero, as the Priest keeps its distance. With a hero within 14 m on an open line and its 3.5 s cooldown spent, it channels a violet circle (2 m) at that hero's feet. The circle stays where it was cast. It lands after `wraith.channelMs` (1.6 s) plus the lag grace, so a step out that was on time on the player's screen counts. Whoever is in it then and on the ground is Chilled (`chillHero`, Session 103: 35% slower, no sprint, 3 s). A dodge's i-frames slip it, and so does a jump high enough.
+- **Ranged beats magic.** Any hit that lands breaks the channel (`breakChannel`, in `damageEnemy` after a shield's block): the circle goes and it reels for `wraith.brokenMs` (0.9 s). An arrow is the natural answer from range.
+- **In rooms.** The Wraith costs 3 and joins `SPECIALISTS`, standing `back` with the bows and the Priest behind the shields.
+- **Seen as.** The Priest's robe and hood, no legs, floating 0.35 m up with a slow bob. It channels with the Priest's raised hands. The circle draws violet through the existing colour language and sound (`telegraphColour`'s magic).
+
+**Learned**
+
+A sixth specialist changes each room's seeded shuffle, so floors compose differently from before. D1's "a deeper floor fills it more" counted bodies. A Knight, a Priest and two Shieldbearers fill floor 3's great hall with 8 bodies against floor 1's 10, at 21 budget against 13. The test now compares budget spent, which is what it meant. The roles test lists the Wraith with the back line. Spawn protection (`invulnTime`) now also covers a landing circle, as it covers a hit.
+
+`wraith.test.ts`: the caster role, a brain, violet; a hero standing in the circle as it lands is Chilled for 3 s; one who stepped out is not; a hit mid-channel breaks it (`recover`, no circle) and nobody is Chilled; a room that draws it stands it at the back. check 348 (was 343), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+The Crypt's roster is complete. Polish left on E1d: a frost tint on a Chilled hero's figure. G4b (the Hollow Crown's boss) and G5's collapsing tile wait on their questions. G5's B (room shapes and set pieces) can start once the tile is answered or dropped.
+
+## 2026-11-04: Session 103, Chill on a hero (E1d, part one)
+
+**What changed**
+
+Michael answered the Chill question with A: a Chilled hero moves 35% slower for 3 s and cannot sprint, and attacks, dodges and abilities are unchanged. The Wraith is a whole kind (brain, figure, channel, sound), too much for the time left in this run, so this session builds the state it applies. `PlayerState.chill` holds the seconds left, absent when warm. `chillHero` (`sim/chill.ts`) is the server's call. It sets `chill.durationS` (3) and pushes a `chilled` event; a second Chill restarts the clock, it does not stack. `stepPlayer` counts it down, so prediction runs it out on the same tick as the server. `moveSpeedMult` takes `chill.slow` (0.35) off whatever the hero's speed is, which covers running, walking, the guard's strafe and the cast walk. A Chilled sprint is a run. The dodge is untouched. The HUD shows a frost-blue line under the belt while it lasts: "Chilled · slowed, no sprint · 3". Both numbers are on the panel and go through the server. Nothing applies Chill yet, so nothing changes in play until the Wraith arrives.
+
+**Learned**
+
+The snapshot's hero is cloned whole into prediction (`structuredClone`), so a new optional field on `PlayerState` needs nothing in `ClientSession`. The arena's run lane is short: a second of sprint from z = -6 meets geometry, so the test runs half a second.
+
+`chill.test.ts`: a Chilled run covers 0.65 of a warm one, give or take 0.05. A Chilled sprint equals a Chilled run, while a warm sprint beats a warm run. Chill lasts 3 s to the tick and then is gone, and a copy stepped the same way agrees to the bit. A dodge's distance barely changes. check 343 (was 339), parity identical, test:net all passed, the client builds.
+
+**Next**
+
+The Wraith itself: a `wraith` kind in the caster role that floats at range and channels a violet circle at a hero's feet, broken by any hit, calling `chillHero` on whoever stands in it when it lands. With it come the hero's frost tint, the caster in `SPECIALISTS` standing `back`, and its figure and sound. G4b and G5's collapsing tile wait on their questions.
+
+## 2026-11-04: Session 102, swinging blades (G5)
+
+**What changed**
+
+The second trap. A blade hangs from a pivot under the ceiling in some flat straight halls (`hall`, `hallLong`, a third of them, never one with spikes) and swings across the hall, so the walk through is timed. Its arm is 3.4 m, and the steel crescent at its foot sweeps low. Level data from the seed again (`bladesFor`, `FloorLayout.blades`). Over 100 seeds of a 24-piece floor 2, 84 floors have one or more, 1.7 a floor.
+- **The swing** is `bladeOffset`, a sine across the hall over `traps.bladePeriodS` (2.6 s there and back), from the sim's clock. Server and browser compute the same swing, and the view sets the arm's angle so its foot is where the sim says.
+- **The hit.** A body within the blade's thickness of its line is hit as the blade passes through it, once each way. This is judged from where the blade was last tick and where it is now, so nothing is kept between ticks. A hero takes `traps.bladeHeroFrac` (20%), or clears it in the air by the jump's rule and gets "Cleared". An enemy takes `traps.bladeEnemyDamage` (40) and is thrown `traps.bladePush` (3 m) the way the blade swings, so a hall with a blade is a place to fight in. Server only, henchmen spared, under `traps.enabled`, like the spikes.
+
+**Learned**
+
+A blade has no wind-up, so it needs no warning glow: the swing itself is the tell, which suits a hall you walk through rather than fight in. The pass rule (the blade's offset crossing the body's) gives exactly two hits a swing with no per-player cooldown in the state.
+
+`traps.test.ts` gains three: blades only in straight halls without spikes, reaching inside the walls, the same each time; a hero in its way is hit exactly twice a swing, untouched 1.5 m along the hall or high in the air; an enemy in its way loses 40 and is thrown along the swing. check 339 (was 336), parity identical, test:net not needed (no server or net file), the client builds. Neither trap has been seen in a browser yet. The crescent's shape and hang were worked out on paper, so the critic's run should look at a bladed hall.
+
+**Next**
+
+The collapsing floor tile, the last of G5's A. Then E1d, the Wraith (Chill as Michael's A). G4b waits on its question.
+
+## 2026-11-04: Session 101, spikes (G5, traps first)
+
+**What changed**
+
+Michael answered G5 with D on the control room: traps, then room shapes and set pieces, then secrets, one per builder session. This session builds the first trap, spikes.
+- **Where.** Spikes are level data placed from the floor's seed, like the lava and the props (`level/traps.ts`, `spikesFor`, in `FloorLayout.spikes`). Some flat fight rooms get up to three 2 m tiles on open floor, at least 3 m from a doorway, struck in turn. Some long halls get a row across the middle, struck together, so the walk through is timed. Never in the Warden's hall, the rest room, the lava room or a hand-built floor. Spawn spots and props keep off the tiles. Over 100 seeds of a 24-piece floor 2, 98 floors have spikes, about 2.4 rooms and 1 hall each, 9 tiles a floor.
+- **When.** Every tile runs one cycle from the sim's clock: an orange glow for `traps.spikeWarnS` (0.9 s; orange is the colour language's heavy, nothing stops it), then the strike, then spikes up for `traps.spikeUpS` (0.7 s), every `traps.spikeCycleS` (3.2 s). Each tile's place in the cycle is a share, so a panel change to the cycle never moves the level.
+- **What it does.** The strike lands `coop.lagGraceMs` after the warning ends, so a step off that was on time on the player's screen counts. It takes `traps.spikeHeroFrac` (15%) of a hero's health and `traps.spikeEnemyDamage` (30) from an enemy, so a pack can be lured across. It comes from below: no shield or guard stops it. A hero high enough in the air clears it by the jump's rule (M1) and is told "Cleared". It runs in stepSim only, as lava does. Henchmen are spared, since their brains do not see traps yet. `traps.enabled` switches it off. The arena has none, so parity is unchanged.
+- **Seen as.** `TrapView` draws an iron grate, the orange glow brightening and quickening through the warning, and nine spikes that snap up. The minimap marks tiles with an orange edge.
+
+**Learned**
+
+`stepSim` moves `state.time` on at the end of the step, so a step covers time to time + dt. `stepTraps` judges the strike in that window, and the view draws from the snapshot's time, the same clock.
+
+`traps.test.ts`: over 30 seeds the tiles lie only in fight rooms and long halls, inside the walls, clear of doorways, spawn spots and the lava room, and the same each time. None on a hand-built floor. A hero on a tile loses 15% once, on the tick the warning plus the grace runs out. One beside it, or high in the air, is untouched, and the one in the air gets "Cleared". An enemy on it loses 30. The switch stops it. check 336 (was 331), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's other two traps: swinging blades in halls and a collapsing floor tile. Then E1d, the Wraith, with Chill as Michael's A. G4b, the Hollow Crown's boss, waits on the question Session 100 asked.
+
+## 2026-11-04: Session 100, mini-bosses guard the rest room (G4)
+
+**What changed**
+
+Michael answered G4 with A on the control room. This session builds its mini-boss half. Every floor that ends in a rest room now has one named elite. It waits in the fight room fewest doorways from the rest room (`guardRoomOf`, from the layout alone, so the server and every browser agree), and stands at that room's spot nearest the rest room. Below `miniboss.knightFromTier` (1) it is a Bone Brute, so Normal floor 1 gets a Brute. From there up it is a Barrow Knight. It has `miniboss.healthMult` (3) times its kind's health, after the portal's and the party's scaling, and a name drawn from the Crypt's six (`MINIBOSS_NAMES` in `roles.ts`, e.g. "Sir Aldous the Hollow"). Its health shows on the boss bar under that name in place of the small bar over its head. In the browser it wears a gold crown and stands 15% taller than its kind. The Warden's floor has none, and the arena never meets one, so parity is unchanged. `EnemyState.named` is optional and absent on every other enemy. `miniboss.enabled` switches it off. Both numbers are on the panel and go through the server.
+
+**Learned**
+
+`run.bossId` was only ever set, never reset, on a generated floor. Nothing in the sim reads it; the boss bar does. So a non-boss room now sets it to -1 before it spawns, and the mini-boss sets it after. The rooms before still clear the same way: the mini-boss is one more body in the room's count.
+
+`miniboss.test.ts`: over 12 seeds the guard room is a fight room, never the exit or the Warden's hall, and the same each time; floor 3 of 3 has none. Normal floor 1's guard room meets one named Brute at three times a Brute's health, on the boss bar. A Hard floor 2 meets a Knight there and nobody named in another room. The switch keeps it away. check 331 (was 327), parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G4b, the Hollow Crown's own boss. Then G5 in Michael's D order: traps first. E1d (the Wraith) is ready now that Chill is answered (A: 35% slower for 3 s, no sprint).
+
 ## 2026-11-04: Session 99, a teammate's name plate that keeps its size
 
 **What changed**

@@ -13,6 +13,7 @@ import { stepPlayer } from './player';
 import { emptyTalents } from './talents';
 import { idleCommand, type SimEvent } from './types';
 import { floorWorldNow } from './floorRun';
+import { ROOM_COST } from './roomMix';
 import { createSimState } from './world';
 
 // These pin P1's rest-room bank and D7's full heal, kept behind loop.bankAtRest and dungeon.restHeal;
@@ -283,10 +284,12 @@ describe('denser fights (D1)', () => {
   });
 
   it('fills a large room, and a deeper floor fills it more', () => {
-    const shallow = alive(soloFight('greatHall', 1).host).length;
-    const deep = alive(soloFight('greatHall', 3).host).length;
-    expect(shallow).toBeGreaterThanOrEqual(6);
-    expect(deep).toBeGreaterThan(shallow);
+    const shallow = alive(soloFight('greatHall', 1).host);
+    const deep = alive(soloFight('greatHall', 3).host);
+    expect(shallow.length).toBeGreaterThanOrEqual(6);
+    // Deeper spends more of the room's budget; since E1h it may spend it on fewer, harder bodies.
+    const spent = (es: typeof deep) => es.reduce((s, e) => s + (ROOM_COST as Record<string, number>)[e.kind], 0);
+    expect(spent(deep)).toBeGreaterThan(spent(shallow));
   });
 
   it('lets three enemies at a hero at once on a floor (the arena keeps the slice’s two)', () => {

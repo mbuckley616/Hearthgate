@@ -35,7 +35,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -84,6 +84,11 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   },
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
+  // The Wraith (E1d) channels with the Priest's raised hands.
+  wraith: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
+  },
   // Bow in the left hand, string hand at the cheek when aiming.
   archer: {
     guard: pose(BASE, { handYaw: -30, handHeight: 0.05, handReach: 0.26, bladeYaw: 70, bladePitch: 65, offYaw: 55, offHeight: -0.02, offReach: 0.3, lean: 12 }),
@@ -131,6 +136,9 @@ export class EnemyView {
   private eyes: THREE.MeshBasicMaterial;
   private materials: THREE.MeshStandardMaterial[] = [];
   private stars = new THREE.Group();
+  /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
+  private crown = new THREE.Group();
+  private crowned = false;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
   private hpBack: THREE.Sprite;
@@ -176,7 +184,11 @@ export class EnemyView {
     else if (kind === 'brute') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
-    if (kind === 'priest') this.dressPriest(mat, mesh);
+    if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
+    if (kind === 'wraith') {
+      // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
+      for (const l of Object.values(this.legs)) for (const o of [l.thigh, l.shin, l.knee, l.foot]) o.visible = false;
+    }
     if (kind === 'knight') {
       // A crown of pale fire marks the elite out (E1f): five flames round the brow.
       const fire = glowMaterial(0xcfe8ff, 0.9);
@@ -190,6 +202,17 @@ export class EnemyView {
       this.shield.scale.set(1.5, 2.4, 1);
       this.head.add(mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x6a5a4e, { metalness: 0.6, roughness: 0.6 }), 0, 0.03, 0));
     }
+
+    // A mini-boss's crown (G4): a gold band with five points, above whatever the kind wears.
+    const gold = mat(0xd9a93a, { metalness: 0.85, roughness: 0.3, emissive: 0x3a2400 });
+    this.crown.add(mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.06, 14, 1, true), gold));
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      this.crown.add(mesh(new THREE.ConeGeometry(0.03, 0.1, 4), gold, Math.cos(a) * 0.14, 0.07, Math.sin(a) * 0.14));
+    }
+    this.crown.position.y = kind === 'brute' ? 0.12 : 0.22;
+    this.crown.visible = false;
+    this.head.add(this.crown);
 
     for (const a of Object.values(this.arms)) this.chest.add(a.upper, a.fore, a.elbow, a.hand);
     for (const l of Object.values(this.legs)) this.rig.add(l.thigh, l.shin, l.knee, l.foot);
@@ -532,6 +555,12 @@ export class EnemyView {
     this.root.position.set(prev.x + (curr.x - prev.x) * alpha, prev.y + (curr.y - prev.y) * alpha, prev.z + (curr.z - prev.z) * alpha);
     const yaw = lerpAngle(prev.yaw, curr.yaw, alpha);
     this.root.rotation.y = yaw;
+    if (!!curr.named !== this.crowned) {
+      // A named elite stands a head taller than its kind.
+      this.crowned = !!curr.named;
+      this.crown.visible = this.crowned;
+      this.body.scale.setScalar(SCALE[curr.kind] * (this.crowned ? 1.15 : 1));
+    }
     // Hitstop jitter on the target sells the impact.
     if (curr.hitstop > 0) this.body.position.set((Math.random() - 0.5) * 0.06, 0, (Math.random() - 0.5) * 0.06);
     else this.body.position.set(0, 0, 0);
@@ -606,7 +635,8 @@ export class EnemyView {
         rise += tuning.launch.arcHeightM * 4 * a * (1 - a);
       }
     } else this.flew = false;
-    this.rig.position.y = rise;
+    // A Wraith hangs in the air and bobs, until it falls.
+    this.rig.position.y = rise + (curr.kind === 'wraith' && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
 
     this.pelvis.position.y = DIMS.hipHeight - p.crouch;
@@ -659,8 +689,8 @@ export class EnemyView {
       tuck: 0,
     });
 
-    // Health bar (not for the boss).
-    const hurt = curr.kind !== 'warden' && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
+    // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar).
+    const hurt = curr.kind !== 'warden' && !curr.named && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
     this.hpBack.visible = this.hpFill.visible = hurt;
     if (hurt) {
       const top = stats.height + 0.3;
@@ -713,6 +743,7 @@ export class EnemyView {
         }
         break;
       case 'priest':
+      case 'wraith':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
       case 'shieldbearer':

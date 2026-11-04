@@ -232,7 +232,9 @@ export function damageTakenMult(p: PlayerState): number {
 }
 
 export function moveSpeedMult(p: PlayerState): number {
-  return 1 + rankOf(p, 'fleet') * tuning.talents.fleetSpeedPerRank + championSpeed(p);
+  const base = 1 + rankOf(p, 'fleet') * tuning.talents.fleetSpeedPerRank + championSpeed(p);
+  // Chill (E1d) takes its share off whatever the hero's speed is.
+  return p.chill !== undefined ? base * (1 - tuning.chill.slow) : base;
 }
 
 /** Cooldown multiplier from gear and the focus talent. */

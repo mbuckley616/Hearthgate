@@ -49,11 +49,11 @@ describe('Crypt rooms composed by role (E1h)', () => {
     }
   });
 
-  it('the line stands where it should: shields and fodder in front, bows and the Priest behind, Hounds at the far end', () => {
+  it('the line stands where it should: shields and fodder in front, bows, the Priest and the Wraith behind, Hounds at the far end', () => {
     for (const seed of SEEDS) {
       for (const { group } of rooms(seed, 2, 3)) {
         for (const g of group) {
-          if (g.kind === 'archer' || g.kind === 'priest') expect(g.place).toBe('back');
+          if (g.kind === 'archer' || g.kind === 'priest' || g.kind === 'wraith') expect(g.place).toBe('back');
           else if (g.kind === 'hound') expect(g.place).toBe('far');
           else expect(g.place).toBe('front');
         }
@@ -90,7 +90,7 @@ describe('Crypt rooms composed by role (E1h)', () => {
       const a = composeRoom(budget, ctx, stream(budget));
       const b = composeRoom(budget, ctx, stream(budget));
       expect(a).toEqual(b);
-      const cost = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6 };
+      const cost = { grunt: 1, archer: 2, brute: 4, shieldbearer: 3, hound: 2, priest: 3, knight: 6, wraith: 3 };
       expect(a.reduce((s, g) => s + cost[g.kind], 0)).toBeLessThanOrEqual(budget);
       expect(a.length).toBeGreaterThan(0);
     }
