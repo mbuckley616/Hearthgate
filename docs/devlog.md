@@ -10,7 +10,7 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Learned**
 
-The clean path was never the leak: `server.kill()` in `netcode-smoke.ts`'s `finally` does stop it (the tsx wrapper passes SIGTERM on). The leak is every path that skips the `finally`, and Session 97's was one of those. The gate-party script and the lag lab's runs over the bot harness get the same cover.
+The clean path was never the leak: `server.kill()` in `netcode-smoke.ts`'s `finally` does stop it (the tsx wrapper passes SIGTERM on). The leak is every path that skips the `finally`, and Session 97's was one of those. `tests/gate-party.ts`, the other caller of `bootServer`, gets the same cover.
 
 check 327, test:net all passed (smoke and server-exit), 0 server processes after.
 
