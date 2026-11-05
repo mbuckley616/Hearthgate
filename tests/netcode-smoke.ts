@@ -193,6 +193,12 @@ async function main() {
     // The bots walk the shortest way, which may pass no fight: the way out's lock (Michael, 31 Oct;
     // exitLock.test.ts) waits for none here. The tuning travels to the browsers as every edit does.
     va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExit", value: 0 } });
+    // They walk straight lines through the doorways, never hop and never fight back, so once a new piece
+    // changed which floors the seed builds (Session 113) a lava strip burned one down and a rest room's
+    // mini-boss felled another before the cheat could clear its room. The walk tests the hand-offs, not
+    // the fight: god mode and no burn for it.
+    va.send({ k: "tune", edit: { path: "lava.burnFracPerS", value: 0 } });
+    va.send({ k: "tune", edit: { path: "debug.godMode", value: true } });
     va.send({ k: "tune", edit: { path: "dungeon.clearsBeforeExitDeep", value: 0 } });
     const ring = village.village!.portal;
     // Round the well (it stands between the spawn and the shrine), then into the ring.

@@ -5,6 +5,7 @@ import { checkDungeon } from './handmade';
 import { lavaFor, type LavaStrip } from './lava';
 import { bladesFor, crumbleCollider, crumbleFor, CRUMBLE_SIZE, spikesFor, SPIKE_SIZE, type BladeTrap, type CrumbleTile, type SpikeTile } from './traps';
 import type { BoxCollider } from './geometry';
+import { daisesFor, daisRect, daisSurfaces, rectDistance, sarcCollider, sarcophagiFor, sarcRect, type Dais, type Sarcophagus } from './setPieces';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -56,6 +57,15 @@ export interface PieceInfo {
   ramp: (Rect & { up: Side }) | null;
   /** The rest room's two rings: deeper, then home (game/portal.ts). */
   rings: { x: number; z: number }[];
+  /** Solid masonry inside the walls (G5's B: the round chamber's corners), drawn and collided as wall. */
+  blocks: Rect[];
+  /** The L-room's point out from its inside corner (kit.ts `elbow`). */
+  elbow?: { x: number; z: number };
+}
+
+/** Is (x, z) within `margin` of any of the piece's masonry? */
+export function nearBlock(info: PieceInfo, x: number, z: number, margin: number): boolean {
+  return info.blocks.some((r) => rectDistance(r, x, z) < margin);
 }
 
 export interface FloorLayout {
@@ -75,6 +85,10 @@ export interface FloorLayout {
   /** Collapsing tiles in some fight rooms (G5), and each one's hole as a wall once it has fallen. */
   crumble: CrumbleTile[];
   crumbleWalls: BoxCollider[];
+  /** Set pieces (G5's B): rows of stone tombs in some big fight rooms, cover from bows and casters. */
+  sarcophagi: Sarcophagus[];
+  /** A dais raised in two steps in the middle of some big fight rooms (G5's B). */
+  daises: Dais[];
 }
 
 export type PropKind = 'crate' | 'barrel' | 'urn';
@@ -114,6 +128,10 @@ function inLavaBand(l: LavaStrip, x: number, z: number, margin: number): boolean
 
 /** A lava room's banner when its doors close. */
 export const LAVA_TITLE = 'A hall of embers';
+/** A room with tomb rows (G5's B). */
+export const TOMBS_TITLE = 'A hall of tombs';
+/** A room with a dais (G5's B). */
+export const DAIS_TITLE = 'The raised dais';
 
 /** Facing into the piece from a wall on this side (yaw 0 faces +z, the slice's convention). */
 const INWARD_YAW: Record<Side, number> = { n: 0, s: 180, w: 90, e: -90 };
@@ -143,8 +161,24 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     room.spots = room.spots.filter((sp) => Math.abs(sp.x - t.x) > CRUMBLE_SIZE / 2 + 0.6 || Math.abs(sp.z - t.z) > CRUMBLE_SIZE / 2 + 0.6);
   }
   const crumbleWalls = crumble.map(crumbleCollider);
+  const sarcophagi = sarcophagiFor(def, pieces, lava, spikes, crumble, openMiddle);
+  // Nobody wakes inside a tomb, nor pressed against one.
+  for (const t of sarcophagi) {
+    const room = pieces[t.piece];
+    room.title = TOMBS_TITLE;
+    const r = sarcRect(t);
+    room.spots = room.spots.filter((sp) => rectDistance(r, sp.x, sp.z) > 0.9);
+  }
+  // After the props' and tombs' places are settled, so adding it moved neither; it takes rooms without tombs.
+  const daises = daisesFor(def, pieces, lava, spikes, crumble, sarcophagi);
+  // Nobody wakes on its steps: a room's spots stay on its own floor, and the dais is the ground to take.
+  for (const d of daises) {
+    const room = pieces[d.piece];
+    room.title = DAIS_TITLE;
+    room.spots = room.spots.filter((sp) => rectDistance(daisRect(d), sp.x, sp.z) > 0.6);
+  }
   const props: PropInfo[] = [];
-  for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes);
+  for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes, sarcophagi);
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -174,7 +208,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi, daises },
   };
 }
 
@@ -206,7 +240,13 @@ function pieceInfo(p: Piece): PieceInfo {
   }
   // Either side of the rest room's fire, facing its one door.
   const rings = p.kind === 'rest' ? [at(4.5, 7), at(13.5, 7)] : [];
-  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings };
+  const blocks = (def.blocks ?? []).map((r) => {
+    const a = at(r.minX, r.minZ);
+    const c = at(r.maxX, r.maxZ);
+    return { minX: Math.min(a.x, c.x), maxX: Math.max(a.x, c.x), minZ: Math.min(a.z, c.z), maxZ: Math.max(a.z, c.z) };
+  });
+  const info: PieceInfo = { id: p.id, kind: p.kind, title: def.title, bounds: b, inner, y, top, fight: p.fight, doors, spots: [], pillars, braziers, ramp, rings, blocks };
+  if (def.elbow) info.elbow = at(def.elbow.x, def.elbow.z);
   if (def.room || p.kind === 'rest' || p.kind === 'entrance') info.spots = spotsFor(info);
   return info;
 }
@@ -219,6 +259,7 @@ function spotsFor(info: PieceInfo): { x: number; z: number }[] {
     for (let z = i.minZ + 2; z <= i.maxZ - 2 + 1e-6; z += 2.5) {
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1.4)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.8)) continue;
+      if (nearBlock(info, x, z, 1.4)) continue;
       if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3.8)) continue;
       out.push({ x, z });
     }
@@ -246,7 +287,7 @@ function propHash(seed: number, piece: number, k: number): number {
  * braziers so they never block a way through. None on a staircase or in the rest room. They do not
  * block movement: standing against the walls, nobody needs to walk through them.
  */
-function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[]): void {
+function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly LavaStrip[], spikes: readonly SpikeTile[], tombs: readonly Sarcophagus[]): void {
   if (info.kind === 'stair' || info.kind === 'rest' || info.y !== info.top) return;
   const share = KIT[info.kind].room ? PROP_ROOM_SHARE : PROP_HALL_SHARE;
   const i = info.inner;
@@ -262,6 +303,8 @@ function propsFor(info: PieceInfo, seed: number, out: PropInfo[], lava: readonly
       if (info.doors.some((d) => d.open && Math.hypot(d.x - x, d.z - z) < 3)) continue;
       if (info.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.radius + 1)) continue;
       if (info.braziers.some((b) => Math.hypot(b.x - x, b.z - z) < 1.4)) continue;
+      if (tombs.some((t) => t.piece === info.id && rectDistance(sarcRect(t), x, z) < 1)) continue;
+      if (nearBlock(info, x, z, 0.6)) continue;
       // Neither in a lava strip nor across the walkway at its end (D6): the long way round stays open.
       if (lava.some((l) => l.piece === info.id && inLavaBand(l, x, z, 1.2))) continue;
       // Nor on spikes (G5).
@@ -287,6 +330,8 @@ function torchesFor(info: PieceInfo, p: Piece): FloorLayout['torches'] {
       const x = side === 'n' || side === 's' ? along : side === 'w' ? b.minX + WALL_T : b.maxX - WALL_T;
       const z = side === 'e' || side === 'w' ? along : side === 'n' ? b.minZ + WALL_T : b.maxZ - WALL_T;
       if (info.doors.some((d) => d.side === side && Math.hypot(d.x - x, d.z - z) < CELL / 2)) continue;
+      // Not buried in the round chamber's masonry.
+      if (nearBlock(info, x, z, 0.3)) continue;
       // On a staircase the torch hangs over the middle of the climb.
       const y = (info.y + info.top) / 2 + 3;
       out.push({ x, y, z, facingYawDeg: INWARD_YAW[side] });
@@ -353,6 +398,8 @@ export function buildFloorWorld(level: LevelDef): World {
     info.pillars.forEach((p, i) =>
       colliders.push({ kind: 'cylinder', id: `pillar-${info.id}-${i}`, x: p.x, z: p.z, radius: p.radius, yMin: 0, yMax: info.y + 5.5, blocksMovement: true, blocksCamera: false, fadeable: true }),
     );
+    // The round chamber's masonry (G5's B): wall blocks, so they are drawn and fade as walls do.
+    info.blocks.forEach((r, k) => colliders.push(box(`wall-${info.id}-block-${k}`, r.minX, r.maxX, 0, info.top + WALL_H, r.minZ, r.maxZ)));
     info.braziers.forEach((br, i) =>
       colliders.push({ kind: 'cylinder', id: `brazier-${info.id}-${i}`, x: br.x, z: br.z, radius: 0.45, yMin: 0, yMax: info.y + 1.2, blocksMovement: true, blocksCamera: false, fadeable: false }),
     );
@@ -374,6 +421,10 @@ export function buildFloorWorld(level: LevelDef): World {
       surfaces.push({ kind: 'flat', ...b, height: info.y });
     }
   }
+  // The tombs (G5's B) stand from y = 0 like a pillar: solid to walking, sight and arrows alike.
+  layout.sarcophagi.forEach((t, i) => colliders.push(sarcCollider(t, i)));
+  // The dais (G5's B) is ground, not wall: two steps anyone walks up, so the camera and arrows pass over it.
+  for (const d of layout.daises) surfaces.push(...daisSurfaces(d));
   const roomColliders = gatesOf.map((g) => (g.length ? [...colliders, ...g] : colliders));
   const exitGates = (gatesOf[layout.def.exit] ?? []).map((g) => ({ ...g, id: g.id.replace('gate-', 'exitgate-') }));
   return { level, colliders, collidersOpen: colliders, surfaces, roomColliders, exitGates, collidersLocked: [...colliders, ...exitGates] };
@@ -390,6 +441,8 @@ export function pieceAt(layout: FloorLayout, x: number, z: number): number {
 
 /** A clear point in the middle of a piece: its centre, or the spot nearest it when a pillar or a fire stands there. */
 export function openMiddle(p: PieceInfo): { x: number; z: number } {
+  // The L-room's middle is its masonry's corner; the elbow sees down both arms.
+  if (p.elbow) return p.elbow;
   const c = { x: (p.inner.minX + p.inner.maxX) / 2, z: (p.inner.minZ + p.inner.maxZ) / 2 };
   const blocked = p.pillars.some((pl) => Math.hypot(pl.x - c.x, pl.z - c.z) < pl.radius + 1.2) || p.braziers.some((b) => Math.hypot(b.x - c.x, b.z - c.z) < 1.6);
   if (!blocked || p.spots.length === 0) return c;

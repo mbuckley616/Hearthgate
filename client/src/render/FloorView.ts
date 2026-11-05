@@ -4,6 +4,7 @@ import type { World } from '@hearthgate/shared/level/arena';
 import type { PieceInfo } from '@hearthgate/shared/level/floor';
 import type { Collider } from '@hearthgate/shared/level/geometry';
 import { DOOR_H } from '@hearthgate/shared/level/kit';
+import { DAIS_LEDGE, DAIS_STEP, SARC_HEIGHT, SARC_LONG, SARC_WIDE } from '@hearthgate/shared/level/setPieces';
 import { buildBrazier } from './decor';
 import { labelTexture } from './PortalView';
 import { floorTextures, pillarTextures, wallTextures } from './textures';
@@ -121,6 +122,59 @@ export class FloorView {
         this.group.add(group);
         this.addFire(new THREE.Vector3(b.x, p.y + 1.6, b.z), flame, 0.8);
         this.fireSources.push(new THREE.Vector3(b.x, p.y + 1.3, b.z));
+      }
+    }
+
+    // Tombs (G5's B): a plinth, the chest and an overhanging lid, one shared material and geometry set.
+    if (layout.sarcophagi.length) {
+      const stone = new THREE.MeshStandardMaterial({ color: 0x8a8274, roughness: 0.95 });
+      const lidMat = new THREE.MeshStandardMaterial({ color: 0x9c9384, roughness: 0.85 });
+      const plinthGeo = new THREE.BoxGeometry(SARC_WIDE, 0.2, SARC_LONG);
+      const chestGeo = new THREE.BoxGeometry(SARC_WIDE - 0.12, SARC_HEIGHT - 0.38, SARC_LONG - 0.12);
+      const lidGeo = new THREE.BoxGeometry(SARC_WIDE + 0.06, 0.18, SARC_LONG + 0.06);
+      const effigyGeo = new THREE.BoxGeometry(0.36, 0.12, SARC_LONG * 0.62);
+      for (const t of layout.sarcophagi) {
+        const tomb = new THREE.Group();
+        const plinth = new THREE.Mesh(plinthGeo, stone);
+        plinth.position.y = 0.1;
+        const chest = new THREE.Mesh(chestGeo, stone);
+        chest.position.y = 0.2 + (SARC_HEIGHT - 0.38) / 2;
+        const lid = new THREE.Mesh(lidGeo, lidMat);
+        lid.position.y = SARC_HEIGHT - 0.09;
+        // A worn figure carved on the lid, so a tomb reads as a tomb and not a crate.
+        const effigy = new THREE.Mesh(effigyGeo, lidMat);
+        effigy.position.y = SARC_HEIGHT + 0.06;
+        tomb.add(plinth, chest, lid, effigy);
+        tomb.position.set(t.x, t.y, t.z);
+        if (t.alongX) tomb.rotation.y = Math.PI / 2;
+        tomb.traverse((o) => {
+          if (o instanceof THREE.Mesh) o.castShadow = o.receiveShadow = true;
+        });
+        this.group.add(tomb);
+      }
+    }
+
+    // The dais (G5's B): two dressed-stone steps, a worn slab on top with a darker inlaid border so
+    // the top reads as the place to stand. Its height is the sim's (`daisSurfaces`), so feet land on it.
+    if (layout.daises.length) {
+      const step = new THREE.MeshStandardMaterial({ color: 0x7a7468, roughness: 0.92 });
+      const top = new THREE.MeshStandardMaterial({ color: 0x8f877a, roughness: 0.8 });
+      const inlay = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.95 });
+      for (const d of layout.daises) {
+        const inner = d.size - DAIS_LEDGE * 2;
+        const lower = new THREE.Mesh(new THREE.BoxGeometry(d.size, DAIS_STEP, d.size), step);
+        lower.position.set(d.x, d.y + DAIS_STEP / 2, d.z);
+        const upper = new THREE.Mesh(new THREE.BoxGeometry(inner, DAIS_STEP * 2, inner), top);
+        upper.position.set(d.x, d.y + DAIS_STEP, d.z);
+        const border = new THREE.Mesh(new THREE.BoxGeometry(inner - 0.3, 0.02, inner - 0.3), inlay);
+        border.position.set(d.x, d.y + DAIS_STEP * 2 + 0.01, d.z);
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(inner - 0.6, 0.03, inner - 0.6), top);
+        slab.position.set(d.x, d.y + DAIS_STEP * 2 + 0.015, d.z);
+        for (const m of [lower, upper, border, slab]) {
+          m.castShadow = m === lower || m === upper;
+          m.receiveShadow = true;
+          this.group.add(m);
+        }
       }
     }
 

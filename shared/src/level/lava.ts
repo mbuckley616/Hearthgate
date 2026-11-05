@@ -44,7 +44,7 @@ export function lavaFor(def: FloorDef, pieces: PieceInfo[]): LavaStrip[] {
   if (spec.hand || spec.floor < LAVA_FROM_FLOOR) return [];
   if (lavaHash(spec.seed, 0) >= LAVA_SHARE) return [];
   // Flat fight rooms of three cells or more a side; never the Warden's hall.
-  const rooms = pieces.filter((p) => p.fight && p.kind !== 'boss' && p.y === p.top && KIT[p.kind].w >= 3 && KIT[p.kind].d >= 3);
+  const rooms = pieces.filter((p) => p.fight && p.kind !== 'boss' && p.y === p.top && KIT[p.kind].w >= 3 && KIT[p.kind].d >= 3 && !KIT[p.kind].blocks);
   if (!rooms.length) return [];
   const room = rooms[Math.floor(lavaHash(spec.seed, 1) * rooms.length)];
   return stripsFor(room, lavaHash(spec.seed, 2) < 0.5);

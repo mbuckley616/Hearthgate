@@ -184,6 +184,7 @@ export function crumbleFor(def: FloorDef, pieces: PieceInfo[], lava: readonly La
       if (tiles.some((t) => Math.hypot(t.x - sp.x, t.z - sp.z) < CRUMBLE_APART)) continue;
       // A clear stride of floor all round it, so a hero put back at its edge stands in the room.
       if (sp.x - h - 1.2 < p.inner.minX || sp.x + h + 1.2 > p.inner.maxX || sp.z - h - 1.2 < p.inner.minZ || sp.z + h + 1.2 > p.inner.maxZ) continue;
+      if (p.blocks.some((r) => Math.max(r.minX - sp.x, 0, sp.x - r.maxX) ** 2 + Math.max(r.minZ - sp.z, 0, sp.z - r.maxZ) ** 2 < (h + 1.2) ** 2)) continue;
       tiles.push({ x: sp.x, z: sp.z, y: p.y, piece: p.id });
     }
     out.push(...tiles);

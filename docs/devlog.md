@@ -2,6 +2,85 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-04: Session 113, the L-room (G5's B, Michael's C)
+
+**What changed**
+
+The last of G5's B, in Michael's order: the L-room. `ell` is a 4 x 4 cell kit piece (24 m) titled "The crooked hall". Its north-east quarter (unturned) is solid masonry, a 12 m block made with the round chamber's `blocks`, so the room is two arms 12 m wide meeting at a corner. It has four doorways: one at the end of each arm and one on each outer side. One fire stands in the far corner. The generator grows it off a hall at the round chamber's weight (1.4). Over 100 floor-1 seeds of 24 pieces there are 74 of them, on 55 floors.
+- **The elbow.** `PieceDef.elbow` (kept on `PieceInfo`) is a point 2.2 m out from the masonry's inside corner, and it can see down both arms. It is the room's middle for `openMiddle`, so the bots' and henchmen's way through goes round the corner and never into the stone.
+- **Enemies go round.** In `around` (enemies.ts), an enemy whose straight line to its goal runs within its radius plus 0.3 m of the masonry heads for the elbow first. Walking straight, a grunt slid along the stone at its own radius and arrived a quarter later. Going by the elbow it keeps at least 0.6 m off the stone. The round chamber has no elbow and is unchanged.
+- **Everything else keeps clear,** as in the round chamber. Spawn spots stay 1.4 m from the masonry, props, torches, traps and tombs keep off it, lava never picks it, and a dais never fits it (its middle is the corner). The editor's palette has it as "L-room (for four)".
+- Adding a piece changes which floor a seed builds. The arena is untouched, so the parity hashes stay the same.
+- **test:net's floor walk** now runs with god mode and the lava burn off. Its bots walk straight lines through the doorways and never hop or fight back. On the floor its fixed seed now builds, one burned down crossing a lava strip and the other was felled by the rest room's mini-boss before the cheat cleared the room. The walk tests the hand-offs, not the fight.
+
+**Learned**
+
+Most enemies already reach a hero round a convex corner by sliding along the wall. The elbow matters less for arriving at all than for not grinding along the stone, so the test holds the grunt's distance from the masonry as well as its hit. The smoke test's floor walk had been passing on luck: any floor 2 with lava or a mini-boss on its straight route would have stopped it.
+
+`ellRoom.test.ts` (3): the masonry is one quarter and every doorway opens clear of it; on 80 seeds it turns up with its spots, props and torches clear of the masonry, no lava and no dais, the elbow in view of every doorway and the bots' route never running into the stone; a grunt goes round by the elbow to a hero down the other arm and hits them, never within 0.6 m of the stone (this fails without the elbow). `dais.test.ts`'s grunt now only has to climb the first step, since the floor it picks changed and from that step the top is in reach. check 375, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B is done. G5's C, secrets and side rooms, has no shape yet, so it is asked in decisions.md Pending.
+
+## 2026-11-04: Session 112, the dais (G5's B, Michael's C)
+
+**What changed**
+
+The third of G5's B, in Michael's order: a raised dais. Some big fight rooms (15 m or more each way inside the walls) now have a square of dressed stone in the middle, raised in two steps of 0.3 m each (`level/setPieces.ts`, `daisesFor`). It is placed from the seed's own stream, so the generator, props, lava, traps and tombs are untouched. The room's banner reads "The raised dais". Over 100 floor-1 seeds of 24 pieces there are 77 of them, on 58 floors.
+- **Fits the room.** The lower step is 8 m square, with the top set 1.5 m in from its edge. A room ringed by pillars takes a smaller one inside the ring: 6.5 m, or 5 m in the halls of pillars and the great hall. In the round chamber it stands between the four fires. It is never in the boss's hall, the lava room or a room with tombs. It keeps clear of doorways (3 m), pillars and fires (a stride), the masonry and the traps.
+- **Ground, not wall.** Its two steps are flat surfaces (`daisSurfaces`) that `groundHeight` reads, so the server, prediction and telegraphs all put feet on it with no new code. Each step is under the 0.35 m stride, so heroes, henchmen and enemies walk up it from any side without pathing of their own. The top (0.6 m) is inside every attack's reach (enemies' 0.9 m level gap), so it changes how a fight moves, not who can hit whom. Nobody wakes on its steps. Spawn spots within 0.6 m of it are dropped, and every room keeps at least four.
+- **Seen.** Two stone steps, a worn slab on top with a darker inlaid border, built once in `FloorView`. On the minimap it is a lighter square with a lighter top.
+- No ring of sunken floor round it. `groundHeight` takes the highest surface under a point, so ground can never sit below a room's own floor. The "sunken ring" is the room's floor, a step below the dais. A true moat would need a change to the ground model.
+
+**Learned**
+
+The generator's test holds every spawn spot to its room's floor height. Spots on the steps broke that, and enemies waking on a step edge would have looked wrong anyway, so they are dropped rather than the test loosened. Every big room but the pit has pillars or fires a few metres from its middle, so an 8 m dais alone landed only in guard rooms and round chambers. The smaller sizes are what put it inside the pillar rings.
+
+`dais.test.ts` (3): over 100 seeds it lands only in fight rooms that are not the boss's hall, the lava room or a tomb room, the same from the same seed, inside the walls and clear of doorways, pillars, fires, traps, props and spawn spots, with the ground reading top, step and floor, and the bots' middle on its top; a hero runs up both steps and off the far side; a grunt walks up to a hero on top and hits them. check 372, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B ends with the L-room (a new kit piece). Then C, secrets and side rooms.
+
+## 2026-11-04: Session 111, the round chamber (G5's B, Michael's C)
+
+**What changed**
+
+The second of G5's B, in Michael's order: a new room shape. `round` is a 4 x 4 cell kit piece (24 m) titled "The round chamber", with four doorways, one on each side. Its corners are filled with stepped masonry (`PieceDef.blocks`, 48 blocks made by `roundBlocks` in `kit.ts`), so its floor is a circle 23 m across. The edge steps out at most 0.8 m past the circle, and each doorway opens straight into it. Four braziers stand round the middle. With no corner to be pinned in, a fight there circles. The generator grows it off a hall, as it grows the other rooms (weight 1.4 beside the hall of pillars' 2.4). Over 100 floor-1 seeds of 24 pieces there are 62 of them, on 48 floors.
+- **Masonry is wall.** Its blocks are wall colliders (`wall-<piece>-block-<k>`), so the server, prediction, the camera's fade and `FloorView`'s wall drawing take them with no new code. The minimap draws them dark.
+- **Everything else keeps clear.** Spawn spots stay 1.4 m from the masonry, and props, torches, collapsing tiles and tomb rows keep clear of it. Lava never picks a round room, because its walkway at the strip's end could be walled off. The editor's palette has it as "Round chamber (for four)".
+- Adding a piece changes which floor a seed builds. The arena is untouched, so the parity hashes stay the same.
+
+**Learned**
+
+The curve is cut into slices along whichever axis it is shallower to. Cutting along one axis only left notches nearly 5 m deep near the walls. A slice that overlaps a doorway is left out whole, so the floor in front of a door can sit up to 1.1 m outside the circle. That is a doorway alcove, not a gap.
+
+`roundRoom.test.ts` (3): no block reaches inside the circle; just outside it, all round, is masonry except in front of a doorway; on 60 seeds it turns up, with its spots inside the circle and clear of the masonry, props and torches out of it, no lava, and the bots' route through the floor never running into it. check 369, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B continues: the dais (a raised floor ringed by a sunken one), then the L-room. Then C, secrets and side rooms.
+
+## 2026-11-04: Session 110, tomb rows (G5's B, Michael's C)
+
+**What changed**
+
+The first of G5's B, built to Michael's C (control room, 4 Nov). The order is one a session: the sarcophagus rows, then the round chamber, then the dais, then the L-room. Some big fight rooms (15 m or more each way inside the walls, never the boss's hall or the lava room) now have one or two rows of three stone tombs. Each tomb is 1 x 2.2 m and 1.3 m tall, with 1.1 m gaps between them. Over 100 floor-1 seeds of 24 pieces, 127 of 459 big fight rooms have rows, on 78 floors, and such a room's banner reads "A hall of tombs" (`level/setPieces.ts`, placed from the seed's own stream, so the generator, props, lava and traps are untouched).
+- **Cover.** The tombs are solid to walking, to an archer's line of sight and to arrows in flight. That includes the heroes' own arrows. A jump (1 m) does not clear them. A hero crouched behind one is out of an archer's line, so it does not draw. The Wraith now casts only at a hero it can see, using the same check the archer uses. A pillar hides a hero from it too, which it did not before.
+- **The way stays open.** Rows keep 1.4 m from the walls, 4 m from a doorway and clear of the room's middle. They also stay 1.6 m clear of the straight line from each doorway to the middle, which is the route bots and henchmen take, and clear of pillars, fires, spikes and collapsing tiles. Spawn spots and props near a tomb are dropped.
+- **Seen.** A plinth, a stone chest and an overhanging lid with a worn figure carved on it, built once in `FloorView`. Pale blocks on the minimap.
+
+**Learned**
+
+The Wraith never checked its line of sight before casting. With pillars only in some rooms, nobody noticed. With cover added to rooms, a caster that saw through stone would have made the tombs pointless against it.
+
+`tombs.test.ts` (4): over 60 seeds the rows land only in fight rooms that are not the boss's hall or the lava room, the same from the same seed, inside the walls and clear of doorways, spawn spots, props, traps and the middle, and the bots' route from the way in to the way out never crosses one; a tomb is taller than a jump; a Wraith casts at a hero in the open and not at one behind a tomb; an archer draws on a hero in the open and not on one behind a tomb. check 366, parity identical, test:net all passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's B continues: the round chamber next (a new kit piece), then the dais, then the L-room, one a session. Then C, secrets and side rooms.
+
 ## 2026-11-04: Session 109, collapsing floor tiles (G5, Michael's B)
 
 **What changed**
