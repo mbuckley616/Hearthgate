@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 116, test:net's bots step round a brazier
+
+**What changed**
+
+Session 114's flake: on floor 2 of test:net's fixed seed a brazier stands on the straight line to the great hall's waypoint, and a bot arriving exactly on that line pushed into it head-on, stopped at (-7.75, 9.00) and timed out, about 1 run in 6. `Bot.walkTo` (`tests/bots.ts`) now watches for a dead stop: when the bot has moved less than 0.1 m for 0.6 s while still short of its mark, it steps half sideways, half on, for 0.4 s, alternating sides each time, and walks on. Test code only; the sim and the server are untouched.
+
+**Learned**
+
+A circle pushed exactly through another's centre has no side to slide off to, so any route that runs a straight line through a round obstacle sticks; the nudge is general, so the next brazier or pillar a seed puts on a route is covered too.
+
+test:net passed (one run; the flake was 1 in 6, so one run proves little on its own). check 383.
+
+**Next**
+
+Watch the next runs of test:net for a "never reached" on floor 2.
+
 ## 2026-11-05: Session 115, a tile's fall eases instead of snapping
 
 **What changed**
