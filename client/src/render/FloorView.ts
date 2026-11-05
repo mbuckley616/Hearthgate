@@ -74,6 +74,15 @@ export class FloorView {
     const sideMat = wallMat();
 
     for (const p of layout.pieces) this.buildPieceFloor(p, p.kind === 'rest' ? floors.rest : p.kind === 'boss' ? floors.boss : floors.stone, sideMat);
+    // A secret's cell (G5's C): its own floor; its walls come with the rest below.
+    for (const sr of layout.secrets) {
+      const c = sr.cell;
+      const h = sr.y + 0.5;
+      const mesh = new THREE.Mesh(boxGeometry(c.maxX - c.minX, h, c.maxZ - c.minZ, FLOOR_TILE), [sideMat, sideMat, floors.stone, floors.stone, sideMat, sideMat]);
+      mesh.position.set((c.minX + c.maxX) / 2, sr.y - h / 2, (c.minZ + c.maxZ) / 2);
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    }
 
     // Walls and lintels: each a block with its own material, so it can fade on its own.
     for (const c of world.colliders) {

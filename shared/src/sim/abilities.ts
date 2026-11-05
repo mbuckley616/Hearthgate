@@ -184,7 +184,8 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
     }
     case 'bash': {
       // The shield's bash (C4): the nearest enemy in front is knocked off its feet.
-      smashArc(state, props, p, p.x, p.z, a.bashRangeM, a.bashArcDeg);
+      // A bash breaks a secret's cracked wall too (G5's C).
+      smashArc(state, props, p, p.x, p.z, a.bashRangeM, a.bashArcDeg, true);
       const fx = Math.sin(p.yaw);
       const fz = Math.cos(p.yaw);
       let best: EnemyState | null = null;

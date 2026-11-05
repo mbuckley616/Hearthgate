@@ -415,7 +415,8 @@ export class Game {
       this.gfx.scene.remove(this.propView.group);
       disposeTree(this.propView.group);
     }
-    const props = this.world.level.dungeon?.props;
+    // The props and each secret's crack and chest (G5's C): all hidden as they break.
+    const props = this.world.level.dungeon?.smashable;
     this.propView = props ? new PropView(props) : null;
     if (this.propView) this.gfx.scene.add(this.propView.group);
     // The floor's traps (G5) go with its props.

@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 117, cracked walls and the chest behind them (G5's C, Michael's A)
+
+**What changed**
+
+The first of G5's C, in Michael's order (C: both, A first): secret rooms behind cracked walls.
+- **Where** (`level/secrets.ts`). A fight room (never the boss's hall) rolls one from the floor's seed at 15%, two a floor at most. It takes one of its walled-up doorways on its own floor whose 6 m cell outside is clear of every piece and every other secret and inside the floor's bounding box, with nothing in front of it on the room's side: no lava, spikes, falling tile, tomb, dais or masonry within reach. Over 100 floor-1 seeds of 24 pieces there are 67, on 48 floors, mostly behind guard rooms (29). They are placed after everything else, so a seed builds the same floor round them; only the cracked doorway's wall pieces change.
+- **The wall.** That doorway is built as a gap (lintel above, no portcullis), filled by its cracked wall, `crack-<id>`, which `floorWorldNow` adds until it is broken. Server, prediction and camera all read it from there. The cell has its own three walls (`wall-secret-*`, drawn and faded like the rest) and floor.
+- **Breaking it.** The crack and the chest are props, ids from 10000, in a new `FloorLayout.smashable` list (the props, then each secret's two). So the sim keeps only `SimState.floor.broken`, and nothing new travels in a snapshot. `smashArc` takes a `heavy` flag. A sword's heavy or slam (`swordHits`) and the shield's bash set it, and only those meet a crack, within most of the doorway's width (`CRACK_REACH`, 1.6 m). Whirlwinds, bursts, frost rings and shots pass it by.
+- **The chest** breaks to any blow and sprays a find like a crate, only more: 2 to 3 lumber, 1 to 2 stone, 15 to 30 coin always, and a potion half the time (`loop.chest*`, on the panel). The spray stays inside the cell. It is carried until banked and lost with a wipe, like every other find.
+- **Seen.** The crack is the doorway's stone filled in, a shade off the walls, with a jagged hairline down its face (`PropView`). It disappears when broken. The chest is a banded box with a domed lid and a brass lock. The minimap draws the cell, in gold, only once its wall is broken.
+
+**Learned**
+
+Making the crack and chest props, rather than a new kind of thing, meant the break, the event, the spray, the view's hiding, prediction and the snapshot all came for free. The one new rule is that a crack only counts for a heavy blow.
+
+`secrets.test.ts` (4): over 100 seeds every secret is behind a fight room's walled-up doorway, in a cell clear of every piece and inside the floor, the same every time, on 20 to 90 floors of 100; a light swing leaves the wall standing and a held heavy breaks it, after which the gap and the cell are walkable; a whirlwind-sized blow does not break it and a bash does; the chest breaks to any blow and its spray (coin always, at least the minimum) lands inside the cell. check 387, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's C, B: gated treasure rooms with an elite guard, opened when the main way's next fight room is cleared. After that, a browser look at a crack and its chest.
+
 ## 2026-11-05: Session 116, test:net's bots step round a brazier
 
 **What changed**

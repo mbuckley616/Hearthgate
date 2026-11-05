@@ -1,5 +1,6 @@
 import { tuning } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
+import { CRACK_REACH } from '../level/secrets';
 import { roomFor } from './bagRoom';
 import { nextRandom } from './combat';
 import type { PlayerState, SimState } from './types';
@@ -18,10 +19,16 @@ export const PROP_RADIUS = 0.45;
 
 const DEG = Math.PI / 180;
 
-function standing(state: SimState, props: readonly PropInfo[] | undefined): PropInfo[] {
+/** What still stands; a secret's crack (G5's C) only to a heavy blow. */
+function standing(state: SimState, props: readonly PropInfo[] | undefined, heavy = false): PropInfo[] {
   const broken = state.floor?.broken;
   if (!props || !broken) return [];
-  return props.filter((pr) => !broken.includes(pr.id));
+  return props.filter((pr) => !broken.includes(pr.id) && (heavy || pr.kind !== 'crack'));
+}
+
+/** How near a blow must come to a prop's centre: a crack runs most of a doorway's width. */
+function reachOf(pr: PropInfo): number {
+  return pr.kind === 'crack' ? CRACK_REACH : PROP_RADIUS;
 }
 
 /** A whole number from lo to hi, both included, from the sim's own dice. */
@@ -58,11 +65,18 @@ function smash(state: SimState, pr: PropInfo, playerId: string): void {
   const f = state.floor!;
   f.broken.push(pr.id);
   const l = tuning.loop;
+  // A cracked wall (G5's C) holds nothing: breaking it opens the way to its chest (`floorWorldNow`).
+  if (pr.kind === 'crack') {
+    state.events.push({ kind: 'smashed', playerId, prop: pr.id, propKind: pr.kind, x: pr.x, y: pr.y, z: pr.z, lumber: 0, stone: 0, coin: 0, potion: false });
+    return;
+  }
   const urn = pr.kind === 'urn';
-  const lumber = urn ? 0 : roll(state, l.smashLumberMin, l.smashLumberMax);
-  const stone = urn ? roll(state, l.smashStoneMin, l.smashStoneMax) : 0;
+  const chest = pr.kind === 'chest';
+  // A secret's chest holds more of everything, and coin always.
+  const lumber = chest ? roll(state, l.chestLumberMin, l.chestLumberMax) : urn ? 0 : roll(state, l.smashLumberMin, l.smashLumberMax);
+  const stone = chest ? roll(state, l.chestStoneMin, l.chestStoneMax) : urn ? roll(state, l.smashStoneMin, l.smashStoneMax) : 0;
   // Crates and barrels hold coin too; urns hold stone alone.
-  const coin = !urn && nextRandom(state) < l.smashCoinChance ? roll(state, l.smashCoinMin, l.smashCoinMax) : 0;
+  const coin = chest ? roll(state, l.chestCoinMin, l.chestCoinMax) : !urn && nextRandom(state) < l.smashCoinChance ? roll(state, l.smashCoinMin, l.smashCoinMax) : 0;
   const kinds: ('lumber' | 'stone' | 'coin')[] = [];
   const amounts: number[] = [];
   for (let i = 0; i < lumber; i++) kinds.push('lumber'), amounts.push(1);
@@ -71,7 +85,7 @@ function smash(state: SimState, pr: PropInfo, playerId: string): void {
   for (let i = 0; i < piles; i++) kinds.push('coin'), amounts.push(Math.floor(coin / piles) + (i < coin % piles ? 1 : 0));
   // Eight pieces a prop at most, so ids never meet the next prop's.
   spray(state, pr, kinds.slice(0, 8), amounts.slice(0, 8));
-  const potion = nextRandom(state) < l.potionChance;
+  const potion = nextRandom(state) < (chest ? l.chestPotionChance : l.potionChance);
   if (potion) f.potions.push({ id: pr.id, x: pr.x, y: pr.y, z: pr.z });
   state.events.push({ kind: 'smashed', playerId, prop: pr.id, propKind: pr.kind, x: pr.x, y: pr.y, z: pr.z, lumber, stone, coin, potion });
 }
@@ -85,9 +99,9 @@ export function smashCircle(state: SimState, props: readonly PropInfo[] | undefi
 }
 
 /** A swing: the props inside its reach and arc, as swordHits takes enemies. */
-export function smashArc(state: SimState, props: readonly PropInfo[] | undefined, p: PlayerState, cx: number, cz: number, range: number, arcDeg: number): void {
-  for (const pr of standing(state, props)) {
-    if (Math.abs(pr.y - p.y) > 1.2 || Math.hypot(pr.x - cx, pr.z - cz) > range + PROP_RADIUS) continue;
+export function smashArc(state: SimState, props: readonly PropInfo[] | undefined, p: PlayerState, cx: number, cz: number, range: number, arcDeg: number, heavy = false): void {
+  for (const pr of standing(state, props, heavy)) {
+    if (Math.abs(pr.y - p.y) > 1.2 || Math.hypot(pr.x - cx, pr.z - cz) > range + reachOf(pr)) continue;
     if (arcDeg < 360) {
       const off = Math.atan2(pr.x - p.x, pr.z - p.z) - p.yaw;
       if (Math.abs(Math.atan2(Math.sin(off), Math.cos(off))) > (arcDeg * DEG) / 2) continue;

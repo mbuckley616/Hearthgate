@@ -1,5 +1,6 @@
 import { tuning, type EnemyKind } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
+import type { Collider } from '../level/geometry';
 import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
@@ -119,7 +120,10 @@ export function floorWorldNow(world: World, state: SimState): World {
   // A fallen tile's hole (G5) is a wall to everyone from then on, prediction and the camera included.
   const fallen = state.floor?.fallen;
   const walls = world.level.dungeon?.crumbleWalls;
-  const holes = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  const holes: Collider[] = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  // A secret's cracked wall (G5's C) stands until a heavy blow breaks it.
+  const secrets = world.level.dungeon?.secrets;
+  if (secrets?.length) for (const sr of secrets) if (!state.floor?.broken.includes(sr.crack.id)) holes.push(sr.wall);
   if (holes.length) base = [...base, ...holes];
   if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
     return { ...world, colliders: fighting || holes.length ? [...base, ...world.exitGates] : world.collidersLocked! };
