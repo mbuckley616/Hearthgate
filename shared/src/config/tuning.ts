@@ -1006,6 +1006,14 @@ export const tuning = {
     healthMult: 3,
     /** From this room tier a Knight wears the crown; below it a Brute does. */
     knightFromTier: 1,
+    /**
+     * A treasure room's guard (G5's C, Michael's B, 5 Nov): a mini-boss's numbers, smaller. It rises
+     * when a hero first steps into the room once its portcullis is up: a crowned elite at the chest
+     * with this health over its kind's, and guardPack Skeleton Warriors between it and the door.
+     */
+    treasureGuard: true,
+    guardHealthMult: 1.75,
+    guardPack: 2,
   },
 
   brute: {
@@ -2594,6 +2602,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'wraith.brokenMs': [0, 4000, 100],
   'miniboss.healthMult': [1, 10, 0.1],
   'miniboss.knightFromTier': [0, 8, 1],
+  'miniboss.guardHealthMult': [1, 6, 0.05],
+  'miniboss.guardPack': [0, 6, 1],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { addPlayer, type Loadout } from '../sim/coop';
-import { floorWorldNow } from '../sim/floorRun';
+import { floorWorldNow, stepFloorRun } from '../sim/floorRun';
+import { createEnemy } from '../sim/enemies';
 import { emptyMods, xpForLevel } from '../sim/gear';
 import { stepPlayer } from '../sim/player';
 import { smashArc } from '../sim/smash';
@@ -202,6 +203,77 @@ describe('treasure rooms (G5)', () => {
       expect(d.x).toBeLessThanOrEqual(t.inner.maxX);
       expect(d.z).toBeGreaterThanOrEqual(t.inner.minZ);
       expect(d.z).toBeLessThanOrEqual(t.inner.maxZ);
+    }
+  });
+
+  it('wakes its guard once a player steps into the opened room: a crowned elite by the chest and its pack', () => {
+    let seed = 1;
+    let level = floorLevel({ seed, pieces: 24, floor: 1, floors: 3 });
+    while (!level.dungeon!.treasure.length) level = floorLevel({ seed: ++seed, pieces: 24, floor: 1, floors: 3 });
+    const t = level.dungeon!.treasure[0];
+    const world = buildWorld(level);
+    const state = createSimState(level, [], world);
+    const l: Loadout = { name: 'p', xp: { sword: xpForLevel(20), bow: xpForLevel(20), staff: xpForLevel(20) }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+    const p = addPlayer(state, world, 'p1', l, false);
+    const mid = { x: (t.inner.minX + t.inner.maxX) / 2, z: (t.inner.minZ + t.inner.maxZ) / 2 };
+    const guards = () => state.enemies.filter((e) => e.guard === t.id);
+    const step = () => stepFloorRun(state, 1 / 60, floorWorldNow(world, state));
+    // Out in the hall, nothing.
+    Object.assign(p, { x: t.x - SIDE_DIR[t.side].x * 3, z: t.z - SIDE_DIR[t.side].z * 3, y: t.y });
+    state.floor!.cleared.push(t.key);
+    step();
+    expect(guards().length).toBe(0);
+    // In the room before its key room fell (as if through the gate), nothing either.
+    state.floor!.cleared = [];
+    Object.assign(p, mid);
+    step();
+    expect(guards().length).toBe(0);
+    // Opened and stepped into: the elite and its pack, once.
+    state.floor!.cleared.push(t.key);
+    step();
+    step();
+    const g = guards();
+    expect(g.length).toBe(1 + tuning.miniboss.guardPack);
+    const lead = g.find((e) => e.named)!;
+    expect(lead).toBeDefined();
+    expect(['knight', 'brute']).toContain(lead.kind);
+    const plain = createEnemy(createSimState(level, [], world), world, lead.kind, mid.x, mid.z, 0);
+    expect(lead.maxHp).toBeCloseTo(plain.maxHp * tuning.miniboss.guardHealthMult, 5);
+    expect(g.filter((e) => !e.named).every((e) => e.kind === 'grunt')).toBe(true);
+    for (const e of g) {
+      expect(e.x).toBeGreaterThan(t.inner.minX);
+      expect(e.x).toBeLessThan(t.inner.maxX);
+      expect(e.z).toBeGreaterThan(t.inner.minZ);
+      expect(e.z).toBeLessThan(t.inner.maxZ);
+    }
+    expect(Math.hypot(lead.x - t.chest.x, lead.z - t.chest.z)).toBeLessThan(3);
+    // A guard that follows the party does not hold a fight room open.
+    const room = level.dungeon!.pieces.find((r) => r.fight && r.kind !== 'boss' && r.id !== t.key)!;
+    Object.assign(state.run, { phase: 'wave', reinforced: true, waveSize: 1 });
+    state.floor!.room = room.id;
+    step();
+    expect(state.floor!.cleared).toContain(room.id);
+    expect(guards().length).toBe(1 + tuning.miniboss.guardPack);
+  });
+
+  it('wakes no guard with the switch off', () => {
+    const kept = tuning.miniboss.treasureGuard;
+    tuning.miniboss.treasureGuard = false;
+    try {
+      let seed = 1;
+      let level = floorLevel({ seed, pieces: 24, floor: 1, floors: 3 });
+      while (!level.dungeon!.treasure.length) level = floorLevel({ seed: ++seed, pieces: 24, floor: 1, floors: 3 });
+      const t = level.dungeon!.treasure[0];
+      const world = buildWorld(level);
+      const state = createSimState(level, [], world);
+      const l: Loadout = { name: 'p', xp: { sword: xpForLevel(20), bow: xpForLevel(20), staff: xpForLevel(20) }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+      const p = addPlayer(state, world, 'p1', l, false);
+      Object.assign(p, { x: (t.inner.minX + t.inner.maxX) / 2, z: (t.inner.minZ + t.inner.maxZ) / 2 });
+      state.floor!.cleared.push(t.key);
+      stepFloorRun(state, 1 / 60, floorWorldNow(world, state));
+      expect(state.enemies.length).toBe(0);
+    } finally {
+      tuning.miniboss.treasureGuard = kept;
     }
   });
 });

@@ -731,8 +731,8 @@ export class EnemyView {
       tuck: 0,
     });
 
-    // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar).
-    const hurt = curr.kind !== 'warden' && !curr.named && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
+    // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar; a treasure room's crowned guard has no boss bar, so it keeps its own).
+    const hurt = curr.kind !== 'warden' && (!curr.named || curr.guard !== undefined) && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
     this.hpBack.visible = this.hpFill.visible = hurt;
     if (hurt) {
       const top = stats.height + 0.3;

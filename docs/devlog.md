@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 119, the treasure room's guard (G5's C, Michael's B, finished)
+
+**What changed**
+
+The rest of G5's C, B: the "elite pack (a mini-boss's numbers, smaller)" guarding a treasure room's chest. With this, G5's C is built.
+- **When it rises** (`wakeTreasureGuards`, `sim/floorRun.ts`). Once the room's portcullis is up, the first standing player (not a henchman) to step a metre past the doorway wakes it, once a floor (`SimState.floor.guarded`). Before the key room falls, or from the hall, nothing stirs, so pressing on past the open gate costs nothing.
+- **What rises.** A crowned elite a step in front of the chest, facing the door. It is the mini-boss's kind for the floor's tier (a Barrow Knight from `miniboss.knightFromTier`, a Bone Brute below), with a name and `miniboss.guardHealthMult` (1.75) its health against the mini-boss's 3. `miniboss.guardPack` (2) Skeleton Warriors stand across the room halfway to the door. All three numbers and the switch (`miniboss.treasureGuard`) are on the panel.
+- **Its own, not a room's.** Each guard carries `EnemyState.guard` (the room's id, optional, so the wire packs it as an extra and the arena never sees it). A fight room's count ignores it, so a guard that follows the party into the next fight never holds that room shut or brings its reinforcements early. A Haunted guard that will still rise is kept when the next fight clears the corpses.
+- **Seen.** The elite wears the mini-boss's crown but has no boss bar, so it keeps its own health bar over its head (`EnemyView`).
+
+**Learned**
+
+Tying the guard to the gate and the player's step, not to the run's phases, kept it out of the fight-room machinery entirely: no shut doors, no banner, no `f.room` for a room that is not a piece. The cost is that nothing tells the party the guard is "theirs" to finish; they can walk away mid-fight and it follows.
+
+`secrets.test.ts` (+2): nothing rises from the hall or before the key room falls; stepped into, the elite and two grunts rise once, inside the room, the elite named, by the chest, at 1.75 times its kind's health; a fight room with only guards alive clears; with the switch off nothing rises. check 391, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's C is done. Nothing else in E1 is the builder's: E1i waits on Michael's call once the Crypt has been played, and the late-deaths item needs a real machine. A browser look at a crack, a treasure room, its guard and their chests is the first thing a play should check.
+
 ## 2026-11-05: Session 118, treasure rooms behind a portcullis, first part (G5's C, Michael's B)
 
 **What changed**

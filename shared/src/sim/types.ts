@@ -259,6 +259,8 @@ export interface EnemyState {
   risen?: true;
   /** A mini-boss (G4): its name, over the boss bar and under its crown. Absent on every other enemy. */
   named?: string;
+  /** A treasure room's guard (G5's C): that room's id. It holds no fight room from clearing. */
+  guard?: number;
   /** Launched corpse (K1): who killed it, what it deals, and the enemies it has already met. */
   launched?: { by: string; damage: number; struck: number[] };
   tele: Telegraph;
