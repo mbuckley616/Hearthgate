@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-04: G5's C, what a secret or side room is (builder, Session 113)
 G5's B is built (tomb rows, the round chamber, the dais, the L-room). Last is C, "secrets and side rooms", which nothing yet shapes. Today every room on a floor is on the generator's tree and every doorway is open or shut by a fight.
 - **A.** Cracked walls. Now and then a fight room has a wall marked with a hairline crack. Behind it is a small dead-end room (one cell) holding a chest of coin, lumber, stone and sometimes a potion. A heavy hit, a shield bash or a slam breaks the wall. What the chest gives is a find like any other: carried until banked, lost with a wipe. The crack shows on the minimap only once the wall is broken. *(recommended: it rewards looking around, reuses the smashing (D4) and the finds' stakes, and needs no new key or button)*
@@ -14,7 +16,7 @@ G5's B is built (tomb rows, the round chamber, the dais, the L-room). Last is C,
 - **C.** Both, one a session: A first, then B.
 - **D.** Skip C. G5 ends with B, and the builder has nothing left in E1 until the next call.
 
-## Answered
+Michael: **C. Both, one a session: A first, then B**. (5 Nov 2026)
 
 ### 2026-11-04: G5's B, which room shapes and set pieces first (builder, Session 109)
 G5's traps are built (spikes, swinging blades, collapsing tiles, your B). Next is B, "room shapes and set pieces", but nothing yet says which. Today a floor's fight rooms are eight rectangles of different sizes, some with pillars, braziers or a lava strip.
