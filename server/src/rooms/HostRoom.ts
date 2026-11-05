@@ -5,6 +5,7 @@ import { HostSession } from "@hearthgate/shared/game/HostSession";
 import type { PortalTo } from "@hearthgate/shared/game/portal";
 import { buildWorld, type LevelDef } from "@hearthgate/shared/level/arena";
 import type { LevelKind, ToHost, ToPeer } from "@hearthgate/shared/net/protocol";
+import { toWire } from "@hearthgate/shared/net/pack";
 import type { SimEvent } from "@hearthgate/shared/sim/types";
 import { readToHost } from "@hearthgate/shared/net/validate";
 import { readHenchmanCards, type HenchmanCard } from "@hearthgate/shared/sim/henchman";
@@ -78,8 +79,10 @@ export abstract class HostRoom extends Room {
     this.host = new HostSession(
       world,
       (msg, peer) => {
-        if (peer === undefined) this.broadcast(MSG, msg);
-        else this.clients.getById(peer)?.send(MSG, msg);
+        // A snapshot travels as rows (net/pack.ts), packed once for everyone it goes to.
+        const wire = toWire(msg);
+        if (peer === undefined) this.broadcast(MSG, wire);
+        else this.clients.getById(peer)?.send(MSG, wire);
       },
       CHEATS,
       (to) => this.onPortal(to),

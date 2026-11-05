@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 114, snapshots that stay small in a crowd (Fable)
+
+**What changed**
+
+The card `fable/snapshot-size`, from Session 86's measurement: every snapshot is the whole `SimState`, and in a crowd it was the largest thing the server does. Measured first with `tests/snapshot-size.ts` (Session 86's setup kept as a script: the arena, one hero, three henchmen, 55 enemies placed round the hero, god mode, 1200 ticks). It also weighs the snapshot as msgpack, the way Colyseus actually sends it, which Session 86 did not: the JSON figure overstated the wire by about a third.
+
+| Crowd (40+ live enemies), 600 snapshots | median | worst |
+|---|---|---|
+| As JSON (Session 86's measure) | 46.1 KB | 55.8 KB |
+| On the wire before (msgpack, keyed objects) | 30.3 KB | 35.9 KB |
+| On the wire now (rows) | 10.8 KB | 17.2 KB |
+
+In the heaviest snapshot the enemies went from 24.5 KB to 8.9 KB, the players from 4.5 to 2.3 and the projectiles from 1.4 to 0.5. The worst case is mostly a burst of events (51 of them, 6 KB), which is unchanged.
+
+- **Rows, not trimming** (`shared/src/net/pack.ts`). An enemy's 37 fields cost their names on every enemy in every snapshot, and most of them sit at rest (no knockback, no bleed, no combo window, no telegraph). Enemies, players and projectiles now travel as rows: the values in a fixed order with no names, a field at its resting value as nil (one byte), trailing nils left off, and any field the list does not name (the optional ones: `risen`, `crown`, `hitMult`, a henchman's `brain`, `flow`, `ward`, ...) in an object at the row's end. A nested telegraph is a row of its own.
+- **Lossless.** The browser unpacks exactly the `SimState` the server stepped, so nothing the views or prediction read could go missing, and nothing had to be argued about field by field. The card's option (a), dropping what the browser never reads, would have saved less (the heavy fields are positions, timers and health, which prediction does read) and needed a proof for each field; option (b), deltas against an acked baseline, is not needed at 11 KB and would have cost every snapshot its independence. Joins and hand-offs need nothing special: every snapshot still stands alone.
+- **Where it happens.** `HostSession` still hands its room a plain `snap`; the room packs it once (`toWire`) for everyone it goes to, and `ClientSession` (and the test bots) unpack it on arrival (`fromWire`). Every other message travels as before. `PROTOCOL_VERSION` 17.
+- **Kept honest by the typecheck.** Each list is checked against its state type: a required field added to `EnemyState`, `PlayerState` or `ProjectileState` and not to its list fails `npm run check` (`Unlisted`). An optional one needs nothing; it rides in the row's tail.
+
+**Learned**
+
+Session 86's 46 KB was JSON; the wire was 30 KB. Most of that was key names and resting values, not state. Pack and unpack together cost 0.57 ms per crowd snapshot here; the server pays half of that once per broadcast, not per player, and msgpack then has a third as much to encode. A null in a field whose resting value is something else (a `queuedSwap`, for instance, rests at null, but an enemy's `attack` rests at '') goes to the row's tail, so nil in a row always means "at rest".
+
+`pack.test.ts` (6): every snapshot of a 900-tick, 40-enemy arena fight with two players and two henchmen mashing buttons comes back equal after packing and a JSON trip; so does a haunted generated floor on difficulty 3 with a named enemy, a thrown crown, armour and a ward on a hero; a null where rest is not null and an absent optional field survive; each row gets its own resting telegraph; prediction stepped 120 ticks from the unpacked snapshot gives the same hero and enemies as from the server's state; a crowd packs to under half its keyed size. check 381 tests, parity IDENTICAL (not re-recorded). test:net passed 9 of 11 runs, 6 of 6 when run alternately with main (also 6 of 6); the two failures are an old flake in the floor walk, not this change (Next). The lag lab, this machine, against main on the same machine: what the server sends one player fell from 113 to 118 KB/s to 48 KB/s in the lab's small fight. Corrections a minute at 0, 50 and 150 ms were 53, 64 and 114 (main 40, 57 and 61). Two more runs of the 150 ms row gave 90 and 141 (main 98 and 182), so it is noise: three-run means 115 against 114. 0 snaps in every row, and every row under the critic's last 100, 125 and 152.
+
+**Next**
+
+The late deaths and drops item stays open for the browser side (frame rate and drawn-clock lag in a crowd on a real machine). Events are now the largest part of a burst; pack them the same way only if a measurement asks for it.
+
+test:net's floor walk is flaky on its fixed seed: floor 2 (seed 1090731875) puts a brazier (`brazier-3-1`, radius 0.45) at (-8.6, 9), right on the straight line from the entrance to the great hall's waypoint (-24, 9). A bot that arrives at exactly z = 9.0 pushes into it head-on and stops at (-7.75, 9.00) for 30 s; any drift off the line slides it round. Seen 2 times in 11 runs here, never on main in 6, which is luck of timing, since the sim is unchanged. The fix belongs in the test route (`walkRoute` steering round braziers, or a nudge off the line), a builder's item.
+
 ## 2026-11-04: Session 113, the L-room (G5's B, Michael's C)
 
 **What changed**
