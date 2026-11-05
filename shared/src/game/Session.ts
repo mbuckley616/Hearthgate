@@ -1,3 +1,4 @@
+import { tuning } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '../sim/types';
 
@@ -60,4 +61,23 @@ const PREDICTED_KINDS = new Set<SimEvent['kind']>(['swing', 'fire', 'ability', '
 export function isPredictedFor(ev: SimEvent, id: string): boolean {
   if (ev.kind === 'hit') return ev.attackerId === id && ev.local;
   return PREDICTED_KINDS.has(ev.kind) && 'playerId' in ev && ev.playerId === id;
+}
+
+/** A correction further than this (m) is a jump, not a prediction to ease out. */
+export const SNAP_M = 2.5;
+/** How long a run prediction could not have known to stop is eased over at most (s), as the downing blow was (Session 50). */
+const PLACED_EASE_S = 0.5;
+
+/**
+ * Did the server put this player's hero somewhere prediction could not foresee? A collapsing tile's
+ * fall (G5) puts whoever is on it back at its edge, server-side only, while the browser has kept
+ * predicting its walk onto the tile for a round trip; that whole walk comes back as one correction.
+ */
+export function placedBy(events: readonly SimEvent[], id: string): boolean {
+  return events.some((ev) => ev.kind === 'tileFell' && ev.put.includes(id));
+}
+
+/** The furthest a placement's correction eases rather than snaps: the snap limit and half a second of sprinting. */
+export function placedEaseM(): number {
+  return SNAP_M + tuning.movement.sprintSpeed * PLACED_EASE_S;
 }

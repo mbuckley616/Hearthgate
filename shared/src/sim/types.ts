@@ -411,7 +411,7 @@ export type SimEvent =
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
   | { kind: 'tileCracked'; x: number; z: number }
-  | { kind: 'tileFell'; x: number; z: number; caught: number }
+  | { kind: 'tileFell'; x: number; z: number; caught: number; put: string[] }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }

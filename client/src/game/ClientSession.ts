@@ -16,7 +16,7 @@ import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate
 import { createSimState, worldNow } from '@hearthgate/shared/sim/world';
 import { addArrivalSample, createClockSync, remoteTimeAt, type ClockConfig, type ClockSync } from '@hearthgate/shared/net/clock';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
-import { isPredictedFor, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
+import { SNAP_M, isPredictedFor, placedBy, placedEaseM, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
 
 /**
  * A replay that moves the hero further than this counts as a correction: Hearthgate's lab has counted
@@ -146,6 +146,8 @@ export class ClientSession implements Session {
   private inbox: { t: number; ev: SimEvent }[] = [];
   /** The old room's own events still waiting to be drawn when a hand-off came, for the save alone. */
   private departed: { id: string; events: SimEvent[] } | null = null;
+  /** Until this server time a correction eases up to `placedEaseM()`: the server just placed our hero (a tile's fall). */
+  private placedUntil = -1;
   /** Visual-only offset that eases out prediction corrections. */
   private err = { x: 0, y: 0, z: 0 };
   private loadout: Loadout;
@@ -453,6 +455,7 @@ export class ClientSession implements Session {
     this.sync = createClockSync(clockConfig());
     this.inbox = [];
     this.err = { x: 0, y: 0, z: 0 };
+    this.placedUntil = -1;
     this.portals = [];
     this.village = null;
     this.villageVersion++;
@@ -492,6 +495,11 @@ export class ClientSession implements Session {
     if (!mine) return;
     const before = this.me ? { x: this.me.x, y: this.me.y, z: this.me.z } : null;
     const modes = [this.me?.mode, mine.mode];
+    // A collapsing tile put us back at its edge: the walk predicted onto it comes back as one correction,
+    // which eases like any other (a quick pull back to the edge) rather than snapping (critic, 5 Nov).
+    // It takes a few snapshots to fade, so the wider limit holds for half a second of server time.
+    const placed = placedBy(events, this.localId);
+    if (placed) this.placedUntil = s.time + 0.5;
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
@@ -513,7 +521,7 @@ export class ClientSession implements Session {
         this.stats.maxCorrection = Math.max(this.stats.maxCorrection, size);
         if (size > 0.1) {
           this.stats.bigCorrections++;
-          if (size > 2.5 || (modes[0] === 'down' && modes[1] !== 'down')) this.stats.bigPlaced++;
+          if (placed || size > SNAP_M || (modes[0] === 'down' && modes[1] !== 'down')) this.stats.bigPlaced++;
           else if (modes.some((m) => m === 'attack' || m === 'ability')) this.stats.bigBySwing++;
           else if (modes.some((m) => m === 'hurt' || m === 'down')) this.stats.bigByHit++;
           else this.stats.bigOther++;
@@ -535,7 +543,7 @@ export class ClientSession implements Session {
       this.prevMe.z -= d.z;
       // Far off (a teleport, a restart): just snap. A door into an interior is the server's to take and
       // lands tens of metres away: that is a door, not a prediction gone wrong, so it is not counted.
-      if (Math.hypot(this.err.x, this.err.z) > 2.5) {
+      if (Math.hypot(this.err.x, this.err.z) > (s.time < this.placedUntil ? placedEaseM() : SNAP_M)) {
         if (Math.hypot(this.err.x, this.err.z) < DOOR_JUMP_M) this.stats.snaps++;
         this.err = { x: 0, y: 0, z: 0 };
         this.prevMe = structuredClone(mine);

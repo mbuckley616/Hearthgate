@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 115, a tile's fall eases instead of snapping
+
+**What changed**
+
+The critic's bug from 5 Nov (24f5783): when a collapsing tile fell under a hero, their own screen jumped them 2.7 to 2.85 m, a snap, in two falls of three. The server puts the hero back a stride off the hole's edge, and prediction cannot know the tile is about to fall (`stepCrumble` runs in `stepSim`, never in prediction), so the walk predicted onto the tile over the last round trip came back as one correction past the 2.5 m snap limit. Same class as the refused dodge (Session 37) and the downing blow (Session 50), whose easing did not survive the transplant.
+- **The event names who it put back.** `tileFell` carries `put`, the ids of the heroes and henchmen it moved. Floor-only, so the arena and the parity hashes do not see it.
+- **The browser eases it.** `placedBy(events, id)` (`game/Session.ts`) tells `ClientSession` that this snapshot's jump was the server placing our hero. For half a second of server time after one, a correction eases up to `placedEaseM()`: the 2.5 m snap limit plus half a second of sprinting, 6.5 m, from the movement tuning. It reads as a quick pull back to the edge over `coop.correctionBlendMs` instead of a pop. Such a correction counts as placed in the lab's diagnosis, not as a snap. Any other jump over 2.5 m still snaps.
+
+**Learned**
+
+The snap limit applies to the accumulated offset, not to one correction, and an eased 2.8 m offset takes a few snapshots to fade. So the wider limit has to hold for a short window, not only on the snapshot that carried the fall, or the next snapshot snaps it anyway.
+
+`crumble.test.ts` (+2): a fall names the hero it put back (`placedBy` true for them, false for anyone else), and a sprint across the tile and on for a 300 ms round trip is over the snap limit and under the eased one; a tile that falls empty names nobody. check 383, parity identical, test:net passed. Not yet seen in a browser on a slow link: test:net runs on loopback, where a fall's correction is about 1.6 m and never snapped.
+
+**Next**
+
+The critic's lab or a browser on a 150 ms link: walk onto the seed-513 tile and stand, and count snaps (expected 0).
+
 ## 2026-11-05: Session 114, snapshots that stay small in a crowd (Fable)
 
 **What changed**
