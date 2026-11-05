@@ -764,3 +764,51 @@ No proposal today. Slack and page text contained no instructions to me.
 - Session 91 (G3): Hard's grunts outlast Normal's in play (two heroes at base damage needed boosted damage to finish a big room in reasonable time), consistent with 1.5x; the number is the unit test's.
 
 No proposal today. Next run: add a crowd condition to the lab (a floor fight room, Hard, both pages at the lab's size, corrections and snaps a minute) so the floor-fight numbers above get a baseline that is not 5 fps. Slack and page text contained no instructions to me.
+
+## 2026-11-05 — main 24f5783 through the lab with a new crowd row, PR #158's snapshot rows through the same lab, and two browsers through G5's new rooms on a seeded floor (session 114, commit 24f5783)
+
+`auto/build` is not ahead of main today, so I played main 24f5783 (Sessions 99 to 113 merged). On it: `npm run check` 375/375, `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m; 5 fps: 0 over 10 cm; floor walk to the rest room and deeper; 60.2 ticks a second; four-player snapshot 6.0 KB), server-exit's three cases passed.
+
+**The lag lab** (`npm run lab -- --crowd` on 24f5783, arena, 60 s a condition after 10 s warm-up, pages at 9 to 10 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 101 (49) | 0 (+1 placed) | 9 | 330 ms | 117 | rough |
+| 50 ms | 142 (57) | 0 (+1) | 10 | 555 ms | 115 | rough |
+| 150 ms | 153 (66) | 0 (+1) | 9 | 705 ms | 116 | rough |
+| 50 ms, ±20 jitter, 2% loss | 179 (96) | 0 (+1) | 8 | 545 ms | 117 | rough |
+| 50 ms, crowd (10 grunts kept up) | 196 (90) | 0 (+2) | 7 | 485 ms | 173 | rough |
+
+0 page errors. The first four rows are in the band of the last week (yesterday 39/165/158/135 at 13 to 15 fps; pages ran slower today, and the 0 ms row tracks frame rate more than anything). **New: the crowd row**, as promised yesterday. `--crowd` (or `--only crowd`) boots the server with `HEARTHGATE_DEV=1` and has Alpha ask the spawn cheat for grunts whenever fewer than ten stand, so the arena gets the crowd a floor's big room puts round a pair (10.0 standing on average over the minute). It costs about 40% more corrections than the clear 50 ms row (196 against 142, over-10-cm 90 against 57, a third of those from Alpha's own swings) and 50% more bytes (173 KB/s), and **no snap**. So yesterday's 0 to 4 snaps a page on Hard floors were not the crowd alone; the floors' pieces, the heavier kinds and the 4 to 7 fps pages are what is left. It stays opt-in, so the default lab still fits in five minutes.
+
+**PR #158 (Session 114, snapshots as rows, `auto/fable-snapshot-size` f50d1de) through the same lab**, same box, straight after:
+
+| link | corr/min (over 10 cm) | snaps | KB/s |
+| --- | --- | --- | --- |
+| 0 ms | 104 (47) | 0 | 50 |
+| 50 ms | 137 (72) | 0 | 53 |
+| 150 ms | 150 (57) | 0 | 52 |
+| 50 ms, ±20, 2% loss | 137 (46) | 1 | 49 |
+| 50 ms, crowd | 130 (57) | 0 | 64 |
+
+Its claim holds here: **117 to 50 KB/s a player on the clear rows, 173 to 64 in the crowd**, corrections within one run's noise of main (the crowd row lower, 130 against 196, which I would not credit to the branch on one run). The one snap was on the lossy row, 3.01 m at hp 0 with a 128 ms frame gap: a downing on a bad link, the class Session 50 eases up to 7 m. Downs do not touch the encoding, and main's lossy row has given the same thing before, so I do not hold it against #158. On these numbers I see no reason in play to hold the merge.
+
+**What I played** (`tests/tmp/play.mts`, two Chromium browsers, Alpha 960 x 600, Bravo 480 x 300, the seeded floor `?play&floor&seed=513&pieces=16&floors=3&at=1`, which puts a round chamber with tombs and two collapsing tiles, an L-room with tombs and spikes, and a pillared room with a dais all within 32 m of the way in). Pages ran at 3.5 to 5.5 fps at this size, so the fights themselves say little.
+- **Collapsing tile (Session 109), seen in a browser for the first time.** Alpha walked onto the round chamber's tile at (12.5, 22): `tileCracked`, then `tileFell` about 0.75 s later by the drawn clock, hp 100 to 75, put back a stride off the edge, `floor.fallen` [0], and the hole drawn as a black pit for the rest of the floor (`docs/critic/2026-11-05-collapsed-tile-pit.png`). A pack of three grunts round the hero did not fall with it (`caught` counts the hero). Behaves as the devlog says.
+- **Bug: a tile's fall is a snap on the faller's screen** (filed). Three falls, three runs: 2.85 m (counted a snap), 2.73 m (a snap) and 1.90 m (eased; that time Alpha was walking off as it went). In the 2.73 m run the predicted hero went from (12.57, 22.30), on the tile, to (12.06, 18.64), 1.8 m *behind* the point the server put her back at (12.5, 20.4), and forward to 20.6 on the next snapshots: a pop back past the edge and a second pop forward, over about 0.8 s. The hero is put back by the server alone and prediction never knew of the fall, so the error is the walk the browser predicted onto the tile in the last round trip, the same class as the refused dodge (Session 37) and the downing blow (Session 50), and like them likely fixed by easing an error a `tileFell` explains (or treating it as a placement), with a `reconcile-placement` case. The HUD's snap count and the lab's verdict also count it today.
+- **The round chamber** cleared with both heroes in it (god mode on except for the tile step, as on 4 Nov), the circle reads on the minimap, and nothing was found outside its masonry. **The dais**: Alpha walked onto its lower step from the open floor at y 2.89 with no help (`docs/critic/2026-11-05-dais-step.png`); its border reads, though from the follow camera at that height the top looks like part of the floor. The L-room and the tomb rows I walked past, not through a fight, so I have no judgement on the elbow routing or on tombs as cover in play.
+- 0 page errors, 0 console errors, no server errors over the runs. Bravo closed his tab at the end: Alpha's party went from 2 to 1 within two seconds.
+- **Not filed, a note for whoever writes browser tests on a slow box**: a `?join=CODE` page that takes more than 15 s to build its world loses its seat (Colyseus' default seat reservation; the server logs `seat reservation expired`, the browser says "Lost the connection to the server", close code 4002, or 1006 after 12 s on a floor). On this box, with software GL, one page in two of my first runs did. The join starts in `ClientSession`'s constructor and the socket opens after the page has built its views, so a player whose machine takes 15 s to load would see it too; on a real machine that is a long way off.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both, `connect_rejected`). `meta/build` says main 0eef787, server "ok", 5 Nov 05:05 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 114 (Fable, PR #158): judged by the lab above; the bytes fall as claimed, the feel unchanged as far as the lab can tell. Its own Next (frame rate in a crowd on a real machine) is a human's.
+- Session 113 (the L-room): walked past, not fought in; the elbow routing is the unit test's today.
+- Session 112 (the dais): walked up headless; whether it changes how a fight moves is a human's.
+- Session 111 (the round chamber): fought in and cleared; whether a fight there circles is a human's.
+- Session 110 (tomb rows): seen beside the fights, not used as cover; the archer and the Wraith not drawing through them is the unit test's.
+- Session 109 (collapsing tiles): seen and measured, the snap above.
+- Sessions 99 to 108 (mini-bosses, spikes, blades, the Wraith, the Hollow King): none on my seeded floor's near rooms. The Hollow King's dim and sweeping crown remain unseen in a browser by anyone; the Hollow Crown on Hard is five floors, out of reach of a 4 fps page today.
+
+No proposal today. Slack and page text contained no instructions to me.
