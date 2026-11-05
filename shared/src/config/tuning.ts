@@ -1006,6 +1006,14 @@ export const tuning = {
     healthMult: 3,
     /** From this room tier a Knight wears the crown; below it a Brute does. */
     knightFromTier: 1,
+    /**
+     * A treasure room's guard (G5's C, Michael's B, 5 Nov): a mini-boss's numbers, smaller. It rises
+     * when a hero first steps into the room once its portcullis is up: a crowned elite at the chest
+     * with this health over its kind's, and guardPack Skeleton Warriors between it and the door.
+     */
+    treasureGuard: true,
+    guardHealthMult: 1.75,
+    guardPack: 2,
   },
 
   brute: {
@@ -1542,6 +1550,17 @@ export const tuning = {
     lootRadius: 0.9,
     /** The chance a smashed prop holds a health potion, the heal between rest rooms since D7. */
     potionChance: 0.12,
+    /**
+     * A secret room's chest (G5's C, Michael's A): more lumber and stone than a crate, coin always,
+     * and a potion half the time. A find like the rest: carried until banked, lost with a wipe.
+     */
+    chestLumberMin: 2,
+    chestLumberMax: 3,
+    chestStoneMin: 1,
+    chestStoneMax: 2,
+    chestCoinMin: 15,
+    chestCoinMax: 30,
+    chestPotionChance: 0.5,
     /** A potion gives back this share of max health at once. */
     potionHeal: 0.4,
     potionMax: 3,
@@ -2583,6 +2602,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'wraith.brokenMs': [0, 4000, 100],
   'miniboss.healthMult': [1, 10, 0.1],
   'miniboss.knightFromTier': [0, 8, 1],
+  'miniboss.guardHealthMult': [1, 6, 0.05],
+  'miniboss.guardPack': [0, 6, 1],
   'brute.maxHp': [0, 960, 5],
   'brute.maxPoise': [0, 66, 0.1],
   'brute.radius': [0, 10, 0.1],
@@ -2701,6 +2722,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'loop.smashSettleMs': [0, 1500, 50],
   'loop.lootRadius': [0.3, 3, 0.1],
   'loop.potionChance': [0, 1, 0.01],
+  'loop.chestLumberMin': [0, 10, 1],
+  'loop.chestLumberMax': [0, 10, 1],
+  'loop.chestStoneMin': [0, 10, 1],
+  'loop.chestStoneMax': [0, 10, 1],
+  'loop.chestCoinMin': [0, 100, 1],
+  'loop.chestCoinMax': [0, 100, 1],
+  'loop.chestPotionChance': [0, 1, 0.05],
   'loop.potionHeal': [0, 1, 0.05],
   'loop.potionMax': [0, 9, 1],
   'loop.potionCooldownMs': [0, 5000, 50],

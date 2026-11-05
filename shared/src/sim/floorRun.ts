@@ -1,5 +1,6 @@
 import { tuning, type EnemyKind } from '../config/tuning';
 import { groundHeight, type World } from '../level/arena';
+import type { Collider } from '../level/geometry';
 import { insidePiece, type PieceInfo } from '../level/floor';
 import { SIDE_DIR } from '../level/kit';
 import { nextRandom } from './combat';
@@ -62,6 +63,8 @@ export interface FloorRunState {
   crumbling?: { id: number; at: number }[];
   /** Tiles that have fallen: holes for the rest of the floor, walls to everyone (`floorWorldNow`). */
   fallen?: number[];
+  /** Treasure rooms (G5's C) whose guard has risen, by id: it rises once. */
+  guarded?: number[];
 }
 
 /** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
@@ -119,7 +122,13 @@ export function floorWorldNow(world: World, state: SimState): World {
   // A fallen tile's hole (G5) is a wall to everyone from then on, prediction and the camera included.
   const fallen = state.floor?.fallen;
   const walls = world.level.dungeon?.crumbleWalls;
-  const holes = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  const holes: Collider[] = fallen?.length && walls ? fallen.map((i) => walls[i]).filter((c) => !!c) : [];
+  // A secret's cracked wall (G5's C) stands until a heavy blow breaks it.
+  const secrets = world.level.dungeon?.secrets;
+  if (secrets?.length) for (const sr of secrets) if (!state.floor?.broken.includes(sr.crack.id)) holes.push(sr.wall);
+  // A treasure room's portcullis (G5's C) stays down until the main way's next fight room is cleared.
+  const treasure = world.level.dungeon?.treasure;
+  if (treasure?.length) for (const t of treasure) if (!state.floor?.cleared.includes(t.key)) holes.push(t.gate);
   if (holes.length) base = [...base, ...holes];
   if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
     return { ...world, colliders: fighting || holes.length ? [...base, ...world.exitGates] : world.collidersLocked! };
@@ -177,8 +186,9 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
       break;
     case 'wave': {
       const room = layout.pieces[f.room];
-      // Haunted (P8): a fallen enemy that will still get up keeps the room from clearing.
-      const alive = state.enemies.filter((e) => e.ai !== 'dead' || willRise(state, e)).length;
+      // Haunted (P8): a fallen enemy that will still get up keeps the room from clearing. A treasure
+      // room's guard (G5's C) is that room's, not this one's, though it may have followed the party here.
+      const alive = state.enemies.filter((e) => e.guard === undefined && (e.ai !== 'dead' || willRise(state, e))).length;
       if (!r.reinforced && room.kind !== 'boss' && alive <= Math.floor(r.waveSize * tuning.run.reinforceAt)) {
         r.reinforced = true;
         if (spawnRoomGroup(state, world, room, 'reinforce') > 0) state.events.push({ kind: 'reinforcements', wave: r.wave });
@@ -211,6 +221,7 @@ export function stepFloorRun(state: SimState, dt: number, world: World): void {
     }
   }
 
+  if (tuning.debug.enemiesEnabled && tuning.miniboss.treasureGuard) wakeTreasureGuards(state, world, f);
   stepPotions(state);
   stepLoot(state);
 
@@ -375,7 +386,7 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   r.timer = 0;
   r.reinforced = false;
   // The last room's fallen go now, so a long floor's snapshots never carry every corpse on it.
-  state.enemies = state.enemies.filter((e) => e.ai !== 'dead');
+  state.enemies = state.enemies.filter((e) => e.ai !== 'dead' || (e.guard !== undefined && willRise(state, e)));
   const boss = room.kind === 'boss';
   if (boss) {
     const c = { x: (room.inner.minX + room.inner.maxX) / 2, z: (room.inner.minZ + room.inner.maxZ) / 2 };
@@ -500,4 +511,45 @@ function spawnMiniboss(state: SimState, world: World, room: PieceInfo): EnemySta
   e.maxHp *= tuning.miniboss.healthMult;
   e.hp = e.maxHp;
   return e;
+}
+
+/**
+ * A treasure room's guard (G5's C, Michael's B): the first standing player (not a henchman) to step a
+ * little way into an opened treasure room wakes it. A crowned elite (a mini-boss's kind for the floor's
+ * tier, `miniboss.guardHealthMult` its health) rises by the chest, `miniboss.guardPack` Skeleton
+ * Warriors between it and the door. Whether the chest is worth the health is the party's choice.
+ */
+function wakeTreasureGuards(state: SimState, world: World, f: FloorRunState): void {
+  const layout = world.level.dungeon!;
+  for (const t of layout.treasure) {
+    if (f.guarded?.includes(t.id) || !f.cleared.includes(t.key)) continue;
+    // A metre past the doorway, so peering in through the raised gate does not wake it.
+    const inside = state.players.some(
+      (p) => !p.henchman && p.mode !== 'down' && p.x > t.inner.minX + 1 && p.x < t.inner.maxX - 1 && p.z > t.inner.minZ + 1 && p.z < t.inner.maxZ - 1,
+    );
+    if (!inside) continue;
+    (f.guarded ??= []).push(t.id);
+    const spec = layout.def.spec;
+    const tier = roomTier({ big: false, floor: spec.floor, difficulty: spec.difficulty ?? 1 });
+    const dir = SIDE_DIR[t.side];
+    const yaw = Math.atan2(-dir.x, -dir.z);
+    // The elite a step in front of the chest, facing the door.
+    const ex = t.chest.x - dir.x * 1.8;
+    const ez = t.chest.z - dir.z * 1.8;
+    const lead = createEnemy(state, world, tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', ex, ez, yaw);
+    const names = minibossNames(dungeonTypeOf(spec));
+    lead.named = names[Math.floor(nextRandom(state) * names.length) % names.length];
+    lead.maxHp *= tuning.miniboss.guardHealthMult;
+    lead.hp = lead.maxHp;
+    lead.guard = t.id;
+    // The pack across the room, halfway between the elite and the door.
+    const n = Math.max(0, Math.round(tuning.miniboss.guardPack));
+    const mx = (ex + t.x) / 2;
+    const mz = (ez + t.z) / 2;
+    for (let k = 0; k < n; k++) {
+      const off = n === 1 ? 0 : (k / (n - 1) - 0.5) * 3;
+      const e = createEnemy(state, world, 'grunt', mx + dir.z * off, mz - dir.x * off, yaw);
+      e.guard = t.id;
+    }
+  }
 }

@@ -216,6 +216,11 @@ export class Bot {
    */
   async walkTo(x: number, z: number, tol = 0.6, timeoutMs = 30000, settle = true) {
     const start = performance.now();
+    // A bot pushing head-on into something round (a brazier on the straight line, Session 114's flake)
+    // stops dead and never slides off: when it has not moved for a while, it steps sideways a moment.
+    let still = { x: NaN, z: NaN, since: start };
+    let sidestepUntil = 0;
+    let side = 1;
     for (let tries = 0; tries < 6; tries++) {
       for (;;) {
         // A ring can hand the party on before the last of us is on our mark (both inside its 2.2 m):
@@ -227,11 +232,23 @@ export class Bot {
           const at = p ? `(${p.x.toFixed(2)}, ${p.z.toFixed(2)})` : "nowhere";
           throw new Error(`${this.name} never reached (${x}, ${z}): at ${at}\n  ${this.trace.join("\n  ")}`);
         }
-        const dx = p ? x - p.x : 0;
-        const dz = p ? z - p.z : -1;
-        const d = Math.hypot(dx, dz) || 1;
+        let dx = p ? x - p.x : 0;
+        let dz = p ? z - p.z : -1;
+        let d = Math.hypot(dx, dz) || 1;
         // Ease off near the mark: the last few metres at a walk, so a late snapshot cannot carry us far past it.
         const k = Math.min(1, Math.max(0.2, (d - tol * 0.5) / 5));
+        const now = performance.now();
+        if (p && Math.hypot(p.x - still.x, p.z - still.z) > 0.1) still = { x: p.x, z: p.z, since: now };
+        else if (p && now - still.since > 600 && now > sidestepUntil) {
+          sidestepUntil = now + 400;
+          side = -side;
+          still.since = now;
+        }
+        if (now < sidestepUntil) {
+          // Half across, half on: round the obstacle rather than away from the mark.
+          [dx, dz] = [dx / d - (side * dz) / d, dz / d + (side * dx) / d];
+          d = Math.hypot(dx, dz) || 1;
+        }
         await this.drive(4, () => command({ moveX: (dx / d) * k, moveZ: (dz / d) * k, aimX: dx / d, aimZ: dz / d }));
       }
       // A waypoint on a route only needs passing near.

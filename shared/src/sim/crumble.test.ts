@@ -8,6 +8,7 @@ import { createEnemy } from './enemies';
 import { floorWorldNow } from './floorRun';
 import { crumbleFallsAfter, stepTraps } from './traps';
 import { createSimState } from './world';
+import { SNAP_M, placedBy, placedEaseM } from '../game/Session';
 
 // G5, a collapsing tile (Michael's B, 4 Nov): it shakes once a hero steps on it, then falls away; a
 // fall costs a quarter of a hero's health and puts them back at the edge, an enemy on it is gone, and
@@ -85,7 +86,7 @@ describe('collapsing tiles (G5)', () => {
     step(f, fallTicks());
     expect(f.p.hp).toBe(hp);
     expect(e.ai).toBe('dead');
-    expect(f.state.events.filter((ev) => ev.kind === 'tileFell')).toEqual([{ kind: 'tileFell', x: f.tile.x, z: f.tile.z, caught: 1 }]);
+    expect(f.state.events.filter((ev) => ev.kind === 'tileFell')).toEqual([{ kind: 'tileFell', x: f.tile.x, z: f.tile.z, caught: 1, put: [] }]);
   });
 
   it('stays a hole for the floor, a wall nobody walks into, and never shakes again', () => {
@@ -112,5 +113,32 @@ describe('collapsing tiles (G5)', () => {
     Object.assign(f.p, { x: f.tile.x, z: f.tile.z, y: f.tile.y, grounded: true, mode: 'move' });
     step(f, fallTicks());
     expect(f.state.floor?.fallen ?? []).toEqual([]);
+  });
+
+  it("names whoever it put back, so their browser eases the jump instead of snapping (critic, 5 Nov)", () => {
+    const f = crumblingFloor();
+    Object.assign(f.p, { x: f.tile.x, z: f.tile.z, y: f.tile.y, grounded: true, mode: 'move', invulnTime: 0, invulnerable: false });
+    step(f, 1);
+    f.state.events = [];
+    step(f, fallTicks());
+    expect(f.state.events.find((ev) => ev.kind === 'tileFell')).toMatchObject({ put: ['p1'] });
+    expect(placedBy(f.state.events, 'p1')).toBe(true);
+    expect(placedBy(f.state.events, 'p2')).toBe(false);
+    // The critic's falls: the hero predicted on across the tile for a round trip came back 2.73 to 2.85 m.
+    // A sprint across the whole tile and on for a 300 ms round trip still eases.
+    const putBack = CRUMBLE_SIZE / 2 + 0.6;
+    const predicted = CRUMBLE_SIZE / 2 + tuning.movement.sprintSpeed * 0.3;
+    expect(putBack + predicted).toBeGreaterThan(SNAP_M);
+    expect(putBack + predicted).toBeLessThan(placedEaseM());
+  });
+
+  it('names nobody when the tile falls empty', () => {
+    const f = crumblingFloor();
+    Object.assign(f.p, { x: f.tile.x, z: f.tile.z, y: f.tile.y, grounded: true, mode: 'move' });
+    step(f, 1);
+    f.p.x = f.tile.x + CRUMBLE_SIZE * 2;
+    f.state.events = [];
+    step(f, fallTicks());
+    expect(placedBy(f.state.events, 'p1')).toBe(false);
   });
 });

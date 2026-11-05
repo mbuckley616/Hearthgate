@@ -267,7 +267,8 @@ function swordHits(p: PlayerState, state: SimState, props?: readonly PropInfo[])
     state.events.push({ kind: 'land', playerId: p.id, x: cx, z: cz, radius: hit.range });
   }
   // Crates and urns in reach break (D4); one already broken is gone, so a swing takes each once.
-  if (props) smashArc(state, props, p, cx, cz, hit.range, hit.arcDeg);
+  // A heavy or the slam also breaks a secret's cracked wall (G5's C).
+  if (props) smashArc(state, props, p, cx, cz, hit.range, hit.arcDeg, hit.heavy || isSlam);
   let stop = 0;
   for (const e of state.enemies) {
     if (!isTargetable(e) || p.attackHitIds.includes(e.id)) continue;
@@ -610,7 +611,7 @@ export function stepPlayer(
       p.attackFired = true;
       if (p.attackMove) state.events.push({ kind: 'stringMove', playerId: p.id, move: p.attackMove, charge: p.attackCharge ?? 0 });
     }
-    if (p.style === 'sword') swordHits(p, state, world.level.dungeon?.props);
+    if (p.style === 'sword') swordHits(p, state, world.level.dungeon?.smashable);
 
     if (p.style === 'sword' || p.attackLunge !== 0) {
       // Melee roots the hero, and leaps commit to their path: only the attack's lunge moves them.
@@ -661,7 +662,7 @@ export function stepPlayer(
       p.attackQueued = false;
     }
   } else if (p.mode === 'ability') {
-    if (stepAbility(state, p, cmd, dt, colliders, world.level.dungeon?.props)) {
+    if (stepAbility(state, p, cmd, dt, colliders, world.level.dungeon?.smashable)) {
       p.mode = 'move';
       p.invulnerable = false;
     }

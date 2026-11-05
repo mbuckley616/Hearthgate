@@ -151,6 +151,8 @@ function stepCrumble(state: SimState, world: World, dt: number): void {
     const h = CRUMBLE_SIZE / 2;
     const on = (x: number, z: number) => Math.abs(x - tile.x) <= h && Math.abs(z - tile.z) <= h;
     let caught = 0;
+    // Who it put back, so their own browser can tell the jump from a prediction gone wrong.
+    const put: string[] = [];
     for (const p of state.players) {
       if (p.hp <= 0 || !on(p.x, p.z) || p.y - tile.y > 1.5 || p.y - tile.y < -0.3) continue;
       // Back at the edge it was nearest, a stride off the hole.
@@ -160,6 +162,7 @@ function stepCrumble(state: SimState, world: World, dt: number): void {
       else p.z = tile.z + Math.sign(dz || 1) * (h + 0.6);
       p.vx = 0;
       p.vz = 0;
+      put.push(p.id);
       if (p.henchman || p.mode === 'down' || clearsLow(p, tile.y) || heroInvulnerable(p)) continue;
       caught++;
       const damage = p.maxHp * t.crumbleHeroFrac;
@@ -172,6 +175,6 @@ function stepCrumble(state: SimState, world: World, dt: number): void {
       caught++;
       damageEnemy(state, e, { attackerId: '', damage: e.hp + 1, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 0, x: e.x, y: e.y, z: e.z, dot: true });
     }
-    state.events.push({ kind: 'tileFell', x: tile.x, z: tile.z, caught });
+    state.events.push({ kind: 'tileFell', x: tile.x, z: tile.z, caught, put });
   }
 }

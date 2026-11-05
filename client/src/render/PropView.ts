@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { PropInfo, PropKind } from '@hearthgate/shared/level/floor';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import type { FloorLoot, FloorRunState } from '@hearthgate/shared/sim/floorRun';
+import { DOOR_H, DOOR_W, WALL_T } from '@hearthgate/shared/level/kit';
 import { glowMaterial } from './props';
 
 /**
@@ -205,5 +206,35 @@ function makeKit(): Record<PropKind, THREE.Object3D> {
     clay,
   );
 
-  return { crate: shadow(crate), barrel: shadow(barrel), urn: shadow(urn) };
+  // A secret's cracked wall (G5's C): the doorway's stone filled in, a shade off the walls round it, with
+  // a hairline crack down its face. Built behind the prop's point (on the room's face), so breaking it hides it.
+  const crackStone = new THREE.MeshStandardMaterial({ color: 0x8f877b, roughness: 0.95 });
+  const crackLine = new THREE.MeshBasicMaterial({ color: 0x15110d });
+  const crack = new THREE.Group();
+  crack.add(at(new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, DOOR_H, WALL_T), crackStone), 0, DOOR_H / 2, -(WALL_T / 2 + 0.05)));
+  // A jagged line of short dark strokes, top to bottom, on the room's face.
+  const strokes: [number, number, number, number][] = [
+    [0.1, 2.9, 0.55, 0.4], [-0.05, 2.45, 0.6, -0.5], [0.2, 1.95, 0.55, 0.6], [0.05, 1.45, 0.6, -0.3], [0.25, 0.95, 0.55, 0.5], [0.1, 0.45, 0.55, -0.4],
+    [0.45, 2.1, 0.45, 1.1], [-0.3, 1.2, 0.4, -1.0],
+  ];
+  for (const [x, y, len, tilt] of strokes) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.035, len, 0.02), crackLine);
+    m.position.set(x, y, -0.04);
+    m.rotation.z = tilt;
+    crack.add(m);
+  }
+  crack.traverse((c) => (c.receiveShadow = true));
+
+  // Its chest: a banded wooden box with a domed lid and a brass lock that catches the light.
+  const brass = new THREE.MeshStandardMaterial({ color: 0xc9a23a, roughness: 0.35, metalness: 0.8, emissive: 0x3a2a05 });
+  const chest = new THREE.Group();
+  chest.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.7), wood), 0, 0.275, 0));
+  const chestLid = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.1, 14, 1, false, 0, Math.PI), wood);
+  chestLid.rotation.z = Math.PI / 2;
+  chest.add(at(chestLid, 0, 0.55, 0));
+  const band = new THREE.BoxGeometry(0.08, 0.6, 0.74);
+  for (const x of [-0.42, 0.42]) chest.add(at(new THREE.Mesh(band, iron), x, 0.3, 0));
+  chest.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.06), brass), 0, 0.5, 0.37));
+
+  return { crate: shadow(crate), barrel: shadow(barrel), urn: shadow(urn), crack, chest: shadow(chest) };
 }

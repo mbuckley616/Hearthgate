@@ -2,6 +2,100 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 119, the treasure room's guard (G5's C, Michael's B, finished)
+
+**What changed**
+
+The rest of G5's C, B: the "elite pack (a mini-boss's numbers, smaller)" guarding a treasure room's chest. With this, G5's C is built.
+- **When it rises** (`wakeTreasureGuards`, `sim/floorRun.ts`). Once the room's portcullis is up, the first standing player (not a henchman) to step a metre past the doorway wakes it, once a floor (`SimState.floor.guarded`). Before the key room falls, or from the hall, nothing stirs, so pressing on past the open gate costs nothing.
+- **What rises.** A crowned elite a step in front of the chest, facing the door. It is the mini-boss's kind for the floor's tier (a Barrow Knight from `miniboss.knightFromTier`, a Bone Brute below), with a name and `miniboss.guardHealthMult` (1.75) its health against the mini-boss's 3. `miniboss.guardPack` (2) Skeleton Warriors stand across the room halfway to the door. All three numbers and the switch (`miniboss.treasureGuard`) are on the panel.
+- **Its own, not a room's.** Each guard carries `EnemyState.guard` (the room's id, optional, so the wire packs it as an extra and the arena never sees it). A fight room's count ignores it, so a guard that follows the party into the next fight never holds that room shut or brings its reinforcements early. A Haunted guard that will still rise is kept when the next fight clears the corpses.
+- **Seen.** The elite wears the mini-boss's crown but has no boss bar, so it keeps its own health bar over its head (`EnemyView`).
+
+**Learned**
+
+Tying the guard to the gate and the player's step, not to the run's phases, kept it out of the fight-room machinery entirely: no shut doors, no banner, no `f.room` for a room that is not a piece. The cost is that nothing tells the party the guard is "theirs" to finish; they can walk away mid-fight and it follows.
+
+`secrets.test.ts` (+2): nothing rises from the hall or before the key room falls; stepped into, the elite and two grunts rise once, inside the room, the elite named, by the chest, at 1.75 times its kind's health; a fight room with only guards alive clears; with the switch off nothing rises. check 391, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's C is done. Nothing else in E1 is the builder's: E1i waits on Michael's call once the Crypt has been played, and the late-deaths item needs a real machine. A browser look at a crack, a treasure room, its guard and their chests is the first thing a play should check.
+
+## 2026-11-05: Session 118, treasure rooms behind a portcullis, first part (G5's C, Michael's B)
+
+**What changed**
+
+The second of G5's C, in Michael's order. This is a tested first part: the room, its gate and its chest. The elite guard is still to come.
+- **Where** (`treasureFor`, `level/secrets.ts`). It is a side room one cell wide and two deep (6 x 12 m) off a hall on the main way, from the entrance to the exit by the generator's links (`mainWay`). The hall needs a fight room still ahead of it. At most one a floor. Like the secrets, the room takes a walled-up doorway whose room is clear of every piece and secret and inside the floor's bounding box. Only junctions have a spare doorway on the main way, so over 100 floor-1 seeds of 24 pieces there are 27, 15 off tees and 12 off crossings.
+- **The gate.** A portcullis (`TreasureRoom.gate`) stands in the doorway until the main way's next fight room after the hall (`key`) is cleared. Until then `floorWorldNow` adds it for the server, prediction and the camera alike. `FloorView` drops and raises it like a fight room's gates, from the cleared list `sync` now passes. The room is no secret: the minimap draws it from the start, its doorway iron grey until the key room falls.
+- **The chest** is a prop (id 20000) in `smashable`, the same as a secret's (`loop.chest*`). Its spray stays inside the room.
+
+**Learned**
+
+A hall or a corner on the main way uses both of its doorways, so treasure rooms only hang off tees and crossings. To have them in more places, a hall would need a spare socket in the kit, which would change every floor a seed builds.
+
+`secrets.test.ts` (+2): over 100 seeds each treasure room is off a non-fight piece on the main way, its key is the first fight room after it on the way, its room overlaps no piece and no secret, the same every time, on 25 to 75 floors of 100; the portcullis is a wall until its key room is cleared, then the doorway and the room are walkable and the chest sprays inside it. check 389, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+The rest of G5's C, B: the elite guard, a smaller mini-boss's pack waiting in the room (`spawnMiniboss` for the numbers). The design doc's "spend health for the chest or press on" needs it. Then a browser look at a crack, a treasure room and their chests.
+
+## 2026-11-05: Session 117, cracked walls and the chest behind them (G5's C, Michael's A)
+
+**What changed**
+
+The first of G5's C, in Michael's order (C: both, A first): secret rooms behind cracked walls.
+- **Where** (`level/secrets.ts`). A fight room (never the boss's hall) rolls one from the floor's seed at 15%, two a floor at most. It takes one of its walled-up doorways on its own floor whose 6 m cell outside is clear of every piece and every other secret and inside the floor's bounding box, with nothing in front of it on the room's side: no lava, spikes, falling tile, tomb, dais or masonry within reach. Over 100 floor-1 seeds of 24 pieces there are 67, on 48 floors, mostly behind guard rooms (29). They are placed after everything else, so a seed builds the same floor round them; only the cracked doorway's wall pieces change.
+- **The wall.** That doorway is built as a gap (lintel above, no portcullis), filled by its cracked wall, `crack-<id>`, which `floorWorldNow` adds until it is broken. Server, prediction and camera all read it from there. The cell has its own three walls (`wall-secret-*`, drawn and faded like the rest) and floor.
+- **Breaking it.** The crack and the chest are props, ids from 10000, in a new `FloorLayout.smashable` list (the props, then each secret's two). So the sim keeps only `SimState.floor.broken`, and nothing new travels in a snapshot. `smashArc` takes a `heavy` flag. A sword's heavy or slam (`swordHits`) and the shield's bash set it, and only those meet a crack, within most of the doorway's width (`CRACK_REACH`, 1.6 m). Whirlwinds, bursts, frost rings and shots pass it by.
+- **The chest** breaks to any blow and sprays a find like a crate, only more: 2 to 3 lumber, 1 to 2 stone, 15 to 30 coin always, and a potion half the time (`loop.chest*`, on the panel). The spray stays inside the cell. It is carried until banked and lost with a wipe, like every other find.
+- **Seen.** The crack is the doorway's stone filled in, a shade off the walls, with a jagged hairline down its face (`PropView`). It disappears when broken. The chest is a banded box with a domed lid and a brass lock. The minimap draws the cell, in gold, only once its wall is broken.
+
+**Learned**
+
+Making the crack and chest props, rather than a new kind of thing, meant the break, the event, the spray, the view's hiding, prediction and the snapshot all came for free. The one new rule is that a crack only counts for a heavy blow.
+
+`secrets.test.ts` (4): over 100 seeds every secret is behind a fight room's walled-up doorway, in a cell clear of every piece and inside the floor, the same every time, on 20 to 90 floors of 100; a light swing leaves the wall standing and a held heavy breaks it, after which the gap and the cell are walkable; a whirlwind-sized blow does not break it and a bash does; the chest breaks to any blow and its spray (coin always, at least the minimum) lands inside the cell. check 387, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+G5's C, B: gated treasure rooms with an elite guard, opened when the main way's next fight room is cleared. After that, a browser look at a crack and its chest.
+
+## 2026-11-05: Session 116, test:net's bots step round a brazier
+
+**What changed**
+
+Session 114's flake: on floor 2 of test:net's fixed seed a brazier stands on the straight line to the great hall's waypoint, and a bot arriving exactly on that line pushed into it head-on, stopped at (-7.75, 9.00) and timed out, about 1 run in 6. `Bot.walkTo` (`tests/bots.ts`) now watches for a dead stop: when the bot has moved less than 0.1 m for 0.6 s while still short of its mark, it steps half sideways, half on, for 0.4 s, alternating sides each time, and walks on. Test code only; the sim and the server are untouched.
+
+**Learned**
+
+A circle pushed exactly through another's centre has no side to slide off to, so any route that runs a straight line through a round obstacle sticks; the nudge is general, so the next brazier or pillar a seed puts on a route is covered too.
+
+test:net passed (one run; the flake was 1 in 6, so one run proves little on its own). check 383.
+
+**Next**
+
+Watch the next runs of test:net for a "never reached" on floor 2.
+
+## 2026-11-05: Session 115, a tile's fall eases instead of snapping
+
+**What changed**
+
+The critic's bug from 5 Nov (24f5783): when a collapsing tile fell under a hero, their own screen jumped them 2.7 to 2.85 m, a snap, in two falls of three. The server puts the hero back a stride off the hole's edge, and prediction cannot know the tile is about to fall (`stepCrumble` runs in `stepSim`, never in prediction), so the walk predicted onto the tile over the last round trip came back as one correction past the 2.5 m snap limit. Same class as the refused dodge (Session 37) and the downing blow (Session 50), whose easing did not survive the transplant.
+- **The event names who it put back.** `tileFell` carries `put`, the ids of the heroes and henchmen it moved. Floor-only, so the arena and the parity hashes do not see it.
+- **The browser eases it.** `placedBy(events, id)` (`game/Session.ts`) tells `ClientSession` that this snapshot's jump was the server placing our hero. For half a second of server time after one, a correction eases up to `placedEaseM()`: the 2.5 m snap limit plus half a second of sprinting, 6.5 m, from the movement tuning. It reads as a quick pull back to the edge over `coop.correctionBlendMs` instead of a pop. Such a correction counts as placed in the lab's diagnosis, not as a snap. Any other jump over 2.5 m still snaps.
+
+**Learned**
+
+The snap limit applies to the accumulated offset, not to one correction, and an eased 2.8 m offset takes a few snapshots to fade. So the wider limit has to hold for a short window, not only on the snapshot that carried the fall, or the next snapshot snaps it anyway.
+
+`crumble.test.ts` (+2): a fall names the hero it put back (`placedBy` true for them, false for anyone else), and a sprint across the tile and on for a 300 ms round trip is over the snap limit and under the eased one; a tile that falls empty names nobody. check 383, parity identical, test:net passed. Not yet seen in a browser on a slow link: test:net runs on loopback, where a fall's correction is about 1.6 m and never snapped.
+
+**Next**
+
+The critic's lab or a browser on a 150 ms link: walk onto the seed-513 tile and stand, and count snaps (expected 0).
+
 ## 2026-11-05: Session 114, snapshots that stay small in a crowd (Fable)
 
 **What changed**

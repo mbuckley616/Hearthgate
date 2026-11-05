@@ -415,7 +415,8 @@ export class Game {
       this.gfx.scene.remove(this.propView.group);
       disposeTree(this.propView.group);
     }
-    const props = this.world.level.dungeon?.props;
+    // The props and each secret's crack and chest (G5's C): all hidden as they break.
+    const props = this.world.level.dungeon?.smashable;
     this.propView = props ? new PropView(props) : null;
     if (this.propView) this.gfx.scene.add(this.propView.group);
     // The floor's traps (G5) go with its props.
@@ -1036,7 +1037,7 @@ export class Game {
     const aim = this.cam.basis();
     this.reticle.update(this.cam.camera, world, curr, this.hero.root.position, { x: aim.fx, z: aim.fz }, this.lockOn.targetId, !this.equip.visible && !this.store.visible && !this.bank.visible && !this.portalMenu.visible && !this.hire.visible && !this.keeperCard.visible && !this.villageMap.visible && !ended && this.overlay.style.display === 'none', realDt, this.aim);
     if (this.room instanceof FloorView) {
-      this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position, clearsLeft(this.world, world));
+      this.room.sync(world.floor && world.run.gateClosed ? world.floor.room : -1, this.hero.root.position, clearsLeft(this.world, world), world.floor?.cleared);
       this.gfx.followShadow(this.hero.root.position.x, this.hero.root.position.z);
     }
     if (this.room instanceof VillageView) this.room.setEye(this.cam.camera.position);

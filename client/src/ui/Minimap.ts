@@ -1,6 +1,7 @@
 import { SPIKE_SIZE } from '@hearthgate/shared/level/traps';
 import type { PortalState } from '@hearthgate/shared/game/portal';
 import type { FloorLayout, PieceInfo } from '@hearthgate/shared/level/floor';
+import type { SecretRoom } from '@hearthgate/shared/level/secrets';
 import { STEP_H } from '@hearthgate/shared/level/kit';
 import type { PlayerState, SimState } from '@hearthgate/shared/sim/types';
 import { daisRect, sarcRect } from '@hearthgate/shared/level/setPieces';
@@ -27,6 +28,7 @@ export class Minimap {
   private plan: HTMLCanvasElement | null = null;
   private layout: FloorLayout | null = null;
   private planCleared = -1;
+  private planOpened = -1;
   private large = false;
   private time = 0;
 
@@ -47,6 +49,7 @@ export class Minimap {
     this.layout = layout;
     this.plan = null;
     this.planCleared = -1;
+    this.planOpened = -1;
     this.root.style.display = layout ? 'block' : 'none';
   }
 
@@ -76,9 +79,14 @@ export class Minimap {
     if (!layout) return;
     this.time += dt;
     const cleared = sim.floor?.cleared ?? [];
-    if (!this.plan || this.planCleared !== cleared.length) {
-      this.plan = drawPlan(layout, cleared);
+    // A secret's cell (G5's C) is drawn once its cracked wall is broken, and not before.
+    const broken = sim.floor?.broken ?? [];
+    let opened = 0;
+    for (const sr of layout.secrets) if (broken.includes(sr.crack.id)) opened++;
+    if (!this.plan || this.planCleared !== cleared.length || this.planOpened !== opened) {
+      this.plan = drawPlan(layout, cleared, layout.secrets.filter((sr) => broken.includes(sr.crack.id)));
       this.planCleared = cleared.length;
+      this.planOpened = opened;
     }
     const g = this.canvas.getContext('2d')!;
     const W = this.canvas.width;
@@ -155,7 +163,7 @@ function arrow(g: CanvasRenderingContext2D, x: number, y: number, yaw: number, s
 }
 
 /** The floor plan, drawn once (and again when a room is cleared) at PX pixels a metre. */
-function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasElement {
+function drawPlan(layout: FloorLayout, cleared: readonly number[], opened: readonly SecretRoom[]): HTMLCanvasElement {
   const b = layout.bounds;
   const c = document.createElement('canvas');
   c.width = Math.ceil((b.maxX - b.minX + 2) * PX);
@@ -172,6 +180,23 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[]): HTMLCanvasEl
     const bl = Math.round(110 + t * 50);
     return dim ? `rgb(${Math.round(r * 0.55)}, ${Math.round(gg * 0.55)}, ${Math.round(bl * 0.6)})` : `rgb(${r}, ${gg}, ${bl})`;
   };
+  for (const t of layout.treasure) {
+    // A treasure room is no secret: drawn from the start, its doorway barred in iron until its key room falls.
+    const i = t.inner;
+    g.fillStyle = '#9c8350';
+    g.fillRect(X(i.minX), Y(i.minZ), (i.maxX - i.minX) * PX, (i.maxZ - i.minZ) * PX);
+    const ns = t.side === 'n' || t.side === 's';
+    g.fillStyle = cleared.includes(t.key) ? '#9c8350' : '#5a5650';
+    g.fillRect(X(t.x - (ns ? 1.6 : 0.6)), Y(t.z - (ns ? 0.6 : 1.6)), (ns ? 3.2 : 1.2) * PX, (ns ? 1.2 : 3.2) * PX);
+  }
+  for (const sr of opened) {
+    // The cell and the broken wall into it, gold for what it held.
+    const i = sr.inner;
+    g.fillStyle = '#b8964a';
+    g.fillRect(X(i.minX), Y(i.minZ), (i.maxX - i.minX) * PX, (i.maxZ - i.minZ) * PX);
+    const ns = sr.side === 'n' || sr.side === 's';
+    g.fillRect(X(sr.x - (ns ? 1.6 : 0.6)), Y(sr.z - (ns ? 0.6 : 1.6)), (ns ? 3.2 : 1.2) * PX, (ns ? 1.2 : 3.2) * PX);
+  }
   for (const p of layout.pieces) {
     const i = p.inner;
     const dim = cleared.includes(p.id);
