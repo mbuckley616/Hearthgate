@@ -124,6 +124,9 @@ export function floorWorldNow(world: World, state: SimState): World {
   // A secret's cracked wall (G5's C) stands until a heavy blow breaks it.
   const secrets = world.level.dungeon?.secrets;
   if (secrets?.length) for (const sr of secrets) if (!state.floor?.broken.includes(sr.crack.id)) holes.push(sr.wall);
+  // A treasure room's portcullis (G5's C) stays down until the main way's next fight room is cleared.
+  const treasure = world.level.dungeon?.treasure;
+  if (treasure?.length) for (const t of treasure) if (!state.floor?.cleared.includes(t.key)) holes.push(t.gate);
   if (holes.length) base = [...base, ...holes];
   if (world.exitGates && world.exitGates.length > 0 && clearsLeft(world, state) > 0) {
     return { ...world, colliders: fighting || holes.length ? [...base, ...world.exitGates] : world.collidersLocked! };

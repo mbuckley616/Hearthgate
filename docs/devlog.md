@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-05: Session 118, treasure rooms behind a portcullis, first part (G5's C, Michael's B)
+
+**What changed**
+
+The second of G5's C, in Michael's order. This is a tested first part: the room, its gate and its chest. The elite guard is still to come.
+- **Where** (`treasureFor`, `level/secrets.ts`). It is a side room one cell wide and two deep (6 x 12 m) off a hall on the main way, from the entrance to the exit by the generator's links (`mainWay`). The hall needs a fight room still ahead of it. At most one a floor. Like the secrets, the room takes a walled-up doorway whose room is clear of every piece and secret and inside the floor's bounding box. Only junctions have a spare doorway on the main way, so over 100 floor-1 seeds of 24 pieces there are 27, 15 off tees and 12 off crossings.
+- **The gate.** A portcullis (`TreasureRoom.gate`) stands in the doorway until the main way's next fight room after the hall (`key`) is cleared. Until then `floorWorldNow` adds it for the server, prediction and the camera alike. `FloorView` drops and raises it like a fight room's gates, from the cleared list `sync` now passes. The room is no secret: the minimap draws it from the start, its doorway iron grey until the key room falls.
+- **The chest** is a prop (id 20000) in `smashable`, the same as a secret's (`loop.chest*`). Its spray stays inside the room.
+
+**Learned**
+
+A hall or a corner on the main way uses both of its doorways, so treasure rooms only hang off tees and crossings. To have them in more places, a hall would need a spare socket in the kit, which would change every floor a seed builds.
+
+`secrets.test.ts` (+2): over 100 seeds each treasure room is off a non-fight piece on the main way, its key is the first fight room after it on the way, its room overlaps no piece and no secret, the same every time, on 25 to 75 floors of 100; the portcullis is a wall until its key room is cleared, then the doorway and the room are walkable and the chest sprays inside it. check 389, parity identical, test:net passed, the client builds. Not yet seen in a browser.
+
+**Next**
+
+The rest of G5's C, B: the elite guard, a smaller mini-boss's pack waiting in the room (`spawnMiniboss` for the numbers). The design doc's "spend health for the chest or press on" needs it. Then a browser look at a crack, a treasure room and their chests.
+
 ## 2026-11-05: Session 117, cracked walls and the chest behind them (G5's C, Michael's A)
 
 **What changed**

@@ -50,6 +50,8 @@ export class FloorView {
   private fires: Fire[] = [];
   private lights: { light: THREE.PointLight; fire: Fire | null }[] = [];
   private gates = new Map<number, Gate[]>();
+  private treasureGates: { key: number; gate: Gate }[] = [];
+  private cleared: readonly number[] = [];
   private shut = -1;
   /** The way out (the rest room or the Warden's hall), its portcullis down while fights are still owed (Michael, 31 Oct). */
   private exit = -1;
@@ -74,8 +76,8 @@ export class FloorView {
     const sideMat = wallMat();
 
     for (const p of layout.pieces) this.buildPieceFloor(p, p.kind === 'rest' ? floors.rest : p.kind === 'boss' ? floors.boss : floors.stone, sideMat);
-    // A secret's cell (G5's C): its own floor; its walls come with the rest below.
-    for (const sr of layout.secrets) {
+    // A secret's cell and a treasure room (G5's C): their own floors; their walls come with the rest below.
+    for (const sr of [...layout.secrets, ...layout.treasure]) {
       const c = sr.cell;
       const h = sr.y + 0.5;
       const mesh = new THREE.Mesh(boxGeometry(c.maxX - c.minX, h, c.maxZ - c.minZ, FLOOR_TILE), [sideMat, sideMat, floors.stone, floors.stone, sideMat, sideMat]);
@@ -102,6 +104,8 @@ export class FloorView {
       const gates = cs.filter((c) => c.id.startsWith('gate-'));
       if (gates.length) this.gates.set(room, gates.map((g) => this.buildGate(g, layout.pieces[room].y, iron)));
     });
+    // A treasure room's portcullis (G5's C), down until its key room is cleared.
+    for (const t of layout.treasure) this.treasureGates.push({ key: t.key, gate: this.buildGate(t.gate, t.y, iron) });
 
     // Pillars: shaft plus a plinth and capital, sharing one material so they fade together.
     for (const p of layout.pieces) {
@@ -259,8 +263,9 @@ export class FloorView {
   }
 
   /** Which fight room is shut (-1 for none), and where the hero is, for the nearest fires' lights. */
-  sync(shutRoom: number, focus: THREE.Vector3, clearsLeft = 0): void {
+  sync(shutRoom: number, focus: THREE.Vector3, clearsLeft = 0, cleared: readonly number[] = []): void {
     this.shut = shutRoom;
+    this.cleared = cleared;
     this.focus.copy(focus);
     this.locked = clearsLeft > 0;
     if (this.lockLabel && clearsLeft !== this.lockShown) {
@@ -290,6 +295,12 @@ export class FloorView {
         g.group.visible = g.drop > 0.02;
         g.group.position.y = (1 - g.drop) * DOOR_H;
       }
+    }
+    for (const { key, gate: g } of this.treasureGates) {
+      const down = !this.cleared.includes(key);
+      g.drop += ((down ? 1 : 0) - g.drop) * (1 - Math.exp(-(down ? 9 : 1.5) * dt));
+      g.group.visible = g.drop > 0.02;
+      g.group.position.y = (1 - g.drop) * DOOR_H;
     }
 
     const cam = tuning.camera;

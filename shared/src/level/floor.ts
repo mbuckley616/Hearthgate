@@ -6,7 +6,7 @@ import { lavaFor, type LavaStrip } from './lava';
 import { bladesFor, crumbleCollider, crumbleFor, CRUMBLE_SIZE, spikesFor, SPIKE_SIZE, type BladeTrap, type CrumbleTile, type SpikeTile } from './traps';
 import type { BoxCollider } from './geometry';
 import { daisesFor, daisRect, daisSurfaces, rectDistance, sarcCollider, sarcophagiFor, sarcRect, type Dais, type Sarcophagus } from './setPieces';
-import { secretsFor, secretWalls, type SecretRoom } from './secrets';
+import { secretsFor, secretWalls, treasureFor, type SecretRoom, type TreasureRoom } from './secrets';
 import { CELL, DOOR_H, DOOR_W, KIT, LANDING, OPPOSITE, SIDE_DIR, STEP_H, WALL_H, WALL_T, rotPoint, rotSide, type Side } from './kit';
 
 /**
@@ -92,7 +92,9 @@ export interface FloorLayout {
   daises: Dais[];
   /** Secret rooms behind cracked walls (G5's C). */
   secrets: SecretRoom[];
-  /** Everything a blow can break: the props, then each secret's crack and chest. */
+  /** A treasure room off a hall on the main way, at most one (G5's C). */
+  treasure: TreasureRoom[];
+  /** Everything a blow can break: the props, then each secret's crack and chest, then the treasure rooms' chests. */
   smashable: PropInfo[];
 }
 
@@ -187,7 +189,8 @@ export function levelFromFloor(def: FloorDef): LevelDef {
   for (const info of pieces) propsFor(info, def.spec.seed, props, lava, spikes, sarcophagi);
   // After everything else is placed, so a seed builds the same floor with a crack in it as without.
   const secrets = secretsFor(def, pieces, lava, spikes, crumble, sarcophagi, daises);
-  const smashable = [...props, ...secrets.flatMap((sr) => [sr.crack, sr.chest])];
+  const treasure = treasureFor(def, pieces, secrets);
+  const smashable = [...props, ...secrets.flatMap((sr) => [sr.crack, sr.chest]), ...treasure.map((t) => t.chest)];
   const bounds = {
     minX: Math.min(...pieces.map((p) => p.bounds.minX)),
     maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
@@ -217,7 +220,7 @@ export function levelFromFloor(def: FloorDef): LevelDef {
     braziers: [],
     banners: [],
     spawn: { x: mid.x - ahead.x * 3, z: mid.z - ahead.z * 3, yawDeg: (Math.atan2(ahead.x, ahead.z) * 180) / Math.PI },
-    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi, daises, secrets, smashable },
+    dungeon: { def, pieces, torches, bounds, props, lava, spikes, blades, crumble, crumbleWalls, sarcophagi, daises, secrets, treasure, smashable },
   };
 }
 
@@ -361,7 +364,7 @@ const box = (id: string, minX: number, maxX: number, minY: number, maxY: number,
 });
 
 /** One side's wall, split around its open doorways (each with a lintel), and a gate for each doorway. */
-function sideWalls(info: PieceInfo, side: Side, out: Collider[], gates: Collider[], secrets: readonly SecretRoom[]): void {
+function sideWalls(info: PieceInfo, side: Side, out: Collider[], gates: Collider[], secrets: readonly (SecretRoom | TreasureRoom)[]): void {
   const b = info.bounds;
   const T = WALL_T;
   const H = info.top + WALL_H;
@@ -372,7 +375,8 @@ function sideWalls(info: PieceInfo, side: Side, out: Collider[], gates: Collider
   const across = side === 'n' ? [b.minZ, b.minZ + T] : side === 's' ? [b.maxZ - T, b.maxZ] : side === 'w' ? [b.minX, b.minX + T] : [b.maxX - T, b.maxX];
   const seg = (id: string, a: number, c: number, y0: number, y1: number): Collider =>
     ns ? box(id, a, c, y0, y1, across[0], across[1]) : box(id, across[0], across[1], y0, y1, a, c);
-  // A secret's walled-up doorway is a gap like an open one, filled by its cracked wall (`floorWorldNow`), never a gate.
+  // A secret's or treasure room's walled-up doorway is a gap like an open one, filled by its cracked wall
+  // or its own portcullis (`floorWorldNow`), never a fight room's gate.
   const secretAt = (d: Door) => secrets.some((sr) => sr.piece === info.id && Math.abs(sr.x - d.x) < 1e-6 && Math.abs(sr.z - d.z) < 1e-6);
   const gaps = info.doors
     .filter((d) => d.side === side && (d.open || secretAt(d)))
@@ -398,16 +402,17 @@ export function buildFloorWorld(level: LevelDef): World {
     { ...box('floor', lb.minX - 2, lb.maxX + 2, -10, 0, lb.minZ - 2, lb.maxZ + 2), blocksMovement: false, blocksCamera: true, fadeable: false },
   ];
   // A secret's cell can stand out past the pieces' bounds: its own ground for the camera, and its walls.
-  for (const sr of layout.secrets) {
+  const sides: [string, SecretRoom | TreasureRoom][] = [...layout.secrets.map((sr) => ['secret', sr] as [string, SecretRoom]), ...layout.treasure.map((t) => ['treasure', t] as [string, TreasureRoom])];
+  for (const [name, sr] of sides) {
     const c = sr.cell;
-    colliders.push({ ...box(`floor-secret-${sr.id}`, c.minX, c.maxX, -10, sr.y, c.minZ, c.maxZ), blocksMovement: false, blocksCamera: true, fadeable: false });
-    colliders.push(...secretWalls(sr));
+    colliders.push({ ...box(`floor-${name}-${sr.id}`, c.minX, c.maxX, -10, sr.y, c.minZ, c.maxZ), blocksMovement: false, blocksCamera: true, fadeable: false });
+    colliders.push(...secretWalls(sr, name));
   }
   const gatesOf: Collider[][] = [];
   const surfaces: Surface[] = [];
   for (const info of layout.pieces) {
     const gates: Collider[] = [];
-    for (const side of ['n', 'e', 's', 'w'] as Side[]) sideWalls(info, side, colliders, gates, layout.secrets);
+    for (const side of ['n', 'e', 's', 'w'] as Side[]) sideWalls(info, side, colliders, gates, [...layout.secrets, ...layout.treasure]);
     gatesOf.push(gates);
     const b = info.bounds;
     // The solid block under a raised piece: the camera stops at it; nothing walks into it past the walls.
@@ -438,7 +443,7 @@ export function buildFloorWorld(level: LevelDef): World {
       surfaces.push({ kind: 'flat', ...b, height: info.y });
     }
   }
-  for (const sr of layout.secrets) if (sr.y > 0) surfaces.push({ kind: 'flat', ...sr.cell, height: sr.y });
+  for (const [, sr] of sides) if (sr.y > 0) surfaces.push({ kind: 'flat', ...sr.cell, height: sr.y });
   // The tombs (G5's B) stand from y = 0 like a pillar: solid to walking, sight and arrows alike.
   layout.sarcophagi.forEach((t, i) => colliders.push(sarcCollider(t, i)));
   // The dais (G5's B) is ground, not wall: two steps anyone walks up, so the camera and arrows pass over it.

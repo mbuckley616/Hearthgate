@@ -1,7 +1,7 @@
 import type { FloorDef } from './generate';
 import type { BoxCollider } from './geometry';
 import type { PieceInfo, PropInfo, Rect } from './floor';
-import { CELL, DOOR_H, DOOR_W, SIDE_DIR, WALL_H, WALL_T, type Side } from './kit';
+import { CELL, DOOR_H, DOOR_W, KIT, SIDE_DIR, WALL_H, WALL_T, type Side } from './kit';
 import type { LavaStrip } from './lava';
 import { rectDistance, sarcRect, type Dais, type Sarcophagus } from './setPieces';
 import { CRUMBLE_SIZE, SPIKE_SIZE, type CrumbleTile, type SpikeTile } from './traps';
@@ -46,7 +46,7 @@ export const CRACK_REACH = DOOR_W / 2 - 0.4;
 
 /** The secret a prop id belongs to, and whether it is the crack, or null for a floor's own prop. */
 export function secretOf(id: number): { secret: number; crack: boolean } | null {
-  if (id < SECRET_ID_BASE) return null;
+  if (id < SECRET_ID_BASE || id >= TREASURE_ID_BASE) return null;
   const k = id - SECRET_ID_BASE;
   return { secret: Math.floor(k / 2), crack: k % 2 === 0 };
 }
@@ -149,14 +149,14 @@ export function secretsFor(
   return out;
 }
 
-/** The cell's three outer walls, as the floor's other walls are built (ids `wall-secret-*`, so they are drawn and fade alike). */
-export function secretWalls(s: SecretRoom): BoxCollider[] {
+/** A side room's three outer walls, as the floor's other walls are built (ids `wall-secret-*` or `wall-treasure-*`, so they are drawn and fade alike). */
+export function secretWalls(s: SecretRoom | TreasureRoom, name = 'secret'): BoxCollider[] {
   const c = s.cell;
   const T = WALL_T;
   const H = s.y + WALL_H;
   const mk = (k: string, minX: number, maxX: number, minZ: number, maxZ: number): BoxCollider => ({
     kind: 'box',
-    id: `wall-secret-${s.id}-${k}`,
+    id: `wall-${name}-${s.id}-${k}`,
     min: { x: minX, y: 0, z: minZ },
     max: { x: maxX, y: H, z: maxZ },
     blocksMovement: true,
@@ -173,4 +173,119 @@ export function secretWalls(s: SecretRoom): BoxCollider[] {
   if (s.side !== 'e') out.push(mk('w', c.minX, c.minX + T, z0, z1));
   if (s.side !== 'w') out.push(mk('e', c.maxX - T, c.maxX, z0, z1));
   return out;
+}
+
+/**
+ * Treasure rooms (G5's C, Michael's B, 5 Nov): a side room two cells deep off a hall on the main way,
+ * behind a portcullis that rises once the main way's next fight room is cleared. Its chest is a prop
+ * like a secret's (ids from `TREASURE_ID_BASE`); the elite guard is still to come.
+ */
+export interface TreasureRoom {
+  id: number;
+  /** The hall it opens off, the wall it is on, and the walled-up doorway it takes. */
+  piece: number;
+  side: Side;
+  x: number;
+  z: number;
+  y: number;
+  /** The fight room on the main way whose clearing raises its gate. */
+  key: number;
+  cell: Rect;
+  inner: Rect;
+  /** The portcullis across the doorway while it is shut. */
+  gate: BoxCollider;
+  chest: PropInfo;
+}
+
+export const TREASURE_ID_BASE = 20000;
+/** The chance a floor tries for a treasure room (one at most); about a third of floors have a hall with room for one. */
+const TREASURE_CHANCE = 0.8;
+/** Cells deep, out from the hall. */
+const TREASURE_DEPTH = 2;
+
+/** The pieces on the way from the entrance to the exit, in order, by the generator's links. */
+export function mainWay(def: FloorDef): number[] {
+  const from = new Map<number, number>([[def.entrance, -1]]);
+  const queue = [def.entrance];
+  while (queue.length) {
+    const at = queue.shift()!;
+    if (at === def.exit) break;
+    for (const sk of def.pieces[at].sockets) {
+      if (sk.link < 0 || from.has(sk.link)) continue;
+      from.set(sk.link, at);
+      queue.push(sk.link);
+    }
+  }
+  const way: number[] = [];
+  for (let at = def.exit; at >= 0 && from.has(at); at = from.get(at)!) way.unshift(at);
+  return way[0] === def.entrance ? way : [];
+}
+
+export function treasureFor(def: FloorDef, pieces: readonly PieceInfo[], secrets: readonly SecretRoom[]): TreasureRoom[] {
+  const seed = def.spec.seed;
+  if (hash(seed, -1, 7) >= TREASURE_CHANCE) return [];
+  const way = mainWay(def);
+  const box = {
+    minX: Math.min(...pieces.map((p) => p.bounds.minX)),
+    maxX: Math.max(...pieces.map((p) => p.bounds.maxX)),
+    minZ: Math.min(...pieces.map((p) => p.bounds.minZ)),
+    maxZ: Math.max(...pieces.map((p) => p.bounds.maxZ)),
+  };
+  // Halls on the main way with a fight room still ahead of them, from a place the seed picks.
+  const halls = way
+    .map((id, i) => ({ id, key: way.slice(i + 1).find((k) => pieces[k].fight && pieces[k].kind !== 'boss') ?? -1 }))
+    .filter(({ id, key }) => key >= 0 && !KIT[pieces[id].kind].room && pieces[id].kind !== 'stair' && pieces[id].kind !== 'entrance' && pieces[id].y === pieces[id].top);
+  if (!halls.length) return [];
+  const first = Math.floor(hash(seed, -1, 8) * halls.length);
+  for (let n = 0; n < halls.length; n++) {
+    const { id: hallId, key } = halls[(first + n) % halls.length];
+    const info = pieces[hallId];
+    for (const d of info.doors) {
+      if (d.open || Math.abs(d.y - info.y) > 1e-6) continue;
+      const dir = SIDE_DIR[d.side];
+      const ns = d.side === 'n' || d.side === 's';
+      // Two cells out from the doorway, one wide.
+      const near = WALL_T / 2;
+      const far = WALL_T / 2 + CELL * TREASURE_DEPTH;
+      const ax = [d.x + dir.x * near, d.x + dir.x * far];
+      const az = [d.z + dir.z * near, d.z + dir.z * far];
+      const cell = ns
+        ? { minX: d.x - CELL / 2, maxX: d.x + CELL / 2, minZ: Math.min(...az), maxZ: Math.max(...az) }
+        : { minX: Math.min(...ax), maxX: Math.max(...ax), minZ: d.z - CELL / 2, maxZ: d.z + CELL / 2 };
+      if (cell.minX < box.minX - 1e-6 || cell.maxX > box.maxX + 1e-6 || cell.minZ < box.minZ - 1e-6 || cell.maxZ > box.maxZ + 1e-6) continue;
+      if (pieces.some((p) => overlaps(p.bounds, cell)) || secrets.some((sr) => overlaps(sr.cell, cell))) continue;
+      const inner = {
+        minX: d.side === 'e' ? cell.minX : cell.minX + WALL_T,
+        maxX: d.side === 'w' ? cell.maxX : cell.maxX - WALL_T,
+        minZ: d.side === 's' ? cell.minZ : cell.minZ + WALL_T,
+        maxZ: d.side === 'n' ? cell.maxZ : cell.maxZ - WALL_T,
+      };
+      const across = ns ? { minZ: d.z - WALL_T / 2, maxZ: d.z + WALL_T / 2 } : { minX: d.x - WALL_T / 2, maxX: d.x + WALL_T / 2 };
+      const along = ns ? { minX: d.x - DOOR_W / 2, maxX: d.x + DOOR_W / 2 } : { minZ: d.z - DOOR_W / 2, maxZ: d.z + DOOR_W / 2 };
+      const r = { ...along, ...across } as Rect;
+      const gate: BoxCollider = {
+        kind: 'box',
+        id: `tgate-0`,
+        min: { x: r.minX, y: d.y, z: r.minZ },
+        max: { x: r.maxX, y: d.y + DOOR_H, z: r.maxZ },
+        blocksMovement: true,
+        blocksCamera: false,
+        fadeable: false,
+      };
+      const reach = CELL * TREASURE_DEPTH - WALL_T - 0.9;
+      const chest: PropInfo = {
+        id: TREASURE_ID_BASE,
+        kind: 'chest',
+        x: d.x + dir.x * (WALL_T / 2 + reach),
+        y: d.y,
+        z: d.z + dir.z * (WALL_T / 2 + reach),
+        yaw: YAW[d.side],
+        piece: hallId,
+        inward: YAW[d.side],
+        room: inner,
+      };
+      return [{ id: 0, piece: hallId, side: d.side, x: d.x, z: d.z, y: d.y, key, cell, inner, gate, chest }];
+    }
+  }
+  return [];
 }

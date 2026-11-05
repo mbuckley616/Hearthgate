@@ -12,7 +12,7 @@ import { buildWorld } from './arena';
 import { floorLevel, insidePiece } from './floor';
 import { resolveCircle } from './geometry';
 import { SIDE_DIR } from './kit';
-import { SECRET_ID_BASE, secretOf } from './secrets';
+import { SECRET_ID_BASE, TREASURE_ID_BASE, mainWay, secretOf } from './secrets';
 
 // G5's C, secrets (Michael's A, 5 Nov): now and then a fight room's walled-up doorway is a cracked
 // wall with a one-cell room and a chest behind it; a heavy hit, a bash or a slam breaks the wall.
@@ -132,6 +132,76 @@ describe('secret rooms behind cracked walls (G5)', () => {
       expect(d.x).toBeLessThanOrEqual(f.sr.inner.maxX);
       expect(d.z).toBeGreaterThanOrEqual(f.sr.inner.minZ);
       expect(d.z).toBeLessThanOrEqual(f.sr.inner.maxZ);
+    }
+  });
+});
+
+describe('treasure rooms (G5)', () => {
+  it('hang off a hall on the main way, behind a fight room still ahead, on about half the floors', () => {
+    let floors = 0;
+    for (let seed = 1; seed <= 100; seed++) {
+      const spec = { seed, pieces: 24, floor: 1, floors: 3 };
+      const layout = floorLevel(spec).dungeon!;
+      expect(floorLevel(spec).dungeon!.treasure).toEqual(layout.treasure);
+      expect(layout.treasure.length).toBeLessThanOrEqual(1);
+      for (const t of layout.treasure) {
+        floors++;
+        const way = mainWay(layout.def);
+        const hall = layout.pieces[t.piece];
+        expect(way).toContain(t.piece);
+        expect(['small', 'medium', 'large', 'boss', 'rest', 'entrance', 'stair']).not.toContain(hall.kind);
+        expect(hall.fight).toBe(false);
+        // Its key is the first fight room after the hall on the way.
+        const after = way.slice(way.indexOf(t.piece) + 1);
+        expect(after.find((id) => layout.pieces[id].fight && layout.pieces[id].kind !== 'boss')).toBe(t.key);
+        for (const p of layout.pieces) {
+          const c = t.cell;
+          const b = p.bounds;
+          expect(c.minX >= b.maxX - 1e-6 || b.minX >= c.maxX - 1e-6 || c.minZ >= b.maxZ - 1e-6 || b.minZ >= c.maxZ - 1e-6).toBe(true);
+        }
+        for (const sr of layout.secrets) {
+          const c = t.cell;
+          const b = sr.cell;
+          expect(c.minX >= b.maxX - 1e-6 || b.minX >= c.maxX - 1e-6 || c.minZ >= b.maxZ - 1e-6 || b.minZ >= c.maxZ - 1e-6).toBe(true);
+        }
+        expect(t.chest.id).toBe(TREASURE_ID_BASE);
+        expect(secretOf(t.chest.id)).toBeNull();
+        expect(layout.smashable).toContain(t.chest);
+      }
+    }
+    expect(floors).toBeGreaterThan(25);
+    expect(floors).toBeLessThan(75);
+  });
+
+  it('keeps its portcullis down until its key room is cleared, then the room and its chest are open', () => {
+    let seed = 1;
+    let level = floorLevel({ seed, pieces: 24, floor: 1, floors: 3 });
+    while (!level.dungeon!.treasure.length) level = floorLevel({ seed: ++seed, pieces: 24, floor: 1, floors: 3 });
+    const t = level.dungeon!.treasure[0];
+    const world = buildWorld(level);
+    const state = createSimState(level, [], world);
+    const gateDown = () => floorWorldNow(world, state).colliders.some((c) => c === t.gate);
+    expect(gateDown()).toBe(true);
+    const shut = resolveCircle({ x: t.x, z: t.z }, tuning.movement.radius, t.y, t.y + 1.8, floorWorldNow(world, state).colliders);
+    expect(Math.hypot(shut.x - t.x, shut.z - t.z)).toBeGreaterThan(0.2);
+    state.floor!.cleared.push(t.key);
+    expect(gateDown()).toBe(false);
+    const open = resolveCircle({ x: t.x, z: t.z }, tuning.movement.radius, t.y, t.y + 1.8, floorWorldNow(world, state).colliders);
+    expect(Math.hypot(open.x - t.x, open.z - t.z)).toBeLessThan(1e-6);
+    const mid = { x: (t.inner.minX + t.inner.maxX) / 2, z: (t.inner.minZ + t.inner.maxZ) / 2 };
+    const inside = resolveCircle({ ...mid }, tuning.movement.radius, t.y, t.y + 1.8, floorWorldNow(world, state).colliders);
+    expect(Math.hypot(inside.x - mid.x, inside.z - mid.z)).toBeLessThan(1e-6);
+    const l: Loadout = { name: 'p', xp: { sword: xpForLevel(20), bow: xpForLevel(20), staff: xpForLevel(20) }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+    const p = addPlayer(state, world, 'p1', l, false);
+    const dir = SIDE_DIR[t.side];
+    Object.assign(p, { x: t.chest.x - dir.x * 1.2, z: t.chest.z - dir.z * 1.2, y: t.y, yaw: Math.atan2(dir.x, dir.z) });
+    smashArc(state, level.dungeon!.smashable, p, p.x, p.z, 1.6, 120);
+    expect(state.floor!.broken).toContain(t.chest.id);
+    for (const d of state.floor!.loot ?? []) {
+      expect(d.x).toBeGreaterThanOrEqual(t.inner.minX);
+      expect(d.x).toBeLessThanOrEqual(t.inner.maxX);
+      expect(d.z).toBeGreaterThanOrEqual(t.inner.minZ);
+      expect(d.z).toBeLessThanOrEqual(t.inner.maxZ);
     }
   });
 });

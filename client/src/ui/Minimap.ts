@@ -180,6 +180,15 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[], opened: reado
     const bl = Math.round(110 + t * 50);
     return dim ? `rgb(${Math.round(r * 0.55)}, ${Math.round(gg * 0.55)}, ${Math.round(bl * 0.6)})` : `rgb(${r}, ${gg}, ${bl})`;
   };
+  for (const t of layout.treasure) {
+    // A treasure room is no secret: drawn from the start, its doorway barred in iron until its key room falls.
+    const i = t.inner;
+    g.fillStyle = '#9c8350';
+    g.fillRect(X(i.minX), Y(i.minZ), (i.maxX - i.minX) * PX, (i.maxZ - i.minZ) * PX);
+    const ns = t.side === 'n' || t.side === 's';
+    g.fillStyle = cleared.includes(t.key) ? '#9c8350' : '#5a5650';
+    g.fillRect(X(t.x - (ns ? 1.6 : 0.6)), Y(t.z - (ns ? 0.6 : 1.6)), (ns ? 3.2 : 1.2) * PX, (ns ? 1.2 : 3.2) * PX);
+  }
   for (const sr of opened) {
     // The cell and the broken wall into it, gold for what it held.
     const i = sr.inner;
