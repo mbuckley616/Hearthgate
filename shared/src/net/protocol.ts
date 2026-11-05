@@ -9,7 +9,7 @@ import type { GearItem } from '../sim/catalogue';
 import type { PlayerCommand, SimEvent, SimState } from '../sim/types';
 
 /** Bumped when the messages change, so mismatched builds refuse each other politely. */
-export const PROTOCOL_VERSION = 16;
+export const PROTOCOL_VERSION = 17;
 
 /** A joiner's input for one of its ticks, numbered so the host can say which it has applied. */
 export interface SeqCommand {
@@ -68,7 +68,8 @@ export type ToPeer =
   | { k: 'welcome'; id: string; floor?: FloorSpec }
   | { k: 'refused'; reason: string }
   /**
-   * The whole sim (it's plain data by design), the last input tick applied
+   * The whole sim (it's plain data by design; on the wire its enemies, players and projectiles are
+   * rows, net/pack.ts, unpacked to this on arrival), the last input tick applied
    * for each joiner, every event since the previous snapshot, and how fast
    * the server is running the fight (1, or the debug slow motion's scale).
    */

@@ -12,6 +12,7 @@ import type { PortalState } from "@hearthgate/shared/game/portal";
 import type { FloorSpec } from "@hearthgate/shared/level/generate";
 import type { VillageSave } from "@hearthgate/shared/game/villageSave";
 import { PROTOCOL_VERSION, type SeqCommand, type ToHost, type ToPeer } from "@hearthgate/shared/net/protocol";
+import { fromWire, type ToPeerWire } from "@hearthgate/shared/net/pack";
 import type { Loadout } from "@hearthgate/shared/sim/coop";
 import { emptyMods } from "@hearthgate/shared/sim/gear";
 import { emptyTalents } from "@hearthgate/shared/sim/talents";
@@ -139,9 +140,10 @@ export class Bot {
     this.room = room;
     this.kind = room.name;
     this.code = room.roomId;
-    room.onMessage(MSG, (m: ToPeer) => {
+    room.onMessage(MSG, (wire: ToPeerWire) => {
       // The room we left on a hand-off may still say something on its way out.
       if (this.room !== room) return;
+      const m: ToPeer = fromWire(wire);
       this.messages.push(m);
       if (m.k === "welcome") {
         this.id = m.id;

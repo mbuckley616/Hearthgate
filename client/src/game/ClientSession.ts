@@ -6,6 +6,7 @@ import { arena, buildWorld, type World } from '@hearthgate/shared/level/arena';
 import { floorLevel } from '@hearthgate/shared/level/floor';
 import type { FloorSpec } from '@hearthgate/shared/level/generate';
 import { village } from '@hearthgate/shared/level/village';
+import { fromWire, type ToPeerWire } from '@hearthgate/shared/net/pack';
 import { PROTOCOL_VERSION, type LevelKind, type SeqCommand, type ToHost, type ToPeer } from '@hearthgate/shared/net/protocol';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { applyLoadout } from '@hearthgate/shared/sim/coop';
@@ -394,7 +395,7 @@ export class ClientSession implements Session {
         if (this.state === 'playing' || this.state === 'joining') this.state = 'hostLeft';
         break;
       case 'msg':
-        this.onMessage(ev.d as ToPeer);
+        this.onMessage(fromWire(ev.d as ToPeerWire));
         break;
     }
   }
