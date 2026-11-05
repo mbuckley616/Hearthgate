@@ -47,6 +47,8 @@ const PLACED_MS = 1000;
 
 interface Condition extends Link {
   name: string;
+  /** Keep at least this many enemies standing (Alpha asks the server's spawnGrunts cheat): a floor fight's crowd in the arena. */
+  crowd?: number;
 }
 
 const CONDITIONS: Condition[] = [
@@ -63,6 +65,13 @@ const argOf = (k: string) => {
 };
 const SECONDS = Number(argOf("--seconds") ?? 60);
 const ONLY = argOf("--only") ?? "";
+/**
+ * --crowd adds a fifth row: 50 ms with ten or more grunts kept standing, the crowd a floor's big
+ * fight room puts round a pair (critic, 5 Nov), which the four-goblin waves never reach. It boots
+ * the server with HEARTHGATE_DEV=1 so the spawn cheat works. `--only crowd` runs it alone.
+ */
+const CROWD = args.includes("--crowd") || argOf("--only") === "crowd";
+if (CROWD) CONDITIONS.push({ name: "50 ms crowd", oneWayMs: 50, jitterMs: 0, loss: 0, crowd: 10 });
 /** A hosted build to measure: no local server and no proxy with --server, no Vite with --client. */
 const REMOTE_SERVER = argOf("--server") ?? "";
 const REMOTE_CLIENT = argOf("--client") ?? "";
@@ -101,7 +110,7 @@ function boot(): { server: ChildProcess | null; vite: ChildProcess | null } {
   const tsx = `${root}node_modules/tsx/dist/cli.mjs`;
   const server = REMOTE_SERVER
     ? null
-    : spawn(process.execPath, [tsx, "src/index.ts"], { cwd: `${root}server`, env: { ...process.env, PORT: String(SERVER_PORT) }, stdio: "ignore" });
+    : spawn(process.execPath, [tsx, "src/index.ts"], { cwd: `${root}server`, env: { ...process.env, PORT: String(SERVER_PORT), ...(CROWD ? { HEARTHGATE_DEV: "1" } : {}) }, stdio: "ignore" });
   const vite = REMOTE_CLIENT
     ? null
     : spawn(process.execPath, [`${root}node_modules/vite/bin/vite.js`, "--port", String(VITE_PORT), "--strictPort", "--host", "127.0.0.1"], {
@@ -148,6 +157,7 @@ const PROBE = `(() => {
     },
     other: (id) => lerp(s.view(), id),
     phase: () => s.view().curr.run.phase,
+    alive: () => s.view().curr.enemies.filter((e) => e.ai !== 'dead' && e.hp > 0).length,
     /** The nearest enemy still standing, as drawn here. */
     enemy: () => {
       const h = s.hero();
@@ -245,6 +255,8 @@ interface Row {
   fps_b: number;
   lost_chunks: number;
   page_errors: string[];
+  /** Enemies standing, on average over Alpha's turns (the crowd row's measure of its crowd). */
+  enemies_mean: number;
   verdict: string;
 }
 
@@ -305,6 +317,9 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     let downs = 0;
     let wasDown = false;
     let won = 0;
+    let lastSpawn = 0;
+    let aliveSum = 0;
+    let turns = 0;
     while (Date.now() < end) {
       const phase = (await info(a)).phase;
       if (phase === "won" || phase === "lost") {
@@ -315,6 +330,13 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
         await until(async () => (await info(a)).phase === "ante", 5000, "the restart");
         await enterRun();
         continue;
+      }
+      const alive = (await a.evaluate("window.__probe.alive()")) as number;
+      aliveSum += alive;
+      turns++;
+      if (c.crowd && phase === "wave" && alive < c.crowd && Date.now() - lastSpawn > 1500) {
+        lastSpawn = Date.now();
+        await a.evaluate(`window.game.session.request({ k: "cheat", cheat: "spawnGrunts" })`);
       }
       const me = (await a.evaluate("window.__probe.me()")) as { x: number; z: number; mode: string };
       const down = me.mode === "down";
@@ -486,6 +508,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
       fps_b: fps(seen),
       lost_chunks: proxy ? proxy.lost() : 0,
       page_errors: errors,
+      enemies_mean: Math.round((aliveSum / Math.max(1, turns)) * 10) / 10,
       verdict,
     };
   } finally {
@@ -520,11 +543,11 @@ async function main() {
     }
     for (const c of conditions) {
       // Exact, or "50 ms" would also run "50 ms +-20, 2% loss"; "loss" picks the lossy row alone.
-      if (ONLY && c.name !== ONLY && !(ONLY === "loss" && c.loss > 0)) continue;
+      if (ONLY && c.name !== ONLY && !(ONLY === "loss" && c.loss > 0) && !(ONLY === "crowd" && c.crowd)) continue;
       const row = await runCondition(ba, bb, c, PROXY_BASE + i++);
       rows.push(row);
       console.log(
-        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}: swing ${row.big_swing_per_min} hit ${row.big_hit_per_min} other ${row.big_other_per_min} placed ${row.big_placed_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started} (won ${row.runs_won})  fps ${row.fps_a}/${row.fps_b}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
+        `${row.condition.padEnd(22)} corr/min ${String(row.corrections_per_min).padStart(6)} (over 10 cm ${row.big_per_min}: swing ${row.big_swing_per_min} hit ${row.big_hit_per_min} other ${row.big_other_per_min} placed ${row.big_placed_per_min}, max ${row.correction_max_m} m)  snaps ${row.snaps} (+${row.placed_snaps} placed)  holds/min ${row.holds_per_min}  view lag ${row.view_lag_ms} ms (gap ${row.view_gap_m} m, delay ${row.draw_delay_ms} ms)  in flight ${row.in_flight_ms} ms  ${row.kb_per_s_per_player} KB/s  downs ${row.downs}  runs ${row.runs_started} (won ${row.runs_won})  fps ${row.fps_a}/${row.fps_b}  enemies ${row.enemies_mean}  walked ${row.walked_m_per_min} m/min  lost ${row.lost_chunks}  errors ${row.page_errors.length}  -> ${row.verdict}`,
       );
       for (const m of row.snap_moments) console.log(`  snap at ${m.at_s} s, (${m.x}, ${m.z}), hp ${m.hp}, frame gap ${m.frame_gap_ms} ms, jumped ${m.jump_m} m`);
       for (const e of row.page_errors.slice(0, 3)) console.log(`  page error: ${e}`);
