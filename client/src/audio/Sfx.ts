@@ -163,6 +163,11 @@ export class Sfx {
           this.tone('triangle', 180, 120, 0.25, ev.playerId === localId ? 0.12 : 0.05, 0.005);
           this.noiseBurst('bandpass', 1800, 900, 3, 0.2, ev.playerId === localId ? 0.08 : 0.035);
           break;
+        case 'stormChain':
+          // Storm Volley's arc: a short electric crackle, softer for a teammate's.
+          this.noiseBurst('highpass', 3000, 6000, 1, 0.12, ev.playerId === localId ? 0.1 : 0.04);
+          this.tone('square', 220, 90, 0.08, ev.playerId === localId ? 0.03 : 0.012, 0.002);
+          break;
         case 'scoutMarked':
           // A Scout's arrow marks (the builds pass): a high airy ping, only for the Scout who marked it.
           if (ev.playerId !== localId) break;

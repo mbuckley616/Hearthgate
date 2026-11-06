@@ -1,11 +1,11 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
-import { isTargetable, type HitSpec } from './combat';
+import { damageEnemy, isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
 import { gainFlow } from './flow';
-import type { BrambleGround, EnemyState, PlayerState, SimState } from './types';
+import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState } from './types';
 
 /**
  * Specializations (the builds pass; Michael's A, 6 Nov 2026: specializations first, one style a
@@ -376,6 +376,45 @@ export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | u
   if (!hero || dot) return 1;
   gainFlow(state.players.find((p) => p.id === m.by), tuning.specs.markFlowGain);
   return 1 + tuning.specs.markDamageBonus;
+}
+
+/**
+ * Storm Volley (the Scout's Volley): each Volley arrow a Scout lands arcs lightning on to the nearest
+ * other enemy within `specs.stormChainRange` it has not already hit, for `specs.stormChainDamage` of
+ * the arrow's damage, at once. Called as the arrow lands, a projectile's hit, so the server's alone.
+ */
+export function stormChain(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, from: EnemyState): void {
+  const s = tuning.specs;
+  if (!owner || owner.spec?.bow !== 'scout' || !pr.marks || s.stormChainDamage <= 0) return;
+  let best: EnemyState | null = null;
+  let bestD = s.stormChainRange;
+  for (const e of state.enemies) {
+    if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
+    const d = Math.hypot(e.x - from.x, e.z - from.z);
+    if (d <= bestD) {
+      best = e;
+      bestD = d;
+    }
+  }
+  if (!best) return;
+  const len = bestD || 1;
+  const dirX = (best.x - from.x) / len;
+  const dirZ = (best.z - from.z) / len;
+  state.events.push({ kind: 'stormChain', playerId: owner.id, fromX: from.x, fromZ: from.z, toX: best.x, toZ: best.z, y: from.y + 1.1 });
+  damageEnemy(state, best, {
+    attackerId: owner.id,
+    damage: pr.damage * s.stormChainDamage,
+    poise: 0.3,
+    knockback: 0,
+    heavy: false,
+    dirX,
+    dirZ,
+    x: best.x,
+    y: best.y + 1.1,
+    z: best.z,
+    style: 'bow',
+    projectile: true,
+  });
 }
 
 /**

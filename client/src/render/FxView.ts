@@ -205,6 +205,17 @@ export class FxView {
           this.ring(ev.x, ev.z, ev.radius * 0.6, 0xe8fbff, 0.6, 0.45);
           this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(FROST));
           break;
+        case 'stormChain': {
+          // A Scout's Storm Volley arcs (the builds pass): a pale crackle strung along the jump, bright at each end.
+          const n = 5;
+          for (let i = 0; i <= n; i++) {
+            const u = i / n;
+            const at = new THREE.Vector3(ev.fromX + (ev.toX - ev.fromX) * u, ev.y + (i % 2 ? 0.15 : -0.1), ev.fromZ + (ev.toZ - ev.fromZ) * u);
+            this.spawnSparks(at, new THREE.Vector3(0, 0.3, 0), i === 0 || i === n ? 8 : 3, new THREE.Color(0xdff6ff));
+          }
+          this.glowPuff(ev.toX, ev.y, ev.toZ, 0x9fe3ff, 0.9, 0.25);
+          break;
+        }
         case 'blink':
           for (const [x, z] of [
             [ev.fromX, ev.fromZ],

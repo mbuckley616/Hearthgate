@@ -424,6 +424,7 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'stormChain'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; y: number }
   /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
   | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
   /** A Rogue's Shadowstep (the builds pass): from where it left to where it stands, for the smoke and its sound. */

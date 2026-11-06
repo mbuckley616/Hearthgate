@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 133, the Scout's Storm Volley (the builds pass, Michael's A)
+
+**What changed**
+
+Storm Volley (`stormChain` in `specs.ts`, called as a Volley arrow lands in `hitWithProjectile`): each Volley arrow a Scout lands arcs lightning on to the nearest other enemy within `specs.stormChainRange` (5 m) that arrow has not already hit, for `specs.stormChainDamage` (half) of its damage, at once, as a bow hit (XP, Marked's bonus and the shield check as any hit). A `stormChain` event draws a pale crackle of sparks along the jump and plays a short electric snap. Both numbers on the panel. Scout still not offered. Check 432 green. Not yet seen in a browser.
+
+**Learned**
+
+The staff's chain-bolt perk sends a second, homing projectile; the page's "chain lightning" reads better instant, so the arc is a hit at once with a drawn line, and nothing new flies.
+
+**Next**
+
+Gale Step (Disengage twice in a row, the second a full dodge), then the Scout is offered; then the Assassin. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 132, the Scout's Marked (the builds pass, Michael's A)
 
 **What changed**

@@ -588,3 +588,30 @@ describe("the Scout's Marked (not yet choosable)", () => {
     expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'scout' })).not.toBeNull();
   });
 });
+
+describe("the Scout's Storm Volley", () => {
+  /** A Scout (or not) looses one Volley arrow at the grunt, with a second grunt `gap` metres past it. */
+  function volleyAt(scout: boolean, gap: number) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: scout ? { bow: 'scout' } : undefined });
+    const next = createEnemy(sc.s, world, 'grunt', gap, 6, 0);
+    Object.assign(next, { x: gap, z: 6, ai: 'chase', hp: 9999 });
+    spawnArrow(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.arrowSpeed, false);
+    sc.s.projectiles[sc.s.projectiles.length - 1].marks = true;
+    for (let i = 0; i < 40; i++) stepProjectiles(sc.s, DT, world.colliders);
+    return { ...sc, next };
+  }
+
+  it("a Scout's Volley arrow arcs on to the nearest other enemy for half its hit", () => {
+    const { s, e, next } = volleyAt(true, 3);
+    const first = 9999 - e.hp;
+    expect(first).toBeGreaterThan(0);
+    expect(9999 - next.hp).toBeCloseTo(first * tuning.specs.stormChainDamage, 3);
+    expect(s.events.some((ev) => ev.kind === 'stormChain')).toBe(true);
+  });
+
+  it('nothing in range, or anyone but a Scout, arcs nowhere', () => {
+    expect(volleyAt(true, tuning.specs.stormChainRange + 2).next.hp).toBe(9999);
+    expect(volleyAt(false, 3).next.hp).toBe(9999);
+  });
+});
