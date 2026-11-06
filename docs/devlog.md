@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 120, the builds pass asked
+
+**What changed**
+
+Docs only. Nothing in the current section was the builder's: G5 and E1a to E1h are built, E1i waits on Michael's call once the Crypt has been played, and the late-deaths item needs a real machine's frame rate. The one open **(design)** item whose condition is met, the builds pass (Phase 2's carry-overs, "to be cut into items once the feel pass has been played"), had never been asked, so it is now in `decisions.md` Pending: specializations first (A, recommended), elements and the first three states first (B), the rest of the weapon roster first (C), or not yet (D).
+
+**Learned**
+
+Elements and states lean on each other (an element is what leaves a state), so the order of the builds pass is really the order of its two loops; the roster is the only part that needs no new design.
+
+**Next**
+
+Build to Michael's answer. Until then the builder has no item; E1i still waits on a play of the Crypt.
+
 ## 2026-11-05: Session 119, the treasure room's guard (G5's C, Michael's B, finished)
 
 **What changed**
