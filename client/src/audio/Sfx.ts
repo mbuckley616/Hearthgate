@@ -172,6 +172,12 @@ export class Sfx {
           // Gale Step's second roll: a quick rising gust, softer for a teammate's.
           this.noiseBurst('bandpass', 700, 2600, 1.5, 0.22, ev.playerId === localId ? 0.12 : 0.05);
           break;
+        case 'hexed':
+          // A Warlock's hex takes (the builds pass): a low falling murmur, only for the Warlock.
+          if (ev.playerId !== localId) break;
+          this.tone('sawtooth', 220, 110, 0.22, 0.03, 0.01);
+          this.noiseBurst('lowpass', 700, 250, 1, 0.2, 0.04);
+          break;
         case 'venom':
           // Venom Volley takes (the builds pass): a short wet hiss, rising a little with the stacks, only for the Assassin.
           if (ev.playerId !== localId) break;

@@ -5,7 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { consecratedMult, guardHoldsHeavy, holyPulse, markedMult, shadowStrike } from './specs';
+import { consecratedMult, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -164,9 +164,12 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   breakChannel(e);
   // Marked (the Scout's signature): a party hit on a Scout's mark lands harder and feeds their Flow.
   const marked = markedMult(state, e, hero, hit.dot);
-  const damage = marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.
+  const hexed = hexedMult(state, e, hero, hit.dot);
+  const damage = hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
+  warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
   // Flow (C2): an attack's earnings land with its first hit, so a swing at nothing earns nothing.
   if (hero?.flow && hero.flow.pending > 0 && !hit.dot) {
     gainFlow(hero, hero.flow.pending);

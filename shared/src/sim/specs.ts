@@ -14,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState 
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -105,6 +105,17 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Smoke Bomb', 'Disengage drops smoke; you vanish for 2 s.'],
     sig: ['Deadeye', 'A charged shot into an enemy\'s back is a crit.'],
     built: true,
+  },
+  {
+    id: 'warlock',
+    style: 'staff',
+    name: 'Warlock',
+    element: 'shadow',
+    elements: ['shadow'],
+    q: ['Curse Ring', 'Frost ring hexes everything inside.'],
+    e: ['Shadow Swap', 'Blink swaps places with the targeted enemy.'],
+    sig: ['Hex', 'Your spells hex. Hexed enemies take 10% more from everyone, and your hits on them drain health.'],
+    built: false,
   },
 ];
 
@@ -387,6 +398,34 @@ export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | u
   if (!hero || dot) return 1;
   gainFlow(state.players.find((p) => p.id === m.by), tuning.specs.markFlowGain);
   return 1 + tuning.specs.markDamageBonus;
+}
+
+/**
+ * What any hit on a hexed enemy is multiplied by: `1 + specs.hexDamageBonus` while the Warlock's hex
+ * lasts, everyone's hits alike. A tick of damage over time takes nothing; a spent hex is dropped.
+ */
+export function hexedMult(state: SimState, e: EnemyState, hero: PlayerState | undefined, dot: boolean | undefined): number {
+  const h = e.hex;
+  if (!h) return 1;
+  if (h.until <= state.time) {
+    delete e.hex;
+    return 1;
+  }
+  return hero && !dot ? 1 + tuning.specs.hexDamageBonus : 1;
+}
+
+/**
+ * Hex (the Warlock's signature), after a hit's damage: a Warlock's staff hit on an enemy already
+ * hexed drains `specs.hexDrain` of its damage back as the Warlock's health, and every staff hit of
+ * theirs hexes (again) for `specs.hexSeconds`. Bolts and bursts are the server's, so the drain is too.
+ */
+export function warlockHex(state: SimState, e: EnemyState, hero: PlayerState | undefined, hit: HitSpec, damage: number, wasHexed: boolean): void {
+  const s = tuning.specs;
+  if (!hero || hero.spec?.staff !== 'warlock' || hit.style !== 'staff' || hit.dot || s.hexSeconds <= 0) return;
+  if (wasHexed && hero.mode !== 'down' && s.hexDrain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * s.hexDrain);
+  const fresh = !e.hex || e.hex.until <= state.time;
+  e.hex = { by: hero.id, until: state.time + s.hexSeconds };
+  if (fresh) state.events.push({ kind: 'hexed', playerId: hero.id, enemyId: e.id, x: e.x, y: e.y, z: e.z });
 }
 
 /**

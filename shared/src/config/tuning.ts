@@ -1786,6 +1786,10 @@ export const tuning = {
     venomMaxStacks: 5,
     venomTickMs: 500,
     venomDamage: 2,
+    /** Hex (the Warlock's signature): a Warlock's staff hit hexes for this long; everyone's hits on a hexed enemy deal `hexDamageBonus` more, and the Warlock's own heal them `hexDrain` of the damage. */
+    hexSeconds: 4,
+    hexDamageBonus: 0.1,
+    hexDrain: 0.1,
   },
   abilities: {
     /**
@@ -2512,6 +2516,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.venomMaxStacks': [1, 10, 1],
   'specs.venomTickMs': [100, 2000, 50],
   'specs.venomDamage': [0, 20, 0.5],
+  'specs.hexSeconds': [0, 12, 0.5],
+  'specs.hexDamageBonus': [0, 0.5, 0.01],
+  'specs.hexDrain': [0, 0.5, 0.01],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

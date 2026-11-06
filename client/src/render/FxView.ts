@@ -210,6 +210,11 @@ export class FxView {
           this.puff(ev.x, ev.y + 0.6, ev.z, 0x2a2630, 2.4, 2);
           this.puff(ev.x, ev.y + 1.2, ev.z, 0x3a3540, 1.8, 1.6);
           break;
+        case 'hexed':
+          // A Warlock's hex (the builds pass): a shadow-violet wisp over the enemy.
+          this.glowPuff(ev.x, ev.y + 1.3, ev.z, 0xa274ff, 0.8, 0.4);
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1.2, ev.z), new THREE.Vector3(0, 0.5, 0), 8, new THREE.Color(0x4a2a80));
+          break;
         case 'venom':
           // An Assassin's Venom Volley stacks (the builds pass): a few drops of sickly green, more as it builds.
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1.1, ev.z), new THREE.Vector3(0, 0.6, 0), 3 + ev.stacks * 2, new THREE.Color(0x8fe05a));

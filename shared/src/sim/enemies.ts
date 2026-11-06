@@ -793,6 +793,7 @@ function leaderBrain(state: SimState, world: World, e: EnemyState, target: Playe
         remains.frozen = 0;
         remains.bleedTicks = 0;
         delete remains.venom;
+        delete remains.hex;
         setAi(remains, 'spawn');
         state.events.push({ kind: 'enemyRose', enemyId: remains.id, x: remains.x, z: remains.z });
         e.tele.shape = 'none';

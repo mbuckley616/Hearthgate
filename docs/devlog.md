@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 138, the Warlock's Hex (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's first specialization, as data and its signature, not yet offered (`built: false`, so the staff's Talents row shows it as soon). The Warlock (`SPECS` in `specs.ts`): Shadow, Curse Ring for the frost ring, Shadow Swap for the Blink, from the combat builds page. Its signature, Hex (`hexedMult` and `warlockHex`, read in `damageEnemy`): every staff hit a Warlock lands hexes its enemy (`EnemyState.hex`) for `specs.hexSeconds` (4 s), after the hit's own damage; everyone's hits on a hexed enemy, a friend's sword or a henchman's included, deal `specs.hexDamageBonus` (10%) more, and the Warlock's own staff hits on it heal them `specs.hexDrain` (10%) of the damage, never past full health. A tick of damage over time neither gains nor drains. A fresh hex puts a violet wisp over the enemy and, for the Warlock alone, a low murmur. All three numbers on the panel. Check 447 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Sorcerer's Elemental Step ("Blink leaves a trail of your element") is the same open question as the Spellblade's Blazing Charge trail, so Magic starts with the Warlock, whose three pieces need no answer; whatever Michael picks for the Spellblade's trail will do for the Sorcerer's too.
+
+**Next**
+
+Curse Ring (the frost ring hexes everything inside) and Shadow Swap (the Blink swaps places with the targeted enemy), then the Warlock is offered. Then the Druid; the Sorcerer and the Spellblade once the trail is answered.
+
 ## 2026-11-06: Session 137, the Assassin's Venom Volley; the Assassin offered (the builds pass, Michael's A)
 
 **What changed**

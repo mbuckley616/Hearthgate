@@ -800,3 +800,55 @@ describe('the Assassin is offered (the builds pass)', () => {
     expect(readLoadout({ ...l, spec: { bow: 'assassin' }, elements: { bow: 'air' } })).toBeNull();
   });
 });
+
+describe("the Warlock's Hex (not yet choosable)", () => {
+  /** One staff hit (a burst's, the server's) from p on the grunt, as a Warlock or not. */
+  function staffHit(sc: ReturnType<typeof scene>, by: PlayerState, damage = 10): number {
+    const hp = sc.e.hp;
+    damageEnemy(sc.s, sc.e, { attackerId: by.id, damage, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: sc.e.x, y: 1, z: sc.e.z, style: 'staff', projectile: true });
+    return hp - sc.e.hp;
+  }
+  function warlock(on: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', spec: on ? { staff: 'warlock' } : undefined });
+    return sc;
+  }
+
+  it("a Warlock's staff hit hexes, after its own damage; the hex fades", () => {
+    const sc = warlock(true);
+    const first = staffHit(sc, sc.p);
+    expect(sc.e.hex?.by).toBe('p1');
+    expect(sc.s.events.some((ev) => ev.kind === 'hexed')).toBe(true);
+    // The next hit, the same in every other way, lands 10% harder.
+    expect(staffHit(sc, sc.p)).toBeCloseTo(first * (1 + tuning.specs.hexDamageBonus), 3);
+    sc.s.time = sc.e.hex!.until;
+    expect(staffHit(sc, sc.friend)).toBeCloseTo(staffHit(warlock(false), warlock(false).friend), 3);
+  });
+
+  it("everyone's hits on the hex land harder; only the Warlock's drain", () => {
+    const sc = warlock(true);
+    staffHit(sc, sc.p);
+    const plain = warlock(false);
+    expect(staffHit(sc, sc.friend)).toBeCloseTo(staffHit(plain, plain.friend) * (1 + tuning.specs.hexDamageBonus), 3);
+    sc.friend.hp = 10;
+    staffHit(sc, sc.friend);
+    expect(sc.friend.hp).toBe(10);
+    sc.p.hp = 10;
+    const dealt = staffHit(sc, sc.p);
+    expect(sc.p.hp).toBeCloseTo(10 + dealt * tuning.specs.hexDrain, 3);
+    sc.p.hp = sc.p.maxHp;
+    staffHit(sc, sc.p, 5000);
+    expect(sc.p.hp).toBe(sc.p.maxHp);
+  });
+
+  it('anyone but a Warlock, or a Warlock\'s sword, hexes nothing; the Warlock is not yet offered', () => {
+    const sc = warlock(false);
+    staffHit(sc, sc.p);
+    expect(sc.e.hex).toBeUndefined();
+    const w = warlock(true);
+    damageEnemy(w.s, w.e, { attackerId: 'p1', damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: 0, y: 1, z: 6, style: 'sword' });
+    expect(w.e.hex).toBeUndefined();
+    expect(specsFor('staff').map((x) => x.id)).toEqual(['warlock']);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'warlock' })).not.toBeNull();
+  });
+});
