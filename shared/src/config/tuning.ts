@@ -1756,6 +1756,9 @@ export const tuning = {
     /** From the shadows (the Rogue's signature): a roll through an enemy primes the next hit for this long, to crit for `shadowCritMult`. */
     shadowWindowS: 3,
     shadowCritMult: 2,
+    /** Thornshot (the Ranger's signature): a charged shot roots a light enemy this long, and slows a heavier one this long. */
+    thornRootS: 1.5,
+    thornSlowS: 1.5,
   },
   abilities: {
     /**
@@ -2461,6 +2464,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.fanKnifeDamage': [0, 5, 0.05],
   'specs.shadowWindowS': [0, 10, 0.25],
   'specs.shadowCritMult': [1, 5, 0.05],
+  'specs.thornRootS': [0, 4, 0.1],
+  'specs.thornSlowS': [0, 4, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

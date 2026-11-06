@@ -6,8 +6,8 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { stepProjectiles } from './projectiles';
-import { bladeStorm, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { spawnArrow, stepProjectiles } from './projectiles';
+import { bladeStorm, isRooted, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -365,5 +365,61 @@ describe("the Spellblade's Blade Storm (not yet choosable)", () => {
     bladeStorm(s, p);
     expect(e.kbx).toBe(0);
     expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
+  });
+});
+
+describe("the Ranger's Thornshot (not yet choosable)", () => {
+  /** A bow hero (a Ranger or not) looses one arrow, charged or not, down the arena at the target. */
+  function shoot(ranger: boolean, charged: boolean, kind: 'grunt' | 'brute' = 'grunt') {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'idle', yaw: Math.PI, spec: ranger ? { bow: 'ranger' } : undefined });
+    let e = sc.e;
+    if (kind !== 'grunt') {
+      e.ai = 'dead';
+      e = createEnemy(sc.s, world, kind, 0, 6, 0);
+      Object.assign(e, { x: 0, z: 6, ai: 'chase', aiTime: 0, cooldown: 0, hp: 9999 });
+    }
+    const payload = { damage: 1, poise: 0, knockback: 0, heavy: false };
+    spawnArrow(sc.s, sc.p, payload, 0, tuning.rangedCombo.powerArrowSpeed, charged);
+    for (let i = 0; i < 40; i++) stepProjectiles(sc.s, DT, world.colliders);
+    expect(e.hp).toBeLessThan(9999);
+    return { ...sc, e };
+  }
+
+  it("a Ranger's charged shot roots a light enemy: it stops walking, then walks again", () => {
+    const { s, p, e } = shoot(true, true);
+    expect(isRooted(s, e)).toBe(true);
+    expect(s.events.some((ev) => ev.kind === 'rooted' && ev.enemyId === e.id)).toBe(true);
+    // Hold it far from the hero, so it wants to walk in.
+    Object.assign(e, { z: p.z - 8, vx: 0, vz: 0, kbx: 0, kbz: 0, cooldown: 99 });
+    const z0 = e.z;
+    for (let i = 0; i < 30; i++) {
+      stepEnemies(s, DT, world);
+      s.time += DT;
+    }
+    expect(Math.abs(e.z - z0)).toBeLessThan(0.01);
+    for (let i = 0; i < Math.ceil(tuning.specs.thornRootS * 60) + 30; i++) {
+      stepEnemies(s, DT, world);
+      s.time += DT;
+    }
+    expect(isRooted(s, e)).toBe(false);
+    expect(e.rootUntil).toBeUndefined();
+    expect(e.z - z0).toBeGreaterThan(0.2);
+  });
+
+  it('a heavier enemy is slowed, not rooted', () => {
+    const { s, e } = shoot(true, true, 'brute');
+    expect(isRooted(s, e)).toBe(false);
+    expect(e.slowTime).toBeCloseTo(tuning.specs.thornSlowS);
+  });
+
+  it("a quick shot, or anyone but a Ranger, roots nothing; the Ranger is not yet offered", () => {
+    for (const [ranger, charged] of [[true, false], [false, true]] as const) {
+      const { s, e } = shoot(ranger, charged);
+      expect(isRooted(s, e)).toBe(false);
+      expect(s.events.some((ev) => ev.kind === 'rooted')).toBe(false);
+    }
+    expect(specsFor('bow').map((x) => x.id)).toEqual(['ranger']);
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'ranger' })).not.toBeNull();
   });
 });

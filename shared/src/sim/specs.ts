@@ -13,7 +13,7 @@ import type { EnemyState, PlayerState, SimState } from './types';
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -71,6 +71,17 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
     sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
     built: true,
+  },
+  {
+    id: 'ranger',
+    style: 'bow',
+    name: 'Ranger',
+    element: 'nature',
+    elements: ['nature', 'earth'],
+    q: ['Bramble Rain', 'Volley seeds brambles that root.'],
+    e: ['Snare Trap', 'Disengage leaves a trap where you stood.'],
+    sig: ['Thornshot', 'Charged shots root light enemies and slow heavier ones.'],
+    built: false,
   },
 ];
 
@@ -222,6 +233,32 @@ export function holyPulse(state: SimState, p: PlayerState): void {
 
 /** The roles Blade Storm can draw in: everything but the shielded, the heavy, the elite and bosses. */
 const LIGHT_ROLES: ReadonlySet<EnemyRole> = new Set(['fodder', 'archer', 'caster', 'leader', 'charger']);
+
+/** Whether this enemy is rooted to the spot this tick: it still turns and strikes, but does not walk. */
+export function isRooted(state: SimState, e: EnemyState): boolean {
+  if (e.rootUntil === undefined) return false;
+  if (e.rootUntil > state.time) return true;
+  delete e.rootUntil;
+  return false;
+}
+
+/**
+ * Thornshot (the Ranger's signature): a Ranger's charged shot roots a light enemy it hits for
+ * `specs.thornRootS` and slows a heavier one (the shielded, heavies, elites, bosses) for
+ * `specs.thornSlowS`. Called as the arrow lands; enemies are the server's, so only its copy holds.
+ */
+export function thornshot(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
+  if (!owner || owner.spec?.bow !== 'ranger' || e.ai === 'dead') return;
+  const s = tuning.specs;
+  if (LIGHT_ROLES.has(roleOf(e.kind))) {
+    if (s.thornRootS <= 0) return;
+    const fresh = !isRooted(state, e);
+    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.thornRootS);
+    if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
+  } else if (s.thornSlowS > 0) {
+    e.slowTime = Math.max(e.slowTime, s.thornSlowS);
+  }
+}
 
 /**
  * Blade Storm (the Spellblade's Whirlwind): each tick of the spin, light enemies within

@@ -2,6 +2,7 @@ import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
+import { thornshot } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
@@ -260,6 +261,9 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     combo: skewer || undefined,
   });
   pr.hitIds.push(e.id);
+  if (pr.kind === 'arrow' && pr.charged && pr.style === 'bow' && pr.owner[0] !== 'e') {
+    thornshot(state, state.players.find((p) => p.id === pr.owner), e);
+  }
   if (ammo === 'barbed' && pr.charged && isTargetable(e)) {
     e.bleedTicks = tuning.gear.bleedTicks;
     e.bleedTimer = tuning.gear.bleedTickMs / 1000;

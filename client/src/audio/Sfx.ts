@@ -158,6 +158,11 @@ export class Sfx {
           // A Rogue's Shadowstep (the builds pass): a short breathy whoosh, falling, softer for a teammate's.
           this.noiseBurst('bandpass', 2400, 600, 2, 0.22, ev.playerId === localId ? 0.14 : 0.06);
           break;
+        case 'rooted':
+          // A Ranger's Thornshot roots (the builds pass): a woody creak and a rustle, softer for a teammate's.
+          this.tone('triangle', 180, 120, 0.25, ev.playerId === localId ? 0.12 : 0.05, 0.005);
+          this.noiseBurst('bandpass', 1800, 900, 3, 0.2, ev.playerId === localId ? 0.08 : 0.035);
+          break;
         case 'shadowPrimed':
           // From the shadows: a low hush and a soft tick, only for the Rogue whose next hit is now a crit.
           if (ev.playerId !== localId) break;

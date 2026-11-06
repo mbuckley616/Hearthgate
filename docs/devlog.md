@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 129, the Ranger's Thornshot (the builds pass, Michael's A)
+
+**What changed**
+
+Ranged's first specialization, as data and its signature, not yet offered (`built: false`, so the bow's Talents row shows the Ranger as soon). The Ranger (`SPECS` in `specs.ts`): Nature or Earth, Bramble Rain for the Volley, Snare Trap for the Disengage, from the combat builds page. Thornshot (`thornshot`, called as an arrow lands in `hitWithProjectile`): a Ranger's charged shot roots a light enemy (the roles Blade Storm draws) for `specs.thornRootS` (1.5 s) and slows a heavier one (`slowTime`) for `specs.thornSlowS` (1.5 s), both on the panel. A root is `EnemyState.rootUntil`, the server's alone: `stepEnemies` stops the walk, so the enemy still turns and strikes, and knockback still moves it. A `rooted` event plays a woody creak. The Spellblade still waits on `decisions.md`, so this went ahead to Ranged as the Next lines said. Check 419 green. Not yet seen in a browser.
+
+**Learned**
+
+A root that stops only the walk is a lighter thing than the frost ring's freeze (no thinking at all), which is what the page's "control" role wants: a rooted archer still shoots, a rooted Skeleton still swings at whoever stands close.
+
+**Next**
+
+Bramble Rain (the Volley's arrows seed brambles that root) and Snare Trap (the Disengage leaves a trap), then the Ranger is offered; then the Scout and the Assassin. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 128, the Rogue's From the shadows; the Rogue offered (the builds pass, Michael's A)
 
 **What changed**

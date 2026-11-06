@@ -305,6 +305,8 @@ export interface EnemyState {
   hitMult?: number;
   /** A Paladin's Shield Rush holds it to them until this sim time (the builds pass). The server's alone. */
   taunt?: { by: string; until: number };
+  /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
+  rootUntil?: number;
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -418,6 +420,7 @@ export type SimEvent =
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
+  | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
   | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
   /** A Rogue's Shadowstep (the builds pass): from where it left to where it stands, for the smoke and its sound. */

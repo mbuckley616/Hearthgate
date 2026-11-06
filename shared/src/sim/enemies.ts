@@ -9,7 +9,7 @@ import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLau
 import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
-import { tauntedBy } from './specs';
+import { isRooted, tauntedBy } from './specs';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -1513,6 +1513,11 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     }
     const fromX = e.x;
     const fromZ = e.z;
+    // A Ranger's root (the builds pass) stops the walk only: knockback above still moves it.
+    if (isRooted(state, e)) {
+      e.vx = 0;
+      e.vz = 0;
+    }
     if (e.ai !== 'dead' && e.ai !== 'stagger' && e.ai !== 'spawn' && e.ai !== 'roar') {
       e.x += e.vx * dt;
       e.z += e.vz * dt;
