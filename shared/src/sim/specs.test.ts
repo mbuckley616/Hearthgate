@@ -545,7 +545,7 @@ describe('the Ranger is offered (the builds pass)', () => {
   });
 });
 
-describe("the Scout's Marked (not yet choosable)", () => {
+describe("the Scout's Marked", () => {
   function scout(is: boolean) {
     const sc = scene(false);
     Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: is ? { bow: 'scout' } : undefined, flow: newFlow() });
@@ -585,7 +585,6 @@ describe("the Scout's Marked (not yet choosable)", () => {
     const other = scout(false);
     arrow(other.s, other.p);
     expect(other.e.scoutMark).toBeUndefined();
-    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'scout' })).not.toBeNull();
   });
 });
 
@@ -613,5 +612,51 @@ describe("the Scout's Storm Volley", () => {
   it('nothing in range, or anyone but a Scout, arcs nowhere', () => {
     expect(volleyAt(true, tuning.specs.stormChainRange + 2).next.hp).toBe(9999);
     expect(volleyAt(false, 3).next.hp).toBe(9999);
+  });
+});
+
+describe("the Scout's Gale Step", () => {
+  /** Disengage, then press it again `after` ticks later; returns the hero and what happened. */
+  function twice(scout: boolean, after: number) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: scout ? { bow: 'scout' } : undefined });
+    sc.p.xp = { ...sc.p.xp, bow: at10 };
+    Object.assign(sc.e, { x: 8, z: 0 });
+    const charges = sc.p.dodgeCharges;
+    let rolled = false;
+    for (let i = 0; i <= after + 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 || i === after }, DT, world, sc.s);
+      sc.s.time += DT;
+      if (sc.p.mode === 'dodge') rolled = true;
+    }
+    return { ...sc, rolled, charges };
+  }
+  const afterFlip = () => {
+    const t = abilityTiming('disengage');
+    return Math.ceil(((t.windup + t.active) * 1000) / (1000 / 60)) + 2;
+  };
+
+  it("a Scout's second press after the backflip is a full roll that spends no charge", () => {
+    const { s, p, rolled, charges } = twice(true, afterFlip());
+    expect(rolled).toBe(true);
+    expect(p.dodgeCharges).toBe(charges);
+    expect(s.events.some((ev) => ev.kind === 'galeStep')).toBe(true);
+    expect(p.galeUntil).toBeUndefined();
+  });
+
+  it('too late, or anyone but a Scout, and the press does nothing', () => {
+    const late = afterFlip() + Math.ceil(tuning.specs.galeWindowS * 60) + 20;
+    expect(twice(true, late).rolled).toBe(false);
+    expect(twice(false, afterFlip()).rolled).toBe(false);
+  });
+});
+
+describe('the Scout is offered (the builds pass)', () => {
+  it('from bow level 10, Air alone, beside the Ranger', () => {
+    expect(specsFor('bow').filter((x) => x.built).map((x) => x.id)).toEqual(['ranger', 'scout']);
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'scout' })).toBeNull();
+    const l = { ...base(0), xp: { sword: 0, bow: at10, staff: 0 } };
+    expect(readLoadout({ ...l, spec: { bow: 'scout' }, elements: { bow: 'nature' } })).toBeNull();
+    expect(readLoadout({ ...l, spec: { bow: 'scout' } })?.spec).toEqual({ bow: 'scout' });
   });
 });

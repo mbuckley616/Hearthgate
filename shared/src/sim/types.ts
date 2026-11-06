@@ -175,6 +175,8 @@ export interface PlayerState {
   elements?: SpecElements;
   /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
   shadowUntil?: number;
+  /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */
+  galeUntil?: number;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
@@ -424,6 +426,7 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'galeStep'; playerId: string; x: number; y: number; z: number }
   | { kind: 'stormChain'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; y: number }
   /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
   | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }

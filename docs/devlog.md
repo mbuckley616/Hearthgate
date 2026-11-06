@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 134, the Scout's Gale Step; the Scout offered (the builds pass, Michael's A)
+
+**What changed**
+
+Gale Step (`galeStep` and `galeReady` in `specs.ts`, read in `stepPlayer`): as a Scout's Disengage fires, a second press of the same key stays open until the backflip ends and `specs.galeWindowS` (1.2 s) after (`PlayerState.galeUntil`); pressed then, it is a full roll (`startDodge` with `free`), its i-frames and distance a roll's even with no direction held, and spends no dodge charge. A rising gust plays for it. Stepped in `stepPlayer`, so prediction rolls at once. With Sessions 132 and 133 the Scout is whole for this pass and offered on the Talents tab from bow level 10, Air alone, beside the Ranger. Check 435 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Ability presses are edges on the command, so a held key cannot roll the second step by itself; the window opens only as the Disengage fires, so a press during its windup never counts.
+
+**Next**
+
+The Assassin (Shadow or Nature): Deadeye (a fully charged shot pierces and crits from behind), Venom Volley (the Volley leaves stacking poison), Smoke Bomb (the Disengage drops smoke and the Assassin vanishes 2 s). The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 133, the Scout's Storm Volley (the builds pass, Michael's A)
 
 **What changed**

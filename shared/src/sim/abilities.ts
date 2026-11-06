@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, brambleRain, consecrate, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
+import { bladeStorm, brambleRain, consecrate, galeStep, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -255,6 +255,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       spawnArrow(state, p, payload, 0, tuning.rangedCombo.powerArrowSpeed, false, (a.disengageSlowMs + rank * tl.disengageSlowMsPerRank) / 1000);
       // Fired before the backflip moves the hero, so the trap is where they stood.
       snareTrap(state, p);
+      galeStep(state, p, abilityTiming('disengage').active);
       break;
     }
     case 'frostRing': {

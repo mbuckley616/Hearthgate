@@ -1774,6 +1774,8 @@ export const tuning = {
     /** Storm Volley (the Scout's Volley): each Volley arrow that lands arcs to the nearest other enemy this close, for this share of its damage. */
     stormChainRange: 5,
     stormChainDamage: 0.5,
+    /** Gale Step (the Scout's Disengage): how long after the backflip a second press still rolls. */
+    galeWindowS: 1.2,
   },
   abilities: {
     /**
@@ -2492,6 +2494,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.markFlowGain': [0, 20, 1],
   'specs.stormChainRange': [0, 10, 0.5],
   'specs.stormChainDamage': [0, 2, 0.05],
+  'specs.galeWindowS': [0, 3, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

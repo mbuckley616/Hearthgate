@@ -93,7 +93,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Storm Volley', 'Volley arrows chain lightning to one more enemy.'],
     e: ['Gale Step', 'Disengage twice in a row; the second is a full dodge.'],
     sig: ['Marked', 'Your shots mark. Any party hit on a marked enemy deals 10% more and fills your Flow.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -415,6 +415,24 @@ export function stormChain(state: SimState, owner: PlayerState | undefined, pr: 
     style: 'bow',
     projectile: true,
   });
+}
+
+/**
+ * Gale Step (the Scout's Disengage): as a Scout's Disengage fires, a second press is open until the
+ * backflip ends and `specs.galeWindowS` after; stepPlayer takes it as a free full roll. Both sides
+ * step it, so prediction rolls at once.
+ */
+export function galeStep(state: SimState, p: PlayerState, activeS: number): void {
+  if (p.spec?.bow !== 'scout' || p.style !== 'bow' || tuning.specs.galeWindowS <= 0) return;
+  p.galeUntil = state.time + activeS + tuning.specs.galeWindowS;
+}
+
+/** Whether this hero's second Gale Step press would roll now; a spent window is dropped. */
+export function galeReady(state: SimState, p: PlayerState): boolean {
+  if (p.galeUntil === undefined) return false;
+  if (p.galeUntil > state.time && p.spec?.bow === 'scout' && p.style === 'bow') return true;
+  delete p.galeUntil;
+  return false;
 }
 
 /**
