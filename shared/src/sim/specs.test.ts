@@ -6,7 +6,8 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { bladeStorm, consecratedMult, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { stepProjectiles } from './projectiles';
+import { bladeStorm, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -167,6 +168,29 @@ describe("the Rogue's Shadowstep", () => {
     charge(far.s, far.p);
     expect(far.s.events.some((ev) => ev.kind === 'shadowstep')).toBe(false);
     expect(far.p.z).toBeGreaterThan(far.e.z);
+  });
+});
+
+describe("the Rogue's Fan of Knives", () => {
+  it('a Rogue throws knives evenly round as the spin starts; anyone else throws none', () => {
+    const { s, p } = scene(false);
+    fanOfKnives(s, p);
+    expect(s.projectiles.length).toBe(0);
+    p.spec = { sword: 'rogue' };
+    fanOfKnives(s, p);
+    const n = tuning.specs.fanKnives;
+    expect(s.projectiles.length).toBe(n);
+    const yaws = s.projectiles.map((pr) => Math.atan2(pr.vx, pr.vz)).sort((a, b) => a - b);
+    for (let i = 1; i < n; i++) expect(yaws[i] - yaws[i - 1]).toBeCloseTo((Math.PI * 2) / n, 3);
+  });
+
+  it('a knife thrown at an enemy hurts it', () => {
+    const { s, p, e } = scene(false);
+    p.spec = { sword: 'rogue' };
+    Object.assign(p, { mode: 'idle', yaw: Math.PI });
+    fanOfKnives(s, p);
+    for (let i = 0; i < 60; i++) stepProjectiles(s, DT, world.colliders);
+    expect(e.hp).toBeLessThan(9999);
   });
 });
 

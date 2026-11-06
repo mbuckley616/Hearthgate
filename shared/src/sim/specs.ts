@@ -1,6 +1,7 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
 import { isTargetable } from './combat';
+import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
 import type { EnemyState, PlayerState, SimState } from './types';
@@ -268,4 +269,19 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'shadowstep', playerId: p.id, fromX: from.x, fromZ: from.z, x: p.x, y: p.y, z: p.z });
   return e;
+}
+
+/**
+ * Fan of Knives (the Rogue's Whirlwind): as the spin starts it throws `specs.fanKnives` knives evenly
+ * round the Rogue, each `specs.fanKnifeDamage` of a Whirlwind tick's hit, as arrows that pierce
+ * nothing; the spin itself is unchanged. Fired with the ability, so prediction throws its own at once,
+ * as a Volley's arrows are.
+ */
+export function fanOfKnives(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  const n = Math.round(s.fanKnives);
+  if (specOf(p) !== 'rogue' || n <= 0) return;
+  const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
+  state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: true });
+  for (let i = 0; i < n; i++) spawnArrow(state, p, payload, (i / n) * Math.PI * 2, tuning.rangedCombo.arrowSpeed, false);
 }

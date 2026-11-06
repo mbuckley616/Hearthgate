@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, consecrate, shadowstep, taunt } from './specs';
+import { bladeStorm, consecrate, fanOfKnives, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -180,6 +180,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
   const rank = abilityRank(p, kind);
   const base = tuning.combat.baseDamage;
   switch (kind) {
+    case 'whirlwind':
+      fanOfKnives(state, p);
+      break;
     case 'ward': {
       // The tome's ward (C5): the next hit on this hero and every ally near is absorbed, for a while.
       for (const o of state.players) {

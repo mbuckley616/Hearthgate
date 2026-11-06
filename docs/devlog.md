@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 127, the Rogue's Fan of Knives (the builds pass, Michael's A)
+
+**What changed**
+
+Fan of Knives (`fanOfKnives` in `specs.ts`, fired with the Whirlwind in `abilities.ts`): as a Rogue's spin starts it throws `specs.fanKnives` (8) knives evenly round, each `specs.fanKnifeDamage` (1.5) of a spin tick's hit, as single-pierce arrows that fly the bow's speed and range; the spin itself is unchanged. Both numbers on the panel. Fired with the ability, so the browser throws its own at once as it does a Volley's. The knives are drawn as arrows for now. Rogue still not offered. Check 413 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The page says only "throws knives in a circle", so whether they replace the spin was a choice: kept the spin, since a Rogue who loses the Whirlwind's close damage would hit less up close than a plain sword. The panel's `fanKnives` at 0 makes it the spin alone if play says otherwise.
+
+**Next**
+
+From the shadows (dodging through an enemy makes the next hit a crit from behind), then the Rogue is offered; a knife's own look after that. The Spellblade's trail and blades wait on `decisions.md`.
+
 ## 2026-11-06: Session 126, the Rogue's Shadowstep (the builds pass, Michael's A)
 
 **What changed**

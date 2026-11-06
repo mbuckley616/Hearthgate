@@ -1750,6 +1750,9 @@ export const tuning = {
     bladeStormHold: 1.4,
     /** Shadowstep (the Rogue's Charge): how far past the Charge's length a target may stand and still be stepped behind. */
     shadowstepReach: 2,
+    /** Fan of Knives (the Rogue's Whirlwind): knives thrown evenly round as the spin starts, each this share of a spin tick's hit. */
+    fanKnives: 8,
+    fanKnifeDamage: 1.5,
   },
   abilities: {
     /**
@@ -2451,6 +2454,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.bladeStormPull': [0, 12, 0.5],
   'specs.bladeStormHold': [0, 4, 0.1],
   'specs.shadowstepReach': [0, 8, 0.25],
+  'specs.fanKnives': [0, 24, 1],
+  'specs.fanKnifeDamage': [0, 5, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],
