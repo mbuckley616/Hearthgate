@@ -1,11 +1,12 @@
 import { ABILITIES, OFFHAND_ABILITY, abilityTiming, enemyStats, tuning, type AbilityKind } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
-import { damageEnemy, hitstopFor, isTargetable } from './combat';
+import { damageEnemy, hitstopFor, isTargetable, type HitSpec } from './combat';
 import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
+import { bladeStorm, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -73,15 +74,23 @@ export function stepAbility(
   switch (kind) {
     case 'charge': {
       if (!inActive || p.abilityHitIds.length > 0) break;
-      // Dash, stopping at the first enemy it meets, which staggers.
-      const distance = a.chargeDistance + rank * tl.chargeDistancePerRank;
-      const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
-      p.x += fx * step;
-      p.z += fz * step;
-      smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
-      const hit = state.enemies.find(
-        (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius + 0.25,
-      );
+      // A Rogue's first tick of the dash is a step behind its target instead (Shadowstep).
+      const stepped = t0 < timing.windup ? shadowstep(state, p, colliders) : null;
+      const sx = stepped ? Math.sin(p.yaw) : fx;
+      const sz = stepped ? Math.cos(p.yaw) : fz;
+      if (!stepped) {
+        // Dash, stopping at the first enemy it meets, which staggers.
+        const distance = a.chargeDistance + rank * tl.chargeDistancePerRank;
+        const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
+        p.x += fx * step;
+        p.z += fz * step;
+        smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
+      }
+      const hit =
+        stepped ??
+        state.enemies.find(
+          (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius + 0.25,
+        );
       if (hit) {
         p.abilityHitIds.push(hit.id);
         damageEnemy(state, hit, {
@@ -91,12 +100,13 @@ export function stepAbility(
           knockback: 1.2,
           heavy: true,
           style: p.style,
-          dirX: fx,
-          dirZ: fz,
-          x: hit.x - fx * enemyStats(hit.kind).radius,
+          dirX: sx,
+          dirZ: sz,
+          x: hit.x - sx * enemyStats(hit.kind).radius,
           y: hit.y + 1,
-          z: hit.z - fz * enemyStats(hit.kind).radius,
+          z: hit.z - sz * enemyStats(hit.kind).radius,
         });
+        taunt(state, p, hit);
         p.hitstop = hitstopFor(true);
         // Skip the rest of the dash.
         p.abilityTime = timing.windup + timing.active;
@@ -105,6 +115,7 @@ export function stepAbility(
     }
     case 'whirlwind': {
       if (!inActive) break;
+      bladeStorm(state, p);
       // Drift slowly with the move input while spinning.
       const speed = tuning.movement.runSpeed * a.whirlwindMoveFrac;
       const mag = Math.min(1, Math.hypot(cmd.moveX, cmd.moveZ));
@@ -155,6 +166,8 @@ export function stepAbility(
     }
   }
   if (kind === 'disengage' && !inActive) p.invulnerable = false;
+  // The Paladin's spin leaves its ring where it ends (Consecrate).
+  if (kind === 'whirlwind' && t0 < timing.windup + timing.active && t >= timing.windup + timing.active) consecrate(state, p);
   // Charge's dash slips hits as a roll does (C6), until it lands on someone or runs its length.
   if (kind === 'charge' && tuning.abilities.meleeGuard) p.invulnerable = p.abilityTime >= timing.windup && p.abilityTime < timing.windup + timing.active;
 
@@ -167,6 +180,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
   const rank = abilityRank(p, kind);
   const base = tuning.combat.baseDamage;
   switch (kind) {
+    case 'whirlwind':
+      fanOfKnives(state, p);
+      break;
     case 'ward': {
       // The tome's ward (C5): the next hit on this hero and every ally near is absorbed, for a while.
       for (const o of state.players) {
@@ -230,17 +246,28 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       }
       // Detonate setup: volley arrows mark what they hit.
       for (const pr of state.projectiles.slice(-n)) pr.marks = true;
+      brambleRain(state, p, colliders);
       break;
     }
     case 'disengage': {
       state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: false });
       const payload = { damage: a.disengageDamage * (1 + rank * tl.disengageDamagePerRank) * base, poise: 1, knockback: 0, heavy: false };
       spawnArrow(state, p, payload, 0, tuning.rangedCombo.powerArrowSpeed, false, (a.disengageSlowMs + rank * tl.disengageSlowMsPerRank) / 1000);
+      // Fired before the backflip moves the hero, so the trap is where they stood.
+      snareTrap(state, p);
+      galeStep(state, p, abilityTiming('disengage').active);
+      smokeBomb(state, p);
       break;
     }
     case 'frostRing': {
       const radius = a.frostRingRadius + rank * tl.frostRingRadiusPerRank;
-      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius });
+      // Curse Ring (the Warlock's): the same ring in shadow, hexing where it would freeze.
+      const curse = isCurseRing(p);
+      // Thorn Ring (the Druid's): thorns that root where the ring would freeze.
+      const thorns = isThornRing(p);
+      // Elemental Nova (the Sorcerer's): a ring of their element; a Frost Sorcerer's is the frost ring.
+      const element = novaElement(p);
+      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius, ...(curse ? { curse } : {}), ...(thorns ? { thorns } : {}), ...(element ? { element } : {}) });
       smashCircle(state, props, p.id, p.x, p.y, p.z, radius);
       for (const e of state.enemies) {
         if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
@@ -248,7 +275,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
         const dz = e.z - p.z;
         const d = Math.hypot(dx, dz);
         if (d > radius + enemyStats(e.kind).radius) continue;
-        damageEnemy(state, e, {
+        const hit: HitSpec = {
           attackerId: p.id,
           damage: a.frostRingDamage * base,
           poise: 1,
@@ -260,12 +287,21 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
           x: e.x,
           y: e.y + 1,
           z: e.z,
-          freezeTime: (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
-        });
+          freezeTime: curse || thorns ? undefined : (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
+        };
+        elementalNova(p, hit);
+        damageEnemy(state, e, hit);
+        curseRing(state, p, e);
+        thornRing(state, p, e);
       }
       break;
     }
     case 'blink': {
+      // A Warlock's Blink trades places with its target instead (Shadow Swap); the bolt after still crits.
+      if (shadowSwap(state, p, a.blinkDistance + rank * tl.blinkDistancePerRank)) {
+        p.nextBoltCrit = true;
+        break;
+      }
       // Teleport along the move input (or forward), stopping short of walls and pillars.
       const mag = Math.hypot(cmd.moveX, cmd.moveZ);
       const dir = mag > 0.1 ? { x: cmd.moveX / mag, y: 0, z: cmd.moveZ / mag } : { x: Math.sin(p.yaw), y: 0, z: Math.cos(p.yaw) };
@@ -276,7 +312,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       p.x += dir.x * dist;
       p.z += dir.z * dist;
       p.nextBoltCrit = true;
-      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z });
+      // A Druid leaves a healing grove where they stood (Wild Growth).
+      const grove = wildGrowth(state, p, from.x, from.z);
+      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, ...(grove ? { grove } : {}) });
       break;
     }
   }

@@ -2,6 +2,7 @@ import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
+import { ELEMENT_COLOUR, ELEMENT_NAMES, elementFor, specsFor, type Element, type SpecId } from '@hearthgate/shared/sim/specs';
 import {
   CONSTELLATIONS,
   championMaxRanks,
@@ -188,6 +189,15 @@ export class EquipScreen {
     this.lastDir = dir;
     if (this.tab === 'talents') {
       const style = STYLES[this.tCol];
+      // Below the board, the specialization (the builds pass): F or A steps to the next one, Q or X takes it off.
+      if (this.tRow >= TALENT_IDS.length) {
+        if (actions.pressed.has('interact')) this.cycleSpec(style);
+        else if (take) this.chooseSpec(style, null);
+        else return;
+        this.onChange();
+        this.render();
+        return;
+      }
       const id = TALENT_IDS[this.tRow];
       if (actions.pressed.has('interact')) this.profile.changeRank(style, id, 1);
       else if (take) this.profile.changeRank(style, id, -1);
@@ -268,9 +278,9 @@ export class EquipScreen {
 
   private stepTalent(dir: string): void {
     if (dir === 'left' || dir === 'right') this.tCol = (this.tCol + (dir === 'right' ? 1 : STYLES.length - 1)) % STYLES.length;
-    else this.tRow = Math.max(0, Math.min(TALENT_IDS.length - 1, this.tRow + (dir === 'down' ? 1 : -1)));
+    else this.tRow = Math.max(0, Math.min(TALENT_IDS.length, this.tRow + (dir === 'down' ? 1 : -1)));
     this.render();
-    this.body.querySelector('.talent.chosen')?.scrollIntoView({ block: 'nearest' });
+    this.body.querySelector('.talent.chosen, .spec-row.chosen')?.scrollIntoView({ block: 'nearest' });
   }
 
   private setTab(tab: Tab): void {
@@ -381,6 +391,8 @@ export class EquipScreen {
     if (action === 'rankUp' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, 1);
     if (action === 'rankDown' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, -1);
     if (action === 'respec' && style) this.profile.resetTalents(style as Style);
+    if (action === 'spec' && style) this.chooseSpec(style as Style, talent && talent !== 'none' ? (talent as SpecId) : null);
+    if (action === 'element' && style && talent) this.chooseElement(style as Style, talent as Element);
     this.onChange();
     this.render();
   }
@@ -509,11 +521,65 @@ export class EquipScreen {
       return `<div class="talent-col">
         <div class="talent-head">${STYLE_NAMES[s]} <span class="${left > 0 ? 'has' : ''}">${left} point${left === 1 ? '' : 's'}</span></div>
         ${rows}
+        ${this.specHtml(s, col, level)}
         <button class="talent-respec" data-action="respec" data-style="${s}">Reset</button>
       </div>`;
     }).join('');
     return `<div class="talent-cols">${cols}</div>
       <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or X: take off · E or Y twice: reset</div>${this.armedNote()}`;
+  }
+
+  /** A weapon kind's specialization (the builds pass): one of three from level 10, changed where slotted perks change. */
+  private specHtml(s: Style, col: number, level: number): string {
+    const specs = specsFor(s);
+    const chosen = this.tab === 'talents' && col === this.tCol && this.tRow >= TALENT_IDS.length ? ' chosen' : '';
+    if (specs.length === 0) return `<div class="spec-row locked${chosen}"><div class="talent-sub">Specialization</div><div class="talent-text">Coming in the builds pass</div></div>`;
+    if (level < tuning.specs.level) {
+      return `<div class="spec-row locked${chosen}"><div class="talent-sub">Specialization</div><div class="talent-text">Opens at level ${tuning.specs.level}: ${specs.map((x) => x.name).join(', ')}</div></div>`;
+    }
+    const mine = this.profile.specs()[s];
+    const open = this.canReslot();
+    const info = specs.find((x) => x.id === mine);
+    const buttons = specs
+      .map((x) => `<button class="spec-pick${x.id === mine ? ' on' : ''}" data-action="spec" data-style="${s}" data-talent="${x.id === mine ? 'none' : x.id}" ${!x.built || !open ? 'disabled' : ''}>${x.name}${x.built ? '' : ' <em>soon</em>'}</button>`)
+      .join('');
+    // A specialization that offers more than one element (the Spellblade's four) shows them under it.
+    const el = info ? elementFor({ spec: this.profile.specs(), elements: this.profile.elements() }, s) : undefined;
+    const elements =
+      info && info.elements.length > 1
+        ? `<div class="spec-picks">${info.elements
+            .map((x) => `<button class="spec-pick element${x === el ? ' on' : ''}" style="--el:#${ELEMENT_COLOUR[x].toString(16).padStart(6, '0')}" data-action="element" data-style="${s}" data-talent="${x}" ${!open ? 'disabled' : ''}>${ELEMENT_NAMES[x]}</button>`)
+            .join('')}</div>`
+        : '';
+    const what = info ? `${elements}<div class="talent-text"><b>${info.sig[0]}</b>: ${info.sig[1]}<br><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
+    return `<div class="spec-row${chosen}"><div class="talent-sub">Specialization${open ? '' : ' · changes in the village or a rest room'}</div><div class="spec-picks">${buttons}</div>${what}</div>`;
+  }
+
+  private chooseSpec(style: Style, id: SpecId | null): void {
+    if (!this.canReslot()) return;
+    this.profile.setSpecElement(style, id, null);
+  }
+
+  private chooseElement(style: Style, element: Element): void {
+    const id = this.profile.specs()[style];
+    if (!this.canReslot() || !id) return;
+    this.profile.setSpecElement(style, id, element);
+  }
+
+  /**
+   * F on the specialization row: none, then each built one in turn, and each of a specialization's
+   * elements in turn where it offers more than one, so the keyboard and pad reach every choice.
+   */
+  private cycleSpec(style: Style): void {
+    if (!this.canReslot()) return;
+    const steps = specsFor(style)
+      .filter((x) => x.built)
+      .flatMap((x) => x.elements.map((el) => ({ id: x.id, el })));
+    const mine = this.profile.specs()[style];
+    const el = elementFor({ spec: this.profile.specs(), elements: this.profile.elements() }, style);
+    const at = mine ? steps.findIndex((x) => x.id === mine && x.el === el) : -1;
+    const next = steps[at + 1];
+    this.profile.setSpecElement(style, next?.id ?? null, next?.el ?? null);
   }
 
   /** The three constellations (T6b): points from XP past the top level, free to move between runs until coin. */

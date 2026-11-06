@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
+import { ELEMENT_COLOUR } from '@hearthgate/shared/sim/specs';
 import { FROST } from './props';
 
 const MAX_SPARKS = 500;
@@ -201,10 +202,79 @@ export class FxView {
           this.spawnSparks(new THREE.Vector3(ev.x, 1.2, ev.z), new THREE.Vector3(0, 0.8, 0), 10, new THREE.Color(ev.perk === 'bleed' ? 0xd0302a : 0xb9a6ff));
           break;
         case 'frostRing':
+          if (ev.thorns) {
+            // A Druid's Thorn Ring (the builds pass): a ring of green and bark-brown, with leaves thrown up.
+            this.ring(ev.x, ev.z, ev.radius, 0x7fd36b, 0.9, 0.6);
+            this.ring(ev.x, ev.z, ev.radius * 0.6, 0x6b4a2a, 0.6, 0.45);
+            this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(0x9be37a));
+            break;
+          }
+          if (ev.element) {
+            // A Sorcerer's Elemental Nova (the builds pass): the ring in their element, sparks of it thrown up.
+            const c = ELEMENT_COLOUR[ev.element];
+            this.ring(ev.x, ev.z, ev.radius, c, 0.9, 0.6);
+            this.ring(ev.x, ev.z, ev.radius * 0.6, ev.element === 'fire' ? 0xffbf47 : 0xf4f8fb, 0.6, 0.45);
+            this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(c));
+            break;
+          }
+          if (ev.curse) {
+            // A Warlock's Curse Ring (the builds pass): the ring in shadow, with dark motes rising.
+            this.ring(ev.x, ev.z, ev.radius, 0xa274ff, 0.9, 0.6);
+            this.ring(ev.x, ev.z, ev.radius * 0.6, 0x4a2a80, 0.6, 0.45);
+            this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(0x7a4fd0));
+            break;
+          }
           this.ring(ev.x, ev.z, ev.radius, FROST, 0.9, 0.6);
           this.ring(ev.x, ev.z, ev.radius * 0.6, 0xe8fbff, 0.6, 0.45);
           this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(FROST));
           break;
+        case 'smokeBomb':
+          // An Assassin's Smoke Bomb (the builds pass): a dark cloud where they stood as they flipped away.
+          this.puff(ev.x, ev.y + 0.6, ev.z, 0x2a2630, 2.4, 2);
+          this.puff(ev.x, ev.y + 1.2, ev.z, 0x3a3540, 1.8, 1.6);
+          break;
+        case 'bloom':
+          // A Druid's Bloom heals (the builds pass): leaf-green motes rising off whoever the bolt passed.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1, ev.z), new THREE.Vector3(0, 1, 0), 12, new THREE.Color(0x9be37a));
+          break;
+        case 'hexed':
+          // A Warlock's hex (the builds pass): a shadow-violet wisp over the enemy.
+          this.glowPuff(ev.x, ev.y + 1.3, ev.z, 0xa274ff, 0.8, 0.4);
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1.2, ev.z), new THREE.Vector3(0, 0.5, 0), 8, new THREE.Color(0x4a2a80));
+          break;
+        case 'venom':
+          // An Assassin's Venom Volley stacks (the builds pass): a few drops of sickly green, more as it builds.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1.1, ev.z), new THREE.Vector3(0, 0.6, 0), 3 + ev.stacks * 2, new THREE.Color(0x8fe05a));
+          break;
+        case 'attune': {
+          // A Sorcerer's bolt lands in its element (Attunement): Fire's burst ring, Air's arc on, a puff of the rest.
+          const c = ELEMENT_COLOUR[ev.element];
+          if (ev.radius > 0) {
+            this.ring(ev.x, ev.z, ev.radius, c, 0.85, 0.4, ev.y - 1);
+            this.glowPuff(ev.x, ev.y, ev.z, 0xffbf47, 1.2, 0.3);
+          }
+          if (ev.toX !== undefined && ev.toZ !== undefined) {
+            const n = 5;
+            for (let i = 0; i <= n; i++) {
+              const u = i / n;
+              const at = new THREE.Vector3(ev.x + (ev.toX - ev.x) * u, ev.y + (i % 2 ? 0.15 : -0.1), ev.z + (ev.toZ - ev.z) * u);
+              this.spawnSparks(at, new THREE.Vector3(0, 0.3, 0), i === 0 || i === n ? 8 : 3, new THREE.Color(c));
+            }
+          }
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.6, 0), ev.radius > 0 ? 18 : 8, new THREE.Color(c));
+          break;
+        }
+        case 'stormChain': {
+          // A Scout's Storm Volley arcs (the builds pass): a pale crackle strung along the jump, bright at each end.
+          const n = 5;
+          for (let i = 0; i <= n; i++) {
+            const u = i / n;
+            const at = new THREE.Vector3(ev.fromX + (ev.toX - ev.fromX) * u, ev.y + (i % 2 ? 0.15 : -0.1), ev.fromZ + (ev.toZ - ev.fromZ) * u);
+            this.spawnSparks(at, new THREE.Vector3(0, 0.3, 0), i === 0 || i === n ? 8 : 3, new THREE.Color(0xdff6ff));
+          }
+          this.glowPuff(ev.toX, ev.y, ev.toZ, 0x9fe3ff, 0.9, 0.25);
+          break;
+        }
         case 'blink':
           for (const [x, z] of [
             [ev.fromX, ev.fromZ],
@@ -213,6 +283,8 @@ export class FxView {
             this.glowPuff(x, 0.9, z, 0xb59bff, 1.4, 0.35);
             this.spawnSparks(new THREE.Vector3(x, 1, z), new THREE.Vector3(0, 0.3, 0), 18, new THREE.Color(0xc8b4ff));
           }
+          // A Druid's Wild Growth: leaves spring up where they stood.
+          if (ev.grove) this.spawnSparks(new THREE.Vector3(ev.fromX, 0.3, ev.fromZ), new THREE.Vector3(0, 1.2, 0), 24, new THREE.Color(0x7fd05a));
           break;
         case 'ability':
           if (ev.ability === 'charge') this.streak(ev.x, ev.z, ev.yaw, tuning.abilities.chargeDistance);

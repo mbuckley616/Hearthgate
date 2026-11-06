@@ -6,6 +6,7 @@ import type { Mods } from './gear';
 import { createPlayer, levelHealth } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
+import type { SpecElements, Specs } from './specs';
 import { championHealth, championRevive, slotted, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -30,6 +31,10 @@ export interface Loadout {
   potions?: number;
   /** The bag's room for lumber, stone and finds (Michael, 31 Oct, A); absent, the hero is not limited. */
   bagRoom?: BagRoom;
+  /** Specializations (the builds pass), one a style, each earned by that style's level. */
+  spec?: Specs;
+  /** The element chosen for a specialization that offers more than one; each must be its specialization's. */
+  elements?: SpecElements;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -54,6 +59,10 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   else delete p.champion;
   if (l.bagRoom) p.bagRoom = { ...l.bagRoom };
   else delete p.bagRoom;
+  if (l.spec && Object.keys(l.spec).length > 0) p.spec = { ...l.spec };
+  else delete p.spec;
+  if (p.spec && l.elements && Object.keys(l.elements).length > 0) p.elements = { ...l.elements };
+  else delete p.elements;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 

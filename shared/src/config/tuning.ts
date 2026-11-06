@@ -1728,6 +1728,101 @@ export const tuning = {
    * The second ability per style unlocks at style level 2 once levels exist
    * (M4); until then all six are available. Damage is x combat.baseDamage.
    */
+  /**
+   * Specializations (the builds pass, Michael's A, 6 Nov): one of a style's three, chosen on the hero
+   * screen once that style reaches `level`, changed where slotted perks change. Each reshapes its
+   * style's two abilities; the Paladin's Shield Rush taunts what its Charge hits for `tauntSeconds`.
+   */
+  specs: {
+    level: 10,
+    tauntSeconds: 3,
+    /** Consecrate (the Paladin's Whirlwind): the ring it leaves where the spin ends, how long it lasts, and the share of a hit an ally inside still takes. */
+    consecrateSeconds: 6,
+    consecrateRadius: 3,
+    consecrateDamageTaken: 0.85,
+    /** Bulwark (the Paladin's signature): the guard holds against heavy hits; a perfect parry heals every standing hero within `bulwarkRadius` by `bulwarkHeal` of their health. */
+    bulwarkHolds: true,
+    bulwarkRadius: 4,
+    bulwarkHeal: 0.06,
+    /** Blade Storm (the Spellblade's Whirlwind): light enemies within `bladeStormRadius` are drawn in at `bladeStormPull` m/s, to `bladeStormHold` m from the hero. */
+    bladeStormRadius: 6,
+    bladeStormPull: 4,
+    bladeStormHold: 1.4,
+    /** Shadowstep (the Rogue's Charge): how far past the Charge's length a target may stand and still be stepped behind. */
+    shadowstepReach: 2,
+    /** Fan of Knives (the Rogue's Whirlwind): knives thrown evenly round as the spin starts, each this share of a spin tick's hit. */
+    fanKnives: 8,
+    fanKnifeDamage: 1.5,
+    /** From the shadows (the Rogue's signature): a roll through an enemy primes the next hit for this long, to crit for `shadowCritMult`. */
+    shadowWindowS: 3,
+    shadowCritMult: 2,
+    /** Thornshot (the Ranger's signature): a charged shot roots a light enemy this long, and slows a heavier one this long. */
+    thornRootS: 1.5,
+    thornSlowS: 1.5,
+    /** Bramble Rain (the Ranger's Volley): a patch this far ahead, this wide, for this long, rooting light enemies in it and slowing heavier ones. */
+    brambleRange: 6,
+    brambleRadius: 2.5,
+    brambleSeconds: 4,
+    /** Snare Trap (the Ranger's Disengage): a trap this wide where the Ranger stood, waiting this long; the first enemy in it is rooted (or, heavier, slowed) for `snareRootS`. */
+    snareRadius: 1,
+    snareSeconds: 12,
+    snareRootS: 2,
+    /** Marked (the Scout's signature): a Scout's arrow marks for this long; party hits on the mark deal `markDamageBonus` more and give the Scout `markFlowGain` Flow. */
+    markSeconds: 4,
+    markDamageBonus: 0.1,
+    markFlowGain: 3,
+    /** Storm Volley (the Scout's Volley): each Volley arrow that lands arcs to the nearest other enemy this close, for this share of its damage. */
+    stormChainRange: 5,
+    stormChainDamage: 0.5,
+    /** Gale Step (the Scout's Disengage): how long after the backflip a second press still rolls. */
+    galeWindowS: 1.2,
+    /** Deadeye (the Assassin's signature): a charged shot flying within this many degrees of the way an enemy faces hits its back, for this multiple. */
+    deadeyeBackDeg: 60,
+    deadeyeCritMult: 2,
+    /** Smoke Bomb (the Assassin's Disengage): how long enemies lose the Assassin. */
+    smokeSeconds: 2,
+    /** Venom Volley (the Assassin's Volley): each Volley arrow that lands adds a stack of poison, up to `venomMaxStacks`, each dealing `venomDamage` every `venomTickMs`; a new stack keeps it going `venomSeconds` more. */
+    venomSeconds: 4,
+    venomMaxStacks: 5,
+    venomTickMs: 500,
+    venomDamage: 2,
+    /** Hex (the Warlock's signature): a Warlock's staff hit hexes for this long; everyone's hits on a hexed enemy deal `hexDamageBonus` more, and the Warlock's own heal them `hexDrain` of the damage. */
+    hexSeconds: 4,
+    hexDamageBonus: 0.1,
+    hexDrain: 0.1,
+    /** Curse Ring (the Warlock's frost ring): everything the ring reaches is hexed this long, and nothing is frozen. */
+    curseRingHexS: 6,
+    /** Shadow Swap (the Warlock's Blink): how much further than a Blink's reach a targeted enemy may stand to trade places; below 0, never. */
+    swapReach: 1,
+    /** Bloom (the Druid's signature): a Druid's bolt heals each ally it passes through this share of their health, once a bolt; at this Flow tier and up it roots a light enemy it hits this long. */
+    bloomHeal: 0.04,
+    bloomRootTier: 2,
+    bloomRootS: 1,
+    /** Thorn Ring (the Druid's frost ring): light enemies the ring reaches are rooted this long, heavier ones slowed as long, and nothing is frozen. */
+    thornRingRootS: 2,
+    /** Wild Growth (the Druid's Blink): where the Druid stood, a grove this wide for this long; every standing ally in it, the Druid too, heals this share of their health a second. */
+    groveSeconds: 4,
+    groveRadius: 2.5,
+    groveHealPerS: 0.03,
+    /**
+     * Attunement (the Sorcerer's signature): a Sorcerer's bolt takes their element. Fire bursts, the
+     * enemies within attuneFireRadius of the one it hits taking attuneFireDamage of the bolt; Frost
+     * slows attuneChillS and the attuneFreezeHits-th bolt on a still-Chilled enemy freezes it
+     * attuneFreezeS; Earth's poise is multiplied by attuneEarthPoise; Air pushes attuneAirKnockback and
+     * arcs on to the nearest enemy within attuneAirRange for attuneAirDamage.
+     */
+    attuneFireRadius: 2,
+    attuneFireDamage: 0.35,
+    attuneChillS: 2.5,
+    attuneFreezeHits: 3,
+    attuneFreezeS: 1.2,
+    attuneEarthPoise: 2.5,
+    attuneAirKnockback: 1.2,
+    attuneAirRange: 5,
+    attuneAirDamage: 0.4,
+    /** Elemental Nova (the Sorcerer's frost ring): a Fire Sorcerer's ring hits this many times as hard; Earth and Air take Attunement's poise and push. */
+    novaFireDamage: 1.5,
+  },
   abilities: {
     /**
      * Melee abilities that protect (C6; Michael, 29 Oct: they "make you really vulnerable, especially
@@ -2417,6 +2512,64 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.chargeWindupMs': [0, 4000, 10],
   'abilities.chargeDashMs': [0, 4000, 10],
   'abilities.chargeRecoveryMs': [0, 4000, 10],
+  'specs.level': [1, 50, 1],
+  'specs.tauntSeconds': [0, 10, 0.5],
+  'specs.consecrateSeconds': [0, 20, 0.5],
+  'specs.consecrateRadius': [0.5, 8, 0.1],
+  'specs.consecrateDamageTaken': [0, 1, 0.05],
+  'specs.bulwarkRadius': [0, 10, 0.5],
+  'specs.bulwarkHeal': [0, 0.5, 0.01],
+  'specs.bladeStormRadius': [0, 12, 0.5],
+  'specs.bladeStormPull': [0, 12, 0.5],
+  'specs.bladeStormHold': [0, 4, 0.1],
+  'specs.shadowstepReach': [0, 8, 0.25],
+  'specs.fanKnives': [0, 24, 1],
+  'specs.fanKnifeDamage': [0, 5, 0.05],
+  'specs.shadowWindowS': [0, 10, 0.25],
+  'specs.shadowCritMult': [1, 5, 0.05],
+  'specs.thornRootS': [0, 4, 0.1],
+  'specs.thornSlowS': [0, 4, 0.1],
+  'specs.brambleRange': [0, 12, 0.5],
+  'specs.brambleRadius': [0.5, 5, 0.1],
+  'specs.brambleSeconds': [0, 10, 0.5],
+  'specs.snareRadius': [0.3, 3, 0.1],
+  'specs.snareSeconds': [0, 30, 1],
+  'specs.snareRootS': [0, 5, 0.1],
+  'specs.markSeconds': [0, 12, 0.5],
+  'specs.markDamageBonus': [0, 0.5, 0.01],
+  'specs.markFlowGain': [0, 20, 1],
+  'specs.stormChainRange': [0, 10, 0.5],
+  'specs.stormChainDamage': [0, 2, 0.05],
+  'specs.galeWindowS': [0, 3, 0.1],
+  'specs.deadeyeBackDeg': [0, 90, 5],
+  'specs.deadeyeCritMult': [1, 5, 0.05],
+  'specs.smokeSeconds': [0, 6, 0.1],
+  'specs.venomSeconds': [0, 12, 0.5],
+  'specs.venomMaxStacks': [1, 10, 1],
+  'specs.venomTickMs': [100, 2000, 50],
+  'specs.venomDamage': [0, 20, 0.5],
+  'specs.hexSeconds': [0, 12, 0.5],
+  'specs.hexDamageBonus': [0, 0.5, 0.01],
+  'specs.hexDrain': [0, 0.5, 0.01],
+  'specs.curseRingHexS': [0, 15, 0.5],
+  'specs.swapReach': [-1, 8, 0.25],
+  'specs.bloomHeal': [0, 0.25, 0.01],
+  'specs.bloomRootTier': [0, 3, 1],
+  'specs.bloomRootS': [0, 5, 0.1],
+  'specs.thornRingRootS': [0, 6, 0.1],
+  'specs.groveSeconds': [0, 12, 0.5],
+  'specs.groveRadius': [0.5, 6, 0.1],
+  'specs.groveHealPerS': [0, 0.2, 0.005],
+  'specs.attuneFireRadius': [0, 6, 0.1],
+  'specs.attuneFireDamage': [0, 2, 0.05],
+  'specs.attuneChillS': [0, 8, 0.1],
+  'specs.attuneFreezeHits': [0, 8, 1],
+  'specs.attuneFreezeS': [0, 5, 0.1],
+  'specs.attuneEarthPoise': [1, 8, 0.1],
+  'specs.attuneAirKnockback': [0, 5, 0.1],
+  'specs.attuneAirRange': [0, 12, 0.25],
+  'specs.attuneAirDamage': [0, 2, 0.05],
+  'specs.novaFireDamage': [0, 4, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

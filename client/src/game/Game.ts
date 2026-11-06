@@ -19,6 +19,7 @@ import { FxView } from '../render/FxView';
 import { HeroView } from '../render/HeroView';
 import { Nameplate } from '../render/Nameplate';
 import { TrapView } from '../render/TrapView';
+import { ConsecrateView } from '../render/ConsecrateView';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
 import { FloorView } from '../render/FloorView';
@@ -160,6 +161,14 @@ export class Game {
   private readonly drops = new DropView();
   /** A generated floor's crates, barrels and urns, and the potions out of them (D4); null elsewhere. */
   private propView: PropView | null = null;
+  /** A Paladin's Consecrate rings (the builds pass), on any level. */
+  private consecrate = new ConsecrateView();
+  /** A Ranger's Bramble Rain patches (the builds pass), drawn as Consecrate's rings in the Ranger's element. */
+  private brambles = new ConsecrateView();
+  /** A Ranger's Snare Traps, likewise. */
+  private snares = new ConsecrateView();
+  /** A Druid's Wild Growth groves, likewise. */
+  private groves = new ConsecrateView();
   private trapView: TrapView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
@@ -237,6 +246,10 @@ export class Game {
       this.telegraphs.group,
       this.drops.group,
       this.projectiles.group,
+      this.consecrate.group,
+      this.brambles.group,
+      this.snares.group,
+      this.groves.group,
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
@@ -995,6 +1008,10 @@ export class Game {
     );
     this.propView?.update(world.floor, this.presentTime, world.time);
     this.trapView?.update(world.time, world.floor);
+    this.consecrate.update(world.consecrated, world.time);
+    this.brambles.update(world.brambles, world.time);
+    this.snares.update(world.snares, world.time);
+    this.groves.update(world.groves, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();

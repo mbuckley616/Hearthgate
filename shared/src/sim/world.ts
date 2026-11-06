@@ -1,3 +1,4 @@
+import { fadeConsecrated, stepBrambles, stepGroves, stepSnares } from './specs';
 import { groundHeight, type LevelDef, type World } from '../level/arena';
 import { stepPendingHits, stepRevives } from './coop';
 import { stepDrops } from './drops';
@@ -57,10 +58,14 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
   stepPendingHits(state);
+  if (state.brambles) stepBrambles(state);
+  if (state.snares) stepSnares(state);
+  if (state.groves) stepGroves(state, dt);
   stepEnemies(state, dt, w);
   stepProjectiles(state, dt, w.colliders, world.level.dungeon?.smashable);
   stepRun(state, dt, w);
   stepDrops(state, dt);
+  if (state.consecrated) fadeConsecrated(state);
   state.tick++;
   state.time += dt;
 }

@@ -5,6 +5,7 @@ import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
+import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, type Element, type SpecElements, type SpecId, type Specs } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { readPortalChoice } from '../game/portalChoice';
@@ -170,6 +171,28 @@ export function readLoadout(v: unknown): Loadout | null {
     const stone = whole(r.stone, stack);
     if (spaces === null || lumber === null || stone === null) return null;
     loadout.bagRoom = { spaces, lumber, stone };
+  }
+  // Specializations (the builds pass): a style's own, built, and earned by that style's level.
+  if (v.spec !== undefined) {
+    if (!isObj(v.spec)) return null;
+    const spec: Specs = {};
+    for (const [style, id] of Object.entries(v.spec)) {
+      if (!STYLES.includes(style as Style) || !SPEC_IDS.includes(id as SpecId)) return null;
+      spec[style as Style] = id as SpecId;
+    }
+    if (specProblem(xp, spec)) return null;
+    if (Object.keys(spec).length > 0) loadout.spec = spec;
+  }
+  // A specialization's element (the Spellblade's four): a chosen specialization's, and one it offers.
+  if (v.elements !== undefined) {
+    if (!isObj(v.elements)) return null;
+    const elements: SpecElements = {};
+    for (const [style, el] of Object.entries(v.elements)) {
+      if (!STYLES.includes(style as Style) || !ELEMENT_IDS.includes(el as Element)) return null;
+      elements[style as Style] = el as Element;
+    }
+    if (elementProblem(loadout.spec ?? {}, elements)) return null;
+    if (Object.keys(elements).length > 0) loadout.elements = elements;
   }
   return loadout;
 }

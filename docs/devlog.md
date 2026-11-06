@@ -2,6 +2,358 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 145, the Sorcerer's Elemental Nova (the builds pass, Michael's A)
+
+**What changed**
+
+Elemental Nova (`novaElement` and `elementalNova` in `specs.ts`, applied to each hit where the frost ring fires in `stepAbility`, both sides): a Sorcerer's frost ring is a ring of their element, doing what Attunement's bolt does and freezing nothing. Fire hits `specs.novaFireDamage` (1.5) times as hard; Earth's poise is multiplied by `specs.attuneEarthPoise`, a stagger the sooner; Air throws what it reaches `specs.attuneAirKnockback` outward. A Frost Sorcerer's ring is the frost ring, freezing as ever. The `frostRing` event carries `element`, so the ring draws in the element's colour with sparks of it and sounds its own (a roaring whump, a deep thud, a rushing gust). One new number on the panel. With Session 144 the Sorcerer has two of its three pieces; it stays "soon" while its Elemental Step waits. Check 471 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The ring's poise of 1 times 2.5 still leaves a Skeleton Warrior (6 poise) standing, so an Earth Nova softens a pack for the next hit rather than staggering it outright; if Michael wants the ring itself to stagger, the panel's `specs.attuneEarthPoise` at 6 does it, for the bolts too.
+
+**Next**
+
+The Sorcerer's Elemental Step and the Spellblade's Blazing Charge trail and spectral blades wait on "The Spellblade's trail and blades" (decisions.md Pending, A recommended); once answered, both are a session each and then offered. Nothing else in the current section is ready for the builder.
+
+## 2026-11-06: Session 144, the Sorcerer's Attunement (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's third specialization, as data and its signature, not yet offered (`built: false`). The Sorcerer (`SPECS` in `specs.ts`): Fire, Frost, Earth or Air, Elemental Nova for the frost ring, Elemental Step for the Blink, from the combat builds page. Its signature, Attunement (`attuneHit` and `attuneAfter`, read where a projectile lands in `hitWithProjectile`, whose hit is now built as a `HitSpec` first so the element can reshape it): a Sorcerer's staff bolt takes their element. Fire bursts, every other standing enemy within `specs.attuneFireRadius` (2 m) taking `specs.attuneFireDamage` (35%) of the bolt; Frost slows `specs.attuneChillS` (2.5 s) and counts on the enemy (`EnemyState.attuneChill`), and the `specs.attuneFreezeHits`th (third) bolt on a still-Chilled enemy freezes it `specs.attuneFreezeS` (1.2 s), a Shatter setup either way; Earth multiplies the bolt's poise by `specs.attuneEarthPoise` (2.5), so a few bolts stagger; Air pushes at least `specs.attuneAirKnockback` (1.2 m) and arcs on to the nearest enemy within `specs.attuneAirRange` (5 m) for `specs.attuneAirDamage` (40%). An `attune` event draws each in the element's colour (Fire's ring, Air's arc) with a sound of its own. All nine numbers on the panel. The Sorcerer stays "soon" while its Elemental Step waits on the Spellblade's trail question. Check 468 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Sorcerer was not wholly blocked: only its Blink trail is the open question, so its signature and its Nova can go in ahead of the answer, as the Spellblade's Blade Storm did. Attunement touches only the bolts, not the finisher's burst; the builds page says "orbs", and the burst is worth a look once the states pass gives each element a state.
+
+**Next**
+
+Elemental Nova (the Sorcerer's frost ring becomes a ring of their element, doing what Attunement's bolt does), then the Sorcerer and the Spellblade wait only on "The Spellblade's trail and blades" (decisions.md Pending, A recommended).
+
+## 2026-11-06: Session 143, the Druid's Wild Growth; the Druid offered (the builds pass, Michael's A)
+
+**What changed**
+
+Wild Growth (`wildGrowth` and `stepGroves` in `specs.ts`, fired where the Blink goes in `stepAbility`): where a Druid stood as they Blink, a grove `specs.groveRadius` (2.5 m) across grows for `specs.groveSeconds` (4 s), one a Druid, a new one replacing their last (`SimState.groves`). Every standing ally inside, a friend, a henchman or the Druid, heals `specs.groveHealPerS` (3%) of their health a second, never past full; overlapping groves heal once, and a downed hero is not raised. The heal is stepped in `stepSim`, so prediction draws the grove at once but never heals. The Blink still goes and the next bolt still crits; the `blink` event carries `grove`, so leaves spring up where the Druid stood with a soft rustle, and the grove draws as Consecrate's ring in the Druid's element. All three numbers on the panel; at 0 seconds the Blink grows nothing. With Sessions 141 and 142 the Druid is whole for this pass, and it is offered from staff level 10, Nature or Earth. Check 462 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Four heroes' worth of rings, patches, traps and groves now each have their own `ConsecrateView` pool of four; if a fifth ground effect comes, one pooled view with a kind per ring would be tidier than a fifth copy.
+
+**Next**
+
+Magic has two of three; the Sorcerer and the Spellblade both wait on "The Spellblade's trail and blades" (decisions.md Pending, A recommended), since the Sorcerer's Elemental Step trail is the same question. With that unanswered, nothing else in the builds pass is ready.
+
+## 2026-11-06: Session 142, the Druid's Thorn Ring (the builds pass, Michael's A)
+
+**What changed**
+
+Thorn Ring (`isThornRing` and `thornRing` in `specs.ts`, read where the frost ring fires in `stepAbility`, beside Session 139's Curse Ring): a Druid's frost ring is thorns. It still hits for its damage; every light enemy it reaches is rooted for `specs.thornRingRootS` (2 s) and a heavier one slowed as long, and nothing is frozen, so it sets up no Shatter. The `frostRing` event carries `thorns`, so the ring draws green and bark-brown with leaves and sounds a woody crack. On the panel; at 0 the Druid's ring is the frost ring again. Check 458 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Both reshaped rings trade the freeze for their own state, so a party with a Warlock or a Druid loses the staff's Shatter setup; worth asking about once the states pass comes.
+
+**Next**
+
+Wild Growth (the Blink leaves a healing grove for 4 s), then the Druid is offered. The Sorcerer and the Spellblade once the trail is answered.
+
+## 2026-11-06: Session 141, the Druid's Bloom (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's second specialization, as data and its signature, not yet offered (`built: false`). The Druid (`SPECS` in `specs.ts`): Nature or Earth, Thorn Ring for the frost ring, Wild Growth for the Blink, from the combat builds page. Its signature, Bloom (`isBloomBolt`, `bloomHeal` and `bloomRoot`, read in `stepProjectiles` and `hitWithProjectile`): a Druid's staff bolt heals every standing ally it flies through (a friend or a henchman, never the Druid) `specs.bloomHeal` (4%) of their own health, once a bolt (`ProjectileState.healedIds`), and flies on to its enemy; while the Druid is at Flow tier `specs.bloomRootTier` (II) or above, a bolt that lands roots a light enemy for `specs.bloomRootS` (1 s), as a Thornshot does. A heal raises leaf-green motes and a soft chime for the Druid and whoever it healed. All three numbers on the panel. Check 456 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The friend-shaped hit test hostile arrows use (`segmentHitsCapsule`) serves a friendly bolt as well; checking allies before enemies means a bolt that stops on its enemy still heals the friend in front of it on that tick.
+
+**Next**
+
+Thorn Ring (the frost ring roots) and Wild Growth (the Blink leaves a healing grove for 4 s), then the Druid is offered. The Sorcerer and the Spellblade once the trail is answered.
+
+## 2026-11-06: Session 140, the Warlock's Shadow Swap; the Warlock offered (the builds pass, Michael's A)
+
+**What changed**
+
+Shadow Swap (`shadowSwap` in `specs.ts`, tried first where the Blink fires in `stepAbility`): a Warlock who Blinks with an enemy targeted (the soft target or the lock, as the Blink starts), no further than the Blink's own reach plus `specs.swapReach` (1 m) and on the same level, trades places with it; the enemy is turned about, the Warlock faces it, and the next bolt still crits as after any Blink. A boss is too heavy to move, and with no target, or one too far, the Blink goes as ever. Both sides step it, so prediction swaps at once. The `blink` event carries `swap`, so the shimmer at both ends gets a hollow thud. On the panel; below 0 the Warlock never swaps. With Sessions 138 and 139 the Warlock is whole for this pass, and it is offered from staff level 10, Shadow alone. Check 453 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The staff's Blink unlocks with the staff's level, so a test hero needs staff XP before its second ability does anything; the press is simply dropped otherwise.
+
+**Next**
+
+The Druid (Nature or Earth): Bloom (orbs heal allies they pass and root at Flow II and up), Thorn Ring and Wild Growth. The Sorcerer and the Spellblade once the trail is answered.
+
+## 2026-11-06: Session 139, the Warlock's Curse Ring (the builds pass, Michael's A)
+
+**What changed**
+
+Curse Ring (`isCurseRing` and `curseRing` in `specs.ts`, read where the frost ring fires in `stepAbility`): a Warlock's frost ring is the same ring in shadow. It still hits for its damage, and every enemy it reaches is hexed for `specs.curseRingHexS` (6 s, against an orb's 4), past a Shieldbearer's front too; it freezes nothing, since it is shadow and not frost, so it sets up no Shatter. An orb landing later never cuts a ring's longer hex short. The `frostRing` event carries `curse`, so the ring draws violet with dark motes and sounds a deep groan in place of the frost's crack. On the panel; at 0 the Warlock's ring is the frost ring again. Check 450 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Every staff hit already hexed through `damageEnemy`, so the ring hexed before this session; what made it the Curse Ring was trading the freeze for a longer hex. Losing the freeze means a Warlock's ring no longer sets up a friend's Shatter, a trade worth watching in play.
+
+**Next**
+
+Shadow Swap (the Blink swaps places with the targeted enemy), then the Warlock is offered. Then the Druid; the Sorcerer and the Spellblade once the trail is answered.
+
+## 2026-11-06: Session 138, the Warlock's Hex (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's first specialization, as data and its signature, not yet offered (`built: false`, so the staff's Talents row shows it as soon). The Warlock (`SPECS` in `specs.ts`): Shadow, Curse Ring for the frost ring, Shadow Swap for the Blink, from the combat builds page. Its signature, Hex (`hexedMult` and `warlockHex`, read in `damageEnemy`): every staff hit a Warlock lands hexes its enemy (`EnemyState.hex`) for `specs.hexSeconds` (4 s), after the hit's own damage; everyone's hits on a hexed enemy, a friend's sword or a henchman's included, deal `specs.hexDamageBonus` (10%) more, and the Warlock's own staff hits on it heal them `specs.hexDrain` (10%) of the damage, never past full health. A tick of damage over time neither gains nor drains. A fresh hex puts a violet wisp over the enemy and, for the Warlock alone, a low murmur. All three numbers on the panel. Check 447 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Sorcerer's Elemental Step ("Blink leaves a trail of your element") is the same open question as the Spellblade's Blazing Charge trail, so Magic starts with the Warlock, whose three pieces need no answer; whatever Michael picks for the Spellblade's trail will do for the Sorcerer's too.
+
+**Next**
+
+Curse Ring (the frost ring hexes everything inside) and Shadow Swap (the Blink swaps places with the targeted enemy), then the Warlock is offered. Then the Druid; the Sorcerer and the Spellblade once the trail is answered.
+
+## 2026-11-06: Session 137, the Assassin's Venom Volley; the Assassin offered (the builds pass, Michael's A)
+
+**What changed**
+
+Venom Volley (`venomVolley` and `stepVenom` in `specs.ts`): each Volley arrow an Assassin lands adds a stack of poison to its enemy (`EnemyState.venom`), up to `specs.venomMaxStacks` (5), and keeps it going `specs.venomSeconds` (4 s) from the newest arrow; every `specs.venomTickMs` (500 ms) it deals `specs.venomDamage` (2) a stack as damage over time (no hitstop, flinch or poise, as a bleed's), its XP to the bow. A fresh stack keeps the poison's beat, so it never brings a tick early. Five stacks are 20 a second, about a Volley arrow's worth every half second. A `venom` event plays a few green drops (more as it builds) and, for the Assassin alone, a short wet hiss. All four numbers on the panel. The Assassin is now offered from bow level 10, Shadow or Nature, so Ranged's three are whole. Check 444 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The bleed counts its ticks down from a timer; the poison keeps a sim time for its next tick instead, so stacking and refreshing are one assignment and a hitstop only delays a tick, never loses it.
+
+**Next**
+
+The Spellblade's trail and blades once answered (decisions.md Pending, A recommended); then Magic's three, the Sorcerer, Warlock and Druid, one a session.
+
+## 2026-11-06: Session 136, the Assassin's Smoke Bomb (the builds pass, Michael's A)
+
+**What changed**
+
+Smoke Bomb (`smokeBomb` and `isHidden` in `specs.ts`, fired with the Disengage): as an Assassin's Disengage fires, a dark cloud bursts where they stood and they vanish for `specs.smokeSeconds` (2 s, on the panel; `PlayerState.hiddenUntil`): `nearestTarget` passes them by, so every enemy turns to whoever else stands, and stops if no one does. A strike already swinging and the Assassin's own hits still land. A soft pop and a long hiss play for it. Assassin still not offered. Check 439 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Taking the hero out of `nearestTarget` is all a vanish needs: tokens, chases and archers' aim all start from it, so nothing else in the brains changed.
+
+**Next**
+
+Venom Volley (the Volley leaves stacking poison), which wants a poison of its own beside the bleed; then the Assassin is offered and Ranged is whole. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 135, the Assassin's Deadeye (the builds pass, Michael's A)
+
+**What changed**
+
+The Assassin as data, not yet offered (`built: false`): Shadow or Nature, Venom Volley for the Volley, Smoke Bomb for the Disengage, from the combat builds page. Its signature, Deadeye (`deadeye` in `specs.ts`, read in `hitWithProjectile`): an Assassin's charged shot, which already pierces, that strikes an enemy in the back (flying within `specs.deadeyeBackDeg`, 60 degrees, of the way it faces) deals `specs.deadeyeCritMult` (2x) and shows as a crit; from the front, or a quick shot, it is a plain hit. Both on the panel. Check 437 green. Not yet seen in a browser.
+
+**Learned**
+
+The page says "backs and heads"; Hearthgate's enemies have no head zone yet, so only the back counts. Heads would want a hit height per kind, worth asking for once a player has felt the backs.
+
+**Next**
+
+Venom Volley (stacking poison) and Smoke Bomb (the Disengage drops smoke and the Assassin vanishes 2 s), then the Assassin is offered and Ranged is whole. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 134, the Scout's Gale Step; the Scout offered (the builds pass, Michael's A)
+
+**What changed**
+
+Gale Step (`galeStep` and `galeReady` in `specs.ts`, read in `stepPlayer`): as a Scout's Disengage fires, a second press of the same key stays open until the backflip ends and `specs.galeWindowS` (1.2 s) after (`PlayerState.galeUntil`); pressed then, it is a full roll (`startDodge` with `free`), its i-frames and distance a roll's even with no direction held, and spends no dodge charge. A rising gust plays for it. Stepped in `stepPlayer`, so prediction rolls at once. With Sessions 132 and 133 the Scout is whole for this pass and offered on the Talents tab from bow level 10, Air alone, beside the Ranger. Check 435 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Ability presses are edges on the command, so a held key cannot roll the second step by itself; the window opens only as the Disengage fires, so a press during its windup never counts.
+
+**Next**
+
+The Assassin (Shadow or Nature): Deadeye (a fully charged shot pierces and crits from behind), Venom Volley (the Volley leaves stacking poison), Smoke Bomb (the Disengage drops smoke and the Assassin vanishes 2 s). The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 133, the Scout's Storm Volley (the builds pass, Michael's A)
+
+**What changed**
+
+Storm Volley (`stormChain` in `specs.ts`, called as a Volley arrow lands in `hitWithProjectile`): each Volley arrow a Scout lands arcs lightning on to the nearest other enemy within `specs.stormChainRange` (5 m) that arrow has not already hit, for `specs.stormChainDamage` (half) of its damage, at once, as a bow hit (XP, Marked's bonus and the shield check as any hit). A `stormChain` event draws a pale crackle of sparks along the jump and plays a short electric snap. Both numbers on the panel. Scout still not offered. Check 432 green. Not yet seen in a browser.
+
+**Learned**
+
+The staff's chain-bolt perk sends a second, homing projectile; the page's "chain lightning" reads better instant, so the arc is a hit at once with a drawn line, and nothing new flies.
+
+**Next**
+
+Gale Step (Disengage twice in a row, the second a full dodge), then the Scout is offered; then the Assassin. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 132, the Scout's Marked (the builds pass, Michael's A)
+
+**What changed**
+
+The Scout as data, not yet offered (`built: false`): Air, Storm Volley for the Volley, Gale Step for the Disengage, from the combat builds page. Its signature, Marked (`scoutMark` and `markedMult` in `specs.ts`): every arrow a Scout lands marks its enemy (`EnemyState.scoutMark`) for `specs.markSeconds` (4 s), after the arrow's own damage; any party hit on a marked enemy, the Scout's own and a henchman's included, deals `specs.markDamageBonus` (10%) more and gives the Scout `specs.markFlowGain` (3) Flow. A bleed's tick neither gains nor pays. A fresh mark plays a high ping for the Scout alone. All three numbers on the panel. Check 430 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Detonate setup already "marks" with the Volley (`detonateUntil`); the Scout's mark is kept apart, its own field, so a Scout's quick shots do not start setting up Detonate and the combo stays a Volley's.
+
+**Next**
+
+Storm Volley (Volley arrows chain lightning to one more enemy) and Gale Step (Disengage twice in a row, the second a full dodge), then the Scout is offered; then the Assassin. A mark's own look over the enemy is polish. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 131, the Ranger's Snare Trap; the Ranger offered (the builds pass, Michael's A)
+
+**What changed**
+
+Snare Trap (`snareTrap` in `specs.ts`, fired with the Disengage before the backflip moves the hero): where a Ranger stood as they leapt away, a trap `specs.snareRadius` (1 m) across waits `specs.snareSeconds` (12 s), one a Ranger. The first enemy to step in springs it (`stepSnares`, before the enemy step): a light one is rooted for `specs.snareRootS` (2 s), a heavier one slowed as long, with the `rooted` creak, and the trap is spent. Traps are `SimState.snares`, absent in the slice, drawn by a third ring view in the Ranger's element. With Sessions 129 and 130 the Ranger is whole for this pass, so it is offered on the Talents tab from bow level 10 (`built: true`), Nature or Earth; the server takes it and refuses any other element. Check 427 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Thornshot, Bramble Rain and the trap all land as one effect, a root that stops the walk but not the swing, so the Ranger's whole kit is one new enemy field (`rootUntil`) and three ways to set it; the later trees (Pinned prey, Overgrowth) can read the same field.
+
+**Next**
+
+The Scout (Air): Marked (shots mark; party hits on a marked enemy deal more and fill the Scout's Flow), Storm Volley (Volley arrows chain lightning to one more enemy), Gale Step (Disengage twice in a row). Then the Assassin. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 130, the Ranger's Bramble Rain (the builds pass, Michael's A)
+
+**What changed**
+
+Bramble Rain (`brambleRain` in `specs.ts`, fired with the Volley in `abilities.ts`): as a Ranger's Volley looses, a patch of brambles takes root `specs.brambleRange` (6 m) ahead, short of a wall, `specs.brambleRadius` (2.5 m) across, for `specs.brambleSeconds` (4 s); one a Ranger, a new Volley moving it. Each tick (`stepBrambles`, before the enemy step) a light enemy standing in it is rooted and a heavier one slowed, letting go a tenth of a second after it steps out. The patches are `SimState.brambles`, absent in the slice; prediction seeds its own at once and the snapshot's copy replaces it. Drawn by a second `ConsecrateView`, tinted by the Ranger's element (Nature green, Earth brown). All three numbers on the panel. Ranger still not offered. Check 423 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The page says the Volley "seeds brambles", not where; a patch ahead of the Ranger, where the Volley's spread is widest, reads as the arrows planting it and needs no per-arrow ground hit.
+
+**Next**
+
+Snare Trap (the Disengage leaves a trap where the Ranger stood), then the Ranger is offered; then the Scout and the Assassin. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 129, the Ranger's Thornshot (the builds pass, Michael's A)
+
+**What changed**
+
+Ranged's first specialization, as data and its signature, not yet offered (`built: false`, so the bow's Talents row shows the Ranger as soon). The Ranger (`SPECS` in `specs.ts`): Nature or Earth, Bramble Rain for the Volley, Snare Trap for the Disengage, from the combat builds page. Thornshot (`thornshot`, called as an arrow lands in `hitWithProjectile`): a Ranger's charged shot roots a light enemy (the roles Blade Storm draws) for `specs.thornRootS` (1.5 s) and slows a heavier one (`slowTime`) for `specs.thornSlowS` (1.5 s), both on the panel. A root is `EnemyState.rootUntil`, the server's alone: `stepEnemies` stops the walk, so the enemy still turns and strikes, and knockback still moves it. A `rooted` event plays a woody creak. The Spellblade still waits on `decisions.md`, so this went ahead to Ranged as the Next lines said. Check 419 green. Not yet seen in a browser.
+
+**Learned**
+
+A root that stops only the walk is a lighter thing than the frost ring's freeze (no thinking at all), which is what the page's "control" role wants: a rooted archer still shoots, a rooted Skeleton still swings at whoever stands close.
+
+**Next**
+
+Bramble Rain (the Volley's arrows seed brambles that root) and Snare Trap (the Disengage leaves a trap), then the Ranger is offered; then the Scout and the Assassin. The Spellblade's trail and blades once answered.
+
+## 2026-11-06: Session 128, the Rogue's From the shadows; the Rogue offered (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's signature, and with it the Rogue is offered on the Talents tab from sword level 10 (`built: true`), with its two elements, Shadow or Nature, which colour the sword's trail. From the shadows (`shadowPass` and `shadowStrike` in `specs.ts`): each tick of a Rogue's roll that overlaps a standing enemy's body primes them (`PlayerState.shadowUntil`, `specs.shadowWindowS` 3 s); their next hit on anything, not a bleed's tick, spends it to deal `specs.shadowCritMult` (2x), shows as a crit and counts as from behind, so a Shieldbearer's or Knight's front shield does not take it. A `shadowPrimed` event plays a soft hush for the Rogue alone. Both numbers on the panel. Check 416 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+"A crit from behind" is two things on our side: the damage and the shield check. Taking it as both makes the Rogue the Shieldbearer's answer from the front, which fits the roles page (a flank or backstab beats a shield) without a turn of the body.
+
+**Next**
+
+The Spellblade's Blazing Charge trail and spectral blades, once Michael answers in `decisions.md`; then Melee is whole and the next style's three (Ranged: Ranger, Scout, Assassin) follow. A knife's own look for Fan of Knives is polish.
+
+## 2026-11-06: Session 127, the Rogue's Fan of Knives (the builds pass, Michael's A)
+
+**What changed**
+
+Fan of Knives (`fanOfKnives` in `specs.ts`, fired with the Whirlwind in `abilities.ts`): as a Rogue's spin starts it throws `specs.fanKnives` (8) knives evenly round, each `specs.fanKnifeDamage` (1.5) of a spin tick's hit, as single-pierce arrows that fly the bow's speed and range; the spin itself is unchanged. Both numbers on the panel. Fired with the ability, so the browser throws its own at once as it does a Volley's. The knives are drawn as arrows for now. Rogue still not offered. Check 413 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The page says only "throws knives in a circle", so whether they replace the spin was a choice: kept the spin, since a Rogue who loses the Whirlwind's close damage would hit less up close than a plain sword. The panel's `fanKnives` at 0 makes it the spin alone if play says otherwise.
+
+**Next**
+
+From the shadows (dodging through an enemy makes the next hit a crit from behind), then the Rogue is offered; a knife's own look after that. The Spellblade's trail and blades wait on `decisions.md`.
+
+## 2026-11-06: Session 126, the Rogue's Shadowstep (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's first piece, not yet offered (`built: false`). Shadowstep (`shadowstep` in `specs.ts`, on the Charge's first active tick in `stepAbility`): a Rogue whose Charge has a target within the Charge's length plus `specs.shadowstepReach` (2 m, on the panel) steps to its far side, opposite where it faces and short of any wall (a sphere cast from the enemy), turns to it, and the Charge lands there as its usual hit, now from behind, so a Shieldbearer's front arc no longer takes it. Nothing in reach, and it is the plain dash. A `shadowstep` event carries where it left and where it stands; the browser plays a short falling whoosh for it. Check 411 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Charge already chooses its target at the start (`attackTarget`, the soft target or the lock), so the step needs no new aim; prediction steps it against the last snapshot's enemy, and a target that turned since is corrected with the next snapshot, as a Charge that met a moved enemy already was.
+
+**Next**
+
+Fan of Knives (the Rogue's Whirlwind throws knives in a circle) and From the shadows (dodging through an enemy makes the next hit a crit from behind), then the Rogue is offered. The Spellblade's trail and blades wait on `decisions.md`.
+
+## 2026-11-06: Session 125, the Spellblade's element (the builds pass, Michael's A)
+
+**What changed**
+
+A specialization now carries the elements it may be (`SpecInfo.elements`, the first its own): the Spellblade Fire, Frost, Earth or Air, the Rogue Shadow or Nature, the Paladin Holy. The choice rides as `Loadout.elements` and `PlayerState.elements`, one a style; `readLoadout` refuses an element without a specialization that offers it (`elementProblem`), `HostSession` keeps the old ones where specializations are shut, and `elementFor` reads a hero's (a stale one reads as the specialization's first). The sword trail takes it, so a Frost Spellblade's blade streaks pale blue. The Talents tab's specialization row shows a row of element buttons, each edged in its colour, under a specialization with a choice; F or A on the row now steps through every specialization and element in turn, so the keyboard and pad reach all of them. The Spellblade is still `built: false`, so none of it is offered yet. Check 409 green, test:net passed. Not yet seen in a browser.
+
+Blazing Charge's trail and the spectral blades have one line each on the builds page and no numbers, so what they do is asked in `decisions.md` Pending (A recommended: both deal damage now, coloured by the element; the numbers on the panel).
+
+**Learned**
+
+Stepping a single key through (specialization, element) pairs keeps the hero screen to F and Q; with the Sorcerer's four elements to come the same cycle covers it with no new binding.
+
+**Next**
+
+Blazing Charge and the spectral blades once Michael answers, then the Spellblade is offered. Until then, the Rogue (Shadowstep, Fan of Knives, From the shadows), whose three lines say enough to build.
+
+## 2026-11-06: Session 124, the Spellblade's Blade Storm, first part (the builds pass, Michael's A)
+
+**What changed**
+
+The Spellblade's first piece, not yet offered on the hero screen (`built: false`, so `readLoadout` still refuses it). Blade Storm (`bladeStorm` in `specs.ts`, every tick of a Spellblade's Whirlwind spin): light enemies (fodder, archer, caster, leader and charger roles) within `specs.bladeStormRadius` (6 m) are drawn toward the hero at `specs.bladeStormPull` (4 m/s), set as their knockback so the enemy step slides them along walls, and let go `specs.bladeStormHold` (1.4 m) out so the spin's edge still finds them; Shieldbearers, Brutes, Knights and bosses stand their ground. The Spellblade and Rogue now carry their signatures in `SPECS` for the hero screen. Check 406 green, test:net passed.
+
+**Learned**
+
+A knockback set each tick is a velocity, not a push: the guard's shove multiplies by the friction because it is one impulse that decays, a steady draw must not, or it runs at forty metres a second.
+
+**Next**
+
+The rest of the Spellblade before it is offered: its element chosen from Fire, Frost, Earth or Air (the hero screen and `Specs` need a place for it), Blazing Charge's trail and the spectral blades on the spin. What the trail does and what an extra blade hits for are not on the page; if they need a call, ask in decisions.md.
+
+## 2026-11-06: Session 123, the Paladin's Bulwark (the builds pass, Michael's A; the Paladin built)
+
+**What changed**
+
+Bulwark, the Paladin's signature, from the combat builds page Michael kept. A Paladin's raised guard holds against a heavy hit (`guardHoldsHeavy`, `specs.bulwarkHolds`): it takes the heavy's chip (`guard.heavyBlockDamageFrac`), is shoved like a light block and stays up, where anyone else is broken and stumbles. A Paladin's perfect parry pulses light (`holyPulse`, called from `parry`): every standing hero within `specs.bulwarkRadius` (4 m), the Paladin too, heals `specs.bulwarkHeal` (6%) of their own health, with a `holyPulse` event for a rising chord. The hero screen's specialization row now shows the signature over the two abilities. With Session 121's Shield Rush and 122's Consecrate, the Paladin is whole for this pass (its tree at 20, 30, 40 and the Crescendo wait, as Michael's A says). Check 404 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The champion constellation already has a slotted perk named Bulwark (less chip on a block); the two stack and read alike on screen. Worth a rename of one when the trees come. The parry heal includes the Paladin: the page says "allies", and a tank who heals everyone but themselves on a perfect parry felt like a trap; the panel's numbers make it easy to change.
+
+**Next**
+
+The Spellblade: its element chosen from Fire, Frost, Earth or Air, Blazing Charge, Blade Storm and spectral blades. Then the Rogue.
+
+## 2026-11-06: Session 122, the Paladin's Consecrate (the builds pass, Michael's A)
+
+**What changed**
+
+A Paladin's Whirlwind now leaves a holy ring where the spin ends (`consecrate` in `specs.ts`, called from `stepAbility` as the spin's active time runs out): `specs.consecrateRadius` 3 m, `specs.consecrateSeconds` 6, one a Paladin (a new spin moves it). Every hero standing in a live ring takes `specs.consecrateDamageTaken` (0.85) of a hit, applied in `hurtHero` beside `damageTakenMult`, before the guard; the design page's "allies inside take 15% less" includes the Paladin. The rings ride as an optional `SimState.consecrated` (with `y`, so a ramp's ring sits on the ramp) and leave the state once faded (`fadeConsecrated` in `stepSim`), so the arena and the parity hashes never see them. `client/src/render/ConsecrateView.ts` draws up to four as a gold edge and a faint wash, built once, breathing, fading over the last second. All three numbers on the panel. Check 400 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The spin's end is the one tick both prediction and the server agree on without a new field: `t0 < windup + active <= t`. A ring prediction places is thrown away with the next snapshot and the server's drawn instead, so nothing doubles.
+
+**Next**
+
+Bulwark, the Paladin's signature (the guard holds against heavy hits; a perfect parry heals allies within 4 m). Then the Spellblade.
+
+## 2026-11-06: Session 121, specializations and the Paladin's Shield Rush (the builds pass, Michael's A)
+
+**What changed**
+
+The first slice of the builds pass, to Michael's A (specializations first, one style a session, Melee's Paladin, Spellblade and Rogue first). `shared/src/sim/specs.ts` holds the nine-to-be as data (`SPECS`: style, element, the two reshaped abilities, built or not; Melee's three today, from the combat builds page Michael kept on 28 Oct) and the checks. A hero's specializations ride as `Loadout.spec` and `PlayerState.spec`, one a style; `readLoadout` refuses one that is not its style's, not built, or below that style's level 10 (`specs.level`), and `HostSession` keeps the old ones anywhere slotted perks are shut (village, a reached rest room, the antechamber are open). The Paladin's Shield Rush: a Charge that lands taunts the enemy it hit for `specs.tauntSeconds` (3), so `nearestTarget` hands every brain the Paladin while it lasts, nearer friends or not; a downed Paladin lets go. The hero screen's Talents tab has a Specialization row under each kind's board (Paladin choosable, Spellblade and Rogue shown as soon; F or A steps through, Q or X takes it off, 48 px buttons), locked with a note where it cannot change. A Paladin's sword trail is holy gold, and a taunt rings a bell. Nothing the parity test sends carries a spec, so the hashes are untouched. Check 398 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Charge stops at the first enemy it meets, so "taunts every enemy it hits" is one enemy a Rush; the design page's wording fits Whirlwind better, but its Q is Charge. Taunt state lives on the enemy and only the server steps enemies, so prediction needs nothing.
+
+**Next**
+
+The Paladin's Consecrate (Whirlwind leaves a holy ring; allies inside take less damage), then Bulwark, the signature (the guard holds against heavy hits; a perfect parry heals allies near). Then the Spellblade.
+
 ## 2026-11-06: Session 120, the builds pass asked
 
 **What changed**

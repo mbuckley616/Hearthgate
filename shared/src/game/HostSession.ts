@@ -146,6 +146,13 @@ export class HostSession {
           const kept = p.champion?.slots;
           l.champion = { xp: l.champion.xp, ranks: l.champion.ranks, ...(kept ? { slots: [...kept] } : {}) };
         }
+        // A specialization changes where slotted perks do (the builds pass: "changed freely in the village or a rest room").
+        if (!slotsOpen(this.sim, !!this.world.level.village)) {
+          if (p.spec) l.spec = { ...p.spec };
+          else delete l.spec;
+          if (p.elements) l.elements = { ...p.elements };
+          else delete l.elements;
+        }
         // Between runs a change of gear comes with full health; on a floor the phase is ante between fights
         // too, so wearing something there was a free heal (playtest, 29 Oct).
         applyLoadout(p, l, this.sim.run.phase === 'ante' && !this.sim.floor);

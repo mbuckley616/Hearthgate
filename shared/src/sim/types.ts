@@ -8,6 +8,7 @@ import type { FlowState } from './flow';
 import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
+import type { Element, SpecElements, Specs } from './specs';
 
 /**
  * Simulation state. Everything here must stay plain, serializable data
@@ -168,6 +169,16 @@ export interface PlayerState {
   look?: string[];
   /** The player's champion points (T6b), shared by their characters; absent in the slice. */
   champion?: ChampionState;
+  /** Their specializations (the builds pass), one a style from level 10; absent in the slice and below it. */
+  spec?: Specs;
+  /** The element each of those specializations was given, where it offers a choice (the Spellblade's four); absent, its first. */
+  elements?: SpecElements;
+  /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
+  shadowUntil?: number;
+  /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */
+  galeUntil?: number;
+  /** Smoke Bomb (the Assassin's Disengage): no enemy targets this hero before this sim time. Absent otherwise. */
+  hiddenUntil?: number;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
@@ -296,6 +307,18 @@ export interface EnemyState {
   guardDownUntil?: number;
   /** What its hits are multiplied by: a harder portal's (G3). Absent means 1, as in the slice. */
   hitMult?: number;
+  /** A Paladin's Shield Rush holds it to them until this sim time (the builds pass). The server's alone. */
+  taunt?: { by: string; until: number };
+  /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
+  rootUntil?: number;
+  /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
+  scoutMark?: { by: string; until: number };
+  /** An Assassin's Venom Volley poison (the builds pass): `stacks` each tick for `specs.venomDamage` at `next`, until `until`. The server's alone. */
+  venom?: { by: string; stacks: number; until: number; next: number };
+  /** A Warlock's hex (the builds pass): every hit on it deals more, and the Warlock's drain them, until `until`. */
+  hex?: { by: string; until: number };
+  /** A Frost Sorcerer's Chill (Attunement, the builds pass): bolts landed while it holds, until `until`; the next that reaches the count freezes. The server's alone. */
+  attuneChill?: { hits: number; until: number };
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -332,6 +355,8 @@ export interface ProjectileState {
   pierce: number;
   /** Enemies already hit (a projectile hits each enemy once). */
   hitIds: number[];
+  /** The heroes a Druid's bolt has healed passing through them (Bloom), each once. */
+  healedIds?: string[];
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */
@@ -409,6 +434,24 @@ export type SimEvent =
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
+  | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'bloom'; playerId: string; healedId: string; x: number; y: number; z: number; healed: number }
+  /** A Sorcerer's bolt lands in its element (Attunement): Fire's burst `radius` wide, Air's arc on to `toX`, `toZ`. */
+  | { kind: 'attune'; playerId: string; element: Element; x: number; y: number; z: number; radius: number; toX?: number; toZ?: number }
+  | { kind: 'hexed'; playerId: string; enemyId: number; x: number; y: number; z: number }
+  | { kind: 'venom'; playerId: string; enemyId: number; stacks: number; x: number; y: number; z: number }
+  | { kind: 'smokeBomb'; playerId: string; x: number; y: number; z: number }
+  | { kind: 'galeStep'; playerId: string; x: number; y: number; z: number }
+  | { kind: 'stormChain'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; y: number }
+  /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
+  | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
+  /** A Rogue's Shadowstep (the builds pass): from where it left to where it stands, for the smoke and its sound. */
+  /** A Rogue's roll went through an enemy and primed their next hit (From the shadows): a cue it is ready. */
+  | { kind: 'shadowPrimed'; playerId: string; x: number; y: number; z: number }
+  | { kind: 'shadowstep'; playerId: string; fromX: number; fromZ: number; x: number; y: number; z: number }
+  /** A Paladin's perfect parry pulsed light (Bulwark): `healed` heroes were healed. For its sound and flash. */
+  | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
@@ -424,8 +467,8 @@ export type SimEvent =
   /** Haunted (P8): a fallen enemy got up again, at half its health. */
   | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
-  | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number }
-  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number }
+  | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean; thorns?: boolean; element?: Element }
+  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean; grove?: boolean }
   | { kind: 'whirlTick'; playerId: string }
   | { kind: 'freeze'; enemyId: number }
   | { kind: 'enemyShot'; enemyId: number }
@@ -524,6 +567,22 @@ export interface PendingHit {
   hit: HeroHit;
 }
 
+/** A holy ring a Paladin's Whirlwind leaves (the builds pass): allies inside take less damage until it fades. */
+export interface ConsecratedGround {
+  by: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  until: number;
+}
+
+/** A Ranger's Bramble Rain patch (the builds pass): roots light enemies standing in it while it lasts. */
+export interface BrambleGround extends ConsecratedGround {
+  /** The Ranger's element, for its colour. */
+  element: Element;
+}
+
 export interface SimState {
   tick: number;
   /** Simulated seconds since start. */
@@ -541,6 +600,14 @@ export interface SimState {
   run: RunState;
   /** A generated floor's run (T4, floorRun.ts); never set in the arena, so its state is the slice's to the byte. */
   floor?: FloorRunState;
+  /** A Paladin's Consecrate rings on the ground (the builds pass), one a Paladin; absent in the slice. */
+  consecrated?: ConsecratedGround[];
+  /** A Ranger's Bramble Rain patches (the builds pass), one a Ranger; absent in the slice. */
+  brambles?: BrambleGround[];
+  /** A Ranger's Snare Traps (the builds pass), one a Ranger, each sprung by the first enemy in it; absent in the slice. */
+  snares?: BrambleGround[];
+  /** A Druid's Wild Growth groves (the builds pass), one a Druid, healing allies inside; absent in the slice. */
+  groves?: BrambleGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

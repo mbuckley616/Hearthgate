@@ -1,4 +1,5 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { galeReady, shadowPass } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -174,14 +175,17 @@ function aimLunge(state: SimState, p: PlayerState): void {
   }
 }
 
-function startDodge(state: SimState, p: PlayerState, cmd: PlayerCommand, moveMag: number): void {
+/** `free`: Gale Step's roll (the Scout's second Disengage), which spends no charge and is a full roll even with no direction held. */
+function startDodge(state: SimState, p: PlayerState, cmd: PlayerCommand, moveMag: number, free = false): void {
   p.mode = 'dodge';
   p.dodgeTime = 0;
   p.attackQueued = false;
   if (p.flow) p.flow.dodged = false;
   // Dodge-refund perk: a dodge right after a finisher is free.
-  const refund = p.mods.perks.includes('dodgeRefund') && p.lastFinisherAt >= 0 && state.time - p.lastFinisherAt <= tuning.gear.dodgeRefundWindowMs / 1000;
-  if (refund) {
+  const refund = !free && p.mods.perks.includes('dodgeRefund') && p.lastFinisherAt >= 0 && state.time - p.lastFinisherAt <= tuning.gear.dodgeRefundWindowMs / 1000;
+  if (free) {
+    // Nothing spent.
+  } else if (refund) {
     p.lastFinisherAt = -1;
     state.events.push({ kind: 'perk', playerId: p.id, perk: 'dodgeRefund', x: p.x, z: p.z });
   } else {
@@ -191,7 +195,7 @@ function startDodge(state: SimState, p: PlayerState, cmd: PlayerCommand, moveMag
   p.invulnerable = false;
   // Dodge along move input; with no direction held, hop backward (Michael's call).
   p.dodgeBackstep = moveMag <= 0.01;
-  p.dodgeDist = tuning.dodge.distance * (p.dodgeBackstep ? tuning.dodge.backstepDistanceFrac : 1);
+  p.dodgeDist = tuning.dodge.distance * (p.dodgeBackstep && !free ? tuning.dodge.backstepDistanceFrac : 1);
   if (!p.dodgeBackstep) {
     p.dodgeDirX = cmd.moveX / moveMag;
     p.dodgeDirZ = cmd.moveZ / moveMag;
@@ -508,6 +512,18 @@ export function stepPlayer(
     }
   }
 
+  // Gale Step (the Scout's Disengage): pressed again soon after, it is a full roll, free of a charge.
+  if (abilitySlot === 1 && p.grounded && galeReady(state, p)) {
+    const dt0 = abilityTiming('disengage');
+    const out = p.mode === 'move' || p.mode === 'guard' || (p.mode === 'ability' && p.ability === 'disengage' && p.abilityTime >= dt0.windup + dt0.active);
+    if (out) {
+      delete p.galeUntil;
+      p.invulnerable = false;
+      startDodge(state, p, cmd, moveMag, true);
+      state.events.push({ kind: 'galeStep', playerId: p.id, x: p.x, y: p.y, z: p.z });
+    }
+  }
+
   // --- Action starts ---
   if (p.mode === 'attack') {
     const hit = heroHit(p, p.attackHit);
@@ -591,6 +607,7 @@ export function stepPlayer(
     p.vx = (p.dodgeDirX * step) / dt;
     p.vz = (p.dodgeDirZ * step) / dt;
     p.invulnerable = p.dodgeTime * 1000 < dg.iframesMs;
+    shadowPass(state, p);
     if (p.dodgeTime >= T) endDodge(p);
   } else if (p.mode === 'attack') {
     if (tuning.combo.heavies && !p.attackFired) holdForHeavy(state, p, cmd);

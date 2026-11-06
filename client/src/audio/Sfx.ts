@@ -130,6 +130,25 @@ export class Sfx {
           this.swoosh(0.16, 1000, 0.35);
           break;
         case 'frostRing':
+          if (ev.thorns) {
+            // A Thorn Ring: a woody crack and a rustle, where the frost ring cracks ice.
+            this.tone('triangle', 200, 110, 0.3, 0.1, 0.005);
+            this.noiseBurst('bandpass', 1800, 700, 2, 0.4, 0.09);
+            break;
+          }
+          if (ev.element) {
+            // An Elemental Nova: Fire a roaring whump, Earth a deep thud, Air a rushing gust, where the frost ring cracks.
+            if (ev.element === 'fire') this.noiseBurst('lowpass', 1200, 200, 1, 0.5, 0.12);
+            else if (ev.element === 'earth') this.tone('sine', 120, 50, 0.4, 0.14, 0.005);
+            else this.noiseBurst('bandpass', 600, 2400, 1, 0.45, 0.1);
+            break;
+          }
+          if (ev.curse) {
+            // A Curse Ring: a deep falling groan under a hush, where the frost ring cracks.
+            this.tone('sawtooth', 260, 70, 0.6, 0.05, 0.02);
+            this.noiseBurst('lowpass', 900, 200, 1, 0.5, 0.08);
+            break;
+          }
           this.crackle();
           this.tone('sine', 1600, 500, 0.5, 0.12, 0.01);
           break;
@@ -148,6 +167,82 @@ export class Sfx {
           this.noiseBurst('lowpass', 500, 160, 1, 0.3, 0.3);
           this.tone('sine', 520, 260, 0.35, 0.1, 0.005);
           this.noiseBurst('highpass', 4000, 7000, 1, 0.35, 0.12);
+          break;
+        case 'taunt':
+          // A Paladin's Shield Rush took hold (the builds pass): a bright bell over the impact, softer for a teammate's.
+          this.tone('sine', 1320, 1300, 0.6, ev.playerId === localId ? 0.16 : 0.07, 0.005);
+          this.tone('sine', 1980, 1950, 0.4, ev.playerId === localId ? 0.08 : 0.035, 0.005);
+          break;
+        case 'shadowstep':
+          // A Rogue's Shadowstep (the builds pass): a short breathy whoosh, falling, softer for a teammate's.
+          this.noiseBurst('bandpass', 2400, 600, 2, 0.22, ev.playerId === localId ? 0.14 : 0.06);
+          break;
+        case 'rooted':
+          // A Ranger's Thornshot roots (the builds pass): a woody creak and a rustle, softer for a teammate's.
+          this.tone('triangle', 180, 120, 0.25, ev.playerId === localId ? 0.12 : 0.05, 0.005);
+          this.noiseBurst('bandpass', 1800, 900, 3, 0.2, ev.playerId === localId ? 0.08 : 0.035);
+          break;
+        case 'smokeBomb':
+          // A Smoke Bomb: a soft pop and a long hiss.
+          this.tone('sine', 300, 120, 0.12, ev.playerId === localId ? 0.1 : 0.04, 0.003);
+          this.noiseBurst('lowpass', 2000, 500, 1, 0.8, ev.playerId === localId ? 0.08 : 0.03);
+          break;
+        case 'galeStep':
+          // Gale Step's second roll: a quick rising gust, softer for a teammate's.
+          this.noiseBurst('bandpass', 700, 2600, 1.5, 0.22, ev.playerId === localId ? 0.12 : 0.05);
+          break;
+        case 'blink':
+          // A Warlock's Shadow Swap (the builds pass): a hollow thud under the Blink's shimmer as the two trade places.
+          // A Druid's Wild Growth: a soft rustle of leaves where they stood.
+          if (ev.grove) this.noiseBurst('bandpass', 1800, 3400, 2, 0.35, ev.playerId === localId ? 0.08 : 0.03);
+          if (!ev.swap) break;
+          this.tone('sine', 140, 60, 0.25, ev.playerId === localId ? 0.14 : 0.05, 0.005);
+          break;
+        case 'hexed':
+          // A Warlock's hex takes (the builds pass): a low falling murmur, only for the Warlock.
+          if (ev.playerId !== localId) break;
+          this.tone('sawtooth', 220, 110, 0.22, 0.03, 0.01);
+          this.noiseBurst('lowpass', 700, 250, 1, 0.2, 0.04);
+          break;
+        case 'venom':
+          // Venom Volley takes (the builds pass): a short wet hiss, rising a little with the stacks, only for the Assassin.
+          if (ev.playerId !== localId) break;
+          this.noiseBurst('bandpass', 1400 + ev.stacks * 160, 700, 4, 0.16, 0.06);
+          break;
+        case 'attune': {
+          // Attunement: a voice an element, softer for a teammate's. Fire a dull whump, Frost a glassy tick, Earth a thud, Air a crackle.
+          const v = ev.playerId === localId ? 1 : 0.4;
+          if (ev.element === 'fire' && ev.radius > 0) this.noiseBurst('lowpass', 900, 200, 1, 0.25, 0.1 * v);
+          else if (ev.element === 'frost') this.tone('triangle', 1900, 2400, 0.08, 0.03 * v, 0.002);
+          else if (ev.element === 'earth') this.tone('sine', 140, 70, 0.14, 0.07 * v, 0.003);
+          else if (ev.element === 'air') this.noiseBurst('highpass', 3000, 6000, 1, 0.1, 0.06 * v);
+          break;
+        }
+        case 'stormChain':
+          // Storm Volley's arc: a short electric crackle, softer for a teammate's.
+          this.noiseBurst('highpass', 3000, 6000, 1, 0.12, ev.playerId === localId ? 0.1 : 0.04);
+          this.tone('square', 220, 90, 0.08, ev.playerId === localId ? 0.03 : 0.012, 0.002);
+          break;
+        case 'scoutMarked':
+          // A Scout's arrow marks (the builds pass): a high airy ping, only for the Scout who marked it.
+          if (ev.playerId !== localId) break;
+          this.tone('sine', 1760, 2200, 0.1, 0.05, 0.003);
+          break;
+        case 'shadowPrimed':
+          // From the shadows: a low hush and a soft tick, only for the Rogue whose next hit is now a crit.
+          if (ev.playerId !== localId) break;
+          this.noiseBurst('lowpass', 900, 300, 1, 0.25, 0.08);
+          this.tone('triangle', 880, 1100, 0.12, 0.06, 0.005);
+          break;
+        case 'bloom':
+          // A Druid's bolt heals in passing (the builds pass): a soft rising chime, for the Druid and whoever it healed.
+          if (ev.playerId !== localId && ev.healedId !== localId) break;
+          this.tone('sine', 880, 1320, 0.25, 0.06, 0.01);
+          break;
+        case 'holyPulse':
+          // Bulwark's pulse on a Paladin's perfect parry: a rising chord, louder when it healed someone.
+          this.tone('sine', 660, 990, 0.5, ev.healed > 0 ? 0.14 : 0.07, 0.01);
+          this.tone('sine', 990, 1480, 0.45, ev.healed > 0 ? 0.08 : 0.04, 0.02);
           break;
         case 'chilled':
           // Caught in it: a brittle crack for the Chilled hero, quieter for a teammate.

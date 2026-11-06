@@ -9,6 +9,7 @@ import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLau
 import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
+import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -145,10 +146,14 @@ export function spawnGroup(state: SimState, world: World): void {
 }
 
 function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
+  // A Paladin's taunt holds it to them, nearer heroes or not (the builds pass).
+  const held = e.taunt ? tauntedBy(state, e) : null;
+  if (held) return held;
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {
-    if (p.mode === 'down') continue;
+    // An Assassin in their Smoke Bomb's cloud is lost to every enemy (the builds pass).
+    if (p.mode === 'down' || isHidden(state, p)) continue;
     const d = Math.hypot(p.x - e.x, p.z - e.z);
     if (d < bestD) {
       bestD = d;
@@ -787,6 +792,8 @@ function leaderBrain(state: SimState, world: World, e: EnemyState, target: Playe
         remains.hasToken = false;
         remains.frozen = 0;
         remains.bleedTicks = 0;
+        delete remains.venom;
+        delete remains.hex;
         setAi(remains, 'spawn');
         state.events.push({ kind: 'enemyRose', enemyId: remains.id, x: remains.x, z: remains.z });
         e.tele.shape = 'none';
@@ -1397,6 +1404,8 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         });
       }
     }
+    // Venom Volley's poison (the builds pass).
+    if (e.venom) stepVenom(state, e, stats.height);
     let kx = e.kbx * dt;
     let kz = e.kbz * dt;
     if (c.sweepFastMoves) {
@@ -1509,6 +1518,11 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     }
     const fromX = e.x;
     const fromZ = e.z;
+    // A Ranger's root (the builds pass) stops the walk only: knockback above still moves it.
+    if (isRooted(state, e)) {
+      e.vx = 0;
+      e.vz = 0;
+    }
     if (e.ai !== 'dead' && e.ai !== 'stagger' && e.ai !== 'spawn' && e.ai !== 'roar') {
       e.x += e.vx * dt;
       e.z += e.vz * dt;

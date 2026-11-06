@@ -7,6 +7,14 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-06: The Spellblade's trail and blades, what they do (builder, Session 125)
+The Spellblade's Blade Storm (the pull) and its element choice (Fire, Frost, Earth or Air) are built. The combat builds page gives its other two pieces one line each: Blazing Charge "leaves a trail of your element", and the signature "your spins conjure extra blades". Neither says what they hit for, and the states an element leaves wait for later (your A), so a trail cannot yet Chill or Burn.
+- **A.** Both deal damage now, coloured by the element, the same whatever it is. The trail: a 1 m strip along the Charge's path for 3 s; an enemy standing in it takes 15% of the Charge's damage a second. The blades: two spectral swords circle at the spin's edge, 1 m past the Whirlwind's reach, each hitting an enemy once a spin for 30% of the Whirlwind's damage. All numbers on the panel; when states come, the trail leaves the element's. *(recommended: both read at once and are tuned on the panel; nothing waits on the states)*
+- **B.** The trail is only a look until the states come (a coloured streak, no damage); the blades as A.
+- **C.** As A, but the blades fly out when the spin ends instead of circling: one at each of the three nearest enemies within 8 m, 40% of the Whirlwind's damage each.
+
+Until answered, the Spellblade stays "soon" on the hero screen.
+
 ## Answered
 
 ### 2026-11-06: The builds pass, what comes first and when (builder, Session 120)

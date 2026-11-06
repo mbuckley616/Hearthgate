@@ -5,6 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
+import { consecratedMult, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -156,12 +157,19 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
   const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
-  if (shieldTakes(state, e, hit, hero)) return true;
+  // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
+  const shadow = hero ? shadowStrike(state, hero, hit) : 1;
+  if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
   breakChannel(e);
-  const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  // Marked (the Scout's signature): a party hit on a Scout's mark lands harder and feeds their Flow.
+  const marked = markedMult(state, e, hero, hit.dot);
+  // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.
+  const hexed = hexedMult(state, e, hero, hit.dot);
+  const damage = hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
+  warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
   // Flow (C2): an attack's earnings land with its first hit, so a swing at nothing earns nothing.
   if (hero?.flow && hero.flow.pending > 0 && !hit.dot) {
     gainFlow(hero, hero.flow.pending);
@@ -247,7 +255,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     damage,
     heavy: hit.heavy,
     bonus: staggered,
-    crit: !!hit.crit,
+    crit: !!hit.crit || shadow > 1,
     killed,
     dirX: hit.dirX,
     dirZ: hit.dirZ,
@@ -402,6 +410,7 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   const fx = Math.sin(p.yaw);
   const fz = Math.cos(p.yaw);
   state.events.push({ kind: 'parry', playerId: p.id, x: p.x + fx * 0.6, y: p.y + 1.2, z: p.z + fz * 0.6, enemyId: e ? e.id : -1 });
+  holyPulse(state, p);
 }
 
 /**
@@ -474,7 +483,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   const d = Math.hypot(dx, dz);
   const dirX = d > 1e-3 ? dx / d : -Math.sin(p.yaw);
   const dirZ = d > 1e-3 ? dz / d : -Math.cos(p.yaw);
-  let damage = hit.damage * damageTakenMult(p);
+  // A Paladin's consecrated ground (the builds pass) takes its share off before the guard does.
+  let damage = hit.damage * damageTakenMult(p) * consecratedMult(state, p);
   let heavy = !!hit.heavy;
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
@@ -487,7 +497,16 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fx = Math.sin(p.yaw);
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
-    if (!heavy) {
+    if (heavy && guardHoldsHeavy(p)) {
+      // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
+      damage *= g.heavyBlockDamageFrac;
+      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
+      p.hp = Math.max(0, p.hp - damage);
+      if (p.hp > 0) return 'blocked';
+      heavy = false;
+    } else if (!heavy) {
       // Blocked: chip damage and a small shove, the guard holds.
       damage *= g.blockDamageFrac;
       if (slotted(p, 'bulwark')) damage *= tuning.champion.bulwarkChipMult;
