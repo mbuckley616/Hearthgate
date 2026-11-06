@@ -812,3 +812,42 @@ Its claim holds here: **117 to 50 KB/s a player on the clear rows, 173 to 64 in 
 - Sessions 99 to 108 (mini-bosses, spikes, blades, the Wraith, the Hollow King): none on my seeded floor's near rooms. The Hollow King's dim and sweeping crown remain unseen in a browser by anyone; the Hollow Crown on Hard is five floors, out of reach of a 4 fps page today.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-06 — main d628e68 through the lab, the tile fall at 150 ms, and two browsers through a cracked wall, its secret chest, a treasure room's portcullis, its guard and its chest (session 120, commit d628e68)
+
+`auto/build` is only Session 120 ahead of main (docs only), so I played main d628e68 (Sessions 115 to 119 merged). On it: `npm run check` 391/391 and both small scripts green; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m; 5 fps: 0 over 10 cm; floor walk to the rest room and deeper, no brazier stall; 60.2 ticks a second; four-player snapshot 6.0 KB); server-exit's three cases passed.
+
+**The lag lab** (`npm run lab -- --crowd` on d628e68, arena, 60 s a condition after 10 s warm-up, pages at 15 to 17 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 38 (5) | 0 (+1 placed) | 9 | 320 ms | 48 | rough |
+| 50 ms | 119 (26) | 0 (+1) | 9 | 430 ms | 53 | rough |
+| 150 ms | 50 (10) | 0 (+2) | 9 | 615 ms | 51 | rough |
+| 50 ms, ±20 jitter, 2% loss | 64 (22) | 0 (+1) | 10 | 480 ms | 50 | rough |
+| 50 ms, crowd (10.5 grunts standing) | 164 (42) | 0 (+2) | 13 | 395 ms | 58 | rough |
+
+0 page errors. Session 114's rows are on main now and the bytes hold in the lab's own run: 48 to 53 KB/s a player on the clear rows and 58 in the crowd, from 115 to 117 and 173 yesterday. Corrections are lower than yesterday on every row (101/142/153/179/196), but the pages ran at 15 to 17 fps against 9 to 10, and the 0 ms row tracks frame rate more than anything, so I credit the box, not the build. The 50 ms row sits oddly above the 150 ms one (119 against 50); 14 of its 26 over 10 cm came from Alpha's own swings, which is one run's noise in the lab's scripted fight, not a pattern I can stand behind. No network snap on any row, the crowd included.
+
+**Session 115's tile fall on a 150 ms link** (its Next asked for exactly this; `?play&floor&seed=513&pieces=16&floors=3&at=1`, one browser, enemies passive, Alpha walked to (12.5, 20.5) and then held W onto the tile at (12.5, 22), and twice on past it to z 26). Three falls, three times `fallen [0]`, hp 100 to 75, put back at z 20.6: **0 snaps**, and the fall added at most one correction of 0.17 m to the count (the largest correction of each run, 0.64 to 1.05 m, came earlier on the walk in). Yesterday on 24f5783 the same tile gave 2.73 and 2.85 m snaps. Fixed as far as a headless page can tell.
+
+**What I played** (`tests/tmp/play.mts`, two Chromium browsers through the lab proxy at 50 ms one-way, Alpha 960 x 600, Bravo 480 x 300 joining by code, god mode on, run seed 663, whose floor 1 puts the great hall's cracked wall and a treasure room keyed to the same hall within 25 m of the way in). The pages ran at about 15 fps.
+- **The portcullis, shut** (Session 118): from the tee the bars read clearly as a gate over the doorway and the room behind it is dark (`docs/critic/2026-11-06-treasure-portcullis-shut.png`). Alpha held W into it for 5 s and stopped at z 6.9, 0.65 m short of its line, with no correction.
+- **The cracked wall** (Session 117): in the great hall's fight (11 enemies, the Pale Reeve among them), two light swings at the crack left it standing; the first held heavy broke it (`broken [10000]`). The gap and the cell behind read well, the chest visible through it (`docs/critic/2026-11-06-cracked-wall-broken.png`). The secret's chest broke to a light swing; standing at it Alpha had 27 coin, 1 lumber and 1 stone at once, and walking the cell picked up the 2 pieces left (2 lumber, 2 stone, 27 coin found, no potion this time), and the corner's "Carrying 27 coin, 2 lumber, 2 stone" matched the sim.
+- **The portcullis, open, and its guard** (Sessions 118 and 119): once the hall was cleared (`cleared [3]`), the gate was up from the tee, and Alpha stepping in woke the guard: a Bone Brute at 896/896 (1.75 of 512) and two Skeleton Warriors at 96. Within 2.5 s of the step all three were on the hero at the doorway, the brute already in its slam windup (`docs/critic/2026-11-06-treasure-guard.png`). The room is 6 m wide, so the pack fills it; "spend health for the chest" reads as intended. I did not fight it out (god mode, then the cheat), so I have no number on how long the guard takes a party at level 1.
+- **The treasure chest** broke to a light swing: +21 coin, +3 lumber, +1 stone, carried (48 coin, 5 lumber, 3 stone in all).
+- 0 page errors, 0 console errors, no server errors in any run. Over the four minutes at 50 ms Alpha had 41 to 58 corrections and Bravo 14 to 27, 0 snaps each. Bravo closed his tab at the end: Alpha's party went from 2 to 1 within three seconds.
+- **Not a bug, a note for whoever writes browser tests**: `?floor&seed=N` takes the *run's* seed; the floor is built from `floorSeed(N, at)`, so looking a floor up with `floorLevel({ seed: N, ... })` gives a different one. `floorSpecFor(readRunPlan({ seed, pieces, floors }), at)` gives the floor the page plays. It cost me two runs.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both, `connect_rejected`). `meta/build` says main d628e68, server "ok", 5 Nov 21:59 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 120 (the builds pass question): docs only, nothing to play.
+- Session 119 (the treasure guard): seen in a browser for the first time, above; it wakes on the step in, not on the gate. Whether the fight is worth the chest is a human's.
+- Session 118 (treasure rooms): the gate holds shut, rises on the key room's clear, and the chest pays. Seen.
+- Session 117 (cracked walls): a light swing leaves it, a heavy breaks it, the chest pays and the pickup counts. Seen. Whether a player notices the hairline crack in the middle of a fight is a human's; I took no picture of it whole.
+- Session 116 (the brazier nudge): test:net's floor walk passed once today; one run says little about a 1-in-6 flake.
+- Session 115 (the tile fall): measured above at 150 ms, 0 snaps in 3.
+- The late-deaths item and E1i still need Michael's machine and a Crypt run; nothing headless changes that.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
