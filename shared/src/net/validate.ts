@@ -5,7 +5,7 @@ import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
-import { SPEC_IDS, specProblem, type SpecId, type Specs } from '../sim/specs';
+import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, type Element, type SpecElements, type SpecId, type Specs } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { readPortalChoice } from '../game/portalChoice';
@@ -182,6 +182,17 @@ export function readLoadout(v: unknown): Loadout | null {
     }
     if (specProblem(xp, spec)) return null;
     if (Object.keys(spec).length > 0) loadout.spec = spec;
+  }
+  // A specialization's element (the Spellblade's four): a chosen specialization's, and one it offers.
+  if (v.elements !== undefined) {
+    if (!isObj(v.elements)) return null;
+    const elements: SpecElements = {};
+    for (const [style, el] of Object.entries(v.elements)) {
+      if (!STYLES.includes(style as Style) || !ELEMENT_IDS.includes(el as Element)) return null;
+      elements[style as Style] = el as Element;
+    }
+    if (elementProblem(loadout.spec ?? {}, elements)) return null;
+    if (Object.keys(elements).length > 0) loadout.elements = elements;
   }
   return loadout;
 }

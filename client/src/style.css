@@ -1049,6 +1049,14 @@ canvas {
   color: #2a1f05;
 }
 
+.spec-pick.element {
+  border-color: var(--el);
+}
+
+.spec-pick.element.on {
+  background: var(--el);
+}
+
 .spec-pick:disabled {
   opacity: 0.4;
   cursor: default;

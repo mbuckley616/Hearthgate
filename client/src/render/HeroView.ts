@@ -24,7 +24,7 @@ import { WeaponTrail } from './WeaponTrail';
 import { frostStep } from './frost';
 import { levelFor, maxLevel } from '@hearthgate/shared/sim/gear';
 import { heroHit } from '@hearthgate/shared/sim/talents';
-import { ELEMENT_COLOUR, specInfo } from '@hearthgate/shared/sim/specs';
+import { ELEMENT_COLOUR, elementFor } from '@hearthgate/shared/sim/specs';
 
 const GLOW_COLORS: Record<Style, number> = { sword: 0xffc35a, bow: 0x9be27a, staff: 0x7fd8ff };
 /** Every weapon's glow at the top level (T6: level 50's own cosmetic). */
@@ -697,9 +697,10 @@ export class HeroView {
     // Weapon trails sample the weapon edge in world space.
     this.root.updateMatrixWorld(true);
     const swordOn = curr.style === 'sword' ? this.trailStrength : 0;
-    // A specialization's element colours the blade's trail (the builds pass): the Paladin's holy gold.
-    const swordSpec = curr.spec?.sword;
-    this.swordTrail.setColor(swordSpec ? ELEMENT_COLOUR[specInfo(swordSpec).element] : SWORD_TRAIL);
+    // A specialization's element colours the blade's trail (the builds pass): the Paladin's holy gold,
+    // the Spellblade's chosen Fire, Frost, Earth or Air.
+    const swordEl = elementFor(curr, 'sword');
+    this.swordTrail.setColor(swordEl ? ELEMENT_COLOUR[swordEl] : SWORD_TRAIL);
     this.swordTrail.push(this.sword.localToWorld(new THREE.Vector3(0, 0.3, 0)), this.sword.localToWorld(new THREE.Vector3(0, 0.98, 0)), this.time, swordOn);
     const staffOn = curr.style === 'staff' ? this.trailStrength : 0;
     this.staffTrail.push(

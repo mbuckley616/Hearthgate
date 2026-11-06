@@ -2,7 +2,7 @@ import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
-import { specsFor, type SpecId } from '@hearthgate/shared/sim/specs';
+import { ELEMENT_COLOUR, ELEMENT_NAMES, elementFor, specsFor, type Element, type SpecId } from '@hearthgate/shared/sim/specs';
 import {
   CONSTELLATIONS,
   championMaxRanks,
@@ -392,6 +392,7 @@ export class EquipScreen {
     if (action === 'rankDown' && style && talent) this.profile.changeRank(style as Style, talent as TalentId, -1);
     if (action === 'respec' && style) this.profile.resetTalents(style as Style);
     if (action === 'spec' && style) this.chooseSpec(style as Style, talent && talent !== 'none' ? (talent as SpecId) : null);
+    if (action === 'element' && style && talent) this.chooseElement(style as Style, talent as Element);
     this.onChange();
     this.render();
   }
@@ -542,21 +543,43 @@ export class EquipScreen {
     const buttons = specs
       .map((x) => `<button class="spec-pick${x.id === mine ? ' on' : ''}" data-action="spec" data-style="${s}" data-talent="${x.id === mine ? 'none' : x.id}" ${!x.built || !open ? 'disabled' : ''}>${x.name}${x.built ? '' : ' <em>soon</em>'}</button>`)
       .join('');
-    const what = info ? `<div class="talent-text"><b>${info.sig[0]}</b>: ${info.sig[1]}<br><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
+    // A specialization that offers more than one element (the Spellblade's four) shows them under it.
+    const el = info ? elementFor({ spec: this.profile.specs(), elements: this.profile.elements() }, s) : undefined;
+    const elements =
+      info && info.elements.length > 1
+        ? `<div class="spec-picks">${info.elements
+            .map((x) => `<button class="spec-pick element${x === el ? ' on' : ''}" style="--el:#${ELEMENT_COLOUR[x].toString(16).padStart(6, '0')}" data-action="element" data-style="${s}" data-talent="${x}" ${!open ? 'disabled' : ''}>${ELEMENT_NAMES[x]}</button>`)
+            .join('')}</div>`
+        : '';
+    const what = info ? `${elements}<div class="talent-text"><b>${info.sig[0]}</b>: ${info.sig[1]}<br><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
     return `<div class="spec-row${chosen}"><div class="talent-sub">Specialization${open ? '' : ' · changes in the village or a rest room'}</div><div class="spec-picks">${buttons}</div>${what}</div>`;
   }
 
   private chooseSpec(style: Style, id: SpecId | null): void {
     if (!this.canReslot()) return;
-    this.profile.setSpec(style, id);
+    this.profile.setSpecElement(style, id, null);
   }
 
-  /** F on the specialization row: none, then each built one in turn. */
+  private chooseElement(style: Style, element: Element): void {
+    const id = this.profile.specs()[style];
+    if (!this.canReslot() || !id) return;
+    this.profile.setSpecElement(style, id, element);
+  }
+
+  /**
+   * F on the specialization row: none, then each built one in turn, and each of a specialization's
+   * elements in turn where it offers more than one, so the keyboard and pad reach every choice.
+   */
   private cycleSpec(style: Style): void {
-    const built = specsFor(style).filter((x) => x.built).map((x) => x.id);
+    if (!this.canReslot()) return;
+    const steps = specsFor(style)
+      .filter((x) => x.built)
+      .flatMap((x) => x.elements.map((el) => ({ id: x.id, el })));
     const mine = this.profile.specs()[style];
-    const next = mine ? built[built.indexOf(mine) + 1] : built[0];
-    this.chooseSpec(style, next ?? null);
+    const el = elementFor({ spec: this.profile.specs(), elements: this.profile.elements() }, style);
+    const at = mine ? steps.findIndex((x) => x.id === mine && x.el === el) : -1;
+    const next = steps[at + 1];
+    this.profile.setSpecElement(style, next?.id ?? null, next?.el ?? null);
   }
 
   /** The three constellations (T6b): points from XP past the top level, free to move between runs until coin. */

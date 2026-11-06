@@ -17,7 +17,7 @@ import {
 import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { bagRoomOf, materialSpaces, roomFor, type Materials } from '@hearthgate/shared/sim/bagRoom';
-import { specProblem, type SpecId, type Specs } from '@hearthgate/shared/sim/specs';
+import { elementProblem, specProblem, type Element, type SpecElements, type SpecId, type Specs } from '@hearthgate/shared/sim/specs';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { emptyVillage, pocketSpaces, readVillageSave, stashSpaces, type VillageSave } from '@hearthgate/shared/game/villageSave';
@@ -76,6 +76,8 @@ export interface ProfileData {
   mats?: Materials;
   /** Specializations (the builds pass), one a weapon kind from level 10. */
   spec?: Specs;
+  /** The element chosen for each of those that offers more than one (the Spellblade's four). */
+  elements?: SpecElements;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -592,6 +594,7 @@ export class Profile {
       ...(this.data.potions ? { potions: this.data.potions } : {}),
       bagRoom: bagRoomOf(this.emptyPastPocket(), this.materials()),
       ...(Object.keys(this.specs()).length > 0 ? { spec: this.specs() } : {}),
+      ...(Object.keys(this.elements()).length > 0 ? { elements: this.elements() } : {}),
     };
   }
 
@@ -602,6 +605,27 @@ export class Profile {
       if (!specProblem(this.data.xp, { [s]: id })) out[s] = id;
     }
     return out;
+  }
+
+  /** The elements this hero may bring: each for a specialization they may bring, and one it offers. */
+  elements(): SpecElements {
+    const specs = this.specs();
+    const out: SpecElements = {};
+    for (const [s, el] of Object.entries(this.data.elements ?? {}) as [Style, Element][]) {
+      if (!elementProblem(specs, { [s]: el })) out[s] = el;
+    }
+    return out;
+  }
+
+  /** Choose a weapon kind's specialization and, where it offers a choice, its element (none: its first). */
+  setSpecElement(style: Style, id: SpecId | null, element: Element | null): boolean {
+    if (!this.setSpec(style, id)) return false;
+    const elements = { ...(this.data.elements ?? {}) };
+    if (id && element && !elementProblem({ [style]: id }, { [style]: element })) elements[style] = element;
+    else delete elements[style];
+    this.data.elements = elements;
+    this.save();
+    return true;
   }
 
   /** Choose a weapon kind's specialization (or none). Returns whether it took. */

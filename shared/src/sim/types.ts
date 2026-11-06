@@ -8,7 +8,7 @@ import type { FlowState } from './flow';
 import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
-import type { Specs } from './specs';
+import type { SpecElements, Specs } from './specs';
 
 /**
  * Simulation state. Everything here must stay plain, serializable data
@@ -171,6 +171,8 @@ export interface PlayerState {
   champion?: ChampionState;
   /** Their specializations (the builds pass), one a style from level 10; absent in the slice and below it. */
   spec?: Specs;
+  /** The element each of those specializations was given, where it offers a choice (the Spellblade's four); absent, its first. */
+  elements?: SpecElements;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */

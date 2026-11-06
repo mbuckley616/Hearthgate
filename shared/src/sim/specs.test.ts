@@ -6,7 +6,7 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { bladeStorm, consecratedMult, fadeConsecrated, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, consecratedMult, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -37,6 +37,39 @@ describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
     expect(readLoadout({ ...base(at10 - 1), spec: { sword: 'paladin' } })).toBeNull();
     expect(readLoadout({ ...base(at10), spec: { sword: 'warlord' } })).toBeNull();
     expect(readLoadout(base(0))?.spec).toBeUndefined();
+  });
+});
+
+describe("a specialization's element (the Spellblade chooses Fire, Frost, Earth or Air)", () => {
+  it('the Spellblade offers four, the Paladin only holy, and a specialization starts at its first', () => {
+    expect(specInfo('spellblade').elements).toEqual(['fire', 'frost', 'earth', 'air']);
+    expect(specInfo('paladin').elements).toEqual(['holy']);
+    for (const x of specsFor('sword')) expect(x.elements[0]).toBe(x.element);
+    expect(elementFor({ spec: { sword: 'spellblade' } }, 'sword')).toBe('fire');
+    expect(elementFor({ spec: { sword: 'spellblade' }, elements: { sword: 'frost' } }, 'sword')).toBe('frost');
+    expect(elementFor({}, 'sword')).toBeUndefined();
+  });
+
+  it("an element must be one its style's specialization offers", () => {
+    expect(elementProblem({ sword: 'spellblade' }, { sword: 'air' })).toBeNull();
+    expect(elementProblem({ sword: 'spellblade' }, { sword: 'holy' })).not.toBeNull();
+    expect(elementProblem({ sword: 'paladin' }, { sword: 'fire' })).not.toBeNull();
+    expect(elementProblem({}, { sword: 'fire' })).not.toBeNull();
+    // A stale choice never colours anything: one the specialization does not offer reads as its own.
+    expect(elementFor({ spec: { sword: 'paladin' }, elements: { sword: 'fire' } }, 'sword')).toBe('holy');
+  });
+
+  it('the server takes an element only with a specialization that offers it, and the hero carries it', () => {
+    const ok = readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'holy' } });
+    expect(ok?.elements).toEqual({ sword: 'holy' });
+    expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'fire' } })).toBeNull();
+    expect(readLoadout({ ...base(at10), elements: { sword: 'holy' } })).toBeNull();
+    expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'plasma' } })).toBeNull();
+    const s = createSimState(arena, [], world);
+    const p = addPlayer(s, world, 'p1', ok!, false);
+    expect(p.elements).toEqual({ sword: 'holy' });
+    applyLoadout(p, base(at10), false);
+    expect(p.elements).toBeUndefined();
   });
 });
 

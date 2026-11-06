@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 125, the Spellblade's element (the builds pass, Michael's A)
+
+**What changed**
+
+A specialization now carries the elements it may be (`SpecInfo.elements`, the first its own): the Spellblade Fire, Frost, Earth or Air, the Rogue Shadow or Nature, the Paladin Holy. The choice rides as `Loadout.elements` and `PlayerState.elements`, one a style; `readLoadout` refuses an element without a specialization that offers it (`elementProblem`), `HostSession` keeps the old ones where specializations are shut, and `elementFor` reads a hero's (a stale one reads as the specialization's first). The sword trail takes it, so a Frost Spellblade's blade streaks pale blue. The Talents tab's specialization row shows a row of element buttons, each edged in its colour, under a specialization with a choice; F or A on the row now steps through every specialization and element in turn, so the keyboard and pad reach all of them. The Spellblade is still `built: false`, so none of it is offered yet. Check 409 green, test:net passed. Not yet seen in a browser.
+
+Blazing Charge's trail and the spectral blades have one line each on the builds page and no numbers, so what they do is asked in `decisions.md` Pending (A recommended: both deal damage now, coloured by the element; the numbers on the panel).
+
+**Learned**
+
+Stepping a single key through (specialization, element) pairs keeps the hero screen to F and Q; with the Sorcerer's four elements to come the same cycle covers it with no new binding.
+
+**Next**
+
+Blazing Charge and the spectral blades once Michael answers, then the Spellblade is offered. Until then, the Rogue (Shadowstep, Fan of Knives, From the shadows), whose three lines say enough to build.
+
 ## 2026-11-06: Session 124, the Spellblade's Blade Storm, first part (the builds pass, Michael's A)
 
 **What changed**

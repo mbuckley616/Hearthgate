@@ -150,6 +150,8 @@ export class HostSession {
         if (!slotsOpen(this.sim, !!this.world.level.village)) {
           if (p.spec) l.spec = { ...p.spec };
           else delete l.spec;
+          if (p.elements) l.elements = { ...p.elements };
+          else delete l.elements;
         }
         // Between runs a change of gear comes with full health; on a floor the phase is ante between fights
         // too, so wearing something there was a free heal (playtest, 29 Oct).

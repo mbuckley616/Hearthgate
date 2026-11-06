@@ -14,12 +14,16 @@ export type SpecId = 'paladin' | 'spellblade' | 'rogue';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
+/** The element a hero chose for a style's specialization, where it offers more than one. */
+export type SpecElements = Partial<Record<Style, Element>>;
 
 export interface SpecInfo {
   id: SpecId;
   style: Style;
   name: string;
   element: Element;
+  /** The elements it may be: the first is `element`, the one it has until another is chosen. */
+  elements: readonly Element[];
   /** Its versions of the style's two abilities, and what each does differently. */
   q: [string, string];
   e: [string, string];
@@ -36,6 +40,7 @@ export const SPECS: readonly SpecInfo[] = [
     style: 'sword',
     name: 'Paladin',
     element: 'holy',
+    elements: ['holy'],
     q: ['Shield Rush', 'Charge taunts the enemy it hits: it turns on you for 3 s.'],
     e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take 15% less damage.'],
     sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals allies within 4 m.'],
@@ -46,6 +51,8 @@ export const SPECS: readonly SpecInfo[] = [
     style: 'sword',
     name: 'Spellblade',
     element: 'fire',
+    // The Fighter became the Spellblade, choosing as the Sorcerer does (decisions.md, the builds page).
+    elements: ['fire', 'frost', 'earth', 'air'],
     q: ['Blazing Charge', 'Charge leaves a trail of your element.'],
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
     sig: ['Spectral blades', 'Your spins conjure extra blades.'],
@@ -56,6 +63,7 @@ export const SPECS: readonly SpecInfo[] = [
     style: 'sword',
     name: 'Rogue',
     element: 'shadow',
+    elements: ['shadow', 'nature'],
     q: ['Shadowstep', 'Charge becomes a step behind the target.'],
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
     sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
@@ -84,6 +92,37 @@ export const ELEMENT_COLOUR: Record<Element, number> = {
   shadow: 0xa274ff,
   nature: 0x7fd36b,
 };
+
+export const ELEMENT_NAMES: Record<Element, string> = {
+  holy: 'Holy',
+  fire: 'Fire',
+  frost: 'Frost',
+  earth: 'Earth',
+  air: 'Air',
+  shadow: 'Shadow',
+  nature: 'Nature',
+};
+
+export const ELEMENT_IDS = Object.keys(ELEMENT_COLOUR) as Element[];
+
+/** Why a choice of elements could not go with these specializations, or null: each a chosen specialization's, and one it offers. */
+export function elementProblem(specs: Specs, elements: SpecElements): string | null {
+  for (const [style, el] of Object.entries(elements) as [Style, Element][]) {
+    const id = specs[style];
+    if (!id) return `no ${style} specialization to be ${String(el)}`;
+    if (!specInfo(id).elements.includes(el)) return `${specInfo(id).name} cannot be ${String(el)}`;
+  }
+  return null;
+}
+
+/** The element a style's specialization has for this hero: the one they chose, or its own first. */
+export function elementFor(p: Pick<PlayerState, 'spec' | 'elements'>, style: Style): Element | undefined {
+  const id = p.spec?.[style];
+  if (!id) return undefined;
+  const chosen = p.elements?.[style];
+  const info = specInfo(id);
+  return chosen && info.elements.includes(chosen) ? chosen : info.element;
+}
 
 /** Why a set of specializations could not be this hero's, or null: its style's, built, and earned by level. */
 export function specProblem(xp: Record<Style, number>, specs: Specs): string | null {
