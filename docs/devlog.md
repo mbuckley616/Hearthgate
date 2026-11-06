@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 140, the Warlock's Shadow Swap; the Warlock offered (the builds pass, Michael's A)
+
+**What changed**
+
+Shadow Swap (`shadowSwap` in `specs.ts`, tried first where the Blink fires in `stepAbility`): a Warlock who Blinks with an enemy targeted (the soft target or the lock, as the Blink starts), no further than the Blink's own reach plus `specs.swapReach` (1 m) and on the same level, trades places with it; the enemy is turned about, the Warlock faces it, and the next bolt still crits as after any Blink. A boss is too heavy to move, and with no target, or one too far, the Blink goes as ever. Both sides step it, so prediction swaps at once. The `blink` event carries `swap`, so the shimmer at both ends gets a hollow thud. On the panel; below 0 the Warlock never swaps. With Sessions 138 and 139 the Warlock is whole for this pass, and it is offered from staff level 10, Shadow alone. Check 453 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The staff's Blink unlocks with the staff's level, so a test hero needs staff XP before its second ability does anything; the press is simply dropped otherwise.
+
+**Next**
+
+The Druid (Nature or Earth): Bloom (orbs heal allies they pass and root at Flow II and up), Thorn Ring and Wild Growth. The Sorcerer and the Spellblade once the trail is answered.
+
 ## 2026-11-06: Session 139, the Warlock's Curse Ring (the builds pass, Michael's A)
 
 **What changed**

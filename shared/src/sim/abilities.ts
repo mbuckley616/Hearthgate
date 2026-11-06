@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, brambleRain, consecrate, curseRing, galeStep, isCurseRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
+import { bladeStorm, brambleRain, consecrate, curseRing, galeStep, isCurseRing, shadowSwap, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -290,6 +290,11 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       break;
     }
     case 'blink': {
+      // A Warlock's Blink trades places with its target instead (Shadow Swap); the bolt after still crits.
+      if (shadowSwap(state, p, a.blinkDistance + rank * tl.blinkDistancePerRank)) {
+        p.nextBoltCrit = true;
+        break;
+      }
       // Teleport along the move input (or forward), stopping short of walls and pillars.
       const mag = Math.hypot(cmd.moveX, cmd.moveZ);
       const dir = mag > 0.1 ? { x: cmd.moveX / mag, y: 0, z: cmd.moveZ / mag } : { x: Math.sin(p.yaw), y: 0, z: Math.cos(p.yaw) };

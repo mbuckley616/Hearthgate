@@ -1792,6 +1792,8 @@ export const tuning = {
     hexDrain: 0.1,
     /** Curse Ring (the Warlock's frost ring): everything the ring reaches is hexed this long, and nothing is frozen. */
     curseRingHexS: 6,
+    /** Shadow Swap (the Warlock's Blink): how much further than a Blink's reach a targeted enemy may stand to trade places; below 0, never. */
+    swapReach: 1,
   },
   abilities: {
     /**
@@ -2522,6 +2524,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.hexDamageBonus': [0, 0.5, 0.01],
   'specs.hexDrain': [0, 0.5, 0.01],
   'specs.curseRingHexS': [0, 15, 0.5],
+  'specs.swapReach': [-1, 8, 0.25],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

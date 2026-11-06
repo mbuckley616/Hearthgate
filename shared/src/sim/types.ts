@@ -461,7 +461,7 @@ export type SimEvent =
   | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
   | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean }
-  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number }
+  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean }
   | { kind: 'whirlTick'; playerId: string }
   | { kind: 'freeze'; enemyId: number }
   | { kind: 'enemyShot'; enemyId: number }

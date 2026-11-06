@@ -115,7 +115,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Curse Ring', 'Frost ring hexes everything inside.'],
     e: ['Shadow Swap', 'Blink swaps places with the targeted enemy.'],
     sig: ['Hex', 'Your spells hex. Hexed enemies take 10% more from everyone, and your hits on them drain health.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -443,6 +443,28 @@ export function curseRing(state: SimState, p: PlayerState, e: EnemyState): void 
   if (!isCurseRing(p) || !isTargetable(e)) return;
   const until = state.time + tuning.specs.curseRingHexS;
   if (!e.hex || e.hex.until < until) e.hex = { by: p.id, until };
+}
+
+/**
+ * Shadow Swap (the Warlock's Blink): with an enemy targeted as the Blink starts, no further than the
+ * Blink would go plus `specs.swapReach` and on the same level, the Warlock and it change places, the
+ * enemy turned about; a boss is too heavy to move and the Blink goes as ever. Both sides step it, so
+ * prediction swaps at once and the server's copy of the enemy settles where it lands.
+ */
+export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: number): boolean {
+  if (p.spec?.staff !== 'warlock' || p.style !== 'staff' || tuning.specs.swapReach < 0 || p.attackTarget < 0) return false;
+  const e = state.enemies.find((o) => o.id === p.attackTarget);
+  if (!e || !isTargetable(e) || roleOf(e.kind) === 'boss' || Math.abs(e.y - p.y) > 1.2) return false;
+  if (Math.hypot(e.x - p.x, e.z - p.z) > blinkDistance + tuning.specs.swapReach) return false;
+  const from = { x: p.x, z: p.z };
+  p.x = e.x;
+  p.z = e.z;
+  e.x = from.x;
+  e.z = from.z;
+  e.yaw += Math.PI;
+  p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
+  state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, swap: true });
+  return true;
 }
 
 /**

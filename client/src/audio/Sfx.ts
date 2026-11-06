@@ -178,6 +178,11 @@ export class Sfx {
           // Gale Step's second roll: a quick rising gust, softer for a teammate's.
           this.noiseBurst('bandpass', 700, 2600, 1.5, 0.22, ev.playerId === localId ? 0.12 : 0.05);
           break;
+        case 'blink':
+          // A Warlock's Shadow Swap (the builds pass): a hollow thud under the Blink's shimmer as the two trade places.
+          if (!ev.swap) break;
+          this.tone('sine', 140, 60, 0.25, ev.playerId === localId ? 0.14 : 0.05, 0.005);
+          break;
         case 'hexed':
           // A Warlock's hex takes (the builds pass): a low falling murmur, only for the Warlock.
           if (ev.playerId !== localId) break;

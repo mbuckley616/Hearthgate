@@ -801,7 +801,7 @@ describe('the Assassin is offered (the builds pass)', () => {
   });
 });
 
-describe("the Warlock's Hex (not yet choosable)", () => {
+describe("the Warlock's Hex", () => {
   /** One staff hit (a burst's, the server's) from p on the grunt, as a Warlock or not. */
   function staffHit(sc: ReturnType<typeof scene>, by: PlayerState, damage = 10): number {
     const hp = sc.e.hp;
@@ -841,15 +841,13 @@ describe("the Warlock's Hex (not yet choosable)", () => {
     expect(sc.p.hp).toBe(sc.p.maxHp);
   });
 
-  it('anyone but a Warlock, or a Warlock\'s sword, hexes nothing; the Warlock is not yet offered', () => {
+  it('anyone but a Warlock, or a Warlock\'s sword, hexes nothing', () => {
     const sc = warlock(false);
     staffHit(sc, sc.p);
     expect(sc.e.hex).toBeUndefined();
     const w = warlock(true);
     damageEnemy(w.s, w.e, { attackerId: 'p1', damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: 0, y: 1, z: 6, style: 'sword' });
     expect(w.e.hex).toBeUndefined();
-    expect(specsFor('staff').map((x) => x.id)).toEqual(['warlock']);
-    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'warlock' })).not.toBeNull();
   });
 });
 
@@ -889,5 +887,54 @@ describe("the Warlock's Curse Ring", () => {
     expect(ev && ev.kind === 'frostRing' && ev.curse).toBeFalsy();
     expect(e.frozen).toBeGreaterThan(0);
     expect(e.hex).toBeUndefined();
+  });
+});
+
+describe("the Warlock's Shadow Swap", () => {
+  /** A staff hero, a Warlock or not, Blinks with the grunt `gap` metres ahead targeted. */
+  function blink(warlock: boolean, gap: number, kind: 'grunt' | 'warden' = 'grunt') {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', spec: warlock ? { staff: 'warlock' } : undefined });
+    sc.p.xp = { ...sc.p.xp, staff: at10 };
+    const e = kind === 'grunt' ? sc.e : createEnemy(sc.s, world, kind, 0, 10 - gap, 0);
+    Object.assign(e, { x: 0, z: 10 - gap, ai: 'chase', hp: 9999 });
+    if (kind !== 'grunt') Object.assign(sc.e, { x: 15, z: 15 });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0, lockTarget: e.id, aimX: 0, aimZ: -1 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return { ...sc, e };
+  }
+
+  it('a Warlock with an enemy targeted trades places with it, and the next bolt crits', () => {
+    const { s, p, e } = blink(true, 4);
+    expect(p.z).toBeCloseTo(6, 3);
+    expect(e.z).toBeCloseTo(10, 3);
+    expect(p.nextBoltCrit).toBe(true);
+    expect(s.events.some((ev) => ev.kind === 'blink' && ev.swap)).toBe(true);
+  });
+
+  it('too far, a boss, or anyone but a Warlock, and the Blink goes as ever', () => {
+    const far = tuning.abilities.blinkDistance + tuning.specs.swapReach + 2;
+    const out = blink(true, far);
+    expect(out.e.z).toBeCloseTo(10 - far, 3);
+    expect(out.s.events.some((ev) => ev.kind === 'blink' && !ev.swap)).toBe(true);
+    const boss = blink(true, 4, 'warden');
+    expect(boss.e.z).toBeCloseTo(6, 3);
+    const plain = blink(false, 4);
+    expect(plain.e.z).toBeCloseTo(6, 3);
+    expect(plain.s.events.some((ev) => ev.kind === 'blink' && ev.swap)).toBe(false);
+  });
+});
+
+describe('the Warlock is offered (the builds pass)', () => {
+  it('from staff level 10, Shadow alone', () => {
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock']);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'warlock' })).toBeNull();
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'warlock' })).not.toBeNull();
+    const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
+    expect(readLoadout({ ...l, spec: { staff: 'warlock' } })?.spec).toEqual({ staff: 'warlock' });
+    expect(readLoadout({ ...l, spec: { staff: 'warlock' }, elements: { staff: 'fire' } })).toBeNull();
   });
 });
