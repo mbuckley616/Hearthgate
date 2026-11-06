@@ -980,3 +980,31 @@ describe("the Druid's Bloom (not yet choosable)", () => {
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).not.toBeNull();
   });
 });
+
+describe("the Druid's Thorn Ring", () => {
+  function ring(druid: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', spec: druid ? { staff: 'druid' } : undefined });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability1: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return sc;
+  }
+
+  it("a Druid's ring roots the light enemies it reaches, in thorns, and freezes nothing", () => {
+    const { s, e } = ring(true);
+    const ev = s.events.find((x) => x.kind === 'frostRing');
+    expect(ev && ev.kind === 'frostRing' && ev.thorns).toBe(true);
+    expect(e.hp).toBeLessThan(9999);
+    expect(e.frozen).toBe(0);
+    expect(isRooted(s, e)).toBe(true);
+  });
+
+  it("anyone else's ring freezes as ever and roots nothing", () => {
+    const { s, e } = ring(false);
+    expect(e.frozen).toBeGreaterThan(0);
+    expect(isRooted(s, e)).toBe(false);
+  });
+});

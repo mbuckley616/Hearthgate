@@ -201,6 +201,13 @@ export class FxView {
           this.spawnSparks(new THREE.Vector3(ev.x, 1.2, ev.z), new THREE.Vector3(0, 0.8, 0), 10, new THREE.Color(ev.perk === 'bleed' ? 0xd0302a : 0xb9a6ff));
           break;
         case 'frostRing':
+          if (ev.thorns) {
+            // A Druid's Thorn Ring (the builds pass): a ring of green and bark-brown, with leaves thrown up.
+            this.ring(ev.x, ev.z, ev.radius, 0x7fd36b, 0.9, 0.6);
+            this.ring(ev.x, ev.z, ev.radius * 0.6, 0x6b4a2a, 0.6, 0.45);
+            this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(0x9be37a));
+            break;
+          }
           if (ev.curse) {
             // A Warlock's Curse Ring (the builds pass): the ring in shadow, with dark motes rising.
             this.ring(ev.x, ev.z, ev.radius, 0xa274ff, 0.9, 0.6);

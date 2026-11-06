@@ -511,6 +511,28 @@ export function bloomRoot(state: SimState, owner: PlayerState | undefined, pr: P
   if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
 }
 
+/** Whether this hero's frost ring is a Druid's Thorn Ring: it roots, and freezes nothing. */
+export function isThornRing(p: PlayerState): boolean {
+  return p.spec?.staff === 'druid' && p.style === 'staff' && tuning.specs.thornRingRootS > 0;
+}
+
+/**
+ * Thorn Ring (the Druid's frost ring): thorns burst up where the ring reaches, rooting every light
+ * enemy there for `specs.thornRingRootS` and slowing a heavier one as long; nothing freezes (so no
+ * Shatter is set up). Stepped where the ring fires, both sides.
+ */
+export function thornRing(state: SimState, p: PlayerState, e: EnemyState): void {
+  if (!isThornRing(p) || !isTargetable(e)) return;
+  const t = tuning.specs.thornRingRootS;
+  if (LIGHT_ROLES.has(roleOf(e.kind))) {
+    const fresh = !isRooted(state, e);
+    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + t);
+    if (fresh) state.events.push({ kind: 'rooted', playerId: p.id, enemyId: e.id, x: e.x, z: e.z });
+  } else {
+    e.slowTime = Math.max(e.slowTime, t);
+  }
+}
+
 /**
  * Storm Volley (the Scout's Volley): each Volley arrow a Scout lands arcs lightning on to the nearest
  * other enemy within `specs.stormChainRange` it has not already hit, for `specs.stormChainDamage` of

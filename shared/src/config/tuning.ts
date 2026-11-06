@@ -1798,6 +1798,8 @@ export const tuning = {
     bloomHeal: 0.04,
     bloomRootTier: 2,
     bloomRootS: 1,
+    /** Thorn Ring (the Druid's frost ring): light enemies the ring reaches are rooted this long, heavier ones slowed as long, and nothing is frozen. */
+    thornRingRootS: 2,
   },
   abilities: {
     /**
@@ -2532,6 +2534,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.bloomHeal': [0, 0.25, 0.01],
   'specs.bloomRootTier': [0, 3, 1],
   'specs.bloomRootS': [0, 5, 0.1],
+  'specs.thornRingRootS': [0, 6, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

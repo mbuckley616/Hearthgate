@@ -130,6 +130,12 @@ export class Sfx {
           this.swoosh(0.16, 1000, 0.35);
           break;
         case 'frostRing':
+          if (ev.thorns) {
+            // A Thorn Ring: a woody crack and a rustle, where the frost ring cracks ice.
+            this.tone('triangle', 200, 110, 0.3, 0.1, 0.005);
+            this.noiseBurst('bandpass', 1800, 700, 2, 0.4, 0.09);
+            break;
+          }
           if (ev.curse) {
             // A Curse Ring: a deep falling groan under a hush, where the frost ring cracks.
             this.tone('sawtooth', 260, 70, 0.6, 0.05, 0.02);

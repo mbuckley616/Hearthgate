@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, brambleRain, consecrate, curseRing, galeStep, isCurseRing, shadowSwap, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
+import { bladeStorm, brambleRain, consecrate, curseRing, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -263,7 +263,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       const radius = a.frostRingRadius + rank * tl.frostRingRadiusPerRank;
       // Curse Ring (the Warlock's): the same ring in shadow, hexing where it would freeze.
       const curse = isCurseRing(p);
-      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius, ...(curse ? { curse } : {}) });
+      // Thorn Ring (the Druid's): thorns that root where the ring would freeze.
+      const thorns = isThornRing(p);
+      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius, ...(curse ? { curse } : {}), ...(thorns ? { thorns } : {}) });
       smashCircle(state, props, p.id, p.x, p.y, p.z, radius);
       for (const e of state.enemies) {
         if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
@@ -283,9 +285,10 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
           x: e.x,
           y: e.y + 1,
           z: e.z,
-          freezeTime: curse ? undefined : (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
+          freezeTime: curse || thorns ? undefined : (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
         });
         curseRing(state, p, e);
+        thornRing(state, p, e);
       }
       break;
     }

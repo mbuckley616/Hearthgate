@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 142, the Druid's Thorn Ring (the builds pass, Michael's A)
+
+**What changed**
+
+Thorn Ring (`isThornRing` and `thornRing` in `specs.ts`, read where the frost ring fires in `stepAbility`, beside Session 139's Curse Ring): a Druid's frost ring is thorns. It still hits for its damage; every light enemy it reaches is rooted for `specs.thornRingRootS` (2 s) and a heavier one slowed as long, and nothing is frozen, so it sets up no Shatter. The `frostRing` event carries `thorns`, so the ring draws green and bark-brown with leaves and sounds a woody crack. On the panel; at 0 the Druid's ring is the frost ring again. Check 458 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Both reshaped rings trade the freeze for their own state, so a party with a Warlock or a Druid loses the staff's Shatter setup; worth asking about once the states pass comes.
+
+**Next**
+
+Wild Growth (the Blink leaves a healing grove for 4 s), then the Druid is offered. The Sorcerer and the Spellblade once the trail is answered.
+
 ## 2026-11-06: Session 141, the Druid's Bloom (the builds pass, Michael's A)
 
 **What changed**
