@@ -1790,6 +1790,8 @@ export const tuning = {
     hexSeconds: 4,
     hexDamageBonus: 0.1,
     hexDrain: 0.1,
+    /** Curse Ring (the Warlock's frost ring): everything the ring reaches is hexed this long, and nothing is frozen. */
+    curseRingHexS: 6,
   },
   abilities: {
     /**
@@ -2519,6 +2521,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.hexSeconds': [0, 12, 0.5],
   'specs.hexDamageBonus': [0, 0.5, 0.01],
   'specs.hexDrain': [0, 0.5, 0.01],
+  'specs.curseRingHexS': [0, 15, 0.5],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

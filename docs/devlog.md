@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 139, the Warlock's Curse Ring (the builds pass, Michael's A)
+
+**What changed**
+
+Curse Ring (`isCurseRing` and `curseRing` in `specs.ts`, read where the frost ring fires in `stepAbility`): a Warlock's frost ring is the same ring in shadow. It still hits for its damage, and every enemy it reaches is hexed for `specs.curseRingHexS` (6 s, against an orb's 4), past a Shieldbearer's front too; it freezes nothing, since it is shadow and not frost, so it sets up no Shatter. An orb landing later never cuts a ring's longer hex short. The `frostRing` event carries `curse`, so the ring draws violet with dark motes and sounds a deep groan in place of the frost's crack. On the panel; at 0 the Warlock's ring is the frost ring again. Check 450 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Every staff hit already hexed through `damageEnemy`, so the ring hexed before this session; what made it the Curse Ring was trading the freeze for a longer hex. Losing the freeze means a Warlock's ring no longer sets up a friend's Shatter, a trade worth watching in play.
+
+**Next**
+
+Shadow Swap (the Blink swaps places with the targeted enemy), then the Warlock is offered. Then the Druid; the Sorcerer and the Spellblade once the trail is answered.
+
 ## 2026-11-06: Session 138, the Warlock's Hex (the builds pass, Michael's A)
 
 **What changed**

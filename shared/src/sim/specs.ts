@@ -424,8 +424,25 @@ export function warlockHex(state: SimState, e: EnemyState, hero: PlayerState | u
   if (!hero || hero.spec?.staff !== 'warlock' || hit.style !== 'staff' || hit.dot || s.hexSeconds <= 0) return;
   if (wasHexed && hero.mode !== 'down' && s.hexDrain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * s.hexDrain);
   const fresh = !e.hex || e.hex.until <= state.time;
-  e.hex = { by: hero.id, until: state.time + s.hexSeconds };
+  // An orb never cuts short a longer hex a Curse Ring left.
+  e.hex = { by: hero.id, until: Math.max(fresh ? 0 : e.hex!.until, state.time + s.hexSeconds) };
   if (fresh) state.events.push({ kind: 'hexed', playerId: hero.id, enemyId: e.id, x: e.x, y: e.y, z: e.z });
+}
+
+/** Whether this hero's frost ring is a Warlock's Curse Ring: it hexes, and freezes nothing. */
+export function isCurseRing(p: PlayerState): boolean {
+  return p.spec?.staff === 'warlock' && p.style === 'staff' && tuning.specs.curseRingHexS > 0;
+}
+
+/**
+ * Curse Ring (the Warlock's frost ring): every enemy the ring reaches is hexed for `specs.curseRingHexS`
+ * (longer than an orb's), whether the ring's own hit got through a shield or not. The ring is shadow,
+ * not frost, so it freezes nothing (and so sets up no Shatter). Stepped where the ring fires, both sides.
+ */
+export function curseRing(state: SimState, p: PlayerState, e: EnemyState): void {
+  if (!isCurseRing(p) || !isTargetable(e)) return;
+  const until = state.time + tuning.specs.curseRingHexS;
+  if (!e.hex || e.hex.until < until) e.hex = { by: p.id, until };
 }
 
 /**

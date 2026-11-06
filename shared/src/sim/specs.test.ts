@@ -852,3 +852,42 @@ describe("the Warlock's Hex (not yet choosable)", () => {
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'warlock' })).not.toBeNull();
   });
 });
+
+describe("the Warlock's Curse Ring", () => {
+  /** A staff hero, a Warlock or not, casts the frost ring with the grunt 4 m off. */
+  function ring(warlock: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', spec: warlock ? { staff: 'warlock' } : undefined });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability1: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return sc;
+  }
+
+  it("a Warlock's ring hexes everything it reaches for longer, in shadow, and freezes nothing", () => {
+    const { s, e } = ring(true);
+    const ev = s.events.find((x) => x.kind === 'frostRing');
+    expect(ev && ev.kind === 'frostRing' && ev.curse).toBe(true);
+    expect(e.hp).toBeLessThan(9999);
+    expect(e.frozen).toBe(0);
+    expect(e.hex!.until - s.time).toBeGreaterThan(tuning.specs.hexSeconds);
+    expect(e.hex!.until - s.time).toBeLessThanOrEqual(tuning.specs.curseRingHexS);
+  });
+
+  it("an orb after it never cuts the ring's hex short", () => {
+    const sc = ring(true);
+    const until = sc.e.hex!.until;
+    damageEnemy(sc.s, sc.e, { attackerId: 'p1', damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: 0, y: 1, z: 6, style: 'staff', projectile: true });
+    expect(sc.e.hex!.until).toBe(until);
+  });
+
+  it("anyone else's ring freezes as ever and hexes nothing", () => {
+    const { s, e } = ring(false);
+    const ev = s.events.find((x) => x.kind === 'frostRing');
+    expect(ev && ev.kind === 'frostRing' && ev.curse).toBeFalsy();
+    expect(e.frozen).toBeGreaterThan(0);
+    expect(e.hex).toBeUndefined();
+  });
+});
