@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 130, the Ranger's Bramble Rain (the builds pass, Michael's A)
+
+**What changed**
+
+Bramble Rain (`brambleRain` in `specs.ts`, fired with the Volley in `abilities.ts`): as a Ranger's Volley looses, a patch of brambles takes root `specs.brambleRange` (6 m) ahead, short of a wall, `specs.brambleRadius` (2.5 m) across, for `specs.brambleSeconds` (4 s); one a Ranger, a new Volley moving it. Each tick (`stepBrambles`, before the enemy step) a light enemy standing in it is rooted and a heavier one slowed, letting go a tenth of a second after it steps out. The patches are `SimState.brambles`, absent in the slice; prediction seeds its own at once and the snapshot's copy replaces it. Drawn by a second `ConsecrateView`, tinted by the Ranger's element (Nature green, Earth brown). All three numbers on the panel. Ranger still not offered. Check 423 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The page says the Volley "seeds brambles", not where; a patch ahead of the Ranger, where the Volley's spread is widest, reads as the arrows planting it and needs no per-arrow ground hit.
+
+**Next**
+
+Snare Trap (the Disengage leaves a trap where the Ranger stood), then the Ranger is offered; then the Scout and the Assassin. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 129, the Ranger's Thornshot (the builds pass, Michael's A)
 
 **What changed**

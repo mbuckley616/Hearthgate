@@ -8,7 +8,7 @@ import type { FlowState } from './flow';
 import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
-import type { SpecElements, Specs } from './specs';
+import type { Element, SpecElements, Specs } from './specs';
 
 /**
  * Simulation state. Everything here must stay plain, serializable data
@@ -554,6 +554,12 @@ export interface ConsecratedGround {
   until: number;
 }
 
+/** A Ranger's Bramble Rain patch (the builds pass): roots light enemies standing in it while it lasts. */
+export interface BrambleGround extends ConsecratedGround {
+  /** The Ranger's element, for its colour. */
+  element: Element;
+}
+
 export interface SimState {
   tick: number;
   /** Simulated seconds since start. */
@@ -573,6 +579,8 @@ export interface SimState {
   floor?: FloorRunState;
   /** A Paladin's Consecrate rings on the ground (the builds pass), one a Paladin; absent in the slice. */
   consecrated?: ConsecratedGround[];
+  /** A Ranger's Bramble Rain patches (the builds pass), one a Ranger; absent in the slice. */
+  brambles?: BrambleGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

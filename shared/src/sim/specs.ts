@@ -4,7 +4,7 @@ import { isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
-import type { EnemyState, PlayerState, SimState } from './types';
+import type { BrambleGround, EnemyState, PlayerState, SimState } from './types';
 
 /**
  * Specializations (the builds pass; Michael's A, 6 Nov 2026: specializations first, one style a
@@ -257,6 +257,47 @@ export function thornshot(state: SimState, owner: PlayerState | undefined, e: En
     if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
   } else if (s.thornSlowS > 0) {
     e.slowTime = Math.max(e.slowTime, s.thornSlowS);
+  }
+}
+
+/**
+ * Bramble Rain (the Ranger's Volley): with the arrows, a patch of brambles takes root
+ * `specs.brambleRange` ahead (short of a wall), `specs.brambleRadius` across, for
+ * `specs.brambleSeconds`; one a Ranger, a new one replacing their last. Fired with the ability, so
+ * prediction draws its own at once and the server's copy replaces it with the next snapshot.
+ */
+export function brambleRain(state: SimState, p: PlayerState, colliders: readonly Collider[]): void {
+  const s = tuning.specs;
+  if (p.spec?.bow !== 'ranger' || p.style !== 'bow' || s.brambleSeconds <= 0) return;
+  const dir = { x: Math.sin(p.yaw), y: 0, z: Math.cos(p.yaw) };
+  const free = sphereCast({ x: p.x, y: p.y + 1, z: p.z }, dir, s.brambleRange, 0.3, colliders, (c) => c.blocksMovement);
+  const d = free >= s.brambleRange ? s.brambleRange : Math.max(0, free - 0.3);
+  const kept = (state.brambles ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const element = elementFor(p, 'bow') ?? 'nature';
+  kept.push({ by: p.id, x: p.x + dir.x * d, y: p.y, z: p.z + dir.z * d, radius: s.brambleRadius, until: state.time + s.brambleSeconds, element });
+  state.brambles = kept;
+}
+
+/** How long each tick in a bramble patch holds an enemy: a little past the tick, so stepping out lets go at once. */
+const BRAMBLE_HOLD_S = 0.1;
+
+/**
+ * Each tick, a light enemy standing in a live bramble patch is rooted and a heavier one slowed, for as
+ * long as it stays; spent patches leave the state. The server's enemies alone act on it.
+ */
+export function stepBrambles(state: SimState): void {
+  const live: BrambleGround[] = state.brambles!.filter((g) => g.until > state.time);
+  if (live.length === 0) {
+    delete state.brambles;
+    return;
+  }
+  state.brambles = live;
+  for (const e of state.enemies) {
+    if (!isTargetable(e)) continue;
+    const er = enemyStats(e.kind).radius;
+    if (!live.some((g) => Math.abs(e.y - g.y) < 1.2 && Math.hypot(e.x - g.x, e.z - g.z) <= g.radius + er)) continue;
+    if (LIGHT_ROLES.has(roleOf(e.kind))) e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + BRAMBLE_HOLD_S);
+    else e.slowTime = Math.max(e.slowTime, BRAMBLE_HOLD_S);
   }
 }
 

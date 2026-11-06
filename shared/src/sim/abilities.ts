@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, consecrate, fanOfKnives, shadowstep, taunt } from './specs';
+import { bladeStorm, brambleRain, consecrate, fanOfKnives, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -246,6 +246,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       }
       // Detonate setup: volley arrows mark what they hit.
       for (const pr of state.projectiles.slice(-n)) pr.marks = true;
+      brambleRain(state, p, colliders);
       break;
     }
     case 'disengage': {

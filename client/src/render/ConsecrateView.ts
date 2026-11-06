@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ELEMENT_COLOUR } from '@hearthgate/shared/sim/specs';
-import type { ConsecratedGround } from '@hearthgate/shared/sim/types';
+import type { BrambleGround, ConsecratedGround } from '@hearthgate/shared/sim/types';
 
 /** At most this many rings drawn at once: one a Paladin, four heroes. */
 const POOL = 4;
@@ -9,7 +9,8 @@ const FADE_S = 1;
 
 /**
  * A Paladin's Consecrate (the builds pass): a holy ring on the ground and a faint wash inside it,
- * built once and moved to whatever rings the snapshot holds.
+ * built once and moved to whatever rings the snapshot holds. A Ranger's Bramble Rain patches use the
+ * same view, a second one, each patch tinted by its Ranger's element.
  */
 export class ConsecrateView {
   readonly group = new THREE.Group();
@@ -34,7 +35,7 @@ export class ConsecrateView {
     }
   }
 
-  update(rings: readonly ConsecratedGround[] | undefined, time: number): void {
+  update(rings: readonly (ConsecratedGround | BrambleGround)[] | undefined, time: number): void {
     let n = 0;
     for (const g of rings ?? []) {
       if (n >= POOL || g.until <= time) continue;
@@ -42,6 +43,10 @@ export class ConsecrateView {
       const fade = Math.min(1, (g.until - time) / FADE_S);
       // A slow breath on the edge, so it reads as alive rather than a decal.
       const breath = 0.85 + 0.15 * Math.sin(time * 4);
+      if ('element' in g) {
+        r.edge.color.setHex(ELEMENT_COLOUR[g.element]);
+        r.wash.color.setHex(ELEMENT_COLOUR[g.element]);
+      }
       r.root.visible = true;
       r.root.position.set(g.x, g.y + 0.04, g.z);
       r.root.scale.set(g.radius, 1, g.radius);

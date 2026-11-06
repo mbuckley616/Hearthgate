@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, stepProjectiles } from './projectiles';
-import { bladeStorm, isRooted, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, brambleRain, isRooted, stepBrambles, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -421,5 +421,62 @@ describe("the Ranger's Thornshot (not yet choosable)", () => {
     }
     expect(specsFor('bow').map((x) => x.id)).toEqual(['ranger']);
     expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'ranger' })).not.toBeNull();
+  });
+});
+
+describe("the Ranger's Bramble Rain (not yet choosable)", () => {
+  function ranger(is: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: is ? { bow: 'ranger' } : undefined });
+    return sc;
+  }
+
+  it('a Volley seeds a patch ahead in the Ranger\'s element; a second replaces the first', () => {
+    const { s, p } = ranger(true);
+    p.elements = { bow: 'earth' };
+    brambleRain(s, p, world.colliders);
+    expect(s.brambles).toHaveLength(1);
+    const g = s.brambles![0];
+    expect(g).toMatchObject({ by: 'p1', element: 'earth', radius: tuning.specs.brambleRadius });
+    expect(Math.hypot(g.x - p.x, g.z - p.z)).toBeCloseTo(tuning.specs.brambleRange, 1);
+    expect(g.z).toBeLessThan(p.z);
+    brambleRain(s, p, world.colliders);
+    expect(s.brambles).toHaveLength(1);
+  });
+
+  it('roots a light enemy inside while it stands there, slows a heavy one, and fades', () => {
+    const { s, p, e } = ranger(true);
+    brambleRain(s, p, world.colliders);
+    const g = s.brambles![0];
+    Object.assign(e, { x: g.x, z: g.z });
+    const brute = createEnemy(s, world, 'brute', g.x + 1, g.z, 0);
+    Object.assign(brute, { x: g.x + 1, z: g.z, ai: 'chase', slowTime: 0 });
+    stepBrambles(s);
+    expect(isRooted(s, e)).toBe(true);
+    expect(isRooted(s, brute)).toBe(false);
+    expect(brute.slowTime).toBeGreaterThan(0);
+    // Out of the patch, it lets go within a tick or so.
+    Object.assign(e, { x: g.x + 10 });
+    s.time += 0.2;
+    stepBrambles(s);
+    expect(isRooted(s, e)).toBe(false);
+    s.time = g.until;
+    stepBrambles(s);
+    expect(s.brambles).toBeUndefined();
+  });
+
+  it('a Volley by anyone but a Ranger seeds nothing', () => {
+    const { s, p } = ranger(false);
+    brambleRain(s, p, world.colliders);
+    expect(s.brambles).toBeUndefined();
+  });
+
+  it("the Volley ability itself seeds it for a Ranger", () => {
+    const { s, p } = ranger(true);
+    for (let i = 0; i < 60 && !s.brambles; i++) {
+      stepPlayer(p, { ...idleCommand(), ability1: i === 0, aimX: 0, aimZ: -1 }, DT, world, s);
+      s.time += DT;
+    }
+    expect(s.brambles).toHaveLength(1);
   });
 });

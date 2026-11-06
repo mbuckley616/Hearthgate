@@ -1759,6 +1759,10 @@ export const tuning = {
     /** Thornshot (the Ranger's signature): a charged shot roots a light enemy this long, and slows a heavier one this long. */
     thornRootS: 1.5,
     thornSlowS: 1.5,
+    /** Bramble Rain (the Ranger's Volley): a patch this far ahead, this wide, for this long, rooting light enemies in it and slowing heavier ones. */
+    brambleRange: 6,
+    brambleRadius: 2.5,
+    brambleSeconds: 4,
   },
   abilities: {
     /**
@@ -2466,6 +2470,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.shadowCritMult': [1, 5, 0.05],
   'specs.thornRootS': [0, 4, 0.1],
   'specs.thornSlowS': [0, 4, 0.1],
+  'specs.brambleRange': [0, 12, 0.5],
+  'specs.brambleRadius': [0.5, 5, 0.1],
+  'specs.brambleSeconds': [0, 10, 0.5],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

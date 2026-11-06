@@ -163,6 +163,8 @@ export class Game {
   private propView: PropView | null = null;
   /** A Paladin's Consecrate rings (the builds pass), on any level. */
   private consecrate = new ConsecrateView();
+  /** A Ranger's Bramble Rain patches (the builds pass), drawn as Consecrate's rings in the Ranger's element. */
+  private brambles = new ConsecrateView();
   private trapView: TrapView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
@@ -241,6 +243,7 @@ export class Game {
       this.drops.group,
       this.projectiles.group,
       this.consecrate.group,
+      this.brambles.group,
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
@@ -1000,6 +1003,7 @@ export class Game {
     this.propView?.update(world.floor, this.presentTime, world.time);
     this.trapView?.update(world.time, world.floor);
     this.consecrate.update(world.consecrated, world.time);
+    this.brambles.update(world.brambles, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();
