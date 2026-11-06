@@ -14,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState 
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -94,6 +94,17 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Gale Step', 'Disengage twice in a row; the second is a full dodge.'],
     sig: ['Marked', 'Your shots mark. Any party hit on a marked enemy deals 10% more and fills your Flow.'],
     built: true,
+  },
+  {
+    id: 'assassin',
+    style: 'bow',
+    name: 'Assassin',
+    element: 'shadow',
+    elements: ['shadow', 'nature'],
+    q: ['Venom Volley', 'Volley leaves stacking poison.'],
+    e: ['Smoke Bomb', 'Disengage drops smoke; you vanish for 2 s.'],
+    sig: ['Deadeye', 'A charged shot into an enemy\'s back is a crit.'],
+    built: false,
   },
 ];
 
@@ -433,6 +444,19 @@ export function galeReady(state: SimState, p: PlayerState): boolean {
   if (p.galeUntil > state.time && p.spec?.bow === 'scout' && p.style === 'bow') return true;
   delete p.galeUntil;
   return false;
+}
+
+/**
+ * Deadeye (the Assassin's signature): an Assassin's charged shot (which already pierces) that strikes
+ * an enemy in the back, flying the way it faces within `specs.deadeyeBackDeg` either side, deals
+ * `specs.deadeyeCritMult` and shows as a crit. Returns the multiplier, 1 when it does not apply.
+ */
+export function deadeye(owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState, dirX: number, dirZ: number): number {
+  const s = tuning.specs;
+  if (!owner || owner.spec?.bow !== 'assassin' || !pr.charged || pr.style !== 'bow') return 1;
+  const len = Math.hypot(dirX, dirZ) || 1;
+  const along = (dirX / len) * Math.sin(e.yaw) + (dirZ / len) * Math.cos(e.yaw);
+  return along >= Math.cos((s.deadeyeBackDeg * Math.PI) / 180) ? s.deadeyeCritMult : 1;
 }
 
 /**

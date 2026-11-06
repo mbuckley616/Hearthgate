@@ -1776,6 +1776,9 @@ export const tuning = {
     stormChainDamage: 0.5,
     /** Gale Step (the Scout's Disengage): how long after the backflip a second press still rolls. */
     galeWindowS: 1.2,
+    /** Deadeye (the Assassin's signature): a charged shot flying within this many degrees of the way an enemy faces hits its back, for this multiple. */
+    deadeyeBackDeg: 60,
+    deadeyeCritMult: 2,
   },
   abilities: {
     /**
@@ -2495,6 +2498,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.stormChainRange': [0, 10, 0.5],
   'specs.stormChainDamage': [0, 2, 0.05],
   'specs.galeWindowS': [0, 3, 0.1],
+  'specs.deadeyeBackDeg': [0, 90, 5],
+  'specs.deadeyeCritMult': [1, 5, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

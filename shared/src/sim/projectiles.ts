@@ -2,7 +2,7 @@ import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
-import { scoutMark, stormChain, thornshot } from './specs';
+import { deadeye, scoutMark, stormChain, thornshot } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
@@ -239,6 +239,8 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   const skewer = pr.kind === 'arrow' && pr.charged && e.skewerUntil >= state.time;
   // The ammo slot (C4): frost arrows slow, a barbed charged shot opens a bleed.
   const ammo = pr.kind === 'arrow' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner)?.mods.ammo : undefined;
+  // Deadeye (the Assassin's signature): a charged shot in the back crits.
+  const backshot = pr.kind === 'arrow' && pr.owner[0] !== 'e' ? deadeye(state.players.find((p) => p.id === pr.owner), pr, e, dir.x, dir.z) : 1;
   if (skewer && !pr.comboed) {
     pr.comboed = true;
     payCombo(state, 'skewer', pr.owner, e.x, e.y + 1.2, e.z);
@@ -246,7 +248,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   damageEnemy(state, e, {
     projectile: true,
     attackerId: pr.owner,
-    damage: pr.damage * (skewer ? 1 + tuning.combos.skewerDamageBonus : 1),
+    damage: pr.damage * (skewer ? 1 + tuning.combos.skewerDamageBonus : 1) * backshot,
     poise: pr.poise,
     knockback: pr.knockback,
     heavy: pr.heavy,
@@ -256,7 +258,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     y: pr.y,
     z: pr.z,
     slowTime: ammo === 'frost' ? Math.max(pr.slowTime ?? 0, tuning.gear.frostArrowSlowS) : pr.slowTime,
-    crit: pr.crit,
+    crit: pr.crit || backshot > 1,
     style: pr.style,
     combo: skewer || undefined,
   });

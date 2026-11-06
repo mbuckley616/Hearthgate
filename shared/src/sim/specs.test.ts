@@ -660,3 +660,30 @@ describe('the Scout is offered (the builds pass)', () => {
     expect(readLoadout({ ...l, spec: { bow: 'scout' } })?.spec).toEqual({ bow: 'scout' });
   });
 });
+
+describe("the Assassin's Deadeye (not yet choosable)", () => {
+  /** A bow hero looses one arrow down the arena at the grunt, which faces `yaw`. */
+  function shot(assassin: boolean, charged: boolean, yaw: number) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: assassin ? { bow: 'assassin' } : undefined });
+    sc.e.yaw = yaw;
+    spawnArrow(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.powerArrowSpeed, charged);
+    for (let i = 0; i < 40; i++) stepProjectiles(sc.s, DT, world.colliders);
+    return { ...sc, dealt: 9999 - sc.e.hp };
+  }
+
+  it("an Assassin's charged shot in an enemy's back deals double and shows as a crit", () => {
+    const face = shot(true, true, 0);
+    const back = shot(true, true, Math.PI);
+    expect(face.dealt).toBeGreaterThan(0);
+    expect(back.dealt).toBeCloseTo(face.dealt * tuning.specs.deadeyeCritMult);
+    expect(back.s.events.some((ev) => ev.kind === 'hit' && ev.crit)).toBe(true);
+  });
+
+  it('a quick shot in the back, or anyone but an Assassin, is a plain hit; the Assassin is not yet offered', () => {
+    const face = shot(true, true, 0).dealt;
+    expect(shot(true, false, Math.PI).dealt).toBeCloseTo(shot(true, false, 0).dealt);
+    expect(shot(false, true, Math.PI).dealt).toBeCloseTo(face);
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'assassin' })).not.toBeNull();
+  });
+});

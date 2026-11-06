@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 135, the Assassin's Deadeye (the builds pass, Michael's A)
+
+**What changed**
+
+The Assassin as data, not yet offered (`built: false`): Shadow or Nature, Venom Volley for the Volley, Smoke Bomb for the Disengage, from the combat builds page. Its signature, Deadeye (`deadeye` in `specs.ts`, read in `hitWithProjectile`): an Assassin's charged shot, which already pierces, that strikes an enemy in the back (flying within `specs.deadeyeBackDeg`, 60 degrees, of the way it faces) deals `specs.deadeyeCritMult` (2x) and shows as a crit; from the front, or a quick shot, it is a plain hit. Both on the panel. Check 437 green. Not yet seen in a browser.
+
+**Learned**
+
+The page says "backs and heads"; Hearthgate's enemies have no head zone yet, so only the back counts. Heads would want a hit height per kind, worth asking for once a player has felt the backs.
+
+**Next**
+
+Venom Volley (stacking poison) and Smoke Bomb (the Disengage drops smoke and the Assassin vanishes 2 s), then the Assassin is offered and Ranged is whole. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 134, the Scout's Gale Step; the Scout offered (the builds pass, Michael's A)
 
 **What changed**
