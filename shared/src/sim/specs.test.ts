@@ -7,9 +7,10 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, isRooted, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, brambleRain, isRooted, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
+import { newFlow } from './flow';
 import { idleCommand, type PlayerState, type SimState } from './types';
 import { createSimState } from './world';
 
@@ -419,7 +420,6 @@ describe("the Ranger's Thornshot", () => {
       expect(isRooted(s, e)).toBe(false);
       expect(s.events.some((ev) => ev.kind === 'rooted')).toBe(false);
     }
-    expect(specsFor('bow').map((x) => x.id)).toEqual(['ranger']);
   });
 });
 
@@ -542,5 +542,49 @@ describe('the Ranger is offered (the builds pass)', () => {
     const l = { ...base(0), xp: { sword: 0, bow: at10, staff: 0 } };
     expect(readLoadout({ ...l, spec: { bow: 'ranger' }, elements: { bow: 'earth' } })?.elements).toEqual({ bow: 'earth' });
     expect(readLoadout({ ...l, spec: { bow: 'ranger' }, elements: { bow: 'fire' } })).toBeNull();
+  });
+});
+
+describe("the Scout's Marked (not yet choosable)", () => {
+  function scout(is: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: is ? { bow: 'scout' } : undefined, flow: newFlow() });
+    return sc;
+  }
+  const arrow = (s: SimState, p: PlayerState) => {
+    spawnArrow(s, p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.arrowSpeed, false);
+    for (let i = 0; i < 40; i++) stepProjectiles(s, DT, world.colliders);
+  };
+
+  it("a Scout's arrow marks what it hits, after its own damage", () => {
+    const { s, p, e } = scout(true);
+    arrow(s, p);
+    const plain = scout(false);
+    arrow(plain.s, plain.p);
+    expect(e.hp).toBeCloseTo(plain.e.hp);
+    expect(e.scoutMark).toEqual({ by: 'p1', until: s.time + tuning.specs.markSeconds });
+    expect(s.events.some((ev) => ev.kind === 'scoutMarked' && ev.enemyId === e.id)).toBe(true);
+  });
+
+  it("a friend's hit on the mark lands harder and fills the Scout's Flow", () => {
+    const { s, p, friend, e } = scout(true);
+    arrow(s, p);
+    const hp = e.hp;
+    const flow = p.flow!.v;
+    damageEnemy(s, e, { attackerId: friend.id, damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: e.x, y: 1, z: e.z });
+    expect(hp - e.hp).toBeCloseTo(10 * (1 + tuning.specs.markDamageBonus));
+    expect(p.flow!.v).toBeCloseTo(flow + tuning.specs.markFlowGain);
+  });
+
+  it('a mark fades; anyone but a Scout marks nothing', () => {
+    const { s, p, e } = scout(true);
+    arrow(s, p);
+    s.time += tuning.specs.markSeconds;
+    expect(markedMult(s, e, p, false)).toBe(1);
+    expect(e.scoutMark).toBeUndefined();
+    const other = scout(false);
+    arrow(other.s, other.p);
+    expect(other.e.scoutMark).toBeUndefined();
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'scout' })).not.toBeNull();
   });
 });

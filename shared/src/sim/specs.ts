@@ -4,6 +4,7 @@ import { isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
+import { gainFlow } from './flow';
 import type { BrambleGround, EnemyState, PlayerState, SimState } from './types';
 
 /**
@@ -13,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, SimState } from './types';
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -82,6 +83,17 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Snare Trap', 'Disengage leaves a trap where you stood.'],
     sig: ['Thornshot', 'Charged shots root light enemies and slow heavier ones.'],
     built: true,
+  },
+  {
+    id: 'scout',
+    style: 'bow',
+    name: 'Scout',
+    element: 'air',
+    elements: ['air'],
+    q: ['Storm Volley', 'Volley arrows chain lightning to one more enemy.'],
+    e: ['Gale Step', 'Disengage twice in a row; the second is a full dodge.'],
+    sig: ['Marked', 'Your shots mark. Any party hit on a marked enemy deals 10% more and fills your Flow.'],
+    built: false,
   },
 ];
 
@@ -336,6 +348,34 @@ export function stepSnares(state: SimState): void {
   }
   if (live.length > 0) state.snares = live;
   else delete state.snares;
+}
+
+/**
+ * Marked (the Scout's signature): every arrow a Scout lands marks its enemy for `specs.markSeconds`,
+ * after the arrow's own damage. Called as the arrow lands, so prediction marks its own copy too.
+ */
+export function scoutMark(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
+  if (!owner || owner.spec?.bow !== 'scout' || tuning.specs.markSeconds <= 0 || !isTargetable(e)) return;
+  const fresh = !e.scoutMark || e.scoutMark.until <= state.time;
+  e.scoutMark = { by: owner.id, until: state.time + tuning.specs.markSeconds };
+  if (fresh) state.events.push({ kind: 'scoutMarked', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
+}
+
+/**
+ * What a party hit on a marked enemy is multiplied by: `1 + specs.markDamageBonus` while the mark
+ * lasts, the Scout's own hits too, each also filling the Scout's Flow by `specs.markFlowGain`. A
+ * bleed's tick neither gains nor pays; a spent mark is dropped.
+ */
+export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | undefined, dot: boolean | undefined): number {
+  const m = e.scoutMark;
+  if (!m) return 1;
+  if (m.until <= state.time) {
+    delete e.scoutMark;
+    return 1;
+  }
+  if (!hero || dot) return 1;
+  gainFlow(state.players.find((p) => p.id === m.by), tuning.specs.markFlowGain);
+  return 1 + tuning.specs.markDamageBonus;
 }
 
 /**

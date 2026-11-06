@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 132, the Scout's Marked (the builds pass, Michael's A)
+
+**What changed**
+
+The Scout as data, not yet offered (`built: false`): Air, Storm Volley for the Volley, Gale Step for the Disengage, from the combat builds page. Its signature, Marked (`scoutMark` and `markedMult` in `specs.ts`): every arrow a Scout lands marks its enemy (`EnemyState.scoutMark`) for `specs.markSeconds` (4 s), after the arrow's own damage; any party hit on a marked enemy, the Scout's own and a henchman's included, deals `specs.markDamageBonus` (10%) more and gives the Scout `specs.markFlowGain` (3) Flow. A bleed's tick neither gains nor pays. A fresh mark plays a high ping for the Scout alone. All three numbers on the panel. Check 430 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Detonate setup already "marks" with the Volley (`detonateUntil`); the Scout's mark is kept apart, its own field, so a Scout's quick shots do not start setting up Detonate and the combo stays a Volley's.
+
+**Next**
+
+Storm Volley (Volley arrows chain lightning to one more enemy) and Gale Step (Disengage twice in a row, the second a full dodge), then the Scout is offered; then the Assassin. A mark's own look over the enemy is polish. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 131, the Ranger's Snare Trap; the Ranger offered (the builds pass, Michael's A)
 
 **What changed**

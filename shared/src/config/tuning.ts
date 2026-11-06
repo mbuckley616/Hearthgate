@@ -1767,6 +1767,10 @@ export const tuning = {
     snareRadius: 1,
     snareSeconds: 12,
     snareRootS: 2,
+    /** Marked (the Scout's signature): a Scout's arrow marks for this long; party hits on the mark deal `markDamageBonus` more and give the Scout `markFlowGain` Flow. */
+    markSeconds: 4,
+    markDamageBonus: 0.1,
+    markFlowGain: 3,
   },
   abilities: {
     /**
@@ -2480,6 +2484,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.snareRadius': [0.3, 3, 0.1],
   'specs.snareSeconds': [0, 30, 1],
   'specs.snareRootS': [0, 5, 0.1],
+  'specs.markSeconds': [0, 12, 0.5],
+  'specs.markDamageBonus': [0, 0.5, 0.01],
+  'specs.markFlowGain': [0, 20, 1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

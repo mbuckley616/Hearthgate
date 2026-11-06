@@ -163,6 +163,11 @@ export class Sfx {
           this.tone('triangle', 180, 120, 0.25, ev.playerId === localId ? 0.12 : 0.05, 0.005);
           this.noiseBurst('bandpass', 1800, 900, 3, 0.2, ev.playerId === localId ? 0.08 : 0.035);
           break;
+        case 'scoutMarked':
+          // A Scout's arrow marks (the builds pass): a high airy ping, only for the Scout who marked it.
+          if (ev.playerId !== localId) break;
+          this.tone('sine', 1760, 2200, 0.1, 0.05, 0.003);
+          break;
         case 'shadowPrimed':
           // From the shadows: a low hush and a soft tick, only for the Rogue whose next hit is now a crit.
           if (ev.playerId !== localId) break;
