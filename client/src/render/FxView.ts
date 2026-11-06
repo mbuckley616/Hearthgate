@@ -217,6 +217,10 @@ export class FxView {
           this.puff(ev.x, ev.y + 0.6, ev.z, 0x2a2630, 2.4, 2);
           this.puff(ev.x, ev.y + 1.2, ev.z, 0x3a3540, 1.8, 1.6);
           break;
+        case 'bloom':
+          // A Druid's Bloom heals (the builds pass): leaf-green motes rising off whoever the bolt passed.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1, ev.z), new THREE.Vector3(0, 1, 0), 12, new THREE.Color(0x9be37a));
+          break;
         case 'hexed':
           // A Warlock's hex (the builds pass): a shadow-violet wisp over the enemy.
           this.glowPuff(ev.x, ev.y + 1.3, ev.z, 0xa274ff, 0.8, 0.4);

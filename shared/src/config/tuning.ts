@@ -1794,6 +1794,10 @@ export const tuning = {
     curseRingHexS: 6,
     /** Shadow Swap (the Warlock's Blink): how much further than a Blink's reach a targeted enemy may stand to trade places; below 0, never. */
     swapReach: 1,
+    /** Bloom (the Druid's signature): a Druid's bolt heals each ally it passes through this share of their health, once a bolt; at this Flow tier and up it roots a light enemy it hits this long. */
+    bloomHeal: 0.04,
+    bloomRootTier: 2,
+    bloomRootS: 1,
   },
   abilities: {
     /**
@@ -2525,6 +2529,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.hexDrain': [0, 0.5, 0.01],
   'specs.curseRingHexS': [0, 15, 0.5],
   'specs.swapReach': [-1, 8, 0.25],
+  'specs.bloomHeal': [0, 0.25, 0.01],
+  'specs.bloomRootTier': [0, 3, 1],
+  'specs.bloomRootS': [0, 5, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

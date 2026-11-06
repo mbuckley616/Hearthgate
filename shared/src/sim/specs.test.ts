@@ -6,7 +6,7 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { spawnArrow, stepProjectiles } from './projectiles';
+import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
 import { bladeStorm, brambleRain, isRooted, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
@@ -936,5 +936,47 @@ describe('the Warlock is offered (the builds pass)', () => {
     const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
     expect(readLoadout({ ...l, spec: { staff: 'warlock' } })?.spec).toEqual({ staff: 'warlock' });
     expect(readLoadout({ ...l, spec: { staff: 'warlock' }, elements: { staff: 'fire' } })).toBeNull();
+  });
+});
+
+describe("the Druid's Bloom (not yet choosable)", () => {
+  /** A staff hero, a Druid or not, casts one bolt down the arena through a hurt friend at the grunt. */
+  function bolt(druid: boolean, flowV = 0) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: Math.PI, spec: druid ? { staff: 'druid' } : undefined, flow: { ...newFlow(), v: flowV } });
+    Object.assign(sc.friend, { x: 0, z: 8, hp: 50 });
+    spawnBolt(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0);
+    for (let i = 0; i < 60; i++) {
+      stepProjectiles(sc.s, DT, world.colliders);
+      sc.s.time += DT;
+    }
+    return sc;
+  }
+
+  it("a Druid's bolt heals the friend it passes through, once, and flies on to hurt the enemy", () => {
+    const { s, friend, e } = bolt(true);
+    expect(friend.hp).toBeCloseTo(50 + friend.maxHp * tuning.specs.bloomHeal, 3);
+    expect(s.events.filter((ev) => ev.kind === 'bloom').length).toBe(1);
+    expect(e.hp).toBeLessThan(9999);
+  });
+
+  it("anyone else's bolt heals nobody; a full friend takes nothing", () => {
+    expect(bolt(false).friend.hp).toBe(50);
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: Math.PI, spec: { staff: 'druid' } });
+    Object.assign(sc.friend, { x: 0, z: 8 });
+    spawnBolt(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0);
+    for (let i = 0; i < 60; i++) stepProjectiles(sc.s, DT, world.colliders);
+    expect(sc.friend.hp).toBe(sc.friend.maxHp);
+    expect(sc.s.events.some((ev) => ev.kind === 'bloom')).toBe(false);
+  });
+
+  it('at Flow II and up its bolt roots a light enemy; below, it does not', () => {
+    const third = tuning.flow.max / 3;
+    const high = bolt(true, third * tuning.specs.bloomRootTier + 1);
+    expect(isRooted(high.s, high.e)).toBe(true);
+    const low = bolt(true, third * tuning.specs.bloomRootTier - 1);
+    expect(isRooted(low.s, low.e)).toBe(false);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).not.toBeNull();
   });
 });

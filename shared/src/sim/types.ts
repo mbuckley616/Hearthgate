@@ -353,6 +353,8 @@ export interface ProjectileState {
   pierce: number;
   /** Enemies already hit (a projectile hits each enemy once). */
   hitIds: number[];
+  /** The heroes a Druid's bolt has healed passing through them (Bloom), each once. */
+  healedIds?: string[];
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */
@@ -432,6 +434,7 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'bloom'; playerId: string; healedId: string; x: number; y: number; z: number; healed: number }
   | { kind: 'hexed'; playerId: string; enemyId: number; x: number; y: number; z: number }
   | { kind: 'venom'; playerId: string; enemyId: number; stacks: number; x: number; y: number; z: number }
   | { kind: 'smokeBomb'; playerId: string; x: number; y: number; z: number }

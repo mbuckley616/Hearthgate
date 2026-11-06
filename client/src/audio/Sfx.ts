@@ -210,6 +210,11 @@ export class Sfx {
           this.noiseBurst('lowpass', 900, 300, 1, 0.25, 0.08);
           this.tone('triangle', 880, 1100, 0.12, 0.06, 0.005);
           break;
+        case 'bloom':
+          // A Druid's bolt heals in passing (the builds pass): a soft rising chime, for the Druid and whoever it healed.
+          if (ev.playerId !== localId && ev.healedId !== localId) break;
+          this.tone('sine', 880, 1320, 0.25, 0.06, 0.01);
+          break;
         case 'holyPulse':
           // Bulwark's pulse on a Paladin's perfect parry: a rising chord, louder when it healed someone.
           this.tone('sine', 660, 990, 0.5, ev.healed > 0 ? 0.14 : 0.07, 0.01);

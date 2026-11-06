@@ -4,7 +4,7 @@ import { damageEnemy, isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
-import { gainFlow } from './flow';
+import { flowTier, gainFlow } from './flow';
 import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState } from './types';
 
 /**
@@ -14,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState 
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock' | 'druid';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -116,6 +116,17 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Shadow Swap', 'Blink swaps places with the targeted enemy.'],
     sig: ['Hex', 'Your spells hex. Hexed enemies take 10% more from everyone, and your hits on them drain health.'],
     built: true,
+  },
+  {
+    id: 'druid',
+    style: 'staff',
+    name: 'Druid',
+    element: 'nature',
+    elements: ['nature', 'earth'],
+    q: ['Thorn Ring', 'Frost ring becomes thorns that root.'],
+    e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
+    sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
+    built: false,
   },
 ];
 
@@ -465,6 +476,39 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, swap: true });
   return true;
+}
+
+/** Whether this bolt is a Druid's, whose flight heals the allies it passes through (Bloom). */
+export function isBloomBolt(state: SimState, pr: ProjectileState): boolean {
+  if (pr.kind !== 'bolt' || pr.style !== 'staff' || pr.hostile || tuning.specs.bloomHeal <= 0) return false;
+  return state.players.find((p) => p.id === pr.owner)?.spec?.staff === 'druid';
+}
+
+/**
+ * Bloom (the Druid's signature), as a Druid's bolt passes through a standing ally (a friend or a
+ * henchman, never the Druid): it heals them `specs.bloomHeal` of their own health, once a bolt, and
+ * flies on. Projectiles are the server's, so the heal is too.
+ */
+export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerState): void {
+  if (ally.id === pr.owner || ally.mode === 'down' || pr.healedIds?.includes(ally.id)) return;
+  (pr.healedIds ??= []).push(ally.id);
+  const healed = Math.min(ally.maxHp - ally.hp, ally.maxHp * tuning.specs.bloomHeal);
+  if (healed <= 0) return;
+  ally.hp += healed;
+  state.events.push({ kind: 'bloom', playerId: pr.owner, healedId: ally.id, x: ally.x, y: ally.y, z: ally.z, healed });
+}
+
+/**
+ * Bloom's root: a Druid's bolt that lands while they are at Flow tier `specs.bloomRootTier` or above
+ * roots a light enemy for `specs.bloomRootS`, as a Thornshot does (a heavier one is not slowed).
+ */
+export function bloomRoot(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState): void {
+  const s = tuning.specs;
+  if (!owner || owner.spec?.staff !== 'druid' || pr.kind !== 'bolt' || s.bloomRootS <= 0 || e.ai === 'dead') return;
+  if (flowTier(owner) < s.bloomRootTier || !LIGHT_ROLES.has(roleOf(e.kind))) return;
+  const fresh = !isRooted(state, e);
+  e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.bloomRootS);
+  if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
 }
 
 /**

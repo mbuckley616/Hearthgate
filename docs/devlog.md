@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 141, the Druid's Bloom (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's second specialization, as data and its signature, not yet offered (`built: false`). The Druid (`SPECS` in `specs.ts`): Nature or Earth, Thorn Ring for the frost ring, Wild Growth for the Blink, from the combat builds page. Its signature, Bloom (`isBloomBolt`, `bloomHeal` and `bloomRoot`, read in `stepProjectiles` and `hitWithProjectile`): a Druid's staff bolt heals every standing ally it flies through (a friend or a henchman, never the Druid) `specs.bloomHeal` (4%) of their own health, once a bolt (`ProjectileState.healedIds`), and flies on to its enemy; while the Druid is at Flow tier `specs.bloomRootTier` (II) or above, a bolt that lands roots a light enemy for `specs.bloomRootS` (1 s), as a Thornshot does. A heal raises leaf-green motes and a soft chime for the Druid and whoever it healed. All three numbers on the panel. Check 456 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The friend-shaped hit test hostile arrows use (`segmentHitsCapsule`) serves a friendly bolt as well; checking allies before enemies means a bolt that stops on its enemy still heals the friend in front of it on that tick.
+
+**Next**
+
+Thorn Ring (the frost ring roots) and Wild Growth (the Blink leaves a healing grove for 4 s), then the Druid is offered. The Sorcerer and the Spellblade once the trail is answered.
+
 ## 2026-11-06: Session 140, the Warlock's Shadow Swap; the Warlock offered (the builds pass, Michael's A)
 
 **What changed**

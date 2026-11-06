@@ -2,7 +2,7 @@ import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
-import { deadeye, scoutMark, stormChain, thornshot, venomVolley } from './specs';
+import { bloomHeal, bloomRoot, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
@@ -282,6 +282,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     if (hero?.champion) e.detonateBy = hero.id;
   }
   if (!skewer) pr.pierce--;
+  if (pr.kind === 'bolt') bloomRoot(state, state.players.find((p) => p.id === pr.owner), pr, e);
   if (pr.kind === 'bolt' && !pr.chained) chainBolt(state, pr, e);
 }
 
@@ -362,6 +363,13 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
       pr.z += dir.z * hit;
       if (wall < dist) pr.life = 0;
       continue;
+    }
+
+    // Bloom (the Druid's signature): a Druid's bolt heals the allies it flies through, before any enemy stops it.
+    if (isBloomBolt(state, pr)) {
+      for (const p of state.players) {
+        if (segmentHitsCapsule(pr, dir, Math.min(dist, wall), p.x, p.y, p.z, tuning.movement.radius, tuning.movement.height) < Infinity) bloomHeal(state, pr, p);
+      }
     }
 
     // Enemies in the way, nearest first, up to the projectile's pierce.
