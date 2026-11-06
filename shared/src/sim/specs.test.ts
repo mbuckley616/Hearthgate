@@ -687,3 +687,40 @@ describe("the Assassin's Deadeye (not yet choosable)", () => {
     expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'assassin' })).not.toBeNull();
   });
 });
+
+describe("the Assassin's Smoke Bomb", () => {
+  function flip(assassin: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: assassin ? { bow: 'assassin' } : undefined });
+    sc.p.xp = { ...sc.p.xp, bow: at10 };
+    // The friend stands far off, so the enemy would choose the Assassin if it could.
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    Object.assign(sc.e, { x: 0, z: 4, ai: 'chase', aiTime: 0, cooldown: 99 });
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return sc;
+  }
+
+  it('the Disengage leaves smoke: enemies lose the Assassin and turn to whoever else stands', () => {
+    const { s, p, friend, e } = flip(true);
+    expect(p.hiddenUntil).toBeGreaterThan(s.time);
+    expect(s.events.some((ev) => ev.kind === 'smokeBomb')).toBe(true);
+    const z0 = e.z;
+    for (let i = 0; i < 20; i++) {
+      stepEnemies(s, DT, world);
+      s.time += DT;
+    }
+    // It walks off toward the friend (up the arena), not toward the Assassin (down it).
+    expect(Math.hypot(e.x - friend.x, e.z - friend.z)).toBeLessThan(Math.hypot(0 - friend.x, z0 - friend.z));
+  });
+
+  it('it fades; anyone but an Assassin is never hidden', () => {
+    const { s, p } = flip(true);
+    s.time = p.hiddenUntil!;
+    stepEnemies(s, DT, world);
+    expect(p.hiddenUntil).toBeUndefined();
+    expect(flip(false).p.hiddenUntil).toBeUndefined();
+  });
+});

@@ -460,6 +460,25 @@ export function deadeye(owner: PlayerState | undefined, pr: ProjectileState, e: 
 }
 
 /**
+ * Smoke Bomb (the Assassin's Disengage): as it fires, smoke bursts where the Assassin stood and they
+ * vanish for `specs.smokeSeconds`: no enemy picks them as a target, so a fight turns to whoever else
+ * stands (and stops, if no one does). Their hits and a strike already swinging still land.
+ */
+export function smokeBomb(state: SimState, p: PlayerState): void {
+  if (p.spec?.bow !== 'assassin' || p.style !== 'bow' || tuning.specs.smokeSeconds <= 0) return;
+  p.hiddenUntil = state.time + tuning.specs.smokeSeconds;
+  state.events.push({ kind: 'smokeBomb', playerId: p.id, x: p.x, y: p.y, z: p.z });
+}
+
+/** Whether enemies have lost this hero in their smoke; a spent smoke is dropped. */
+export function isHidden(state: SimState, p: PlayerState): boolean {
+  if (p.hiddenUntil === undefined) return false;
+  if (p.hiddenUntil > state.time) return true;
+  delete p.hiddenUntil;
+  return false;
+}
+
+/**
  * Blade Storm (the Spellblade's Whirlwind): each tick of the spin, light enemies within
  * `specs.bladeStormRadius` are drawn toward the hero, as a knockback the enemy step slides along
  * walls, and let go `specs.bladeStormHold` from them so the spin's edge still finds them.

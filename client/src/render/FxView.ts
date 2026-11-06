@@ -205,6 +205,11 @@ export class FxView {
           this.ring(ev.x, ev.z, ev.radius * 0.6, 0xe8fbff, 0.6, 0.45);
           this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(FROST));
           break;
+        case 'smokeBomb':
+          // An Assassin's Smoke Bomb (the builds pass): a dark cloud where they stood as they flipped away.
+          this.puff(ev.x, ev.y + 0.6, ev.z, 0x2a2630, 2.4, 2);
+          this.puff(ev.x, ev.y + 1.2, ev.z, 0x3a3540, 1.8, 1.6);
+          break;
         case 'stormChain': {
           // A Scout's Storm Volley arcs (the builds pass): a pale crackle strung along the jump, bright at each end.
           const n = 5;

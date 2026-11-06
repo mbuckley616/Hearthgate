@@ -9,7 +9,7 @@ import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLau
 import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
-import { isRooted, tauntedBy } from './specs';
+import { isHidden, isRooted, tauntedBy } from './specs';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -152,7 +152,8 @@ function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {
-    if (p.mode === 'down') continue;
+    // An Assassin in their Smoke Bomb's cloud is lost to every enemy (the builds pass).
+    if (p.mode === 'down' || isHidden(state, p)) continue;
     const d = Math.hypot(p.x - e.x, p.z - e.z);
     if (d < bestD) {
       bestD = d;

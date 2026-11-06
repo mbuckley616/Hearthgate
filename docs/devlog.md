@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 136, the Assassin's Smoke Bomb (the builds pass, Michael's A)
+
+**What changed**
+
+Smoke Bomb (`smokeBomb` and `isHidden` in `specs.ts`, fired with the Disengage): as an Assassin's Disengage fires, a dark cloud bursts where they stood and they vanish for `specs.smokeSeconds` (2 s, on the panel; `PlayerState.hiddenUntil`): `nearestTarget` passes them by, so every enemy turns to whoever else stands, and stops if no one does. A strike already swinging and the Assassin's own hits still land. A soft pop and a long hiss play for it. Assassin still not offered. Check 439 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Taking the hero out of `nearestTarget` is all a vanish needs: tokens, chases and archers' aim all start from it, so nothing else in the brains changed.
+
+**Next**
+
+Venom Volley (the Volley leaves stacking poison), which wants a poison of its own beside the bleed; then the Assassin is offered and Ranged is whole. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 135, the Assassin's Deadeye (the builds pass, Michael's A)
 
 **What changed**

@@ -1779,6 +1779,8 @@ export const tuning = {
     /** Deadeye (the Assassin's signature): a charged shot flying within this many degrees of the way an enemy faces hits its back, for this multiple. */
     deadeyeBackDeg: 60,
     deadeyeCritMult: 2,
+    /** Smoke Bomb (the Assassin's Disengage): how long enemies lose the Assassin. */
+    smokeSeconds: 2,
   },
   abilities: {
     /**
@@ -2500,6 +2502,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.galeWindowS': [0, 3, 0.1],
   'specs.deadeyeBackDeg': [0, 90, 5],
   'specs.deadeyeCritMult': [1, 5, 0.05],
+  'specs.smokeSeconds': [0, 6, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

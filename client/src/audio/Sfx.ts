@@ -163,6 +163,11 @@ export class Sfx {
           this.tone('triangle', 180, 120, 0.25, ev.playerId === localId ? 0.12 : 0.05, 0.005);
           this.noiseBurst('bandpass', 1800, 900, 3, 0.2, ev.playerId === localId ? 0.08 : 0.035);
           break;
+        case 'smokeBomb':
+          // A Smoke Bomb: a soft pop and a long hiss.
+          this.tone('sine', 300, 120, 0.12, ev.playerId === localId ? 0.1 : 0.04, 0.003);
+          this.noiseBurst('lowpass', 2000, 500, 1, 0.8, ev.playerId === localId ? 0.08 : 0.03);
+          break;
         case 'galeStep':
           // Gale Step's second roll: a quick rising gust, softer for a teammate's.
           this.noiseBurst('bandpass', 700, 2600, 1.5, 0.22, ev.playerId === localId ? 0.12 : 0.05);
