@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 131, the Ranger's Snare Trap; the Ranger offered (the builds pass, Michael's A)
+
+**What changed**
+
+Snare Trap (`snareTrap` in `specs.ts`, fired with the Disengage before the backflip moves the hero): where a Ranger stood as they leapt away, a trap `specs.snareRadius` (1 m) across waits `specs.snareSeconds` (12 s), one a Ranger. The first enemy to step in springs it (`stepSnares`, before the enemy step): a light one is rooted for `specs.snareRootS` (2 s), a heavier one slowed as long, with the `rooted` creak, and the trap is spent. Traps are `SimState.snares`, absent in the slice, drawn by a third ring view in the Ranger's element. With Sessions 129 and 130 the Ranger is whole for this pass, so it is offered on the Talents tab from bow level 10 (`built: true`), Nature or Earth; the server takes it and refuses any other element. Check 427 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Thornshot, Bramble Rain and the trap all land as one effect, a root that stops the walk but not the swing, so the Ranger's whole kit is one new enemy field (`rootUntil`) and three ways to set it; the later trees (Pinned prey, Overgrowth) can read the same field.
+
+**Next**
+
+The Scout (Air): Marked (shots mark; party hits on a marked enemy deal more and fill the Scout's Flow), Storm Volley (Volley arrows chain lightning to one more enemy), Gale Step (Disengage twice in a row). Then the Assassin. The Spellblade's trail and blades once answered.
+
 ## 2026-11-06: Session 130, the Ranger's Bramble Rain (the builds pass, Michael's A)
 
 **What changed**

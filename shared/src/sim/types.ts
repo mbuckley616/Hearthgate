@@ -581,6 +581,8 @@ export interface SimState {
   consecrated?: ConsecratedGround[];
   /** A Ranger's Bramble Rain patches (the builds pass), one a Ranger; absent in the slice. */
   brambles?: BrambleGround[];
+  /** A Ranger's Snare Traps (the builds pass), one a Ranger, each sprung by the first enemy in it; absent in the slice. */
+  snares?: BrambleGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

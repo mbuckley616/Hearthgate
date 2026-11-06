@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, isRooted, stepBrambles, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, brambleRain, isRooted, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -368,7 +368,7 @@ describe("the Spellblade's Blade Storm (not yet choosable)", () => {
   });
 });
 
-describe("the Ranger's Thornshot (not yet choosable)", () => {
+describe("the Ranger's Thornshot", () => {
   /** A bow hero (a Ranger or not) looses one arrow, charged or not, down the arena at the target. */
   function shoot(ranger: boolean, charged: boolean, kind: 'grunt' | 'brute' = 'grunt') {
     const sc = scene(false);
@@ -413,18 +413,17 @@ describe("the Ranger's Thornshot (not yet choosable)", () => {
     expect(e.slowTime).toBeCloseTo(tuning.specs.thornSlowS);
   });
 
-  it("a quick shot, or anyone but a Ranger, roots nothing; the Ranger is not yet offered", () => {
+  it('a quick shot, or anyone but a Ranger, roots nothing', () => {
     for (const [ranger, charged] of [[true, false], [false, true]] as const) {
       const { s, e } = shoot(ranger, charged);
       expect(isRooted(s, e)).toBe(false);
       expect(s.events.some((ev) => ev.kind === 'rooted')).toBe(false);
     }
     expect(specsFor('bow').map((x) => x.id)).toEqual(['ranger']);
-    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'ranger' })).not.toBeNull();
   });
 });
 
-describe("the Ranger's Bramble Rain (not yet choosable)", () => {
+describe("the Ranger's Bramble Rain", () => {
   function ranger(is: boolean) {
     const sc = scene(false);
     Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: is ? { bow: 'ranger' } : undefined });
@@ -478,5 +477,70 @@ describe("the Ranger's Bramble Rain (not yet choosable)", () => {
       s.time += DT;
     }
     expect(s.brambles).toHaveLength(1);
+  });
+});
+
+describe("the Ranger's Snare Trap", () => {
+  function ranger(is: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: is ? { bow: 'ranger' } : undefined });
+    Object.assign(sc.e, { x: 6, z: 0 });
+    return sc;
+  }
+
+  it('the Disengage leaves a trap where the Ranger stood, and leaps away from it', () => {
+    const { s, p } = ranger(true);
+    // The second ability opens at bow level 2.
+    p.xp = { ...p.xp, bow: at10 };
+    const at = { x: p.x, z: p.z };
+    for (let i = 0; i < 60; i++) {
+      stepPlayer(p, { ...idleCommand(), ability2: i === 0, aimX: 0, aimZ: -1 }, DT, world, s);
+      s.time += DT;
+    }
+    expect(s.snares).toHaveLength(1);
+    expect(s.snares![0]).toMatchObject({ by: 'p1', x: at.x, z: at.z, radius: tuning.specs.snareRadius });
+    expect(Math.hypot(p.x - at.x, p.z - at.z)).toBeGreaterThan(1);
+  });
+
+  it('the first enemy in it springs it: rooted, and the trap is spent; a heavier one is slowed', () => {
+    const { s, p, e } = ranger(true);
+    snareTrap(s, p);
+    stepSnares(s);
+    expect(s.snares).toHaveLength(1);
+    Object.assign(e, { x: p.x + 0.5, z: p.z });
+    stepSnares(s);
+    expect(isRooted(s, e)).toBe(true);
+    expect(e.rootUntil! - s.time).toBeCloseTo(tuning.specs.snareRootS);
+    expect(s.snares).toBeUndefined();
+    expect(s.events.some((ev) => ev.kind === 'rooted' && ev.enemyId === e.id)).toBe(true);
+    snareTrap(s, p);
+    const brute = createEnemy(s, world, 'brute', p.x, p.z, 0);
+    Object.assign(brute, { x: p.x, z: p.z, ai: 'chase', slowTime: 0 });
+    e.ai = 'dead';
+    stepSnares(s);
+    expect(isRooted(s, brute)).toBe(false);
+    expect(brute.slowTime).toBeCloseTo(tuning.specs.snareRootS);
+  });
+
+  it('a trap unsprung fades; anyone but a Ranger sets none', () => {
+    const { s, p } = ranger(true);
+    snareTrap(s, p);
+    s.time += tuning.specs.snareSeconds;
+    stepSnares(s);
+    expect(s.snares).toBeUndefined();
+    const other = ranger(false);
+    snareTrap(other.s, other.p);
+    expect(other.s.snares).toBeUndefined();
+  });
+});
+
+describe('the Ranger is offered (the builds pass)', () => {
+  it('from bow level 10, Nature or Earth, and the server takes it', () => {
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'ranger' })).toBeNull();
+    expect(specProblem({ sword: 0, bow: at10 - 1, staff: 0 }, { bow: 'ranger' })).not.toBeNull();
+    expect(specInfo('ranger').elements).toEqual(['nature', 'earth']);
+    const l = { ...base(0), xp: { sword: 0, bow: at10, staff: 0 } };
+    expect(readLoadout({ ...l, spec: { bow: 'ranger' }, elements: { bow: 'earth' } })?.elements).toEqual({ bow: 'earth' });
+    expect(readLoadout({ ...l, spec: { bow: 'ranger' }, elements: { bow: 'fire' } })).toBeNull();
   });
 });

@@ -81,7 +81,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Bramble Rain', 'Volley seeds brambles that root.'],
     e: ['Snare Trap', 'Disengage leaves a trap where you stood.'],
     sig: ['Thornshot', 'Charged shots root light enemies and slow heavier ones.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -299,6 +299,43 @@ export function stepBrambles(state: SimState): void {
     if (LIGHT_ROLES.has(roleOf(e.kind))) e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + BRAMBLE_HOLD_S);
     else e.slowTime = Math.max(e.slowTime, BRAMBLE_HOLD_S);
   }
+}
+
+/**
+ * Snare Trap (the Ranger's Disengage): where the Ranger stood as they leapt away, a trap
+ * `specs.snareRadius` across waits `specs.snareSeconds`; one a Ranger, a new one replacing their last.
+ */
+export function snareTrap(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  if (p.spec?.bow !== 'ranger' || p.style !== 'bow' || s.snareSeconds <= 0) return;
+  const kept = (state.snares ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const element = elementFor(p, 'bow') ?? 'nature';
+  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.snareRadius, until: state.time + s.snareSeconds, element });
+  state.snares = kept;
+}
+
+/**
+ * The first enemy to step into a live Snare Trap springs it: a light one is rooted for
+ * `specs.snareRootS`, a heavier one slowed as long, and the trap is spent. The server's alone.
+ */
+export function stepSnares(state: SimState): void {
+  const live: BrambleGround[] = [];
+  for (const g of state.snares!) {
+    if (g.until <= state.time) continue;
+    const e = state.enemies.find(
+      (o) => isTargetable(o) && Math.abs(o.y - g.y) < 1.2 && Math.hypot(o.x - g.x, o.z - g.z) <= g.radius + enemyStats(o.kind).radius,
+    );
+    if (!e) {
+      live.push(g);
+      continue;
+    }
+    const hold = tuning.specs.snareRootS;
+    if (LIGHT_ROLES.has(roleOf(e.kind))) e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + hold);
+    else e.slowTime = Math.max(e.slowTime, hold);
+    state.events.push({ kind: 'rooted', playerId: g.by, enemyId: e.id, x: e.x, z: e.z });
+  }
+  if (live.length > 0) state.snares = live;
+  else delete state.snares;
 }
 
 /**

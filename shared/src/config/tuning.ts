@@ -1763,6 +1763,10 @@ export const tuning = {
     brambleRange: 6,
     brambleRadius: 2.5,
     brambleSeconds: 4,
+    /** Snare Trap (the Ranger's Disengage): a trap this wide where the Ranger stood, waiting this long; the first enemy in it is rooted (or, heavier, slowed) for `snareRootS`. */
+    snareRadius: 1,
+    snareSeconds: 12,
+    snareRootS: 2,
   },
   abilities: {
     /**
@@ -2473,6 +2477,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.brambleRange': [0, 12, 0.5],
   'specs.brambleRadius': [0.5, 5, 0.1],
   'specs.brambleSeconds': [0, 10, 0.5],
+  'specs.snareRadius': [0.3, 3, 0.1],
+  'specs.snareSeconds': [0, 30, 1],
+  'specs.snareRootS': [0, 5, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],
