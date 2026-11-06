@@ -1748,6 +1748,8 @@ export const tuning = {
     bladeStormRadius: 6,
     bladeStormPull: 4,
     bladeStormHold: 1.4,
+    /** Shadowstep (the Rogue's Charge): how far past the Charge's length a target may stand and still be stepped behind. */
+    shadowstepReach: 2,
   },
   abilities: {
     /**
@@ -2448,6 +2450,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.bladeStormRadius': [0, 12, 0.5],
   'specs.bladeStormPull': [0, 12, 0.5],
   'specs.bladeStormHold': [0, 4, 0.1],
+  'specs.shadowstepReach': [0, 8, 0.25],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, consecrate, taunt } from './specs';
+import { bladeStorm, consecrate, shadowstep, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -74,15 +74,23 @@ export function stepAbility(
   switch (kind) {
     case 'charge': {
       if (!inActive || p.abilityHitIds.length > 0) break;
-      // Dash, stopping at the first enemy it meets, which staggers.
-      const distance = a.chargeDistance + rank * tl.chargeDistancePerRank;
-      const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
-      p.x += fx * step;
-      p.z += fz * step;
-      smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
-      const hit = state.enemies.find(
-        (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius + 0.25,
-      );
+      // A Rogue's first tick of the dash is a step behind its target instead (Shadowstep).
+      const stepped = t0 < timing.windup ? shadowstep(state, p, colliders) : null;
+      const sx = stepped ? Math.sin(p.yaw) : fx;
+      const sz = stepped ? Math.cos(p.yaw) : fz;
+      if (!stepped) {
+        // Dash, stopping at the first enemy it meets, which staggers.
+        const distance = a.chargeDistance + rank * tl.chargeDistancePerRank;
+        const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
+        p.x += fx * step;
+        p.z += fz * step;
+        smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
+      }
+      const hit =
+        stepped ??
+        state.enemies.find(
+          (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius + 0.25,
+        );
       if (hit) {
         p.abilityHitIds.push(hit.id);
         damageEnemy(state, hit, {
@@ -92,11 +100,11 @@ export function stepAbility(
           knockback: 1.2,
           heavy: true,
           style: p.style,
-          dirX: fx,
-          dirZ: fz,
-          x: hit.x - fx * enemyStats(hit.kind).radius,
+          dirX: sx,
+          dirZ: sz,
+          x: hit.x - sx * enemyStats(hit.kind).radius,
           y: hit.y + 1,
-          z: hit.z - fz * enemyStats(hit.kind).radius,
+          z: hit.z - sz * enemyStats(hit.kind).radius,
         });
         taunt(state, p, hit);
         p.hitstop = hitstopFor(true);

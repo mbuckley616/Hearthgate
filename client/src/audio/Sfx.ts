@@ -154,6 +154,10 @@ export class Sfx {
           this.tone('sine', 1320, 1300, 0.6, ev.playerId === localId ? 0.16 : 0.07, 0.005);
           this.tone('sine', 1980, 1950, 0.4, ev.playerId === localId ? 0.08 : 0.035, 0.005);
           break;
+        case 'shadowstep':
+          // A Rogue's Shadowstep (the builds pass): a short breathy whoosh, falling, softer for a teammate's.
+          this.noiseBurst('bandpass', 2400, 600, 2, 0.22, ev.playerId === localId ? 0.14 : 0.06);
+          break;
         case 'holyPulse':
           // Bulwark's pulse on a Paladin's perfect parry: a rising chord, louder when it healed someone.
           this.tone('sine', 660, 990, 0.5, ev.healed > 0 ? 0.14 : 0.07, 0.01);

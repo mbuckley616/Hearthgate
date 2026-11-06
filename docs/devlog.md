@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 126, the Rogue's Shadowstep (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's first piece, not yet offered (`built: false`). Shadowstep (`shadowstep` in `specs.ts`, on the Charge's first active tick in `stepAbility`): a Rogue whose Charge has a target within the Charge's length plus `specs.shadowstepReach` (2 m, on the panel) steps to its far side, opposite where it faces and short of any wall (a sphere cast from the enemy), turns to it, and the Charge lands there as its usual hit, now from behind, so a Shieldbearer's front arc no longer takes it. Nothing in reach, and it is the plain dash. A `shadowstep` event carries where it left and where it stands; the browser plays a short falling whoosh for it. Check 411 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Charge already chooses its target at the start (`attackTarget`, the soft target or the lock), so the step needs no new aim; prediction steps it against the last snapshot's enemy, and a target that turned since is corrected with the next snapshot, as a Charge that met a moved enemy already was.
+
+**Next**
+
+Fan of Knives (the Rogue's Whirlwind throws knives in a circle) and From the shadows (dodging through an enemy makes the next hit a crit from behind), then the Rogue is offered. The Spellblade's trail and blades wait on `decisions.md`.
+
 ## 2026-11-06: Session 125, the Spellblade's element (the builds pass, Michael's A)
 
 **What changed**

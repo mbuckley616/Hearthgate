@@ -136,6 +136,40 @@ describe("the Paladin's Shield Rush", () => {
   });
 });
 
+describe("the Rogue's Shadowstep", () => {
+  /** The scene with a Rogue (not offered yet, so set on the hero as the server would), the enemy facing them. */
+  function rogue() {
+    const sc = scene(false);
+    sc.p.spec = { sword: 'rogue' };
+    sc.e.yaw = 0;
+    return sc;
+  }
+
+  it('Charge steps the Rogue behind its target, facing it, and lands there', () => {
+    const { s, p, e } = rogue();
+    charge(s, p);
+    const er = 0.5;
+    expect(p.z).toBeLessThan(e.z - er);
+    expect(Math.abs(p.x - e.x)).toBeLessThan(0.05);
+    // Facing back up the arena, at the enemy.
+    expect(Math.cos(p.yaw)).toBeGreaterThan(0.99);
+    expect(e.hp).toBeLessThan(9999);
+    expect(s.events.some((ev) => ev.kind === 'shadowstep' && ev.playerId === 'p1')).toBe(true);
+  });
+
+  it('anyone else stops in front of it, and a Rogue with nothing in reach dashes as before', () => {
+    const plain = scene(false);
+    plain.e.yaw = 0;
+    charge(plain.s, plain.p);
+    expect(plain.p.z).toBeGreaterThan(plain.e.z);
+    const far = rogue();
+    Object.assign(far.e, { z: 10 - tuning.abilities.chargeDistance - tuning.specs.shadowstepReach - 4 });
+    charge(far.s, far.p);
+    expect(far.s.events.some((ev) => ev.kind === 'shadowstep')).toBe(false);
+    expect(far.p.z).toBeGreaterThan(far.e.z);
+  });
+});
+
 describe("the Paladin's Consecrate", () => {
   /** Spin to the end of a Whirlwind, standing still. */
   function spin(s: SimState, p: PlayerState): void {

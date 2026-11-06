@@ -1,4 +1,6 @@
-import { tuning, type Style } from '../config/tuning';
+import { enemyStats, tuning, type Style } from '../config/tuning';
+import { sphereCast, type Collider } from '../level/geometry';
+import { isTargetable } from './combat';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
 import type { EnemyState, PlayerState, SimState } from './types';
@@ -239,4 +241,31 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
   }
+}
+
+/**
+ * Shadowstep (the Rogue's Charge): as the dash starts, a Rogue whose Charge has a target within
+ * `abilities.chargeDistance` plus `specs.shadowstepReach` steps to the far side of it, behind where it
+ * faces, short of any wall, and turns to it; the Charge then lands on it there, a hit from behind. No
+ * target in reach, and it is the plain dash. Returns the enemy stepped behind. Stepped in stepAbility,
+ * so prediction steps it at once against the last snapshot's enemies; the server's place corrects it.
+ */
+export function shadowstep(state: SimState, p: PlayerState, colliders: readonly Collider[]): EnemyState | null {
+  if (specOf(p) !== 'rogue' || p.attackTarget < 0) return null;
+  const e = state.enemies.find((o) => o.id === p.attackTarget);
+  if (!e || !isTargetable(e) || Math.abs(e.y - p.y) > 1.2) return null;
+  const er = enemyStats(e.kind).radius;
+  const reach = tuning.abilities.chargeDistance + tuning.specs.shadowstepReach + er;
+  if (Math.hypot(e.x - p.x, e.z - p.z) > reach) return null;
+  // Behind it is opposite its facing; a wall there leaves the Rogue as far round as it allows.
+  const dir = { x: -Math.sin(e.yaw), y: 0, z: -Math.cos(e.yaw) };
+  const want = er + tuning.movement.radius + 0.2;
+  const free = sphereCast({ x: e.x, y: p.y + 1, z: e.z }, dir, want, tuning.movement.radius, colliders, (c) => c.blocksMovement);
+  const d = Math.max(0, Math.min(want, free - 0.05));
+  const from = { x: p.x, z: p.z };
+  p.x = e.x + dir.x * d;
+  p.z = e.z + dir.z * d;
+  p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
+  state.events.push({ kind: 'shadowstep', playerId: p.id, fromX: from.x, fromZ: from.z, x: p.x, y: p.y, z: p.z });
+  return e;
 }
