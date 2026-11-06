@@ -5,6 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
+import { consecratedMult } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -474,7 +475,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   const d = Math.hypot(dx, dz);
   const dirX = d > 1e-3 ? dx / d : -Math.sin(p.yaw);
   const dirZ = d > 1e-3 ? dz / d : -Math.cos(p.yaw);
-  let damage = hit.damage * damageTakenMult(p);
+  // A Paladin's consecrated ground (the builds pass) takes its share off before the guard does.
+  let damage = hit.damage * damageTakenMult(p) * consecratedMult(state, p);
   let heavy = !!hit.heavy;
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;

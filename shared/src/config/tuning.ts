@@ -1736,6 +1736,10 @@ export const tuning = {
   specs: {
     level: 10,
     tauntSeconds: 3,
+    /** Consecrate (the Paladin's Whirlwind): the ring it leaves where the spin ends, how long it lasts, and the share of a hit an ally inside still takes. */
+    consecrateSeconds: 6,
+    consecrateRadius: 3,
+    consecrateDamageTaken: 0.85,
   },
   abilities: {
     /**
@@ -2428,6 +2432,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.chargeRecoveryMs': [0, 4000, 10],
   'specs.level': [1, 50, 1],
   'specs.tauntSeconds': [0, 10, 0.5],
+  'specs.consecrateSeconds': [0, 20, 0.5],
+  'specs.consecrateRadius': [0.5, 8, 0.1],
+  'specs.consecrateDamageTaken': [0, 1, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

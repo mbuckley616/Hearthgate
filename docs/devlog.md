@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 122, the Paladin's Consecrate (the builds pass, Michael's A)
+
+**What changed**
+
+A Paladin's Whirlwind now leaves a holy ring where the spin ends (`consecrate` in `specs.ts`, called from `stepAbility` as the spin's active time runs out): `specs.consecrateRadius` 3 m, `specs.consecrateSeconds` 6, one a Paladin (a new spin moves it). Every hero standing in a live ring takes `specs.consecrateDamageTaken` (0.85) of a hit, applied in `hurtHero` beside `damageTakenMult`, before the guard; the design page's "allies inside take 15% less" includes the Paladin. The rings ride as an optional `SimState.consecrated` (with `y`, so a ramp's ring sits on the ramp) and leave the state once faded (`fadeConsecrated` in `stepSim`), so the arena and the parity hashes never see them. `client/src/render/ConsecrateView.ts` draws up to four as a gold edge and a faint wash, built once, breathing, fading over the last second. All three numbers on the panel. Check 400 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The spin's end is the one tick both prediction and the server agree on without a new field: `t0 < windup + active <= t`. A ring prediction places is thrown away with the next snapshot and the server's drawn instead, so nothing doubles.
+
+**Next**
+
+Bulwark, the Paladin's signature (the guard holds against heavy hits; a perfect parry heals allies within 4 m). Then the Spellblade.
+
 ## 2026-11-06: Session 121, specializations and the Paladin's Shield Rush (the builds pass, Michael's A)
 
 **What changed**

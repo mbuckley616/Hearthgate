@@ -531,6 +531,16 @@ export interface PendingHit {
   hit: HeroHit;
 }
 
+/** A holy ring a Paladin's Whirlwind leaves (the builds pass): allies inside take less damage until it fades. */
+export interface ConsecratedGround {
+  by: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  until: number;
+}
+
 export interface SimState {
   tick: number;
   /** Simulated seconds since start. */
@@ -548,6 +558,8 @@ export interface SimState {
   run: RunState;
   /** A generated floor's run (T4, floorRun.ts); never set in the arena, so its state is the slice's to the byte. */
   floor?: FloorRunState;
+  /** A Paladin's Consecrate rings on the ground (the builds pass), one a Paladin; absent in the slice. */
+  consecrated?: ConsecratedGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

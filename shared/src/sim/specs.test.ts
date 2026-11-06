@@ -6,7 +6,8 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { specProblem, specsFor, tauntedBy } from './specs';
+import { consecratedMult, fadeConsecrated, specProblem, specsFor, tauntedBy } from './specs';
+import { hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
 import { createSimState } from './world';
@@ -99,5 +100,53 @@ describe("the Paladin's Shield Rush", () => {
     expect(p.spec).toEqual({ sword: 'paladin' });
     applyLoadout(p, base(at10), false);
     expect(p.spec).toBeUndefined();
+  });
+});
+
+describe("the Paladin's Consecrate", () => {
+  /** Spin to the end of a Whirlwind, standing still. */
+  function spin(s: SimState, p: PlayerState): void {
+    const t = abilityTiming('whirlwind');
+    stepPlayer(p, { ...idleCommand(), ability2: true }, DT, world, s);
+    for (let i = 0; i < 240 && p.abilityTime < t.windup + t.active + 0.02; i++) stepPlayer(p, idleCommand(), DT, world, s);
+  }
+
+  it('Whirlwind leaves a holy ring where the spin ends; an ally inside takes less of a hit', () => {
+    const { s, p, friend, e } = scene(true);
+    s.enemies.splice(s.enemies.indexOf(e), 1);
+    spin(s, p);
+    expect(p.ability).toBe('whirlwind');
+    expect(s.consecrated).toHaveLength(1);
+    const ring = s.consecrated![0];
+    expect(ring).toMatchObject({ by: 'p1', radius: tuning.specs.consecrateRadius });
+    expect(ring.until).toBeCloseTo(s.time + tuning.specs.consecrateSeconds, 1);
+    // The friend steps in; a hit costs them consecrateDamageTaken of it.
+    Object.assign(friend, { x: ring.x + 1, z: ring.z, lagGrace: 0 });
+    expect(consecratedMult(s, friend)).toBe(tuning.specs.consecrateDamageTaken);
+    expect(hurtHero(s, friend, { damage: 20, fromX: friend.x + 1, fromZ: friend.z })).toBe('hit');
+    expect(friend.hp).toBeCloseTo(100 - 20 * tuning.specs.consecrateDamageTaken);
+    // Outside it, or once it fades, a hit is whole.
+    Object.assign(friend, { x: ring.x + tuning.specs.consecrateRadius + 1 });
+    expect(consecratedMult(s, friend)).toBe(1);
+    Object.assign(friend, { x: ring.x + 1 });
+    s.time = ring.until + 0.01;
+    expect(consecratedMult(s, friend)).toBe(1);
+    fadeConsecrated(s);
+    expect(s.consecrated).toBeUndefined();
+  });
+
+  it('a second spin moves the Paladin\'s ring rather than adding one; a hero with no specialization leaves none', () => {
+    const { s, p, e } = scene(true);
+    s.enemies.splice(s.enemies.indexOf(e), 1);
+    spin(s, p);
+    for (let i = 0; i < 120 && p.mode === 'ability'; i++) stepPlayer(p, idleCommand(), DT, world, s);
+    p.cooldowns.sword[1] = 0;
+    Object.assign(p, { x: 3 });
+    spin(s, p);
+    expect(s.consecrated).toHaveLength(1);
+    expect(s.consecrated![0].x).toBeCloseTo(3, 0);
+    const b = scene(false);
+    spin(b.s, b.p);
+    expect(b.s.consecrated).toBeUndefined();
   });
 });

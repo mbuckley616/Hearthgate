@@ -118,3 +118,33 @@ export function tauntedBy(state: SimState, e: EnemyState): PlayerState | null {
   }
   return p;
 }
+
+/**
+ * Consecrate (the Paladin's Whirlwind): where the spin ends it leaves a holy ring, one a Paladin (a
+ * new one replaces their last), for `specs.consecrateSeconds`. Stepped in stepAbility, so prediction
+ * draws its own at once and the server's copy replaces it with the next snapshot.
+ */
+export function consecrate(state: SimState, p: PlayerState): void {
+  if (specOf(p) !== 'paladin' || tuning.specs.consecrateSeconds <= 0) return;
+  const s = tuning.specs;
+  const kept = (state.consecrated ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.consecrateRadius, until: state.time + s.consecrateSeconds });
+  state.consecrated = kept;
+}
+
+/** What share of a hit a hero standing on consecrated ground takes: `specs.consecrateDamageTaken` inside a live ring, else 1. */
+export function consecratedMult(state: SimState, p: PlayerState): number {
+  const rings = state.consecrated;
+  if (!rings) return 1;
+  for (const g of rings) {
+    if (g.until > state.time && Math.hypot(p.x - g.x, p.z - g.z) <= g.radius) return tuning.specs.consecrateDamageTaken;
+  }
+  return 1;
+}
+
+/** Spent rings leave the state, so a snapshot carries only live ones (and none once all have faded). */
+export function fadeConsecrated(state: SimState): void {
+  const live = state.consecrated!.filter((g) => g.until > state.time);
+  if (live.length > 0) state.consecrated = live;
+  else delete state.consecrated;
+}

@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { taunt } from './specs';
+import { consecrate, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -157,6 +157,8 @@ export function stepAbility(
     }
   }
   if (kind === 'disengage' && !inActive) p.invulnerable = false;
+  // The Paladin's spin leaves its ring where it ends (Consecrate).
+  if (kind === 'whirlwind' && t0 < timing.windup + timing.active && t >= timing.windup + timing.active) consecrate(state, p);
   // Charge's dash slips hits as a roll does (C6), until it lands on someone or runs its length.
   if (kind === 'charge' && tuning.abilities.meleeGuard) p.invulnerable = p.abilityTime >= timing.windup && p.abilityTime < timing.windup + timing.active;
 
