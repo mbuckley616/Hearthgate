@@ -126,7 +126,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Thorn Ring', 'Frost ring becomes thorns that root.'],
     e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
     sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -754,4 +754,41 @@ export function shadowStrike(state: SimState, hero: PlayerState, hit: HitSpec): 
   const live = hero.shadowUntil > state.time && specOf(hero) === 'rogue';
   delete hero.shadowUntil;
   return live ? tuning.specs.shadowCritMult : 1;
+}
+
+/**
+ * Wild Growth (the Druid's Blink): where the Druid stood as they blinked, a grove `specs.groveRadius`
+ * across grows for `specs.groveSeconds`; one a Druid, a new one replacing their last. Fired with the
+ * Blink, so prediction draws its own at once and the server's copy replaces it with the next snapshot.
+ * Returns whether it grew, for the Blink's event.
+ */
+export function wildGrowth(state: SimState, p: PlayerState, x: number, z: number): boolean {
+  const s = tuning.specs;
+  if (p.spec?.staff !== 'druid' || p.style !== 'staff' || s.groveSeconds <= 0) return false;
+  const kept = (state.groves ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const element = elementFor(p, 'staff') ?? 'nature';
+  kept.push({ by: p.id, x, y: p.y, z, radius: s.groveRadius, until: state.time + s.groveSeconds, element });
+  state.groves = kept;
+  return true;
+}
+
+/**
+ * Each tick every standing ally inside a live grove (a hero or a henchman, the Druid too) heals
+ * `specs.groveHealPerS` of their health a second, never past full; groves overlapping heal once.
+ * Health is the server's, so prediction never heals; spent groves leave the state.
+ */
+export function stepGroves(state: SimState, dt: number): void {
+  const live: BrambleGround[] = state.groves!.filter((g) => g.until > state.time);
+  if (live.length === 0) {
+    delete state.groves;
+    return;
+  }
+  state.groves = live;
+  const rate = tuning.specs.groveHealPerS;
+  if (rate <= 0) return;
+  for (const o of state.players) {
+    if (o.mode === 'down' || o.hp <= 0 || o.hp >= o.maxHp) continue;
+    if (!live.some((g) => Math.abs(o.y - g.y) < 1.2 && Math.hypot(o.x - g.x, o.z - g.z) <= g.radius)) continue;
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * dt);
+  }
 }

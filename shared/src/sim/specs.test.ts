@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, isRooted, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, brambleRain, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { newFlow } from './flow';
@@ -930,7 +930,7 @@ describe("the Warlock's Shadow Swap", () => {
 
 describe('the Warlock is offered (the builds pass)', () => {
   it('from staff level 10, Shadow alone', () => {
-    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock']);
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toContain('warlock');
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'warlock' })).toBeNull();
     expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'warlock' })).not.toBeNull();
     const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
@@ -939,7 +939,7 @@ describe('the Warlock is offered (the builds pass)', () => {
   });
 });
 
-describe("the Druid's Bloom (not yet choosable)", () => {
+describe("the Druid's Bloom", () => {
   /** A staff hero, a Druid or not, casts one bolt down the arena through a hurt friend at the grunt. */
   function bolt(druid: boolean, flowV = 0) {
     const sc = scene(false);
@@ -977,7 +977,6 @@ describe("the Druid's Bloom (not yet choosable)", () => {
     expect(isRooted(high.s, high.e)).toBe(true);
     const low = bolt(true, third * tuning.specs.bloomRootTier - 1);
     expect(isRooted(low.s, low.e)).toBe(false);
-    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).not.toBeNull();
   });
 });
 
@@ -1006,5 +1005,72 @@ describe("the Druid's Thorn Ring", () => {
     const { s, e } = ring(false);
     expect(e.frozen).toBeGreaterThan(0);
     expect(isRooted(s, e)).toBe(false);
+  });
+});
+
+describe("the Druid's Wild Growth", () => {
+  /** A staff hero, a Druid or not, Blinks forward from the arena's middle. */
+  function blink(druid: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: 0, spec: druid ? { staff: 'druid' } : undefined });
+    sc.p.xp = { ...sc.p.xp, staff: at10 };
+    Object.assign(sc.e, { x: 15, z: -15 });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    const from = { x: sc.p.x, z: sc.p.z };
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return { ...sc, from };
+  }
+
+  it("a Druid's Blink leaves a grove where they stood, and the Blink still goes", () => {
+    const { s, p, from } = blink(true);
+    expect(s.groves).toHaveLength(1);
+    expect(s.groves![0]).toMatchObject({ by: p.id, x: from.x, z: from.z, radius: tuning.specs.groveRadius });
+    expect(Math.hypot(p.x - from.x, p.z - from.z)).toBeGreaterThan(1);
+    expect(s.events.some((ev) => ev.kind === 'blink' && ev.grove)).toBe(true);
+  });
+
+  it('the grove heals a hurt ally standing in it over its seconds, never past full, then fades', () => {
+    const { s, friend, from } = blink(true);
+    Object.assign(friend, { x: from.x + 1, z: from.z, hp: 20 });
+    // The Blink went off within the setup's ticks, so only what is left of the grove heals.
+    const left = s.groves![0].until - s.time;
+    for (let i = 0; i < Math.round(left * 60) + 5; i++) {
+      if (s.groves) stepGroves(s, DT);
+      s.time += DT;
+    }
+    expect(friend.hp).toBeCloseTo(20 + friend.maxHp * tuning.specs.groveHealPerS * left, 0);
+    expect(s.groves).toBeUndefined();
+    friend.hp = friend.maxHp - 1;
+    wildGrowth(s, s.players.find((o) => o.spec?.staff === 'druid')!, friend.x, friend.z);
+    for (let i = 0; i < 120; i++) stepGroves(s, DT);
+    expect(friend.hp).toBe(friend.maxHp);
+  });
+
+  it('outside it, or a downed ally, heals nothing; anyone else blinks and grows nothing', () => {
+    const { s, friend, from } = blink(true);
+    Object.assign(friend, { x: from.x + tuning.specs.groveRadius + 1, z: from.z, hp: 20 });
+    for (let i = 0; i < 60; i++) stepGroves(s, DT);
+    expect(friend.hp).toBe(20);
+    Object.assign(friend, { x: from.x, mode: 'down' });
+    for (let i = 0; i < 60; i++) stepGroves(s, DT);
+    expect(friend.hp).toBe(20);
+    const plain = blink(false);
+    expect(plain.s.groves).toBeUndefined();
+    expect(plain.s.events.some((ev) => ev.kind === 'blink' && ev.grove)).toBe(false);
+  });
+});
+
+describe('the Druid is offered (the builds pass)', () => {
+  it('from staff level 10, Nature or Earth', () => {
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid']);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).toBeNull();
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'druid' })).not.toBeNull();
+    const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
+    expect(readLoadout({ ...l, spec: { staff: 'druid' } })?.spec).toEqual({ staff: 'druid' });
+    expect(readLoadout({ ...l, spec: { staff: 'druid' }, elements: { staff: 'earth' } })?.elements).toEqual({ staff: 'earth' });
+    expect(readLoadout({ ...l, spec: { staff: 'druid' }, elements: { staff: 'shadow' } })).toBeNull();
   });
 });

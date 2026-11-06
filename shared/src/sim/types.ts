@@ -464,7 +464,7 @@ export type SimEvent =
   | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
   | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean; thorns?: boolean }
-  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean }
+  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean; grove?: boolean }
   | { kind: 'whirlTick'; playerId: string }
   | { kind: 'freeze'; enemyId: number }
   | { kind: 'enemyShot'; enemyId: number }
@@ -602,6 +602,8 @@ export interface SimState {
   brambles?: BrambleGround[];
   /** A Ranger's Snare Traps (the builds pass), one a Ranger, each sprung by the first enemy in it; absent in the slice. */
   snares?: BrambleGround[];
+  /** A Druid's Wild Growth groves (the builds pass), one a Druid, healing allies inside; absent in the slice. */
+  groves?: BrambleGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

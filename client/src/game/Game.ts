@@ -167,6 +167,8 @@ export class Game {
   private brambles = new ConsecrateView();
   /** A Ranger's Snare Traps, likewise. */
   private snares = new ConsecrateView();
+  /** A Druid's Wild Growth groves, likewise. */
+  private groves = new ConsecrateView();
   private trapView: TrapView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
@@ -247,6 +249,7 @@ export class Game {
       this.consecrate.group,
       this.brambles.group,
       this.snares.group,
+      this.groves.group,
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
@@ -1008,6 +1011,7 @@ export class Game {
     this.consecrate.update(world.consecrated, world.time);
     this.brambles.update(world.brambles, world.time);
     this.snares.update(world.snares, world.time);
+    this.groves.update(world.groves, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();

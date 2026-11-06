@@ -256,6 +256,8 @@ export class FxView {
             this.glowPuff(x, 0.9, z, 0xb59bff, 1.4, 0.35);
             this.spawnSparks(new THREE.Vector3(x, 1, z), new THREE.Vector3(0, 0.3, 0), 18, new THREE.Color(0xc8b4ff));
           }
+          // A Druid's Wild Growth: leaves spring up where they stood.
+          if (ev.grove) this.spawnSparks(new THREE.Vector3(ev.fromX, 0.3, ev.fromZ), new THREE.Vector3(0, 1.2, 0), 24, new THREE.Color(0x7fd05a));
           break;
         case 'ability':
           if (ev.ability === 'charge') this.streak(ev.x, ev.z, ev.yaw, tuning.abilities.chargeDistance);

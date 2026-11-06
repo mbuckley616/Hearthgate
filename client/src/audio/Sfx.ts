@@ -186,6 +186,8 @@ export class Sfx {
           break;
         case 'blink':
           // A Warlock's Shadow Swap (the builds pass): a hollow thud under the Blink's shimmer as the two trade places.
+          // A Druid's Wild Growth: a soft rustle of leaves where they stood.
+          if (ev.grove) this.noiseBurst('bandpass', 1800, 3400, 2, 0.35, ev.playerId === localId ? 0.08 : 0.03);
           if (!ev.swap) break;
           this.tone('sine', 140, 60, 0.25, ev.playerId === localId ? 0.14 : 0.05, 0.005);
           break;

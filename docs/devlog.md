@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 143, the Druid's Wild Growth; the Druid offered (the builds pass, Michael's A)
+
+**What changed**
+
+Wild Growth (`wildGrowth` and `stepGroves` in `specs.ts`, fired where the Blink goes in `stepAbility`): where a Druid stood as they Blink, a grove `specs.groveRadius` (2.5 m) across grows for `specs.groveSeconds` (4 s), one a Druid, a new one replacing their last (`SimState.groves`). Every standing ally inside, a friend, a henchman or the Druid, heals `specs.groveHealPerS` (3%) of their health a second, never past full; overlapping groves heal once, and a downed hero is not raised. The heal is stepped in `stepSim`, so prediction draws the grove at once but never heals. The Blink still goes and the next bolt still crits; the `blink` event carries `grove`, so leaves spring up where the Druid stood with a soft rustle, and the grove draws as Consecrate's ring in the Druid's element. All three numbers on the panel; at 0 seconds the Blink grows nothing. With Sessions 141 and 142 the Druid is whole for this pass, and it is offered from staff level 10, Nature or Earth. Check 462 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Four heroes' worth of rings, patches, traps and groves now each have their own `ConsecrateView` pool of four; if a fifth ground effect comes, one pooled view with a kind per ring would be tidier than a fifth copy.
+
+**Next**
+
+Magic has two of three; the Sorcerer and the Spellblade both wait on "The Spellblade's trail and blades" (decisions.md Pending, A recommended), since the Sorcerer's Elemental Step trail is the same question. With that unanswered, nothing else in the builds pass is ready.
+
 ## 2026-11-06: Session 142, the Druid's Thorn Ring (the builds pass, Michael's A)
 
 **What changed**

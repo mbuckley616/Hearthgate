@@ -1800,6 +1800,10 @@ export const tuning = {
     bloomRootS: 1,
     /** Thorn Ring (the Druid's frost ring): light enemies the ring reaches are rooted this long, heavier ones slowed as long, and nothing is frozen. */
     thornRingRootS: 2,
+    /** Wild Growth (the Druid's Blink): where the Druid stood, a grove this wide for this long; every standing ally in it, the Druid too, heals this share of their health a second. */
+    groveSeconds: 4,
+    groveRadius: 2.5,
+    groveHealPerS: 0.03,
   },
   abilities: {
     /**
@@ -2535,6 +2539,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.bloomRootTier': [0, 3, 1],
   'specs.bloomRootS': [0, 5, 0.1],
   'specs.thornRingRootS': [0, 6, 0.1],
+  'specs.groveSeconds': [0, 12, 0.5],
+  'specs.groveRadius': [0.5, 6, 0.1],
+  'specs.groveHealPerS': [0, 0.2, 0.005],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],
