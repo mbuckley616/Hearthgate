@@ -8,6 +8,7 @@ import type { FlowState } from './flow';
 import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
+import type { Specs } from './specs';
 
 /**
  * Simulation state. Everything here must stay plain, serializable data
@@ -168,6 +169,8 @@ export interface PlayerState {
   look?: string[];
   /** The player's champion points (T6b), shared by their characters; absent in the slice. */
   champion?: ChampionState;
+  /** Their specializations (the builds pass), one a style from level 10; absent in the slice and below it. */
+  spec?: Specs;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
@@ -296,6 +299,8 @@ export interface EnemyState {
   guardDownUntil?: number;
   /** What its hits are multiplied by: a harder portal's (G3). Absent means 1, as in the slice. */
   hitMult?: number;
+  /** A Paladin's Shield Rush holds it to them until this sim time (the builds pass). The server's alone. */
+  taunt?: { by: string; until: number };
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -409,6 +414,8 @@ export type SimEvent =
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
+  /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
+  | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */

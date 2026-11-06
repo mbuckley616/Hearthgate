@@ -149,6 +149,11 @@ export class Sfx {
           this.tone('sine', 520, 260, 0.35, 0.1, 0.005);
           this.noiseBurst('highpass', 4000, 7000, 1, 0.35, 0.12);
           break;
+        case 'taunt':
+          // A Paladin's Shield Rush took hold (the builds pass): a bright bell over the impact, softer for a teammate's.
+          this.tone('sine', 1320, 1300, 0.6, ev.playerId === localId ? 0.16 : 0.07, 0.005);
+          this.tone('sine', 1980, 1950, 0.4, ev.playerId === localId ? 0.08 : 0.035, 0.005);
+          break;
         case 'chilled':
           // Caught in it: a brittle crack for the Chilled hero, quieter for a teammate.
           this.crackle(ev.playerId === localId ? 0.35 : 0.12);

@@ -9,6 +9,7 @@ import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLau
 import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
+import { tauntedBy } from './specs';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -145,6 +146,9 @@ export function spawnGroup(state: SimState, world: World): void {
 }
 
 function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
+  // A Paladin's taunt holds it to them, nearer heroes or not (the builds pass).
+  const held = e.taunt ? tauntedBy(state, e) : null;
+  if (held) return held;
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {

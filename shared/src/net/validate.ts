@@ -5,6 +5,7 @@ import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
+import { SPEC_IDS, specProblem, type SpecId, type Specs } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { readPortalChoice } from '../game/portalChoice';
@@ -170,6 +171,17 @@ export function readLoadout(v: unknown): Loadout | null {
     const stone = whole(r.stone, stack);
     if (spaces === null || lumber === null || stone === null) return null;
     loadout.bagRoom = { spaces, lumber, stone };
+  }
+  // Specializations (the builds pass): a style's own, built, and earned by that style's level.
+  if (v.spec !== undefined) {
+    if (!isObj(v.spec)) return null;
+    const spec: Specs = {};
+    for (const [style, id] of Object.entries(v.spec)) {
+      if (!STYLES.includes(style as Style) || !SPEC_IDS.includes(id as SpecId)) return null;
+      spec[style as Style] = id as SpecId;
+    }
+    if (specProblem(xp, spec)) return null;
+    if (Object.keys(spec).length > 0) loadout.spec = spec;
   }
   return loadout;
 }

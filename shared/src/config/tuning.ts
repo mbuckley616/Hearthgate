@@ -1728,6 +1728,15 @@ export const tuning = {
    * The second ability per style unlocks at style level 2 once levels exist
    * (M4); until then all six are available. Damage is x combat.baseDamage.
    */
+  /**
+   * Specializations (the builds pass, Michael's A, 6 Nov): one of a style's three, chosen on the hero
+   * screen once that style reaches `level`, changed where slotted perks change. Each reshapes its
+   * style's two abilities; the Paladin's Shield Rush taunts what its Charge hits for `tauntSeconds`.
+   */
+  specs: {
+    level: 10,
+    tauntSeconds: 3,
+  },
   abilities: {
     /**
      * Melee abilities that protect (C6; Michael, 29 Oct: they "make you really vulnerable, especially
@@ -2417,6 +2426,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.chargeWindupMs': [0, 4000, 10],
   'abilities.chargeDashMs': [0, 4000, 10],
   'abilities.chargeRecoveryMs': [0, 4000, 10],
+  'specs.level': [1, 50, 1],
+  'specs.tauntSeconds': [0, 10, 0.5],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

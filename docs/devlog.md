@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 121, specializations and the Paladin's Shield Rush (the builds pass, Michael's A)
+
+**What changed**
+
+The first slice of the builds pass, to Michael's A (specializations first, one style a session, Melee's Paladin, Spellblade and Rogue first). `shared/src/sim/specs.ts` holds the nine-to-be as data (`SPECS`: style, element, the two reshaped abilities, built or not; Melee's three today, from the combat builds page Michael kept on 28 Oct) and the checks. A hero's specializations ride as `Loadout.spec` and `PlayerState.spec`, one a style; `readLoadout` refuses one that is not its style's, not built, or below that style's level 10 (`specs.level`), and `HostSession` keeps the old ones anywhere slotted perks are shut (village, a reached rest room, the antechamber are open). The Paladin's Shield Rush: a Charge that lands taunts the enemy it hit for `specs.tauntSeconds` (3), so `nearestTarget` hands every brain the Paladin while it lasts, nearer friends or not; a downed Paladin lets go. The hero screen's Talents tab has a Specialization row under each kind's board (Paladin choosable, Spellblade and Rogue shown as soon; F or A steps through, Q or X takes it off, 48 px buttons), locked with a note where it cannot change. A Paladin's sword trail is holy gold, and a taunt rings a bell. Nothing the parity test sends carries a spec, so the hashes are untouched. Check 398 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The Charge stops at the first enemy it meets, so "taunts every enemy it hits" is one enemy a Rush; the design page's wording fits Whirlwind better, but its Q is Charge. Taunt state lives on the enemy and only the server steps enemies, so prediction needs nothing.
+
+**Next**
+
+The Paladin's Consecrate (Whirlwind leaves a holy ring; allies inside take less damage), then Bulwark, the signature (the guard holds against heavy hits; a perfect parry heals allies near). Then the Spellblade.
+
 ## 2026-11-06: Session 120, the builds pass asked
 
 **What changed**

@@ -17,6 +17,7 @@ import {
 import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { bagRoomOf, materialSpaces, roomFor, type Materials } from '@hearthgate/shared/sim/bagRoom';
+import { specProblem, type SpecId, type Specs } from '@hearthgate/shared/sim/specs';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { emptyVillage, pocketSpaces, readVillageSave, stashSpaces, type VillageSave } from '@hearthgate/shared/game/villageSave';
@@ -73,6 +74,8 @@ export interface ProfileData {
    * bag's last empty spaces, always carried (they go to the village when the run banks, or with the bag).
    */
   mats?: Materials;
+  /** Specializations (the builds pass), one a weapon kind from level 10. */
+  spec?: Specs;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -588,7 +591,28 @@ export class Profile {
       champion: { xp: this.champion.xp, ranks, slots: (this.champion.slots ?? []).slice(0, slotCount()) },
       ...(this.data.potions ? { potions: this.data.potions } : {}),
       bagRoom: bagRoomOf(this.emptyPastPocket(), this.materials()),
+      ...(Object.keys(this.specs()).length > 0 ? { spec: this.specs() } : {}),
     };
+  }
+
+  /** The specializations this hero may bring: each its kind's, built, and earned (the server checks the same). */
+  specs(): Specs {
+    const out: Specs = {};
+    for (const [s, id] of Object.entries(this.data.spec ?? {}) as [Style, SpecId][]) {
+      if (!specProblem(this.data.xp, { [s]: id })) out[s] = id;
+    }
+    return out;
+  }
+
+  /** Choose a weapon kind's specialization (or none). Returns whether it took. */
+  setSpec(style: Style, id: SpecId | null): boolean {
+    if (id && specProblem(this.data.xp, { [style]: id })) return false;
+    const spec = { ...(this.data.spec ?? {}) };
+    if (id) spec[style] = id;
+    else delete spec[style];
+    this.data.spec = spec;
+    this.save();
+    return true;
   }
 
   /** Pull XP earned in the sim back into the profile. */

@@ -22,6 +22,11 @@ export class WeaponTrail {
   private colors = new Float32Array(MAX_SAMPLES * 2 * 3);
   private color: THREE.Color;
 
+  /** Change the trail's colour in place (a specialization's element, the builds pass). */
+  setColor(hex: number): void {
+    this.color.setHex(hex);
+  }
+
   constructor(color: number) {
     this.color = new THREE.Color(color);
     const geo = new THREE.BufferGeometry();

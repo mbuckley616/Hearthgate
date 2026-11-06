@@ -6,6 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
+import { taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -97,6 +98,7 @@ export function stepAbility(
           y: hit.y + 1,
           z: hit.z - fz * enemyStats(hit.kind).radius,
         });
+        taunt(state, p, hit);
         p.hitstop = hitstopFor(true);
         // Skip the rest of the dash.
         p.abilityTime = timing.windup + timing.active;
