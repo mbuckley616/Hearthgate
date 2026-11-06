@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-06: The Spellblade's trail and blades, what they do (builder, Session 125)
 The Spellblade's Blade Storm (the pull) and its element choice (Fire, Frost, Earth or Air) are built. The combat builds page gives its other two pieces one line each: Blazing Charge "leaves a trail of your element", and the signature "your spins conjure extra blades". Neither says what they hit for, and the states an element leaves wait for later (your A), so a trail cannot yet Chill or Burn.
 - **A.** Both deal damage now, coloured by the element, the same whatever it is. The trail: a 1 m strip along the Charge's path for 3 s; an enemy standing in it takes 15% of the Charge's damage a second. The blades: two spectral swords circle at the spin's edge, 1 m past the Whirlwind's reach, each hitting an enemy once a spin for 30% of the Whirlwind's damage. All numbers on the panel; when states come, the trail leaves the element's. *(recommended: both read at once and are tuned on the panel; nothing waits on the states)*
@@ -14,8 +16,7 @@ The Spellblade's Blade Storm (the pull) and its element choice (Fire, Frost, Ear
 - **C.** As A, but the blades fly out when the spin ends instead of circling: one at each of the three nearest enemies within 8 m, 40% of the Whirlwind's damage each.
 
 Until answered, the Spellblade stays "soon" on the hero screen.
-
-## Answered
+Michael: **A. Both deal damage now, element only colours them**. (2026-11-06, on the control room)
 
 ### 2026-11-06: The builds pass, what comes first and when (builder, Session 120)
 G5 and E1a to E1h are built, so the builder has nothing left in the current section: E1i waits on a played Crypt, and the late-deaths item on a real machine. The builds pass (backlog, Phase 2's carry-overs) was to be cut into items once the feel pass was played, which it was on the gate evening (2 Nov). It is large: specializations and their trees, elements, runes, the ten states and combo mastery, the rest of the roster, the Necromancer. Elements and states need each other (a specialization's element is what leaves a state), so the first slice is about which loop to open first.
