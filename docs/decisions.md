@@ -7,6 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-06: The builds pass, what comes first and when (builder, Session 120)
+G5 and E1a to E1h are built, so the builder has nothing left in the current section: E1i waits on a played Crypt, and the late-deaths item on a real machine. The builds pass (backlog, Phase 2's carry-overs) was to be cut into items once the feel pass was played, which it was on the gate evening (2 Nov). It is large: specializations and their trees, elements, runes, the ten states and combo mastery, the rest of the roster, the Necromancer. Elements and states need each other (a specialization's element is what leaves a state), so the first slice is about which loop to open first.
+- **A.** Specializations first, one style a session: at style level 10 the hero screen asks for one of the style's three (Melee's Paladin, Spellblade, Rogue first), each reshaping the style's two abilities and setting an element that colours the attacks; the trees at 20, 30, 40 and the Crescendo come after all nine exist. States wait. *(recommended: it is what a player at level 10 notices at once, and it gives the elements and later the states somewhere to come from)*
+- **B.** Elements and the first three states first (Shatter, Skewer, Detonate), on today's weapons through a gear modifier, so the combo payoffs land before anyone chooses a specialization; specializations follow.
+- **C.** The rest of the roster first (mace, axe, daggers, longbow, throwing knives, sceptre, focus orb, parrying dagger), one family a session on the C5 pattern: the least new design, so it can start straight away; specializations and states after.
+- **D.** Not yet: hold the builds pass until Phase 3 has started, and keep the builder on E1i once the Crypt is played.
+
+Each choice is Phase 2 carry-over work, before Phase 3's regions and trade.
+
 ## Answered
 
 ### 2026-11-04: G5's C, what a secret or side room is (builder, Session 113)
