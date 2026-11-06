@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 123, the Paladin's Bulwark (the builds pass, Michael's A; the Paladin built)
+
+**What changed**
+
+Bulwark, the Paladin's signature, from the combat builds page Michael kept. A Paladin's raised guard holds against a heavy hit (`guardHoldsHeavy`, `specs.bulwarkHolds`): it takes the heavy's chip (`guard.heavyBlockDamageFrac`), is shoved like a light block and stays up, where anyone else is broken and stumbles. A Paladin's perfect parry pulses light (`holyPulse`, called from `parry`): every standing hero within `specs.bulwarkRadius` (4 m), the Paladin too, heals `specs.bulwarkHeal` (6%) of their own health, with a `holyPulse` event for a rising chord. The hero screen's specialization row now shows the signature over the two abilities. With Session 121's Shield Rush and 122's Consecrate, the Paladin is whole for this pass (its tree at 20, 30, 40 and the Crescendo wait, as Michael's A says). Check 404 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The champion constellation already has a slotted perk named Bulwark (less chip on a block); the two stack and read alike on screen. Worth a rename of one when the trees come. The parry heal includes the Paladin: the page says "allies", and a tank who heals everyone but themselves on a perfect parry felt like a trap; the panel's numbers make it easy to change.
+
+**Next**
+
+The Spellblade: its element chosen from Fire, Frost, Earth or Air, Blazing Charge, Blade Storm and spectral blades. Then the Rogue.
+
 ## 2026-11-06: Session 122, the Paladin's Consecrate (the builds pass, Michael's A)
 
 **What changed**

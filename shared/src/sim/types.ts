@@ -416,6 +416,8 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
   | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
+  /** A Paladin's perfect parry pulsed light (Bulwark): `healed` heroes were healed. For its sound and flash. */
+  | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */

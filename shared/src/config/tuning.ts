@@ -1740,6 +1740,10 @@ export const tuning = {
     consecrateSeconds: 6,
     consecrateRadius: 3,
     consecrateDamageTaken: 0.85,
+    /** Bulwark (the Paladin's signature): the guard holds against heavy hits; a perfect parry heals every standing hero within `bulwarkRadius` by `bulwarkHeal` of their health. */
+    bulwarkHolds: true,
+    bulwarkRadius: 4,
+    bulwarkHeal: 0.06,
   },
   abilities: {
     /**
@@ -2435,6 +2439,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.consecrateSeconds': [0, 20, 0.5],
   'specs.consecrateRadius': [0.5, 8, 0.1],
   'specs.consecrateDamageTaken': [0, 1, 0.05],
+  'specs.bulwarkRadius': [0, 10, 0.5],
+  'specs.bulwarkHeal': [0, 0.5, 0.01],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

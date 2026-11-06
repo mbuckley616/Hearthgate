@@ -150,3 +150,49 @@ describe("the Paladin's Consecrate", () => {
     expect(b.s.consecrated).toBeUndefined();
   });
 });
+
+describe("the Paladin's Bulwark", () => {
+  /** A hero with their guard up facing +z, past the parry window unless `parry`. */
+  function guarding(p: PlayerState, parry: boolean): void {
+    Object.assign(p, { mode: 'guard', yaw: 0, parryOpen: parry, guardTime: parry ? 0 : 2, invulnerable: false, invulnTime: 0, lagGrace: 0 });
+  }
+  const heavyFront = (p: PlayerState) => ({ damage: 30, heavy: true, push: 4, fromX: p.x, fromZ: p.z + 1.5 });
+
+  it("a Paladin's guard holds against a heavy: the heavy's chip, and the guard stays up", () => {
+    const { s, p } = scene(true);
+    guarding(p, false);
+    expect(hurtHero(s, p, heavyFront(p))).toBe('blocked');
+    expect(p.mode).toBe('guard');
+    expect(p.hp).toBeCloseTo(p.maxHp - 30 * tuning.guard.heavyBlockDamageFrac);
+  });
+
+  it('anyone else is broken by the same heavy', () => {
+    const { s, p } = scene(false);
+    guarding(p, false);
+    expect(hurtHero(s, p, heavyFront(p))).toBe('hit');
+    expect(p.mode).toBe('hurt');
+  });
+
+  it("a Paladin's perfect parry heals every standing hero within 4 m, and no one further", () => {
+    const { s, p, friend } = scene(true);
+    const far = addPlayer(s, world, 'p3', base(0), false);
+    Object.assign(friend, { x: p.x + 2, z: p.z, hp: 50 });
+    Object.assign(far, { x: p.x + tuning.specs.bulwarkRadius + 2, z: p.z, hp: 50 });
+    p.hp = 80;
+    guarding(p, true);
+    expect(hurtHero(s, p, heavyFront(p))).toBe('parried');
+    // Each by a share of their own health: the Paladin's level 10 has more of it.
+    expect(friend.hp).toBeCloseTo(50 + friend.maxHp * tuning.specs.bulwarkHeal);
+    expect(p.hp).toBeCloseTo(80 + p.maxHp * tuning.specs.bulwarkHeal);
+    expect(far.hp).toBe(50);
+    expect(s.events.find((ev) => ev.kind === 'holyPulse')).toMatchObject({ playerId: 'p1', healed: 2 });
+  });
+
+  it('a parry by anyone else heals no one', () => {
+    const { s, p, friend } = scene(false);
+    Object.assign(friend, { x: p.x + 2, z: p.z, hp: 50 });
+    guarding(p, true);
+    expect(hurtHero(s, p, heavyFront(p))).toBe('parried');
+    expect(friend.hp).toBe(50);
+  });
+});

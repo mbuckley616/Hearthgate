@@ -5,7 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { consecratedMult } from './specs';
+import { consecratedMult, guardHoldsHeavy, holyPulse } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -403,6 +403,7 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   const fx = Math.sin(p.yaw);
   const fz = Math.cos(p.yaw);
   state.events.push({ kind: 'parry', playerId: p.id, x: p.x + fx * 0.6, y: p.y + 1.2, z: p.z + fz * 0.6, enemyId: e ? e.id : -1 });
+  holyPulse(state, p);
 }
 
 /**
@@ -489,7 +490,16 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fx = Math.sin(p.yaw);
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
-    if (!heavy) {
+    if (heavy && guardHoldsHeavy(p)) {
+      // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
+      damage *= g.heavyBlockDamageFrac;
+      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
+      p.hp = Math.max(0, p.hp - damage);
+      if (p.hp > 0) return 'blocked';
+      heavy = false;
+    } else if (!heavy) {
       // Blocked: chip damage and a small shove, the guard holds.
       damage *= g.blockDamageFrac;
       if (slotted(p, 'bulwark')) damage *= tuning.champion.bulwarkChipMult;

@@ -22,6 +22,8 @@ export interface SpecInfo {
   /** Its versions of the style's two abilities, and what each does differently. */
   q: [string, string];
   e: [string, string];
+  /** Its signature mechanic. */
+  sig: [string, string];
   /** Built and choosable; the rest are shown as coming. */
   built: boolean;
 }
@@ -34,7 +36,8 @@ export const SPECS: readonly SpecInfo[] = [
     name: 'Paladin',
     element: 'holy',
     q: ['Shield Rush', 'Charge taunts the enemy it hits: it turns on you for 3 s.'],
-    e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take less damage.'],
+    e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take 15% less damage.'],
+    sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals allies within 4 m.'],
     built: true,
   },
   {
@@ -44,6 +47,7 @@ export const SPECS: readonly SpecInfo[] = [
     element: 'fire',
     q: ['Blazing Charge', 'Charge leaves a trail of your element.'],
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
+    sig: ['Spectral blades', 'Your spins conjure extra blades.'],
     built: false,
   },
   {
@@ -53,6 +57,7 @@ export const SPECS: readonly SpecInfo[] = [
     element: 'shadow',
     q: ['Shadowstep', 'Charge becomes a step behind the target.'],
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
+    sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
     built: false,
   },
 ];
@@ -147,4 +152,27 @@ export function fadeConsecrated(state: SimState): void {
   const live = state.consecrated!.filter((g) => g.until > state.time);
   if (live.length > 0) state.consecrated = live;
   else delete state.consecrated;
+}
+
+/** Bulwark (the Paladin's signature): whether this hero's guard holds against a heavy hit instead of breaking. */
+export function guardHoldsHeavy(p: PlayerState): boolean {
+  return tuning.specs.bulwarkHolds && specOf(p) === 'paladin';
+}
+
+/**
+ * Bulwark's pulse: a Paladin's perfect parry heals every standing hero within `specs.bulwarkRadius`,
+ * the Paladin too, by `specs.bulwarkHeal` of their health. Parries are judged as a hit lands, which
+ * is the server's alone, so this never runs in prediction.
+ */
+export function holyPulse(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  if (specOf(p) !== 'paladin' || s.bulwarkHeal <= 0) return;
+  let healed = 0;
+  for (const o of state.players) {
+    if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > s.bulwarkRadius) continue;
+    const before = o.hp;
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * s.bulwarkHeal);
+    if (o.hp > before) healed++;
+  }
+  state.events.push({ kind: 'holyPulse', playerId: p.id, x: p.x, y: p.y, z: p.z, healed });
 }

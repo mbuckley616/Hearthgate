@@ -542,7 +542,7 @@ export class EquipScreen {
     const buttons = specs
       .map((x) => `<button class="spec-pick${x.id === mine ? ' on' : ''}" data-action="spec" data-style="${s}" data-talent="${x.id === mine ? 'none' : x.id}" ${!x.built || !open ? 'disabled' : ''}>${x.name}${x.built ? '' : ' <em>soon</em>'}</button>`)
       .join('');
-    const what = info ? `<div class="talent-text"><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
+    const what = info ? `<div class="talent-text"><b>${info.sig[0]}</b>: ${info.sig[1]}<br><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
     return `<div class="spec-row${chosen}"><div class="talent-sub">Specialization${open ? '' : ' · changes in the village or a rest room'}</div><div class="spec-picks">${buttons}</div>${what}</div>`;
   }
 

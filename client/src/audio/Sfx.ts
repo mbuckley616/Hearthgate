@@ -154,6 +154,11 @@ export class Sfx {
           this.tone('sine', 1320, 1300, 0.6, ev.playerId === localId ? 0.16 : 0.07, 0.005);
           this.tone('sine', 1980, 1950, 0.4, ev.playerId === localId ? 0.08 : 0.035, 0.005);
           break;
+        case 'holyPulse':
+          // Bulwark's pulse on a Paladin's perfect parry: a rising chord, louder when it healed someone.
+          this.tone('sine', 660, 990, 0.5, ev.healed > 0 ? 0.14 : 0.07, 0.01);
+          this.tone('sine', 990, 1480, 0.45, ev.healed > 0 ? 0.08 : 0.04, 0.02);
+          break;
         case 'chilled':
           // Caught in it: a brittle crack for the Chilled hero, quieter for a teammate.
           this.crackle(ev.playerId === localId ? 0.35 : 0.12);
