@@ -202,6 +202,15 @@ export class Sfx {
           if (ev.playerId !== localId) break;
           this.noiseBurst('bandpass', 1400 + ev.stacks * 160, 700, 4, 0.16, 0.06);
           break;
+        case 'attune': {
+          // Attunement: a voice an element, softer for a teammate's. Fire a dull whump, Frost a glassy tick, Earth a thud, Air a crackle.
+          const v = ev.playerId === localId ? 1 : 0.4;
+          if (ev.element === 'fire' && ev.radius > 0) this.noiseBurst('lowpass', 900, 200, 1, 0.25, 0.1 * v);
+          else if (ev.element === 'frost') this.tone('triangle', 1900, 2400, 0.08, 0.03 * v, 0.002);
+          else if (ev.element === 'earth') this.tone('sine', 140, 70, 0.14, 0.07 * v, 0.003);
+          else if (ev.element === 'air') this.noiseBurst('highpass', 3000, 6000, 1, 0.1, 0.06 * v);
+          break;
+        }
         case 'stormChain':
           // Storm Volley's arc: a short electric crackle, softer for a teammate's.
           this.noiseBurst('highpass', 3000, 6000, 1, 0.12, ev.playerId === localId ? 0.1 : 0.04);

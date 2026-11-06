@@ -1,8 +1,8 @@
 import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
-import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
-import { bloomHeal, bloomRoot, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
+import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo, type HitSpec } from './combat';
+import { attuneAfter, attuneHit, bloomHeal, bloomRoot, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
@@ -245,7 +245,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     pr.comboed = true;
     payCombo(state, 'skewer', pr.owner, e.x, e.y + 1.2, e.z);
   }
-  damageEnemy(state, e, {
+  const hit: HitSpec = {
     projectile: true,
     attackerId: pr.owner,
     damage: pr.damage * (skewer ? 1 + tuning.combos.skewerDamageBonus : 1) * backshot,
@@ -261,8 +261,13 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     crit: pr.crit || backshot > 1,
     style: pr.style,
     combo: skewer || undefined,
-  });
+  };
+  // Attunement (the Sorcerer's signature): the bolt's element reshapes the hit.
+  const sorcerer = pr.kind === 'bolt' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner) : undefined;
+  attuneHit(state, sorcerer, pr, e, hit);
+  damageEnemy(state, e, hit);
   pr.hitIds.push(e.id);
+  attuneAfter(state, sorcerer, pr, e);
   if (pr.kind === 'arrow' && pr.style === 'bow' && pr.owner[0] !== 'e') {
     const owner = state.players.find((p) => p.id === pr.owner);
     if (pr.charged) thornshot(state, owner, e);

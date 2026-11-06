@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
+import { ELEMENT_COLOUR } from '@hearthgate/shared/sim/specs';
 import { FROST } from './props';
 
 const MAX_SPARKS = 500;
@@ -237,6 +238,24 @@ export class FxView {
           // An Assassin's Venom Volley stacks (the builds pass): a few drops of sickly green, more as it builds.
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 1.1, ev.z), new THREE.Vector3(0, 0.6, 0), 3 + ev.stacks * 2, new THREE.Color(0x8fe05a));
           break;
+        case 'attune': {
+          // A Sorcerer's bolt lands in its element (Attunement): Fire's burst ring, Air's arc on, a puff of the rest.
+          const c = ELEMENT_COLOUR[ev.element];
+          if (ev.radius > 0) {
+            this.ring(ev.x, ev.z, ev.radius, c, 0.85, 0.4, ev.y - 1);
+            this.glowPuff(ev.x, ev.y, ev.z, 0xffbf47, 1.2, 0.3);
+          }
+          if (ev.toX !== undefined && ev.toZ !== undefined) {
+            const n = 5;
+            for (let i = 0; i <= n; i++) {
+              const u = i / n;
+              const at = new THREE.Vector3(ev.x + (ev.toX - ev.x) * u, ev.y + (i % 2 ? 0.15 : -0.1), ev.z + (ev.toZ - ev.z) * u);
+              this.spawnSparks(at, new THREE.Vector3(0, 0.3, 0), i === 0 || i === n ? 8 : 3, new THREE.Color(c));
+            }
+          }
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 0.6, 0), ev.radius > 0 ? 18 : 8, new THREE.Color(c));
+          break;
+        }
         case 'stormChain': {
           // A Scout's Storm Volley arcs (the builds pass): a pale crackle strung along the jump, bright at each end.
           const n = 5;

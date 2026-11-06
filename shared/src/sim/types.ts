@@ -317,6 +317,8 @@ export interface EnemyState {
   venom?: { by: string; stacks: number; until: number; next: number };
   /** A Warlock's hex (the builds pass): every hit on it deals more, and the Warlock's drain them, until `until`. */
   hex?: { by: string; until: number };
+  /** A Frost Sorcerer's Chill (Attunement, the builds pass): bolts landed while it holds, until `until`; the next that reaches the count freezes. The server's alone. */
+  attuneChill?: { hits: number; until: number };
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -435,6 +437,8 @@ export type SimEvent =
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'bloom'; playerId: string; healedId: string; x: number; y: number; z: number; healed: number }
+  /** A Sorcerer's bolt lands in its element (Attunement): Fire's burst `radius` wide, Air's arc on to `toX`, `toZ`. */
+  | { kind: 'attune'; playerId: string; element: Element; x: number; y: number; z: number; radius: number; toX?: number; toZ?: number }
   | { kind: 'hexed'; playerId: string; enemyId: number; x: number; y: number; z: number }
   | { kind: 'venom'; playerId: string; enemyId: number; stacks: number; x: number; y: number; z: number }
   | { kind: 'smokeBomb'; playerId: string; x: number; y: number; z: number }

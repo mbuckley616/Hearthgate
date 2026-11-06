@@ -1074,3 +1074,69 @@ describe('the Druid is offered (the builds pass)', () => {
     expect(readLoadout({ ...l, spec: { staff: 'druid' }, elements: { staff: 'shadow' } })).toBeNull();
   });
 });
+
+describe("the Sorcerer's Attunement", () => {
+  /** A staff hero, a Sorcerer of `el` or nobody's, casts `n` bolts down the arena at the grunt, a second grunt 1.5 m beyond it. */
+  function bolts(el: 'fire' | 'frost' | 'earth' | 'air' | undefined, n = 1) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: Math.PI, spec: el ? { staff: 'sorcerer' } : undefined, elements: el ? { staff: el } : undefined });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    const other = createEnemy(sc.s, world, 'grunt', 0, 4.5, 0);
+    Object.assign(other, { x: 1.5, z: 6, ai: 'chase', aiTime: 0, cooldown: 0, hp: 9999 });
+    for (let k = 0; k < n; k++) {
+      spawnBolt(sc.s, sc.p, { damage: 10, poise: 0.5, knockback: 0, heavy: false }, 0);
+      for (let i = 0; i < 40; i++) {
+        stepProjectiles(sc.s, DT, world.colliders);
+        sc.s.time += DT;
+      }
+      Object.assign(sc.e, { x: 0, z: 6, kbx: 0, kbz: 0 });
+    }
+    return { ...sc, other };
+  }
+
+  it('is data for now: four elements, not yet offered while its Elemental Step waits on the trail question', () => {
+    expect(specInfo('sorcerer').elements).toEqual(['fire', 'frost', 'earth', 'air']);
+    expect(specInfo('sorcerer').built).toBe(false);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).not.toBeNull();
+  });
+
+  it("anyone else's bolt is the staff's own: no burst, no arc, no event", () => {
+    const { s, e, other } = bolts(undefined);
+    expect(e.hp).toBeLessThan(9999);
+    expect(other.hp).toBe(9999);
+    expect(s.events.some((ev) => ev.kind === 'attune')).toBe(false);
+  });
+
+  it('Fire bursts: the enemy beside the one it hits takes a share of the bolt', () => {
+    const { s, e, other } = bolts('fire');
+    expect(e.hp).toBeLessThan(9999);
+    expect(9999 - other.hp).toBeGreaterThan(0);
+    expect(9999 - other.hp).toBeLessThan(9999 - e.hp);
+    const ev = s.events.find((x) => x.kind === 'attune');
+    expect(ev && ev.kind === 'attune' && ev.element === 'fire' && ev.radius).toBe(tuning.specs.attuneFireRadius);
+  });
+
+  it('Frost chills, and the third bolt on a still-Chilled enemy freezes it', () => {
+    const one = bolts('frost', 1);
+    expect(one.e.slowTime).toBeGreaterThan(0);
+    expect(one.e.frozen).toBe(0);
+    expect(one.e.attuneChill?.hits).toBe(1);
+    const three = bolts('frost', tuning.specs.attuneFreezeHits);
+    expect(three.e.frozen).toBeGreaterThan(0);
+    expect(three.e.attuneChill).toBeUndefined();
+    expect(three.s.events.some((ev) => ev.kind === 'freeze' && ev.enemyId === three.e.id)).toBe(true);
+  });
+
+  it("Earth's bolt drains more poise than a plain one", () => {
+    const plain = bolts(undefined);
+    const earth = bolts('earth');
+    expect(earth.e.poise).toBeLessThan(plain.e.poise);
+  });
+
+  it('Air pushes the enemy and arcs on to its neighbour', () => {
+    const { s, other } = bolts('air');
+    expect(other.hp).toBeLessThan(9999);
+    const ev = s.events.find((x) => x.kind === 'attune');
+    expect(ev && ev.kind === 'attune' && ev.toX).toBeCloseTo(other.x, 0);
+  });
+});

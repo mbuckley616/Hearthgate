@@ -1804,6 +1804,22 @@ export const tuning = {
     groveSeconds: 4,
     groveRadius: 2.5,
     groveHealPerS: 0.03,
+    /**
+     * Attunement (the Sorcerer's signature): a Sorcerer's bolt takes their element. Fire bursts, the
+     * enemies within attuneFireRadius of the one it hits taking attuneFireDamage of the bolt; Frost
+     * slows attuneChillS and the attuneFreezeHits-th bolt on a still-Chilled enemy freezes it
+     * attuneFreezeS; Earth's poise is multiplied by attuneEarthPoise; Air pushes attuneAirKnockback and
+     * arcs on to the nearest enemy within attuneAirRange for attuneAirDamage.
+     */
+    attuneFireRadius: 2,
+    attuneFireDamage: 0.35,
+    attuneChillS: 2.5,
+    attuneFreezeHits: 3,
+    attuneFreezeS: 1.2,
+    attuneEarthPoise: 2.5,
+    attuneAirKnockback: 1.2,
+    attuneAirRange: 5,
+    attuneAirDamage: 0.4,
   },
   abilities: {
     /**
@@ -2542,6 +2558,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.groveSeconds': [0, 12, 0.5],
   'specs.groveRadius': [0.5, 6, 0.1],
   'specs.groveHealPerS': [0, 0.2, 0.005],
+  'specs.attuneFireRadius': [0, 6, 0.1],
+  'specs.attuneFireDamage': [0, 2, 0.05],
+  'specs.attuneChillS': [0, 8, 0.1],
+  'specs.attuneFreezeHits': [0, 8, 1],
+  'specs.attuneFreezeS': [0, 5, 0.1],
+  'specs.attuneEarthPoise': [1, 8, 0.1],
+  'specs.attuneAirKnockback': [0, 5, 0.1],
+  'specs.attuneAirRange': [0, 12, 0.25],
+  'specs.attuneAirDamage': [0, 2, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

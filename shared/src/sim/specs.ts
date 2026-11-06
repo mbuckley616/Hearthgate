@@ -14,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState 
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock' | 'druid';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock' | 'druid' | 'sorcerer';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -127,6 +127,18 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
     sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
     built: true,
+  },
+  {
+    id: 'sorcerer',
+    style: 'staff',
+    name: 'Sorcerer',
+    element: 'fire',
+    elements: ['fire', 'frost', 'earth', 'air'],
+    q: ['Elemental Nova', 'Frost ring becomes a ring of your element.'],
+    // Its trail is the Spellblade's Blazing Charge question (decisions.md Pending), so it waits with it.
+    e: ['Elemental Step', 'Blink leaves a trail of your element.'],
+    sig: ['Attunement', 'Your bolts take your element: Fire bursts, Frost chills then freezes, Earth staggers, Air knocks back and arcs on.'],
+    built: false,
   },
 ];
 
@@ -791,4 +803,88 @@ export function stepGroves(state: SimState, dt: number): void {
     if (!live.some((g) => Math.abs(o.y - g.y) < 1.2 && Math.hypot(o.x - g.x, o.z - g.z) <= g.radius)) continue;
     o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * dt);
   }
+}
+
+/** The element a Sorcerer's staff bolt carries (Attunement), or undefined for anyone else's. */
+export function attunedElement(owner: PlayerState | undefined, pr: ProjectileState): Element | undefined {
+  if (!owner || owner.spec?.staff !== 'sorcerer' || pr.kind !== 'bolt' || pr.style !== 'staff' || pr.hostile) return undefined;
+  return elementFor(owner, 'staff');
+}
+
+/**
+ * Attunement (the Sorcerer's signature), before a Sorcerer's bolt lands: the element reshapes the
+ * hit. Frost slows for `specs.attuneChillS` and counts; the `specs.attuneFreezeHits`th bolt on a
+ * still-Chilled enemy freezes it `specs.attuneFreezeS` instead (a Shatter setup either way, as the
+ * staff's slows are). Earth multiplies the bolt's poise by `specs.attuneEarthPoise`, so a few bolts
+ * stagger; Air pushes at least `specs.attuneAirKnockback`. Fire's burst comes after (`attuneAfter`).
+ */
+export function attuneHit(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState, hit: HitSpec): void {
+  const el = attunedElement(owner, pr);
+  const s = tuning.specs;
+  if (el === 'frost' && s.attuneChillS > 0) {
+    const hits = (e.attuneChill && e.attuneChill.until >= state.time ? e.attuneChill.hits : 0) + 1;
+    if (s.attuneFreezeHits > 0 && hits >= s.attuneFreezeHits) {
+      hit.freezeTime = Math.max(hit.freezeTime ?? 0, s.attuneFreezeS);
+      delete e.attuneChill;
+    } else {
+      hit.slowTime = Math.max(hit.slowTime ?? 0, s.attuneChillS);
+      e.attuneChill = { hits, until: state.time + s.attuneChillS };
+    }
+  } else if (el === 'earth') {
+    hit.poise *= s.attuneEarthPoise;
+  } else if (el === 'air') {
+    hit.knockback = Math.max(hit.knockback, s.attuneAirKnockback);
+  }
+}
+
+/**
+ * Attunement, after a Sorcerer's bolt lands: Fire bursts, every other standing enemy within
+ * `specs.attuneFireRadius` taking `specs.attuneFireDamage` of the bolt; Air arcs on to the nearest
+ * other enemy within `specs.attuneAirRange` for `specs.attuneAirDamage`, pushing it on. Each element
+ * says so in an `attune` event for the views. The server's alone, as every projectile hit is.
+ */
+export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, from: EnemyState): void {
+  const el = attunedElement(owner, pr);
+  if (!owner || !el) return;
+  const s = tuning.specs;
+  const y = from.y + 1.1;
+  if (el === 'fire' && s.attuneFireDamage > 0) {
+    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: s.attuneFireRadius });
+    for (const e of state.enemies) {
+      if (e === from || !isTargetable(e) || Math.abs(e.y - from.y) > 1.2) continue;
+      const dx = e.x - from.x;
+      const dz = e.z - from.z;
+      const d = Math.hypot(dx, dz);
+      if (d > s.attuneFireRadius + enemyStats(e.kind).radius) continue;
+      damageEnemy(state, e, {
+        attackerId: owner.id, damage: pr.damage * s.attuneFireDamage, poise: 0.3, knockback: 0.3, heavy: false,
+        dirX: d > 0 ? dx / d : 0, dirZ: d > 0 ? dz / d : 1, x: e.x, y: e.y + 1, z: e.z, style: 'staff', projectile: true,
+      });
+    }
+    return;
+  }
+  if (el === 'air' && s.attuneAirDamage > 0) {
+    let best: EnemyState | null = null;
+    let bestD = s.attuneAirRange;
+    for (const e of state.enemies) {
+      if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
+      const d = Math.hypot(e.x - from.x, e.z - from.z);
+      if (d <= bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    if (!best) {
+      state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0 });
+      return;
+    }
+    const len = bestD || 1;
+    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0, toX: best.x, toZ: best.z });
+    damageEnemy(state, best, {
+      attackerId: owner.id, damage: pr.damage * s.attuneAirDamage, poise: 0.3, knockback: s.attuneAirKnockback, heavy: false,
+      dirX: (best.x - from.x) / len, dirZ: (best.z - from.z) / len, x: best.x, y: best.y + 1.1, z: best.z, style: 'staff', projectile: true,
+    });
+    return;
+  }
+  state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0 });
 }

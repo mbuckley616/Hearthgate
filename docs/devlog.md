@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 144, the Sorcerer's Attunement (the builds pass, Michael's A)
+
+**What changed**
+
+Magic's third specialization, as data and its signature, not yet offered (`built: false`). The Sorcerer (`SPECS` in `specs.ts`): Fire, Frost, Earth or Air, Elemental Nova for the frost ring, Elemental Step for the Blink, from the combat builds page. Its signature, Attunement (`attuneHit` and `attuneAfter`, read where a projectile lands in `hitWithProjectile`, whose hit is now built as a `HitSpec` first so the element can reshape it): a Sorcerer's staff bolt takes their element. Fire bursts, every other standing enemy within `specs.attuneFireRadius` (2 m) taking `specs.attuneFireDamage` (35%) of the bolt; Frost slows `specs.attuneChillS` (2.5 s) and counts on the enemy (`EnemyState.attuneChill`), and the `specs.attuneFreezeHits`th (third) bolt on a still-Chilled enemy freezes it `specs.attuneFreezeS` (1.2 s), a Shatter setup either way; Earth multiplies the bolt's poise by `specs.attuneEarthPoise` (2.5), so a few bolts stagger; Air pushes at least `specs.attuneAirKnockback` (1.2 m) and arcs on to the nearest enemy within `specs.attuneAirRange` (5 m) for `specs.attuneAirDamage` (40%). An `attune` event draws each in the element's colour (Fire's ring, Air's arc) with a sound of its own. All nine numbers on the panel. The Sorcerer stays "soon" while its Elemental Step waits on the Spellblade's trail question. Check 468 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Sorcerer was not wholly blocked: only its Blink trail is the open question, so its signature and its Nova can go in ahead of the answer, as the Spellblade's Blade Storm did. Attunement touches only the bolts, not the finisher's burst; the builds page says "orbs", and the burst is worth a look once the states pass gives each element a state.
+
+**Next**
+
+Elemental Nova (the Sorcerer's frost ring becomes a ring of their element, doing what Attunement's bolt does), then the Sorcerer and the Spellblade wait only on "The Spellblade's trail and blades" (decisions.md Pending, A recommended).
+
 ## 2026-11-06: Session 143, the Druid's Wild Growth; the Druid offered (the builds pass, Michael's A)
 
 **What changed**
