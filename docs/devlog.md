@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 145, the Sorcerer's Elemental Nova (the builds pass, Michael's A)
+
+**What changed**
+
+Elemental Nova (`novaElement` and `elementalNova` in `specs.ts`, applied to each hit where the frost ring fires in `stepAbility`, both sides): a Sorcerer's frost ring is a ring of their element, doing what Attunement's bolt does and freezing nothing. Fire hits `specs.novaFireDamage` (1.5) times as hard; Earth's poise is multiplied by `specs.attuneEarthPoise`, a stagger the sooner; Air throws what it reaches `specs.attuneAirKnockback` outward. A Frost Sorcerer's ring is the frost ring, freezing as ever. The `frostRing` event carries `element`, so the ring draws in the element's colour with sparks of it and sounds its own (a roaring whump, a deep thud, a rushing gust). One new number on the panel. With Session 144 the Sorcerer has two of its three pieces; it stays "soon" while its Elemental Step waits. Check 471 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The ring's poise of 1 times 2.5 still leaves a Skeleton Warrior (6 poise) standing, so an Earth Nova softens a pack for the next hit rather than staggering it outright; if Michael wants the ring itself to stagger, the panel's `specs.attuneEarthPoise` at 6 does it, for the bolts too.
+
+**Next**
+
+The Sorcerer's Elemental Step and the Spellblade's Blazing Charge trail and spectral blades wait on "The Spellblade's trail and blades" (decisions.md Pending, A recommended); once answered, both are a session each and then offered. Nothing else in the current section is ready for the builder.
+
 ## 2026-11-06: Session 144, the Sorcerer's Attunement (the builds pass, Michael's A)
 
 **What changed**

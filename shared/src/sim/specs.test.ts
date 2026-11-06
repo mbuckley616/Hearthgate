@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { newFlow } from './flow';
@@ -1138,5 +1138,52 @@ describe("the Sorcerer's Attunement", () => {
     expect(other.hp).toBeLessThan(9999);
     const ev = s.events.find((x) => x.kind === 'attune');
     expect(ev && ev.kind === 'attune' && ev.toX).toBeCloseTo(other.x, 0);
+  });
+});
+
+describe("the Sorcerer's Elemental Nova", () => {
+  /** A staff hero, a Sorcerer of `el` or nobody's, casts the frost ring over the grunt. */
+  function nova(el: 'fire' | 'frost' | 'earth' | 'air' | undefined) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', spec: el ? { staff: 'sorcerer' } : undefined, elements: el ? { staff: el } : undefined });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    Object.assign(sc.e, { x: 0, z: 8 });
+    stepPlayer(sc.p, { ...idleCommand(), ability1: true }, DT, world, sc.s);
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, idleCommand(), DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return sc;
+  }
+
+  it("a Frost Sorcerer's ring is the frost ring: it freezes, and names no element", () => {
+    const { s, e } = nova('frost');
+    expect(e.frozen).toBeGreaterThan(0);
+    const ev = s.events.find((x) => x.kind === 'frostRing');
+    expect(ev && ev.kind === 'frostRing' && ev.element).toBeUndefined();
+  });
+
+  it("a Fire Sorcerer's ring burns harder than the frost ring and freezes nothing", () => {
+    const plain = nova(undefined);
+    const fire = nova('fire');
+    expect(fire.e.frozen).toBe(0);
+    expect(9999 - fire.e.hp).toBeCloseTo((9999 - plain.e.hp) * tuning.specs.novaFireDamage, 3);
+    const ev = fire.s.events.find((x) => x.kind === 'frostRing');
+    expect(ev && ev.kind === 'frostRing' && ev.element).toBe('fire');
+  });
+
+  it("an Earth Sorcerer's ring hits with Attunement's poise; an Air Sorcerer's throws the enemy outward", () => {
+    const { p } = scene(false);
+    Object.assign(p, { style: 'staff', spec: { staff: 'sorcerer' }, elements: { staff: 'earth' } });
+    const hit = { attackerId: p.id, damage: 10, poise: 1, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: 0, y: 0, z: 0, freezeTime: 1 };
+    elementalNova(p, hit);
+    expect(hit.poise).toBeCloseTo(tuning.specs.attuneEarthPoise, 5);
+    expect(hit.freezeTime).toBeUndefined();
+    const earth = nova('earth');
+    expect(earth.e.frozen).toBe(0);
+    const air = nova('air');
+    expect(air.e.frozen).toBe(0);
+    expect(air.e.kbz).toBeLessThan(-0.5);
+    expect(nova(undefined).e.kbz).toBe(0);
   });
 });

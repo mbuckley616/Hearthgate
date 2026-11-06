@@ -1,12 +1,12 @@
 import { ABILITIES, OFFHAND_ABILITY, abilityTiming, enemyStats, tuning, type AbilityKind } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
-import { damageEnemy, hitstopFor, isTargetable } from './combat';
+import { damageEnemy, hitstopFor, isTargetable, type HitSpec } from './combat';
 import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, brambleRain, consecrate, curseRing, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
+import { bladeStorm, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -265,7 +265,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       const curse = isCurseRing(p);
       // Thorn Ring (the Druid's): thorns that root where the ring would freeze.
       const thorns = isThornRing(p);
-      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius, ...(curse ? { curse } : {}), ...(thorns ? { thorns } : {}) });
+      // Elemental Nova (the Sorcerer's): a ring of their element; a Frost Sorcerer's is the frost ring.
+      const element = novaElement(p);
+      state.events.push({ kind: 'frostRing', playerId: p.id, x: p.x, z: p.z, radius, ...(curse ? { curse } : {}), ...(thorns ? { thorns } : {}), ...(element ? { element } : {}) });
       smashCircle(state, props, p.id, p.x, p.y, p.z, radius);
       for (const e of state.enemies) {
         if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
@@ -273,7 +275,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
         const dz = e.z - p.z;
         const d = Math.hypot(dx, dz);
         if (d > radius + enemyStats(e.kind).radius) continue;
-        damageEnemy(state, e, {
+        const hit: HitSpec = {
           attackerId: p.id,
           damage: a.frostRingDamage * base,
           poise: 1,
@@ -286,7 +288,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
           y: e.y + 1,
           z: e.z,
           freezeTime: curse || thorns ? undefined : (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
-        });
+        };
+        elementalNova(p, hit);
+        damageEnemy(state, e, hit);
         curseRing(state, p, e);
         thornRing(state, p, e);
       }

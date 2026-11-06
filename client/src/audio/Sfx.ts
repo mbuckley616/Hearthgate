@@ -136,6 +136,13 @@ export class Sfx {
             this.noiseBurst('bandpass', 1800, 700, 2, 0.4, 0.09);
             break;
           }
+          if (ev.element) {
+            // An Elemental Nova: Fire a roaring whump, Earth a deep thud, Air a rushing gust, where the frost ring cracks.
+            if (ev.element === 'fire') this.noiseBurst('lowpass', 1200, 200, 1, 0.5, 0.12);
+            else if (ev.element === 'earth') this.tone('sine', 120, 50, 0.4, 0.14, 0.005);
+            else this.noiseBurst('bandpass', 600, 2400, 1, 0.45, 0.1);
+            break;
+          }
           if (ev.curse) {
             // A Curse Ring: a deep falling groan under a hush, where the frost ring cracks.
             this.tone('sawtooth', 260, 70, 0.6, 0.05, 0.02);

@@ -467,7 +467,7 @@ export type SimEvent =
   /** Haunted (P8): a fallen enemy got up again, at half its health. */
   | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
-  | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean; thorns?: boolean }
+  | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean; thorns?: boolean; element?: Element }
   | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean; grove?: boolean }
   | { kind: 'whirlTick'; playerId: string }
   | { kind: 'freeze'; enemyId: number }

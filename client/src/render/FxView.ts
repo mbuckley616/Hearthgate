@@ -209,6 +209,14 @@ export class FxView {
             this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(0x9be37a));
             break;
           }
+          if (ev.element) {
+            // A Sorcerer's Elemental Nova (the builds pass): the ring in their element, sparks of it thrown up.
+            const c = ELEMENT_COLOUR[ev.element];
+            this.ring(ev.x, ev.z, ev.radius, c, 0.9, 0.6);
+            this.ring(ev.x, ev.z, ev.radius * 0.6, ev.element === 'fire' ? 0xffbf47 : 0xf4f8fb, 0.6, 0.45);
+            this.spawnSparks(new THREE.Vector3(ev.x, 0.3, ev.z), new THREE.Vector3(0, 0.8, 0), 40, new THREE.Color(c));
+            break;
+          }
           if (ev.curse) {
             // A Warlock's Curse Ring (the builds pass): the ring in shadow, with dark motes rising.
             this.ring(ev.x, ev.z, ev.radius, 0xa274ff, 0.9, 0.6);

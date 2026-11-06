@@ -1820,6 +1820,8 @@ export const tuning = {
     attuneAirKnockback: 1.2,
     attuneAirRange: 5,
     attuneAirDamage: 0.4,
+    /** Elemental Nova (the Sorcerer's frost ring): a Fire Sorcerer's ring hits this many times as hard; Earth and Air take Attunement's poise and push. */
+    novaFireDamage: 1.5,
   },
   abilities: {
     /**
@@ -2567,6 +2569,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.attuneAirKnockback': [0, 5, 0.1],
   'specs.attuneAirRange': [0, 12, 0.25],
   'specs.attuneAirDamage': [0, 2, 0.05],
+  'specs.novaFireDamage': [0, 4, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

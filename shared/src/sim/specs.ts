@@ -888,3 +888,29 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
   }
   state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0 });
 }
+
+/**
+ * The element of a Sorcerer's Elemental Nova (their frost ring), or undefined where the ring is the
+ * frost ring: anyone else's, or a Frost Sorcerer's, which freezes as it always did.
+ */
+export function novaElement(p: PlayerState): Element | undefined {
+  if (p.spec?.staff !== 'sorcerer' || p.style !== 'staff') return undefined;
+  const el = elementFor(p, 'staff');
+  return el === 'frost' ? undefined : el;
+}
+
+/**
+ * Elemental Nova (the Sorcerer's frost ring): a ring of their element, doing to everything it
+ * reaches what Attunement's bolt does, and freezing nothing. Fire hits `specs.novaFireDamage` times as
+ * hard; Earth's poise is multiplied by `specs.attuneEarthPoise`, a stagger the sooner; Air throws
+ * them `specs.attuneAirKnockback` outward. Stepped where the ring fires, both sides.
+ */
+export function elementalNova(p: PlayerState, hit: HitSpec): void {
+  const el = novaElement(p);
+  if (!el) return;
+  const s = tuning.specs;
+  hit.freezeTime = undefined;
+  if (el === 'fire') hit.damage *= s.novaFireDamage;
+  else if (el === 'earth') hit.poise *= s.attuneEarthPoise;
+  else if (el === 'air') hit.knockback = Math.max(hit.knockback, s.attuneAirKnockback);
+}
