@@ -1744,6 +1744,10 @@ export const tuning = {
     bulwarkHolds: true,
     bulwarkRadius: 4,
     bulwarkHeal: 0.06,
+    /** Blade Storm (the Spellblade's Whirlwind): light enemies within `bladeStormRadius` are drawn in at `bladeStormPull` m/s, to `bladeStormHold` m from the hero. */
+    bladeStormRadius: 6,
+    bladeStormPull: 4,
+    bladeStormHold: 1.4,
   },
   abilities: {
     /**
@@ -2441,6 +2445,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.consecrateDamageTaken': [0, 1, 0.05],
   'specs.bulwarkRadius': [0, 10, 0.5],
   'specs.bulwarkHeal': [0, 0.5, 0.01],
+  'specs.bladeStormRadius': [0, 12, 0.5],
+  'specs.bladeStormPull': [0, 12, 0.5],
+  'specs.bladeStormHold': [0, 4, 0.1],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

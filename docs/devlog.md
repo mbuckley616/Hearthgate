@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 124, the Spellblade's Blade Storm, first part (the builds pass, Michael's A)
+
+**What changed**
+
+The Spellblade's first piece, not yet offered on the hero screen (`built: false`, so `readLoadout` still refuses it). Blade Storm (`bladeStorm` in `specs.ts`, every tick of a Spellblade's Whirlwind spin): light enemies (fodder, archer, caster, leader and charger roles) within `specs.bladeStormRadius` (6 m) are drawn toward the hero at `specs.bladeStormPull` (4 m/s), set as their knockback so the enemy step slides them along walls, and let go `specs.bladeStormHold` (1.4 m) out so the spin's edge still finds them; Shieldbearers, Brutes, Knights and bosses stand their ground. The Spellblade and Rogue now carry their signatures in `SPECS` for the hero screen. Check 406 green, test:net passed.
+
+**Learned**
+
+A knockback set each tick is a velocity, not a push: the guard's shove multiplies by the friction because it is one impulse that decays, a steady draw must not, or it runs at forty metres a second.
+
+**Next**
+
+The rest of the Spellblade before it is offered: its element chosen from Fire, Frost, Earth or Air (the hero screen and `Specs` need a place for it), Blazing Charge's trail and the spectral blades on the spin. What the trail does and what an extra blade hits for are not on the page; if they need a call, ask in decisions.md.
+
 ## 2026-11-06: Session 123, the Paladin's Bulwark (the builds pass, Michael's A; the Paladin built)
 
 **What changed**

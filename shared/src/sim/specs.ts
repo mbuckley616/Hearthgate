@@ -1,5 +1,6 @@
 import { tuning, type Style } from '../config/tuning';
 import { levelFor } from './gear';
+import { roleOf, type EnemyRole } from './roles';
 import type { EnemyState, PlayerState, SimState } from './types';
 
 /**
@@ -175,4 +176,28 @@ export function holyPulse(state: SimState, p: PlayerState): void {
     if (o.hp > before) healed++;
   }
   state.events.push({ kind: 'holyPulse', playerId: p.id, x: p.x, y: p.y, z: p.z, healed });
+}
+
+/** The roles Blade Storm can draw in: everything but the shielded, the heavy, the elite and bosses. */
+const LIGHT_ROLES: ReadonlySet<EnemyRole> = new Set(['fodder', 'archer', 'caster', 'leader', 'charger']);
+
+/**
+ * Blade Storm (the Spellblade's Whirlwind): each tick of the spin, light enemies within
+ * `specs.bladeStormRadius` are drawn toward the hero, as a knockback the enemy step slides along
+ * walls, and let go `specs.bladeStormHold` from them so the spin's edge still finds them.
+ */
+export function bladeStorm(state: SimState, p: PlayerState): void {
+  if (specOf(p) !== 'spellblade') return;
+  const s = tuning.specs;
+  const v = s.bladeStormPull;
+  for (const e of state.enemies) {
+    if (e.ai === 'dead' || e.ai === 'spawn' || !LIGHT_ROLES.has(roleOf(e.kind)) || Math.abs(e.y - p.y) > 1.2) continue;
+    const dx = p.x - e.x;
+    const dz = p.z - e.z;
+    const d = Math.hypot(dx, dz);
+    if (d > s.bladeStormRadius || d <= s.bladeStormHold) continue;
+    // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
+    e.kbx = (dx / d) * v;
+    e.kbz = (dz / d) * v;
+  }
 }

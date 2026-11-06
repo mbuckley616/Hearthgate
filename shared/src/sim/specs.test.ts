@@ -6,7 +6,7 @@ import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
-import { consecratedMult, fadeConsecrated, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, consecratedMult, fadeConsecrated, specProblem, specsFor, tauntedBy } from './specs';
 import { hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
@@ -194,5 +194,30 @@ describe("the Paladin's Bulwark", () => {
     guarding(p, true);
     expect(hurtHero(s, p, heavyFront(p))).toBe('parried');
     expect(friend.hp).toBe(50);
+  });
+});
+
+describe("the Spellblade's Blade Storm (not yet choosable)", () => {
+  it('a Spellblade\'s spin draws light enemies in and leaves heavy ones be', () => {
+    const { s, p, e } = scene(false);
+    p.spec = { sword: 'spellblade' };
+    Object.assign(e, { x: p.x + 4, z: p.z, kbx: 0, kbz: 0 });
+    const brute = createEnemy(s, world, 'brute', p.x - 4, p.z, 0);
+    Object.assign(brute, { x: p.x - 4, z: p.z, ai: 'chase', kbx: 0, kbz: 0 });
+    bladeStorm(s, p);
+    expect(e.kbx).toBeCloseTo(-tuning.specs.bladeStormPull);
+    expect(brute.kbx).toBe(0);
+    // Close enough to be in the spin's edge, it is let go.
+    Object.assign(e, { x: p.x + tuning.specs.bladeStormHold - 0.1, kbx: 0 });
+    bladeStorm(s, p);
+    expect(e.kbx).toBe(0);
+  });
+
+  it('pulls nothing for a Paladin, and the Spellblade is not yet offered', () => {
+    const { s, p, e } = scene(true);
+    Object.assign(e, { x: p.x + 4, z: p.z, kbx: 0, kbz: 0 });
+    bladeStorm(s, p);
+    expect(e.kbx).toBe(0);
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
   });
 });

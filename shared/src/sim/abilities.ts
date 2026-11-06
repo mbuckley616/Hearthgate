@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { consecrate, taunt } from './specs';
+import { bladeStorm, consecrate, taunt } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -107,6 +107,7 @@ export function stepAbility(
     }
     case 'whirlwind': {
       if (!inActive) break;
+      bladeStorm(state, p);
       // Drift slowly with the move input while spinning.
       const speed = tuning.movement.runSpeed * a.whirlwindMoveFrac;
       const mag = Math.min(1, Math.hypot(cmd.moveX, cmd.moveZ));
