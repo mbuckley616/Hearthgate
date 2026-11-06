@@ -1,6 +1,6 @@
 import { enemyStats, tuning, type Style } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
-import { isTargetable } from './combat';
+import { isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
@@ -70,7 +70,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Shadowstep', 'Charge becomes a step behind the target.'],
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
     sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -284,4 +284,29 @@ export function fanOfKnives(state: SimState, p: PlayerState): void {
   const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
   state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: true });
   for (let i = 0; i < n; i++) spawnArrow(state, p, payload, (i / n) * Math.PI * 2, tuning.rangedCombo.arrowSpeed, false);
+}
+
+/**
+ * From the shadows (the Rogue's signature): a Rogue whose roll passes through an enemy's body is
+ * primed for `specs.shadowWindowS`; their next hit on anything crits for `specs.shadowCritMult` and
+ * counts as from behind, so a shield does not take it. Checked each tick of the roll in stepPlayer, so
+ * prediction primes it too, against the last snapshot's enemies.
+ */
+export function shadowPass(state: SimState, p: PlayerState): void {
+  if (specOf(p) !== 'rogue' || tuning.specs.shadowWindowS <= 0) return;
+  const through = state.enemies.some(
+    (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius,
+  );
+  if (!through) return;
+  const fresh = (p.shadowUntil ?? -1) <= state.time;
+  p.shadowUntil = state.time + tuning.specs.shadowWindowS;
+  if (fresh) state.events.push({ kind: 'shadowPrimed', playerId: p.id, x: p.x, y: p.y, z: p.z });
+}
+
+/** The multiplier a primed Rogue's hit takes (and spends the priming on), or 1. A bleed's tick never spends it. */
+export function shadowStrike(state: SimState, hero: PlayerState, hit: HitSpec): number {
+  if (hero.shadowUntil === undefined || hit.dot) return 1;
+  const live = hero.shadowUntil > state.time && specOf(hero) === 'rogue';
+  delete hero.shadowUntil;
+  return live ? tuning.specs.shadowCritMult : 1;
 }

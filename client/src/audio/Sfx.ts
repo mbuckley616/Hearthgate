@@ -158,6 +158,12 @@ export class Sfx {
           // A Rogue's Shadowstep (the builds pass): a short breathy whoosh, falling, softer for a teammate's.
           this.noiseBurst('bandpass', 2400, 600, 2, 0.22, ev.playerId === localId ? 0.14 : 0.06);
           break;
+        case 'shadowPrimed':
+          // From the shadows: a low hush and a soft tick, only for the Rogue whose next hit is now a crit.
+          if (ev.playerId !== localId) break;
+          this.noiseBurst('lowpass', 900, 300, 1, 0.25, 0.08);
+          this.tone('triangle', 880, 1100, 0.12, 0.06, 0.005);
+          break;
         case 'holyPulse':
           // Bulwark's pulse on a Paladin's perfect parry: a rising chord, louder when it healed someone.
           this.tone('sine', 660, 990, 0.5, ev.healed > 0 ? 0.14 : 0.07, 0.01);

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 128, the Rogue's From the shadows; the Rogue offered (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's signature, and with it the Rogue is offered on the Talents tab from sword level 10 (`built: true`), with its two elements, Shadow or Nature, which colour the sword's trail. From the shadows (`shadowPass` and `shadowStrike` in `specs.ts`): each tick of a Rogue's roll that overlaps a standing enemy's body primes them (`PlayerState.shadowUntil`, `specs.shadowWindowS` 3 s); their next hit on anything, not a bleed's tick, spends it to deal `specs.shadowCritMult` (2x), shows as a crit and counts as from behind, so a Shieldbearer's or Knight's front shield does not take it. A `shadowPrimed` event plays a soft hush for the Rogue alone. Both numbers on the panel. Check 416 green, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+"A crit from behind" is two things on our side: the damage and the shield check. Taking it as both makes the Rogue the Shieldbearer's answer from the front, which fits the roles page (a flank or backstab beats a shield) without a turn of the body.
+
+**Next**
+
+The Spellblade's Blazing Charge trail and spectral blades, once Michael answers in `decisions.md`; then Melee is whole and the next style's three (Ranged: Ranger, Scout, Assassin) follow. A knife's own look for Fan of Knives is polish.
+
 ## 2026-11-06: Session 127, the Rogue's Fan of Knives (the builds pass, Michael's A)
 
 **What changed**

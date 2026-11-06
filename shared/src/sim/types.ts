@@ -173,6 +173,8 @@ export interface PlayerState {
   spec?: Specs;
   /** The element each of those specializations was given, where it offers a choice (the Spellblade's four); absent, its first. */
   elements?: SpecElements;
+  /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
+  shadowUntil?: number;
   /** Talent ranks per hero, from the saved profile. */
   talents: Record<Style, TalentRanks>;
   /** Sim time this hero last landed a finisher (heavy hit), for the dodge-refund perk. */
@@ -419,6 +421,8 @@ export type SimEvent =
   /** A Paladin's Shield Rush taunted an enemy (the builds pass): for its sound and the holy flash. */
   | { kind: 'taunt'; playerId: string; enemyId: number; x: number; z: number }
   /** A Rogue's Shadowstep (the builds pass): from where it left to where it stands, for the smoke and its sound. */
+  /** A Rogue's roll went through an enemy and primed their next hit (From the shadows): a cue it is ready. */
+  | { kind: 'shadowPrimed'; playerId: string; x: number; y: number; z: number }
   | { kind: 'shadowstep'; playerId: string; fromX: number; fromZ: number; x: number; y: number; z: number }
   /** A Paladin's perfect parry pulsed light (Bulwark): `healed` heroes were healed. For its sound and flash. */
   | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }

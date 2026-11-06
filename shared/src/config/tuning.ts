@@ -1753,6 +1753,9 @@ export const tuning = {
     /** Fan of Knives (the Rogue's Whirlwind): knives thrown evenly round as the spin starts, each this share of a spin tick's hit. */
     fanKnives: 8,
     fanKnifeDamage: 1.5,
+    /** From the shadows (the Rogue's signature): a roll through an enemy primes the next hit for this long, to crit for `shadowCritMult`. */
+    shadowWindowS: 3,
+    shadowCritMult: 2,
   },
   abilities: {
     /**
@@ -2456,6 +2459,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.shadowstepReach': [0, 8, 0.25],
   'specs.fanKnives': [0, 24, 1],
   'specs.fanKnifeDamage': [0, 5, 0.05],
+  'specs.shadowWindowS': [0, 10, 0.25],
+  'specs.shadowCritMult': [1, 5, 0.05],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

@@ -1,4 +1,5 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { shadowPass } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -591,6 +592,7 @@ export function stepPlayer(
     p.vx = (p.dodgeDirX * step) / dt;
     p.vz = (p.dodgeDirZ * step) / dt;
     p.invulnerable = p.dodgeTime * 1000 < dg.iframesMs;
+    shadowPass(state, p);
     if (p.dodgeTime >= T) endDodge(p);
   } else if (p.mode === 'attack') {
     if (tuning.combo.heavies && !p.attackFired) holdForHeavy(state, p, cmd);

@@ -8,7 +8,7 @@ import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { stepProjectiles } from './projectiles';
 import { bladeStorm, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
-import { hurtHero } from './combat';
+import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerState, type SimState } from './types';
 import { createSimState } from './world';
@@ -19,9 +19,9 @@ const at10 = xpForLevel(tuning.specs.level);
 const base = (sword: number): Loadout => ({ name: 'p', xp: { sword, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 });
 
 describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
-  it('Melee offers the Paladin, the Spellblade and the Rogue; only the Paladin is built yet', () => {
+  it('Melee offers the Paladin, the Spellblade and the Rogue; the Spellblade is not built yet', () => {
     expect(specsFor('sword').map((s) => s.id)).toEqual(['paladin', 'spellblade', 'rogue']);
-    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin']);
+    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin', 'rogue']);
     expect(specsFor('sword')[0].element).toBe('holy');
   });
 
@@ -29,7 +29,7 @@ describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
     expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'paladin' })).toBeNull();
     expect(specProblem({ sword: at10 - 1, bow: 0, staff: 0 }, { sword: 'paladin' })).not.toBeNull();
     expect(specProblem({ sword: at10, bow: at10, staff: 0 }, { bow: 'paladin' })).not.toBeNull();
-    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'rogue' })).not.toBeNull();
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
   });
 
   it('the server takes a Paladin only from a loadout whose sword could have earned it', () => {
@@ -65,6 +65,8 @@ describe("a specialization's element (the Spellblade chooses Fire, Frost, Earth 
     expect(ok?.elements).toEqual({ sword: 'holy' });
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'fire' } })).toBeNull();
     expect(readLoadout({ ...base(at10), elements: { sword: 'holy' } })).toBeNull();
+    expect(readLoadout({ ...base(at10), spec: { sword: 'rogue' }, elements: { sword: 'nature' } })?.elements).toEqual({ sword: 'nature' });
+    expect(readLoadout({ ...base(at10), spec: { sword: 'spellblade' }, elements: { sword: 'frost' } })).toBeNull();
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'plasma' } })).toBeNull();
     const s = createSimState(arena, [], world);
     const p = addPlayer(s, world, 'p1', ok!, false);
@@ -191,6 +193,59 @@ describe("the Rogue's Fan of Knives", () => {
     fanOfKnives(s, p);
     for (let i = 0; i < 60; i++) stepProjectiles(s, DT, world.colliders);
     expect(e.hp).toBeLessThan(9999);
+  });
+});
+
+describe("the Rogue's From the shadows", () => {
+  /** Roll from four metres out straight down the arena through the enemy (or not, if `through` is false). */
+  function roll(rogue: boolean, through = true) {
+    const sc = scene(false);
+    if (rogue) sc.p.spec = { sword: 'rogue' };
+    Object.assign(sc.e, { ai: 'idle', x: through ? 0 : 4, z: 8.5 });
+    stepPlayer(sc.p, { ...idleCommand(), dodge: true, moveX: 0, moveZ: -1 }, DT, world, sc.s);
+    for (let i = 0; i < 60 && sc.p.mode === 'dodge'; i++) stepPlayer(sc.p, { ...idleCommand(), moveX: 0, moveZ: -1 }, DT, world, sc.s);
+    return sc;
+  }
+  const blow = (p: PlayerState, e: { x: number; z: number }) => ({
+    attackerId: p.id, damage: 10, poise: 0, knockback: 0, heavy: false, style: 'sword' as const, dirX: 0, dirZ: 1, x: e.x, y: 1, z: e.z,
+  });
+
+  it("a Rogue's roll through an enemy primes the next hit to crit, once", () => {
+    const { s, p, e } = roll(true);
+    expect(p.shadowUntil).toBeGreaterThan(s.time);
+    expect(s.events.filter((ev) => ev.kind === 'shadowPrimed').length).toBe(1);
+    Object.assign(e, { hp: 1000 });
+    damageEnemy(s, e, blow(p, e));
+    const first = 1000 - e.hp;
+    expect(p.shadowUntil).toBeUndefined();
+    damageEnemy(s, e, blow(p, e));
+    const second = 1000 - first - e.hp;
+    expect(first).toBeCloseTo(second * tuning.specs.shadowCritMult, 5);
+    expect(s.events.some((ev) => ev.kind === 'hit' && ev.crit)).toBe(true);
+  });
+
+  it('a roll that misses, or a hero who is not a Rogue, primes nothing; a priming fades', () => {
+    expect(roll(true, false).p.shadowUntil).toBeUndefined();
+    expect(roll(false).p.shadowUntil).toBeUndefined();
+    const { s, p, e } = roll(true);
+    s.time = p.shadowUntil! + 0.01;
+    Object.assign(e, { hp: 1000 });
+    damageEnemy(s, e, blow(p, e));
+    const late = 1000 - e.hp;
+    damageEnemy(s, e, blow(p, e));
+    expect(late).toBeCloseTo(1000 - late - e.hp, 5);
+  });
+
+  it("a primed hit from the front gets past a Shieldbearer's shield", () => {
+    const { s, p } = roll(true);
+    const sh = createEnemy(s, world, 'shieldbearer', 0, 0, 0);
+    // Facing the blow: its push runs +z, so the shield faces -z.
+    Object.assign(sh, { ai: 'chase', yaw: Math.PI, hp: 1000 });
+    damageEnemy(s, sh, blow(p, sh));
+    expect(sh.hp).toBeLessThan(1000);
+    const before = sh.hp;
+    damageEnemy(s, sh, blow(p, sh));
+    expect(sh.hp).toBe(before);
   });
 });
 

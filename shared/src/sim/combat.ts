@@ -5,7 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { consecratedMult, guardHoldsHeavy, holyPulse } from './specs';
+import { consecratedMult, guardHoldsHeavy, holyPulse, shadowStrike } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -157,10 +157,12 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
   const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
-  if (shieldTakes(state, e, hit, hero)) return true;
+  // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
+  const shadow = hero ? shadowStrike(state, hero, hit) : 1;
+  if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
   breakChannel(e);
-  const damage = hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  const damage = shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   // Flow (C2): an attack's earnings land with its first hit, so a swing at nothing earns nothing.
@@ -248,7 +250,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     damage,
     heavy: hit.heavy,
     bonus: staggered,
-    crit: !!hit.crit,
+    crit: !!hit.crit || shadow > 1,
     killed,
     dirX: hit.dirX,
     dirZ: hit.dirZ,
