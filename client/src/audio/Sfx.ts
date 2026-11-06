@@ -172,6 +172,11 @@ export class Sfx {
           // Gale Step's second roll: a quick rising gust, softer for a teammate's.
           this.noiseBurst('bandpass', 700, 2600, 1.5, 0.22, ev.playerId === localId ? 0.12 : 0.05);
           break;
+        case 'venom':
+          // Venom Volley takes (the builds pass): a short wet hiss, rising a little with the stacks, only for the Assassin.
+          if (ev.playerId !== localId) break;
+          this.noiseBurst('bandpass', 1400 + ev.stacks * 160, 700, 4, 0.16, 0.06);
+          break;
         case 'stormChain':
           // Storm Volley's arc: a short electric crackle, softer for a teammate's.
           this.noiseBurst('highpass', 3000, 6000, 1, 0.12, ev.playerId === localId ? 0.1 : 0.04);

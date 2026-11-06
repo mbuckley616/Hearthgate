@@ -101,10 +101,10 @@ export const SPECS: readonly SpecInfo[] = [
     name: 'Assassin',
     element: 'shadow',
     elements: ['shadow', 'nature'],
-    q: ['Venom Volley', 'Volley leaves stacking poison.'],
+    q: ['Venom Volley', 'Volley arrows poison; each one more stacks it.'],
     e: ['Smoke Bomb', 'Disengage drops smoke; you vanish for 2 s.'],
     sig: ['Deadeye', 'A charged shot into an enemy\'s back is a crit.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -457,6 +457,52 @@ export function deadeye(owner: PlayerState | undefined, pr: ProjectileState, e: 
   const len = Math.hypot(dirX, dirZ) || 1;
   const along = (dirX / len) * Math.sin(e.yaw) + (dirZ / len) * Math.cos(e.yaw);
   return along >= Math.cos((s.deadeyeBackDeg * Math.PI) / 180) ? s.deadeyeCritMult : 1;
+}
+
+/**
+ * Venom Volley (the Assassin's Volley): each Volley arrow an Assassin lands adds a stack of poison to
+ * its enemy, up to `specs.venomMaxStacks`, and keeps it going `specs.venomSeconds` from now. Called as
+ * the arrow lands, a projectile's hit, so the server's alone; `stepVenom` ticks it. A poison already
+ * running keeps its beat, so a fresh arrow never makes a tick come early.
+ */
+export function venomVolley(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState): void {
+  const s = tuning.specs;
+  if (!owner || owner.spec?.bow !== 'assassin' || !pr.marks || s.venomSeconds <= 0 || s.venomDamage <= 0 || !isTargetable(e)) return;
+  const v = e.venom && e.venom.until > state.time ? e.venom : undefined;
+  const stacks = Math.min(Math.max(1, Math.round(s.venomMaxStacks)), (v?.stacks ?? 0) + 1);
+  e.venom = { by: owner.id, stacks, until: state.time + s.venomSeconds, next: v ? v.next : state.time + s.venomTickMs / 1000 };
+  state.events.push({ kind: 'venom', playerId: owner.id, enemyId: e.id, stacks, x: e.x, y: e.y, z: e.z });
+}
+
+/**
+ * A poisoned enemy's tick, from the enemy step: `specs.venomDamage` a stack every `specs.venomTickMs`,
+ * as damage over time (no hitstop, flinch or poise, as a bleed's), credited to the Assassin's bow.
+ * The poison ends with its time, or with the enemy.
+ */
+export function stepVenom(state: SimState, e: EnemyState, height: number): void {
+  const v = e.venom;
+  if (!v) return;
+  if (e.ai === 'dead' || v.next > v.until) {
+    delete e.venom;
+    return;
+  }
+  if (state.time < v.next) return;
+  v.next += Math.max(0.05, tuning.specs.venomTickMs / 1000);
+  damageEnemy(state, e, {
+    attackerId: v.by,
+    damage: tuning.specs.venomDamage * v.stacks,
+    poise: 0,
+    knockback: 0,
+    heavy: false,
+    dirX: 0,
+    dirZ: 0,
+    x: e.x,
+    y: e.y + height * 0.6,
+    z: e.z,
+    style: 'bow',
+    dot: true,
+  });
+  if ((e.ai as string) === 'dead') delete e.venom;
 }
 
 /**

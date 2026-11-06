@@ -1781,6 +1781,11 @@ export const tuning = {
     deadeyeCritMult: 2,
     /** Smoke Bomb (the Assassin's Disengage): how long enemies lose the Assassin. */
     smokeSeconds: 2,
+    /** Venom Volley (the Assassin's Volley): each Volley arrow that lands adds a stack of poison, up to `venomMaxStacks`, each dealing `venomDamage` every `venomTickMs`; a new stack keeps it going `venomSeconds` more. */
+    venomSeconds: 4,
+    venomMaxStacks: 5,
+    venomTickMs: 500,
+    venomDamage: 2,
   },
   abilities: {
     /**
@@ -2503,6 +2508,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.deadeyeBackDeg': [0, 90, 5],
   'specs.deadeyeCritMult': [1, 5, 0.05],
   'specs.smokeSeconds': [0, 6, 0.1],
+  'specs.venomSeconds': [0, 12, 0.5],
+  'specs.venomMaxStacks': [1, 10, 1],
+  'specs.venomTickMs': [100, 2000, 50],
+  'specs.venomDamage': [0, 20, 0.5],
   'abilities.chargeDistance': [0, 18, 0.1],
   'abilities.chargeDamage': [0, 5, 0.05],
   'abilities.chargeCooldownMs': [0, 24000, 10],

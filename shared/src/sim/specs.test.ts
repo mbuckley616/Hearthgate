@@ -653,7 +653,7 @@ describe("the Scout's Gale Step", () => {
 
 describe('the Scout is offered (the builds pass)', () => {
   it('from bow level 10, Air alone, beside the Ranger', () => {
-    expect(specsFor('bow').filter((x) => x.built).map((x) => x.id)).toEqual(['ranger', 'scout']);
+    expect(specsFor('bow').filter((x) => x.built).map((x) => x.id)).toContain('scout');
     expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'scout' })).toBeNull();
     const l = { ...base(0), xp: { sword: 0, bow: at10, staff: 0 } };
     expect(readLoadout({ ...l, spec: { bow: 'scout' }, elements: { bow: 'nature' } })).toBeNull();
@@ -661,7 +661,7 @@ describe('the Scout is offered (the builds pass)', () => {
   });
 });
 
-describe("the Assassin's Deadeye (not yet choosable)", () => {
+describe("the Assassin's Deadeye", () => {
   /** A bow hero looses one arrow down the arena at the grunt, which faces `yaw`. */
   function shot(assassin: boolean, charged: boolean, yaw: number) {
     const sc = scene(false);
@@ -680,11 +680,10 @@ describe("the Assassin's Deadeye (not yet choosable)", () => {
     expect(back.s.events.some((ev) => ev.kind === 'hit' && ev.crit)).toBe(true);
   });
 
-  it('a quick shot in the back, or anyone but an Assassin, is a plain hit; the Assassin is not yet offered', () => {
+  it('a quick shot in the back, or anyone but an Assassin, is a plain hit', () => {
     const face = shot(true, true, 0).dealt;
     expect(shot(true, false, Math.PI).dealt).toBeCloseTo(shot(true, false, 0).dealt);
     expect(shot(false, true, Math.PI).dealt).toBeCloseTo(face);
-    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'assassin' })).not.toBeNull();
   });
 });
 
@@ -722,5 +721,82 @@ describe("the Assassin's Smoke Bomb", () => {
     stepEnemies(s, DT, world);
     expect(p.hiddenUntil).toBeUndefined();
     expect(flip(false).p.hiddenUntil).toBeUndefined();
+  });
+});
+
+describe("the Assassin's Venom Volley", () => {
+  /** A bow hero (an Assassin or not) looses `arrows` Volley arrows at the grunt, one after another. */
+  function volley(assassin: boolean, arrows: number) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: assassin ? { bow: 'assassin' } : undefined });
+    for (let a = 0; a < arrows; a++) {
+      spawnArrow(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.arrowSpeed, false);
+      sc.s.projectiles[sc.s.projectiles.length - 1].marks = true;
+      for (let i = 0; i < 40; i++) stepProjectiles(sc.s, DT, world.colliders);
+    }
+    return sc;
+  }
+  /** Steps the enemies `seconds` on, returning the damage the poison dealt in that time. */
+  function wait(sc: ReturnType<typeof volley>, seconds: number): number {
+    const hp = sc.e.hp;
+    for (let i = 0; i < Math.round(seconds * 60); i++) {
+      stepEnemies(sc.s, DT, world);
+      sc.s.time += DT;
+    }
+    return hp - sc.e.hp;
+  }
+
+  it("each Assassin Volley arrow that lands stacks the poison, up to its cap", () => {
+    const one = volley(true, 1);
+    expect(one.e.venom?.stacks).toBe(1);
+    expect(one.s.events.some((ev) => ev.kind === 'venom')).toBe(true);
+    expect(volley(true, 3).e.venom?.stacks).toBe(3);
+    expect(volley(true, tuning.specs.venomMaxStacks + 3).e.venom?.stacks).toBe(tuning.specs.venomMaxStacks);
+  });
+
+  it('it ticks for its damage a stack every beat, then runs out', () => {
+    const sc = volley(true, 3);
+    Object.assign(sc.e, { ai: 'idle', cooldown: 99 });
+    const s = tuning.specs;
+    const ticks = Math.floor(s.venomSeconds / (s.venomTickMs / 1000));
+    expect(wait(sc, s.venomSeconds + 1)).toBeCloseTo(ticks * 3 * s.venomDamage, 3);
+    expect(sc.e.venom).toBeUndefined();
+    expect(wait(sc, 1)).toBe(0);
+  });
+
+  it('a fresh stack keeps it going longer; anyone but an Assassin, or a plain shot, poisons nothing', () => {
+    const sc = volley(true, 1);
+    const until = sc.e.venom!.until;
+    sc.s.time += 1;
+    spawnArrow(sc.s, sc.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.arrowSpeed, false);
+    sc.s.projectiles[sc.s.projectiles.length - 1].marks = true;
+    for (let i = 0; i < 40; i++) stepProjectiles(sc.s, DT, world.colliders);
+    expect(sc.e.venom!.until).toBeGreaterThan(until);
+    expect(volley(false, 3).e.venom).toBeUndefined();
+    const plain = scene(false);
+    Object.assign(plain.p, { style: 'bow', mode: 'move', yaw: Math.PI, spec: { bow: 'assassin' } });
+    spawnArrow(plain.s, plain.p, { damage: 10, poise: 0, knockback: 0, heavy: false }, 0, tuning.rangedCombo.arrowSpeed, false);
+    for (let i = 0; i < 40; i++) stepProjectiles(plain.s, DT, world.colliders);
+    expect(plain.e.venom).toBeUndefined();
+  });
+
+  it('the poison kills, and its XP goes to the bow', () => {
+    const sc = volley(true, 5);
+    Object.assign(sc.e, { ai: 'idle', cooldown: 99, hp: 1 });
+    const bow = sc.p.xp.bow;
+    wait(sc, 1);
+    expect(sc.e.ai).toBe('dead');
+    expect(sc.e.venom).toBeUndefined();
+    expect(sc.p.xp.bow).toBeGreaterThan(bow);
+  });
+});
+
+describe('the Assassin is offered (the builds pass)', () => {
+  it('from bow level 10, Shadow or Nature; Ranged is whole', () => {
+    expect(specsFor('bow').filter((x) => x.built).map((x) => x.id)).toEqual(['ranger', 'scout', 'assassin']);
+    expect(specProblem({ sword: 0, bow: at10, staff: 0 }, { bow: 'assassin' })).toBeNull();
+    const l = { ...base(0), xp: { sword: 0, bow: at10, staff: 0 } };
+    expect(readLoadout({ ...l, spec: { bow: 'assassin' }, elements: { bow: 'nature' } })?.elements).toEqual({ bow: 'nature' });
+    expect(readLoadout({ ...l, spec: { bow: 'assassin' }, elements: { bow: 'air' } })).toBeNull();
   });
 });

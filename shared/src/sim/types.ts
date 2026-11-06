@@ -313,6 +313,8 @@ export interface EnemyState {
   rootUntil?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
   scoutMark?: { by: string; until: number };
+  /** An Assassin's Venom Volley poison (the builds pass): `stacks` each tick for `specs.venomDamage` at `next`, until `until`. The server's alone. */
+  venom?: { by: string; stacks: number; until: number; next: number };
   /** Who made each setup, for Teamwork (T6c); kept only for heroes with champion points, so never in the slice. */
   shatterBy?: string;
   skewerBy?: string;
@@ -428,6 +430,7 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  | { kind: 'venom'; playerId: string; enemyId: number; stacks: number; x: number; y: number; z: number }
   | { kind: 'smokeBomb'; playerId: string; x: number; y: number; z: number }
   | { kind: 'galeStep'; playerId: string; x: number; y: number; z: number }
   | { kind: 'stormChain'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; y: number }

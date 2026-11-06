@@ -2,7 +2,7 @@ import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo } from './combat';
-import { deadeye, scoutMark, stormChain, thornshot } from './specs';
+import { deadeye, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
@@ -268,6 +268,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     if (pr.charged) thornshot(state, owner, e);
     scoutMark(state, owner, e);
     if (pr.marks) stormChain(state, owner, pr, e);
+    if (pr.marks) venomVolley(state, owner, pr, e);
   }
   if (ammo === 'barbed' && pr.charged && isTargetable(e)) {
     e.bleedTicks = tuning.gear.bleedTicks;

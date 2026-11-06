@@ -9,7 +9,7 @@ import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLau
 import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
-import { isHidden, isRooted, tauntedBy } from './specs';
+import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -792,6 +792,7 @@ function leaderBrain(state: SimState, world: World, e: EnemyState, target: Playe
         remains.hasToken = false;
         remains.frozen = 0;
         remains.bleedTicks = 0;
+        delete remains.venom;
         setAi(remains, 'spawn');
         state.events.push({ kind: 'enemyRose', enemyId: remains.id, x: remains.x, z: remains.z });
         e.tele.shape = 'none';
@@ -1402,6 +1403,8 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         });
       }
     }
+    // Venom Volley's poison (the builds pass).
+    if (e.venom) stepVenom(state, e, stats.height);
     let kx = e.kbx * dt;
     let kz = e.kbz * dt;
     if (c.sweepFastMoves) {

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-06: Session 137, the Assassin's Venom Volley; the Assassin offered (the builds pass, Michael's A)
+
+**What changed**
+
+Venom Volley (`venomVolley` and `stepVenom` in `specs.ts`): each Volley arrow an Assassin lands adds a stack of poison to its enemy (`EnemyState.venom`), up to `specs.venomMaxStacks` (5), and keeps it going `specs.venomSeconds` (4 s) from the newest arrow; every `specs.venomTickMs` (500 ms) it deals `specs.venomDamage` (2) a stack as damage over time (no hitstop, flinch or poise, as a bleed's), its XP to the bow. A fresh stack keeps the poison's beat, so it never brings a tick early. Five stacks are 20 a second, about a Volley arrow's worth every half second. A `venom` event plays a few green drops (more as it builds) and, for the Assassin alone, a short wet hiss. All four numbers on the panel. The Assassin is now offered from bow level 10, Shadow or Nature, so Ranged's three are whole. Check 444 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+The bleed counts its ticks down from a timer; the poison keeps a sim time for its next tick instead, so stacking and refreshing are one assignment and a hitstop only delays a tick, never loses it.
+
+**Next**
+
+The Spellblade's trail and blades once answered (decisions.md Pending, A recommended); then Magic's three, the Sorcerer, Warlock and Druid, one a session.
+
 ## 2026-11-06: Session 136, the Assassin's Smoke Bomb (the builds pass, Michael's A)
 
 **What changed**
