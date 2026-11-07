@@ -19,6 +19,7 @@ import { FxView } from '../render/FxView';
 import { HeroView } from '../render/HeroView';
 import { Nameplate } from '../render/Nameplate';
 import { TrapView } from '../render/TrapView';
+import { TrailView } from '../render/TrailView';
 import { ConsecrateView } from '../render/ConsecrateView';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
@@ -169,6 +170,8 @@ export class Game {
   private snares = new ConsecrateView();
   /** A Druid's Wild Growth groves, likewise. */
   private groves = new ConsecrateView();
+  /** A Spellblade's Blazing Charge trails. */
+  private trails = new TrailView();
   private trapView: TrapView | null = null;
   private readonly profile = new Profile();
   private readonly equip: EquipScreen;
@@ -250,6 +253,7 @@ export class Game {
       this.brambles.group,
       this.snares.group,
       this.groves.group,
+      this.trails.group,
       this.fx.group,
       this.hitboxes.lines,
       this.lockOn.marker,
@@ -1012,6 +1016,7 @@ export class Game {
     this.brambles.update(world.brambles, world.time);
     this.snares.update(world.snares, world.time);
     this.groves.update(world.groves, world.time);
+    this.trails.update(world.trails, world.time);
     this.syncVillage();
     this.payUpgrades();
     this.settleTrades();

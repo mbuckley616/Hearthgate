@@ -5,7 +5,7 @@ import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
 import { flowTier, gainFlow } from './flow';
-import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState } from './types';
+import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState, TrailGround } from './types';
 
 /**
  * Specializations (the builds pass; Michael's A, 6 Nov 2026: specializations first, one style a
@@ -698,6 +698,89 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
+  }
+}
+
+/**
+ * Blazing Charge (the Spellblade's Charge; Michael, 6 Nov, A): each tick of the dash lengthens a
+ * strip `specs.blazingTrailWidth` wide from where it began to where the hero is now, lasting
+ * `specs.blazingTrailSeconds` from the dash's last tick; one a Spellblade, a new Charge's replacing
+ * their last. `charge` is the Charge's damage, of which the trail deals `specs.blazingTrailDamage` a
+ * second. Laid in stepAbility, so prediction draws its own at once; only the server's burns.
+ */
+export function blazingTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, charge: number): void {
+  const s = tuning.specs;
+  if (specOf(p) !== 'spellblade' || s.blazingTrailSeconds <= 0) return;
+  const until = state.time + s.blazingTrailSeconds;
+  const mine = state.trails?.find((g) => g.by === p.id && g.seq === p.abilitySeq);
+  if (mine) {
+    mine.x1 = p.x;
+    mine.z1 = p.z;
+    mine.until = until;
+    return;
+  }
+  const kept = (state.trails ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const tick = Math.max(0.05, s.blazingTrailTickMs / 1000);
+  kept.push({
+    by: p.id,
+    seq: p.abilitySeq,
+    x0: fromX,
+    z0: fromZ,
+    x1: p.x,
+    z1: p.z,
+    y: p.y,
+    width: s.blazingTrailWidth,
+    until,
+    tickDamage: charge * s.blazingTrailDamage * tick,
+    next: state.time + tick,
+    element: elementFor(p, 'sword') ?? 'fire',
+  });
+  state.trails = kept;
+}
+
+/** Distance in the ground plane from (x, z) to a trail's strip. */
+function trailDistance(g: TrailGround, x: number, z: number): number {
+  const dx = g.x1 - g.x0;
+  const dz = g.z1 - g.z0;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-9 ? Math.max(0, Math.min(1, ((x - g.x0) * dx + (z - g.z0) * dz) / len2)) : 0;
+  return Math.hypot(x - (g.x0 + dx * t), z - (g.z0 + dz * t));
+}
+
+/**
+ * Each trail's tick, from stepSim: every standing enemy in it takes its `tickDamage` as damage over
+ * time (no flinch or poise, as a poison's), credited to the Spellblade's sword. The server's alone;
+ * spent trails leave the state.
+ */
+export function stepTrails(state: SimState): void {
+  const live = state.trails!.filter((g) => g.until > state.time);
+  if (live.length === 0) {
+    delete state.trails;
+    return;
+  }
+  state.trails = live;
+  for (const g of live) {
+    if (state.time < g.next) continue;
+    g.next += Math.max(0.05, tuning.specs.blazingTrailTickMs / 1000);
+    if (g.tickDamage <= 0) continue;
+    for (const e of state.enemies) {
+      if (!isTargetable(e) || Math.abs(e.y - g.y) > 1.2) continue;
+      if (trailDistance(g, e.x, e.z) > g.width / 2 + enemyStats(e.kind).radius) continue;
+      damageEnemy(state, e, {
+        attackerId: g.by,
+        damage: g.tickDamage,
+        poise: 0,
+        knockback: 0,
+        heavy: false,
+        dirX: 0,
+        dirZ: 0,
+        x: e.x,
+        y: e.y + 1,
+        z: e.z,
+        style: 'sword',
+        dot: true,
+      });
+    }
   }
 }
 

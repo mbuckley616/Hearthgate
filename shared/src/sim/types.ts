@@ -583,6 +583,25 @@ export interface BrambleGround extends ConsecratedGround {
   element: Element;
 }
 
+/** A Spellblade's Blazing Charge trail (the builds pass): a strip along the dash that burns enemies standing in it. */
+export interface TrailGround {
+  by: string;
+  /** The Charge it came from (`PlayerState.abilitySeq`), so the dash lengthens its own trail and no other. */
+  seq: number;
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  y: number;
+  width: number;
+  until: number;
+  /** Damage each tick deals an enemy in it, fixed as the Charge's damage was when it ran. */
+  tickDamage: number;
+  /** When it next deals damage. */
+  next: number;
+  element: Element;
+}
+
 export interface SimState {
   tick: number;
   /** Simulated seconds since start. */
@@ -608,6 +627,8 @@ export interface SimState {
   snares?: BrambleGround[];
   /** A Druid's Wild Growth groves (the builds pass), one a Druid, healing allies inside; absent in the slice. */
   groves?: BrambleGround[];
+  /** A Spellblade's Blazing Charge trails (the builds pass), one a Spellblade; absent in the slice. */
+  trails?: TrailGround[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.

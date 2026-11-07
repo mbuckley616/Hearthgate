@@ -1822,6 +1822,16 @@ export const tuning = {
     attuneAirDamage: 0.4,
     /** Elemental Nova (the Sorcerer's frost ring): a Fire Sorcerer's ring hits this many times as hard; Earth and Air take Attunement's poise and push. */
     novaFireDamage: 1.5,
+    /**
+     * Blazing Charge (the Spellblade's Charge; Michael, 6 Nov, A): the dash leaves a strip
+     * blazingTrailWidth wide along its path for blazingTrailSeconds; every standing enemy in it takes
+     * blazingTrailDamage of the Charge's damage a second, dealt each blazingTrailTickMs. The element
+     * only colours it until the states come.
+     */
+    blazingTrailSeconds: 3,
+    blazingTrailWidth: 1,
+    blazingTrailDamage: 0.15,
+    blazingTrailTickMs: 500,
   },
   abilities: {
     /**
@@ -2560,6 +2570,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.groveSeconds': [0, 12, 0.5],
   'specs.groveRadius': [0.5, 6, 0.1],
   'specs.groveHealPerS': [0, 0.2, 0.005],
+  'specs.blazingTrailSeconds': [0, 10, 0.5],
+  'specs.blazingTrailWidth': [0.25, 4, 0.05],
+  'specs.blazingTrailDamage': [0, 1, 0.01],
+  'specs.blazingTrailTickMs': [100, 2000, 50],
   'specs.attuneFireRadius': [0, 6, 0.1],
   'specs.attuneFireDamage': [0, 2, 0.05],
   'specs.attuneChillS': [0, 8, 0.1],

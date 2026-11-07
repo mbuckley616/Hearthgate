@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-07: Session 146, the Spellblade's Blazing Charge (the builds pass, Michael's A)
+
+**What changed**
+
+Blazing Charge (`blazingTrail` and `stepTrails` in `specs.ts`, laid where the Charge dashes in `stepAbility`, stepped in `stepSim`): a Spellblade's dash leaves a strip `specs.blazingTrailWidth` (1 m) wide along its path, from where the dash began to where it stopped, lasting `specs.blazingTrailSeconds` (3 s) from its last tick; one a Spellblade, a new Charge's replacing their last (`SimState.trails`). Every standing enemy in it takes `specs.blazingTrailDamage` (15%) of the Charge's damage a second, dealt every `specs.blazingTrailTickMs` (500 ms) as damage over time, no flinch or poise, credited to the sword. The element only colours it, as Michael's A says: `TrailView` draws a flickering strip in the element's colour that fades over its last second. Prediction lays its own at once; only the server's burns. Four numbers on the panel. The Spellblade stays "soon" until its spectral blades are in. Check 475 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Charge's damage is fixed into the trail as it is laid (`tickDamage`), so a talent rank bought mid-trail or a panel edit to the Charge does not change a strip already burning; the panel's trail numbers act on the next Charge.
+
+**Next**
+
+The spectral blades (two swords circling 1 m past the Whirlwind's reach, each hitting an enemy once a spin for 30%), then the Spellblade is offered; then the Sorcerer's Elemental Step, the Blink's trail by the same A, and the Sorcerer is offered.
+
 ## 2026-11-06: Session 145, the Sorcerer's Elemental Nova (the builds pass, Michael's A)
 
 **What changed**

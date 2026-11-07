@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, blazingTrail, stepTrails, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { newFlow } from './flow';
@@ -341,6 +341,61 @@ describe("the Paladin's Bulwark", () => {
     guarding(p, true);
     expect(hurtHero(s, p, heavyFront(p))).toBe('parried');
     expect(friend.hp).toBe(50);
+  });
+});
+
+describe("the Spellblade's Blazing Charge (Michael, 6 Nov, A)", () => {
+  /** A sword hero, a Spellblade or not, dashes down the arena with nothing in the way. */
+  function dash(spellblade: boolean, element?: 'frost') {
+    const sc = scene(false);
+    if (spellblade) Object.assign(sc.p, { spec: { sword: 'spellblade' }, elements: element ? { sword: element } : undefined });
+    Object.assign(sc.e, { x: 15, z: -15 });
+    const from = { x: sc.p.x, z: sc.p.z };
+    charge(sc.s, sc.p);
+    return { ...sc, from };
+  }
+
+  it("a Spellblade's dash leaves a strip along its path, in their element", () => {
+    const { s, p, from } = dash(true, 'frost');
+    expect(s.trails).toHaveLength(1);
+    const g = s.trails![0];
+    expect(g).toMatchObject({ by: p.id, x0: from.x, z0: from.z, width: tuning.specs.blazingTrailWidth, element: 'frost' });
+    expect(Math.hypot(g.x1 - g.x0, g.z1 - g.z0)).toBeGreaterThan(tuning.abilities.chargeDistance * 0.8);
+    expect(g.until).toBeCloseTo(s.time + tuning.specs.blazingTrailSeconds, 5);
+  });
+
+  it('anyone else\'s Charge leaves nothing', () => {
+    expect(dash(false).s.trails).toBeUndefined();
+  });
+
+  it('an enemy standing in it takes 15% of the Charge a second, one beside it nothing, then it fades', () => {
+    const { s, e, friend } = dash(true);
+    const g = s.trails![0];
+    Object.assign(friend, { x: 30, z: 30 });
+    const inside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2, (g.z0 + g.z1) / 2, 0);
+    Object.assign(inside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    const beside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2 + 3, (g.z0 + g.z1) / 2, 0);
+    Object.assign(beside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    const charge = tuning.abilities.chargeDamage * tuning.combat.baseDamage;
+    // One whole second of the trail, its second tick on the second's last step.
+    for (let i = 0; i <= 60; i++) {
+      if (s.trails) stepTrails(s);
+      s.time += DT;
+    }
+    expect(9999 - inside.hp).toBeCloseTo(charge * tuning.specs.blazingTrailDamage, 1);
+    expect(beside.hp).toBe(9999);
+    expect(e.hp).toBe(9999);
+    s.time = g.until + 0.01;
+    stepTrails(s);
+    expect(s.trails).toBeUndefined();
+  });
+
+  it("a second Charge's trail replaces the first", () => {
+    const { s, p } = dash(true);
+    p.abilitySeq++;
+    blazingTrail(s, p, 0, 0, 100);
+    expect(s.trails).toHaveLength(1);
+    expect(s.trails![0]).toMatchObject({ x0: 0, z0: 0, seq: p.abilitySeq });
   });
 });
 
