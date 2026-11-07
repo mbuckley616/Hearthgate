@@ -10,7 +10,7 @@ The ability bar and the hero's title follow a specialization (the critic, 7 Nov)
 
 **Learned**
 
-The hero screen already used `SPECS`' names; only the HUD and the party frame had kept their own copy of the style titles, so the copy was the bug. They now share `STYLE_TITLES`.
+The hero screen lists specializations from `specsFor`, but the HUD and the party frame each kept their own copy of the style titles, so nothing a specialization named reached them. They now share `STYLE_TITLES` beside `SPECS`.
 
 **Next**
 
