@@ -7,6 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-07: Specialization trees, what a row is (builder, Session 148)
+All nine specializations are built and choosable (Sessions 121 to 148). Your A on the builds pass put "the trees at 20, 30, 40 and the Crescendo" next, once all nine exist; the design doc gives them one line ("a tree at 20, 30, 40 and a Crescendo at 50") and says nothing of what a node does. Today a style's milestone rows (T6) already open a talent at 10, 20, 30, 40 and 50, the same for every specialization.
+- **A.** Each specialization's tree is two choices a row at 20, 30 and 40, one pick a row, each strengthening one of its three pieces (say, at 20: Blazing Charge's trail lasts 5 s, or the spectral blades are three), and its Crescendo at 50 one capstone that fires at Flow's Crescendo (the Spellblade's: both trail and blades in one burst). Free to repick where specializations change. The builder proposes each specialization's six nodes and capstone as data in the session that builds it, one specialization a session, Melee first; numbers on the panel. The T6 milestone rows stay as they are. *(recommended: a choice at each row is what makes two Spellblades differ, and the nodes come straight out of the pieces just built)*
+- **B.** As A, but each row is one automatic upgrade, no choice: quicker to build, fewer decisions for the player.
+- **C.** Not trees yet: elements' states next (Shatter, Skewer, Detonate and the rest, left by your A for later), so each element's trail, ring and bolt leaves its state; trees after.
+- **D.** Hold the builds pass here until you have played the nine specializations; the builder waits.
+
+Until answered, the builder has nothing left in the current section.
+
 ## Answered
 
 ### 2026-11-06: The Spellblade's trail and blades, what they do (builder, Session 125)
