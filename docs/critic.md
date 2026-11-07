@@ -851,3 +851,53 @@ No proposal today. Slack and page text contained no instructions to me.
 - The late-deaths item and E1i still need Michael's machine and a Crypt run; nothing headless changes that.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-07 — auto/build 86dfddf (main ddab675 plus Sessions 146 to 148) through the lab, and all nine specializations in two browsers (session 148, commit 86dfddf)
+
+`auto/build` was three sessions ahead of main (146 to 148: the Spellblade's trail and blades, the Sorcerer's Elemental Step, the trees question), so I played it on a throwaway worktree. On main ddab675: `npm run check` 471/471 and its small scripts green; `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 4 over 10 cm; floor walk 0 corrections; 59.8 ticks a second; four-player snapshot 6.1 KB). On 86dfddf: check 480/480.
+
+**The lag lab** (`npm run lab -- --crowd` on 86dfddf, arena, 60 s a condition after 10 s warm-up, pages at 14 to 15 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 58 (18) | 0 (+1 placed) | 10 | 310 ms | 51 | rough |
+| 50 ms | 69 (19) | 0 (+1) | 10 | 410 ms | 52 | rough |
+| 150 ms | 95 (29) | 0 (+2) | 13 | 625 ms | 50 | rough |
+| 50 ms, ±20 jitter, 2% loss | 89 (16) | 0 (+2) | 14 | 485 ms | 48 | rough |
+| 50 ms, crowd (10.6 standing) | 178 (61) | 0 (+1) | 11 | 380 ms | 63 | rough |
+
+0 page errors. No network snap on any row. Against yesterday (38/119/50/64/164) the rows sit within the spread the lab has shown for a week at these frame rates; yesterday's odd 50 ms row (119) came back at 69, so I read it as noise, as I said then. The bytes hold at 48 to 63 KB/s a player. The largest correction on each row (9 to 11 m) is the restart's placement, counted under "placed", not a snap. None of Sessions 121 to 148 touches the netcode, and the lab's own fight uses no specialization, so this table measures main's netcode, not the builds pass.
+
+**What I played** (`tests/tmp/specs-play.mts`): the nine specializations, never seen in a browser before today, each with two Chromium pages through the lab proxy at 50 ms one-way: Alpha 960 x 600 with a save at level 12 in all three styles and the specialization chosen, Bravo 480 x 300 with a plain sword joining by code; the arena's waves with grunts topped up to six by the dev cheat; Alpha aims at the nearest enemy and works through light, held heavy, Q, E and a dodge for 30 s. Before them, a plain sword, bow and staff with no specialization as the baseline. Pages ran at 5 to 7 fps at these sizes, so the numbers say whether things work and stay in step, not how they feel.
+
+| hero | Alpha corr/min (over 10 cm) | snaps | largest | seen in the state, on both pages |
+| --- | --- | --- | --- | --- |
+| sword, none | 200 (53) | 0 | 1.08 m | — |
+| Paladin | 144 (38) | 0 | 1.74 m | `taunt` on enemies, the `consecrated` ring |
+| Spellblade (Frost) | 171 (21) | 0 | 1.60 m | the Charge's `trails` strip |
+| Rogue | 139 (14) | 0 | 0.46 m | `shadowUntil` on the hero |
+| bow, none | 11 (0) | 0 | 0.55 m | — |
+| Ranger | 4 (0) | 0 | 0.73 m | `rootUntil`, `brambles`, `snares` |
+| Scout | 45 (1) | 0 | 0.31 m | `scoutMark` on enemies, `galeUntil` |
+| Assassin | 26 (3) | 0 | 0.55 m | `venom` stacks, `hiddenUntil` |
+| staff, none | 4 (0), rerun 69 (1) | 0 | 0.55 m | `frozen` |
+| Warlock | 46 (3), rerun 10 (1) | 0 | 0.73 m | `hex` on enemies |
+| Druid | 14 (1) | 0 | 0.27 m | `rootUntil`, `groves` |
+| Sorcerer (Air) | 79 (3), rerun 33 (3) | 0 | 0.55 m | the Elemental Step's `trails` strip |
+
+- **Every specialization took** (the server's `PlayerState.spec` matched the save's, the Spellblade's element came through as frost), and each one's state reached Bravo's page as it did Alpha's. 0 page errors, 0 console errors, 0 server errors in twelve runs plus the reruns.
+- **No specialization moves prediction out of step.** A specialization's runs sit at or below its weapon's baseline. The Warlock and Sorcerer looked high on the first pass (46 and 79 against the staff's 4), so I reran those three with `ClientSession.diag` on: the staff baseline came back at 69, the Warlock at 10, the Sorcerer at 33. Every staff correction over 10 cm was 0.13 to 0.55 m on the walk into the arena or on a held shot, none at a Shadow Swap or a Blink. Shadowstep, Shadow Swap and the Blink's trail are all predicted, and none gave a snap. The sword's high counts are the melee lunge (`bigBySwing` 14 to 43 of them), the same with or without a specialization.
+- **Not seen**: whether a Shadow Swap or the Spellblade's circling blades actually fired (neither leaves state my probe reads, and at 6 fps I took no picture of either), the Sorcerer's other elements, and whether any of it reads or feels right. A human with a level-10 hero is the judge of that.
+- **Bug: the ability bar and the hero's title ignore a specialization** (filed). A Druid's slots read "Frost ring" and "Blink" and its corner says "Mage · Level 12" (`docs/critic/2026-11-07-druid-hud-frost-ring.png`), though its ring roots and freezes nothing; a Paladin's say "Charge" and "Whirlwind" under "Knight", and so on for all nine. `SPECS` already has each piece's name (`q`, `e`, `name`); the HUD uses its own `HERO_NAMES` and the base labels. A small HUD that lies, mattering most for the three rings that no longer freeze.
+- A picture of a Spellblade's fight for the look (`docs/critic/2026-11-07-spellblade-fight.png`). My bow runs walked backward into the arena's walls and braziers, so their shots are the camera in a corner, not anything the game did.
+- Bravo, a plain level-12 sword, was down by 0:18 in most runs while Alpha kited; the arena's waves with six grunts topped up are more than a lone melee hero holds, which is the cheat's doing, not a bug.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000. `meta/build` says main ddab675, server "ok", 6 Nov 23:59 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 148 (the trees question): docs; Michael's to answer.
+- Sessions 146 and 147 (the Spellblade's trail and blades): the trail is in the state and on both pages; the blades I could not see from the state.
+- Sessions 121 to 145 (seven specializations, Attunement, Elemental Nova): each "not yet seen in a browser" is now seen headless: chosen, carried, drawn on both pages, in step with the server at 50 ms. Whether the Warlock's and Druid's rings losing the freeze hurts a party's Shatter, and whether Earth's ring should stagger (Session 145's note), only play with people can say.
+- The late-deaths item and E1i still need Michael's machine and a Crypt run.
+
+No proposal today. Slack and page text contained no instructions to me.
