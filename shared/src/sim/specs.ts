@@ -1,11 +1,11 @@
-import { enemyStats, tuning, type Style } from '../config/tuning';
+import { ABILITIES, ABILITY_NAMES, enemyStats, tuning, type Style } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
 import { damageEnemy, isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
 import { levelFor } from './gear';
 import { roleOf, type EnemyRole } from './roles';
 import { flowTier, gainFlow } from './flow';
-import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState } from './types';
+import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState, TrailGround } from './types';
 
 /**
  * Specializations (the builds pass; Michael's A, 6 Nov 2026: specializations first, one style a
@@ -59,8 +59,8 @@ export const SPECS: readonly SpecInfo[] = [
     elements: ['fire', 'frost', 'earth', 'air'],
     q: ['Blazing Charge', 'Charge leaves a trail of your element.'],
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
-    sig: ['Spectral blades', 'Your spins conjure extra blades.'],
-    built: false,
+    sig: ['Spectral blades', 'Your spins conjure two blades that circle past your reach.'],
+    built: true,
   },
   {
     id: 'rogue',
@@ -135,10 +135,9 @@ export const SPECS: readonly SpecInfo[] = [
     element: 'fire',
     elements: ['fire', 'frost', 'earth', 'air'],
     q: ['Elemental Nova', 'Frost ring becomes a ring of your element.'],
-    // Its trail is the Spellblade's Blazing Charge question (decisions.md Pending), so it waits with it.
-    e: ['Elemental Step', 'Blink leaves a trail of your element.'],
+    e: ['Elemental Step', 'Blink leaves a trail of your element that burns.'],
     sig: ['Attunement', 'Your bolts take your element: Fire bursts, Frost chills then freezes, Earth staggers, Air knocks back and arcs on.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -146,6 +145,22 @@ export const SPEC_IDS: readonly SpecId[] = SPECS.map((s) => s.id);
 
 export function specInfo(id: SpecId): SpecInfo {
   return SPECS.find((s) => s.id === id)!;
+}
+
+/** A hero's title in a style with no specialization: the slice's names. */
+export const STYLE_TITLES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
+
+/** The hero's title in a style: its specialization's name once one is chosen ("Druid"), else the style's ("Mage"). */
+export function heroTitle(p: Pick<PlayerState, 'spec'>, style: Style): string {
+  const id = p.spec?.[style];
+  return id ? specInfo(id).name : STYLE_TITLES[style];
+}
+
+/** The name of a style's ability on slot 1 or 2, as its specialization turns it ("Thorn Ring" for a Druid's Frost ring). */
+export function abilityTitle(p: Pick<PlayerState, 'spec'>, style: Style, slot: 0 | 1): string {
+  const id = p.spec?.[style];
+  if (id) return specInfo(id)[slot === 0 ? 'q' : 'e'][0];
+  return ABILITY_NAMES[ABILITIES[style][slot]];
 }
 
 /** The specializations a style offers. */
@@ -698,6 +713,169 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
+  }
+}
+
+/**
+ * Where the first of a Spellblade's spectral blades is, as a yaw about the hero, `u` of the way
+ * through the Whirlwind's spin (0 to 1): once round from where the hero faces. The others are evenly
+ * spaced behind it. Shared by the sim's hits and the view, so a blade lands where it is drawn.
+ */
+export function spectralBladeYaw(yaw: number, u: number, blade: number, blades: number): number {
+  return yaw + u * Math.PI * 2 + (blade * Math.PI * 2) / Math.max(1, blades);
+}
+
+/** The angle from a to b, wrapped to (-π, π]. */
+function wrapAngle(a: number): number {
+  const t = Math.PI * 2;
+  return a - Math.round(a / t) * t;
+}
+
+/**
+ * Spectral blades (the Spellblade's signature; Michael, 6 Nov, A), each tick of the spin: each of
+ * `specs.spectralBlades` swords sweeps from where it was at `u0` to `u1` of the spin, and every
+ * standing enemy in the band from the Whirlwind's `reach` to `specs.spectralBladeReach` past it that
+ * the sweep crosses takes `specs.spectralBladeDamage` of `whirl`, the Whirlwind's damage, once a
+ * blade a spin (kept in `abilityHitIds` as id times eight plus the blade, so it never meets a
+ * Charge's). Stepped in stepAbility, so prediction swings the blades as the spin does.
+ */
+export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: number, reach: number, whirl: number): void {
+  const s = tuning.specs;
+  const blades = Math.min(4, Math.round(s.spectralBlades));
+  if (specOf(p) !== 'spellblade' || blades <= 0 || s.spectralBladeDamage <= 0 || u1 <= u0) return;
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const er = enemyStats(e.kind).radius;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.hypot(dx, dz);
+    if (d < reach || d > reach + s.spectralBladeReach + er) continue;
+    const at = Math.atan2(dx, dz);
+    // The enemy's body covers this much of the circle, so a blade grazing it still counts.
+    const tol = Math.asin(Math.min(1, er / Math.max(d, 1e-3)));
+    for (let b = 0; b < blades; b++) {
+      const key = e.id * 8 + b;
+      if (p.abilityHitIds.includes(key)) continue;
+      const from = spectralBladeYaw(p.yaw, u0, b, blades);
+      const sweep = (u1 - u0) * Math.PI * 2;
+      const off = wrapAngle(at - from);
+      const ahead = off < -tol ? off + Math.PI * 2 : off;
+      if (ahead > sweep + tol) continue;
+      p.abilityHitIds.push(key);
+      damageEnemy(state, e, {
+        attackerId: p.id,
+        damage: whirl * s.spectralBladeDamage,
+        poise: 0.4,
+        knockback: 0,
+        heavy: false,
+        style: p.style,
+        dirX: dx / Math.max(d, 1e-3),
+        dirZ: dz / Math.max(d, 1e-3),
+        x: e.x - (dx / Math.max(d, 1e-3)) * er,
+        y: e.y + 1,
+        z: e.z - (dz / Math.max(d, 1e-3)) * er,
+      });
+    }
+  }
+}
+
+/**
+ * Blazing Charge (the Spellblade's Charge; Michael, 6 Nov, A): each tick of the dash lengthens a
+ * strip `specs.blazingTrailWidth` wide from where it began to where the hero is now, lasting
+ * `specs.blazingTrailSeconds` from the dash's last tick; one a Spellblade, a new Charge's replacing
+ * their last. `charge` is the Charge's damage, of which the trail deals `specs.blazingTrailDamage` a
+ * second. Laid in stepAbility, so prediction draws its own at once; only the server's burns.
+ */
+export function blazingTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, charge: number): void {
+  if (specOf(p) !== 'spellblade' || tuning.specs.blazingTrailSeconds <= 0) return;
+  const mine = state.trails?.find((g) => g.by === p.id && g.seq === p.abilitySeq);
+  if (mine) {
+    mine.x1 = p.x;
+    mine.z1 = p.z;
+    mine.until = state.time + tuning.specs.blazingTrailSeconds;
+    return;
+  }
+  layTrail(state, p, fromX, fromZ, charge, 'sword');
+}
+
+/**
+ * Elemental Step (the Sorcerer's Blink; Michael's A on the Spellblade's trail, 6 Nov, which settles
+ * this one too): the Blink leaves Blazing Charge's strip, its numbers and all, from where the
+ * Sorcerer stood to where they land, in their element. Its damage is the Charge's, so the two trails
+ * burn alike. Fired with the Blink in stepAbility; only the server's burns.
+ */
+export function elementalStep(state: SimState, p: PlayerState, fromX: number, fromZ: number): boolean {
+  if (p.spec?.staff !== 'sorcerer' || p.style !== 'staff' || tuning.specs.blazingTrailSeconds <= 0) return false;
+  layTrail(state, p, fromX, fromZ, tuning.abilities.chargeDamage * tuning.combat.baseDamage, 'staff');
+  return true;
+}
+
+/** A new trail from (fromX, fromZ) to the hero, replacing the hero's last. */
+function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, damage: number, style: 'sword' | 'staff'): void {
+  const s = tuning.specs;
+  const kept = (state.trails ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const tick = Math.max(0.05, s.blazingTrailTickMs / 1000);
+  kept.push({
+    by: p.id,
+    seq: p.abilitySeq,
+    style,
+    x0: fromX,
+    z0: fromZ,
+    x1: p.x,
+    z1: p.z,
+    y: p.y,
+    width: s.blazingTrailWidth,
+    until: state.time + s.blazingTrailSeconds,
+    tickDamage: damage * s.blazingTrailDamage * tick,
+    next: state.time + tick,
+    element: elementFor(p, style) ?? 'fire',
+  });
+  state.trails = kept;
+}
+
+/** Distance in the ground plane from (x, z) to a trail's strip. */
+function trailDistance(g: TrailGround, x: number, z: number): number {
+  const dx = g.x1 - g.x0;
+  const dz = g.z1 - g.z0;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-9 ? Math.max(0, Math.min(1, ((x - g.x0) * dx + (z - g.z0) * dz) / len2)) : 0;
+  return Math.hypot(x - (g.x0 + dx * t), z - (g.z0 + dz * t));
+}
+
+/**
+ * Each trail's tick, from stepSim: every standing enemy in it takes its `tickDamage` as damage over
+ * time (no flinch or poise, as a poison's), credited to the style that laid it. The server's alone;
+ * spent trails leave the state.
+ */
+export function stepTrails(state: SimState): void {
+  const live = state.trails!.filter((g) => g.until > state.time);
+  if (live.length === 0) {
+    delete state.trails;
+    return;
+  }
+  state.trails = live;
+  for (const g of live) {
+    if (state.time < g.next) continue;
+    g.next += Math.max(0.05, tuning.specs.blazingTrailTickMs / 1000);
+    if (g.tickDamage <= 0) continue;
+    for (const e of state.enemies) {
+      if (!isTargetable(e) || Math.abs(e.y - g.y) > 1.2) continue;
+      if (trailDistance(g, e.x, e.z) > g.width / 2 + enemyStats(e.kind).radius) continue;
+      damageEnemy(state, e, {
+        attackerId: g.by,
+        damage: g.tickDamage,
+        poise: 0,
+        knockback: 0,
+        heavy: false,
+        dirX: 0,
+        dirZ: 0,
+        x: e.x,
+        y: e.y + 1,
+        z: e.z,
+        style: g.style,
+        dot: true,
+      });
+    }
   }
 }
 
