@@ -135,10 +135,9 @@ export const SPECS: readonly SpecInfo[] = [
     element: 'fire',
     elements: ['fire', 'frost', 'earth', 'air'],
     q: ['Elemental Nova', 'Frost ring becomes a ring of your element.'],
-    // Its trail is the Spellblade's Blazing Charge question (decisions.md Pending), so it waits with it.
-    e: ['Elemental Step', 'Blink leaves a trail of your element.'],
+    e: ['Elemental Step', 'Blink leaves a trail of your element that burns.'],
     sig: ['Attunement', 'Your bolts take your element: Fire bursts, Frost chills then freezes, Earth staggers, Air knocks back and arcs on.'],
-    built: false,
+    built: true,
   },
 ];
 
@@ -772,31 +771,48 @@ export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: 
  * second. Laid in stepAbility, so prediction draws its own at once; only the server's burns.
  */
 export function blazingTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, charge: number): void {
-  const s = tuning.specs;
-  if (specOf(p) !== 'spellblade' || s.blazingTrailSeconds <= 0) return;
-  const until = state.time + s.blazingTrailSeconds;
+  if (specOf(p) !== 'spellblade' || tuning.specs.blazingTrailSeconds <= 0) return;
   const mine = state.trails?.find((g) => g.by === p.id && g.seq === p.abilitySeq);
   if (mine) {
     mine.x1 = p.x;
     mine.z1 = p.z;
-    mine.until = until;
+    mine.until = state.time + tuning.specs.blazingTrailSeconds;
     return;
   }
+  layTrail(state, p, fromX, fromZ, charge, 'sword');
+}
+
+/**
+ * Elemental Step (the Sorcerer's Blink; Michael's A on the Spellblade's trail, 6 Nov, which settles
+ * this one too): the Blink leaves Blazing Charge's strip, its numbers and all, from where the
+ * Sorcerer stood to where they land, in their element. Its damage is the Charge's, so the two trails
+ * burn alike. Fired with the Blink in stepAbility; only the server's burns.
+ */
+export function elementalStep(state: SimState, p: PlayerState, fromX: number, fromZ: number): boolean {
+  if (p.spec?.staff !== 'sorcerer' || p.style !== 'staff' || tuning.specs.blazingTrailSeconds <= 0) return false;
+  layTrail(state, p, fromX, fromZ, tuning.abilities.chargeDamage * tuning.combat.baseDamage, 'staff');
+  return true;
+}
+
+/** A new trail from (fromX, fromZ) to the hero, replacing the hero's last. */
+function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, damage: number, style: 'sword' | 'staff'): void {
+  const s = tuning.specs;
   const kept = (state.trails ?? []).filter((g) => g.by !== p.id && g.until > state.time);
   const tick = Math.max(0.05, s.blazingTrailTickMs / 1000);
   kept.push({
     by: p.id,
     seq: p.abilitySeq,
+    style,
     x0: fromX,
     z0: fromZ,
     x1: p.x,
     z1: p.z,
     y: p.y,
     width: s.blazingTrailWidth,
-    until,
-    tickDamage: charge * s.blazingTrailDamage * tick,
+    until: state.time + s.blazingTrailSeconds,
+    tickDamage: damage * s.blazingTrailDamage * tick,
     next: state.time + tick,
-    element: elementFor(p, 'sword') ?? 'fire',
+    element: elementFor(p, style) ?? 'fire',
   });
   state.trails = kept;
 }
@@ -812,7 +828,7 @@ function trailDistance(g: TrailGround, x: number, z: number): number {
 
 /**
  * Each trail's tick, from stepSim: every standing enemy in it takes its `tickDamage` as damage over
- * time (no flinch or poise, as a poison's), credited to the Spellblade's sword. The server's alone;
+ * time (no flinch or poise, as a poison's), credited to the style that laid it. The server's alone;
  * spent trails leave the state.
  */
 export function stepTrails(state: SimState): void {
@@ -840,7 +856,7 @@ export function stepTrails(state: SimState): void {
         x: e.x,
         y: e.y + 1,
         z: e.z,
-        style: 'sword',
+        style: g.style,
         dot: true,
       });
     }

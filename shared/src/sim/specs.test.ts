@@ -30,7 +30,7 @@ describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
     expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'paladin' })).toBeNull();
     expect(specProblem({ sword: at10 - 1, bow: 0, staff: 0 }, { sword: 'paladin' })).not.toBeNull();
     expect(specProblem({ sword: at10, bow: at10, staff: 0 }, { bow: 'paladin' })).not.toBeNull();
-    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).not.toBeNull();
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'sorcerer' })).not.toBeNull();
   });
 
   it('the server takes a Paladin only from a loadout whose sword could have earned it', () => {
@@ -396,6 +396,46 @@ describe("the Spellblade's Blazing Charge (Michael, 6 Nov, A)", () => {
     blazingTrail(s, p, 0, 0, 100);
     expect(s.trails).toHaveLength(1);
     expect(s.trails![0]).toMatchObject({ x0: 0, z0: 0, seq: p.abilitySeq });
+  });
+});
+
+describe("the Sorcerer's Elemental Step (by the Spellblade's A, 6 Nov)", () => {
+  function blink(sorcerer: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: 0, spec: sorcerer ? { staff: 'sorcerer' } : undefined, elements: sorcerer ? { staff: 'air' } : undefined });
+    sc.p.xp = { ...sc.p.xp, staff: at10 };
+    Object.assign(sc.e, { x: 15, z: -15 });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    const from = { x: sc.p.x, z: sc.p.z };
+    let ev = false;
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      if (sc.s.events.some((x) => x.kind === 'blink' && x.trail)) ev = true;
+      sc.s.time += DT;
+    }
+    return { ...sc, from, ev };
+  }
+
+  it("a Sorcerer's Blink leaves Blazing Charge's strip from where they stood to where they landed, in their element", () => {
+    const { s, p, from, ev } = blink(true);
+    expect(s.trails).toHaveLength(1);
+    expect(s.trails![0]).toMatchObject({ by: p.id, style: 'staff', element: 'air', x0: from.x, z0: from.z, x1: p.x, z1: p.z, width: tuning.specs.blazingTrailWidth });
+    expect(Math.hypot(p.x - from.x, p.z - from.z)).toBeGreaterThan(1);
+    expect(ev).toBe(true);
+  });
+
+  it('it burns an enemy in it as the Charge\'s trail does, credited to the staff', () => {
+    const { s } = blink(true);
+    const g = s.trails![0];
+    const inside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2, (g.z0 + g.z1) / 2, 0);
+    Object.assign(inside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    s.time = g.next;
+    stepTrails(s);
+    expect(9999 - inside.hp).toBeCloseTo(tuning.abilities.chargeDamage * tuning.combat.baseDamage * tuning.specs.blazingTrailDamage * tuning.specs.blazingTrailTickMs / 1000, 3);
+  });
+
+  it("anyone else's Blink leaves nothing", () => {
+    expect(blink(false).s.trails).toBeUndefined();
   });
 });
 
@@ -1155,7 +1195,7 @@ describe("the Druid's Wild Growth", () => {
 
 describe('the Druid is offered (the builds pass)', () => {
   it('from staff level 10, Nature or Earth', () => {
-    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid']);
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid', 'sorcerer']);
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).toBeNull();
     expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'druid' })).not.toBeNull();
     const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
@@ -1184,10 +1224,11 @@ describe("the Sorcerer's Attunement", () => {
     return { ...sc, other };
   }
 
-  it('is data for now: four elements, not yet offered while its Elemental Step waits on the trail question', () => {
+  it('four elements, offered from staff level 10', () => {
     expect(specInfo('sorcerer').elements).toEqual(['fire', 'frost', 'earth', 'air']);
-    expect(specInfo('sorcerer').built).toBe(false);
-    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).not.toBeNull();
+    expect(specInfo('sorcerer').built).toBe(true);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).toBeNull();
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'sorcerer' })).not.toBeNull();
   });
 
   it("anyone else's bolt is the staff's own: no burst, no arc, no event", () => {

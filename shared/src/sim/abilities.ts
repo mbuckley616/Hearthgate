@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, blazingTrail, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
+import { bladeStorm, blazingTrail, elementalStep, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -322,7 +322,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       p.nextBoltCrit = true;
       // A Druid leaves a healing grove where they stood (Wild Growth).
       const grove = wildGrowth(state, p, from.x, from.z);
-      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, ...(grove ? { grove } : {}) });
+      // A Sorcerer leaves a burning trail of their element along the way (Elemental Step).
+      const trail = elementalStep(state, p, from.x, from.z);
+      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, ...(grove ? { grove } : {}), ...(trail ? { trail } : {}) });
       break;
     }
   }

@@ -468,7 +468,7 @@ export type SimEvent =
   | { kind: 'enemyRose'; enemyId: number; x: number; z: number }
   | { kind: 'ability'; playerId: string; ability: AbilityKind; x: number; z: number; yaw: number }
   | { kind: 'frostRing'; playerId: string; x: number; z: number; radius: number; curse?: boolean; thorns?: boolean; element?: Element }
-  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean; grove?: boolean }
+  | { kind: 'blink'; playerId: string; fromX: number; fromZ: number; toX: number; toZ: number; swap?: boolean; grove?: boolean; trail?: boolean }
   | { kind: 'whirlTick'; playerId: string }
   | { kind: 'freeze'; enemyId: number }
   | { kind: 'enemyShot'; enemyId: number }
@@ -583,11 +583,13 @@ export interface BrambleGround extends ConsecratedGround {
   element: Element;
 }
 
-/** A Spellblade's Blazing Charge trail (the builds pass): a strip along the dash that burns enemies standing in it. */
+/** A Spellblade's Blazing Charge or a Sorcerer's Elemental Step trail (the builds pass): a strip along the dash or Blink that burns enemies standing in it. */
 export interface TrailGround {
   by: string;
   /** The Charge it came from (`PlayerState.abilitySeq`), so the dash lengthens its own trail and no other. */
   seq: number;
+  /** The style that laid it (a Spellblade's sword, a Sorcerer's staff), credited with its damage. */
+  style: 'sword' | 'staff';
   x0: number;
   z0: number;
   x1: number;

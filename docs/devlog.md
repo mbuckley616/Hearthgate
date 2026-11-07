@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-07: Session 148, the Sorcerer's Elemental Step; the Sorcerer offered, specializations done (the builds pass)
+
+**What changed**
+
+Elemental Step (`elementalStep` in `specs.ts`, fired with the Blink in `stepAbility`): a Sorcerer's Blink leaves Blazing Charge's strip, its width, seconds and burn, from where they stood to where they landed, in their element. Michael's A on the Spellblade's trail settled this one too (the question named both), so it reuses Session 146's numbers rather than adding its own: it burns 15% of the Charge's damage a second, credited to the staff (`TrailGround.style`), and `TrailView` draws it. The `blink` event carries `trail`, for a low whoosh as it catches. With Sessions 144 and 145 the Sorcerer is whole, and it is offered from staff level 10, Fire, Frost, Earth or Air. All nine specializations are now built and choosable. Check 480 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Sharing the trail's numbers keeps the panel short, but a Blink's trail is about as long as a Charge's while the Sorcerer's other damage is ranged, so the two may want different burns once played; splitting `specs.blazingTrailDamage` in two is a one-line change if Michael asks.
+
+**Next**
+
+Specializations are done for this pass (trees, runes and states were left for later in Michael's A on the builds pass). The next slice of the builds pass needs Michael's word: what comes after specializations (decisions.md Pending, asked this session).
+
 ## 2026-11-07: Session 147, the Spellblade's spectral blades; the Spellblade offered (the builds pass, Michael's A)
 
 **What changed**
