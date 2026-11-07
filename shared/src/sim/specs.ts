@@ -59,8 +59,8 @@ export const SPECS: readonly SpecInfo[] = [
     elements: ['fire', 'frost', 'earth', 'air'],
     q: ['Blazing Charge', 'Charge leaves a trail of your element.'],
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
-    sig: ['Spectral blades', 'Your spins conjure extra blades.'],
-    built: false,
+    sig: ['Spectral blades', 'Your spins conjure two blades that circle past your reach.'],
+    built: true,
   },
   {
     id: 'rogue',
@@ -698,6 +698,69 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
+  }
+}
+
+/**
+ * Where the first of a Spellblade's spectral blades is, as a yaw about the hero, `u` of the way
+ * through the Whirlwind's spin (0 to 1): once round from where the hero faces. The others are evenly
+ * spaced behind it. Shared by the sim's hits and the view, so a blade lands where it is drawn.
+ */
+export function spectralBladeYaw(yaw: number, u: number, blade: number, blades: number): number {
+  return yaw + u * Math.PI * 2 + (blade * Math.PI * 2) / Math.max(1, blades);
+}
+
+/** The angle from a to b, wrapped to (-π, π]. */
+function wrapAngle(a: number): number {
+  const t = Math.PI * 2;
+  return a - Math.round(a / t) * t;
+}
+
+/**
+ * Spectral blades (the Spellblade's signature; Michael, 6 Nov, A), each tick of the spin: each of
+ * `specs.spectralBlades` swords sweeps from where it was at `u0` to `u1` of the spin, and every
+ * standing enemy in the band from the Whirlwind's `reach` to `specs.spectralBladeReach` past it that
+ * the sweep crosses takes `specs.spectralBladeDamage` of `whirl`, the Whirlwind's damage, once a
+ * blade a spin (kept in `abilityHitIds` as id times eight plus the blade, so it never meets a
+ * Charge's). Stepped in stepAbility, so prediction swings the blades as the spin does.
+ */
+export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: number, reach: number, whirl: number): void {
+  const s = tuning.specs;
+  const blades = Math.min(4, Math.round(s.spectralBlades));
+  if (specOf(p) !== 'spellblade' || blades <= 0 || s.spectralBladeDamage <= 0 || u1 <= u0) return;
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const er = enemyStats(e.kind).radius;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.hypot(dx, dz);
+    if (d < reach || d > reach + s.spectralBladeReach + er) continue;
+    const at = Math.atan2(dx, dz);
+    // The enemy's body covers this much of the circle, so a blade grazing it still counts.
+    const tol = Math.asin(Math.min(1, er / Math.max(d, 1e-3)));
+    for (let b = 0; b < blades; b++) {
+      const key = e.id * 8 + b;
+      if (p.abilityHitIds.includes(key)) continue;
+      const from = spectralBladeYaw(p.yaw, u0, b, blades);
+      const sweep = (u1 - u0) * Math.PI * 2;
+      const off = wrapAngle(at - from);
+      const ahead = off < -tol ? off + Math.PI * 2 : off;
+      if (ahead > sweep + tol) continue;
+      p.abilityHitIds.push(key);
+      damageEnemy(state, e, {
+        attackerId: p.id,
+        damage: whirl * s.spectralBladeDamage,
+        poise: 0.4,
+        knockback: 0,
+        heavy: false,
+        style: p.style,
+        dirX: dx / Math.max(d, 1e-3),
+        dirZ: dz / Math.max(d, 1e-3),
+        x: e.x - (dx / Math.max(d, 1e-3)) * er,
+        y: e.y + 1,
+        z: e.z - (dz / Math.max(d, 1e-3)) * er,
+      });
+    }
   }
 }
 

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-07: Session 147, the Spellblade's spectral blades; the Spellblade offered (the builds pass, Michael's A)
+
+**What changed**
+
+Spectral blades (`spectralBlades` and `spectralBladeYaw` in `specs.ts`, stepped each tick of the Whirlwind's spin in `stepAbility`): `specs.spectralBlades` (2) swords circle a spinning Spellblade, evenly spaced, once round over the spin from where they face, in a band from the Whirlwind's reach to `specs.spectralBladeReach` (1 m) past it. Each blade hits every standing enemy its sweep crosses in that band once a spin, for `specs.spectralBladeDamage` (30%) of the Whirlwind's hit, so an enemy at the spin's edge takes 60% from the pair; one inside the reach is the Whirlwind's alone. The hits are kept in `abilityHitIds` (id times eight plus the blade), already on the wire, so no new state. `SpectralBladesView` draws them as ghostly swords in the Spellblade's element, placed by the sim's own `spectralBladeYaw`, fading in and out over the spin's ends. Three numbers on the panel. With Sessions 124, 125 and 146 the Spellblade is whole for this pass, and it is offered from sword level 10, Fire, Frost, Earth or Air: Melee's three are all built. Check 477 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Blade Storm pulls light enemies to 1.4 m, well inside the Whirlwind's 2.4 m reach, so the blades mostly find the heavier enemies Blade Storm leaves standing and light ones still being drawn in through the band. That suits the pair (the pull feeds the spin, the blades reach what it cannot move), but if the blades feel idle against skeleton packs, a smaller `specs.bladeStormRadius` leaves more in the band.
+
+**Next**
+
+The Sorcerer's Elemental Step: the Blink leaves a trail of its element by the same A (Blazing Charge's strip and numbers along the Blink's path), then the Sorcerer is offered and specializations are done for this pass.
+
 ## 2026-11-07: Session 146, the Spellblade's Blazing Charge (the builds pass, Michael's A)
 
 **What changed**

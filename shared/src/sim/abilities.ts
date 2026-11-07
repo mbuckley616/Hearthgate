@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, blazingTrail, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
+import { bladeStorm, blazingTrail, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -127,6 +127,10 @@ export function stepAbility(
         p.x += (cmd.moveX / mag) * speed * mag * dt;
         p.z += (cmd.moveZ / mag) * speed * mag * dt;
       }
+      const reach = a.whirlwindRadius + rank * tl.whirlwindRadiusPerRank;
+      const whirl = a.whirlwindDamage * (1 + rank * tl.whirlwindDamagePerRank) * tuning.combat.baseDamage;
+      const spin = Math.max(1e-3, timing.active);
+      spectralBlades(state, p, Math.max(0, t0 - timing.windup) / spin, Math.min(1, (t - timing.windup) / spin), reach, whirl);
       const due = Math.floor((t - timing.windup) / (a.whirlwindTickMs / 1000)) + 1;
       if (p.abilityTicks < due) {
         p.abilityTicks = due;

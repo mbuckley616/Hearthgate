@@ -20,9 +20,9 @@ const at10 = xpForLevel(tuning.specs.level);
 const base = (sword: number): Loadout => ({ name: 'p', xp: { sword, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 });
 
 describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
-  it('Melee offers the Paladin, the Spellblade and the Rogue; the Spellblade is not built yet', () => {
+  it('Melee offers the Paladin, the Spellblade and the Rogue, all three built', () => {
     expect(specsFor('sword').map((s) => s.id)).toEqual(['paladin', 'spellblade', 'rogue']);
-    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin', 'rogue']);
+    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin', 'spellblade', 'rogue']);
     expect(specsFor('sword')[0].element).toBe('holy');
   });
 
@@ -30,7 +30,7 @@ describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
     expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'paladin' })).toBeNull();
     expect(specProblem({ sword: at10 - 1, bow: 0, staff: 0 }, { sword: 'paladin' })).not.toBeNull();
     expect(specProblem({ sword: at10, bow: at10, staff: 0 }, { bow: 'paladin' })).not.toBeNull();
-    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).not.toBeNull();
   });
 
   it('the server takes a Paladin only from a loadout whose sword could have earned it', () => {
@@ -67,7 +67,7 @@ describe("a specialization's element (the Spellblade chooses Fire, Frost, Earth 
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'fire' } })).toBeNull();
     expect(readLoadout({ ...base(at10), elements: { sword: 'holy' } })).toBeNull();
     expect(readLoadout({ ...base(at10), spec: { sword: 'rogue' }, elements: { sword: 'nature' } })?.elements).toEqual({ sword: 'nature' });
-    expect(readLoadout({ ...base(at10), spec: { sword: 'spellblade' }, elements: { sword: 'frost' } })).toBeNull();
+    expect(readLoadout({ ...base(at10), spec: { sword: 'spellblade' }, elements: { sword: 'frost' } })?.elements).toEqual({ sword: 'frost' });
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'plasma' } })).toBeNull();
     const s = createSimState(arena, [], world);
     const p = addPlayer(s, world, 'p1', ok!, false);
@@ -399,7 +399,42 @@ describe("the Spellblade's Blazing Charge (Michael, 6 Nov, A)", () => {
   });
 });
 
-describe("the Spellblade's Blade Storm (not yet choosable)", () => {
+describe("the Spellblade's spectral blades (Michael, 6 Nov, A)", () => {
+  /** A sword hero, a Spellblade or not, spins with one enemy in the blades' band and one well inside the Whirlwind. */
+  function spin(spellblade: boolean) {
+    const sc = scene(false);
+    if (spellblade) Object.assign(sc.p, { spec: { sword: 'spellblade' } });
+    Object.assign(sc.friend, { x: 30, z: 30 });
+    const reach = tuning.abilities.whirlwindRadius;
+    // Behind the hero and to the side, so a blade has to come round to it.
+    const band = sc.e;
+    Object.assign(band, { x: sc.p.x - (reach + 0.8) * 0.6, z: sc.p.z + (reach + 0.8) * 0.8, ai: 'idle', hp: 9999, maxHp: 9999 });
+    const near = createEnemy(sc.s, world, 'grunt', sc.p.x + 1, sc.p.z, 0);
+    Object.assign(near, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    // Freeze the enemies in place: only the hero steps.
+    for (let i = 0; i < 120; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return { ...sc, band, near };
+  }
+  const whirl = tuning.abilities.whirlwindDamage * tuning.combat.baseDamage;
+
+  it("each blade hits an enemy in its band once a spin, for 30% of the Whirlwind's hit", () => {
+    const { band, p } = spin(true);
+    expect(9999 - band.hp).toBeCloseTo(tuning.specs.spectralBlades * whirl * tuning.specs.spectralBladeDamage, 3);
+    expect(p.mode).not.toBe('ability');
+  });
+
+  it('an enemy inside the reach is the Whirlwind\'s alone, and anyone else\'s spin has no blades', () => {
+    const a = spin(true);
+    const b = spin(false);
+    expect(a.near.hp).toBe(b.near.hp);
+    expect(b.band.hp).toBe(9999);
+  });
+});
+
+describe("the Spellblade's Blade Storm", () => {
   it('a Spellblade\'s spin draws light enemies in and leaves heavy ones be', () => {
     const { s, p, e } = scene(false);
     p.spec = { sword: 'spellblade' };
@@ -415,12 +450,12 @@ describe("the Spellblade's Blade Storm (not yet choosable)", () => {
     expect(e.kbx).toBe(0);
   });
 
-  it('pulls nothing for a Paladin, and the Spellblade is not yet offered', () => {
+  it('pulls nothing for a Paladin, and the Spellblade is offered at sword level 10', () => {
     const { s, p, e } = scene(true);
     Object.assign(e, { x: p.x + 4, z: p.z, kbx: 0, kbz: 0 });
     bladeStorm(s, p);
     expect(e.kbx).toBe(0);
-    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).toBeNull();
   });
 });
 

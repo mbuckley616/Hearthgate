@@ -1832,6 +1832,14 @@ export const tuning = {
     blazingTrailWidth: 1,
     blazingTrailDamage: 0.15,
     blazingTrailTickMs: 500,
+    /**
+     * Spectral blades (the Spellblade's signature; Michael, 6 Nov, A): spectralBlades swords circle a
+     * spinning Spellblade once over the Whirlwind, in a band from its reach to spectralBladeReach past
+     * it; each blade hits an enemy it passes once a spin for spectralBladeDamage of the Whirlwind's hit.
+     */
+    spectralBlades: 2,
+    spectralBladeReach: 1,
+    spectralBladeDamage: 0.3,
   },
   abilities: {
     /**
@@ -2574,6 +2582,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.blazingTrailWidth': [0.25, 4, 0.05],
   'specs.blazingTrailDamage': [0, 1, 0.01],
   'specs.blazingTrailTickMs': [100, 2000, 50],
+  'specs.spectralBlades': [0, 4, 1],
+  'specs.spectralBladeReach': [0, 3, 0.1],
+  'specs.spectralBladeDamage': [0, 1, 0.01],
   'specs.attuneFireRadius': [0, 6, 0.1],
   'specs.attuneFireDamage': [0, 2, 0.05],
   'specs.attuneChillS': [0, 8, 0.1],
