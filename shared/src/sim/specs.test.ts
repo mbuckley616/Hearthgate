@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
-import { bladeStorm, blazingTrail, stepTrails, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, blazingTrail, stepTrails, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy, heroTitle, abilityTitle } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { newFlow } from './flow';
@@ -1316,5 +1316,26 @@ describe("the Sorcerer's Elemental Nova", () => {
     expect(air.e.frozen).toBe(0);
     expect(air.e.kbz).toBeLessThan(-0.5);
     expect(nova(undefined).e.kbz).toBe(0);
+  });
+});
+
+describe('what the HUD calls a specialized hero', () => {
+  it('names the hero and its two abilities by its specialization, and the slice\'s names without one', () => {
+    const druid = { spec: { staff: 'druid' as const } };
+    expect(heroTitle(druid, 'staff')).toBe('Druid');
+    expect(abilityTitle(druid, 'staff', 0)).toBe('Thorn Ring');
+    expect(abilityTitle(druid, 'staff', 1)).toBe('Wild Growth');
+    // Another style the same hero holds keeps the slice's names.
+    expect(heroTitle(druid, 'sword')).toBe('Knight');
+    expect(abilityTitle(druid, 'sword', 0)).toBe('Charge');
+    expect(heroTitle({}, 'bow')).toBe('Archer');
+    expect(abilityTitle({}, 'staff', 0)).toBe('Frost ring');
+    // Every specialization's q and e land on its style's slots 1 and 2.
+    for (const s of ['paladin', 'ranger', 'warlock'] as const) {
+      const info = specInfo(s);
+      const p = { spec: { [info.style]: s } };
+      expect(abilityTitle(p, info.style, 0)).toBe(info.q[0]);
+      expect(abilityTitle(p, info.style, 1)).toBe(info.e[0]);
+    }
   });
 });

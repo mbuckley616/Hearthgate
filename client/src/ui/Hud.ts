@@ -4,9 +4,9 @@ import { gearLine, nameOf as itemNameOf } from './gearText';
 import { cooldownMult, pointsEarned, pointsSpent } from '@hearthgate/shared/sim/talents';
 import { flowTier } from '@hearthgate/shared/sim/flow';
 import { ICONS, iconUrl } from './pixelArt';
+import { abilityTitle, heroTitle } from '@hearthgate/shared/sim/specs';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 
-const HERO_NAMES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
 const TOAST_MS = 4200;
 const COMBO_WORDS: Record<Combo, string> = { shatter: 'Shatter', skewer: 'Skewer', detonate: 'Detonate' };
 
@@ -161,7 +161,8 @@ export class Hud {
       if (ev.kind === 'levelUp' && ev.playerId === localId) {
         const unlock = levelUnlock(ev.level) ? `${levelUnlock(ev.level)} unlocked · ` : '';
         const hp = tuning.progression.healthPerLevel > 0 ? `  ·  +${Math.round(tuning.progression.healthPerLevel)} health` : '';
-        this.toast(`<b>${HERO_NAMES[ev.style]} reached level ${ev.level}</b><span>${unlock}+1 talent point${hp}</span>`, 'level');
+        const me = sim.players.find((pl) => pl.id === localId);
+        this.toast(`<b>${me ? heroTitle(me, ev.style) : heroTitle({}, ev.style)} reached level ${ev.level}</b><span>${unlock}+1 talent point${hp}</span>`, 'level');
       }
       if (ev.kind === 'championPoint' && ev.playerId === localId) {
         this.toast(`<b>Champion point ${ev.points}</b><span>Spend it under Tab · 3 Champion</span>`, 'level');
@@ -188,10 +189,10 @@ export class Hud {
       this.shownStyle = p.style;
       this.portrait.src = iconUrl(ICONS[p.style]);
     }
-    // The hero's name follows the style until specializations (the builds pass) give it their own.
+    // The hero's name follows the style, or its specialization once one is chosen (the builds pass).
     const xp = p.xp[p.style];
     const unspent = pointsEarned(xp) - pointsSpent(p.talents[p.style]);
-    const level = `${HERO_NAMES[p.style]} · Level ${levelFor(xp)}${unspent > 0 ? `<b>+${unspent}</b>` : ''}`;
+    const level = `${heroTitle(p, p.style)} · Level ${levelFor(xp)}${unspent > 0 ? `<b>+${unspent}</b>` : ''}`;
     if (level !== this.shownLevel) {
       this.shownLevel = level;
       this.levelText.innerHTML = level;
@@ -236,8 +237,10 @@ export class Hud {
       const slot = this.slots[i];
       const left = p.cooldowns[p.style][i];
       const total = abilityTiming(kind).cooldown * cooldownMult(p);
-      if (slot.name.textContent !== ABILITY_NAMES[kind]) {
-        slot.name.textContent = ABILITY_NAMES[kind];
+      // A specialization renames the slot (a Druid's Frost ring is Thorn Ring); the icon stays the base ability's.
+      const name = abilityTitle(p, p.style, i as 0 | 1);
+      if (slot.name.textContent !== name) {
+        slot.name.textContent = name;
         slot.icon.src = iconUrl(ICONS[kind]);
       }
       const frac = total > 0 ? Math.min(1, left / total) : 0;

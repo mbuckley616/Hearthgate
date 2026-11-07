@@ -1,4 +1,4 @@
-import { enemyStats, tuning, type Style } from '../config/tuning';
+import { ABILITIES, ABILITY_NAMES, enemyStats, tuning, type Style } from '../config/tuning';
 import { sphereCast, type Collider } from '../level/geometry';
 import { damageEnemy, isTargetable, type HitSpec } from './combat';
 import { spawnArrow } from './projectiles';
@@ -145,6 +145,22 @@ export const SPEC_IDS: readonly SpecId[] = SPECS.map((s) => s.id);
 
 export function specInfo(id: SpecId): SpecInfo {
   return SPECS.find((s) => s.id === id)!;
+}
+
+/** A hero's title in a style with no specialization: the slice's names. */
+export const STYLE_TITLES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
+
+/** The hero's title in a style: its specialization's name once one is chosen ("Druid"), else the style's ("Mage"). */
+export function heroTitle(p: Pick<PlayerState, 'spec'>, style: Style): string {
+  const id = p.spec?.[style];
+  return id ? specInfo(id).name : STYLE_TITLES[style];
+}
+
+/** The name of a style's ability on slot 1 or 2, as its specialization turns it ("Thorn Ring" for a Druid's Frost ring). */
+export function abilityTitle(p: Pick<PlayerState, 'spec'>, style: Style, slot: 0 | 1): string {
+  const id = p.spec?.[style];
+  if (id) return specInfo(id)[slot === 0 ? 'q' : 'e'][0];
+  return ABILITY_NAMES[ABILITIES[style][slot]];
 }
 
 /** The specializations a style offers. */

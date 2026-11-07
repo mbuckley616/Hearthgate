@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-07: Session 149, the HUD names a specialization (the critic's bug)
+
+**What changed**
+
+The ability bar and the hero's title follow a specialization (the critic, 7 Nov). Two helpers in `specs.ts`, `heroTitle(p, style)` and `abilityTitle(p, style, slot)`, read `SPECS`' `name`, `q` and `e`; with no specialization in that style they give the slice's names (`STYLE_TITLES`, `ABILITY_NAMES`). `Hud.ts` uses them for the corner's title, the two slots' names and the level-up toast; `PartyUi.ts` for the party frame's line. A Druid at staff level 26 now reads "Druid · Level 26" over "Thorn Ring" and "Wild Growth" (checked in headless Chromium, `?play&dungeon` with the critic's save); a Knight with no specialization still reads "Knight", "Charge", "Whirlwind". The icons stay the base abilities'. A unit test covers the names; check 481 green, test:net passed. Client and display only: the fight and parity are untouched.
+
+**Learned**
+
+The hero screen already used `SPECS`' names; only the HUD and the party frame had kept their own copy of the style titles, so the copy was the bug. They now share `STYLE_TITLES`.
+
+**Next**
+
+Specializations have no icons of their own; if Michael wants them, that is art, not a bug. The builds pass's next slice still waits on his answer in decisions.md.
+
 ## 2026-11-07: Session 148, the Sorcerer's Elemental Step; the Sorcerer offered, specializations done (the builds pass)
 
 **What changed**
