@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
-import { chills, damageEnemy, shatterPays, type HitSpec } from './combat';
+import { chills, damageEnemy, shatterPays, skewerSets, type HitSpec } from './combat';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
@@ -105,5 +105,25 @@ describe('the states: Shatter (the builds pass)', () => {
     tuning.combos.elementStates = true;
     expect(shatterPays(hit(a.id, 'bow', { heavy: true }))).toBe(true);
     expect(shatterPays(hit(a.id, 'staff', { heavy: true, dot: true }))).toBe(false);
+  });
+
+  it('Skewer: an Earth Sorcerer’s staggering bolt opens it, a Fire one’s does not, and the slice’s only by a blade', () => {
+    const staggered = (element: 'earth' | 'fire', on = true) => {
+      tuning.combos.elementStates = on;
+      const { s, a } = fight();
+      a.spec = { staff: 'sorcerer' };
+      a.elements = { staff: element };
+      const e = grunt(s);
+      e.poise = 5;
+      damageEnemy(s, e, hit(a.id, 'staff', { poise: 50, projectile: true }));
+      expect(e.ai).toBe('stagger');
+      return e.skewerUntil > s.time;
+    };
+    expect(staggered('earth')).toBe(true);
+    expect(staggered('fire')).toBe(false);
+    expect(staggered('earth', false)).toBe(false);
+    const { a } = fight();
+    expect(skewerSets(a, hit(a.id, 'sword'))).toBe(true);
+    expect(skewerSets(a, hit(a.id, 'bow'))).toBe(false);
   });
 });

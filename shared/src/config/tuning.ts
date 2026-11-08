@@ -1397,8 +1397,9 @@ export const tuning = {
     windowMs: 2000,
     /**
      * The states (the builds pass, Michael's A, 8 Nov): Shatter's Chill set by any style's slow or
-     * freeze and any Frost ground, and cashed in by any style's heavy. Off in the parity test: the
-     * slice's Shatter is a staff's slow and a sword's heavy.
+     * freeze and any Frost ground, and cashed in by any style's heavy; Skewer set by an Earth stagger
+     * from any style as well as a melee one. Off in the parity test: the slice's Shatter is a staff's
+     * slow and a sword's heavy, its Skewer a sword's stagger.
      */
     elementStates: true,
     /** Shatter: magic slows/freezes, then a melee finisher. */

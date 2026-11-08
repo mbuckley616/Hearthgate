@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 160, Skewer as a state (the builds pass, Michael's A on the states)
+
+**What changed**
+
+The second state. Skewer (Staggered, cashed in by the charged shot that runs an enemy through, the slice's payoff and the "thrust" of Michael's A) is now opened by a stagger dealt in a hero's Earth element from any style, as well as by any melee stagger: an Earth Sorcerer's Attunement bolts and Cataclysm, an Earth Spellblade's, Ranger's or Druid's hits. A Fire, Frost or Air stagger from a bow or staff opens nothing, as in the slice. `skewerSets` in `combat.ts`, under the same `combos.elementStates` switch as Session 159 (off in the parity test); parity identical, check 530 green, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+"For a thrust" was read as the slice's own Skewer payoff, a charged shot through the staggered, rather than a new melee thrust: no weapon has a thrust move today, and the daggers and spear that might are in the roster part of the builds pass. If Michael meant a melee lunge (a Charge or Shield Rush cashing it in), `hitWithProjectile`'s `skewer` test is the one to widen.
+
+**Next**
+
+Detonate from Fire's bursts on a Burning enemy, the third state.
+
 ## 2026-11-08: Session 159, Shatter as a state (the builds pass, Michael's A on the states)
 
 **What changed**

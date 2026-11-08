@@ -223,8 +223,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     // A roar is a commitment: it can't be staggered out of (poise still drains).
     if (e.poise <= 0 && e.ai !== 'roar') {
       staggerEnemy(state, e);
-      // Skewer setup: a melee stagger.
-      if (hit.style === 'sword') {
+      // Skewer setup: a melee stagger (with element states, an Earth stagger from any style too).
+      if (skewerSets(hero, hit)) {
         e.skewerUntil = state.time + comboWindow(hero);
         if (hero?.champion) e.skewerBy = hero.id;
       }
@@ -289,6 +289,19 @@ export function chills(hero: PlayerState | undefined, hit: HitSpec): boolean {
   if (!hero) return false;
   if (hit.slowTime || hit.freezeTime) return true;
   return !!hit.dot && elementFor(hero, hit.style) === 'frost';
+}
+
+/**
+ * Whether a hit that breaks an enemy's poise leaves it open to Skewer (the states, Michael's A,
+ * 8 Nov: Earth's staggers set it up for a thrust, the charged shot that runs them through). The
+ * slice's setup is a melee stagger; with `combos.elementStates` a stagger dealt in a hero's Earth
+ * element counts from any style, so an Earth Sorcerer's bolts or Cataclysm and an Earth Ranger's
+ * or Druid's hits set up a friend's bow as a sword does.
+ */
+export function skewerSets(hero: PlayerState | undefined, hit: HitSpec): boolean {
+  if (hit.style === 'sword') return true;
+  if (!tuning.combos.elementStates || !hero || !hit.style) return false;
+  return elementFor(hero, hit.style) === 'earth';
 }
 
 /** Shatter payoff: the finisher bursts out into the enemies around. */
