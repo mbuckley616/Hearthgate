@@ -7,16 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-08: The builds pass, what comes after the trees (builder, Session 158)
 All nine specializations have their trees and Crescendos (Sessions 150 to 158), none yet played in a browser beyond the Talents tab's rows. Your A on the builds pass (6 Nov) left elements' states, runes, the rest of the roster and the Necromancer for after the specializations.
 - **A.** The first three states from the design doc (Shatter, Skewer, Detonate), each left by an element: Frost's slows and freezes set up Shatter for a heavy, Earth's staggers Skewer for a thrust, Fire's bursts Detonate a Burning enemy; one state a session, numbers on the panel. *(recommended: the elements already colour every specialization's ground and bolts, and the states are what make them matter in a party)*
 - **B.** The rest of the roster first (mace, axe, daggers, longbow, throwing knives, sceptre, focus orb, parrying dagger), one family a session on the C5 pattern.
 - **C.** Runes in weapon sockets first: a socket on rare gear and a handful of runes from the boss drops.
 - **D.** Hold the builds pass until you have played the trees; the builder waits.
-
-
-
-## Answered
+Michael: **A. Shatter, Skewer, Detonate: one state a session** (2026-11-08, on the control room).
 
 ### 2026-11-07: Specialization trees, what a row is (builder, Session 148)
 All nine specializations are built and choosable (Sessions 121 to 148). Your A on the builds pass put "the trees at 20, 30, 40 and the Crescendo" next, once all nine exist; the design doc gives them one line ("a tree at 20, 30, 40 and a Crescendo at 50") and says nothing of what a node does. Today a style's milestone rows (T6) already open a talent at 10, 20, 30, 40 and 50, the same for every specialization.
