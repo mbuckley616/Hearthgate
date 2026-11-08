@@ -5,7 +5,7 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import type { SpecId } from './specs';
@@ -360,5 +360,47 @@ describe("the Scout's tree", () => {
     specCrescendo(s, p);
     expect(near.scoutMark?.by).toBe('p1');
     expect(far.scoutMark).toBeUndefined();
+  });
+});
+
+describe("the Assassin's tree", () => {
+  const assassin = (level: number, tree?: string[]) => scene(level, tree, 'assassin');
+  const shot = { charged: true, style: 'bow', marks: true, hitIds: [] } as unknown as ProjectileState;
+
+  it('Cold Eye finds a back at 75 degrees off; Killing Blow crits harder', () => {
+    // The enemy faces +z; the arrow flies 75 degrees off its facing.
+    const a = (75 * Math.PI) / 180;
+    const plain = assassin(40);
+    const e = awake(plain.s, 0, 6);
+    e.yaw = 0;
+    expect(deadeye(plain.p, shot, e, Math.sin(a), Math.cos(a))).toBe(1);
+    const cold = assassin(40, ['cold-eye']);
+    expect(deadeye(cold.p, shot, e, Math.sin(a), Math.cos(a))).toBe(tuning.specs.deadeyeCritMult);
+    const kill = assassin(40, ['cold-eye', 'thick-smoke', 'killing-blow']);
+    expect(deadeye(kill.p, shot, e, 0, 1)).toBe(tuning.specs.treeDeadeyeCritMult);
+  });
+
+  it('Virulence stacks higher, Lingering Venom lasts longer, Toxic Bite bites harder', () => {
+    const { s, p } = assassin(40, ['virulence', 'lingering-venom', 'toxic-bite']);
+    const e = awake(s, 0, 6);
+    e.hp = 9999;
+    for (let i = 0; i < 10; i++) venomVolley(s, p, shot, e);
+    expect(e.venom!.stacks).toBe(tuning.specs.treeVenomStacks);
+    expect(e.venom!.until).toBeCloseTo(s.time + tuning.specs.treeVenomSeconds);
+    s.time = e.venom!.next;
+    stepVenom(s, e, 1.8);
+    expect(9999 - e.hp).toBeCloseTo(tuning.specs.venomDamage * tuning.specs.treeVenomStacks * tuning.specs.treeVenomMult);
+  });
+
+  it('Thick Smoke hides longer; Vanish at 50 smokes on a Crescendo', () => {
+    const thick = assassin(30, ['cold-eye', 'thick-smoke']);
+    smokeBomb(thick.s, thick.p);
+    expect(thick.p.hiddenUntil).toBeCloseTo(thick.s.time + tuning.specs.treeSmokeSeconds);
+    const { s, p } = assassin(50);
+    specCrescendo(s, p);
+    expect(p.hiddenUntil).toBeCloseTo(s.time + tuning.specs.smokeSeconds);
+    const below = assassin(49);
+    specCrescendo(below.s, below.p);
+    expect(below.p.hiddenUntil).toBeUndefined();
   });
 });

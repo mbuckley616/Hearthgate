@@ -197,6 +197,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Smoke Bomb', 'Disengage drops smoke; you vanish for 2 s.'],
     sig: ['Deadeye', 'A charged shot into an enemy\'s back is a crit.'],
     built: true,
+    tree: [
+      [
+        { id: 'cold-eye', name: 'Cold Eye', text: 'Deadeye counts any shot into an enemy\'s back half.' },
+        { id: 'virulence', name: 'Virulence', text: 'Venom stacks to eight.' },
+      ],
+      [
+        { id: 'thick-smoke', name: 'Thick Smoke', text: 'Smoke Bomb hides you for 4 s.' },
+        { id: 'lingering-venom', name: 'Lingering Venom', text: 'Venom lasts 8 s.' },
+      ],
+      [
+        { id: 'killing-blow', name: 'Killing Blow', text: 'Deadeye crits for 3x.' },
+        { id: 'toxic-bite', name: 'Toxic Bite', text: 'Each stack of venom bites twice as hard.' },
+      ],
+    ],
+    crescendo: ['Vanish', 'A Crescendo drops a Smoke Bomb where you stand.'],
   },
   {
     id: 'warlock',
@@ -369,7 +384,8 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
     for (const e of state.enemies) {
       if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.stormcallRadius) scoutMark(state, p, e);
     }
-  } else if (specOf(p) === 'rogue') {
+  } else if (specOf(p) === 'assassin') smokeBomb(state, p);
+  else if (specOf(p) === 'rogue') {
     // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
     fanOfKnives(state, p);
     primeShadow(state, p);
@@ -880,7 +896,9 @@ export function deadeye(owner: PlayerState | undefined, pr: ProjectileState, e: 
   if (!owner || owner.spec?.bow !== 'assassin' || !pr.charged || pr.style !== 'bow') return 1;
   const len = Math.hypot(dirX, dirZ) || 1;
   const along = (dirX / len) * Math.sin(e.yaw) + (dirZ / len) * Math.cos(e.yaw);
-  return along >= Math.cos((s.deadeyeBackDeg * Math.PI) / 180) ? s.deadeyeCritMult : 1;
+  const arc = hasStyleNode(owner, 'bow', 'cold-eye') ? s.treeDeadeyeBackDeg : s.deadeyeBackDeg;
+  const crit = hasStyleNode(owner, 'bow', 'killing-blow') ? s.treeDeadeyeCritMult : s.deadeyeCritMult;
+  return along >= Math.cos((arc * Math.PI) / 180) ? crit : 1;
 }
 
 /**
@@ -893,8 +911,10 @@ export function venomVolley(state: SimState, owner: PlayerState | undefined, pr:
   const s = tuning.specs;
   if (!owner || owner.spec?.bow !== 'assassin' || !pr.marks || s.venomSeconds <= 0 || s.venomDamage <= 0 || !isTargetable(e)) return;
   const v = e.venom && e.venom.until > state.time ? e.venom : undefined;
-  const stacks = Math.min(Math.max(1, Math.round(s.venomMaxStacks)), (v?.stacks ?? 0) + 1);
-  e.venom = { by: owner.id, stacks, until: state.time + s.venomSeconds, next: v ? v.next : state.time + s.venomTickMs / 1000 };
+  const cap = hasStyleNode(owner, 'bow', 'virulence') ? s.treeVenomStacks : s.venomMaxStacks;
+  const stacks = Math.min(Math.max(1, Math.round(cap)), (v?.stacks ?? 0) + 1);
+  const seconds = hasStyleNode(owner, 'bow', 'lingering-venom') ? s.treeVenomSeconds : s.venomSeconds;
+  e.venom = { by: owner.id, stacks, until: state.time + seconds, next: v ? v.next : state.time + s.venomTickMs / 1000 };
   state.events.push({ kind: 'venom', playerId: owner.id, enemyId: e.id, stacks, x: e.x, y: e.y, z: e.z });
 }
 
@@ -912,9 +932,11 @@ export function stepVenom(state: SimState, e: EnemyState, height: number): void 
   }
   if (state.time < v.next) return;
   v.next += Math.max(0.05, tuning.specs.venomTickMs / 1000);
+  const owner = state.players.find((o) => o.id === v.by);
+  const bite = owner && hasStyleNode(owner, 'bow', 'toxic-bite') ? tuning.specs.treeVenomMult : 1;
   damageEnemy(state, e, {
     attackerId: v.by,
-    damage: tuning.specs.venomDamage * v.stacks,
+    damage: tuning.specs.venomDamage * v.stacks * bite,
     poise: 0,
     knockback: 0,
     heavy: false,
@@ -936,7 +958,7 @@ export function stepVenom(state: SimState, e: EnemyState, height: number): void 
  */
 export function smokeBomb(state: SimState, p: PlayerState): void {
   if (p.spec?.bow !== 'assassin' || p.style !== 'bow' || tuning.specs.smokeSeconds <= 0) return;
-  p.hiddenUntil = state.time + tuning.specs.smokeSeconds;
+  p.hiddenUntil = state.time + (hasNode(p, 'thick-smoke') ? tuning.specs.treeSmokeSeconds : tuning.specs.smokeSeconds);
   state.events.push({ kind: 'smokeBomb', playerId: p.id, x: p.x, y: p.y, z: p.z });
 }
 

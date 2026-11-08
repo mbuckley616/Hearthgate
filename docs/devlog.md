@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 155, the Assassin's tree; Ranged's trees done (the builds pass, Michael's A)
+
+**What changed**
+
+The Assassin's six and its Crescendo, numbers on the panel: at bow level 20 Cold Eye (Deadeye counts a charged shot within 90 degrees of an enemy's facing, its whole back half, instead of 60) or Virulence (venom stacks to eight instead of five); at 30 Thick Smoke (Smoke Bomb hides 4 s instead of 2) or Lingering Venom (a stack keeps it going 8 s instead of 4); at 40 Killing Blow (Deadeye crits 3x instead of 2x) or Toxic Bite (each stack bites twice as hard). Vanish at 50: as a Flow Crescendo comes out, the Assassin drops a Smoke Bomb where they stand (Thick Smoke's time with it). Venom's nodes are read from the Assassin who laid it, as the trap's and the mark's are. All three Ranged specializations have their trees. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Virulence and Toxic Bite multiply: eight stacks at twice the bite is 3.2 times a full five-stack poison, about 64 damage a second against one enemy before level health, so the venom line is the Assassin's single-target build and Deadeye's the burst one, which is the split the rows were meant to make. `specs.venomDamage` scales both.
+
+**Next**
+
+Magic's trees: the Warlock's (Hex, Curse Ring, Shadow Swap, and its Crescendo), then the Druid's and the Sorcerer's. Then every specialization has its tree and the builds pass's next slice is Michael's to pick.
+
 ## 2026-11-08: Session 154, the Scout's tree (the builds pass, Michael's A)
 
 **What changed**
