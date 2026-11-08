@@ -145,6 +145,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Snare Trap', 'Disengage leaves a trap where you stood.'],
     sig: ['Thornshot', 'Charged shots root light enemies and slow heavier ones.'],
     built: true,
+    tree: [
+      [
+        { id: 'deep-roots', name: 'Deep Roots', text: 'Thornshot roots for 2.5 s.' },
+        { id: 'thicket', name: 'Thicket', text: 'Bramble Rain\'s patch is half as wide again.' },
+      ],
+      [
+        { id: 'overgrowth', name: 'Overgrowth', text: 'Bramble Rain\'s patch lasts 8 s.' },
+        { id: 'iron-jaws', name: 'Iron Jaws', text: 'Snare Trap holds for 4 s.' },
+      ],
+      [
+        { id: 'twin-snares', name: 'Twin Snares', text: 'Two of your Snare Traps can wait at once.' },
+        { id: 'grasping-thorns', name: 'Grasping Thorns', text: 'Thornshot roots every enemy but a boss.' },
+      ],
+    ],
+    crescendo: ['Wildwood', 'A Crescendo grows brambles twice as wide around where you stand.'],
   },
   {
     id: 'scout',
@@ -314,6 +329,11 @@ export function hasNode(p: PlayerState, node: string): boolean {
   return !!specOf(p) && !!p.tree?.[p.style]?.includes(node);
 }
 
+/** Whether this hero took a tree node of their specialization in `style`, whatever they hold now (a trap laid with the bow still bites). */
+export function hasStyleNode(p: PlayerState, style: Style, node: string): boolean {
+  return !!p.spec?.[style] && !!p.tree?.[style]?.includes(node);
+}
+
 /** Whether this hero's current specialization's Crescendo is theirs: its style at level 50, and the specialization has one. */
 export function hasCrescendo(p: PlayerState): boolean {
   const id = specOf(p);
@@ -325,7 +345,11 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
   if (!hasCrescendo(p)) return;
   if (specOf(p) === 'paladin') judgement(state, p);
   else if (specOf(p) === 'spellblade') bladeTempest(state, p);
-  else if (specOf(p) === 'rogue') {
+  else if (specOf(p) === 'ranger') {
+    // Wildwood: Bramble Rain's patch at the Ranger's feet, twice as wide.
+    const s = tuning.specs;
+    seedBrambles(state, p, p.x, p.z, s.brambleRadius * s.wildwoodRadiusMult * (hasStyleNode(p, 'bow', 'thicket') ? s.treeThicketMult : 1));
+  } else if (specOf(p) === 'rogue') {
     // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
     fanOfKnives(state, p);
     primeShadow(state, p);
@@ -506,10 +530,12 @@ export function isRooted(state: SimState, e: EnemyState): boolean {
 export function thornshot(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
   if (!owner || owner.spec?.bow !== 'ranger' || e.ai === 'dead') return;
   const s = tuning.specs;
-  if (LIGHT_ROLES.has(roleOf(e.kind))) {
-    if (s.thornRootS <= 0) return;
+  const grasp = hasStyleNode(owner, 'bow', 'grasping-thorns') && roleOf(e.kind) !== 'boss';
+  if (LIGHT_ROLES.has(roleOf(e.kind)) || grasp) {
+    const hold = hasStyleNode(owner, 'bow', 'deep-roots') ? s.treeThornRootS : s.thornRootS;
+    if (hold <= 0) return;
     const fresh = !isRooted(state, e);
-    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.thornRootS);
+    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + hold);
     if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
   } else if (s.thornSlowS > 0) {
     e.slowTime = Math.max(e.slowTime, s.thornSlowS);
@@ -528,9 +554,16 @@ export function brambleRain(state: SimState, p: PlayerState, colliders: readonly
   const dir = { x: Math.sin(p.yaw), y: 0, z: Math.cos(p.yaw) };
   const free = sphereCast({ x: p.x, y: p.y + 1, z: p.z }, dir, s.brambleRange, 0.3, colliders, (c) => c.blocksMovement);
   const d = free >= s.brambleRange ? s.brambleRange : Math.max(0, free - 0.3);
+  seedBrambles(state, p, p.x + dir.x * d, p.z + dir.z * d, s.brambleRadius * (hasStyleNode(p, 'bow', 'thicket') ? s.treeThicketMult : 1));
+}
+
+/** A Ranger's bramble patch at (x, z), replacing their last; Overgrowth's lasts longer. */
+function seedBrambles(state: SimState, p: PlayerState, x: number, z: number, radius: number): void {
+  const s = tuning.specs;
   const kept = (state.brambles ?? []).filter((g) => g.by !== p.id && g.until > state.time);
   const element = elementFor(p, 'bow') ?? 'nature';
-  kept.push({ by: p.id, x: p.x + dir.x * d, y: p.y, z: p.z + dir.z * d, radius: s.brambleRadius, until: state.time + s.brambleSeconds, element });
+  const seconds = hasStyleNode(p, 'bow', 'overgrowth') ? s.treeBrambleSeconds : s.brambleSeconds;
+  kept.push({ by: p.id, x, y: p.y, z, radius, until: state.time + seconds, element });
   state.brambles = kept;
 }
 
@@ -564,7 +597,11 @@ export function stepBrambles(state: SimState): void {
 export function snareTrap(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
   if (p.spec?.bow !== 'ranger' || p.style !== 'bow' || s.snareSeconds <= 0) return;
-  const kept = (state.snares ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const live = (state.snares ?? []).filter((g) => g.until > state.time);
+  // One a Ranger, or two with Twin Snares: the newest of the old ones stays.
+  const mine = live.filter((g) => g.by === p.id);
+  const keep = hasStyleNode(p, 'bow', 'twin-snares') ? mine.slice(-1) : [];
+  const kept = [...live.filter((g) => g.by !== p.id), ...keep];
   const element = elementFor(p, 'bow') ?? 'nature';
   kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.snareRadius, until: state.time + s.snareSeconds, element });
   state.snares = kept;
@@ -585,7 +622,8 @@ export function stepSnares(state: SimState): void {
       live.push(g);
       continue;
     }
-    const hold = tuning.specs.snareRootS;
+    const owner = state.players.find((o) => o.id === g.by);
+    const hold = owner && hasStyleNode(owner, 'bow', 'iron-jaws') ? tuning.specs.treeSnareRootS : tuning.specs.snareRootS;
     if (LIGHT_ROLES.has(roleOf(e.kind))) e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + hold);
     else e.slowTime = Math.max(e.slowTime, hold);
     state.events.push({ kind: 'rooted', playerId: g.by, enemyId: e.id, x: e.x, z: e.z });

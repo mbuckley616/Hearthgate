@@ -5,29 +5,31 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
+import type { SpecId } from './specs';
 import { createSimState } from './world';
 
 // The specialization trees (Michael's A, 8 Nov): two choices a row at 20, 30 and 40, a Crescendo at 50.
 const world = buildWorld(arena);
 const xpAt = (level: number) => ({ sword: xpForLevel(level), bow: 0, staff: 0 });
-const base = (level: number, tree?: string[], spec: 'paladin' | 'spellblade' | 'rogue' = 'paladin'): Loadout => ({
+const base = (level: number, tree?: string[], spec: SpecId = 'paladin'): Loadout => ({
   name: 'p',
-  xp: xpAt(level),
+  xp: { sword: xpForLevel(level), bow: xpForLevel(level), staff: xpForLevel(level) },
   talents: emptyTalents(),
   mods: emptyMods(),
   maxHp: 100,
-  spec: { sword: spec },
-  ...(tree ? { tree: { sword: tree } } : {}),
+  spec: { [specInfo(spec).style]: spec },
+  ...(tree ? { tree: { [specInfo(spec).style]: tree } } : {}),
 });
 
 const awake = (s: SimState, x: number, z: number) => Object.assign(createEnemy(s, world, 'grunt', x, z, 0), { x, z, ai: 'chase' as const, aiTime: 0 });
 
-function scene(level: number, tree?: string[], spec: 'paladin' | 'spellblade' | 'rogue' = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
+function scene(level: number, tree?: string[], spec: SpecId = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
   const s = createSimState(arena, [], world);
   const p = addPlayer(s, world, 'p1', base(level, tree, spec), false);
+  p.style = specInfo(spec).style;
   const friend = addPlayer(s, world, 'p2', { ...base(1), spec: undefined }, false);
   Object.assign(p, { x: 0, z: 10 });
   return { s, p, friend };
@@ -252,5 +254,58 @@ describe("the Rogue's tree", () => {
     specCrescendo(below.s, below.p);
     expect(knives(below.s)).toBe(0);
     expect(below.p.shadowUntil).toBeUndefined();
+  });
+});
+
+describe("the Ranger's tree", () => {
+  const ranger = (level: number, tree?: string[]) => scene(level, tree, 'ranger');
+
+  it('Deep Roots holds a skeleton longer; Grasping Thorns roots a Brute but never a boss', () => {
+    const plain = ranger(20);
+    const e = awake(plain.s, 0, 6);
+    thornshot(plain.s, plain.p, e);
+    expect(e.rootUntil).toBeCloseTo(plain.s.time + tuning.specs.thornRootS);
+    const deep = ranger(20, ['deep-roots']);
+    const f = awake(deep.s, 0, 6);
+    thornshot(deep.s, deep.p, f);
+    expect(f.rootUntil).toBeCloseTo(deep.s.time + tuning.specs.treeThornRootS);
+    const grasp = ranger(40, ['thicket', 'overgrowth', 'grasping-thorns']);
+    const brute = Object.assign(createEnemy(grasp.s, world, 'brute', 0, 6, 0), { ai: 'chase' as const });
+    const boss = Object.assign(createEnemy(grasp.s, world, 'warden', 0, 4, 0), { ai: 'chase' as const });
+    thornshot(grasp.s, grasp.p, brute);
+    thornshot(grasp.s, grasp.p, boss);
+    expect(brute.rootUntil).toBeGreaterThan(grasp.s.time);
+    expect(boss.rootUntil ?? 0).toBeLessThanOrEqual(grasp.s.time);
+  });
+
+  it('Thicket widens the patch and Overgrowth lengthens it', () => {
+    const { s, p } = ranger(30, ['thicket', 'overgrowth']);
+    brambleRain(s, p, world.colliders);
+    expect(s.brambles![0].radius).toBeCloseTo(tuning.specs.brambleRadius * tuning.specs.treeThicketMult);
+    expect(s.brambles![0].until).toBeCloseTo(s.time + tuning.specs.treeBrambleSeconds);
+  });
+
+  it('Iron Jaws holds longer; Twin Snares keeps two traps waiting', () => {
+    const jaws = ranger(30, ['thicket', 'iron-jaws']);
+    snareTrap(jaws.s, jaws.p);
+    const e = awake(jaws.s, jaws.p.x, jaws.p.z);
+    stepSnares(jaws.s);
+    expect(e.rootUntil).toBeCloseTo(jaws.s.time + tuning.specs.treeSnareRootS);
+    const one = ranger(40);
+    snareTrap(one.s, one.p);
+    snareTrap(one.s, one.p);
+    expect(one.s.snares).toHaveLength(1);
+    const twin = ranger(40, ['thicket', 'iron-jaws', 'twin-snares']);
+    snareTrap(twin.s, twin.p);
+    snareTrap(twin.s, twin.p);
+    snareTrap(twin.s, twin.p);
+    expect(twin.s.snares).toHaveLength(2);
+  });
+
+  it('Wildwood: at 50 a Crescendo grows a patch twice as wide at the Ranger\'s feet', () => {
+    const { s, p } = ranger(50);
+    specCrescendo(s, p);
+    expect(s.brambles![0]).toMatchObject({ x: p.x, z: p.z });
+    expect(s.brambles![0].radius).toBeCloseTo(tuning.specs.brambleRadius * tuning.specs.wildwoodRadiusMult);
   });
 });

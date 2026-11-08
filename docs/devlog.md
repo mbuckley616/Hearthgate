@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 153, the Ranger's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Ranger's six and its Crescendo, numbers on the panel: at bow level 20 Deep Roots (Thornshot roots 2.5 s instead of 1.5) or Thicket (Bramble Rain's patch 1.5x as wide); at 30 Overgrowth (the patch lasts 8 s instead of 4) or Iron Jaws (Snare Trap holds 4 s instead of 2); at 40 Twin Snares (two traps wait at once, the newest old one kept) or Grasping Thorns (Thornshot roots every enemy but a boss, where it only slowed the shielded, heavies and elites). Wildwood at 50: as a Flow Crescendo comes out, a bramble patch twice Bramble Rain's width grows at the Ranger's feet (Thicket widens it too). A trap or an arrow already out keeps its Ranger's nodes even if they have since drawn another weapon (`hasStyleNode`, by the style that laid it, where `hasNode` asks the style held). The patch is one function now (`seedBrambles`). check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Grasping Thorns turns the Knight and the Brute into targets that stand still for a charged shot each, which is the strongest of the six against E1h's tier-3 rooms; if it is too much, `specs.treeThornRootS` and the root's 1.5 s are the panel's levers, or the node could root heavies for half.
+
+**Next**
+
+The Scout's tree (Marked, Storm Volley, Gale Step, and its Crescendo), then the Assassin's; then Magic's.
+
 ## 2026-11-08: Session 152, the Rogue's tree; Melee's trees done (the builds pass, Michael's A)
 
 **What changed**
