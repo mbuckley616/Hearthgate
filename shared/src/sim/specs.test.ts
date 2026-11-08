@@ -7,7 +7,7 @@ import { createEnemy, stepEnemies } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { stepPlayer } from './player';
 import { spawnArrow, spawnBolt, stepProjectiles } from './projectiles';
-import { bladeStorm, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy } from './specs';
+import { bladeStorm, blazingTrail, stepTrails, brambleRain, elementalNova, isRooted, stepGroves, wildGrowth, markedMult, snareTrap, stepBrambles, stepSnares, consecratedMult, fanOfKnives, elementFor, elementProblem, fadeConsecrated, specInfo, specProblem, specsFor, tauntedBy, heroTitle, abilityTitle } from './specs';
 import { damageEnemy, hurtHero } from './combat';
 import { emptyTalents } from './talents';
 import { newFlow } from './flow';
@@ -20,9 +20,9 @@ const at10 = xpForLevel(tuning.specs.level);
 const base = (sword: number): Loadout => ({ name: 'p', xp: { sword, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 });
 
 describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
-  it('Melee offers the Paladin, the Spellblade and the Rogue; the Spellblade is not built yet', () => {
+  it('Melee offers the Paladin, the Spellblade and the Rogue, all three built', () => {
     expect(specsFor('sword').map((s) => s.id)).toEqual(['paladin', 'spellblade', 'rogue']);
-    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin', 'rogue']);
+    expect(specsFor('sword').filter((s) => s.built).map((s) => s.id)).toEqual(['paladin', 'spellblade', 'rogue']);
     expect(specsFor('sword')[0].element).toBe('holy');
   });
 
@@ -30,7 +30,7 @@ describe('specializations (the builds pass, Michael A, 6 Nov)', () => {
     expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'paladin' })).toBeNull();
     expect(specProblem({ sword: at10 - 1, bow: 0, staff: 0 }, { sword: 'paladin' })).not.toBeNull();
     expect(specProblem({ sword: at10, bow: at10, staff: 0 }, { bow: 'paladin' })).not.toBeNull();
-    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'sorcerer' })).not.toBeNull();
   });
 
   it('the server takes a Paladin only from a loadout whose sword could have earned it', () => {
@@ -67,7 +67,7 @@ describe("a specialization's element (the Spellblade chooses Fire, Frost, Earth 
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'fire' } })).toBeNull();
     expect(readLoadout({ ...base(at10), elements: { sword: 'holy' } })).toBeNull();
     expect(readLoadout({ ...base(at10), spec: { sword: 'rogue' }, elements: { sword: 'nature' } })?.elements).toEqual({ sword: 'nature' });
-    expect(readLoadout({ ...base(at10), spec: { sword: 'spellblade' }, elements: { sword: 'frost' } })).toBeNull();
+    expect(readLoadout({ ...base(at10), spec: { sword: 'spellblade' }, elements: { sword: 'frost' } })?.elements).toEqual({ sword: 'frost' });
     expect(readLoadout({ ...base(at10), spec: { sword: 'paladin' }, elements: { sword: 'plasma' } })).toBeNull();
     const s = createSimState(arena, [], world);
     const p = addPlayer(s, world, 'p1', ok!, false);
@@ -344,7 +344,137 @@ describe("the Paladin's Bulwark", () => {
   });
 });
 
-describe("the Spellblade's Blade Storm (not yet choosable)", () => {
+describe("the Spellblade's Blazing Charge (Michael, 6 Nov, A)", () => {
+  /** A sword hero, a Spellblade or not, dashes down the arena with nothing in the way. */
+  function dash(spellblade: boolean, element?: 'frost') {
+    const sc = scene(false);
+    if (spellblade) Object.assign(sc.p, { spec: { sword: 'spellblade' }, elements: element ? { sword: element } : undefined });
+    Object.assign(sc.e, { x: 15, z: -15 });
+    const from = { x: sc.p.x, z: sc.p.z };
+    charge(sc.s, sc.p);
+    return { ...sc, from };
+  }
+
+  it("a Spellblade's dash leaves a strip along its path, in their element", () => {
+    const { s, p, from } = dash(true, 'frost');
+    expect(s.trails).toHaveLength(1);
+    const g = s.trails![0];
+    expect(g).toMatchObject({ by: p.id, x0: from.x, z0: from.z, width: tuning.specs.blazingTrailWidth, element: 'frost' });
+    expect(Math.hypot(g.x1 - g.x0, g.z1 - g.z0)).toBeGreaterThan(tuning.abilities.chargeDistance * 0.8);
+    expect(g.until).toBeCloseTo(s.time + tuning.specs.blazingTrailSeconds, 5);
+  });
+
+  it('anyone else\'s Charge leaves nothing', () => {
+    expect(dash(false).s.trails).toBeUndefined();
+  });
+
+  it('an enemy standing in it takes 15% of the Charge a second, one beside it nothing, then it fades', () => {
+    const { s, e, friend } = dash(true);
+    const g = s.trails![0];
+    Object.assign(friend, { x: 30, z: 30 });
+    const inside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2, (g.z0 + g.z1) / 2, 0);
+    Object.assign(inside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    const beside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2 + 3, (g.z0 + g.z1) / 2, 0);
+    Object.assign(beside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    const charge = tuning.abilities.chargeDamage * tuning.combat.baseDamage;
+    // One whole second of the trail, its second tick on the second's last step.
+    for (let i = 0; i <= 60; i++) {
+      if (s.trails) stepTrails(s);
+      s.time += DT;
+    }
+    expect(9999 - inside.hp).toBeCloseTo(charge * tuning.specs.blazingTrailDamage, 1);
+    expect(beside.hp).toBe(9999);
+    expect(e.hp).toBe(9999);
+    s.time = g.until + 0.01;
+    stepTrails(s);
+    expect(s.trails).toBeUndefined();
+  });
+
+  it("a second Charge's trail replaces the first", () => {
+    const { s, p } = dash(true);
+    p.abilitySeq++;
+    blazingTrail(s, p, 0, 0, 100);
+    expect(s.trails).toHaveLength(1);
+    expect(s.trails![0]).toMatchObject({ x0: 0, z0: 0, seq: p.abilitySeq });
+  });
+});
+
+describe("the Sorcerer's Elemental Step (by the Spellblade's A, 6 Nov)", () => {
+  function blink(sorcerer: boolean) {
+    const sc = scene(false);
+    Object.assign(sc.p, { style: 'staff', mode: 'move', yaw: 0, spec: sorcerer ? { staff: 'sorcerer' } : undefined, elements: sorcerer ? { staff: 'air' } : undefined });
+    sc.p.xp = { ...sc.p.xp, staff: at10 };
+    Object.assign(sc.e, { x: 15, z: -15 });
+    Object.assign(sc.friend, { x: 20, z: 20 });
+    const from = { x: sc.p.x, z: sc.p.z };
+    let ev = false;
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      if (sc.s.events.some((x) => x.kind === 'blink' && x.trail)) ev = true;
+      sc.s.time += DT;
+    }
+    return { ...sc, from, ev };
+  }
+
+  it("a Sorcerer's Blink leaves Blazing Charge's strip from where they stood to where they landed, in their element", () => {
+    const { s, p, from, ev } = blink(true);
+    expect(s.trails).toHaveLength(1);
+    expect(s.trails![0]).toMatchObject({ by: p.id, style: 'staff', element: 'air', x0: from.x, z0: from.z, x1: p.x, z1: p.z, width: tuning.specs.blazingTrailWidth });
+    expect(Math.hypot(p.x - from.x, p.z - from.z)).toBeGreaterThan(1);
+    expect(ev).toBe(true);
+  });
+
+  it('it burns an enemy in it as the Charge\'s trail does, credited to the staff', () => {
+    const { s } = blink(true);
+    const g = s.trails![0];
+    const inside = createEnemy(s, world, 'grunt', (g.x0 + g.x1) / 2, (g.z0 + g.z1) / 2, 0);
+    Object.assign(inside, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    s.time = g.next;
+    stepTrails(s);
+    expect(9999 - inside.hp).toBeCloseTo(tuning.abilities.chargeDamage * tuning.combat.baseDamage * tuning.specs.blazingTrailDamage * tuning.specs.blazingTrailTickMs / 1000, 3);
+  });
+
+  it("anyone else's Blink leaves nothing", () => {
+    expect(blink(false).s.trails).toBeUndefined();
+  });
+});
+
+describe("the Spellblade's spectral blades (Michael, 6 Nov, A)", () => {
+  /** A sword hero, a Spellblade or not, spins with one enemy in the blades' band and one well inside the Whirlwind. */
+  function spin(spellblade: boolean) {
+    const sc = scene(false);
+    if (spellblade) Object.assign(sc.p, { spec: { sword: 'spellblade' } });
+    Object.assign(sc.friend, { x: 30, z: 30 });
+    const reach = tuning.abilities.whirlwindRadius;
+    // Behind the hero and to the side, so a blade has to come round to it.
+    const band = sc.e;
+    Object.assign(band, { x: sc.p.x - (reach + 0.8) * 0.6, z: sc.p.z + (reach + 0.8) * 0.8, ai: 'idle', hp: 9999, maxHp: 9999 });
+    const near = createEnemy(sc.s, world, 'grunt', sc.p.x + 1, sc.p.z, 0);
+    Object.assign(near, { ai: 'idle', hp: 9999, maxHp: 9999 });
+    // Freeze the enemies in place: only the hero steps.
+    for (let i = 0; i < 120; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability2: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    return { ...sc, band, near };
+  }
+  const whirl = tuning.abilities.whirlwindDamage * tuning.combat.baseDamage;
+
+  it("each blade hits an enemy in its band once a spin, for 30% of the Whirlwind's hit", () => {
+    const { band, p } = spin(true);
+    expect(9999 - band.hp).toBeCloseTo(tuning.specs.spectralBlades * whirl * tuning.specs.spectralBladeDamage, 3);
+    expect(p.mode).not.toBe('ability');
+  });
+
+  it('an enemy inside the reach is the Whirlwind\'s alone, and anyone else\'s spin has no blades', () => {
+    const a = spin(true);
+    const b = spin(false);
+    expect(a.near.hp).toBe(b.near.hp);
+    expect(b.band.hp).toBe(9999);
+  });
+});
+
+describe("the Spellblade's Blade Storm", () => {
   it('a Spellblade\'s spin draws light enemies in and leaves heavy ones be', () => {
     const { s, p, e } = scene(false);
     p.spec = { sword: 'spellblade' };
@@ -360,12 +490,12 @@ describe("the Spellblade's Blade Storm (not yet choosable)", () => {
     expect(e.kbx).toBe(0);
   });
 
-  it('pulls nothing for a Paladin, and the Spellblade is not yet offered', () => {
+  it('pulls nothing for a Paladin, and the Spellblade is offered at sword level 10', () => {
     const { s, p, e } = scene(true);
     Object.assign(e, { x: p.x + 4, z: p.z, kbx: 0, kbz: 0 });
     bladeStorm(s, p);
     expect(e.kbx).toBe(0);
-    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).not.toBeNull();
+    expect(specProblem({ sword: at10, bow: 0, staff: 0 }, { sword: 'spellblade' })).toBeNull();
   });
 });
 
@@ -1065,7 +1195,7 @@ describe("the Druid's Wild Growth", () => {
 
 describe('the Druid is offered (the builds pass)', () => {
   it('from staff level 10, Nature or Earth', () => {
-    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid']);
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid', 'sorcerer']);
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).toBeNull();
     expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'druid' })).not.toBeNull();
     const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };
@@ -1094,10 +1224,11 @@ describe("the Sorcerer's Attunement", () => {
     return { ...sc, other };
   }
 
-  it('is data for now: four elements, not yet offered while its Elemental Step waits on the trail question', () => {
+  it('four elements, offered from staff level 10', () => {
     expect(specInfo('sorcerer').elements).toEqual(['fire', 'frost', 'earth', 'air']);
-    expect(specInfo('sorcerer').built).toBe(false);
-    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).not.toBeNull();
+    expect(specInfo('sorcerer').built).toBe(true);
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'sorcerer' })).toBeNull();
+    expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'sorcerer' })).not.toBeNull();
   });
 
   it("anyone else's bolt is the staff's own: no burst, no arc, no event", () => {
@@ -1185,5 +1316,26 @@ describe("the Sorcerer's Elemental Nova", () => {
     expect(air.e.frozen).toBe(0);
     expect(air.e.kbz).toBeLessThan(-0.5);
     expect(nova(undefined).e.kbz).toBe(0);
+  });
+});
+
+describe('what the HUD calls a specialized hero', () => {
+  it('names the hero and its two abilities by its specialization, and the slice\'s names without one', () => {
+    const druid = { spec: { staff: 'druid' as const } };
+    expect(heroTitle(druid, 'staff')).toBe('Druid');
+    expect(abilityTitle(druid, 'staff', 0)).toBe('Thorn Ring');
+    expect(abilityTitle(druid, 'staff', 1)).toBe('Wild Growth');
+    // Another style the same hero holds keeps the slice's names.
+    expect(heroTitle(druid, 'sword')).toBe('Knight');
+    expect(abilityTitle(druid, 'sword', 0)).toBe('Charge');
+    expect(heroTitle({}, 'bow')).toBe('Archer');
+    expect(abilityTitle({}, 'staff', 0)).toBe('Frost ring');
+    // Every specialization's q and e land on its style's slots 1 and 2.
+    for (const s of ['paladin', 'ranger', 'warlock'] as const) {
+      const info = specInfo(s);
+      const p = { spec: { [info.style]: s } };
+      expect(abilityTitle(p, info.style, 0)).toBe(info.q[0]);
+      expect(abilityTitle(p, info.style, 1)).toBe(info.e[0]);
+    }
   });
 });

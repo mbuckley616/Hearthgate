@@ -2,10 +2,10 @@ import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { CATALOGUE } from '@hearthgate/shared/sim/catalogue';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import { HIRES } from '@hearthgate/shared/sim/henchman';
+import { heroTitle } from '@hearthgate/shared/sim/specs';
 import type { PlayerState, SimState } from '@hearthgate/shared/sim/types';
 import { ICONS, iconUrl } from './pixelArt';
 
-const HERO_NAMES: Record<Style, string> = { sword: 'Knight', bow: 'Archer', staff: 'Mage' };
 const KIT_WEAPON: Record<Style, string> = { sword: 'Sword', bow: 'Bow', staff: 'Staff' };
 
 /** Each frame's head (P13), drawn once: a henchman's by kit, a player's hero otherwise. */
@@ -19,7 +19,7 @@ function headFor(p: PlayerState): string {
 function frameLine(p: PlayerState): string {
   if (p.henchman) return `${HIRES[p.style].title}${p.brain?.cap ? `  ·  up to Lv ${p.brain.cap}` : ''}`;
   const weapon = p.look?.map((id) => CATALOGUE.get(id)).find((e) => e?.slot === 'weapon')?.name ?? KIT_WEAPON[p.style];
-  return `${HERO_NAMES[p.style]}  ·  ${weapon}`;
+  return `${heroTitle(p, p.style)}  ·  ${weapon}`;
 }
 
 export interface PartyActions {
