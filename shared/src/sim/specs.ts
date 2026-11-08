@@ -275,6 +275,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Elemental Step', 'Blink leaves a trail of your element that burns.'],
     sig: ['Attunement', 'Your bolts take your element: Fire bursts, Frost chills then freezes, Earth staggers, Air knocks back and arcs on.'],
     built: true,
+    tree: [
+      [
+        { id: 'deep-attunement', name: 'Deep Attunement', text: 'Attunement is stronger: Fire\'s burst and Air\'s arc hit 60% harder, Earth staggers sooner, Frost freezes on the second bolt.' },
+        { id: 'nova-surge', name: 'Nova Surge', text: 'Your frost ring, in any element, hits 1.5x as hard.' },
+      ],
+      [
+        { id: 'lasting-step', name: 'Lasting Step', text: 'Elemental Step\'s trail lasts 5 s.' },
+        { id: 'wide-step', name: 'Wide Step', text: 'Elemental Step\'s trail is twice as wide.' },
+      ],
+      [
+        { id: 'searing-step', name: 'Searing Step', text: 'Elemental Step\'s trail burns twice as hard.' },
+        { id: 'far-reach', name: 'Far Reach', text: 'Fire\'s burst and Air\'s arc reach half as far again.' },
+      ],
+    ],
+    crescendo: ['Cataclysm', 'A Crescendo bursts in your element around you: Fire burns, Frost freezes, Earth staggers, Air throws.'],
   },
 ];
 
@@ -389,6 +404,40 @@ export function hasNode(p: PlayerState, node: string): boolean {
   return !!specOf(p) && !!p.tree?.[p.style]?.includes(node);
 }
 
+/**
+ * Cataclysm (the Sorcerer's Crescendo): every standing enemy within `specs.cataclysmRadius` takes
+ * `specs.cataclysmDamage` of a Charge's hit, shaped by the Sorcerer's element as an Attuned bolt's
+ * is (Fire `specs.novaFireDamage` as hard, Frost freezing `specs.attuneFreezeS`, Earth staggering,
+ * Air throwing them outward). Only the server's hits count.
+ */
+function cataclysm(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  const el = elementFor(p, 'staff') ?? 'fire';
+  state.events.push({ kind: 'attune', playerId: p.id, element: el, x: p.x, y: p.y + 1.1, z: p.z, radius: s.cataclysmRadius });
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.hypot(dx, dz);
+    if (d > s.cataclysmRadius + enemyStats(e.kind).radius) continue;
+    const hit: HitSpec = {
+      attackerId: p.id,
+      damage: tuning.abilities.chargeDamage * tuning.combat.baseDamage * s.cataclysmDamage * (el === 'fire' ? s.novaFireDamage : 1),
+      poise: el === 'earth' ? 1000 : 0.5,
+      knockback: el === 'air' ? s.attuneAirKnockback * 2 : 0.3,
+      heavy: el === 'earth',
+      dirX: d > 0 ? dx / d : 0,
+      dirZ: d > 0 ? dz / d : 1,
+      x: e.x,
+      y: e.y + 1,
+      z: e.z,
+      style: 'staff',
+      ...(el === 'frost' ? { freezeTime: s.attuneFreezeS } : {}),
+    };
+    damageEnemy(state, e, hit);
+  }
+}
+
 /** Whether this hero took a tree node of their specialization in `style`, whatever they hold now (a trap laid with the bow still bites). */
 export function hasStyleNode(p: PlayerState, style: Style, node: string): boolean {
   return !!p.spec?.[style] && !!p.tree?.[style]?.includes(node);
@@ -416,6 +465,7 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
     }
   } else if (specOf(p) === 'assassin') smokeBomb(state, p);
   else if (specOf(p) === 'druid') wildGrowth(state, p, p.x, p.z);
+  else if (specOf(p) === 'sorcerer') cataclysm(state, p);
   else if (specOf(p) === 'warlock') {
     // Doom: every standing enemy near is hexed, as a staff hit would hex it.
     for (const e of state.enemies) {
@@ -1138,7 +1188,8 @@ export function elementalStep(state: SimState, p: PlayerState, fromX: number, fr
 
 /** How long a trail this hero lays lasts: `specs.blazingTrailSeconds`, or Lingering Flame's for a Spellblade. */
 function trailSeconds(p: PlayerState, style: 'sword' | 'staff'): number {
-  return style === 'sword' && hasNode(p, 'lingering-flame') ? tuning.specs.treeLingerSeconds : tuning.specs.blazingTrailSeconds;
+  const longer = style === 'sword' ? hasNode(p, 'lingering-flame') : hasNode(p, 'lasting-step');
+  return longer ? tuning.specs.treeLingerSeconds : tuning.specs.blazingTrailSeconds;
 }
 
 /** A new trail from (fromX, fromZ) to the hero, replacing the hero's last. */
@@ -1155,9 +1206,9 @@ function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number,
     x1: p.x,
     z1: p.z,
     y: p.y,
-    width: s.blazingTrailWidth * (style === 'sword' && hasNode(p, 'wide-wake') ? s.treeWakeWidthMult : 1),
+    width: s.blazingTrailWidth * (hasNode(p, style === 'sword' ? 'wide-wake' : 'wide-step') ? s.treeWakeWidthMult : 1),
     until: state.time + trailSeconds(p, style),
-    tickDamage: damage * s.blazingTrailDamage * tick * (style === 'sword' && hasNode(p, 'searing-path') ? s.treeSearingMult : 1),
+    tickDamage: damage * s.blazingTrailDamage * tick * (hasNode(p, style === 'sword' ? 'searing-path' : 'searing-step') ? s.treeSearingMult : 1),
     next: state.time + tick,
     element: elementFor(p, style) ?? 'fire',
   });
@@ -1345,9 +1396,11 @@ export function attunedElement(owner: PlayerState | undefined, pr: ProjectileSta
 export function attuneHit(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState, hit: HitSpec): void {
   const el = attunedElement(owner, pr);
   const s = tuning.specs;
+  const deep = !!owner && hasStyleNode(owner, 'staff', 'deep-attunement');
   if (el === 'frost' && s.attuneChillS > 0) {
     const hits = (e.attuneChill && e.attuneChill.until >= state.time ? e.attuneChill.hits : 0) + 1;
-    if (s.attuneFreezeHits > 0 && hits >= s.attuneFreezeHits) {
+    const need = deep ? Math.min(s.attuneFreezeHits, s.treeAttuneFreezeHits) : s.attuneFreezeHits;
+    if (need > 0 && hits >= need) {
       hit.freezeTime = Math.max(hit.freezeTime ?? 0, s.attuneFreezeS);
       delete e.attuneChill;
     } else {
@@ -1355,7 +1408,7 @@ export function attuneHit(state: SimState, owner: PlayerState | undefined, pr: P
       e.attuneChill = { hits, until: state.time + s.attuneChillS };
     }
   } else if (el === 'earth') {
-    hit.poise *= s.attuneEarthPoise;
+    hit.poise *= s.attuneEarthPoise * (deep ? s.treeAttuneMult : 1);
   } else if (el === 'air') {
     hit.knockback = Math.max(hit.knockback, s.attuneAirKnockback);
   }
@@ -1372,16 +1425,19 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
   if (!owner || !el) return;
   const s = tuning.specs;
   const y = from.y + 1.1;
+  const harder = hasStyleNode(owner, 'staff', 'deep-attunement') ? s.treeAttuneMult : 1;
+  const further = hasStyleNode(owner, 'staff', 'far-reach') ? s.treeFarReachMult : 1;
+  const fireRadius = s.attuneFireRadius * further;
   if (el === 'fire' && s.attuneFireDamage > 0) {
-    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: s.attuneFireRadius });
+    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: fireRadius });
     for (const e of state.enemies) {
       if (e === from || !isTargetable(e) || Math.abs(e.y - from.y) > 1.2) continue;
       const dx = e.x - from.x;
       const dz = e.z - from.z;
       const d = Math.hypot(dx, dz);
-      if (d > s.attuneFireRadius + enemyStats(e.kind).radius) continue;
+      if (d > fireRadius + enemyStats(e.kind).radius) continue;
       damageEnemy(state, e, {
-        attackerId: owner.id, damage: pr.damage * s.attuneFireDamage, poise: 0.3, knockback: 0.3, heavy: false,
+        attackerId: owner.id, damage: pr.damage * s.attuneFireDamage * harder, poise: 0.3, knockback: 0.3, heavy: false,
         dirX: d > 0 ? dx / d : 0, dirZ: d > 0 ? dz / d : 1, x: e.x, y: e.y + 1, z: e.z, style: 'staff', projectile: true,
       });
     }
@@ -1389,7 +1445,7 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
   }
   if (el === 'air' && s.attuneAirDamage > 0) {
     let best: EnemyState | null = null;
-    let bestD = s.attuneAirRange;
+    let bestD = s.attuneAirRange * further;
     for (const e of state.enemies) {
       if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
       const d = Math.hypot(e.x - from.x, e.z - from.z);
@@ -1405,7 +1461,7 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
     const len = bestD || 1;
     state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0, toX: best.x, toZ: best.z });
     damageEnemy(state, best, {
-      attackerId: owner.id, damage: pr.damage * s.attuneAirDamage, poise: 0.3, knockback: s.attuneAirKnockback, heavy: false,
+      attackerId: owner.id, damage: pr.damage * s.attuneAirDamage * harder, poise: 0.3, knockback: s.attuneAirKnockback, heavy: false,
       dirX: (best.x - from.x) / len, dirZ: (best.z - from.z) / len, x: best.x, y: best.y + 1.1, z: best.z, style: 'staff', projectile: true,
     });
     return;
@@ -1430,6 +1486,8 @@ export function novaElement(p: PlayerState): Element | undefined {
  * them `specs.attuneAirKnockback` outward. Stepped where the ring fires, both sides.
  */
 export function elementalNova(p: PlayerState, hit: HitSpec): void {
+  // Nova Surge counts for a Frost Sorcerer's ring too, which is otherwise the plain frost ring.
+  if (p.spec?.staff === 'sorcerer' && p.style === 'staff' && hasNode(p, 'nova-surge')) hit.damage *= tuning.specs.treeNovaMult;
   const el = novaElement(p);
   if (!el) return;
   const s = tuning.specs;

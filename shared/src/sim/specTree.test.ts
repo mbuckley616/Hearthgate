@@ -5,10 +5,10 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { bloomHeal, bloomRoot, stepGroves, thornRing, wildGrowth, curseRing, hexedMult, shadowSwap, warlockHex, deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { attuneAfter, attuneHit, elementalNova, elementalStep, bloomHeal, bloomRoot, stepGroves, thornRing, wildGrowth, curseRing, hexedMult, shadowSwap, warlockHex, deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
-import type { SpecId } from './specs';
+import type { Element, SpecId } from './specs';
 import type { ProjectileState } from './types';
 import { newFlow } from './flow';
 import { createSimState } from './world';
@@ -28,9 +28,9 @@ const base = (level: number, tree?: string[], spec: SpecId = 'paladin'): Loadout
 
 const awake = (s: SimState, x: number, z: number) => Object.assign(createEnemy(s, world, 'grunt', x, z, 0), { x, z, ai: 'chase' as const, aiTime: 0 });
 
-function scene(level: number, tree?: string[], spec: SpecId = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
+function scene(level: number, tree?: string[], spec: SpecId = 'paladin', element?: Element): { s: SimState; p: PlayerState; friend: PlayerState } {
   const s = createSimState(arena, [], world);
-  const p = addPlayer(s, world, 'p1', base(level, tree, spec), false);
+  const p = addPlayer(s, world, 'p1', { ...base(level, tree, spec), ...(element ? { elements: { [specInfo(spec).style]: element } } : {}) }, false);
   p.style = specInfo(spec).style;
   const friend = addPlayer(s, world, 'p2', { ...base(1), spec: undefined }, false);
   Object.assign(p, { x: 0, z: 10 });
@@ -508,5 +508,73 @@ describe("the Druid's tree", () => {
     const { s, p } = druid(50);
     specCrescendo(s, p);
     expect(s.groves![0]).toMatchObject({ by: 'p1', x: p.x, z: p.z });
+  });
+});
+
+describe("the Sorcerer's tree", () => {
+  const sorc = (level: number, tree?: string[], el: Element = 'fire') => scene(level, tree, 'sorcerer', el);
+  const bolt = () => ({ kind: 'bolt', style: 'staff', owner: 'p1', damage: 10, hitIds: [] }) as unknown as ProjectileState;
+  const spec = () => ({ damage: 10, poise: 1, knockback: 0 }) as never as Parameters<typeof attuneHit>[4];
+
+  it('Deep Attunement: Frost freezes on the second bolt, Fire bursts harder', () => {
+    const frost = sorc(20, ['deep-attunement'], 'frost');
+    const e = awake(frost.s, 0, 6);
+    const h1 = spec();
+    attuneHit(frost.s, frost.p, bolt(), e, h1);
+    expect(h1.freezeTime).toBeUndefined();
+    const h2 = spec();
+    attuneHit(frost.s, frost.p, bolt(), e, h2);
+    expect(h2.freezeTime).toBe(tuning.specs.attuneFreezeS);
+    const burst = (tree?: string[]) => {
+      const { s, p } = sorc(20, tree);
+      const from = awake(s, 0, 6);
+      const near = Object.assign(awake(s, 1, 6), { hp: 9999 });
+      attuneAfter(s, p, bolt(), from);
+      return 9999 - near.hp;
+    };
+    expect(burst(['deep-attunement']) / burst()).toBeCloseTo(tuning.specs.treeAttuneMult);
+  });
+
+  it('Far Reach: the burst finds an enemy past its old reach', () => {
+    const reach = (tree?: string[]) => {
+      const { s, p } = sorc(40, tree);
+      const from = awake(s, 0, 6);
+      const out = Object.assign(awake(s, tuning.specs.attuneFireRadius + 0.6, 6), { hp: 9999 });
+      attuneAfter(s, p, bolt(), from);
+      return out.hp < 9999;
+    };
+    expect(reach()).toBe(false);
+    expect(reach(['nova-surge', 'wide-step', 'far-reach'])).toBe(true);
+  });
+
+  it("Nova Surge lifts a Frost Sorcerer's ring too", () => {
+    const { p } = sorc(20, ['nova-surge'], 'frost');
+    const hit = spec();
+    elementalNova(p, hit);
+    expect(hit.damage).toBeCloseTo(10 * tuning.specs.treeNovaMult);
+  });
+
+  it('Lasting, Wide and Searing Step reshape the Blink\'s trail', () => {
+    const plain = sorc(40);
+    elementalStep(plain.s, plain.p, 0, 0);
+    const t0 = plain.s.trails![0];
+    const all = sorc(40, ['nova-surge', 'lasting-step', 'searing-step']);
+    elementalStep(all.s, all.p, 0, 0);
+    const t1 = all.s.trails![0];
+    expect(t1.until).toBeCloseTo(all.s.time + tuning.specs.treeLingerSeconds);
+    expect(t1.tickDamage).toBeCloseTo(t0.tickDamage * tuning.specs.treeSearingMult);
+    const wide = sorc(30, ['nova-surge', 'wide-step']);
+    elementalStep(wide.s, wide.p, 0, 0);
+    expect(wide.s.trails![0].width).toBeCloseTo(t0.width * tuning.specs.treeWakeWidthMult);
+  });
+
+  it('Cataclysm: at 50 a Frost Sorcerer\'s Crescendo freezes those near, not those far', () => {
+    const { s, p } = sorc(50, undefined, 'frost');
+    const near = Object.assign(awake(s, 2, 10), { hp: 9999 });
+    const far = Object.assign(awake(s, 0, 10 + tuning.specs.cataclysmRadius + 2), { hp: 9999 });
+    specCrescendo(s, p);
+    expect(near.frozen).toBeGreaterThan(0);
+    expect(near.hp).toBeLessThan(9999);
+    expect(far.hp).toBe(9999);
   });
 });

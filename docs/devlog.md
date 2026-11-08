@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 158, the Sorcerer's tree; every specialization has its tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Sorcerer's six and its Crescendo, numbers on the panel: at staff level 20 Deep Attunement (Fire's burst and Air's arc 1.6x as hard, Earth's bolt poise 1.6x, Frost freezing on the second bolt instead of the third) or Nova Surge (the frost ring, in any element, Frost's too, 1.5x as hard); at 30 Lasting Step (Elemental Step's trail 5 s, Lingering Flame's number) or Wide Step (twice as wide, Wide Wake's); at 40 Searing Step (twice as hot, Searing Path's) or Far Reach (Fire's burst and Air's arc reach 1.5x as far). Cataclysm at 50: as a Flow Crescendo comes out, every standing enemy within 5 m takes a Charge's hit in the Sorcerer's element (Fire 1.5x, Frost freezing 1.2 s, Earth breaking poise as a heavy, Air throwing twice Attunement's push), with an `attune` event of that radius for the views. The Step nodes reuse the Spellblade's trail numbers, as Elemental Step reused Blazing Charge's (Michael's A on the trail). With Sessions 150 to 157, all nine specializations have three rows of two and a Crescendo. check 525 green, parity identical. Not yet seen in a browser: whether `AttuneView` draws a 5 m burst for Frost, Earth and Air as well as Fire is unchecked.
+
+**Learned**
+
+Every Crescendo fires where `stepPlayer` turns a charged heavy at a full meter into a Crescendo, which is true for any style (C2). So a capstone belongs to the style held, not to the specialization's weapon in general, and a Paladin at sword 50 who switches to a bow earns no Judgement; the tests pin that. Nine capstones in one function (`specCrescendo`) also means one place to look if a Crescendo ever does something in prediction it should not: Doom, Stormcaller and Cataclysm touch only enemies, which prediction never steps, and Vanish, Thousand Cuts and the grounds are the hero's own and already predicted for their pieces.
+
+**Next**
+
+The builds pass's next slice is Michael's: decisions.md Pending, "what comes after the trees" (A recommended, the first three states). Until then the builder has nothing left in the current section.
+
 ## 2026-11-08: Session 157, the Druid's tree (the builds pass, Michael's A)
 
 **What changed**

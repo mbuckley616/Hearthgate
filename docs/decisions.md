@@ -7,6 +7,14 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-08: The builds pass, what comes after the trees (builder, Session 158)
+All nine specializations have their trees and Crescendos (Sessions 150 to 158), none yet played in a browser beyond the Talents tab's rows. Your A on the builds pass (6 Nov) left elements' states, runes, the rest of the roster and the Necromancer for after the specializations.
+- **A.** The first three states from the design doc (Shatter, Skewer, Detonate), each left by an element: Frost's slows and freezes set up Shatter for a heavy, Earth's staggers Skewer for a thrust, Fire's bursts Detonate a Burning enemy; one state a session, numbers on the panel. *(recommended: the elements already colour every specialization's ground and bolts, and the states are what make them matter in a party)*
+- **B.** The rest of the roster first (mace, axe, daggers, longbow, throwing knives, sceptre, focus orb, parrying dagger), one family a session on the C5 pattern.
+- **C.** Runes in weapon sockets first: a socket on rare gear and a handful of runes from the boss drops.
+- **D.** Hold the builds pass until you have played the trees; the builder waits.
+
+
 
 ## Answered
 
@@ -16,7 +24,7 @@ All nine specializations are built and choosable (Sessions 121 to 148). Your A o
 - **B.** As A, but each row is one automatic upgrade, no choice: quicker to build, fewer decisions for the player.
 - **C.** Not trees yet: elements' states next (Shatter, Skewer, Detonate and the rest, left by your A for later), so each element's trail, ring and bolt leaves its state; trees after.
 - **D.** Hold the builds pass here until you have played the nine specializations; the builder waits.
-Michael: **A** (2026-11-08, on the control room). (Session 150: the frame and the Paladin's tree. Session 151: the Spellblade's. Session 152: the Rogue's. Session 153: the Ranger's. Session 154: the Scout's. Session 155: the Assassin's. Session 156: the Warlock's. Session 157: the Druid's.)
+Michael: **A** (2026-11-08, on the control room). (Session 150: the frame and the Paladin's tree. Session 151: the Spellblade's. Session 152: the Rogue's. Session 153: the Ranger's. Session 154: the Scout's. Session 155: the Assassin's. Session 156: the Warlock's. Session 157: the Druid's. Session 158: the Sorcerer's; all nine built.)
 
 ### 2026-11-06: The Spellblade's trail and blades, what they do (builder, Session 125)
 The Spellblade's Blade Storm (the pull) and its element choice (Fire, Frost, Earth or Air) are built. The combat builds page gives its other two pieces one line each: Blazing Charge "leaves a trail of your element", and the signature "your spins conjure extra blades". Neither says what they hit for, and the states an element leaves wait for later (your A), so a trail cannot yet Chill or Burn.
