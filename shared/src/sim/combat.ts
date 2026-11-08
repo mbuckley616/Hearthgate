@@ -176,6 +176,17 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     hero.flow.pending = 0;
   }
   if (hero && hit.style) grantXp(state, hero, hit.style, Math.min(damage, damage + e.hp) * tuning.progression.xpPerDamage);
+  // The states' setups, before a ground tick returns: Frost and Fire ground leave theirs too.
+  // Shatter setup: magic that slows or freezes (with element states, Frost's chill from any style).
+  if (chills(hero, hit)) {
+    e.shatterUntil = state.time + comboWindow(hero);
+    if (hero?.champion) e.shatterBy = hero.id;
+  }
+  // Detonate setup: with element states, Fire leaves an enemy Burning (the slice's is a volley's mark).
+  if (hero && burns(hero, hit)) {
+    e.detonateUntil = state.time + comboWindow(hero);
+    if (hero.champion) e.detonateBy = hero.id;
+  }
   if (hit.dot) {
     // Bleed ticks: just damage (and a kill if it finishes them).
     if (e.hp <= 0) killEnemy(state, e, stats.knockbackTaken);
@@ -195,11 +206,6 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     }
   }
   if (hit.slowTime) e.slowTime = Math.max(e.slowTime, hit.slowTime);
-  // Shatter setup: magic that slows or freezes (with element states, Frost's chill from any style).
-  if (chills(hero, hit)) {
-    e.shatterUntil = state.time + comboWindow(hero);
-    if (hero?.champion) e.shatterBy = hero.id;
-  }
   if (hit.freezeTime && !e.armour) {
     e.frozen = Math.max(e.frozen, hit.freezeTime * (isLight(e) ? 1 : 0.5));
     state.events.push({ kind: 'freeze', enemyId: e.id });
@@ -302,6 +308,21 @@ export function skewerSets(hero: PlayerState | undefined, hit: HitSpec): boolean
   if (hit.style === 'sword') return true;
   if (!tuning.combos.elementStates || !hero || !hit.style) return false;
   return elementFor(hero, hit.style) === 'earth';
+}
+
+/**
+ * Whether a hit leaves an enemy Burning, open to Detonate (the states, Michael's A, 8 Nov: Fire's
+ * bursts Detonate a Burning enemy). With `combos.elementStates`, a hero's Fire ground (a Fire
+ * Spellblade's Blazing Charge, a Fire Sorcerer's Elemental Step) and their light Fire bolts and
+ * Attunement bursts set it, so the next magic burst to catch the enemy detonates, the Sorcerer's own
+ * included, as Shatter's Chill pays any heavy. A swing never does (a Fire Spellblade's chain would
+ * mark every enemy it touched), nor a payoff's own hits, nor a heavy, so a burst does not light the
+ * enemy it has just detonated for the next. The slice has no Burning: its Detonate is the volley's mark.
+ */
+export function burns(hero: PlayerState | undefined, hit: HitSpec): boolean {
+  if (!tuning.combos.elementStates || !hero || !hit.style || hit.combo || hit.heavy) return false;
+  if (!hit.dot && !hit.projectile) return false;
+  return elementFor(hero, hit.style) === 'fire';
 }
 
 /** Shatter payoff: the finisher bursts out into the enemies around. */

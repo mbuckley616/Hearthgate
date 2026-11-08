@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
-import { chills, damageEnemy, shatterPays, skewerSets, type HitSpec } from './combat';
+import { burns, chills, damageEnemy, shatterPays, skewerSets, type HitSpec } from './combat';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
@@ -84,11 +84,14 @@ describe('the states: Shatter (the builds pass)', () => {
   });
 
   it('Frost ground chills; a Frost Spellblade’s own swings do not; other elements’ ground does not', () => {
-    const { a } = fight();
+    const { s, a } = fight();
     a.spec = { sword: 'spellblade' };
     a.elements = { sword: 'frost' };
     expect(chills(a, hit(a.id, 'sword', { dot: true }))).toBe(true);
     expect(chills(a, hit(a.id, 'sword'))).toBe(false);
+    const e = grunt(s);
+    damageEnemy(s, e, hit(a.id, 'sword', { dot: true }));
+    expect(e.shatterUntil).toBeGreaterThan(s.time);
     a.elements = { sword: 'fire' };
     expect(chills(a, hit(a.id, 'sword', { dot: true }))).toBe(false);
     // A bleed tick from a hero with no element chills nothing.
@@ -125,5 +128,23 @@ describe('the states: Shatter (the builds pass)', () => {
     const { a } = fight();
     expect(skewerSets(a, hit(a.id, 'sword'))).toBe(true);
     expect(skewerSets(a, hit(a.id, 'bow'))).toBe(false);
+  });
+
+  it('Detonate: Fire ground and a Fire bolt leave an enemy Burning; a swing, a heavy or a payoff does not', () => {
+    const { s, a } = fight();
+    a.spec = { sword: 'spellblade', staff: 'sorcerer' };
+    a.elements = { sword: 'fire', staff: 'fire' };
+    const e = grunt(s);
+    damageEnemy(s, e, hit(a.id, 'sword', { dot: true }));
+    expect(e.detonateUntil).toBeGreaterThan(s.time);
+    expect(burns(a, hit(a.id, 'staff', { projectile: true }))).toBe(true);
+    expect(burns(a, hit(a.id, 'sword'))).toBe(false);
+    expect(burns(a, hit(a.id, 'staff', { projectile: true, heavy: true }))).toBe(false);
+    expect(burns(a, hit(a.id, 'staff', { projectile: true, combo: true }))).toBe(false);
+    a.elements = { sword: 'frost', staff: 'frost' };
+    expect(burns(a, hit(a.id, 'sword', { dot: true }))).toBe(false);
+    a.elements = { sword: 'fire', staff: 'fire' };
+    tuning.combos.elementStates = false;
+    expect(burns(a, hit(a.id, 'sword', { dot: true }))).toBe(false);
   });
 });

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 161, Detonate as a state; the three states are built (the builds pass, Michael's A)
+
+**What changed**
+
+The third state. Burning (Detonate's setup, the slice's volley-mark window) is now also left by a hero's Fire: their Fire ground (a Fire Spellblade's Blazing Charge strip, a Fire Sorcerer's Elemental Step) and their light Fire bolts and Attunement bursts. The next magic burst to catch a Burning enemy detonates it, the slice's +50% radius and +30% damage with its `combo` event, the Sorcerer's own burst included. A swing, a heavy and a payoff's own hits never light it, so a burst does not set up the next on the enemy it just detonated. `burns` in `combat.ts`, under `combos.elementStates` (off in the parity test). A fix to Session 159 on the way: a ground tick returned from `damageEnemy` before the setups, so Frost ground did not in fact chill (its test checked `chills` alone); the setups now run before a tick returns, and the tests drive `damageEnemy` for both grounds. check 531 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Shatter, Skewer and Detonate all already had their windows, tints (ice-blue, gold, orange in `EnemyView`), sparks and sounds from the slice, so the three states cost no wire or view work: each is one rule for who opens the window. A rule tested only as a predicate can miss the path that never reaches it; drive the real function.
+
+**Next**
+
+Michael's A covered the first three states, all built. What comes next in the builds pass (the remaining states, runes, the rest of the roster, the Necromancer) is asked in `decisions.md` Pending.
+
 ## 2026-11-08: Session 160, Skewer as a state (the builds pass, Michael's A on the states)
 
 **What changed**
