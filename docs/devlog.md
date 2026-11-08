@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 156, the Warlock's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Warlock's six and its Crescendo, numbers on the panel: at staff level 20 Lasting Hex (a staff hit's hex lasts 8 s instead of 4) or Long Curse (Curse Ring's hex 10 s instead of 6); at 30 Deep Hex (everyone's hits on the Warlock's hexed enemies deal 20% more instead of 10%) or Leech (the Warlock's own hits on the hexed drain 20% back instead of 10%); at 40 Binding Swap (Shadow Swap hexes the enemy traded places with) or Far Swap (it reaches 4 m past a Blink instead of 1). Doom at 50: as a Flow Crescendo comes out, every standing enemy within 8 m is hexed, as a staff hit would hex it. Hexing is one function now (`hexOn`), so a bolt, a swap and Doom hex alike with the same cue; a hex's bonus is read from the Warlock who laid it. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Deep Hex is the party's node and Leech the Warlock's own: with a party of four Deep Hex adds more damage in total than Leech heals, alone Leech keeps a Warlock standing. That reads like the right split for a co-op game; nothing in the tree yet tells the player which is which beyond the line of text.
+
+**Next**
+
+The Druid's tree (Bloom, Thorn Ring, Wild Growth, and its Crescendo), then the Sorcerer's, and every specialization has its tree.
+
 ## 2026-11-08: Session 155, the Assassin's tree; Ranged's trees done (the builds pass, Michael's A)
 
 **What changed**

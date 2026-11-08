@@ -5,7 +5,7 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { curseRing, hexedMult, shadowSwap, warlockHex, deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import type { SpecId } from './specs';
@@ -402,5 +402,62 @@ describe("the Assassin's tree", () => {
     const below = assassin(49);
     specCrescendo(below.s, below.p);
     expect(below.p.hiddenUntil).toBeUndefined();
+  });
+});
+
+describe("the Warlock's tree", () => {
+  const warlock = (level: number, tree?: string[]) => scene(level, tree, 'warlock');
+  const bolt = { style: 'staff', damage: 10 } as never;
+
+  it('Lasting Hex lengthens a hex; Deep Hex deepens it for everyone; Leech drains more', () => {
+    const plain = warlock(30);
+    const e = awake(plain.s, 0, 6);
+    warlockHex(plain.s, e, plain.p, bolt, 10, false);
+    expect(e.hex!.until).toBeCloseTo(plain.s.time + tuning.specs.hexSeconds);
+    expect(hexedMult(plain.s, e, plain.friend, false)).toBeCloseTo(1 + tuning.specs.hexDamageBonus);
+    const deep = warlock(30, ['lasting-hex', 'deep-hex']);
+    const f = awake(deep.s, 0, 6);
+    warlockHex(deep.s, f, deep.p, bolt, 10, false);
+    expect(f.hex!.until).toBeCloseTo(deep.s.time + tuning.specs.treeHexSeconds);
+    expect(hexedMult(deep.s, f, deep.friend, false)).toBeCloseTo(1 + tuning.specs.treeHexBonus);
+    const leech = warlock(30, ['lasting-hex', 'leech']);
+    const g = awake(leech.s, 0, 6);
+    leech.p.hp = 50;
+    warlockHex(leech.s, g, leech.p, bolt, 10, true);
+    expect(leech.p.hp).toBeCloseTo(50 + 10 * tuning.specs.treeHexDrain);
+  });
+
+  it('Long Curse: the ring hexes longer', () => {
+    const { s, p } = warlock(20, ['long-curse']);
+    const e = awake(s, 0, 6);
+    curseRing(s, p, e);
+    expect(e.hex!.until).toBeCloseTo(s.time + tuning.specs.treeCurseRingHexS);
+  });
+
+  it('Far Swap reaches further; Binding Swap hexes the one swapped', () => {
+    const at = 5 + tuning.specs.swapReach + 1;
+    const plain = warlock(40);
+    const e = awake(plain.s, 0, 10 - at);
+    plain.p.attackTarget = e.id;
+    expect(shadowSwap(plain.s, plain.p, 5)).toBe(false);
+    const far = warlock(40, ['lasting-hex', 'deep-hex', 'far-swap']);
+    const f = awake(far.s, 0, 10 - at);
+    far.p.attackTarget = f.id;
+    expect(shadowSwap(far.s, far.p, 5)).toBe(true);
+    expect(f.hex).toBeUndefined();
+    const bind = warlock(40, ['lasting-hex', 'deep-hex', 'binding-swap']);
+    const g = awake(bind.s, 0, 7);
+    bind.p.attackTarget = g.id;
+    expect(shadowSwap(bind.s, bind.p, 5)).toBe(true);
+    expect(g.hex?.by).toBe('p1');
+  });
+
+  it('Doom: at 50 a Crescendo hexes every enemy within its reach', () => {
+    const { s, p } = warlock(50);
+    const near = awake(s, 3, 10);
+    const far = awake(s, 0, 10 + tuning.specs.doomRadius + 2);
+    specCrescendo(s, p);
+    expect(near.hex?.by).toBe('p1');
+    expect(far.hex).toBeUndefined();
   });
 });

@@ -223,6 +223,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Shadow Swap', 'Blink swaps places with the targeted enemy.'],
     sig: ['Hex', 'Your spells hex. Hexed enemies take 10% more from everyone, and your hits on them drain health.'],
     built: true,
+    tree: [
+      [
+        { id: 'lasting-hex', name: 'Lasting Hex', text: 'Your hex lasts 8 s.' },
+        { id: 'long-curse', name: 'Long Curse', text: 'Curse Ring\'s hex lasts 10 s.' },
+      ],
+      [
+        { id: 'deep-hex', name: 'Deep Hex', text: 'Your hexed enemies take 20% more from everyone.' },
+        { id: 'leech', name: 'Leech', text: 'Your hits on the hexed drain 20% back.' },
+      ],
+      [
+        { id: 'binding-swap', name: 'Binding Swap', text: 'Shadow Swap hexes the enemy you trade places with.' },
+        { id: 'far-swap', name: 'Far Swap', text: 'Shadow Swap reaches 4 m past a Blink.' },
+      ],
+    ],
+    crescendo: ['Doom', 'A Crescendo hexes every enemy within 8 m of you.'],
   },
   {
     id: 'druid',
@@ -385,6 +400,12 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
       if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.stormcallRadius) scoutMark(state, p, e);
     }
   } else if (specOf(p) === 'assassin') smokeBomb(state, p);
+  else if (specOf(p) === 'warlock') {
+    // Doom: every standing enemy near is hexed, as a staff hit would hex it.
+    for (const e of state.enemies) {
+      if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.doomRadius) hexOn(state, p, e);
+    }
+  }
   else if (specOf(p) === 'rogue') {
     // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
     fanOfKnives(state, p);
@@ -709,7 +730,9 @@ export function hexedMult(state: SimState, e: EnemyState, hero: PlayerState | un
     delete e.hex;
     return 1;
   }
-  return hero && !dot ? 1 + tuning.specs.hexDamageBonus : 1;
+  if (!hero || dot) return 1;
+  const warlock = state.players.find((p) => p.id === h.by);
+  return 1 + (warlock && hasStyleNode(warlock, 'staff', 'deep-hex') ? tuning.specs.treeHexBonus : tuning.specs.hexDamageBonus);
 }
 
 /**
@@ -720,10 +743,18 @@ export function hexedMult(state: SimState, e: EnemyState, hero: PlayerState | un
 export function warlockHex(state: SimState, e: EnemyState, hero: PlayerState | undefined, hit: HitSpec, damage: number, wasHexed: boolean): void {
   const s = tuning.specs;
   if (!hero || hero.spec?.staff !== 'warlock' || hit.style !== 'staff' || hit.dot || s.hexSeconds <= 0) return;
-  if (wasHexed && hero.mode !== 'down' && s.hexDrain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * s.hexDrain);
+  const drain = hasStyleNode(hero, 'staff', 'leech') ? s.treeHexDrain : s.hexDrain;
+  if (wasHexed && hero.mode !== 'down' && drain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * drain);
+  hexOn(state, hero, e);
+}
+
+/** Hex an enemy for the Warlock's `specs.hexSeconds` (Lasting Hex's, with it), never cutting short a longer one. */
+function hexOn(state: SimState, hero: PlayerState, e: EnemyState): void {
+  const s = tuning.specs;
   const fresh = !e.hex || e.hex.until <= state.time;
+  const seconds = hasStyleNode(hero, 'staff', 'lasting-hex') ? s.treeHexSeconds : s.hexSeconds;
   // An orb never cuts short a longer hex a Curse Ring left.
-  e.hex = { by: hero.id, until: Math.max(fresh ? 0 : e.hex!.until, state.time + s.hexSeconds) };
+  e.hex = { by: hero.id, until: Math.max(fresh ? 0 : e.hex!.until, state.time + seconds) };
   if (fresh) state.events.push({ kind: 'hexed', playerId: hero.id, enemyId: e.id, x: e.x, y: e.y, z: e.z });
 }
 
@@ -739,7 +770,7 @@ export function isCurseRing(p: PlayerState): boolean {
  */
 export function curseRing(state: SimState, p: PlayerState, e: EnemyState): void {
   if (!isCurseRing(p) || !isTargetable(e)) return;
-  const until = state.time + tuning.specs.curseRingHexS;
+  const until = state.time + (hasNode(p, 'long-curse') ? tuning.specs.treeCurseRingHexS : tuning.specs.curseRingHexS);
   if (!e.hex || e.hex.until < until) e.hex = { by: p.id, until };
 }
 
@@ -753,7 +784,7 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
   if (p.spec?.staff !== 'warlock' || p.style !== 'staff' || tuning.specs.swapReach < 0 || p.attackTarget < 0) return false;
   const e = state.enemies.find((o) => o.id === p.attackTarget);
   if (!e || !isTargetable(e) || roleOf(e.kind) === 'boss' || Math.abs(e.y - p.y) > 1.2) return false;
-  if (Math.hypot(e.x - p.x, e.z - p.z) > blinkDistance + tuning.specs.swapReach) return false;
+  if (Math.hypot(e.x - p.x, e.z - p.z) > blinkDistance + (hasNode(p, 'far-swap') ? tuning.specs.treeSwapReach : tuning.specs.swapReach)) return false;
   const from = { x: p.x, z: p.z };
   p.x = e.x;
   p.z = e.z;
@@ -762,6 +793,7 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
   e.yaw += Math.PI;
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, swap: true });
+  if (hasNode(p, 'binding-swap')) hexOn(state, p, e);
   return true;
 }
 
