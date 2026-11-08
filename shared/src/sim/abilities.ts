@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { bladeStorm, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
+import { bladeStorm, blazingTrail, elementalStep, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -78,13 +78,17 @@ export function stepAbility(
       const stepped = t0 < timing.windup ? shadowstep(state, p, colliders) : null;
       const sx = stepped ? Math.sin(p.yaw) : fx;
       const sz = stepped ? Math.cos(p.yaw) : fz;
+      const chargeDamage = a.chargeDamage * (1 + rank * tl.chargeDamagePerRank) * tuning.combat.baseDamage;
       if (!stepped) {
         // Dash, stopping at the first enemy it meets, which staggers.
         const distance = a.chargeDistance + rank * tl.chargeDistancePerRank;
         const step = (distance / Math.max(1e-3, timing.active)) * Math.min(dt, t - Math.max(t0, timing.windup));
+        const fromX = p.x;
+        const fromZ = p.z;
         p.x += fx * step;
         p.z += fz * step;
         smashCircle(state, props, p.id, p.x, p.y, p.z, tuning.movement.radius + 0.25);
+        blazingTrail(state, p, fromX, fromZ, chargeDamage);
       }
       const hit =
         stepped ??
@@ -95,7 +99,7 @@ export function stepAbility(
         p.abilityHitIds.push(hit.id);
         damageEnemy(state, hit, {
           attackerId: p.id,
-          damage: a.chargeDamage * (1 + rank * tl.chargeDamagePerRank) * tuning.combat.baseDamage,
+          damage: chargeDamage,
           poise: 1000,
           knockback: 1.2,
           heavy: true,
@@ -123,6 +127,10 @@ export function stepAbility(
         p.x += (cmd.moveX / mag) * speed * mag * dt;
         p.z += (cmd.moveZ / mag) * speed * mag * dt;
       }
+      const reach = a.whirlwindRadius + rank * tl.whirlwindRadiusPerRank;
+      const whirl = a.whirlwindDamage * (1 + rank * tl.whirlwindDamagePerRank) * tuning.combat.baseDamage;
+      const spin = Math.max(1e-3, timing.active);
+      spectralBlades(state, p, Math.max(0, t0 - timing.windup) / spin, Math.min(1, (t - timing.windup) / spin), reach, whirl);
       const due = Math.floor((t - timing.windup) / (a.whirlwindTickMs / 1000)) + 1;
       if (p.abilityTicks < due) {
         p.abilityTicks = due;
@@ -314,7 +322,9 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       p.nextBoltCrit = true;
       // A Druid leaves a healing grove where they stood (Wild Growth).
       const grove = wildGrowth(state, p, from.x, from.z);
-      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, ...(grove ? { grove } : {}) });
+      // A Sorcerer leaves a burning trail of their element along the way (Elemental Step).
+      const trail = elementalStep(state, p, from.x, from.z);
+      state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, ...(grove ? { grove } : {}), ...(trail ? { trail } : {}) });
       break;
     }
   }

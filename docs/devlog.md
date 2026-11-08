@@ -2,6 +2,62 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-07: Session 149, the HUD names a specialization (the critic's bug)
+
+**What changed**
+
+The ability bar and the hero's title follow a specialization (the critic, 7 Nov). Two helpers in `specs.ts`, `heroTitle(p, style)` and `abilityTitle(p, style, slot)`, read `SPECS`' `name`, `q` and `e`; with no specialization in that style they give the slice's names (`STYLE_TITLES`, `ABILITY_NAMES`). `Hud.ts` uses them for the corner's title, the two slots' names and the level-up toast; `PartyUi.ts` for the party frame's line. A Druid at staff level 26 now reads "Druid · Level 26" over "Thorn Ring" and "Wild Growth" (checked in headless Chromium, `?play&dungeon` with the critic's save); a Knight with no specialization still reads "Knight", "Charge", "Whirlwind". The icons stay the base abilities'. A unit test covers the names; check 481 green, test:net passed. Client and display only: the fight and parity are untouched.
+
+**Learned**
+
+The hero screen lists specializations from `specsFor`, but the HUD and the party frame each kept their own copy of the style titles, so nothing a specialization named reached them. They now share `STYLE_TITLES` beside `SPECS`.
+
+**Next**
+
+Specializations have no icons of their own; if Michael wants them, that is art, not a bug. The builds pass's next slice still waits on his answer in decisions.md.
+
+## 2026-11-07: Session 148, the Sorcerer's Elemental Step; the Sorcerer offered, specializations done (the builds pass)
+
+**What changed**
+
+Elemental Step (`elementalStep` in `specs.ts`, fired with the Blink in `stepAbility`): a Sorcerer's Blink leaves Blazing Charge's strip, its width, seconds and burn, from where they stood to where they landed, in their element. Michael's A on the Spellblade's trail settled this one too (the question named both), so it reuses Session 146's numbers rather than adding its own: it burns 15% of the Charge's damage a second, credited to the staff (`TrailGround.style`), and `TrailView` draws it. The `blink` event carries `trail`, for a low whoosh as it catches. With Sessions 144 and 145 the Sorcerer is whole, and it is offered from staff level 10, Fire, Frost, Earth or Air. All nine specializations are now built and choosable. Check 480 green, parity identical, test:net passed. Not yet seen in a browser.
+
+**Learned**
+
+Sharing the trail's numbers keeps the panel short, but a Blink's trail is about as long as a Charge's while the Sorcerer's other damage is ranged, so the two may want different burns once played; splitting `specs.blazingTrailDamage` in two is a one-line change if Michael asks.
+
+**Next**
+
+Specializations are done for this pass (trees, runes and states were left for later in Michael's A on the builds pass). The next slice of the builds pass needs Michael's word: what comes after specializations (decisions.md Pending, asked this session).
+
+## 2026-11-07: Session 147, the Spellblade's spectral blades; the Spellblade offered (the builds pass, Michael's A)
+
+**What changed**
+
+Spectral blades (`spectralBlades` and `spectralBladeYaw` in `specs.ts`, stepped each tick of the Whirlwind's spin in `stepAbility`): `specs.spectralBlades` (2) swords circle a spinning Spellblade, evenly spaced, once round over the spin from where they face, in a band from the Whirlwind's reach to `specs.spectralBladeReach` (1 m) past it. Each blade hits every standing enemy its sweep crosses in that band once a spin, for `specs.spectralBladeDamage` (30%) of the Whirlwind's hit, so an enemy at the spin's edge takes 60% from the pair; one inside the reach is the Whirlwind's alone. The hits are kept in `abilityHitIds` (id times eight plus the blade), already on the wire, so no new state. `SpectralBladesView` draws them as ghostly swords in the Spellblade's element, placed by the sim's own `spectralBladeYaw`, fading in and out over the spin's ends. Three numbers on the panel. With Sessions 124, 125 and 146 the Spellblade is whole for this pass, and it is offered from sword level 10, Fire, Frost, Earth or Air: Melee's three are all built. Check 477 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Blade Storm pulls light enemies to 1.4 m, well inside the Whirlwind's 2.4 m reach, so the blades mostly find the heavier enemies Blade Storm leaves standing and light ones still being drawn in through the band. That suits the pair (the pull feeds the spin, the blades reach what it cannot move), but if the blades feel idle against skeleton packs, a smaller `specs.bladeStormRadius` leaves more in the band.
+
+**Next**
+
+The Sorcerer's Elemental Step: the Blink leaves a trail of its element by the same A (Blazing Charge's strip and numbers along the Blink's path), then the Sorcerer is offered and specializations are done for this pass.
+
+## 2026-11-07: Session 146, the Spellblade's Blazing Charge (the builds pass, Michael's A)
+
+**What changed**
+
+Blazing Charge (`blazingTrail` and `stepTrails` in `specs.ts`, laid where the Charge dashes in `stepAbility`, stepped in `stepSim`): a Spellblade's dash leaves a strip `specs.blazingTrailWidth` (1 m) wide along its path, from where the dash began to where it stopped, lasting `specs.blazingTrailSeconds` (3 s) from its last tick; one a Spellblade, a new Charge's replacing their last (`SimState.trails`). Every standing enemy in it takes `specs.blazingTrailDamage` (15%) of the Charge's damage a second, dealt every `specs.blazingTrailTickMs` (500 ms) as damage over time, no flinch or poise, credited to the sword. The element only colours it, as Michael's A says: `TrailView` draws a flickering strip in the element's colour that fades over its last second. Prediction lays its own at once; only the server's burns. Four numbers on the panel. The Spellblade stays "soon" until its spectral blades are in. Check 475 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Charge's damage is fixed into the trail as it is laid (`tickDamage`), so a talent rank bought mid-trail or a panel edit to the Charge does not change a strip already burning; the panel's trail numbers act on the next Charge.
+
+**Next**
+
+The spectral blades (two swords circling 1 m past the Whirlwind's reach, each hitting an enemy once a spin for 30%), then the Spellblade is offered; then the Sorcerer's Elemental Step, the Blink's trail by the same A, and the Sorcerer is offered.
+
 ## 2026-11-06: Session 145, the Sorcerer's Elemental Nova (the builds pass, Michael's A)
 
 **What changed**
