@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { abilityTiming, tuning } from '@hearthgate/shared/config/tuning';
-import { ELEMENT_COLOUR, elementFor, specOf, spectralBladeYaw } from '@hearthgate/shared/sim/specs';
+import { ELEMENT_COLOUR, bladeCount, elementFor, specOf, spectralBladeYaw } from '@hearthgate/shared/sim/specs';
 import { abilityRank } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 
@@ -36,8 +36,8 @@ export class SpectralBladesView {
   update(players: readonly PlayerState[], time: number): void {
     let n = 0;
     const timing = abilityTiming('whirlwind');
-    const count = Math.min(4, Math.round(tuning.specs.spectralBlades));
     for (const p of players) {
+      const count = bladeCount(p);
       if (count <= 0 || p.mode !== 'ability' || p.ability !== 'whirlwind' || specOf(p) !== 'spellblade') continue;
       const u = (p.abilityTime - timing.windup) / Math.max(1e-3, timing.active);
       if (u < 0 || u > 1) continue;

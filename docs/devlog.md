@@ -2,6 +2,132 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 158, the Sorcerer's tree; every specialization has its tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Sorcerer's six and its Crescendo, numbers on the panel: at staff level 20 Deep Attunement (Fire's burst and Air's arc 1.6x as hard, Earth's bolt poise 1.6x, Frost freezing on the second bolt instead of the third) or Nova Surge (the frost ring, in any element, Frost's too, 1.5x as hard); at 30 Lasting Step (Elemental Step's trail 5 s, Lingering Flame's number) or Wide Step (twice as wide, Wide Wake's); at 40 Searing Step (twice as hot, Searing Path's) or Far Reach (Fire's burst and Air's arc reach 1.5x as far). Cataclysm at 50: as a Flow Crescendo comes out, every standing enemy within 5 m takes a Charge's hit in the Sorcerer's element (Fire 1.5x, Frost freezing 1.2 s, Earth breaking poise as a heavy, Air throwing twice Attunement's push), with an `attune` event of that radius for the views. The Step nodes reuse the Spellblade's trail numbers, as Elemental Step reused Blazing Charge's (Michael's A on the trail). With Sessions 150 to 157, all nine specializations have three rows of two and a Crescendo. check 525 green, parity identical. Not yet seen in a browser: whether `AttuneView` draws a 5 m burst for Frost, Earth and Air as well as Fire is unchecked.
+
+**Learned**
+
+Every Crescendo fires where `stepPlayer` turns a charged heavy at a full meter into a Crescendo, which is true for any style (C2). So a capstone belongs to the style held, not to the specialization's weapon in general, and a Paladin at sword 50 who switches to a bow earns no Judgement; the tests pin that. Nine capstones in one function (`specCrescendo`) also means one place to look if a Crescendo ever does something in prediction it should not: Doom, Stormcaller and Cataclysm touch only enemies, which prediction never steps, and Vanish, Thousand Cuts and the grounds are the hero's own and already predicted for their pieces.
+
+**Next**
+
+The builds pass's next slice is Michael's: decisions.md Pending, "what comes after the trees" (A recommended, the first three states). Until then the builder has nothing left in the current section.
+
+## 2026-11-08: Session 157, the Druid's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Druid's six and its Crescendo, numbers on the panel: at staff level 20 Rich Bloom (a bolt heals each ally it passes 8% instead of 4%) or Strangling Thorns (Thorn Ring holds 3.5 s instead of 2); at 30 Early Roots (Bloom's root from Flow I instead of II) or Deep Grove (Wild Growth's grove lasts 8 s instead of 4); at 40 Wide Grove (the grove 1.5x as wide) or Lifespring (the Druid's groves heal twice as fast). Heartwood at 50: as a Flow Crescendo comes out, a Wild Growth grove grows where the Druid stands, with Deep Grove's and Wide Grove's if taken. Groves still do not add up: a hero in two is healed by the better one, which is now chosen per grove by its Druid's Lifespring. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Heartwood replaces the Druid's last grove (one a Druid, as the Blink's), so a Druid who Blinks and then lands a Crescendo moves the grove to where they stand. That keeps the rule simple and the ground readable; if Michael wants both to stand, `wildGrowth`'s one-a-Druid filter is the place.
+
+**Next**
+
+The Sorcerer's tree (Attunement, Elemental Nova, Elemental Step, and its Crescendo), and every specialization has its tree.
+
+## 2026-11-08: Session 156, the Warlock's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Warlock's six and its Crescendo, numbers on the panel: at staff level 20 Lasting Hex (a staff hit's hex lasts 8 s instead of 4) or Long Curse (Curse Ring's hex 10 s instead of 6); at 30 Deep Hex (everyone's hits on the Warlock's hexed enemies deal 20% more instead of 10%) or Leech (the Warlock's own hits on the hexed drain 20% back instead of 10%); at 40 Binding Swap (Shadow Swap hexes the enemy traded places with) or Far Swap (it reaches 4 m past a Blink instead of 1). Doom at 50: as a Flow Crescendo comes out, every standing enemy within 8 m is hexed, as a staff hit would hex it. Hexing is one function now (`hexOn`), so a bolt, a swap and Doom hex alike with the same cue; a hex's bonus is read from the Warlock who laid it. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Deep Hex is the party's node and Leech the Warlock's own: with a party of four Deep Hex adds more damage in total than Leech heals, alone Leech keeps a Warlock standing. That reads like the right split for a co-op game; nothing in the tree yet tells the player which is which beyond the line of text.
+
+**Next**
+
+The Druid's tree (Bloom, Thorn Ring, Wild Growth, and its Crescendo), then the Sorcerer's, and every specialization has its tree.
+
+## 2026-11-08: Session 155, the Assassin's tree; Ranged's trees done (the builds pass, Michael's A)
+
+**What changed**
+
+The Assassin's six and its Crescendo, numbers on the panel: at bow level 20 Cold Eye (Deadeye counts a charged shot within 90 degrees of an enemy's facing, its whole back half, instead of 60) or Virulence (venom stacks to eight instead of five); at 30 Thick Smoke (Smoke Bomb hides 4 s instead of 2) or Lingering Venom (a stack keeps it going 8 s instead of 4); at 40 Killing Blow (Deadeye crits 3x instead of 2x) or Toxic Bite (each stack bites twice as hard). Vanish at 50: as a Flow Crescendo comes out, the Assassin drops a Smoke Bomb where they stand (Thick Smoke's time with it). Venom's nodes are read from the Assassin who laid it, as the trap's and the mark's are. All three Ranged specializations have their trees. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Virulence and Toxic Bite multiply: eight stacks at twice the bite is 3.2 times a full five-stack poison, about 64 damage a second against one enemy before level health, so the venom line is the Assassin's single-target build and Deadeye's the burst one, which is the split the rows were meant to make. `specs.venomDamage` scales both.
+
+**Next**
+
+Magic's trees: the Warlock's (Hex, Curse Ring, Shadow Swap, and its Crescendo), then the Druid's and the Sorcerer's. Then every specialization has its tree and the builds pass's next slice is Michael's to pick.
+
+## 2026-11-08: Session 154, the Scout's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Scout's six and its Crescendo, numbers on the panel: at bow level 20 Hunter's Mark (marks last 8 s instead of 4) or Forked Lightning (Storm Volley's arc hops on from each enemy it reaches, two hops more, never back to one already struck); at 30 Exposed (party hits on the Scout's marks deal 20% more instead of 10%) or Long Arc (the arc leaps 9 m instead of 5); at 40 Tailwind (Gale Step's second press waits 2.5 s instead of 1.2) or Rising Tempo (hits on the marks fill the Scout's Flow twice as fast). Stormcaller at 50: as a Flow Crescendo comes out, every standing enemy within 10 m is marked, as an arrow would mark it. A mark's nodes are its Scout's, read from whoever laid it, so a teammate's hit on it gets Exposed's bonus. check green, parity identical. Not yet seen in a browser: each hop draws its own `stormChain` event, so the arc's view should show the fork, but nobody has looked.
+
+**Learned**
+
+Rising Tempo and Stormcaller feed each other: a Crescendo that marks a whole room makes every party hit on it fill the Scout's meter toward the next Crescendo. With Rising Tempo at 2x and a party of four that loop could run fast; `specs.markFlowGain` is the brake.
+
+**Next**
+
+The Assassin's tree (Deadeye, Venom Volley, Smoke Bomb, and its Crescendo); then Magic's three.
+
+## 2026-11-08: Session 153, the Ranger's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Ranger's six and its Crescendo, numbers on the panel: at bow level 20 Deep Roots (Thornshot roots 2.5 s instead of 1.5) or Thicket (Bramble Rain's patch 1.5x as wide); at 30 Overgrowth (the patch lasts 8 s instead of 4) or Iron Jaws (Snare Trap holds 4 s instead of 2); at 40 Twin Snares (two traps wait at once, the newest old one kept) or Grasping Thorns (Thornshot roots every enemy but a boss, where it only slowed the shielded, heavies and elites). Wildwood at 50: as a Flow Crescendo comes out, a bramble patch twice Bramble Rain's width grows at the Ranger's feet (Thicket widens it too). A trap or an arrow already out keeps its Ranger's nodes even if they have since drawn another weapon (`hasStyleNode`, by the style that laid it, where `hasNode` asks the style held). The patch is one function now (`seedBrambles`). check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Grasping Thorns turns the Knight and the Brute into targets that stand still for a charged shot each, which is the strongest of the six against E1h's tier-3 rooms; if it is too much, `specs.treeThornRootS` and the root's 1.5 s are the panel's levers, or the node could root heavies for half.
+
+**Next**
+
+The Scout's tree (Marked, Storm Volley, Gale Step, and its Crescendo), then the Assassin's; then Magic's.
+
+## 2026-11-08: Session 152, the Rogue's tree; Melee's trees done (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's six and its Crescendo, numbers on the panel: at sword level 20 Long Shadow (Shadowstep reaches a target 4 m past the Charge instead of 2) or Knife Storm (Fan of Knives throws twelve instead of eight); at 30 Patient Blade (From the shadows waits 6 s instead of 3) or Honed Knives (each knife twice as hard); at 40 Deep Cut (the primed crit is 3x instead of 2x) or Vanishing Step (a Shadowstep primes From the shadows, which the Charge's own hit from behind then spends: a 2x Charge). Thousand Cuts at 50: as a Flow Crescendo comes out, the Rogue throws a Fan of Knives (with Knife Storm and Honed Knives if taken) and is primed. The priming is one function now (`primeShadow`), so a roll, a step and the Crescendo prime alike, with the same cue. All three Melee specializations have their trees. check 501 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+A Vanishing Step's priming is spent by the Charge itself: the step primes, then the Charge's hit lands and `damageEnemy` spends it, so the Charge from behind crits 2x. That is a strong pick at 40 against Deep Cut's bigger but rarer crit, and the panel's `specs.shadowCritMult` tunes both.
+
+**Next**
+
+Ranged's trees, the Ranger's first (Thornshot, Bramble Rain, Snare Trap, and its Crescendo), then the Scout's and the Assassin's; then Magic's.
+
+## 2026-11-08: Session 151, the Spellblade's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Spellblade's six and its Crescendo, on Session 150's frame, numbers on the panel: at sword level 20 Lingering Flame (Blazing Charge's trail lasts 5 s instead of 3) or Third Blade (three spectral blades instead of two); at 30 Wide Wake (the trail twice as wide) or Eye of the Storm (Blade Storm draws light enemies in from 9 m instead of 6); at 40 Searing Path (the trail burns twice as hard) or Keen Edges (each blade hits for 50% of a Whirlwind's hit instead of 30%). Blade Tempest at 50, Michael's own example on the question ("both trail and blades in one burst"): as a Flow Crescendo comes out, a 6 m trail of their element is laid through where they stand along their facing, and every standing enemy within the Whirlwind's reach plus the blades' band takes every blade's hit at once. `bladeCount(p)` is shared by the sim and `SpectralBladesView`, so a third blade is drawn where it hits. The trail nodes touch only a Spellblade's trail: the Sorcerer's Elemental Step keeps its own numbers. check 496 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Searing Path and Wide Wake multiply each other (twice as wide catches more, twice as hot hurts more), but they sit in different rows, so a Spellblade can take both and give up the blades' two; that is the trade the rows were meant to offer, a burning-ground Spellblade or a blade one.
+
+**Next**
+
+The Rogue's tree (Shadowstep, Fan of Knives, From the shadows, and its Crescendo), then the Ranger's.
+
+## 2026-11-08: Session 150, specialization trees and the Paladin's (the builds pass, Michael's A)
+
+**What changed**
+
+Michael's A on the trees (control room, 8 Nov). A specialization's tree is `SpecInfo.tree` (three rows of two `TreeNode`s, opening at sword, bow or staff level 20, 30 and 40, `TREE_LEVELS`) and `SpecInfo.crescendo` (at 50). The picks are `SpecTree` (node ids by style) on `Loadout.tree` and `PlayerState.tree`; `treeProblem` is the one check, used by `readLoadout` (a node of that style's chosen specialization, one a row, its row opened by the style's level) and by the browser's save. They change only where specializations change (`HostSession` keeps the old ones elsewhere, as it does the specialization), and a new specialization drops the old one's picks. The Paladin's six, each strengthening one of its pieces, numbers on the panel (`specs.tree*`): at 20 Long Grudge (Shield Rush's taunt 5 s instead of 3) or Hallowed Ground (Consecrate's ring 1.5x as wide); at 30 Sanctuary (the ring lasts 10 s instead of 6) or Rallying Light (Bulwark's pulse reaches 7 m instead of 4); at 40 Oath of Mercy (the pulse heals twice as much) or Wide Rush (Shield Rush also taunts every enemy within 3 m of the one it hits). Judgement, the Crescendo at sword level 50: as a Flow Crescendo comes out, the Paladin consecrates where they stand and taunts every enemy inside the ring (`specCrescendo`, called in `stepPlayer` where the Crescendo spends the meter, so prediction draws the ring at once). On the Talents tab the tree's rows sit under the specialization, the cursor reaches them, F or A steps through a row's two and Q or X clears it, a shut row says its level, and the Crescendo's line closes the column. check 491 green, parity identical (no hero in the parity test has a tree), test:net green, `tests/spec-tree.e2e.ts` new and green (the rows, A and X, a shut row, a new specialization clearing the picks).
+
+**Learned**
+
+XP is the server's: the browser's profile takes it back from every snapshot (`syncFrom`), so a test that raises a style's level in the page has to save and come back for the hello to carry it; set in place, the next snapshot puts it back and the tree's rows shut again under the cursor. The Crescendo fires as the charged heavy comes out rather than as it lands, so Judgement's ring is laid even when the blow misses; it reads as the Paladin planting their feet, and the taunt still needs enemies in the ring.
+
+**Next**
+
+The Spellblade's tree (Blazing Charge, Blade Storm and the spectral blades, and its Crescendo), then the Rogue's; one a session. Specializations other than the Paladin show no tree rows yet.
+
 ## 2026-11-07: Session 149, the HUD names a specialization (the critic's bug)
 
 **What changed**

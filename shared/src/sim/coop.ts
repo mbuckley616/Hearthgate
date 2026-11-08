@@ -6,7 +6,7 @@ import type { Mods } from './gear';
 import { createPlayer, levelHealth } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
-import type { SpecElements, Specs } from './specs';
+import type { SpecElements, Specs, SpecTree } from './specs';
 import { championHealth, championRevive, slotted, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -35,6 +35,8 @@ export interface Loadout {
   spec?: Specs;
   /** The element chosen for a specialization that offers more than one; each must be its specialization's. */
   elements?: SpecElements;
+  /** A specialization's tree picks (Michael's A, 8 Nov); each its specialization's, one a row, opened by level. */
+  tree?: SpecTree;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -63,6 +65,8 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   else delete p.spec;
   if (p.spec && l.elements && Object.keys(l.elements).length > 0) p.elements = { ...l.elements };
   else delete p.elements;
+  if (p.spec && l.tree && Object.keys(l.tree).length > 0) p.tree = structuredClone(l.tree);
+  else delete p.tree;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 

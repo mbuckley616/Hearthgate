@@ -20,6 +20,15 @@ export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | '
 export type Specs = Partial<Record<Style, SpecId>>;
 /** The element a hero chose for a style's specialization, where it offers more than one. */
 export type SpecElements = Partial<Record<Style, Element>>;
+/** The tree nodes a hero picked for a style's specialization (Michael's A, 8 Nov): node ids, one a row at most. */
+export type SpecTree = Partial<Record<Style, string[]>>;
+
+/** One choice in a specialization's tree: it strengthens one of the specialization's three pieces. */
+export interface TreeNode {
+  id: string;
+  name: string;
+  text: string;
+}
 
 export interface SpecInfo {
   id: SpecId;
@@ -35,7 +44,15 @@ export interface SpecInfo {
   sig: [string, string];
   /** Built and choosable; the rest are shown as coming. */
   built: boolean;
+  /** Its tree (Michael's A, 8 Nov): two choices a row at `TREE_LEVELS`, one pick a row. Absent until built. */
+  tree?: readonly (readonly [TreeNode, TreeNode])[];
+  /** Its Crescendo at level 50: one capstone that fires as a Flow Crescendo lands. Absent until built. */
+  crescendo?: [string, string];
 }
+
+/** The style levels a tree's rows open at, and the Crescendo's. */
+export const TREE_LEVELS: readonly number[] = [20, 30, 40];
+export const CRESCENDO_LEVEL = 50;
 
 /** The combat builds page's specializations (Michael's Keep, 28 Oct), in the order they are built. */
 export const SPECS: readonly SpecInfo[] = [
@@ -49,6 +66,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take 15% less damage.'],
     sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals allies within 4 m.'],
     built: true,
+    tree: [
+      [
+        { id: 'long-grudge', name: 'Long Grudge', text: 'Shield Rush\'s taunt lasts 5 s.' },
+        { id: 'hallowed-ground', name: 'Hallowed Ground', text: 'Consecrate\'s ring is half as wide again.' },
+      ],
+      [
+        { id: 'sanctuary', name: 'Sanctuary', text: 'Consecrate\'s ring lasts 10 s.' },
+        { id: 'rallying-light', name: 'Rallying Light', text: 'Bulwark\'s pulse reaches allies within 7 m.' },
+      ],
+      [
+        { id: 'oath-of-mercy', name: 'Oath of Mercy', text: 'Bulwark\'s pulse heals twice as much.' },
+        { id: 'wide-rush', name: 'Wide Rush', text: 'Shield Rush also taunts every enemy within 3 m of the one it hits.' },
+      ],
+    ],
+    crescendo: ['Judgement', 'A Crescendo consecrates the ground where you stand and taunts every enemy inside the ring.'],
   },
   {
     id: 'spellblade',
@@ -61,6 +93,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
     sig: ['Spectral blades', 'Your spins conjure two blades that circle past your reach.'],
     built: true,
+    tree: [
+      [
+        { id: 'lingering-flame', name: 'Lingering Flame', text: 'Blazing Charge\'s trail lasts 5 s.' },
+        { id: 'third-blade', name: 'Third Blade', text: 'Your spins conjure three spectral blades.' },
+      ],
+      [
+        { id: 'wide-wake', name: 'Wide Wake', text: 'Blazing Charge\'s trail is twice as wide.' },
+        { id: 'eye-of-the-storm', name: 'Eye of the Storm', text: 'Blade Storm draws in light enemies from 9 m.' },
+      ],
+      [
+        { id: 'searing-path', name: 'Searing Path', text: 'Blazing Charge\'s trail burns twice as hard.' },
+        { id: 'keen-edges', name: 'Keen Edges', text: 'Each spectral blade hits for half of a Whirlwind\'s hit.' },
+      ],
+    ],
+    crescendo: ['Blade Tempest', 'A Crescendo lays a trail of your element through where you stand, and your spectral blades strike everything around you at once.'],
   },
   {
     id: 'rogue',
@@ -72,6 +119,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
     sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
     built: true,
+    tree: [
+      [
+        { id: 'long-shadow', name: 'Long Shadow', text: 'Shadowstep reaches a target 4 m past the Charge.' },
+        { id: 'knife-storm', name: 'Knife Storm', text: 'Fan of Knives throws twelve.' },
+      ],
+      [
+        { id: 'patient-blade', name: 'Patient Blade', text: 'From the shadows waits 6 s for your next hit.' },
+        { id: 'honed-knives', name: 'Honed Knives', text: 'Each knife of the fan hits twice as hard.' },
+      ],
+      [
+        { id: 'deep-cut', name: 'Deep Cut', text: 'From the shadows crits for 3x.' },
+        { id: 'vanishing-step', name: 'Vanishing Step', text: 'A Shadowstep primes From the shadows.' },
+      ],
+    ],
+    crescendo: ['Thousand Cuts', 'A Crescendo throws a Fan of Knives and primes From the shadows.'],
   },
   {
     id: 'ranger',
@@ -83,6 +145,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Snare Trap', 'Disengage leaves a trap where you stood.'],
     sig: ['Thornshot', 'Charged shots root light enemies and slow heavier ones.'],
     built: true,
+    tree: [
+      [
+        { id: 'deep-roots', name: 'Deep Roots', text: 'Thornshot roots for 2.5 s.' },
+        { id: 'thicket', name: 'Thicket', text: 'Bramble Rain\'s patch is half as wide again.' },
+      ],
+      [
+        { id: 'overgrowth', name: 'Overgrowth', text: 'Bramble Rain\'s patch lasts 8 s.' },
+        { id: 'iron-jaws', name: 'Iron Jaws', text: 'Snare Trap holds for 4 s.' },
+      ],
+      [
+        { id: 'twin-snares', name: 'Twin Snares', text: 'Two of your Snare Traps can wait at once.' },
+        { id: 'grasping-thorns', name: 'Grasping Thorns', text: 'Thornshot roots every enemy but a boss.' },
+      ],
+    ],
+    crescendo: ['Wildwood', 'A Crescendo grows brambles twice as wide around where you stand.'],
   },
   {
     id: 'scout',
@@ -94,6 +171,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Gale Step', 'Disengage twice in a row; the second is a full dodge.'],
     sig: ['Marked', 'Your shots mark. Any party hit on a marked enemy deals 10% more and fills your Flow.'],
     built: true,
+    tree: [
+      [
+        { id: 'hunters-mark', name: 'Hunter\'s Mark', text: 'Your marks last 8 s.' },
+        { id: 'forked-lightning', name: 'Forked Lightning', text: 'Storm Volley\'s lightning arcs on to two more enemies.' },
+      ],
+      [
+        { id: 'exposed', name: 'Exposed', text: 'Party hits on your marks deal 20% more.' },
+        { id: 'long-arc', name: 'Long Arc', text: 'Storm Volley\'s lightning leaps 9 m.' },
+      ],
+      [
+        { id: 'tailwind', name: 'Tailwind', text: 'Gale Step\'s second press waits 2.5 s.' },
+        { id: 'rising-tempo', name: 'Rising Tempo', text: 'Hits on your marks fill your Flow twice as fast.' },
+      ],
+    ],
+    crescendo: ['Stormcaller', 'A Crescendo marks every enemy within 10 m of you.'],
   },
   {
     id: 'assassin',
@@ -105,6 +197,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Smoke Bomb', 'Disengage drops smoke; you vanish for 2 s.'],
     sig: ['Deadeye', 'A charged shot into an enemy\'s back is a crit.'],
     built: true,
+    tree: [
+      [
+        { id: 'cold-eye', name: 'Cold Eye', text: 'Deadeye counts any shot into an enemy\'s back half.' },
+        { id: 'virulence', name: 'Virulence', text: 'Venom stacks to eight.' },
+      ],
+      [
+        { id: 'thick-smoke', name: 'Thick Smoke', text: 'Smoke Bomb hides you for 4 s.' },
+        { id: 'lingering-venom', name: 'Lingering Venom', text: 'Venom lasts 8 s.' },
+      ],
+      [
+        { id: 'killing-blow', name: 'Killing Blow', text: 'Deadeye crits for 3x.' },
+        { id: 'toxic-bite', name: 'Toxic Bite', text: 'Each stack of venom bites twice as hard.' },
+      ],
+    ],
+    crescendo: ['Vanish', 'A Crescendo drops a Smoke Bomb where you stand.'],
   },
   {
     id: 'warlock',
@@ -116,6 +223,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Shadow Swap', 'Blink swaps places with the targeted enemy.'],
     sig: ['Hex', 'Your spells hex. Hexed enemies take 10% more from everyone, and your hits on them drain health.'],
     built: true,
+    tree: [
+      [
+        { id: 'lasting-hex', name: 'Lasting Hex', text: 'Your hex lasts 8 s.' },
+        { id: 'long-curse', name: 'Long Curse', text: 'Curse Ring\'s hex lasts 10 s.' },
+      ],
+      [
+        { id: 'deep-hex', name: 'Deep Hex', text: 'Your hexed enemies take 20% more from everyone.' },
+        { id: 'leech', name: 'Leech', text: 'Your hits on the hexed drain 20% back.' },
+      ],
+      [
+        { id: 'binding-swap', name: 'Binding Swap', text: 'Shadow Swap hexes the enemy you trade places with.' },
+        { id: 'far-swap', name: 'Far Swap', text: 'Shadow Swap reaches 4 m past a Blink.' },
+      ],
+    ],
+    crescendo: ['Doom', 'A Crescendo hexes every enemy within 8 m of you.'],
   },
   {
     id: 'druid',
@@ -127,6 +249,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
     sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
     built: true,
+    tree: [
+      [
+        { id: 'rich-bloom', name: 'Rich Bloom', text: 'Your bolts heal allies they pass 8%.' },
+        { id: 'strangling-thorns', name: 'Strangling Thorns', text: 'Thorn Ring holds for 3.5 s.' },
+      ],
+      [
+        { id: 'early-roots', name: 'Early Roots', text: 'Bloom roots from Flow I.' },
+        { id: 'deep-grove', name: 'Deep Grove', text: 'Wild Growth\'s grove lasts 8 s.' },
+      ],
+      [
+        { id: 'wide-grove', name: 'Wide Grove', text: 'Wild Growth\'s grove is half as wide again.' },
+        { id: 'lifespring', name: 'Lifespring', text: 'Your groves heal twice as fast.' },
+      ],
+    ],
+    crescendo: ['Heartwood', 'A Crescendo grows a Wild Growth grove where you stand.'],
   },
   {
     id: 'sorcerer',
@@ -138,6 +275,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Elemental Step', 'Blink leaves a trail of your element that burns.'],
     sig: ['Attunement', 'Your bolts take your element: Fire bursts, Frost chills then freezes, Earth staggers, Air knocks back and arcs on.'],
     built: true,
+    tree: [
+      [
+        { id: 'deep-attunement', name: 'Deep Attunement', text: 'Attunement is stronger: Fire\'s burst and Air\'s arc hit 60% harder, Earth staggers sooner, Frost freezes on the second bolt.' },
+        { id: 'nova-surge', name: 'Nova Surge', text: 'Your frost ring, in any element, hits 1.5x as hard.' },
+      ],
+      [
+        { id: 'lasting-step', name: 'Lasting Step', text: 'Elemental Step\'s trail lasts 5 s.' },
+        { id: 'wide-step', name: 'Wide Step', text: 'Elemental Step\'s trail is twice as wide.' },
+      ],
+      [
+        { id: 'searing-step', name: 'Searing Step', text: 'Elemental Step\'s trail burns twice as hard.' },
+        { id: 'far-reach', name: 'Far Reach', text: 'Fire\'s burst and Air\'s arc reach half as far again.' },
+      ],
+    ],
+    crescendo: ['Cataclysm', 'A Crescendo bursts in your element around you: Fire burns, Frost freezes, Earth staggers, Air throws.'],
   },
 ];
 
@@ -227,15 +379,190 @@ export function specOf(p: PlayerState): SpecId | undefined {
   return p.spec?.[p.style];
 }
 
+/** Why these tree picks could not be this hero's, or null: each a node of that style's chosen specialization, one a row, its row opened by level. */
+export function treeProblem(xp: Record<Style, number>, specs: Specs, tree: SpecTree): string | null {
+  for (const [style, ids] of Object.entries(tree) as [Style, string[]][]) {
+    const id = specs[style];
+    if (!id) return `no ${style} specialization for a tree`;
+    const rows = specInfo(id).tree;
+    if (!rows) return `${specInfo(id).name} has no tree yet`;
+    const level = levelFor(xp[style] ?? 0);
+    const taken = new Set<number>();
+    for (const node of ids) {
+      const row = rows.findIndex((r) => r.some((n) => n.id === node));
+      if (row < 0) return `${node} is not in the ${specInfo(id).name}'s tree`;
+      if (taken.has(row)) return `two picks in row ${row + 1}`;
+      if (level < TREE_LEVELS[row]) return `row ${row + 1} opens at ${style} level ${TREE_LEVELS[row]}`;
+      taken.add(row);
+    }
+  }
+  return null;
+}
+
+/** Whether this hero took a tree node of their current specialization (in the style they hold). */
+export function hasNode(p: PlayerState, node: string): boolean {
+  return !!specOf(p) && !!p.tree?.[p.style]?.includes(node);
+}
+
+/**
+ * Cataclysm (the Sorcerer's Crescendo): every standing enemy within `specs.cataclysmRadius` takes
+ * `specs.cataclysmDamage` of a Charge's hit, shaped by the Sorcerer's element as an Attuned bolt's
+ * is (Fire `specs.novaFireDamage` as hard, Frost freezing `specs.attuneFreezeS`, Earth staggering,
+ * Air throwing them outward). Only the server's hits count.
+ */
+function cataclysm(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  const el = elementFor(p, 'staff') ?? 'fire';
+  state.events.push({ kind: 'attune', playerId: p.id, element: el, x: p.x, y: p.y + 1.1, z: p.z, radius: s.cataclysmRadius });
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.hypot(dx, dz);
+    if (d > s.cataclysmRadius + enemyStats(e.kind).radius) continue;
+    const hit: HitSpec = {
+      attackerId: p.id,
+      damage: tuning.abilities.chargeDamage * tuning.combat.baseDamage * s.cataclysmDamage * (el === 'fire' ? s.novaFireDamage : 1),
+      poise: el === 'earth' ? 1000 : 0.5,
+      knockback: el === 'air' ? s.attuneAirKnockback * 2 : 0.3,
+      heavy: el === 'earth',
+      dirX: d > 0 ? dx / d : 0,
+      dirZ: d > 0 ? dz / d : 1,
+      x: e.x,
+      y: e.y + 1,
+      z: e.z,
+      style: 'staff',
+      ...(el === 'frost' ? { freezeTime: s.attuneFreezeS } : {}),
+    };
+    damageEnemy(state, e, hit);
+  }
+}
+
+/** Whether this hero took a tree node of their specialization in `style`, whatever they hold now (a trap laid with the bow still bites). */
+export function hasStyleNode(p: PlayerState, style: Style, node: string): boolean {
+  return !!p.spec?.[style] && !!p.tree?.[style]?.includes(node);
+}
+
+/** Whether this hero's current specialization's Crescendo is theirs: its style at level 50, and the specialization has one. */
+export function hasCrescendo(p: PlayerState): boolean {
+  const id = specOf(p);
+  return !!id && !!specInfo(id).crescendo && levelFor(p.xp[p.style] ?? 0) >= CRESCENDO_LEVEL;
+}
+
+/** The capstone, fired as a Crescendo's charged heavy comes out (player.ts), on the server and in prediction alike. */
+export function specCrescendo(state: SimState, p: PlayerState): void {
+  if (!hasCrescendo(p)) return;
+  if (specOf(p) === 'paladin') judgement(state, p);
+  else if (specOf(p) === 'spellblade') bladeTempest(state, p);
+  else if (specOf(p) === 'ranger') {
+    // Wildwood: Bramble Rain's patch at the Ranger's feet, twice as wide.
+    const s = tuning.specs;
+    seedBrambles(state, p, p.x, p.z, s.brambleRadius * s.wildwoodRadiusMult * (hasStyleNode(p, 'bow', 'thicket') ? s.treeThicketMult : 1));
+  } else if (specOf(p) === 'scout') {
+    // Stormcaller: every standing enemy near is marked, as an arrow would.
+    for (const e of state.enemies) {
+      if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.stormcallRadius) scoutMark(state, p, e);
+    }
+  } else if (specOf(p) === 'assassin') smokeBomb(state, p);
+  else if (specOf(p) === 'druid') wildGrowth(state, p, p.x, p.z);
+  else if (specOf(p) === 'sorcerer') cataclysm(state, p);
+  else if (specOf(p) === 'warlock') {
+    // Doom: every standing enemy near is hexed, as a staff hit would hex it.
+    for (const e of state.enemies) {
+      if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.doomRadius) hexOn(state, p, e);
+    }
+  }
+  else if (specOf(p) === 'rogue') {
+    // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
+    fanOfKnives(state, p);
+    primeShadow(state, p);
+  }
+}
+
+/**
+ * Blade Tempest (the Spellblade's Crescendo): a trail of their element `specs.tempestTrailLength`
+ * long, centred on the hero along their facing, and every standing enemy within the Whirlwind's
+ * reach plus the blades' band takes each blade's hit at once, as a spin's would. Prediction lays the
+ * trail; the hits are judged against the enemies it has, and only the server's count.
+ */
+function bladeTempest(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  const a = tuning.abilities;
+  const half = s.tempestTrailLength / 2;
+  const fx = Math.sin(p.yaw);
+  const fz = Math.cos(p.yaw);
+  const charge = a.chargeDamage * tuning.combat.baseDamage;
+  const kept = (state.trails ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  state.trails = kept;
+  layTrail(state, p, p.x - fx * half, p.z - fz * half, charge, 'sword');
+  const mine = state.trails.find((g) => g.by === p.id)!;
+  mine.x1 = p.x + fx * half;
+  mine.z1 = p.z + fz * half;
+  const blades = bladeCount(p);
+  const whirl = a.whirlwindDamage * tuning.combat.baseDamage;
+  const reach = a.whirlwindRadius + s.spectralBladeReach;
+  if (blades <= 0) return;
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.max(Math.hypot(dx, dz), 1e-3);
+    if (d > reach + enemyStats(e.kind).radius) continue;
+    damageEnemy(state, e, {
+      attackerId: p.id,
+      damage: whirl * bladeDamage(p) * blades,
+      poise: 0.4 * blades,
+      knockback: 0,
+      heavy: false,
+      style: p.style,
+      dirX: dx / d,
+      dirZ: dz / d,
+      x: e.x - (dx / d) * enemyStats(e.kind).radius,
+      y: e.y + 1,
+      z: e.z - (dz / d) * enemyStats(e.kind).radius,
+    });
+  }
+}
+
+/** How many spectral blades circle this Spellblade's spin: `specs.spectralBlades`, one more with Third Blade, four at most. */
+export function bladeCount(p: PlayerState): number {
+  return Math.min(4, Math.round(tuning.specs.spectralBlades) + (hasNode(p, 'third-blade') ? 1 : 0));
+}
+
+/** The share of a Whirlwind's hit each blade deals: `specs.spectralBladeDamage`, or Keen Edges'. */
+function bladeDamage(p: PlayerState): number {
+  return hasNode(p, 'keen-edges') ? tuning.specs.treeKeenBladeDamage : tuning.specs.spectralBladeDamage;
+}
+
+/**
+ * Judgement (the Paladin's Crescendo): consecrate where they stand and taunt every standing enemy
+ * the new ring reaches. Enemies act on a taunt only on the server, so prediction's copy is drawn and dropped.
+ */
+function judgement(state: SimState, p: PlayerState): void {
+  consecrate(state, p);
+  const ring = state.consecrated?.find((g) => g.by === p.id);
+  if (!ring) return;
+  for (const e of state.enemies) {
+    if (isTargetable(e) && Math.hypot(e.x - ring.x, e.z - ring.z) <= ring.radius) taunt(state, p, e, true);
+  }
+}
+
 /**
  * Shield Rush (the Paladin's Charge): the enemy it hits turns on the Paladin for `specs.tauntSeconds`,
  * whoever is nearer. Called where the Charge lands, on the server and in prediction alike; enemies are
  * only stepped on the server, so only the server's copy acts on it.
  */
-export function taunt(state: SimState, p: PlayerState, e: EnemyState): void {
-  if (specOf(p) !== 'paladin' || tuning.specs.tauntSeconds <= 0) return;
-  e.taunt = { by: p.id, until: state.time + tuning.specs.tauntSeconds };
+export function taunt(state: SimState, p: PlayerState, e: EnemyState, alone = false): void {
+  const s = tuning.specs;
+  if (specOf(p) !== 'paladin' || s.tauntSeconds <= 0) return;
+  const seconds = hasNode(p, 'long-grudge') ? s.treeTauntSeconds : s.tauntSeconds;
+  e.taunt = { by: p.id, until: state.time + seconds };
   state.events.push({ kind: 'taunt', playerId: p.id, enemyId: e.id, x: e.x, z: e.z });
+  // Wide Rush (the tree's third row): the enemies about the one hit turn too.
+  if (alone || !hasNode(p, 'wide-rush')) return;
+  for (const o of state.enemies) {
+    if (o !== e && isTargetable(o) && Math.hypot(o.x - e.x, o.z - e.z) <= s.treeWideRushRadius) taunt(state, p, o, true);
+  }
 }
 
 /** The hero a taunt holds this enemy to, while it lasts and they stand; null otherwise (and a spent taunt is dropped). */
@@ -259,7 +586,9 @@ export function consecrate(state: SimState, p: PlayerState): void {
   if (specOf(p) !== 'paladin' || tuning.specs.consecrateSeconds <= 0) return;
   const s = tuning.specs;
   const kept = (state.consecrated ?? []).filter((g) => g.by !== p.id && g.until > state.time);
-  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.consecrateRadius, until: state.time + s.consecrateSeconds });
+  const radius = s.consecrateRadius * (hasNode(p, 'hallowed-ground') ? s.treeHallowedRadiusMult : 1);
+  const seconds = hasNode(p, 'sanctuary') ? s.treeSanctuarySeconds : s.consecrateSeconds;
+  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius, until: state.time + seconds });
   state.consecrated = kept;
 }
 
@@ -294,10 +623,12 @@ export function holyPulse(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
   if (specOf(p) !== 'paladin' || s.bulwarkHeal <= 0) return;
   let healed = 0;
+  const reach = hasNode(p, 'rallying-light') ? s.treeRallyingRadius : s.bulwarkRadius;
+  const heal = s.bulwarkHeal * (hasNode(p, 'oath-of-mercy') ? s.treeMercyMult : 1);
   for (const o of state.players) {
-    if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > s.bulwarkRadius) continue;
+    if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > reach) continue;
     const before = o.hp;
-    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * s.bulwarkHeal);
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * heal);
     if (o.hp > before) healed++;
   }
   state.events.push({ kind: 'holyPulse', playerId: p.id, x: p.x, y: p.y, z: p.z, healed });
@@ -322,10 +653,12 @@ export function isRooted(state: SimState, e: EnemyState): boolean {
 export function thornshot(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
   if (!owner || owner.spec?.bow !== 'ranger' || e.ai === 'dead') return;
   const s = tuning.specs;
-  if (LIGHT_ROLES.has(roleOf(e.kind))) {
-    if (s.thornRootS <= 0) return;
+  const grasp = hasStyleNode(owner, 'bow', 'grasping-thorns') && roleOf(e.kind) !== 'boss';
+  if (LIGHT_ROLES.has(roleOf(e.kind)) || grasp) {
+    const hold = hasStyleNode(owner, 'bow', 'deep-roots') ? s.treeThornRootS : s.thornRootS;
+    if (hold <= 0) return;
     const fresh = !isRooted(state, e);
-    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.thornRootS);
+    e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + hold);
     if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
   } else if (s.thornSlowS > 0) {
     e.slowTime = Math.max(e.slowTime, s.thornSlowS);
@@ -344,9 +677,16 @@ export function brambleRain(state: SimState, p: PlayerState, colliders: readonly
   const dir = { x: Math.sin(p.yaw), y: 0, z: Math.cos(p.yaw) };
   const free = sphereCast({ x: p.x, y: p.y + 1, z: p.z }, dir, s.brambleRange, 0.3, colliders, (c) => c.blocksMovement);
   const d = free >= s.brambleRange ? s.brambleRange : Math.max(0, free - 0.3);
+  seedBrambles(state, p, p.x + dir.x * d, p.z + dir.z * d, s.brambleRadius * (hasStyleNode(p, 'bow', 'thicket') ? s.treeThicketMult : 1));
+}
+
+/** A Ranger's bramble patch at (x, z), replacing their last; Overgrowth's lasts longer. */
+function seedBrambles(state: SimState, p: PlayerState, x: number, z: number, radius: number): void {
+  const s = tuning.specs;
   const kept = (state.brambles ?? []).filter((g) => g.by !== p.id && g.until > state.time);
   const element = elementFor(p, 'bow') ?? 'nature';
-  kept.push({ by: p.id, x: p.x + dir.x * d, y: p.y, z: p.z + dir.z * d, radius: s.brambleRadius, until: state.time + s.brambleSeconds, element });
+  const seconds = hasStyleNode(p, 'bow', 'overgrowth') ? s.treeBrambleSeconds : s.brambleSeconds;
+  kept.push({ by: p.id, x, y: p.y, z, radius, until: state.time + seconds, element });
   state.brambles = kept;
 }
 
@@ -380,7 +720,11 @@ export function stepBrambles(state: SimState): void {
 export function snareTrap(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
   if (p.spec?.bow !== 'ranger' || p.style !== 'bow' || s.snareSeconds <= 0) return;
-  const kept = (state.snares ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  const live = (state.snares ?? []).filter((g) => g.until > state.time);
+  // One a Ranger, or two with Twin Snares: the newest of the old ones stays.
+  const mine = live.filter((g) => g.by === p.id);
+  const keep = hasStyleNode(p, 'bow', 'twin-snares') ? mine.slice(-1) : [];
+  const kept = [...live.filter((g) => g.by !== p.id), ...keep];
   const element = elementFor(p, 'bow') ?? 'nature';
   kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.snareRadius, until: state.time + s.snareSeconds, element });
   state.snares = kept;
@@ -401,7 +745,8 @@ export function stepSnares(state: SimState): void {
       live.push(g);
       continue;
     }
-    const hold = tuning.specs.snareRootS;
+    const owner = state.players.find((o) => o.id === g.by);
+    const hold = owner && hasStyleNode(owner, 'bow', 'iron-jaws') ? tuning.specs.treeSnareRootS : tuning.specs.snareRootS;
     if (LIGHT_ROLES.has(roleOf(e.kind))) e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + hold);
     else e.slowTime = Math.max(e.slowTime, hold);
     state.events.push({ kind: 'rooted', playerId: g.by, enemyId: e.id, x: e.x, z: e.z });
@@ -417,7 +762,7 @@ export function stepSnares(state: SimState): void {
 export function scoutMark(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
   if (!owner || owner.spec?.bow !== 'scout' || tuning.specs.markSeconds <= 0 || !isTargetable(e)) return;
   const fresh = !e.scoutMark || e.scoutMark.until <= state.time;
-  e.scoutMark = { by: owner.id, until: state.time + tuning.specs.markSeconds };
+  e.scoutMark = { by: owner.id, until: state.time + (hasStyleNode(owner, 'bow', 'hunters-mark') ? tuning.specs.treeMarkSeconds : tuning.specs.markSeconds) };
   if (fresh) state.events.push({ kind: 'scoutMarked', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
 }
 
@@ -434,8 +779,10 @@ export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | u
     return 1;
   }
   if (!hero || dot) return 1;
-  gainFlow(state.players.find((p) => p.id === m.by), tuning.specs.markFlowGain);
-  return 1 + tuning.specs.markDamageBonus;
+  const s = tuning.specs;
+  const scout = state.players.find((p) => p.id === m.by);
+  gainFlow(scout, s.markFlowGain * (scout && hasStyleNode(scout, 'bow', 'rising-tempo') ? s.treeTempoFlowMult : 1));
+  return 1 + (scout && hasStyleNode(scout, 'bow', 'exposed') ? s.treeExposedBonus : s.markDamageBonus);
 }
 
 /**
@@ -449,7 +796,9 @@ export function hexedMult(state: SimState, e: EnemyState, hero: PlayerState | un
     delete e.hex;
     return 1;
   }
-  return hero && !dot ? 1 + tuning.specs.hexDamageBonus : 1;
+  if (!hero || dot) return 1;
+  const warlock = state.players.find((p) => p.id === h.by);
+  return 1 + (warlock && hasStyleNode(warlock, 'staff', 'deep-hex') ? tuning.specs.treeHexBonus : tuning.specs.hexDamageBonus);
 }
 
 /**
@@ -460,10 +809,18 @@ export function hexedMult(state: SimState, e: EnemyState, hero: PlayerState | un
 export function warlockHex(state: SimState, e: EnemyState, hero: PlayerState | undefined, hit: HitSpec, damage: number, wasHexed: boolean): void {
   const s = tuning.specs;
   if (!hero || hero.spec?.staff !== 'warlock' || hit.style !== 'staff' || hit.dot || s.hexSeconds <= 0) return;
-  if (wasHexed && hero.mode !== 'down' && s.hexDrain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * s.hexDrain);
+  const drain = hasStyleNode(hero, 'staff', 'leech') ? s.treeHexDrain : s.hexDrain;
+  if (wasHexed && hero.mode !== 'down' && drain > 0) hero.hp = Math.min(hero.maxHp, hero.hp + Math.max(0, damage) * drain);
+  hexOn(state, hero, e);
+}
+
+/** Hex an enemy for the Warlock's `specs.hexSeconds` (Lasting Hex's, with it), never cutting short a longer one. */
+function hexOn(state: SimState, hero: PlayerState, e: EnemyState): void {
+  const s = tuning.specs;
   const fresh = !e.hex || e.hex.until <= state.time;
+  const seconds = hasStyleNode(hero, 'staff', 'lasting-hex') ? s.treeHexSeconds : s.hexSeconds;
   // An orb never cuts short a longer hex a Curse Ring left.
-  e.hex = { by: hero.id, until: Math.max(fresh ? 0 : e.hex!.until, state.time + s.hexSeconds) };
+  e.hex = { by: hero.id, until: Math.max(fresh ? 0 : e.hex!.until, state.time + seconds) };
   if (fresh) state.events.push({ kind: 'hexed', playerId: hero.id, enemyId: e.id, x: e.x, y: e.y, z: e.z });
 }
 
@@ -479,7 +836,7 @@ export function isCurseRing(p: PlayerState): boolean {
  */
 export function curseRing(state: SimState, p: PlayerState, e: EnemyState): void {
   if (!isCurseRing(p) || !isTargetable(e)) return;
-  const until = state.time + tuning.specs.curseRingHexS;
+  const until = state.time + (hasNode(p, 'long-curse') ? tuning.specs.treeCurseRingHexS : tuning.specs.curseRingHexS);
   if (!e.hex || e.hex.until < until) e.hex = { by: p.id, until };
 }
 
@@ -493,7 +850,7 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
   if (p.spec?.staff !== 'warlock' || p.style !== 'staff' || tuning.specs.swapReach < 0 || p.attackTarget < 0) return false;
   const e = state.enemies.find((o) => o.id === p.attackTarget);
   if (!e || !isTargetable(e) || roleOf(e.kind) === 'boss' || Math.abs(e.y - p.y) > 1.2) return false;
-  if (Math.hypot(e.x - p.x, e.z - p.z) > blinkDistance + tuning.specs.swapReach) return false;
+  if (Math.hypot(e.x - p.x, e.z - p.z) > blinkDistance + (hasNode(p, 'far-swap') ? tuning.specs.treeSwapReach : tuning.specs.swapReach)) return false;
   const from = { x: p.x, z: p.z };
   p.x = e.x;
   p.z = e.z;
@@ -502,6 +859,7 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
   e.yaw += Math.PI;
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'blink', playerId: p.id, fromX: from.x, fromZ: from.z, toX: p.x, toZ: p.z, swap: true });
+  if (hasNode(p, 'binding-swap')) hexOn(state, p, e);
   return true;
 }
 
@@ -519,7 +877,9 @@ export function isBloomBolt(state: SimState, pr: ProjectileState): boolean {
 export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerState): void {
   if (ally.id === pr.owner || ally.mode === 'down' || pr.healedIds?.includes(ally.id)) return;
   (pr.healedIds ??= []).push(ally.id);
-  const healed = Math.min(ally.maxHp - ally.hp, ally.maxHp * tuning.specs.bloomHeal);
+  const druid = state.players.find((o) => o.id === pr.owner);
+  const share = druid && hasStyleNode(druid, 'staff', 'rich-bloom') ? tuning.specs.treeBloomHeal : tuning.specs.bloomHeal;
+  const healed = Math.min(ally.maxHp - ally.hp, ally.maxHp * share);
   if (healed <= 0) return;
   ally.hp += healed;
   state.events.push({ kind: 'bloom', playerId: pr.owner, healedId: ally.id, x: ally.x, y: ally.y, z: ally.z, healed });
@@ -532,7 +892,7 @@ export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerStat
 export function bloomRoot(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState): void {
   const s = tuning.specs;
   if (!owner || owner.spec?.staff !== 'druid' || pr.kind !== 'bolt' || s.bloomRootS <= 0 || e.ai === 'dead') return;
-  if (flowTier(owner) < s.bloomRootTier || !LIGHT_ROLES.has(roleOf(e.kind))) return;
+  if (flowTier(owner) < (hasStyleNode(owner, 'staff', 'early-roots') ? s.treeBloomRootTier : s.bloomRootTier) || !LIGHT_ROLES.has(roleOf(e.kind))) return;
   const fresh = !isRooted(state, e);
   e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.bloomRootS);
   if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
@@ -550,7 +910,7 @@ export function isThornRing(p: PlayerState): boolean {
  */
 export function thornRing(state: SimState, p: PlayerState, e: EnemyState): void {
   if (!isThornRing(p) || !isTargetable(e)) return;
-  const t = tuning.specs.thornRingRootS;
+  const t = hasNode(p, 'strangling-thorns') ? tuning.specs.treeThornRingRootS : tuning.specs.thornRingRootS;
   if (LIGHT_ROLES.has(roleOf(e.kind))) {
     const fresh = !isRooted(state, e);
     e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + t);
@@ -568,35 +928,44 @@ export function thornRing(state: SimState, p: PlayerState, e: EnemyState): void 
 export function stormChain(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, from: EnemyState): void {
   const s = tuning.specs;
   if (!owner || owner.spec?.bow !== 'scout' || !pr.marks || s.stormChainDamage <= 0) return;
-  let best: EnemyState | null = null;
-  let bestD = s.stormChainRange;
-  for (const e of state.enemies) {
-    if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
-    const d = Math.hypot(e.x - from.x, e.z - from.z);
-    if (d <= bestD) {
-      best = e;
-      bestD = d;
+  // Forked Lightning hops on from each enemy it reaches; never back to one the arrow or a hop has hit.
+  const hops = 1 + (hasStyleNode(owner, 'bow', 'forked-lightning') ? Math.round(s.treeForkHops) : 0);
+  const range = hasStyleNode(owner, 'bow', 'long-arc') ? s.treeArcRange : s.stormChainRange;
+  const struck = [from];
+  let at = from;
+  for (let h = 0; h < hops; h++) {
+    let best: EnemyState | null = null;
+    let bestD = range;
+    for (const e of state.enemies) {
+      if (struck.includes(e) || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - at.y) > 1.2) continue;
+      const d = Math.hypot(e.x - at.x, e.z - at.z);
+      if (d <= bestD) {
+        best = e;
+        bestD = d;
+      }
     }
+    if (!best) return;
+    const len = bestD || 1;
+    const dirX = (best.x - at.x) / len;
+    const dirZ = (best.z - at.z) / len;
+    state.events.push({ kind: 'stormChain', playerId: owner.id, fromX: at.x, fromZ: at.z, toX: best.x, toZ: best.z, y: at.y + 1.1 });
+    damageEnemy(state, best, {
+      attackerId: owner.id,
+      damage: pr.damage * s.stormChainDamage,
+      poise: 0.3,
+      knockback: 0,
+      heavy: false,
+      dirX,
+      dirZ,
+      x: best.x,
+      y: best.y + 1.1,
+      z: best.z,
+      style: 'bow',
+      projectile: true,
+    });
+    struck.push(best);
+    at = best;
   }
-  if (!best) return;
-  const len = bestD || 1;
-  const dirX = (best.x - from.x) / len;
-  const dirZ = (best.z - from.z) / len;
-  state.events.push({ kind: 'stormChain', playerId: owner.id, fromX: from.x, fromZ: from.z, toX: best.x, toZ: best.z, y: from.y + 1.1 });
-  damageEnemy(state, best, {
-    attackerId: owner.id,
-    damage: pr.damage * s.stormChainDamage,
-    poise: 0.3,
-    knockback: 0,
-    heavy: false,
-    dirX,
-    dirZ,
-    x: best.x,
-    y: best.y + 1.1,
-    z: best.z,
-    style: 'bow',
-    projectile: true,
-  });
 }
 
 /**
@@ -606,7 +975,7 @@ export function stormChain(state: SimState, owner: PlayerState | undefined, pr: 
  */
 export function galeStep(state: SimState, p: PlayerState, activeS: number): void {
   if (p.spec?.bow !== 'scout' || p.style !== 'bow' || tuning.specs.galeWindowS <= 0) return;
-  p.galeUntil = state.time + activeS + tuning.specs.galeWindowS;
+  p.galeUntil = state.time + activeS + (hasNode(p, 'tailwind') ? tuning.specs.treeGaleWindowS : tuning.specs.galeWindowS);
 }
 
 /** Whether this hero's second Gale Step press would roll now; a spent window is dropped. */
@@ -627,7 +996,9 @@ export function deadeye(owner: PlayerState | undefined, pr: ProjectileState, e: 
   if (!owner || owner.spec?.bow !== 'assassin' || !pr.charged || pr.style !== 'bow') return 1;
   const len = Math.hypot(dirX, dirZ) || 1;
   const along = (dirX / len) * Math.sin(e.yaw) + (dirZ / len) * Math.cos(e.yaw);
-  return along >= Math.cos((s.deadeyeBackDeg * Math.PI) / 180) ? s.deadeyeCritMult : 1;
+  const arc = hasStyleNode(owner, 'bow', 'cold-eye') ? s.treeDeadeyeBackDeg : s.deadeyeBackDeg;
+  const crit = hasStyleNode(owner, 'bow', 'killing-blow') ? s.treeDeadeyeCritMult : s.deadeyeCritMult;
+  return along >= Math.cos((arc * Math.PI) / 180) ? crit : 1;
 }
 
 /**
@@ -640,8 +1011,10 @@ export function venomVolley(state: SimState, owner: PlayerState | undefined, pr:
   const s = tuning.specs;
   if (!owner || owner.spec?.bow !== 'assassin' || !pr.marks || s.venomSeconds <= 0 || s.venomDamage <= 0 || !isTargetable(e)) return;
   const v = e.venom && e.venom.until > state.time ? e.venom : undefined;
-  const stacks = Math.min(Math.max(1, Math.round(s.venomMaxStacks)), (v?.stacks ?? 0) + 1);
-  e.venom = { by: owner.id, stacks, until: state.time + s.venomSeconds, next: v ? v.next : state.time + s.venomTickMs / 1000 };
+  const cap = hasStyleNode(owner, 'bow', 'virulence') ? s.treeVenomStacks : s.venomMaxStacks;
+  const stacks = Math.min(Math.max(1, Math.round(cap)), (v?.stacks ?? 0) + 1);
+  const seconds = hasStyleNode(owner, 'bow', 'lingering-venom') ? s.treeVenomSeconds : s.venomSeconds;
+  e.venom = { by: owner.id, stacks, until: state.time + seconds, next: v ? v.next : state.time + s.venomTickMs / 1000 };
   state.events.push({ kind: 'venom', playerId: owner.id, enemyId: e.id, stacks, x: e.x, y: e.y, z: e.z });
 }
 
@@ -659,9 +1032,11 @@ export function stepVenom(state: SimState, e: EnemyState, height: number): void 
   }
   if (state.time < v.next) return;
   v.next += Math.max(0.05, tuning.specs.venomTickMs / 1000);
+  const owner = state.players.find((o) => o.id === v.by);
+  const bite = owner && hasStyleNode(owner, 'bow', 'toxic-bite') ? tuning.specs.treeVenomMult : 1;
   damageEnemy(state, e, {
     attackerId: v.by,
-    damage: tuning.specs.venomDamage * v.stacks,
+    damage: tuning.specs.venomDamage * v.stacks * bite,
     poise: 0,
     knockback: 0,
     heavy: false,
@@ -683,7 +1058,7 @@ export function stepVenom(state: SimState, e: EnemyState, height: number): void 
  */
 export function smokeBomb(state: SimState, p: PlayerState): void {
   if (p.spec?.bow !== 'assassin' || p.style !== 'bow' || tuning.specs.smokeSeconds <= 0) return;
-  p.hiddenUntil = state.time + tuning.specs.smokeSeconds;
+  p.hiddenUntil = state.time + (hasNode(p, 'thick-smoke') ? tuning.specs.treeSmokeSeconds : tuning.specs.smokeSeconds);
   state.events.push({ kind: 'smokeBomb', playerId: p.id, x: p.x, y: p.y, z: p.z });
 }
 
@@ -709,7 +1084,7 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     const dx = p.x - e.x;
     const dz = p.z - e.z;
     const d = Math.hypot(dx, dz);
-    if (d > s.bladeStormRadius || d <= s.bladeStormHold) continue;
+    if (d > (hasNode(p, 'eye-of-the-storm') ? s.treeStormRadius : s.bladeStormRadius) || d <= s.bladeStormHold) continue;
     // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
@@ -741,8 +1116,9 @@ function wrapAngle(a: number): number {
  */
 export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: number, reach: number, whirl: number): void {
   const s = tuning.specs;
-  const blades = Math.min(4, Math.round(s.spectralBlades));
-  if (specOf(p) !== 'spellblade' || blades <= 0 || s.spectralBladeDamage <= 0 || u1 <= u0) return;
+  const blades = bladeCount(p);
+  const share = bladeDamage(p);
+  if (specOf(p) !== 'spellblade' || blades <= 0 || share <= 0 || u1 <= u0) return;
   for (const e of state.enemies) {
     if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
     const er = enemyStats(e.kind).radius;
@@ -764,7 +1140,7 @@ export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: 
       p.abilityHitIds.push(key);
       damageEnemy(state, e, {
         attackerId: p.id,
-        damage: whirl * s.spectralBladeDamage,
+        damage: whirl * share,
         poise: 0.4,
         knockback: 0,
         heavy: false,
@@ -792,7 +1168,7 @@ export function blazingTrail(state: SimState, p: PlayerState, fromX: number, fro
   if (mine) {
     mine.x1 = p.x;
     mine.z1 = p.z;
-    mine.until = state.time + tuning.specs.blazingTrailSeconds;
+    mine.until = state.time + trailSeconds(p, 'sword');
     return;
   }
   layTrail(state, p, fromX, fromZ, charge, 'sword');
@@ -810,6 +1186,12 @@ export function elementalStep(state: SimState, p: PlayerState, fromX: number, fr
   return true;
 }
 
+/** How long a trail this hero lays lasts: `specs.blazingTrailSeconds`, or Lingering Flame's for a Spellblade. */
+function trailSeconds(p: PlayerState, style: 'sword' | 'staff'): number {
+  const longer = style === 'sword' ? hasNode(p, 'lingering-flame') : hasNode(p, 'lasting-step');
+  return longer ? tuning.specs.treeLingerSeconds : tuning.specs.blazingTrailSeconds;
+}
+
 /** A new trail from (fromX, fromZ) to the hero, replacing the hero's last. */
 function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, damage: number, style: 'sword' | 'staff'): void {
   const s = tuning.specs;
@@ -824,9 +1206,9 @@ function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number,
     x1: p.x,
     z1: p.z,
     y: p.y,
-    width: s.blazingTrailWidth,
-    until: state.time + s.blazingTrailSeconds,
-    tickDamage: damage * s.blazingTrailDamage * tick,
+    width: s.blazingTrailWidth * (hasNode(p, style === 'sword' ? 'wide-wake' : 'wide-step') ? s.treeWakeWidthMult : 1),
+    until: state.time + trailSeconds(p, style),
+    tickDamage: damage * s.blazingTrailDamage * tick * (hasNode(p, style === 'sword' ? 'searing-path' : 'searing-step') ? s.treeSearingMult : 1),
     next: state.time + tick,
     element: elementFor(p, style) ?? 'fire',
   });
@@ -891,7 +1273,7 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
   const e = state.enemies.find((o) => o.id === p.attackTarget);
   if (!e || !isTargetable(e) || Math.abs(e.y - p.y) > 1.2) return null;
   const er = enemyStats(e.kind).radius;
-  const reach = tuning.abilities.chargeDistance + tuning.specs.shadowstepReach + er;
+  const reach = tuning.abilities.chargeDistance + (hasNode(p, 'long-shadow') ? tuning.specs.treeShadowstepReach : tuning.specs.shadowstepReach) + er;
   if (Math.hypot(e.x - p.x, e.z - p.z) > reach) return null;
   // Behind it is opposite its facing; a wall there leaves the Rogue as far round as it allows.
   const dir = { x: -Math.sin(e.yaw), y: 0, z: -Math.cos(e.yaw) };
@@ -903,6 +1285,7 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
   p.z = e.z + dir.z * d;
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'shadowstep', playerId: p.id, fromX: from.x, fromZ: from.z, x: p.x, y: p.y, z: p.z });
+  if (hasNode(p, 'vanishing-step')) primeShadow(state, p);
   return e;
 }
 
@@ -914,9 +1297,10 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
  */
 export function fanOfKnives(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
-  const n = Math.round(s.fanKnives);
+  const n = Math.round(hasNode(p, 'knife-storm') ? s.treeFanKnives : s.fanKnives);
   if (specOf(p) !== 'rogue' || n <= 0) return;
-  const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
+  const honed = hasNode(p, 'honed-knives') ? s.treeKnifeMult : 1;
+  const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * honed * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
   state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: true });
   for (let i = 0; i < n; i++) spawnArrow(state, p, payload, (i / n) * Math.PI * 2, tuning.rangedCombo.arrowSpeed, false);
 }
@@ -932,9 +1316,13 @@ export function shadowPass(state: SimState, p: PlayerState): void {
   const through = state.enemies.some(
     (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius,
   );
-  if (!through) return;
+  if (through) primeShadow(state, p);
+}
+
+/** Prime From the shadows for `specs.shadowWindowS` (Patient Blade's, with it), with its cue when it was not already primed. */
+function primeShadow(state: SimState, p: PlayerState): void {
   const fresh = (p.shadowUntil ?? -1) <= state.time;
-  p.shadowUntil = state.time + tuning.specs.shadowWindowS;
+  p.shadowUntil = state.time + (hasNode(p, 'patient-blade') ? tuning.specs.treeShadowWindowS : tuning.specs.shadowWindowS);
   if (fresh) state.events.push({ kind: 'shadowPrimed', playerId: p.id, x: p.x, y: p.y, z: p.z });
 }
 
@@ -943,7 +1331,7 @@ export function shadowStrike(state: SimState, hero: PlayerState, hit: HitSpec): 
   if (hero.shadowUntil === undefined || hit.dot) return 1;
   const live = hero.shadowUntil > state.time && specOf(hero) === 'rogue';
   delete hero.shadowUntil;
-  return live ? tuning.specs.shadowCritMult : 1;
+  return live ? (hasNode(hero, 'deep-cut') ? tuning.specs.treeShadowCritMult : tuning.specs.shadowCritMult) : 1;
 }
 
 /**
@@ -957,7 +1345,9 @@ export function wildGrowth(state: SimState, p: PlayerState, x: number, z: number
   if (p.spec?.staff !== 'druid' || p.style !== 'staff' || s.groveSeconds <= 0) return false;
   const kept = (state.groves ?? []).filter((g) => g.by !== p.id && g.until > state.time);
   const element = elementFor(p, 'staff') ?? 'nature';
-  kept.push({ by: p.id, x, y: p.y, z, radius: s.groveRadius, until: state.time + s.groveSeconds, element });
+  const radius = s.groveRadius * (hasNode(p, 'wide-grove') ? s.treeGroveRadiusMult : 1);
+  const seconds = hasNode(p, 'deep-grove') ? s.treeGroveSeconds : s.groveSeconds;
+  kept.push({ by: p.id, x, y: p.y, z, radius, until: state.time + seconds, element });
   state.groves = kept;
   return true;
 }
@@ -978,8 +1368,15 @@ export function stepGroves(state: SimState, dt: number): void {
   if (rate <= 0) return;
   for (const o of state.players) {
     if (o.mode === 'down' || o.hp <= 0 || o.hp >= o.maxHp) continue;
-    if (!live.some((g) => Math.abs(o.y - g.y) < 1.2 && Math.hypot(o.x - g.x, o.z - g.z) <= g.radius)) continue;
-    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * dt);
+    // Groves do not add up: the best one a hero stands in heals them, Lifespring's twice as fast.
+    let mult = 0;
+    for (const g of live) {
+      if (Math.abs(o.y - g.y) >= 1.2 || Math.hypot(o.x - g.x, o.z - g.z) > g.radius) continue;
+      const druid = state.players.find((d) => d.id === g.by);
+      mult = Math.max(mult, druid && hasStyleNode(druid, 'staff', 'lifespring') ? tuning.specs.treeGroveHealMult : 1);
+    }
+    if (mult <= 0) continue;
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * mult * dt);
   }
 }
 
@@ -999,9 +1396,11 @@ export function attunedElement(owner: PlayerState | undefined, pr: ProjectileSta
 export function attuneHit(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState, hit: HitSpec): void {
   const el = attunedElement(owner, pr);
   const s = tuning.specs;
+  const deep = !!owner && hasStyleNode(owner, 'staff', 'deep-attunement');
   if (el === 'frost' && s.attuneChillS > 0) {
     const hits = (e.attuneChill && e.attuneChill.until >= state.time ? e.attuneChill.hits : 0) + 1;
-    if (s.attuneFreezeHits > 0 && hits >= s.attuneFreezeHits) {
+    const need = deep ? Math.min(s.attuneFreezeHits, s.treeAttuneFreezeHits) : s.attuneFreezeHits;
+    if (need > 0 && hits >= need) {
       hit.freezeTime = Math.max(hit.freezeTime ?? 0, s.attuneFreezeS);
       delete e.attuneChill;
     } else {
@@ -1009,7 +1408,7 @@ export function attuneHit(state: SimState, owner: PlayerState | undefined, pr: P
       e.attuneChill = { hits, until: state.time + s.attuneChillS };
     }
   } else if (el === 'earth') {
-    hit.poise *= s.attuneEarthPoise;
+    hit.poise *= s.attuneEarthPoise * (deep ? s.treeAttuneMult : 1);
   } else if (el === 'air') {
     hit.knockback = Math.max(hit.knockback, s.attuneAirKnockback);
   }
@@ -1026,16 +1425,19 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
   if (!owner || !el) return;
   const s = tuning.specs;
   const y = from.y + 1.1;
+  const harder = hasStyleNode(owner, 'staff', 'deep-attunement') ? s.treeAttuneMult : 1;
+  const further = hasStyleNode(owner, 'staff', 'far-reach') ? s.treeFarReachMult : 1;
+  const fireRadius = s.attuneFireRadius * further;
   if (el === 'fire' && s.attuneFireDamage > 0) {
-    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: s.attuneFireRadius });
+    state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: fireRadius });
     for (const e of state.enemies) {
       if (e === from || !isTargetable(e) || Math.abs(e.y - from.y) > 1.2) continue;
       const dx = e.x - from.x;
       const dz = e.z - from.z;
       const d = Math.hypot(dx, dz);
-      if (d > s.attuneFireRadius + enemyStats(e.kind).radius) continue;
+      if (d > fireRadius + enemyStats(e.kind).radius) continue;
       damageEnemy(state, e, {
-        attackerId: owner.id, damage: pr.damage * s.attuneFireDamage, poise: 0.3, knockback: 0.3, heavy: false,
+        attackerId: owner.id, damage: pr.damage * s.attuneFireDamage * harder, poise: 0.3, knockback: 0.3, heavy: false,
         dirX: d > 0 ? dx / d : 0, dirZ: d > 0 ? dz / d : 1, x: e.x, y: e.y + 1, z: e.z, style: 'staff', projectile: true,
       });
     }
@@ -1043,7 +1445,7 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
   }
   if (el === 'air' && s.attuneAirDamage > 0) {
     let best: EnemyState | null = null;
-    let bestD = s.attuneAirRange;
+    let bestD = s.attuneAirRange * further;
     for (const e of state.enemies) {
       if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
       const d = Math.hypot(e.x - from.x, e.z - from.z);
@@ -1059,7 +1461,7 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
     const len = bestD || 1;
     state.events.push({ kind: 'attune', playerId: owner.id, element: el, x: from.x, y, z: from.z, radius: 0, toX: best.x, toZ: best.z });
     damageEnemy(state, best, {
-      attackerId: owner.id, damage: pr.damage * s.attuneAirDamage, poise: 0.3, knockback: s.attuneAirKnockback, heavy: false,
+      attackerId: owner.id, damage: pr.damage * s.attuneAirDamage * harder, poise: 0.3, knockback: s.attuneAirKnockback, heavy: false,
       dirX: (best.x - from.x) / len, dirZ: (best.z - from.z) / len, x: best.x, y: best.y + 1.1, z: best.z, style: 'staff', projectile: true,
     });
     return;
@@ -1084,6 +1486,8 @@ export function novaElement(p: PlayerState): Element | undefined {
  * them `specs.attuneAirKnockback` outward. Stepped where the ring fires, both sides.
  */
 export function elementalNova(p: PlayerState, hit: HitSpec): void {
+  // Nova Surge counts for a Frost Sorcerer's ring too, which is otherwise the plain frost ring.
+  if (p.spec?.staff === 'sorcerer' && p.style === 'staff' && hasNode(p, 'nova-surge')) hit.damage *= tuning.specs.treeNovaMult;
   const el = novaElement(p);
   if (!el) return;
   const s = tuning.specs;

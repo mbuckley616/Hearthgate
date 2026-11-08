@@ -152,6 +152,8 @@ export class HostSession {
           else delete l.spec;
           if (p.elements) l.elements = { ...p.elements };
           else delete l.elements;
+          if (p.tree) l.tree = structuredClone(p.tree);
+          else delete l.tree;
         }
         // Between runs a change of gear comes with full health; on a floor the phase is ante between fights
         // too, so wearing something there was a free heal (playtest, 29 Oct).
