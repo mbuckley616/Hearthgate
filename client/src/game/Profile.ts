@@ -17,7 +17,7 @@ import {
 import { levelFor, type Item } from '@hearthgate/shared/sim/gear';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { bagRoomOf, materialSpaces, roomFor, type Materials } from '@hearthgate/shared/sim/bagRoom';
-import { elementProblem, specProblem, type Element, type SpecElements, type SpecId, type Specs } from '@hearthgate/shared/sim/specs';
+import { elementProblem, specInfo, specProblem, treeProblem, type Element, type SpecElements, type SpecId, type Specs, type SpecTree } from '@hearthgate/shared/sim/specs';
 import { TALENT_IDS, emptyTalents, maxRanks, pointsEarned, pointsSpent, talentLevel, type TalentId, type TalentRanks } from '@hearthgate/shared/sim/talents';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { emptyVillage, pocketSpaces, readVillageSave, stashSpaces, type VillageSave } from '@hearthgate/shared/game/villageSave';
@@ -78,6 +78,8 @@ export interface ProfileData {
   spec?: Specs;
   /** The element chosen for each of those that offers more than one (the Spellblade's four). */
   elements?: SpecElements;
+  /** Tree picks for each specialization (Michael's A, 8 Nov): node ids, one a row. */
+  tree?: SpecTree;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -595,6 +597,7 @@ export class Profile {
       bagRoom: bagRoomOf(this.emptyPastPocket(), this.materials()),
       ...(Object.keys(this.specs()).length > 0 ? { spec: this.specs() } : {}),
       ...(Object.keys(this.elements()).length > 0 ? { elements: this.elements() } : {}),
+      ...(Object.keys(this.tree()).length > 0 ? { tree: this.tree() } : {}),
     };
   }
 
@@ -628,9 +631,43 @@ export class Profile {
     return true;
   }
 
+  /** The tree picks this hero may bring: each a node of a specialization they may bring, one a row, opened by level. */
+  tree(): SpecTree {
+    const specs = this.specs();
+    const out: SpecTree = {};
+    for (const [s, ids] of Object.entries(this.data.tree ?? {}) as [Style, string[]][]) {
+      const kept: string[] = [];
+      for (const id of ids) if (!treeProblem(this.data.xp, specs, { [s]: [...kept, id] })) kept.push(id);
+      if (kept.length > 0) out[s] = kept;
+    }
+    return out;
+  }
+
+  /** Pick a node in row `row` of a weapon kind's specialization tree, or clear the row. Returns whether it took. */
+  setTreeNode(style: Style, row: number, node: string | null): boolean {
+    const id = this.specs()[style];
+    const rows = id ? specInfo(id).tree : undefined;
+    if (!rows || !rows[row]) return false;
+    const others = (this.tree()[style] ?? []).filter((n) => !rows[row].some((x) => x.id === n));
+    const next = node ? [...others, node] : others;
+    if (node && treeProblem(this.data.xp, this.specs(), { [style]: next })) return false;
+    const tree = { ...(this.data.tree ?? {}) };
+    if (next.length > 0) tree[style] = next;
+    else delete tree[style];
+    this.data.tree = tree;
+    this.save();
+    return true;
+  }
+
   /** Choose a weapon kind's specialization (or none). Returns whether it took. */
   setSpec(style: Style, id: SpecId | null): boolean {
     if (id && specProblem(this.data.xp, { [style]: id })) return false;
+    // Another specialization's tree is another tree: the picks go with the old one.
+    if (this.data.spec?.[style] !== id && this.data.tree?.[style]) {
+      const tree = { ...this.data.tree };
+      delete tree[style];
+      this.data.tree = tree;
+    }
     const spec = { ...(this.data.spec ?? {}) };
     if (id) spec[style] = id;
     else delete spec[style];

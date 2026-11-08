@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 150, specialization trees and the Paladin's (the builds pass, Michael's A)
+
+**What changed**
+
+Michael's A on the trees (control room, 8 Nov). A specialization's tree is `SpecInfo.tree` (three rows of two `TreeNode`s, opening at sword, bow or staff level 20, 30 and 40, `TREE_LEVELS`) and `SpecInfo.crescendo` (at 50). The picks are `SpecTree` (node ids by style) on `Loadout.tree` and `PlayerState.tree`; `treeProblem` is the one check, used by `readLoadout` (a node of that style's chosen specialization, one a row, its row opened by the style's level) and by the browser's save. They change only where specializations change (`HostSession` keeps the old ones elsewhere, as it does the specialization), and a new specialization drops the old one's picks. The Paladin's six, each strengthening one of its pieces, numbers on the panel (`specs.tree*`): at 20 Long Grudge (Shield Rush's taunt 5 s instead of 3) or Hallowed Ground (Consecrate's ring 1.5x as wide); at 30 Sanctuary (the ring lasts 10 s instead of 6) or Rallying Light (Bulwark's pulse reaches 7 m instead of 4); at 40 Oath of Mercy (the pulse heals twice as much) or Wide Rush (Shield Rush also taunts every enemy within 3 m of the one it hits). Judgement, the Crescendo at sword level 50: as a Flow Crescendo comes out, the Paladin consecrates where they stand and taunts every enemy inside the ring (`specCrescendo`, called in `stepPlayer` where the Crescendo spends the meter, so prediction draws the ring at once). On the Talents tab the tree's rows sit under the specialization, the cursor reaches them, F or A steps through a row's two and Q or X clears it, a shut row says its level, and the Crescendo's line closes the column. check 491 green, parity identical (no hero in the parity test has a tree), test:net green, `tests/spec-tree.e2e.ts` new and green (the rows, A and X, a shut row, a new specialization clearing the picks).
+
+**Learned**
+
+XP is the server's: the browser's profile takes it back from every snapshot (`syncFrom`), so a test that raises a style's level in the page has to save and come back for the hello to carry it; set in place, the next snapshot puts it back and the tree's rows shut again under the cursor. The Crescendo fires as the charged heavy comes out rather than as it lands, so Judgement's ring is laid even when the blow misses; it reads as the Paladin planting their feet, and the taunt still needs enemies in the ring.
+
+**Next**
+
+The Spellblade's tree (Blazing Charge, Blade Storm and the spectral blades, and its Crescendo), then the Rogue's; one a session. Specializations other than the Paladin show no tree rows yet.
+
 ## 2026-11-07: Session 149, the HUD names a specialization (the critic's bug)
 
 **What changed**

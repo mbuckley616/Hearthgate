@@ -1,5 +1,5 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
-import { galeReady, shadowPass } from './specs';
+import { galeReady, shadowPass, specCrescendo } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -622,6 +622,7 @@ export function stepPlayer(
       if (p.flow && p.attackCharge === 2 && p.flow.v >= tuning.flow.max) {
         p.attackCharge = 3;
         p.flow.v = 0;
+        specCrescendo(state, p);
       }
       armFlow(p);
       fireAttack(p, state, colliders);

@@ -2,7 +2,7 @@ import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
-import { ELEMENT_COLOUR, ELEMENT_NAMES, elementFor, specsFor, type Element, type SpecId } from '@hearthgate/shared/sim/specs';
+import { CRESCENDO_LEVEL, ELEMENT_COLOUR, ELEMENT_NAMES, TREE_LEVELS, elementFor, specInfo, specsFor, type Element, type SpecId } from '@hearthgate/shared/sim/specs';
 import {
   CONSTELLATIONS,
   championMaxRanks,
@@ -191,7 +191,13 @@ export class EquipScreen {
       const style = STYLES[this.tCol];
       // Below the board, the specialization (the builds pass): F or A steps to the next one, Q or X takes it off.
       if (this.tRow >= TALENT_IDS.length) {
-        if (actions.pressed.has('interact')) this.cycleSpec(style);
+        // Below it, the specialization's tree (Michael's A, 8 Nov): F or A steps through a row's two, Q or X clears it.
+        const treeRow = this.tRow - TALENT_IDS.length - 1;
+        if (treeRow >= 0) {
+          if (actions.pressed.has('interact')) this.cycleNode(style, treeRow);
+          else if (take) this.chooseNode(style, treeRow, null);
+          else return;
+        } else if (actions.pressed.has('interact')) this.cycleSpec(style);
         else if (take) this.chooseSpec(style, null);
         else return;
         this.onChange();
@@ -278,9 +284,9 @@ export class EquipScreen {
 
   private stepTalent(dir: string): void {
     if (dir === 'left' || dir === 'right') this.tCol = (this.tCol + (dir === 'right' ? 1 : STYLES.length - 1)) % STYLES.length;
-    else this.tRow = Math.max(0, Math.min(TALENT_IDS.length, this.tRow + (dir === 'down' ? 1 : -1)));
+    this.tRow = Math.max(0, Math.min(TALENT_IDS.length + this.treeRows(STYLES[this.tCol]), this.tRow + (dir === 'down' ? 1 : dir === 'up' ? -1 : 0)));
     this.render();
-    this.body.querySelector('.talent.chosen, .spec-row.chosen')?.scrollIntoView({ block: 'nearest' });
+    this.body.querySelector('.talent.chosen, .spec-row.chosen, .tree-row.chosen')?.scrollIntoView({ block: 'nearest' });
   }
 
   private setTab(tab: Tab): void {
@@ -393,6 +399,10 @@ export class EquipScreen {
     if (action === 'respec' && style) this.profile.resetTalents(style as Style);
     if (action === 'spec' && style) this.chooseSpec(style as Style, talent && talent !== 'none' ? (talent as SpecId) : null);
     if (action === 'element' && style && talent) this.chooseElement(style as Style, talent as Element);
+    if (action === 'node' && style && talent) {
+      const [row, node] = talent.split(':');
+      this.chooseNode(style as Style, Number(row), node === 'none' ? null : node);
+    }
     this.onChange();
     this.render();
   }
@@ -552,7 +562,56 @@ export class EquipScreen {
             .join('')}</div>`
         : '';
     const what = info ? `${elements}<div class="talent-text"><b>${info.sig[0]}</b>: ${info.sig[1]}<br><b>${info.q[0]}</b>: ${info.q[1]}<br><b>${info.e[0]}</b>: ${info.e[1]}</div>` : `<div class="talent-text">Choose one: it reshapes this kind's two abilities.</div>`;
-    return `<div class="spec-row${chosen}"><div class="talent-sub">Specialization${open ? '' : ' · changes in the village or a rest room'}</div><div class="spec-picks">${buttons}</div>${what}</div>`;
+    return `<div class="spec-row${chosen}"><div class="talent-sub">Specialization${open ? '' : ' · changes in the village or a rest room'}</div><div class="spec-picks">${buttons}</div>${what}</div>${this.treeHtml(s, col, level)}`;
+  }
+
+  /** How many tree rows the cursor can reach under a weapon kind's specialization: its tree's, once one is chosen. */
+  private treeRows(s: Style): number {
+    const id = this.profile.specs()[s];
+    return id ? (specInfo(id).tree?.length ?? 0) : 0;
+  }
+
+  /** The specialization's tree (Michael's A, 8 Nov): two choices a row at 20, 30 and 40, then the Crescendo at 50. */
+  private treeHtml(s: Style, col: number, level: number): string {
+    const id = this.profile.specs()[s];
+    const info = id ? specInfo(id) : undefined;
+    if (!info?.tree) return '';
+    const picked = this.profile.tree()[s] ?? [];
+    const open = this.canReslot();
+    const rows = info.tree
+      .map((pair, r) => {
+        const opens = TREE_LEVELS[r];
+        const locked = level < opens;
+        const chosen = this.tab === 'talents' && col === this.tCol && this.tRow === TALENT_IDS.length + 1 + r ? ' chosen' : '';
+        const buttons = pair
+          .map((n) => {
+            const on = picked.includes(n.id);
+            return `<button class="spec-pick node${on ? ' on' : ''}" data-action="node" data-style="${s}" data-talent="${r}:${on ? 'none' : n.id}" ${locked || !open ? 'disabled' : ''}>${n.name}</button>`;
+          })
+          .join('');
+        const text = pair.map((n) => `<b>${n.name}</b>: ${n.text}`).join('<br>');
+        return `<div class="spec-row tree-row${locked ? ' locked' : ''}${chosen}"><div class="talent-sub">Lv ${opens}${locked ? ` · opens at level ${opens}` : ' · choose one'}</div><div class="spec-picks">${buttons}</div><div class="talent-text">${text}</div></div>`;
+      })
+      .join('');
+    const cap = info.crescendo
+      ? `<div class="spec-row tree-row${level < CRESCENDO_LEVEL ? ' locked' : ''}"><div class="talent-sub">Lv ${CRESCENDO_LEVEL} · Crescendo${level < CRESCENDO_LEVEL ? `, at level ${CRESCENDO_LEVEL}` : ''}</div><div class="talent-text"><b>${info.crescendo[0]}</b>: ${info.crescendo[1]}</div></div>`
+      : '';
+    return rows + cap;
+  }
+
+  private chooseNode(style: Style, row: number, node: string | null): void {
+    if (!this.canReslot()) return;
+    this.profile.setTreeNode(style, row, node);
+  }
+
+  /** F on a tree row: none, then the row's first, then its second, then none again. */
+  private cycleNode(style: Style, row: number): void {
+    const id = this.profile.specs()[style];
+    const pair = id ? specInfo(id).tree?.[row] : undefined;
+    if (!pair) return;
+    const picked = this.profile.tree()[style] ?? [];
+    const at = pair.findIndex((n) => picked.includes(n.id));
+    this.chooseNode(style, row, at + 1 < pair.length ? pair[at + 1].id : null);
   }
 
   private chooseSpec(style: Style, id: SpecId | null): void {

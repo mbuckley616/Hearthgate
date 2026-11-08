@@ -20,6 +20,15 @@ export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | '
 export type Specs = Partial<Record<Style, SpecId>>;
 /** The element a hero chose for a style's specialization, where it offers more than one. */
 export type SpecElements = Partial<Record<Style, Element>>;
+/** The tree nodes a hero picked for a style's specialization (Michael's A, 8 Nov): node ids, one a row at most. */
+export type SpecTree = Partial<Record<Style, string[]>>;
+
+/** One choice in a specialization's tree: it strengthens one of the specialization's three pieces. */
+export interface TreeNode {
+  id: string;
+  name: string;
+  text: string;
+}
 
 export interface SpecInfo {
   id: SpecId;
@@ -35,7 +44,15 @@ export interface SpecInfo {
   sig: [string, string];
   /** Built and choosable; the rest are shown as coming. */
   built: boolean;
+  /** Its tree (Michael's A, 8 Nov): two choices a row at `TREE_LEVELS`, one pick a row. Absent until built. */
+  tree?: readonly (readonly [TreeNode, TreeNode])[];
+  /** Its Crescendo at level 50: one capstone that fires as a Flow Crescendo lands. Absent until built. */
+  crescendo?: [string, string];
 }
+
+/** The style levels a tree's rows open at, and the Crescendo's. */
+export const TREE_LEVELS: readonly number[] = [20, 30, 40];
+export const CRESCENDO_LEVEL = 50;
 
 /** The combat builds page's specializations (Michael's Keep, 28 Oct), in the order they are built. */
 export const SPECS: readonly SpecInfo[] = [
@@ -49,6 +66,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take 15% less damage.'],
     sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals allies within 4 m.'],
     built: true,
+    tree: [
+      [
+        { id: 'long-grudge', name: 'Long Grudge', text: 'Shield Rush\'s taunt lasts 5 s.' },
+        { id: 'hallowed-ground', name: 'Hallowed Ground', text: 'Consecrate\'s ring is half as wide again.' },
+      ],
+      [
+        { id: 'sanctuary', name: 'Sanctuary', text: 'Consecrate\'s ring lasts 10 s.' },
+        { id: 'rallying-light', name: 'Rallying Light', text: 'Bulwark\'s pulse reaches allies within 7 m.' },
+      ],
+      [
+        { id: 'oath-of-mercy', name: 'Oath of Mercy', text: 'Bulwark\'s pulse heals twice as much.' },
+        { id: 'wide-rush', name: 'Wide Rush', text: 'Shield Rush also taunts every enemy within 3 m of the one it hits.' },
+      ],
+    ],
+    crescendo: ['Judgement', 'A Crescendo consecrates the ground where you stand and taunts every enemy inside the ring.'],
   },
   {
     id: 'spellblade',
@@ -227,15 +259,72 @@ export function specOf(p: PlayerState): SpecId | undefined {
   return p.spec?.[p.style];
 }
 
+/** Why these tree picks could not be this hero's, or null: each a node of that style's chosen specialization, one a row, its row opened by level. */
+export function treeProblem(xp: Record<Style, number>, specs: Specs, tree: SpecTree): string | null {
+  for (const [style, ids] of Object.entries(tree) as [Style, string[]][]) {
+    const id = specs[style];
+    if (!id) return `no ${style} specialization for a tree`;
+    const rows = specInfo(id).tree;
+    if (!rows) return `${specInfo(id).name} has no tree yet`;
+    const level = levelFor(xp[style] ?? 0);
+    const taken = new Set<number>();
+    for (const node of ids) {
+      const row = rows.findIndex((r) => r.some((n) => n.id === node));
+      if (row < 0) return `${node} is not in the ${specInfo(id).name}'s tree`;
+      if (taken.has(row)) return `two picks in row ${row + 1}`;
+      if (level < TREE_LEVELS[row]) return `row ${row + 1} opens at ${style} level ${TREE_LEVELS[row]}`;
+      taken.add(row);
+    }
+  }
+  return null;
+}
+
+/** Whether this hero took a tree node of their current specialization (in the style they hold). */
+export function hasNode(p: PlayerState, node: string): boolean {
+  return !!specOf(p) && !!p.tree?.[p.style]?.includes(node);
+}
+
+/** Whether this hero's current specialization's Crescendo is theirs: its style at level 50, and the specialization has one. */
+export function hasCrescendo(p: PlayerState): boolean {
+  const id = specOf(p);
+  return !!id && !!specInfo(id).crescendo && levelFor(p.xp[p.style] ?? 0) >= CRESCENDO_LEVEL;
+}
+
+/** The capstone, fired as a Crescendo's charged heavy comes out (player.ts), on the server and in prediction alike. */
+export function specCrescendo(state: SimState, p: PlayerState): void {
+  if (!hasCrescendo(p)) return;
+  if (specOf(p) === 'paladin') judgement(state, p);
+}
+
+/**
+ * Judgement (the Paladin's Crescendo): consecrate where they stand and taunt every standing enemy
+ * the new ring reaches. Enemies act on a taunt only on the server, so prediction's copy is drawn and dropped.
+ */
+function judgement(state: SimState, p: PlayerState): void {
+  consecrate(state, p);
+  const ring = state.consecrated?.find((g) => g.by === p.id);
+  if (!ring) return;
+  for (const e of state.enemies) {
+    if (isTargetable(e) && Math.hypot(e.x - ring.x, e.z - ring.z) <= ring.radius) taunt(state, p, e, true);
+  }
+}
+
 /**
  * Shield Rush (the Paladin's Charge): the enemy it hits turns on the Paladin for `specs.tauntSeconds`,
  * whoever is nearer. Called where the Charge lands, on the server and in prediction alike; enemies are
  * only stepped on the server, so only the server's copy acts on it.
  */
-export function taunt(state: SimState, p: PlayerState, e: EnemyState): void {
-  if (specOf(p) !== 'paladin' || tuning.specs.tauntSeconds <= 0) return;
-  e.taunt = { by: p.id, until: state.time + tuning.specs.tauntSeconds };
+export function taunt(state: SimState, p: PlayerState, e: EnemyState, alone = false): void {
+  const s = tuning.specs;
+  if (specOf(p) !== 'paladin' || s.tauntSeconds <= 0) return;
+  const seconds = hasNode(p, 'long-grudge') ? s.treeTauntSeconds : s.tauntSeconds;
+  e.taunt = { by: p.id, until: state.time + seconds };
   state.events.push({ kind: 'taunt', playerId: p.id, enemyId: e.id, x: e.x, z: e.z });
+  // Wide Rush (the tree's third row): the enemies about the one hit turn too.
+  if (alone || !hasNode(p, 'wide-rush')) return;
+  for (const o of state.enemies) {
+    if (o !== e && isTargetable(o) && Math.hypot(o.x - e.x, o.z - e.z) <= s.treeWideRushRadius) taunt(state, p, o, true);
+  }
 }
 
 /** The hero a taunt holds this enemy to, while it lasts and they stand; null otherwise (and a spent taunt is dropped). */
@@ -259,7 +348,9 @@ export function consecrate(state: SimState, p: PlayerState): void {
   if (specOf(p) !== 'paladin' || tuning.specs.consecrateSeconds <= 0) return;
   const s = tuning.specs;
   const kept = (state.consecrated ?? []).filter((g) => g.by !== p.id && g.until > state.time);
-  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius: s.consecrateRadius, until: state.time + s.consecrateSeconds });
+  const radius = s.consecrateRadius * (hasNode(p, 'hallowed-ground') ? s.treeHallowedRadiusMult : 1);
+  const seconds = hasNode(p, 'sanctuary') ? s.treeSanctuarySeconds : s.consecrateSeconds;
+  kept.push({ by: p.id, x: p.x, y: p.y, z: p.z, radius, until: state.time + seconds });
   state.consecrated = kept;
 }
 
@@ -294,10 +385,12 @@ export function holyPulse(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
   if (specOf(p) !== 'paladin' || s.bulwarkHeal <= 0) return;
   let healed = 0;
+  const reach = hasNode(p, 'rallying-light') ? s.treeRallyingRadius : s.bulwarkRadius;
+  const heal = s.bulwarkHeal * (hasNode(p, 'oath-of-mercy') ? s.treeMercyMult : 1);
   for (const o of state.players) {
-    if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > s.bulwarkRadius) continue;
+    if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > reach) continue;
     const before = o.hp;
-    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * s.bulwarkHeal);
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * heal);
     if (o.hp > before) healed++;
   }
   state.events.push({ kind: 'holyPulse', playerId: p.id, x: p.x, y: p.y, z: p.z, healed });

@@ -5,7 +5,7 @@ import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
-import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, type Element, type SpecElements, type SpecId, type Specs } from '../sim/specs';
+import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, treeProblem, type Element, type SpecElements, type SpecId, type Specs, type SpecTree } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { readPortalChoice } from '../game/portalChoice';
@@ -193,6 +193,17 @@ export function readLoadout(v: unknown): Loadout | null {
     }
     if (elementProblem(loadout.spec ?? {}, elements)) return null;
     if (Object.keys(elements).length > 0) loadout.elements = elements;
+  }
+  // A specialization's tree (Michael's A, 8 Nov): node ids of a chosen specialization's tree, one a row, opened by level.
+  if (v.tree !== undefined) {
+    if (!isObj(v.tree)) return null;
+    const tree: SpecTree = {};
+    for (const [style, ids] of Object.entries(v.tree)) {
+      if (!STYLES.includes(style as Style) || !Array.isArray(ids) || ids.length > 3 || !ids.every((x) => typeof x === 'string')) return null;
+      if (ids.length > 0) tree[style as Style] = [...(ids as string[])];
+    }
+    if (treeProblem(xp, loadout.spec ?? {}, tree)) return null;
+    if (Object.keys(tree).length > 0) loadout.tree = tree;
   }
   return loadout;
 }

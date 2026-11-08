@@ -8,7 +8,7 @@ import type { FlowState } from './flow';
 import type { HenchmanBrain } from './henchman';
 import type { PropKind } from '../level/floor';
 import type { TalentRanks } from './talents';
-import type { Element, SpecElements, Specs } from './specs';
+import type { Element, SpecElements, Specs, SpecTree } from './specs';
 
 /**
  * Simulation state. Everything here must stay plain, serializable data
@@ -173,6 +173,8 @@ export interface PlayerState {
   spec?: Specs;
   /** The element each of those specializations was given, where it offers a choice (the Spellblade's four); absent, its first. */
   elements?: SpecElements;
+  /** The tree nodes picked for each of those specializations (Michael's A, 8 Nov); absent, none. */
+  tree?: SpecTree;
   /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
   shadowUntil?: number;
   /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */
