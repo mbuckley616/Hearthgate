@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 151, the Spellblade's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Spellblade's six and its Crescendo, on Session 150's frame, numbers on the panel: at sword level 20 Lingering Flame (Blazing Charge's trail lasts 5 s instead of 3) or Third Blade (three spectral blades instead of two); at 30 Wide Wake (the trail twice as wide) or Eye of the Storm (Blade Storm draws light enemies in from 9 m instead of 6); at 40 Searing Path (the trail burns twice as hard) or Keen Edges (each blade hits for 50% of a Whirlwind's hit instead of 30%). Blade Tempest at 50, Michael's own example on the question ("both trail and blades in one burst"): as a Flow Crescendo comes out, a 6 m trail of their element is laid through where they stand along their facing, and every standing enemy within the Whirlwind's reach plus the blades' band takes every blade's hit at once. `bladeCount(p)` is shared by the sim and `SpectralBladesView`, so a third blade is drawn where it hits. The trail nodes touch only a Spellblade's trail: the Sorcerer's Elemental Step keeps its own numbers. check 496 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Searing Path and Wide Wake multiply each other (twice as wide catches more, twice as hot hurts more), but they sit in different rows, so a Spellblade can take both and give up the blades' two; that is the trade the rows were meant to offer, a burning-ground Spellblade or a blade one.
+
+**Next**
+
+The Rogue's tree (Shadowstep, Fan of Knives, From the shadows, and its Crescendo), then the Ranger's.
+
 ## 2026-11-08: Session 150, specialization trees and the Paladin's (the builds pass, Michael's A)
 
 **What changed**

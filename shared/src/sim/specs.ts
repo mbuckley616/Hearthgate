@@ -93,6 +93,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Blade Storm', 'Whirlwind pulls light enemies in.'],
     sig: ['Spectral blades', 'Your spins conjure two blades that circle past your reach.'],
     built: true,
+    tree: [
+      [
+        { id: 'lingering-flame', name: 'Lingering Flame', text: 'Blazing Charge\'s trail lasts 5 s.' },
+        { id: 'third-blade', name: 'Third Blade', text: 'Your spins conjure three spectral blades.' },
+      ],
+      [
+        { id: 'wide-wake', name: 'Wide Wake', text: 'Blazing Charge\'s trail is twice as wide.' },
+        { id: 'eye-of-the-storm', name: 'Eye of the Storm', text: 'Blade Storm draws in light enemies from 9 m.' },
+      ],
+      [
+        { id: 'searing-path', name: 'Searing Path', text: 'Blazing Charge\'s trail burns twice as hard.' },
+        { id: 'keen-edges', name: 'Keen Edges', text: 'Each spectral blade hits for half of a Whirlwind\'s hit.' },
+      ],
+    ],
+    crescendo: ['Blade Tempest', 'A Crescendo lays a trail of your element through where you stand, and your spectral blades strike everything around you at once.'],
   },
   {
     id: 'rogue',
@@ -294,6 +309,62 @@ export function hasCrescendo(p: PlayerState): boolean {
 export function specCrescendo(state: SimState, p: PlayerState): void {
   if (!hasCrescendo(p)) return;
   if (specOf(p) === 'paladin') judgement(state, p);
+  else if (specOf(p) === 'spellblade') bladeTempest(state, p);
+}
+
+/**
+ * Blade Tempest (the Spellblade's Crescendo): a trail of their element `specs.tempestTrailLength`
+ * long, centred on the hero along their facing, and every standing enemy within the Whirlwind's
+ * reach plus the blades' band takes each blade's hit at once, as a spin's would. Prediction lays the
+ * trail; the hits are judged against the enemies it has, and only the server's count.
+ */
+function bladeTempest(state: SimState, p: PlayerState): void {
+  const s = tuning.specs;
+  const a = tuning.abilities;
+  const half = s.tempestTrailLength / 2;
+  const fx = Math.sin(p.yaw);
+  const fz = Math.cos(p.yaw);
+  const charge = a.chargeDamage * tuning.combat.baseDamage;
+  const kept = (state.trails ?? []).filter((g) => g.by !== p.id && g.until > state.time);
+  state.trails = kept;
+  layTrail(state, p, p.x - fx * half, p.z - fz * half, charge, 'sword');
+  const mine = state.trails.find((g) => g.by === p.id)!;
+  mine.x1 = p.x + fx * half;
+  mine.z1 = p.z + fz * half;
+  const blades = bladeCount(p);
+  const whirl = a.whirlwindDamage * tuning.combat.baseDamage;
+  const reach = a.whirlwindRadius + s.spectralBladeReach;
+  if (blades <= 0) return;
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.max(Math.hypot(dx, dz), 1e-3);
+    if (d > reach + enemyStats(e.kind).radius) continue;
+    damageEnemy(state, e, {
+      attackerId: p.id,
+      damage: whirl * bladeDamage(p) * blades,
+      poise: 0.4 * blades,
+      knockback: 0,
+      heavy: false,
+      style: p.style,
+      dirX: dx / d,
+      dirZ: dz / d,
+      x: e.x - (dx / d) * enemyStats(e.kind).radius,
+      y: e.y + 1,
+      z: e.z - (dz / d) * enemyStats(e.kind).radius,
+    });
+  }
+}
+
+/** How many spectral blades circle this Spellblade's spin: `specs.spectralBlades`, one more with Third Blade, four at most. */
+export function bladeCount(p: PlayerState): number {
+  return Math.min(4, Math.round(tuning.specs.spectralBlades) + (hasNode(p, 'third-blade') ? 1 : 0));
+}
+
+/** The share of a Whirlwind's hit each blade deals: `specs.spectralBladeDamage`, or Keen Edges'. */
+function bladeDamage(p: PlayerState): number {
+  return hasNode(p, 'keen-edges') ? tuning.specs.treeKeenBladeDamage : tuning.specs.spectralBladeDamage;
 }
 
 /**
@@ -802,7 +873,7 @@ export function bladeStorm(state: SimState, p: PlayerState): void {
     const dx = p.x - e.x;
     const dz = p.z - e.z;
     const d = Math.hypot(dx, dz);
-    if (d > s.bladeStormRadius || d <= s.bladeStormHold) continue;
+    if (d > (hasNode(p, 'eye-of-the-storm') ? s.treeStormRadius : s.bladeStormRadius) || d <= s.bladeStormHold) continue;
     // Set, not add: a pull is a steady draw, never a launch that grows tick on tick.
     e.kbx = (dx / d) * v;
     e.kbz = (dz / d) * v;
@@ -834,8 +905,9 @@ function wrapAngle(a: number): number {
  */
 export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: number, reach: number, whirl: number): void {
   const s = tuning.specs;
-  const blades = Math.min(4, Math.round(s.spectralBlades));
-  if (specOf(p) !== 'spellblade' || blades <= 0 || s.spectralBladeDamage <= 0 || u1 <= u0) return;
+  const blades = bladeCount(p);
+  const share = bladeDamage(p);
+  if (specOf(p) !== 'spellblade' || blades <= 0 || share <= 0 || u1 <= u0) return;
   for (const e of state.enemies) {
     if (!isTargetable(e) || Math.abs(e.y - p.y) > 1.2) continue;
     const er = enemyStats(e.kind).radius;
@@ -857,7 +929,7 @@ export function spectralBlades(state: SimState, p: PlayerState, u0: number, u1: 
       p.abilityHitIds.push(key);
       damageEnemy(state, e, {
         attackerId: p.id,
-        damage: whirl * s.spectralBladeDamage,
+        damage: whirl * share,
         poise: 0.4,
         knockback: 0,
         heavy: false,
@@ -885,7 +957,7 @@ export function blazingTrail(state: SimState, p: PlayerState, fromX: number, fro
   if (mine) {
     mine.x1 = p.x;
     mine.z1 = p.z;
-    mine.until = state.time + tuning.specs.blazingTrailSeconds;
+    mine.until = state.time + trailSeconds(p, 'sword');
     return;
   }
   layTrail(state, p, fromX, fromZ, charge, 'sword');
@@ -903,6 +975,11 @@ export function elementalStep(state: SimState, p: PlayerState, fromX: number, fr
   return true;
 }
 
+/** How long a trail this hero lays lasts: `specs.blazingTrailSeconds`, or Lingering Flame's for a Spellblade. */
+function trailSeconds(p: PlayerState, style: 'sword' | 'staff'): number {
+  return style === 'sword' && hasNode(p, 'lingering-flame') ? tuning.specs.treeLingerSeconds : tuning.specs.blazingTrailSeconds;
+}
+
 /** A new trail from (fromX, fromZ) to the hero, replacing the hero's last. */
 function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number, damage: number, style: 'sword' | 'staff'): void {
   const s = tuning.specs;
@@ -917,9 +994,9 @@ function layTrail(state: SimState, p: PlayerState, fromX: number, fromZ: number,
     x1: p.x,
     z1: p.z,
     y: p.y,
-    width: s.blazingTrailWidth,
-    until: state.time + s.blazingTrailSeconds,
-    tickDamage: damage * s.blazingTrailDamage * tick,
+    width: s.blazingTrailWidth * (style === 'sword' && hasNode(p, 'wide-wake') ? s.treeWakeWidthMult : 1),
+    until: state.time + trailSeconds(p, style),
+    tickDamage: damage * s.blazingTrailDamage * tick * (style === 'sword' && hasNode(p, 'searing-path') ? s.treeSearingMult : 1),
     next: state.time + tick,
     element: elementFor(p, style) ?? 'fire',
   });

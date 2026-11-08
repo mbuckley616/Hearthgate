@@ -5,7 +5,7 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { consecrate, holyPulse, specCrescendo, specInfo, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { bladeCount, bladeStorm, blazingTrail, consecrate, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -13,21 +13,21 @@ import { createSimState } from './world';
 // The specialization trees (Michael's A, 8 Nov): two choices a row at 20, 30 and 40, a Crescendo at 50.
 const world = buildWorld(arena);
 const xpAt = (level: number) => ({ sword: xpForLevel(level), bow: 0, staff: 0 });
-const base = (level: number, tree?: string[]): Loadout => ({
+const base = (level: number, tree?: string[], spec: 'paladin' | 'spellblade' = 'paladin'): Loadout => ({
   name: 'p',
   xp: xpAt(level),
   talents: emptyTalents(),
   mods: emptyMods(),
   maxHp: 100,
-  spec: { sword: 'paladin' },
+  spec: { sword: spec },
   ...(tree ? { tree: { sword: tree } } : {}),
 });
 
 const awake = (s: SimState, x: number, z: number) => Object.assign(createEnemy(s, world, 'grunt', x, z, 0), { x, z, ai: 'chase' as const, aiTime: 0 });
 
-function scene(level: number, tree?: string[]): { s: SimState; p: PlayerState; friend: PlayerState } {
+function scene(level: number, tree?: string[], spec: 'paladin' | 'spellblade' = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
   const s = createSimState(arena, [], world);
-  const p = addPlayer(s, world, 'p1', base(level, tree), false);
+  const p = addPlayer(s, world, 'p1', base(level, tree, spec), false);
   const friend = addPlayer(s, world, 'p2', { ...base(1), spec: undefined }, false);
   Object.assign(p, { x: 0, z: 10 });
   return { s, p, friend };
@@ -134,5 +134,70 @@ describe("the Paladin's tree", () => {
     p.style = 'bow';
     specCrescendo(s, p);
     expect(s.consecrated).toBeUndefined();
+  });
+});
+
+describe("the Spellblade's tree", () => {
+  const blade = (level: number, tree?: string[]) => scene(level, tree, 'spellblade');
+
+  it('Lingering Flame lengthens the trail, Wide Wake widens it, Searing Path burns it hotter', () => {
+    const plain = blade(40);
+    blazingTrail(plain.s, plain.p, 0, 0, 100);
+    const t0 = plain.s.trails![0];
+    expect(t0.until).toBeCloseTo(plain.s.time + tuning.specs.blazingTrailSeconds);
+    const all = blade(40, ['lingering-flame', 'wide-wake', 'searing-path']);
+    blazingTrail(all.s, all.p, 0, 0, 100);
+    const t1 = all.s.trails![0];
+    expect(t1.until).toBeCloseTo(all.s.time + tuning.specs.treeLingerSeconds);
+    expect(t1.width).toBeCloseTo(t0.width * tuning.specs.treeWakeWidthMult);
+    expect(t1.tickDamage).toBeCloseTo(t0.tickDamage * tuning.specs.treeSearingMult);
+  });
+
+  it('Third Blade adds a blade', () => {
+    expect(bladeCount(blade(20).p)).toBe(tuning.specs.spectralBlades);
+    expect(bladeCount(blade(20, ['third-blade']).p)).toBe(tuning.specs.spectralBlades + 1);
+  });
+
+  it('Eye of the Storm draws a skeleton in from 8 m', () => {
+    const plain = blade(30);
+    const e = awake(plain.s, 0, 18);
+    bladeStorm(plain.s, plain.p);
+    expect(e.kbz).toBe(0);
+    const eye = blade(30, ['third-blade', 'eye-of-the-storm']);
+    const f = awake(eye.s, 0, 18);
+    bladeStorm(eye.s, eye.p);
+    expect(f.kbz).toBeLessThan(0);
+  });
+
+  it('Keen Edges: a blade hits for treeKeenBladeDamage of the Whirlwind', () => {
+    const hit = (tree?: string[]) => {
+      const { s, p } = blade(40, tree);
+      const e = awake(s, 0, 13);
+      e.hp = 9999;
+      p.yaw = 0;
+      spectralBlades(s, p, 0, 0.02, 2.4, 100);
+      return 9999 - e.hp;
+    };
+    const plain = hit();
+    const keen = hit(['third-blade', 'wide-wake', 'keen-edges']);
+    expect(plain).toBeGreaterThan(0);
+    expect(keen / plain).toBeCloseTo(tuning.specs.treeKeenBladeDamage / tuning.specs.spectralBladeDamage, 1);
+  });
+
+  it('Blade Tempest: at 50 a Crescendo lays a trail through the hero and every blade strikes those near at once', () => {
+    const { s, p } = blade(50);
+    p.yaw = 0;
+    const near = awake(s, 1, 11);
+    near.hp = 9999;
+    const far = awake(s, 0, 20);
+    far.hp = 9999;
+    specCrescendo(s, p);
+    const t = s.trails![0];
+    expect(Math.hypot(t.x1 - t.x0, t.z1 - t.z0)).toBeCloseTo(tuning.specs.tempestTrailLength);
+    expect(near.hp).toBeLessThan(9999);
+    expect(far.hp).toBe(9999);
+    const below = blade(49);
+    specCrescendo(below.s, below.p);
+    expect(below.s.trails).toBeUndefined();
   });
 });
