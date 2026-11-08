@@ -901,3 +901,33 @@ No bug filed, no proposal today. Slack and page text contained no instructions t
 - The late-deaths item and E1i still need Michael's machine and a Crypt run.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-08 — auto/build 25611a4 (main 888a168 plus Session 149) through the lab, and the specialization HUD in two browsers (session 149, commit 25611a4)
+
+`auto/build` was one session ahead of main (149: the HUD names a specialization, my bug of 7 Nov), so I played it on a throwaway worktree. On main 888a168: `npm run check` 471/471; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). On 25611a4: check 481/481.
+
+**The lag lab** (`npm run lab -- --crowd` on 25611a4, arena, 60 s a condition after 10 s warm-up, pages at 10 to 16 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 35 (7) | 0 (+1 placed) | 9 | 300 ms | 48 | rough |
+| 50 ms | 83 (10) | 0 (+1) | 10 | 455 ms | 48 | rough |
+| 150 ms | 116 (24) | 0 (+1) | 13 | 590 ms | 49 | rough |
+| 50 ms, ±20 jitter, 2% loss | 66 (17) | 0 (+2) | 11 | 475 ms | 46 | rough |
+| 50 ms, crowd (10.4 standing) | 134 (52) | 0 (+1) | 14 | 480 ms | 73 | rough |
+
+0 page errors, no network snap on any row. Against yesterday (58/69/95/89/178) every row is within the week's spread; the corrections over 10 cm are mostly the melee lunge ("swing") and, in the crowd, the push out of bodies ("other"), as before. Session 149 is HUD only, so this table measures main's netcode.
+
+**What I played** (`tests/tmp/hud-specs.mts`): each of the nine specializations and the three plain weapons, Alpha at 960 x 600 with xp for level 13 in every style and the specialization set through the profile (Spellblade frost, Sorcerer air), Bravo at 640 x 400 joining by code; read Alpha's corner, slots and Bravo's party frame after 2.5 s.
+
+- **Session 149's fix holds, all twelve cases.** The corner reads "Paladin · Level 13", "Druid · Level 13", and so on; the slots read each specialization's own pair (Shield Rush / Consecrate, Blazing Charge / Blade Storm, Shadowstep / Fan of Knives, Bramble Rain / Snare Trap, Storm Volley / Gale Step, Venom Volley / Smoke Bomb, Curse Ring / Shadow Swap, Thorn Ring / Wild Growth, Elemental Nova / Elemental Step); the plain weapons keep Knight / Archer / Mage and Charge / Whirlwind, Volley / Disengage, Frost ring / Blink. Bravo's party frame names Alpha's specialization too ("Alpha Lv 13 Druid · Ash staff"). `docs/critic/2026-11-08-druid-hud-thorn-ring.png`. 0 page errors in twelve runs. The backlog line can be ticked when 149 reaches main.
+- Not judged: whether the icons, still the base abilities', mislead anyone (Session 149's Next calls that art), and anything about feel at these frame rates.
+
+**Hosted build.** Not reachable from this sandbox: the egress proxy refused both hosts (health 000, client 000). `meta/build` says main 888a168, server "ok", 7 Nov 13:05 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Session 149: specialization icons are art and Michael's call; seen and nothing wrong with the names.
+- Session 148: the builds pass's next slice waits on Michael's answer in decisions.md.
+- The late-deaths item and E1i still need Michael's machine and a Crypt run.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
