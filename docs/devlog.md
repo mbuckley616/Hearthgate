@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 159, Shatter as a state (the builds pass, Michael's A on the states)
+
+**What changed**
+
+The first of the three states. Chill (Shatter's setup, the slice's `shatterUntil` window) is now left by any hero's hit that slows or freezes, whatever its style: frost arrows, the Hunter perk's charged shot, a Frost Sorcerer's bolts and Elemental Nova, the frost ring; and by any ground in a hero's Frost element (a Frost Spellblade's Blazing Charge strip, a Frost Sorcerer's Elemental Step). Any style's heavy cashes it in: a sword's or warhammer's heavy, a charged shot, a staff's heavy, each with the slice's +50% and splash and the `combo` event the HUD, sound and sparks already know. A Frost Spellblade's own chain does not chill, so the state still joins two players rather than one. Behind `combos.elementStates`, which the parity test turns off (the slice: a staff's slow, a sword's heavy); parity identical, check 529 green. `chills` and `shatterPays` in `combat.ts` are the two rules, tested in `states.test.ts`. Not yet seen in a browser.
+
+**Learned**
+
+The slice already had Shatter, Skewer and Detonate as cross-style combos with their windows, views and sounds, so the states are a widening of who sets up and who pays off rather than new state on `EnemyState`; nothing new crosses the wire. The ice-blue tint `EnemyView` gives an open Shatter window is the Chilled look. A charged shot on an enemy both Chilled and Staggered pays both Shatter and Skewer in one hit, which seems right for a party but is worth watching.
+
+**Next**
+
+Skewer from Earth's staggers for a thrust (one state a session, Michael's A), then Detonate from Fire's bursts on a Burning enemy.
+
 ## 2026-11-08: Session 158, the Sorcerer's tree; every specialization has its tree (the builds pass, Michael's A)
 
 **What changed**

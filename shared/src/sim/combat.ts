@@ -5,7 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { consecratedMult, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
+import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -151,7 +151,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) + championPoise(hero) : 0;
   // Shatter: a melee finisher on a slowed or frozen enemy (brief: cross-style combos).
   const cb = tuning.combos;
-  const shatter = hit.style === 'sword' && hit.heavy && !hit.dot && e.shatterUntil >= state.time;
+  const shatter = shatterPays(hit) && e.shatterUntil >= state.time;
   if (shatter) e.shatterUntil = -1;
   // Teamwork (T6c): a payoff on a setup an ally made.
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
@@ -195,8 +195,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     }
   }
   if (hit.slowTime) e.slowTime = Math.max(e.slowTime, hit.slowTime);
-  // Shatter setup: magic that slows or freezes.
-  if (hit.style === 'staff' && (hit.slowTime || hit.freezeTime)) {
+  // Shatter setup: magic that slows or freezes (with element states, Frost's chill from any style).
+  if (chills(hero, hit)) {
     e.shatterUntil = state.time + comboWindow(hero);
     if (hero?.champion) e.shatterBy = hero.id;
   }
@@ -263,6 +263,32 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   });
   if (shatter) shatterAround(state, e, hit);
   return true;
+}
+
+/**
+ * Shatter's payoff (the states, Michael's A, 8 Nov): the slice's is a sword heavy; with
+ * `combos.elementStates` any style's heavy cashes a Chilled enemy in, the staff's and a charged
+ * shot's too, since the setup can now come from a bow or a blade as well as a staff.
+ */
+export function shatterPays(hit: HitSpec): boolean {
+  if (!hit.heavy || hit.dot || !hit.style) return false;
+  return tuning.combos.elementStates || hit.style === 'sword';
+}
+
+/**
+ * Whether a hit leaves an enemy Chilled, open to Shatter. The slice's setup is a staff hit that slows
+ * or freezes; with `combos.elementStates` it is any hero's hit that slows or freezes (frost arrows,
+ * the Hunter's charged shot, a Frost Sorcerer's bolts and Nova), and any hit in a hero's Frost
+ * element that is ground rather than a swing (a Frost Spellblade's or Sorcerer's trail), so Frost
+ * leaves the state wherever it lands. A Frost Spellblade's own chain does not chill: otherwise it
+ * would set up and pay off every Shatter alone, and the state is meant to join two players.
+ */
+export function chills(hero: PlayerState | undefined, hit: HitSpec): boolean {
+  if (!hit.style) return false;
+  if (!tuning.combos.elementStates) return hit.style === 'staff' && !!(hit.slowTime || hit.freezeTime);
+  if (!hero) return false;
+  if (hit.slowTime || hit.freezeTime) return true;
+  return !!hit.dot && elementFor(hero, hit.style) === 'frost';
 }
 
 /** Shatter payoff: the finisher bursts out into the enemies around. */
