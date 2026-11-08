@@ -249,6 +249,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
     sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
     built: true,
+    tree: [
+      [
+        { id: 'rich-bloom', name: 'Rich Bloom', text: 'Your bolts heal allies they pass 8%.' },
+        { id: 'strangling-thorns', name: 'Strangling Thorns', text: 'Thorn Ring holds for 3.5 s.' },
+      ],
+      [
+        { id: 'early-roots', name: 'Early Roots', text: 'Bloom roots from Flow I.' },
+        { id: 'deep-grove', name: 'Deep Grove', text: 'Wild Growth\'s grove lasts 8 s.' },
+      ],
+      [
+        { id: 'wide-grove', name: 'Wide Grove', text: 'Wild Growth\'s grove is half as wide again.' },
+        { id: 'lifespring', name: 'Lifespring', text: 'Your groves heal twice as fast.' },
+      ],
+    ],
+    crescendo: ['Heartwood', 'A Crescendo grows a Wild Growth grove where you stand.'],
   },
   {
     id: 'sorcerer',
@@ -400,6 +415,7 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
       if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.stormcallRadius) scoutMark(state, p, e);
     }
   } else if (specOf(p) === 'assassin') smokeBomb(state, p);
+  else if (specOf(p) === 'druid') wildGrowth(state, p, p.x, p.z);
   else if (specOf(p) === 'warlock') {
     // Doom: every standing enemy near is hexed, as a staff hit would hex it.
     for (const e of state.enemies) {
@@ -811,7 +827,9 @@ export function isBloomBolt(state: SimState, pr: ProjectileState): boolean {
 export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerState): void {
   if (ally.id === pr.owner || ally.mode === 'down' || pr.healedIds?.includes(ally.id)) return;
   (pr.healedIds ??= []).push(ally.id);
-  const healed = Math.min(ally.maxHp - ally.hp, ally.maxHp * tuning.specs.bloomHeal);
+  const druid = state.players.find((o) => o.id === pr.owner);
+  const share = druid && hasStyleNode(druid, 'staff', 'rich-bloom') ? tuning.specs.treeBloomHeal : tuning.specs.bloomHeal;
+  const healed = Math.min(ally.maxHp - ally.hp, ally.maxHp * share);
   if (healed <= 0) return;
   ally.hp += healed;
   state.events.push({ kind: 'bloom', playerId: pr.owner, healedId: ally.id, x: ally.x, y: ally.y, z: ally.z, healed });
@@ -824,7 +842,7 @@ export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerStat
 export function bloomRoot(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, e: EnemyState): void {
   const s = tuning.specs;
   if (!owner || owner.spec?.staff !== 'druid' || pr.kind !== 'bolt' || s.bloomRootS <= 0 || e.ai === 'dead') return;
-  if (flowTier(owner) < s.bloomRootTier || !LIGHT_ROLES.has(roleOf(e.kind))) return;
+  if (flowTier(owner) < (hasStyleNode(owner, 'staff', 'early-roots') ? s.treeBloomRootTier : s.bloomRootTier) || !LIGHT_ROLES.has(roleOf(e.kind))) return;
   const fresh = !isRooted(state, e);
   e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + s.bloomRootS);
   if (fresh) state.events.push({ kind: 'rooted', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
@@ -842,7 +860,7 @@ export function isThornRing(p: PlayerState): boolean {
  */
 export function thornRing(state: SimState, p: PlayerState, e: EnemyState): void {
   if (!isThornRing(p) || !isTargetable(e)) return;
-  const t = tuning.specs.thornRingRootS;
+  const t = hasNode(p, 'strangling-thorns') ? tuning.specs.treeThornRingRootS : tuning.specs.thornRingRootS;
   if (LIGHT_ROLES.has(roleOf(e.kind))) {
     const fresh = !isRooted(state, e);
     e.rootUntil = Math.max(e.rootUntil ?? 0, state.time + t);
@@ -1276,7 +1294,9 @@ export function wildGrowth(state: SimState, p: PlayerState, x: number, z: number
   if (p.spec?.staff !== 'druid' || p.style !== 'staff' || s.groveSeconds <= 0) return false;
   const kept = (state.groves ?? []).filter((g) => g.by !== p.id && g.until > state.time);
   const element = elementFor(p, 'staff') ?? 'nature';
-  kept.push({ by: p.id, x, y: p.y, z, radius: s.groveRadius, until: state.time + s.groveSeconds, element });
+  const radius = s.groveRadius * (hasNode(p, 'wide-grove') ? s.treeGroveRadiusMult : 1);
+  const seconds = hasNode(p, 'deep-grove') ? s.treeGroveSeconds : s.groveSeconds;
+  kept.push({ by: p.id, x, y: p.y, z, radius, until: state.time + seconds, element });
   state.groves = kept;
   return true;
 }
@@ -1297,8 +1317,15 @@ export function stepGroves(state: SimState, dt: number): void {
   if (rate <= 0) return;
   for (const o of state.players) {
     if (o.mode === 'down' || o.hp <= 0 || o.hp >= o.maxHp) continue;
-    if (!live.some((g) => Math.abs(o.y - g.y) < 1.2 && Math.hypot(o.x - g.x, o.z - g.z) <= g.radius)) continue;
-    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * dt);
+    // Groves do not add up: the best one a hero stands in heals them, Lifespring's twice as fast.
+    let mult = 0;
+    for (const g of live) {
+      if (Math.abs(o.y - g.y) >= 1.2 || Math.hypot(o.x - g.x, o.z - g.z) > g.radius) continue;
+      const druid = state.players.find((d) => d.id === g.by);
+      mult = Math.max(mult, druid && hasStyleNode(druid, 'staff', 'lifespring') ? tuning.specs.treeGroveHealMult : 1);
+    }
+    if (mult <= 0) continue;
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * rate * mult * dt);
   }
 }
 

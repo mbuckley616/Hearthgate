@@ -5,7 +5,7 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { curseRing, hexedMult, shadowSwap, warlockHex, deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { bloomHeal, bloomRoot, stepGroves, thornRing, wildGrowth, curseRing, hexedMult, shadowSwap, warlockHex, deadeye, smokeBomb, stepVenom, venomVolley, galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import type { SpecId } from './specs';
@@ -459,5 +459,54 @@ describe("the Warlock's tree", () => {
     specCrescendo(s, p);
     expect(near.hex?.by).toBe('p1');
     expect(far.hex).toBeUndefined();
+  });
+});
+
+describe("the Druid's tree", () => {
+  const druid = (level: number, tree?: string[]) => scene(level, tree, 'druid');
+  const bolt = { kind: 'bolt', style: 'staff', owner: 'p1' } as unknown as ProjectileState;
+
+  it('Rich Bloom heals more as a bolt passes', () => {
+    const { s, friend } = druid(20, ['rich-bloom']);
+    friend.hp = 50;
+    bloomHeal(s, { ...bolt }, friend);
+    expect(friend.hp).toBeCloseTo(50 + friend.maxHp * tuning.specs.treeBloomHeal);
+  });
+
+  it('Strangling Thorns holds longer; Early Roots roots from Flow I', () => {
+    const thorns = druid(30, ['strangling-thorns']);
+    const e = awake(thorns.s, 0, 6);
+    thornRing(thorns.s, thorns.p, e);
+    expect(e.rootUntil).toBeCloseTo(thorns.s.time + tuning.specs.treeThornRingRootS);
+    const tierOne = (tree?: string[]) => {
+      const { s, p } = druid(30, tree);
+      p.flow = { ...newFlow(), v: tuning.flow.max / 3 + 1 };
+      const f = awake(s, 0, 6);
+      bloomRoot(s, p, bolt, f);
+      return (f.rootUntil ?? 0) > s.time;
+    };
+    expect(tierOne()).toBe(false);
+    expect(tierOne(['rich-bloom', 'early-roots'])).toBe(true);
+  });
+
+  it('Deep Grove and Wide Grove make a bigger, longer grove; Lifespring heals faster', () => {
+    const { s, p } = druid(40, ['rich-bloom', 'deep-grove', 'wide-grove']);
+    wildGrowth(s, p, 0, 0);
+    expect(s.groves![0].radius).toBeCloseTo(tuning.specs.groveRadius * tuning.specs.treeGroveRadiusMult);
+    expect(s.groves![0].until).toBeCloseTo(s.time + tuning.specs.treeGroveSeconds);
+    const heal = (tree?: string[]) => {
+      const sc = druid(40, tree);
+      wildGrowth(sc.s, sc.p, sc.friend.x, sc.friend.z);
+      sc.friend.hp = 50;
+      stepGroves(sc.s, 1);
+      return sc.friend.hp - 50;
+    };
+    expect(heal(['rich-bloom', 'deep-grove', 'lifespring']) / heal()).toBeCloseTo(tuning.specs.treeGroveHealMult);
+  });
+
+  it('Heartwood: at 50 a Crescendo grows a grove at the Druid\'s feet', () => {
+    const { s, p } = druid(50);
+    specCrescendo(s, p);
+    expect(s.groves![0]).toMatchObject({ by: 'p1', x: p.x, z: p.z });
   });
 });

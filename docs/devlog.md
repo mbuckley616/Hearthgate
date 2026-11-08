@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 157, the Druid's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Druid's six and its Crescendo, numbers on the panel: at staff level 20 Rich Bloom (a bolt heals each ally it passes 8% instead of 4%) or Strangling Thorns (Thorn Ring holds 3.5 s instead of 2); at 30 Early Roots (Bloom's root from Flow I instead of II) or Deep Grove (Wild Growth's grove lasts 8 s instead of 4); at 40 Wide Grove (the grove 1.5x as wide) or Lifespring (the Druid's groves heal twice as fast). Heartwood at 50: as a Flow Crescendo comes out, a Wild Growth grove grows where the Druid stands, with Deep Grove's and Wide Grove's if taken. Groves still do not add up: a hero in two is healed by the better one, which is now chosen per grove by its Druid's Lifespring. check green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Heartwood replaces the Druid's last grove (one a Druid, as the Blink's), so a Druid who Blinks and then lands a Crescendo moves the grove to where they stand. That keeps the rule simple and the ground readable; if Michael wants both to stand, `wildGrowth`'s one-a-Druid filter is the place.
+
+**Next**
+
+The Sorcerer's tree (Attunement, Elemental Nova, Elemental Step, and its Crescendo), and every specialization has its tree.
+
 ## 2026-11-08: Session 156, the Warlock's tree (the builds pass, Michael's A)
 
 **What changed**
