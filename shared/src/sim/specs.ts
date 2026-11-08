@@ -119,6 +119,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Fan of Knives', 'Whirlwind throws knives in a circle.'],
     sig: ['From the shadows', 'Dodging through an enemy makes your next hit a crit from behind.'],
     built: true,
+    tree: [
+      [
+        { id: 'long-shadow', name: 'Long Shadow', text: 'Shadowstep reaches a target 4 m past the Charge.' },
+        { id: 'knife-storm', name: 'Knife Storm', text: 'Fan of Knives throws twelve.' },
+      ],
+      [
+        { id: 'patient-blade', name: 'Patient Blade', text: 'From the shadows waits 6 s for your next hit.' },
+        { id: 'honed-knives', name: 'Honed Knives', text: 'Each knife of the fan hits twice as hard.' },
+      ],
+      [
+        { id: 'deep-cut', name: 'Deep Cut', text: 'From the shadows crits for 3x.' },
+        { id: 'vanishing-step', name: 'Vanishing Step', text: 'A Shadowstep primes From the shadows.' },
+      ],
+    ],
+    crescendo: ['Thousand Cuts', 'A Crescendo throws a Fan of Knives and primes From the shadows.'],
   },
   {
     id: 'ranger',
@@ -310,6 +325,11 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
   if (!hasCrescendo(p)) return;
   if (specOf(p) === 'paladin') judgement(state, p);
   else if (specOf(p) === 'spellblade') bladeTempest(state, p);
+  else if (specOf(p) === 'rogue') {
+    // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
+    fanOfKnives(state, p);
+    primeShadow(state, p);
+  }
 }
 
 /**
@@ -1061,7 +1081,7 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
   const e = state.enemies.find((o) => o.id === p.attackTarget);
   if (!e || !isTargetable(e) || Math.abs(e.y - p.y) > 1.2) return null;
   const er = enemyStats(e.kind).radius;
-  const reach = tuning.abilities.chargeDistance + tuning.specs.shadowstepReach + er;
+  const reach = tuning.abilities.chargeDistance + (hasNode(p, 'long-shadow') ? tuning.specs.treeShadowstepReach : tuning.specs.shadowstepReach) + er;
   if (Math.hypot(e.x - p.x, e.z - p.z) > reach) return null;
   // Behind it is opposite its facing; a wall there leaves the Rogue as far round as it allows.
   const dir = { x: -Math.sin(e.yaw), y: 0, z: -Math.cos(e.yaw) };
@@ -1073,6 +1093,7 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
   p.z = e.z + dir.z * d;
   p.yaw = Math.atan2(e.x - p.x, e.z - p.z);
   state.events.push({ kind: 'shadowstep', playerId: p.id, fromX: from.x, fromZ: from.z, x: p.x, y: p.y, z: p.z });
+  if (hasNode(p, 'vanishing-step')) primeShadow(state, p);
   return e;
 }
 
@@ -1084,9 +1105,10 @@ export function shadowstep(state: SimState, p: PlayerState, colliders: readonly 
  */
 export function fanOfKnives(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
-  const n = Math.round(s.fanKnives);
+  const n = Math.round(hasNode(p, 'knife-storm') ? s.treeFanKnives : s.fanKnives);
   if (specOf(p) !== 'rogue' || n <= 0) return;
-  const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
+  const honed = hasNode(p, 'honed-knives') ? s.treeKnifeMult : 1;
+  const payload = { damage: tuning.abilities.whirlwindDamage * s.fanKnifeDamage * honed * tuning.combat.baseDamage, poise: 0.5, knockback: 0, heavy: false };
   state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: true });
   for (let i = 0; i < n; i++) spawnArrow(state, p, payload, (i / n) * Math.PI * 2, tuning.rangedCombo.arrowSpeed, false);
 }
@@ -1102,9 +1124,13 @@ export function shadowPass(state: SimState, p: PlayerState): void {
   const through = state.enemies.some(
     (e) => isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) < tuning.movement.radius + enemyStats(e.kind).radius,
   );
-  if (!through) return;
+  if (through) primeShadow(state, p);
+}
+
+/** Prime From the shadows for `specs.shadowWindowS` (Patient Blade's, with it), with its cue when it was not already primed. */
+function primeShadow(state: SimState, p: PlayerState): void {
   const fresh = (p.shadowUntil ?? -1) <= state.time;
-  p.shadowUntil = state.time + tuning.specs.shadowWindowS;
+  p.shadowUntil = state.time + (hasNode(p, 'patient-blade') ? tuning.specs.treeShadowWindowS : tuning.specs.shadowWindowS);
   if (fresh) state.events.push({ kind: 'shadowPrimed', playerId: p.id, x: p.x, y: p.y, z: p.z });
 }
 
@@ -1113,7 +1139,7 @@ export function shadowStrike(state: SimState, hero: PlayerState, hit: HitSpec): 
   if (hero.shadowUntil === undefined || hit.dot) return 1;
   const live = hero.shadowUntil > state.time && specOf(hero) === 'rogue';
   delete hero.shadowUntil;
-  return live ? tuning.specs.shadowCritMult : 1;
+  return live ? (hasNode(hero, 'deep-cut') ? tuning.specs.treeShadowCritMult : tuning.specs.shadowCritMult) : 1;
 }
 
 /**

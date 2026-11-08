@@ -5,7 +5,7 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { bladeCount, bladeStorm, blazingTrail, consecrate, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -13,7 +13,7 @@ import { createSimState } from './world';
 // The specialization trees (Michael's A, 8 Nov): two choices a row at 20, 30 and 40, a Crescendo at 50.
 const world = buildWorld(arena);
 const xpAt = (level: number) => ({ sword: xpForLevel(level), bow: 0, staff: 0 });
-const base = (level: number, tree?: string[], spec: 'paladin' | 'spellblade' = 'paladin'): Loadout => ({
+const base = (level: number, tree?: string[], spec: 'paladin' | 'spellblade' | 'rogue' = 'paladin'): Loadout => ({
   name: 'p',
   xp: xpAt(level),
   talents: emptyTalents(),
@@ -25,7 +25,7 @@ const base = (level: number, tree?: string[], spec: 'paladin' | 'spellblade' = '
 
 const awake = (s: SimState, x: number, z: number) => Object.assign(createEnemy(s, world, 'grunt', x, z, 0), { x, z, ai: 'chase' as const, aiTime: 0 });
 
-function scene(level: number, tree?: string[], spec: 'paladin' | 'spellblade' = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
+function scene(level: number, tree?: string[], spec: 'paladin' | 'spellblade' | 'rogue' = 'paladin'): { s: SimState; p: PlayerState; friend: PlayerState } {
   const s = createSimState(arena, [], world);
   const p = addPlayer(s, world, 'p1', base(level, tree, spec), false);
   const friend = addPlayer(s, world, 'p2', { ...base(1), spec: undefined }, false);
@@ -199,5 +199,58 @@ describe("the Spellblade's tree", () => {
     const below = blade(49);
     specCrescendo(below.s, below.p);
     expect(below.s.trails).toBeUndefined();
+  });
+});
+
+describe("the Rogue's tree", () => {
+  const rogue = (level: number, tree?: string[]) => scene(level, tree, 'rogue');
+  const knives = (s: SimState) => s.projectiles.filter((pr) => pr.owner === 'p1').length;
+
+  it('Long Shadow steps behind a target 2 m past where Shadowstep reaches', () => {
+    const at = tuning.abilities.chargeDistance + tuning.specs.shadowstepReach + 2;
+    const plain = rogue(20);
+    const e = awake(plain.s, 0, 10 - at);
+    plain.p.attackTarget = e.id;
+    expect(shadowstep(plain.s, plain.p, world.colliders)).toBeNull();
+    const long = rogue(20, ['long-shadow']);
+    const f = awake(long.s, 0, 10 - at);
+    long.p.attackTarget = f.id;
+    expect(shadowstep(long.s, long.p, world.colliders)).toBe(f);
+  });
+
+  it('Vanishing Step: the step primes From the shadows', () => {
+    const { s, p } = rogue(40, ['long-shadow', 'patient-blade', 'vanishing-step']);
+    const e = awake(s, 0, 7);
+    p.attackTarget = e.id;
+    shadowstep(s, p, world.colliders);
+    expect(p.shadowUntil).toBeCloseTo(s.time + tuning.specs.treeShadowWindowS);
+  });
+
+  it('Knife Storm throws twelve; Honed Knives doubles each', () => {
+    const plain = rogue(30);
+    fanOfKnives(plain.s, plain.p);
+    expect(knives(plain.s)).toBe(tuning.specs.fanKnives);
+    const storm = rogue(30, ['knife-storm', 'honed-knives']);
+    fanOfKnives(storm.s, storm.p);
+    expect(knives(storm.s)).toBe(tuning.specs.treeFanKnives);
+    const dmg = (s: SimState) => s.projectiles.find((pr) => pr.owner === 'p1')!.damage;
+    expect(dmg(storm.s) / dmg(plain.s)).toBeCloseTo(tuning.specs.treeKnifeMult);
+  });
+
+  it('Deep Cut: a primed hit crits for treeShadowCritMult', () => {
+    const { s, p } = rogue(40, ['long-shadow', 'honed-knives', 'deep-cut']);
+    p.shadowUntil = s.time + 1;
+    expect(shadowStrike(s, p, { damage: 10 } as never)).toBe(tuning.specs.treeShadowCritMult);
+  });
+
+  it('Thousand Cuts: at 50 a Crescendo throws the fan and primes; at 49 neither', () => {
+    const { s, p } = rogue(50);
+    specCrescendo(s, p);
+    expect(knives(s)).toBe(tuning.specs.fanKnives);
+    expect(p.shadowUntil).toBeGreaterThan(s.time);
+    const below = rogue(49);
+    specCrescendo(below.s, below.p);
+    expect(knives(below.s)).toBe(0);
+    expect(below.p.shadowUntil).toBeUndefined();
   });
 });

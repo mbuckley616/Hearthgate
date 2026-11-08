@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 152, the Rogue's tree; Melee's trees done (the builds pass, Michael's A)
+
+**What changed**
+
+The Rogue's six and its Crescendo, numbers on the panel: at sword level 20 Long Shadow (Shadowstep reaches a target 4 m past the Charge instead of 2) or Knife Storm (Fan of Knives throws twelve instead of eight); at 30 Patient Blade (From the shadows waits 6 s instead of 3) or Honed Knives (each knife twice as hard); at 40 Deep Cut (the primed crit is 3x instead of 2x) or Vanishing Step (a Shadowstep primes From the shadows, which the Charge's own hit from behind then spends: a 2x Charge). Thousand Cuts at 50: as a Flow Crescendo comes out, the Rogue throws a Fan of Knives (with Knife Storm and Honed Knives if taken) and is primed. The priming is one function now (`primeShadow`), so a roll, a step and the Crescendo prime alike, with the same cue. All three Melee specializations have their trees. check 501 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+A Vanishing Step's priming is spent by the Charge itself: the step primes, then the Charge's hit lands and `damageEnemy` spends it, so the Charge from behind crits 2x. That is a strong pick at 40 against Deep Cut's bigger but rarer crit, and the panel's `specs.shadowCritMult` tunes both.
+
+**Next**
+
+Ranged's trees, the Ranger's first (Thornshot, Bramble Rain, Snare Trap, and its Crescendo), then the Scout's and the Assassin's; then Magic's.
+
 ## 2026-11-08: Session 151, the Spellblade's tree (the builds pass, Michael's A)
 
 **What changed**
