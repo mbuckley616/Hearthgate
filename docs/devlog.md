@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 154, the Scout's tree (the builds pass, Michael's A)
+
+**What changed**
+
+The Scout's six and its Crescendo, numbers on the panel: at bow level 20 Hunter's Mark (marks last 8 s instead of 4) or Forked Lightning (Storm Volley's arc hops on from each enemy it reaches, two hops more, never back to one already struck); at 30 Exposed (party hits on the Scout's marks deal 20% more instead of 10%) or Long Arc (the arc leaps 9 m instead of 5); at 40 Tailwind (Gale Step's second press waits 2.5 s instead of 1.2) or Rising Tempo (hits on the marks fill the Scout's Flow twice as fast). Stormcaller at 50: as a Flow Crescendo comes out, every standing enemy within 10 m is marked, as an arrow would mark it. A mark's nodes are its Scout's, read from whoever laid it, so a teammate's hit on it gets Exposed's bonus. check green, parity identical. Not yet seen in a browser: each hop draws its own `stormChain` event, so the arc's view should show the fork, but nobody has looked.
+
+**Learned**
+
+Rising Tempo and Stormcaller feed each other: a Crescendo that marks a whole room makes every party hit on it fill the Scout's meter toward the next Crescendo. With Rising Tempo at 2x and a party of four that loop could run fast; `specs.markFlowGain` is the brake.
+
+**Next**
+
+The Assassin's tree (Deadeye, Venom Volley, Smoke Bomb, and its Crescendo); then Magic's three.
+
 ## 2026-11-08: Session 153, the Ranger's tree (the builds pass, Michael's A)
 
 **What changed**

@@ -5,10 +5,12 @@ import { readLoadout } from '../net/validate';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
+import { galeStep, markedMult, scoutMark, stormChain, brambleRain, snareTrap, stepSnares, thornshot, bladeCount, bladeStorm, blazingTrail, consecrate, fanOfKnives, shadowStrike, shadowstep, holyPulse, specCrescendo, specInfo, spectralBlades, taunt, treeProblem, SPECS, TREE_LEVELS } from './specs';
 import { emptyTalents } from './talents';
 import type { PlayerState, SimState } from './types';
 import type { SpecId } from './specs';
+import type { ProjectileState } from './types';
+import { newFlow } from './flow';
 import { createSimState } from './world';
 
 // The specialization trees (Michael's A, 8 Nov): two choices a row at 20, 30 and 40, a Crescendo at 50.
@@ -307,5 +309,56 @@ describe("the Ranger's tree", () => {
     specCrescendo(s, p);
     expect(s.brambles![0]).toMatchObject({ x: p.x, z: p.z });
     expect(s.brambles![0].radius).toBeCloseTo(tuning.specs.brambleRadius * tuning.specs.wildwoodRadiusMult);
+  });
+});
+
+describe("the Scout's tree", () => {
+  const scout = (level: number, tree?: string[]) => scene(level, tree, 'scout');
+  const arrow = (damage: number) => ({ damage, marks: true, hitIds: [] as number[] }) as unknown as ProjectileState;
+
+  it("Hunter's Mark lasts longer; Exposed adds more; Rising Tempo fills Flow faster", () => {
+    const plain = scout(30);
+    plain.p.flow = newFlow();
+    const e = awake(plain.s, 0, 6);
+    scoutMark(plain.s, plain.p, e);
+    expect(e.scoutMark!.until).toBeCloseTo(plain.s.time + tuning.specs.markSeconds);
+    expect(markedMult(plain.s, e, plain.friend, false)).toBeCloseTo(1 + tuning.specs.markDamageBonus);
+    const v0 = plain.p.flow.v;
+    const all = scout(40, ['hunters-mark', 'exposed', 'rising-tempo']);
+    all.p.flow = newFlow();
+    const f = awake(all.s, 0, 6);
+    scoutMark(all.s, all.p, f);
+    expect(f.scoutMark!.until).toBeCloseTo(all.s.time + tuning.specs.treeMarkSeconds);
+    expect(markedMult(all.s, f, all.friend, false)).toBeCloseTo(1 + tuning.specs.treeExposedBonus);
+    expect(all.p.flow.v).toBeCloseTo(v0 * tuning.specs.treeTempoFlowMult);
+  });
+
+  it('Forked Lightning hops on twice more; Long Arc leaps further', () => {
+    const chains = (tree?: string[], gap = 4) => {
+      const { s, p } = scout(30, tree);
+      const from = awake(s, 0, 0);
+      for (let i = 1; i <= 4; i++) Object.assign(awake(s, i * gap, 0), { hp: 9999 });
+      stormChain(s, p, arrow(10), from);
+      return s.events.filter((ev) => ev.kind === 'stormChain').length;
+    };
+    expect(chains()).toBe(1);
+    expect(chains(['forked-lightning'])).toBe(1 + tuning.specs.treeForkHops);
+    expect(chains(undefined, 7)).toBe(0);
+    expect(chains(['hunters-mark', 'long-arc'], 7)).toBe(1);
+  });
+
+  it("Tailwind: Gale Step's window is longer", () => {
+    const { s, p } = scout(40, ['hunters-mark', 'exposed', 'tailwind']);
+    galeStep(s, p, 0);
+    expect(p.galeUntil).toBeCloseTo(s.time + tuning.specs.treeGaleWindowS);
+  });
+
+  it('Stormcaller: at 50 a Crescendo marks every enemy within its reach', () => {
+    const { s, p } = scout(50);
+    const near = awake(s, 4, 10);
+    const far = awake(s, 0, 10 + tuning.specs.stormcallRadius + 2);
+    specCrescendo(s, p);
+    expect(near.scoutMark?.by).toBe('p1');
+    expect(far.scoutMark).toBeUndefined();
   });
 });

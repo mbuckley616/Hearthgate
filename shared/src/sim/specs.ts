@@ -171,6 +171,21 @@ export const SPECS: readonly SpecInfo[] = [
     e: ['Gale Step', 'Disengage twice in a row; the second is a full dodge.'],
     sig: ['Marked', 'Your shots mark. Any party hit on a marked enemy deals 10% more and fills your Flow.'],
     built: true,
+    tree: [
+      [
+        { id: 'hunters-mark', name: 'Hunter\'s Mark', text: 'Your marks last 8 s.' },
+        { id: 'forked-lightning', name: 'Forked Lightning', text: 'Storm Volley\'s lightning arcs on to two more enemies.' },
+      ],
+      [
+        { id: 'exposed', name: 'Exposed', text: 'Party hits on your marks deal 20% more.' },
+        { id: 'long-arc', name: 'Long Arc', text: 'Storm Volley\'s lightning leaps 9 m.' },
+      ],
+      [
+        { id: 'tailwind', name: 'Tailwind', text: 'Gale Step\'s second press waits 2.5 s.' },
+        { id: 'rising-tempo', name: 'Rising Tempo', text: 'Hits on your marks fill your Flow twice as fast.' },
+      ],
+    ],
+    crescendo: ['Stormcaller', 'A Crescendo marks every enemy within 10 m of you.'],
   },
   {
     id: 'assassin',
@@ -349,6 +364,11 @@ export function specCrescendo(state: SimState, p: PlayerState): void {
     // Wildwood: Bramble Rain's patch at the Ranger's feet, twice as wide.
     const s = tuning.specs;
     seedBrambles(state, p, p.x, p.z, s.brambleRadius * s.wildwoodRadiusMult * (hasStyleNode(p, 'bow', 'thicket') ? s.treeThicketMult : 1));
+  } else if (specOf(p) === 'scout') {
+    // Stormcaller: every standing enemy near is marked, as an arrow would.
+    for (const e of state.enemies) {
+      if (isTargetable(e) && Math.abs(e.y - p.y) < 1.2 && Math.hypot(e.x - p.x, e.z - p.z) <= tuning.specs.stormcallRadius) scoutMark(state, p, e);
+    }
   } else if (specOf(p) === 'rogue') {
     // Thousand Cuts: the fan, and the priming a roll through an enemy would give.
     fanOfKnives(state, p);
@@ -639,7 +659,7 @@ export function stepSnares(state: SimState): void {
 export function scoutMark(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
   if (!owner || owner.spec?.bow !== 'scout' || tuning.specs.markSeconds <= 0 || !isTargetable(e)) return;
   const fresh = !e.scoutMark || e.scoutMark.until <= state.time;
-  e.scoutMark = { by: owner.id, until: state.time + tuning.specs.markSeconds };
+  e.scoutMark = { by: owner.id, until: state.time + (hasStyleNode(owner, 'bow', 'hunters-mark') ? tuning.specs.treeMarkSeconds : tuning.specs.markSeconds) };
   if (fresh) state.events.push({ kind: 'scoutMarked', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
 }
 
@@ -656,8 +676,10 @@ export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | u
     return 1;
   }
   if (!hero || dot) return 1;
-  gainFlow(state.players.find((p) => p.id === m.by), tuning.specs.markFlowGain);
-  return 1 + tuning.specs.markDamageBonus;
+  const s = tuning.specs;
+  const scout = state.players.find((p) => p.id === m.by);
+  gainFlow(scout, s.markFlowGain * (scout && hasStyleNode(scout, 'bow', 'rising-tempo') ? s.treeTempoFlowMult : 1));
+  return 1 + (scout && hasStyleNode(scout, 'bow', 'exposed') ? s.treeExposedBonus : s.markDamageBonus);
 }
 
 /**
@@ -790,35 +812,44 @@ export function thornRing(state: SimState, p: PlayerState, e: EnemyState): void 
 export function stormChain(state: SimState, owner: PlayerState | undefined, pr: ProjectileState, from: EnemyState): void {
   const s = tuning.specs;
   if (!owner || owner.spec?.bow !== 'scout' || !pr.marks || s.stormChainDamage <= 0) return;
-  let best: EnemyState | null = null;
-  let bestD = s.stormChainRange;
-  for (const e of state.enemies) {
-    if (e === from || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - from.y) > 1.2) continue;
-    const d = Math.hypot(e.x - from.x, e.z - from.z);
-    if (d <= bestD) {
-      best = e;
-      bestD = d;
+  // Forked Lightning hops on from each enemy it reaches; never back to one the arrow or a hop has hit.
+  const hops = 1 + (hasStyleNode(owner, 'bow', 'forked-lightning') ? Math.round(s.treeForkHops) : 0);
+  const range = hasStyleNode(owner, 'bow', 'long-arc') ? s.treeArcRange : s.stormChainRange;
+  const struck = [from];
+  let at = from;
+  for (let h = 0; h < hops; h++) {
+    let best: EnemyState | null = null;
+    let bestD = range;
+    for (const e of state.enemies) {
+      if (struck.includes(e) || !isTargetable(e) || pr.hitIds.includes(e.id) || Math.abs(e.y - at.y) > 1.2) continue;
+      const d = Math.hypot(e.x - at.x, e.z - at.z);
+      if (d <= bestD) {
+        best = e;
+        bestD = d;
+      }
     }
+    if (!best) return;
+    const len = bestD || 1;
+    const dirX = (best.x - at.x) / len;
+    const dirZ = (best.z - at.z) / len;
+    state.events.push({ kind: 'stormChain', playerId: owner.id, fromX: at.x, fromZ: at.z, toX: best.x, toZ: best.z, y: at.y + 1.1 });
+    damageEnemy(state, best, {
+      attackerId: owner.id,
+      damage: pr.damage * s.stormChainDamage,
+      poise: 0.3,
+      knockback: 0,
+      heavy: false,
+      dirX,
+      dirZ,
+      x: best.x,
+      y: best.y + 1.1,
+      z: best.z,
+      style: 'bow',
+      projectile: true,
+    });
+    struck.push(best);
+    at = best;
   }
-  if (!best) return;
-  const len = bestD || 1;
-  const dirX = (best.x - from.x) / len;
-  const dirZ = (best.z - from.z) / len;
-  state.events.push({ kind: 'stormChain', playerId: owner.id, fromX: from.x, fromZ: from.z, toX: best.x, toZ: best.z, y: from.y + 1.1 });
-  damageEnemy(state, best, {
-    attackerId: owner.id,
-    damage: pr.damage * s.stormChainDamage,
-    poise: 0.3,
-    knockback: 0,
-    heavy: false,
-    dirX,
-    dirZ,
-    x: best.x,
-    y: best.y + 1.1,
-    z: best.z,
-    style: 'bow',
-    projectile: true,
-  });
 }
 
 /**
@@ -828,7 +859,7 @@ export function stormChain(state: SimState, owner: PlayerState | undefined, pr: 
  */
 export function galeStep(state: SimState, p: PlayerState, activeS: number): void {
   if (p.spec?.bow !== 'scout' || p.style !== 'bow' || tuning.specs.galeWindowS <= 0) return;
-  p.galeUntil = state.time + activeS + tuning.specs.galeWindowS;
+  p.galeUntil = state.time + activeS + (hasNode(p, 'tailwind') ? tuning.specs.treeGaleWindowS : tuning.specs.galeWindowS);
 }
 
 /** Whether this hero's second Gale Step press would roll now; a spent window is dropped. */
