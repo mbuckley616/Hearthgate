@@ -428,6 +428,46 @@ export const tuning = {
     hit3Heavy: 1,
   },
 
+  /** Throwing knives (the builds pass): one hand; three quick throws and a fan of knives, quicker than the bow and short of reach (`families.knivesLifeMult`). Borrows the bow's quick shots and its fan. */
+  knivesCombo: {
+    // 1 · throw
+    hit1WindupMs: 90,
+    hit1ActiveMs: 50,
+    hit1RecoveryMs: 150,
+    hit1LungeM: 0,
+    hit1Damage: 0.7,
+    hit1Poise: 0.4,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    // 2 · throw
+    hit2WindupMs: 90,
+    hit2ActiveMs: 50,
+    hit2RecoveryMs: 150,
+    hit2LungeM: 0,
+    hit2Damage: 0.7,
+    hit2Poise: 0.4,
+    hit2KnockbackM: 0,
+    hit2Heavy: 0,
+    // 3 · throw
+    hit3WindupMs: 90,
+    hit3ActiveMs: 50,
+    hit3RecoveryMs: 170,
+    hit3LungeM: 0,
+    hit3Damage: 0.75,
+    hit3Poise: 0.4,
+    hit3KnockbackM: 0,
+    hit3Heavy: 0,
+    // 4 · fan of knives
+    hit4WindupMs: 180,
+    hit4ActiveMs: 70,
+    hit4RecoveryMs: 320,
+    hit4LungeM: 0,
+    hit4Damage: 0.8,
+    hit4Poise: 1,
+    hit4KnockbackM: 0,
+    hit4Heavy: 1,
+  },
+
   /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
   crossbowCombo: {
     // 1 · quick bolt
@@ -530,6 +570,10 @@ export const tuning = {
     longbowHeavyWindup: 1.2,
     /** A longbow's arrows fly this much faster than the bow's, and so this much farther in their life. */
     longbowArrowSpeedMult: 1.35,
+    knivesHeavyDamage: 0.8,
+    knivesHeavyWindup: 0.75,
+    /** A thrown knife falls after this share of an arrow's life: a short reach. */
+    knivesLifeMult: 0.45,
   },
 
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
@@ -2941,6 +2985,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'families.longbowHeavyDamage': [0.5, 3, 0.05],
   'families.longbowHeavyWindup': [0.5, 3, 0.05],
   'families.longbowArrowSpeedMult': [0.5, 3, 0.05],
+  'families.knivesHeavyDamage': [0.5, 3, 0.05],
+  'families.knivesHeavyWindup': [0.5, 3, 0.05],
+  'families.knivesLifeMult': [0.1, 1, 0.05],
   'families.crossbowHeavyDamage': [0.5, 3, 0.05],
   'families.crossbowHeavyWindup': [0.5, 3, 0.05],
   'families.wandHeavyDamage': [0.5, 3, 0.05],
@@ -3487,6 +3534,7 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   axe: tuning.axeCombo,
   daggers: tuning.daggersCombo,
   longbow: tuning.longbowCombo,
+  knives: tuning.knivesCombo,
 };
 
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
@@ -3575,9 +3623,9 @@ export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash
  * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
  * the projectiles of one of its style's chain steps (FAMILY_ANIM).
  */
-export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe' | 'daggers' | 'longbow';
-export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword', daggers: 'sword', longbow: 'bow' };
-export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3], daggers: [0, 1, 0, 1, 2], longbow: [0, 0, 2] };
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe' | 'daggers' | 'longbow' | 'knives';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword', daggers: 'sword', longbow: 'bow', knives: 'bow' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3], daggers: [0, 1, 0, 1, 2], longbow: [0, 0, 2], knives: [0, 1, 0, 3] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -3629,7 +3677,7 @@ export function enemyStats(kind: EnemyKind): EnemyStats {
 }
 
 // A family's chain (C5 and the builds pass) on the panel, as the slice's chains are.
-for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo', 'daggersCombo', 'longbowCombo'] as const) {
+for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo', 'daggersCombo', 'longbowCombo', 'knivesCombo'] as const) {
   for (const key of Object.keys(tuning[section])) {
     const path = `${section}.${key}`;
     if (key.endsWith('WindupMs')) tuningRanges[path] = [20, 1200, 5];

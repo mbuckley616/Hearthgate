@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 166, throwing knives (the builds pass, the rest of the roster)
+
+**What changed**
+
+The second Ranged family of the rest of the roster. Throwing knives are one-handed and Ranged, so the buckler or the hand crossbow goes with them. Four throws (`tuning.knivesCombo`): three quick throws on the bow's quick shots (290 ms against 410, 0.7 damage, 0.4 poise) and a fan of knives on its fan (three, heavy). A knife falls after 0.45 of an arrow's life (`families.knivesLifeMult`), about 23 m against the bow's 51: close work at a bow's pace and better. Applied in `fireAttack` to whatever the throw spawned, so strings and prediction agree. String heavies at 0.8 times the damage and 0.75 the windup. Three knives in the hand as the mesh, three in the bag icon; they drop and sell in every metal, as a Ranged item. check 540 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+A shape's own `kind` beats its material's, so metal knives are Ranged gear and take the buckler, not the shield; the catalogue already allowed it.
+
+**Next**
+
+The sceptre, then the focus orb (a magic off-hand) and the parrying dagger (the daggers' off-hand), one a session.
+
 ## 2026-11-09: Session 165, the longbow (the builds pass, the rest of the roster)
 
 **What changed**

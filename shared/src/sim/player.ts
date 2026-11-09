@@ -216,6 +216,7 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: hit.heavy });
     // The longbow (the builds pass): its arrows fly faster, and so farther in the same life.
     const fast = familyOf(p) === 'longbow' ? tuning.families.longbowArrowSpeedMult : 1;
+    const loosed = state.projectiles.length;
     switch (p.attackHit) {
       case 2: // power shot
       case 4: // piercing shot before the backflip
@@ -230,6 +231,8 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
       default:
         spawnArrow(state, p, hit, 0, r.arrowSpeed * fast, false);
     }
+    // Throwing knives (the builds pass) fall short.
+    if (familyOf(p) === 'knives') for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].life *= tuning.families.knivesLifeMult;
   } else if (p.style === 'staff') {
     const burst = p.attackHit === 2 || p.attackHit === 4;
     state.events.push({ kind: 'fire', playerId: p.id, projectile: burst ? 'burst' : 'bolt', heavy: hit.heavy });

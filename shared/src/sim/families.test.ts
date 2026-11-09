@@ -163,6 +163,19 @@ describe('weapon families (C5)', () => {
     expect(heroHit(lb.p, 0).damage).toBeGreaterThan(heroHit(bow.p, 0).damage);
   });
 
+  it('throws knives three quick and then a fan, falling short of an arrow’s reach', () => {
+    const { s, p } = hero({ family: 'knives' }, 'bow');
+    expect(chain(s, p, 4).map((x) => x[1])).toEqual([...FAMILY_ANIM.knives]);
+    const thrown = hero({ family: 'knives' }, 'bow');
+    const shot = hero({}, 'bow');
+    for (const h of [thrown, shot]) for (let t = 0; t < 60 && !h.s.projectiles.length; t++) press(h.s, h.p, { attack: t === 0 });
+    expect(thrown.s.projectiles[0].life / shot.s.projectiles[0].life).toBeCloseTo(tuning.families.knivesLifeMult);
+    p.attackStep = 0;
+    const throwMs = heroHit(p, 0);
+    const quick = heroHit(shot.p, 0);
+    expect(throwMs.windup + throwMs.active + throwMs.recovery).toBeLessThan(quick.windup + quick.active + quick.recovery);
+  });
+
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {
     const xb = hero({ family: 'crossbow' }, 'bow');
     expect(chain(xb.s, xb.p, 3).map((x) => x[1])).toEqual([...FAMILY_ANIM.crossbow]);
@@ -189,6 +202,7 @@ describe('weapon families (C5)', () => {
     expect(wornMods(w(['weapon', 'ash-crossbow'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'ash-staff'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'ash-longbow'], ['shield', 'leather-buckler'])).offhand).toBeUndefined();
+    expect(wornMods(w(['weapon', 'bronze-knives'], ['shield', 'leather-buckler']))).toMatchObject({ family: 'knives', offhand: 'buckler' });
     const hammer = wornMods(w(['weapon', 'bronze-warhammer'], ['shield', 'bronze-squareShield']));
     expect(hammer.offhand).toBeUndefined();
     expect(hammer.damage.sword).toBeCloseTo(tuning.gear.twoHandDamage);
