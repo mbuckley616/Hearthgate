@@ -301,6 +301,43 @@ export const tuning = {
     hit4ArcDeg: 360,
   },
 
+  /** Axe (the builds pass): one hand, so a shield with it; two wide chops and a spinning cleave, more damage than a sword and less poise, and its heavies open a bleed. Borrows the sword's sweep, slash and spin. */
+  axeCombo: {
+    // 1 · wide chop
+    hit1WindupMs: 150,
+    hit1ActiveMs: 100,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0.7,
+    hit1Damage: 1.3,
+    hit1Poise: 0.8,
+    hit1KnockbackM: 0.3,
+    hit1Heavy: 0,
+    hit1RangeM: 2.1,
+    hit1ArcDeg: 170,
+    // 2 · backhand chop
+    hit2WindupMs: 140,
+    hit2ActiveMs: 100,
+    hit2RecoveryMs: 280,
+    hit2LungeM: 0.6,
+    hit2Damage: 1.4,
+    hit2Poise: 0.8,
+    hit2KnockbackM: 0.3,
+    hit2Heavy: 0,
+    hit2RangeM: 2.1,
+    hit2ArcDeg: 150,
+    // 3 · spinning cleave
+    hit3WindupMs: 160,
+    hit3ActiveMs: 300,
+    hit3RecoveryMs: 400,
+    hit3LungeM: 1.2,
+    hit3Damage: 2.0,
+    hit3Poise: 2.5,
+    hit3KnockbackM: 2,
+    hit3Heavy: 1,
+    hit3RangeM: 2.4,
+    hit3ArcDeg: 360,
+  },
+
   /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
   crossbowCombo: {
     // 1 · quick bolt
@@ -391,6 +428,8 @@ export const tuning = {
     wandHeavyWindup: 0.7,
     maceHeavyDamage: 1.2,
     maceHeavyWindup: 1.1,
+    axeHeavyDamage: 1.15,
+    axeHeavyWindup: 1.05,
   },
 
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
@@ -2793,6 +2832,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'families.warhammerHeavyWindup': [0.5, 3, 0.05],
   'families.maceHeavyDamage': [0.5, 3, 0.05],
   'families.maceHeavyWindup': [0.5, 3, 0.05],
+  'families.axeHeavyDamage': [0.5, 3, 0.05],
+  'families.axeHeavyWindup': [0.5, 3, 0.05],
   'families.crossbowHeavyDamage': [0.5, 3, 0.05],
   'families.crossbowHeavyWindup': [0.5, 3, 0.05],
   'families.wandHeavyDamage': [0.5, 3, 0.05],
@@ -3336,6 +3377,7 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   crossbow: tuning.crossbowCombo,
   wand: tuning.wandCombo,
   mace: tuning.maceCombo,
+  axe: tuning.axeCombo,
 };
 
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
@@ -3424,9 +3466,9 @@ export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash
  * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
  * the projectiles of one of its style's chain steps (FAMILY_ANIM).
  */
-export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace';
-export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword' };
-export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4] };
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -3478,7 +3520,7 @@ export function enemyStats(kind: EnemyKind): EnemyStats {
 }
 
 // A family's chain (C5 and the builds pass) on the panel, as the slice's chains are.
-for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo'] as const) {
+for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo'] as const) {
   for (const key of Object.keys(tuning[section])) {
     const path = `${section}.${key}`;
     if (key.endsWith('WindupMs')) tuningRanges[path] = [20, 1200, 5];

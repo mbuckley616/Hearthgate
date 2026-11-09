@@ -198,7 +198,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   if (hero && hit.heavy) {
     hero.lastFinisherAt = state.time;
     // Bleed perk: finishers with the sword open a wound.
-    if (hit.style === 'sword' && hero.mods.perks.includes('bleed')) {
+    // The axe's heavies (the builds pass) open the same wound, its own without the perk.
+    if (hit.style === 'sword' && (hero.mods.perks.includes('bleed') || (familyOf(hero) === 'axe' && !hit.projectile))) {
       e.bleedTicks = slotted(hero, 'deepWounds') ? Math.round(tuning.gear.bleedTicks * tuning.champion.deepWoundsTicksMult) : tuning.gear.bleedTicks;
       e.bleedTimer = tuning.gear.bleedTickMs / 1000;
       e.bleedOwner = hero.id;

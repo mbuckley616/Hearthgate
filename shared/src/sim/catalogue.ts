@@ -135,6 +135,8 @@ export const SHAPES: readonly Shape[] = [
   { id: 'crossbow', slot: 'weapon', name: 'crossbow', families: ['wood'], weight: 0, kind: 'ranged', style: 'bow', family: 'crossbow' },
   // The mace (the builds pass): one-handed and blunt, so it takes a shield.
   { id: 'mace', slot: 'weapon', name: 'mace', families: ['metal'], weight: 0, kind: 'melee', style: 'sword', family: 'mace' },
+  // The axe (the builds pass): one-handed, so it takes a shield too.
+  { id: 'axe', slot: 'weapon', name: 'axe', families: ['metal'], weight: 0, kind: 'melee', style: 'sword', family: 'axe' },
   { id: 'wand', slot: 'weapon', name: 'wand', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', family: 'wand' },
   // Off-hands for them (C5): a tome with the wand, a buckler or a second crossbow with the crossbow.
   { id: 'tome', slot: 'shield', name: 'tome', families: ['cloth'], weight: 0, offhand: 'tome' },

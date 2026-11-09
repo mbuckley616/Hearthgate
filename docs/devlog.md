@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 163, the axe (the builds pass, the rest of the roster)
+
+**What changed**
+
+The second family of the rest of the roster. The axe is Melee in one hand, so it takes a shield and its bash. Its chain is three blows (`tuning.axeCombo`): a wide chop (170°, on the sword's low sweep), a backhand chop (150°, on its right slash), and a spinning cleave (heavy, 360°, on its spin). Step for step it hits harder than the sword (1.3, 1.4, 2.0 against 1.0, 1.1, 1.8) and breaks less poise (0.8 against 1; the cleave 2.5 against the sweep's 4): the mace staggers, the axe cuts. Its heavies, the cleave and its strings, open the sword's bleed perk's wound without the perk (`gear.bleedTicks`, ticking to the wielder), melee only. String heavies at 1.15 times the damage and 1.05 the windup (`families.axe*`). A bearded-blade mesh and a bag icon; it drops and sells in every metal. check 536 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The bleed was already a sword finisher's state on the enemy (`bleedTicks`, `bleedOwner`), so the axe's identity cost one condition; the family's character lives best in an existing state rather than a new one.
+
+**Next**
+
+Daggers, then longbow, throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
 ## 2026-11-09: Session 162, the mace (the builds pass, Michael's A on the rest of the roster)
 
 **What changed**

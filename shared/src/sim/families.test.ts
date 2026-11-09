@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FAMILY_ANIM, tuning, type Style } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { readLoadout } from '../net/validate';
-import { hurtHero } from './combat';
+import { damageEnemy, hurtHero } from './combat';
 import { wornMods, type GearItem, type Worn } from './catalogue';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
@@ -74,13 +74,43 @@ describe('weapon families (C5)', () => {
     expect(heroHit(p, 0).windup).toBeGreaterThan(heroHit(sword, 0).windup);
   });
 
-  it('wears a mace in one hand, with a shield and its bash', () => {
+  it('wears a mace or an axe in one hand, with a shield and its bash', () => {
     const w = (...pairs: [keyof Worn, string][]): Worn => Object.fromEntries(pairs.map(([slot, id]) => [slot, item(id)]));
     const m = wornMods(w(['weapon', 'bronze-mace'], ['shield', 'bronze-squareShield']));
     expect(m).toMatchObject({ family: 'mace', offhand: 'shield' });
     expect(wornMods(w(['weapon', 'bronze-mace'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
+    expect(wornMods(w(['weapon', 'bronze-axe'], ['shield', 'bronze-kiteshield']))).toMatchObject({ family: 'axe', offhand: 'shield' });
     const base = { name: 'Ann', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), maxHp: 100 };
     expect(readLoadout({ ...base, mods: { ...emptyMods(), family: 'mace', offhand: 'shield' } })?.mods).toMatchObject({ family: 'mace', offhand: 'shield' });
+  });
+
+  it('plays an axe as two wide chops and a spinning cleave: more damage than the sword’s step for step, less poise', () => {
+    const { s, p } = hero({ family: 'axe' }, 'sword');
+    expect(chain(s, p, 4)).toEqual([[0, 2], [1, 1], [2, 3], [0, 2]]);
+    const sword = hero({}, 'sword').p;
+    for (const [step, anim] of FAMILY_ANIM.axe.entries()) {
+      p.attackStep = step;
+      expect(heroHit(p, anim).damage).toBeGreaterThan(heroHit(sword, step).damage);
+      expect(heroHit(p, anim).poise).toBeLessThan(heroHit(sword, step).poise);
+    }
+    p.attackStep = 2;
+    expect(heroHit(p, 3).heavy).toBe(true);
+  });
+
+  it('opens a bleed with an axe’s heavy, and not with its light chops or a sword’s heavy', () => {
+    const struck = (family: Mods['family'], heavy: boolean) => {
+      const { s, p } = hero(family ? { family } : {}, 'sword');
+      const e = createEnemy(s, world, 'brute', p.x, p.z + 2, Math.PI);
+      e.ai = 'chase';
+      s.enemies.push(e);
+      damageEnemy(s, e, { attackerId: p.id, damage: 5, poise: 0, knockback: 0, heavy, dirX: 0, dirZ: 1, x: e.x, y: 1, z: e.z, style: 'sword' });
+      return e;
+    };
+    const cleft = struck('axe', true);
+    expect(cleft.bleedTicks).toBe(tuning.gear.bleedTicks);
+    expect(cleft.bleedOwner).toBe('p1');
+    expect(struck('axe', false).bleedTicks).toBe(0);
+    expect(struck(undefined, true).bleedTicks).toBe(0);
   });
 
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {
