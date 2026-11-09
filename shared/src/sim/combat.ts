@@ -160,6 +160,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
   const shadow = hero ? shadowStrike(state, hero, hit) : 1;
   if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
+  // Riposte (the parrying dagger): the first blow after a parried hit crits, if it comes in time.
+  const riposte = hero ? riposteStrike(state, hero, hit) : 1;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
   breakChannel(e);
   // Marked (the Scout's signature): a party hit on a Scout's mark lands harder and feeds their Flow.
@@ -168,7 +170,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const hexed = hexedMult(state, e, hero, hit.dot);
   // Daggers (the builds pass): a blow from behind lands harder.
   const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
-  const damage = backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  const damage = riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -264,7 +266,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     damage,
     heavy: hit.heavy,
     bonus: staggered,
-    crit: !!hit.crit || shadow > 1,
+    crit: !!hit.crit || shadow > 1 || riposte > 1,
     killed,
     dirX: hit.dirX,
     dirZ: hit.dirZ,
@@ -272,6 +274,14 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   });
   if (shatter) shatterAround(state, e, hit);
   return true;
+}
+
+/** The multiplier a riposting hero's blow takes (and spends the riposte on), or 1. A bleed's tick never spends it. */
+export function riposteStrike(state: SimState, hero: PlayerState, hit: HitSpec): number {
+  if (hero.riposteUntil === undefined || hit.dot) return 1;
+  const live = hero.riposteUntil > state.time;
+  delete hero.riposteUntil;
+  return live ? tuning.abilities.riposteCritMult : 1;
 }
 
 /**
@@ -526,6 +536,15 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const t = abilityTiming('deflect');
     if (p.abilityTime >= t.windup && p.abilityTime < t.windup + t.active) {
       parry(state, p, hit);
+      return 'parried';
+    }
+  }
+  // The parrying dagger's riposte (the builds pass): a short parry, and the next blow after it crits.
+  if (p.mode === 'ability' && p.ability === 'riposte') {
+    const t = abilityTiming('riposte');
+    if (p.abilityTime >= t.windup && p.abilityTime < t.windup + t.active) {
+      parry(state, p, hit);
+      p.riposteUntil = state.time + tuning.abilities.riposteWindowMs / 1000;
       return 'parried';
     }
   }

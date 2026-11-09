@@ -177,6 +177,8 @@ export interface PlayerState {
   tree?: SpecTree;
   /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
   shadowUntil?: number;
+  /** The parrying dagger's Riposte parried a hit: the next blow before this sim time crits. Absent otherwise. */
+  riposteUntil?: number;
   /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */
   galeUntil?: number;
   /** Smoke Bomb (the Assassin's Disengage): no enemy targets this hero before this sim time. Absent otherwise. */

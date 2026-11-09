@@ -132,6 +132,7 @@ export function talentText(style: Style, id: TalentId): string {
     case 'ward':
     case 'deflect':
     case 'quickShot':
+    case 'riposte':
       // The off-hand's ability (C4) has no talent ranks: the Q and E rows are the weapon's two.
       return '';
   }

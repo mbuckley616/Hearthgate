@@ -251,6 +251,55 @@ describe('weapon families (C5)', () => {
     expect(e.ai).toBe('stagger');
   });
 
+  it('parries with the parrying dagger’s riposte, and the next blow in time crits', () => {
+    const { s, p } = hero({ family: 'daggers', offhand: 'parryingDagger' }, 'sword');
+    const e = createEnemy(s, world, 'brute', p.x, p.z + 1.5, Math.PI);
+    e.x = p.x;
+    e.z = p.z + 1.5;
+    e.ai = 'chase';
+    s.enemies.push(e);
+    press(s, p, { ability3: true }, 3);
+    expect(p.ability).toBe('riposte');
+    expect(hurtHero(s, p, { damage: 20, fromX: e.x, fromZ: e.z, enemyId: e.id })).toBe('parried');
+    expect(p.riposteUntil).toBeCloseTo(s.time + tuning.abilities.riposteWindowMs / 1000);
+    e.ai = 'chase'; // the parry staggered it, so it stands again: the crit alone is measured
+    e.poise = 99;
+    const blow = { x: e.x, y: 1, z: e.z, attackerId: p.id, damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1 };
+    let hp = e.hp;
+    damageEnemy(s, e, blow);
+    expect(hp - e.hp).toBeCloseTo(10 * tuning.abilities.riposteCritMult);
+    expect(s.events.some((ev) => ev.kind === 'hit' && ev.crit)).toBe(true);
+    expect(p.riposteUntil).toBeUndefined();
+    e.ai = 'chase';
+    hp = e.hp;
+    damageEnemy(s, e, blow);
+    expect(hp - e.hp).toBeCloseTo(10);
+  });
+
+  it('spends a riposte that came too late on nothing, and the 300 ms passes', () => {
+    const { s, p } = hero({ family: 'mace', offhand: 'parryingDagger' }, 'sword');
+    const e = createEnemy(s, world, 'brute', p.x, p.z + 1.5, Math.PI);
+    e.ai = 'chase';
+    s.enemies.push(e);
+    press(s, p, { ability3: true }, 3);
+    expect(hurtHero(s, p, { damage: 20, fromX: e.x, fromZ: e.z, enemyId: e.id })).toBe('parried');
+    e.ai = 'chase';
+    s.time += tuning.abilities.riposteWindowMs / 1000 + 0.1;
+    const hp = e.hp;
+    damageEnemy(s, e, { x: e.x, y: 1, z: e.z, attackerId: p.id, damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1 });
+    expect(hp - e.hp).toBeCloseTo(10);
+    // Past its 300 ms the parry is down: a hit lands.
+    press(s, p, {}, Math.ceil(tuning.abilities.riposteCooldownMs / 1000 / DT) + 5);
+    press(s, p, { ability3: true }, 25);
+    expect(hurtHero(s, p, { damage: 20, fromX: e.x, fromZ: e.z, enemyId: e.id })).not.toBe('parried');
+  });
+
+  it('takes the parrying dagger with a one-handed blade, not a bow', () => {
+    const blade = wornMods({ weapon: item('iron-daggers'), shield: item('iron-parryingDagger') });
+    expect(blade.offhand).toBe('parryingDagger');
+    expect(wornMods({ weapon: item('oak-crossbow'), shield: item('iron-parryingDagger') }).offhand).toBeUndefined();
+  });
+
   it('shoots two bolts from the hand crossbow', () => {
     const { s, p } = hero({ family: 'crossbow', offhand: 'handCrossbow' }, 'bow');
     press(s, p, { ability3: true }, 20);

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 168, the parrying dagger's Riposte (the builds pass, the rest of the roster)
+
+**What changed**
+
+Michael's A on the off-hands, its first half. The parrying dagger is a metal off-hand of the melee kind, so it goes with a one-handed blade (sword, mace, axe or daggers) and nothing else. Its ability on 3 is Riposte: a 300 ms parry (`abilities.riposteDurationMs`, cooldown 5 s), in `hurtHero` beside the buckler's Deflect, so a hit in it is the guard's parry (stagger, hitstop, Flow) from any side. A hit parried in it sets `PlayerState.riposteUntil` 2 s on (`riposteWindowMs`), and the next blow that lands, a bleed's tick excepted, takes `riposteCritMult` (1.5) and shows as a crit; spent either way, as From the shadows is. A Shieldbearer's shield that turns the blow spends nothing. All four numbers on the panel. A blade-with-a-swept-guard mesh, a bag icon, an ability icon and a pose (the off-hand blade brought across). It drops and sells in every metal. check 544 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The parry staggers what it parries, so the riposte's blow usually also takes the stagger bonus: 1.5 times 1.25 on a light enemy. That is the punish Michael asked for, and the test clears the stagger to measure the crit alone.
+
+**Next**
+
+The focus orb's Focus (Michael's A): 6 s of casts 20% faster and 30% harder, with the wand or sceptre. Then the roster is done.
+
 ## 2026-11-09: Session 167, the sceptre (the builds pass, the rest of the roster)
 
 **What changed**

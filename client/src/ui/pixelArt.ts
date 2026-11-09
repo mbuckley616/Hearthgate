@@ -273,6 +273,25 @@ export const ICONS: Record<string, string[]> = {
     '................',
     '................',
   ],
+  // The parrying dagger's riposte (the builds pass): a short blade catching a blow in a spark.
+  riposte: [
+    '................',
+    '..y.........k...',
+    '...y.y.....ksk..',
+    '....yyy...kswk..',
+    '...yywyy.kswk...',
+    '....yyy.kswk....',
+    '...y.y.kswk.....',
+    '..y...kswk......',
+    '.....kswk.......',
+    '..kk.ksk........',
+    '..kgkkk.........',
+    '...kggk.........',
+    '....knk.........',
+    '...knk.kgk......',
+    '..knk...k.......',
+    '..kk............',
+  ],
   // The buckler's deflect (C5): a round shield turning a bolt aside.
   deflect: [
     '................',

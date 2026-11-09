@@ -379,6 +379,9 @@ export function buildGearShield(p: Palette, e: CatalogueEntry): THREE.Group {
   } else if (e.shape.id === 'tome') {
     // A tome held open-handed (C5): covers in the cloth's colour, the page block pale.
     g.add(mesh(new THREE.BoxGeometry(0.2, 0.27, 0.06), base), mesh(new THREE.BoxGeometry(0.18, 0.25, 0.064), s.plain('hair'), 0.012, 0, 0), mesh(new THREE.BoxGeometry(0.02, 0.27, 0.066), trim, -0.095, 0, 0));
+  } else if (e.shape.id === 'parryingDagger') {
+    // A parrying dagger held point up (the builds pass): a grip, a wide swept guard and a narrow blade.
+    g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.11, 8), p.leather, 0, -0.08, 0), mesh(new THREE.BoxGeometry(0.18, 0.02, 0.03), trim, 0, -0.02, 0), mesh(new THREE.BoxGeometry(0.035, 0.26, 0.01), base, 0, 0.12, 0));
   } else if (e.shape.id === 'handCrossbow') {
     // A small crossbow for the off hand (C5), pointing ahead.
     g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.26), base, 0, 0, 0.05), mesh(new THREE.BoxGeometry(0.26, 0.02, 0.03), trim, 0, 0, 0.15));
