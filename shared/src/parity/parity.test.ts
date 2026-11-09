@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true, states: true };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -42,6 +42,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.sweep = tuning.combat.sweepFastMoves;
     kept.armour = tuning.combat.postStaggerArmour;
     kept.threePhases = tuning.warden.threePhases;
+    kept.states = tuning.combos.elementStates;
     tuning.coop.bleedOut = false;
     // The slice's roll tail and its i-frames ending with it (D9 shortened one and kept the other).
     tuning.dodge.cancelAfterMs = 240;
@@ -70,6 +71,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.combat.postStaggerArmour = false;
     // Its Warden roars once, at half health, and has two phases (E1g has three).
     tuning.warden.threePhases = false;
+    // Its Shatter is a staff's slow and a sword's heavy (the states widen both).
+    tuning.combos.elementStates = false;
   });
   afterAll(() => {
     tuning.coop.bleedOut = kept.bleedOut;
@@ -88,6 +91,7 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.combat.sweepFastMoves = kept.sweep;
     tuning.combat.postStaggerArmour = kept.armour;
     tuning.warden.threePhases = kept.threePhases;
+    tuning.combos.elementStates = kept.states;
   });
 
   for (const sc of SCENARIOS) {

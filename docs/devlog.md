@@ -2,6 +2,48 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-08: Session 161, Detonate as a state; the three states are built (the builds pass, Michael's A)
+
+**What changed**
+
+The third state. Burning (Detonate's setup, the slice's volley-mark window) is now also left by a hero's Fire: their Fire ground (a Fire Spellblade's Blazing Charge strip, a Fire Sorcerer's Elemental Step) and their light Fire bolts and Attunement bursts. The next magic burst to catch a Burning enemy detonates it, the slice's +50% radius and +30% damage with its `combo` event, the Sorcerer's own burst included. A swing, a heavy and a payoff's own hits never light it, so a burst does not set up the next on the enemy it just detonated. `burns` in `combat.ts`, under `combos.elementStates` (off in the parity test). A fix to Session 159 on the way: a ground tick returned from `damageEnemy` before the setups, so Frost ground did not in fact chill (its test checked `chills` alone); the setups now run before a tick returns, and the tests drive `damageEnemy` for both grounds. check 531 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Shatter, Skewer and Detonate all already had their windows, tints (ice-blue, gold, orange in `EnemyView`), sparks and sounds from the slice, so the three states cost no wire or view work: each is one rule for who opens the window. A rule tested only as a predicate can miss the path that never reaches it; drive the real function.
+
+**Next**
+
+Michael's A covered the first three states, all built. What comes next in the builds pass (the remaining states, runes, the rest of the roster, the Necromancer) is asked in `decisions.md` Pending.
+
+## 2026-11-08: Session 160, Skewer as a state (the builds pass, Michael's A on the states)
+
+**What changed**
+
+The second state. Skewer (Staggered, cashed in by the charged shot that runs an enemy through, the slice's payoff and the "thrust" of Michael's A) is now opened by a stagger dealt in a hero's Earth element from any style, as well as by any melee stagger: an Earth Sorcerer's Attunement bolts and Cataclysm, an Earth Spellblade's, Ranger's or Druid's hits. A Fire, Frost or Air stagger from a bow or staff opens nothing, as in the slice. `skewerSets` in `combat.ts`, under the same `combos.elementStates` switch as Session 159 (off in the parity test); parity identical, check 530 green, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+"For a thrust" was read as the slice's own Skewer payoff, a charged shot through the staggered, rather than a new melee thrust: no weapon has a thrust move today, and the daggers and spear that might are in the roster part of the builds pass. If Michael meant a melee lunge (a Charge or Shield Rush cashing it in), `hitWithProjectile`'s `skewer` test is the one to widen.
+
+**Next**
+
+Detonate from Fire's bursts on a Burning enemy, the third state.
+
+## 2026-11-08: Session 159, Shatter as a state (the builds pass, Michael's A on the states)
+
+**What changed**
+
+The first of the three states. Chill (Shatter's setup, the slice's `shatterUntil` window) is now left by any hero's hit that slows or freezes, whatever its style: frost arrows, the Hunter perk's charged shot, a Frost Sorcerer's bolts and Elemental Nova, the frost ring; and by any ground in a hero's Frost element (a Frost Spellblade's Blazing Charge strip, a Frost Sorcerer's Elemental Step). Any style's heavy cashes it in: a sword's or warhammer's heavy, a charged shot, a staff's heavy, each with the slice's +50% and splash and the `combo` event the HUD, sound and sparks already know. A Frost Spellblade's own chain does not chill, so the state still joins two players rather than one. Behind `combos.elementStates`, which the parity test turns off (the slice: a staff's slow, a sword's heavy); parity identical, check 529 green. `chills` and `shatterPays` in `combat.ts` are the two rules, tested in `states.test.ts`. Not yet seen in a browser.
+
+**Learned**
+
+The slice already had Shatter, Skewer and Detonate as cross-style combos with their windows, views and sounds, so the states are a widening of who sets up and who pays off rather than new state on `EnemyState`; nothing new crosses the wire. The ice-blue tint `EnemyView` gives an open Shatter window is the Chilled look. A charged shot on an enemy both Chilled and Staggered pays both Shatter and Skewer in one hit, which seems right for a party but is worth watching.
+
+**Next**
+
+Skewer from Earth's staggers for a thrust (one state a session, Michael's A), then Detonate from Fire's bursts on a Burning enemy.
+
 ## 2026-11-08: Session 158, the Sorcerer's tree; every specialization has its tree (the builds pass, Michael's A)
 
 **What changed**
