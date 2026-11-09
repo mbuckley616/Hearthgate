@@ -435,7 +435,7 @@ export function stepPlayer(
   }
   // How long attack has been held (C1): a hold long enough turns the step into a heavy.
   if (tuning.combo.heavies) {
-    p.attackHold = cmd.attackHeld ? (p.attackHold ?? 0) + dt : 0;
+    p.attackHold = cmd.attackHeld ? Math.max(0, (p.attackHold ?? 0) + dt * (cmd.holdTicks ?? 1)) : 0;
     // A press made mid-swing is for the next swing in the chain: its hold must not turn this one heavy.
     if (cmd.attack && p.mode === 'attack') p.attackHoldNext = true;
   }

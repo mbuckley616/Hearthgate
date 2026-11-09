@@ -657,6 +657,12 @@ export interface PlayerCommand {
   attack: boolean;
   /** Attack held this tick (C1): a long enough hold turns the step into a heavy. Absent in the slice. */
   attackHeld?: boolean;
+  /**
+   * The server's alone (never read from a player's message): how many ticks of hold this tick counts,
+   * absent meaning one. The browser counts one a command; the server's input slots set this when a
+   * tick stood for no input (0), or when late or folded inputs owe the count ticks (bow backflip, 9 Nov).
+   */
+  holdTicks?: number;
   /** Camera forward on the ground plane: attacks face it when there's no move input. */
   aimX: number;
   aimZ: number;

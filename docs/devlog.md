@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 170, the server counts a held attack as the browser does (deep-work session, the bow's backflip snap, part 1)
+
+**What changed**
+
+The root of the critic's 9 Nov snap. A held attack's length (C1, `PlayerState.attackHold`) is counted by the browser one tick per command and by the server one tick per tick, and three things in the input slots made those two counts part: a tick that stands in for a late input guesses the held buttons (a press that came late started the server's count a tick or more after the browser's), a cushion tick (at the start, and each time the cushion widens) stands for no input yet counted a tick of hold, and a fold or a calm narrowing uses two inputs in one tick and counted one. `combo.heavyHoldMs` is 250 ms, and at 7 fps a tap is one or two 140 ms frames, so a tap sits right on that line and a tick either way turned the string HH into HL on one side only: the bow's fifth step backflips 2.5 m, exactly the snap limit.
+
+Now the slots (`inputSlots.ts`) keep the browser's count for each recent seq they use (`Slots.runs`: real where the input arrived, guessed where a tick stood in, corrected as the real one lands) and the count the sim has (`simRun`), and each tick's command carries `holdTicks` (`PlayerCommand`, the server's alone: `readCommand` never passes it from a player) when it should count other than one tick: 0 on a cushion tick, 2 or more when a late press's held ticks or a fold's are owed, less when a guess held and the player had let go. `stepPlayer` adds `dt * (holdTicks ?? 1)` (never below 0). The browser's prediction is unchanged; the server's count lands on it once the inputs are in.
+
+Tests: `inputSlots.test.ts` plays the critic's recipe (a press every 15 ticks held 9, every fifth held 39) from a page sending in uneven 7 fps frames for 2400 ticks; once every input up to the ack has arrived the server's count must be the browser's. Before: 115 ticks off (30 on an uneven 10 fps page); after: none. `HostSession.test.ts`: a press whose first two inputs came late, through the real sim; before, `attackHold` was 13 ticks against the browser's 15; after, 15. `npm run check` 546, parity identical (the strings are off in it, and `holdTicks` is absent outside the slots).
+
+**Learned**
+
+A held field is not a press: a press can be carried to the next tick and nothing is lost, but a count of held ticks is lost for every tick that guessed wrong, and the stand-in's guess is wrong exactly at the edges (a press, a release), which is where a heavy is decided. Prediction cannot know which ticks the server will guess, so the server has to put the count right, not the browser.
+
+**Next**
+
+Part 2: a string decided on the other side of the line can still happen while a guess is outstanding (a heavy the server started on a guessed tick cannot be taken back), so a correction a mispredicted swing explains eases instead of snapping, as the refused dodge does. Then the critic's recipe in two browsers.
+
 ## 2026-11-09: Session 167, the sceptre (the builds pass, the rest of the roster)
 
 **What changed**
