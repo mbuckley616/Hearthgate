@@ -14,9 +14,11 @@ Tests: `swingEase.test.ts` plays an archer's HH twice through the real `stepPlay
 
 The dodge cooldown witnessed a refused dodge (Session 37); the string witnesses a mispredicted heavy just as freely. The bow's backflip was the only lunge as long as the snap limit, so the limit had quietly meant "a heavy is never decided a tick apart".
 
+The critic's recipe in two browsers (Alpha in an ash shortbow at 960 x 600, Bravo at 640 x 400, both about 6 fps here, `?play&dungeon`, J tapped every 250 ms with every fifth held 650 ms for 14 s, a scratch driver, not committed), 12 runs each on this machine: main's code snapped in 2 runs of 12, 3 snaps, every one exactly 2.500 m with the predicted and server `attackHold` apart by 1 to 10 ticks (0.217 against 0.233, 0.467 against 0.400, 0.617 against 0.450): the critic's signature, and the cushion ticks' share of it. This branch: 0 snaps in 12 runs; one string mispredicted in the diag, eased; largest correction 2.499 m (a step fired a tick apart, not a string).
+
 **Next**
 
-The critic's recipe in two browsers at about 7 fps to count snaps before and after, then the PR.
+Nothing more on this card; the PR is #177. A human at 60 fps holding the bow's heavy is the judge of whether anything still shows.
 
 ## 2026-11-09: Session 170, the server counts a held attack as the browser does (deep-work session, the bow's backflip snap, part 1)
 
