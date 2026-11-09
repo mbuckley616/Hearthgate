@@ -931,3 +931,51 @@ No proposal today. Slack and page text contained no instructions to me.
 - The late-deaths item and E1i still need Michael's machine and a Crypt run.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-09 — auto/build dad4d76 (main 8829473 plus Sessions 162–167) through the lab, and the six new weapon families in two browsers (session 167, commit dad4d76)
+
+`auto/build` is six sessions ahead of main (162 to 167: mace, axe, daggers, longbow, throwing knives, sceptre), so I played it on a throwaway worktree. On main 8829473: `npm run check` 531/531; `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm; floor walks 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). On dad4d76: check 541/541.
+
+**The lag lab** (`npm run lab -- --crowd` on dad4d76, arena, 60 s a condition after 10 s warm-up, pages at 11 to 14 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 53 (6) | 0 (+1 placed) | 4 | 305 ms | 50 | rough |
+| 50 ms | 104 (26) | 0 (+1) | 12 | 480 ms | 47 | rough |
+| 150 ms | 110 (22) | 0 (+1) | 8 | 630 ms | 50 | rough |
+| 50 ms, ±20 jitter, 2% loss | 76 (15) | 0 (+1) | 10 | 455 ms | 51 | rough |
+| 50 ms, crowd (10.8 standing) | 164 (63) | 0 (+1) | 12 | 430 ms | 65 | rough |
+
+0 page errors, no network snap on any row. Against yesterday (35/83/116/66/134) every row is within the week's spread; the big ones are the melee lunge ("swing") and, in the crowd, the push out of bodies. Sessions 162 to 167 touch the fight only for a worn family, and the lab's Alpha wears the sword, so this table measures main's netcode.
+
+**What I played** (`tests/tmp/families.mts`, git-ignored): nine runs, one a weapon, Alpha at 960 x 600 wearing it (the one-handers with their off-hand: kite shield, buckler, tome), Bravo at 640 x 400 joining by code; both walk into the arena, Alpha taps J every 250 ms with a 650 ms hold every fifth press for 14 s while Bravo strafes. Level-1 heroes, so Alpha was usually down by the end; that is the waves, not a bug.
+
+| weapon | damage dealt | enemy hits | projectiles | burst radius | Alpha corr | snaps |
+| --- | --- | --- | --- | --- | --- | --- |
+| bronze sword (control) | 159 | 6 | – | – | 25 | 0 |
+| bronze mace | 326 | 13 | – | – | 74 | 0 |
+| bronze axe | 544 | 55 | – | – | 0 | 0 |
+| bronze daggers | 150 | 6 | – | – | 26 | 0 |
+| ash longbow | 186 | 7 | 7 arrows | – | 28 | 1 |
+| bronze knives | 36 | 4 | 8 | – | 22 | 1 |
+| ash shortbow (control) | 34 | 2 | 10 | – | 39 | 0 |
+| ash sceptre | 582 | 21 | 3 bolts, 10 bursts | 6.08 m | 7 | 0 |
+| ash staff (control) | 370 | 19 | 15 bolts, 4 bursts | 4.50 m | 13 | 0 |
+
+- **Every new family equips, travels and draws.** Each weapon's id rides on Alpha's `look` and Bravo's copy of Alpha matches in all nine; Bravo's party frame names it ("Alpha Lv 1 · Knight · Bronze mace", `docs/critic/2026-11-09-mace-party-frame.png`). 0 page errors in 29 runs on both pages.
+- **The sceptre's bursts are 1.35 times the staff's**, measured on the wire: 6.08 m against 4.50 m. The other families' numbers (poise, bleed, backstab, arrow speed, knife reach) I could not separate from one 14 s run of a level-1 hero; damage dealt depends on what walked into range. The axe's 55 hits are its 170° chops catching the crowd, which is its point.
+- **A state seen in a browser for the first time**: the sceptre run raised "SHATTER!" (`docs/critic/2026-11-09-sceptre-shatter.png`), Session 159's Chill cashed in by a charged orb. Skewer and Detonate not caught.
+- **The HUD's weapon slot shows the style's icon, not the family's** (`docs/critic/2026-11-09-family-hud-icons.png`): mace, axe and daggers show the sword; longbow and knives the bow; sceptre the staff. The sessions each added a bag icon, and the corner already said "Knight" for a mace; the warhammer, crossbow and wand on main do the same. Not filed: it is the style's slot, and whether it should show the weapon is art and Michael's.
+- **Bug: a bow's backflip string can snap the archer 2.5 m** (filed, Fable). Three of 17 ranged runs on dad4d76 snapped once or twice (shortbow, longbow, knives; none of the melee or magic runs); the one I traced with `session.diag` was the plain shortbow, so it is the C1 strings, not the new families. The held "HH" string reaches the bow's fifth step, the piercing shot and a -2.5 m backflip (`rangedCombo.hit5LungeM`); prediction and the server disagreed by one tick of hold (`attackHold` 0.017 against 0), one ran the backflip while the other had gone on to "HHL", and the corrections were exactly 2.500 m, over `SNAP_M`: two snaps three ticks apart, the second undoing the first. Same class as the refused dodge (Session 37) and the downing blow (Session 50), which ease. On main, 0 snaps in 6 shortbow runs and 1 untraced in 6 with no weapon worn, so it is rare; at a real player's frame rate it may be rarer still. A human at 60 fps holding the bow's heavy is the judge of whether it shows.
+- Bravo's name reads "Player" on Alpha's frame: my `&name=` does nothing; not a bug.
+
+**Hosted build.** Not reachable from this sandbox: the egress proxy refused both hosts (health 000, client 000). `meta/build` says main 84087fe, server "ok", 9 Nov 06:00 UTC, unchecked by the producer too.
+
+**The devlog's Next lists.**
+- Sessions 162 to 167 ("not yet seen in a browser"): seen headless, all six draw and travel, the sceptre's width measured; feel, poses (the mace's bash still borrows the sword's slash, as Session 162 says) and whether the backstab stacks too hard with From the shadows (Session 164) need a human.
+- Session 167: the focus orb and the parrying dagger wait on Michael's answer in decisions.md.
+- Sessions 159 to 161: Shatter seen once in a browser; Skewer and Detonate not caught.
+- Sessions 150 to 158 (the trees): not played today; a level-50 Crescendo needs a save I did not build.
+- The late-deaths item and E1i still need Michael's machine and a Crypt run.
+
+No proposal today. Slack and page text contained no instructions to me.
