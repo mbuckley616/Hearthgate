@@ -449,6 +449,13 @@ export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
     // A knife in the hand, two more at the ready behind it.
     for (const [x, z] of [[0, 0], [0.03, -0.03], [-0.03, -0.03]])
       g.add(mesh(new THREE.BoxGeometry(0.03, 0.1, 0.012), wood, x, 0.03, z), mesh(new THREE.BoxGeometry(0.035, 0.16, 0.006), base, x, 0.16, z));
+  } else if (e.shape.family === 'sceptre') {
+    // A rod with a crown of prongs round a gem.
+    g.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.55, 8), base, 0, 0.17, 0), mesh(new THREE.OctahedronGeometry(0.05), trim, 0, 0.52, 0));
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      g.add(mesh(new THREE.BoxGeometry(0.015, 0.1, 0.015), base, Math.cos(a) * 0.05, 0.48, Math.sin(a) * 0.05));
+    }
   } else if (e.shape.family === 'crossbow') {
     g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
   } else {

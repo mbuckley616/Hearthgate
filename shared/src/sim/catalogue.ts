@@ -143,6 +143,8 @@ export const SHAPES: readonly Shape[] = [
   { id: 'longbow', slot: 'weapon', name: 'longbow', families: ['wood'], weight: 0, kind: 'ranged', style: 'bow', twoHanded: true, family: 'longbow' },
   // Throwing knives (the builds pass): one-handed, quick and short, so a buckler or a hand crossbow with them.
   { id: 'knives', slot: 'weapon', name: 'throwing knives', families: ['metal'], weight: 0, kind: 'ranged', style: 'bow', family: 'knives' },
+  // The sceptre (the builds pass): one-handed magic, so a tome with it.
+  { id: 'sceptre', slot: 'weapon', name: 'sceptre', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', family: 'sceptre' },
   { id: 'wand', slot: 'weapon', name: 'wand', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', family: 'wand' },
   // Off-hands for them (C5): a tome with the wand, a buckler or a second crossbow with the crossbow.
   { id: 'tome', slot: 'shield', name: 'tome', families: ['cloth'], weight: 0, offhand: 'tome' },

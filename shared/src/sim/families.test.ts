@@ -176,6 +176,22 @@ describe('weapon families (C5)', () => {
     expect(throwMs.windup + throwMs.active + throwMs.recovery).toBeLessThan(quick.windup + quick.active + quick.recovery);
   });
 
+  it('casts a sceptre’s bolt and burst, bolt and great burst, its bursts wider than the staff’s', () => {
+    const { s, p } = hero({ family: 'sceptre' }, 'staff');
+    expect(chain(s, p, 4).map((x) => x[1])).toEqual([...FAMILY_ANIM.sceptre]);
+    // The first burst each casts, as it is cast.
+    const burst = (family?: 'sceptre') => {
+      const h = hero(family ? { family } : {}, 'staff');
+      for (let t = 0; t < 600; t++) {
+        press(h.s, h.p, { attack: t % 10 === 0 });
+        const b = h.s.projectiles.find((pr) => pr.kind === 'burst');
+        if (b) return b.radius;
+      }
+      return 0;
+    };
+    expect(burst('sceptre') / burst()).toBeCloseTo(tuning.families.sceptreBurstRadiusMult);
+  });
+
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {
     const xb = hero({ family: 'crossbow' }, 'bow');
     expect(chain(xb.s, xb.p, 3).map((x) => x[1])).toEqual([...FAMILY_ANIM.crossbow]);
@@ -203,6 +219,7 @@ describe('weapon families (C5)', () => {
     expect(wornMods(w(['weapon', 'ash-staff'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'ash-longbow'], ['shield', 'leather-buckler'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'bronze-knives'], ['shield', 'leather-buckler']))).toMatchObject({ family: 'knives', offhand: 'buckler' });
+    expect(wornMods(w(['weapon', 'ash-sceptre'], ['shield', 'linen-tome']))).toMatchObject({ family: 'sceptre', offhand: 'tome' });
     const hammer = wornMods(w(['weapon', 'bronze-warhammer'], ['shield', 'bronze-squareShield']));
     expect(hammer.offhand).toBeUndefined();
     expect(hammer.damage.sword).toBeCloseTo(tuning.gear.twoHandDamage);

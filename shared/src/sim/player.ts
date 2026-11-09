@@ -236,15 +236,17 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
   } else if (p.style === 'staff') {
     const burst = p.attackHit === 2 || p.attackHit === 4;
     state.events.push({ kind: 'fire', playerId: p.id, projectile: burst ? 'burst' : 'bolt', heavy: hit.heavy });
+    // The sceptre (the builds pass): its bursts reach wider.
+    const wide = familyOf(p) === 'sceptre' ? tuning.families.sceptreBurstRadiusMult : 1;
     switch (p.attackHit) {
       case 2:
-        spawnBurst(state, p, hit, colliders, m.burstRange, m.burstRadius);
+        spawnBurst(state, p, hit, colliders, m.burstRange, m.burstRadius * wide);
         break;
       case 3: // nova: a ring of bolts in every direction
         for (let i = 0; i < m.novaBolts; i++) spawnBolt(state, p, hit, (i / m.novaBolts) * Math.PI * 2);
         break;
       case 4:
-        spawnBurst(state, p, hit, colliders, m.greatBurstRange, m.greatBurstRadius);
+        spawnBurst(state, p, hit, colliders, m.greatBurstRange, m.greatBurstRadius * wide);
         break;
       default:
         // Single bolts curve toward the soft target; Blink primes one to crit.

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 167, the sceptre (the builds pass, the rest of the roster)
+
+**What changed**
+
+The last weapon family of the roster. The sceptre is one-handed Magic, so the tome and its Ward go with it. Four casts (`tuning.sceptreCombo`): a bolt (1.1 damage against the staff's 0.9, a little slower), a burst (heavy), a bolt, and a great burst (heavy, 2.4), on the staff's bolt, burst and great burst. Its bursts, the strings' too, reach 1.35 times as wide (`families.sceptreBurstRadiusMult`), in `fireAttack` as the longbow's speed is. String heavies at 1.1 times the damage and the windup. A crowned rod mesh and a bag icon; it drops and sells in every wood. check 541 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+With the sceptre each style has four families plus its slice weapon (Melee five), and every family has its character in one number on the panel (poise, bleed, backstab, arrow speed, reach, burst width), applied where the slice's own code already decided that thing. That is what kept seven families to a session each.
+
+**Next**
+
+The two off-hands left of the roster: the focus orb (magic) and the parrying dagger (with daggers). Each needs an ability of its own on 3, so they may want a design call first.
+
 ## 2026-11-09: Session 166, throwing knives (the builds pass, the rest of the roster)
 
 **What changed**
