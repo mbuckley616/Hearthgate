@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 171, a mispredicted swing eases instead of snapping (deep-work session, the bow's backflip snap, part 2)
+
+**What changed**
+
+Session 170 puts the server's hold count right once the inputs are in, but a heavy the server started on a guessed tick cannot be taken back, so a string can still be decided on the other side of the line now and then. The browser now treats that as what it is. `swingMispredicted(predicted, server)` (`game/Session.ts`) compares the hero the browser had predicted with the one it replays from the snapshot: a different attack seq, step, family step, string or string move, or one side attacking and the other not, means the same commands made a different swing, so the error is a lunge run or not run, not a teleport. The fields outlive the swing (the string stands until the chain ends), so a snapshot landing after both sides have finished still tells. For a quarter second of server time after one, `ClientSession` eases a correction up to `swingEaseM()`: the 2.5 m snap limit, the longest lunge in any chain (`longestLungeM()` in `tuning.ts`, from the tables, today the bow's 2.5 m backflip) and the lunge's pull to a target (`targeting.lungeMagnetM`, 1.8), 6.8 m. The window also covers the correction a few ticks later that undoes the first, the second of the critic's pair. Everything else over 2.5 m still snaps.
+
+Tests: `swingEase.test.ts` plays an archer's HH twice through the real `stepPlayer`, once with the second press held to the heavy line and once two ticks short (HL): the two heroes stand exactly 2.500 m apart, the critic's number, over `SNAP_M` and under `swingEaseM()`, and on every tick they differ the swing fields witness it; the same swing on both sides, or no swing, is no witness. check 546, test:net all passed, parity identical.
+
+**Learned**
+
+The dodge cooldown witnessed a refused dodge (Session 37); the string witnesses a mispredicted heavy just as freely. The bow's backflip was the only lunge as long as the snap limit, so the limit had quietly meant "a heavy is never decided a tick apart".
+
+**Next**
+
+The critic's recipe in two browsers at about 7 fps to count snaps before and after, then the PR.
+
 ## 2026-11-09: Session 170, the server counts a held attack as the browser does (deep-work session, the bow's backflip snap, part 1)
 
 **What changed**
@@ -10,7 +26,7 @@ The root of the critic's 9 Nov snap. A held attack's length (C1, `PlayerState.at
 
 Now the slots (`inputSlots.ts`) keep the browser's count for each recent seq they use (`Slots.runs`: real where the input arrived, guessed where a tick stood in, corrected as the real one lands) and the count the sim has (`simRun`), and each tick's command carries `holdTicks` (`PlayerCommand`, the server's alone: `readCommand` never passes it from a player) when it should count other than one tick: 0 on a cushion tick, 2 or more when a late press's held ticks or a fold's are owed, less when a guess held and the player had let go. `stepPlayer` adds `dt * (holdTicks ?? 1)` (never below 0). The browser's prediction is unchanged; the server's count lands on it once the inputs are in.
 
-Tests: `inputSlots.test.ts` plays the critic's recipe (a press every 15 ticks held 9, every fifth held 39) from a page sending in uneven 7 fps frames for 2400 ticks; once every input up to the ack has arrived the server's count must be the browser's. Before: 115 ticks off (30 on an uneven 10 fps page); after: none. `HostSession.test.ts`: a press whose first two inputs came late, through the real sim; before, `attackHold` was 13 ticks against the browser's 15; after, 15. `npm run check` 546, parity identical (the strings are off in it, and `holdTicks` is absent outside the slots).
+Tests: `inputSlots.test.ts` plays the critic's recipe (a press every 15 ticks held 9, every fifth held 39) from a page sending in uneven 7 fps frames for 2400 ticks; once every input up to the ack has arrived the server's count must be the browser's. Before: 115 ticks off (30 on an uneven 10 fps page); after: none. `HostSession.test.ts`: a press whose first two inputs came late, through the real sim; before, `attackHold` was 13 ticks against the browser's 15; after, 15. `npm run check` 544, parity identical (the strings are off in it, and `holdTicks` is absent outside the slots).
 
 **Learned**
 
