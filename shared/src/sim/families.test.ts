@@ -142,6 +142,27 @@ describe('weapon families (C5)', () => {
     expect(stabbed(undefined, true)).toBeCloseTo(stabbed(undefined, false));
   });
 
+  it('looses a longbow’s two long shots and a piercing war shot, faster than the bow’s arrows', () => {
+    const lb = hero({ family: 'longbow' }, 'bow');
+    expect(chain(lb.s, lb.p, 3).map((x) => x[1])).toEqual([...FAMILY_ANIM.longbow]);
+    // The speed of each arrow as it leaves the string, quick and charged.
+    const loosed = (family?: 'longbow') => {
+      const { s, p } = hero(family ? { family } : {}, 'bow');
+      const seen = new Map<boolean, number>();
+      for (let t = 0; t < 400 && seen.size < 2; t++) {
+        press(s, p, { attack: t % 10 === 0 });
+        for (const pr of s.projectiles) if (pr.kind === 'arrow' && !seen.has(!!pr.charged)) seen.set(!!pr.charged, Math.hypot(pr.vx, pr.vy, pr.vz));
+      }
+      return seen;
+    };
+    const fast = loosed('longbow');
+    const plain = loosed();
+    for (const charged of [false, true]) expect(fast.get(charged)! / plain.get(charged)!).toBeCloseTo(tuning.families.longbowArrowSpeedMult);
+    const bow = hero({}, 'bow');
+    lb.p.attackStep = 0;
+    expect(heroHit(lb.p, 0).damage).toBeGreaterThan(heroHit(bow.p, 0).damage);
+  });
+
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {
     const xb = hero({ family: 'crossbow' }, 'bow');
     expect(chain(xb.s, xb.p, 3).map((x) => x[1])).toEqual([...FAMILY_ANIM.crossbow]);
@@ -167,6 +188,7 @@ describe('weapon families (C5)', () => {
     // A tome needs a one-handed magic weapon: not a crossbow, not a two-handed staff.
     expect(wornMods(w(['weapon', 'ash-crossbow'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'ash-staff'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
+    expect(wornMods(w(['weapon', 'ash-longbow'], ['shield', 'leather-buckler'])).offhand).toBeUndefined();
     const hammer = wornMods(w(['weapon', 'bronze-warhammer'], ['shield', 'bronze-squareShield']));
     expect(hammer.offhand).toBeUndefined();
     expect(hammer.damage.sword).toBeCloseTo(tuning.gear.twoHandDamage);

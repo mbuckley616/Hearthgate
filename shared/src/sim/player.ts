@@ -214,19 +214,21 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
   const hit = heroHit(p, p.attackHit);
   if (p.style === 'bow') {
     state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: hit.heavy });
+    // The longbow (the builds pass): its arrows fly faster, and so farther in the same life.
+    const fast = familyOf(p) === 'longbow' ? tuning.families.longbowArrowSpeedMult : 1;
     switch (p.attackHit) {
       case 2: // power shot
       case 4: // piercing shot before the backflip
-        spawnArrow(state, p, hit, 0, r.powerArrowSpeed, true);
+        spawnArrow(state, p, hit, 0, r.powerArrowSpeed * fast, true);
         break;
       case 3: // fan
         for (let i = 0; i < r.fanArrows; i++) {
           const u = r.fanArrows > 1 ? i / (r.fanArrows - 1) - 0.5 : 0;
-          spawnArrow(state, p, hit, u * r.fanSpreadDeg * DEG, r.arrowSpeed, false);
+          spawnArrow(state, p, hit, u * r.fanSpreadDeg * DEG, r.arrowSpeed * fast, false);
         }
         break;
       default:
-        spawnArrow(state, p, hit, 0, r.arrowSpeed, false);
+        spawnArrow(state, p, hit, 0, r.arrowSpeed * fast, false);
     }
   } else if (p.style === 'staff') {
     const burst = p.attackHit === 2 || p.attackHit === 4;

@@ -397,6 +397,37 @@ export const tuning = {
     hit5ArcDeg: 140,
   },
 
+  /** Longbow (the builds pass): two hands; two long shots and a war shot that pierces, slower than the bow and harder, its arrows flying faster and so farther (`families.longbowArrowSpeedMult`). Borrows the bow's quick and power shots. */
+  longbowCombo: {
+    // 1 · long shot
+    hit1WindupMs: 280,
+    hit1ActiveMs: 60,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0,
+    hit1Damage: 1.5,
+    hit1Poise: 1,
+    hit1KnockbackM: 0.3,
+    hit1Heavy: 0,
+    // 2 · long shot
+    hit2WindupMs: 280,
+    hit2ActiveMs: 60,
+    hit2RecoveryMs: 260,
+    hit2LungeM: 0,
+    hit2Damage: 1.5,
+    hit2Poise: 1,
+    hit2KnockbackM: 0.3,
+    hit2Heavy: 0,
+    // 3 · war shot
+    hit3WindupMs: 420,
+    hit3ActiveMs: 60,
+    hit3RecoveryMs: 380,
+    hit3LungeM: 0,
+    hit3Damage: 3.0,
+    hit3Poise: 4,
+    hit3KnockbackM: 1.5,
+    hit3Heavy: 1,
+  },
+
   /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
   crossbowCombo: {
     // 1 · quick bolt
@@ -495,6 +526,10 @@ export const tuning = {
     daggersBackstabMult: 1.5,
     /** How wide the cone behind an enemy is that counts as behind it. */
     daggersBackstabArcDeg: 120,
+    longbowHeavyDamage: 1.25,
+    longbowHeavyWindup: 1.2,
+    /** A longbow's arrows fly this much faster than the bow's, and so this much farther in their life. */
+    longbowArrowSpeedMult: 1.35,
   },
 
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
@@ -2903,6 +2938,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'families.daggersHeavyWindup': [0.5, 3, 0.05],
   'families.daggersBackstabMult': [1, 3, 0.05],
   'families.daggersBackstabArcDeg': [0, 360, 5],
+  'families.longbowHeavyDamage': [0.5, 3, 0.05],
+  'families.longbowHeavyWindup': [0.5, 3, 0.05],
+  'families.longbowArrowSpeedMult': [0.5, 3, 0.05],
   'families.crossbowHeavyDamage': [0.5, 3, 0.05],
   'families.crossbowHeavyWindup': [0.5, 3, 0.05],
   'families.wandHeavyDamage': [0.5, 3, 0.05],
@@ -3448,6 +3486,7 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   mace: tuning.maceCombo,
   axe: tuning.axeCombo,
   daggers: tuning.daggersCombo,
+  longbow: tuning.longbowCombo,
 };
 
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
@@ -3536,9 +3575,9 @@ export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash
  * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
  * the projectiles of one of its style's chain steps (FAMILY_ANIM).
  */
-export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe' | 'daggers';
-export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword', daggers: 'sword' };
-export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3], daggers: [0, 1, 0, 1, 2] };
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe' | 'daggers' | 'longbow';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword', daggers: 'sword', longbow: 'bow' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3], daggers: [0, 1, 0, 1, 2], longbow: [0, 0, 2] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -3590,7 +3629,7 @@ export function enemyStats(kind: EnemyKind): EnemyStats {
 }
 
 // A family's chain (C5 and the builds pass) on the panel, as the slice's chains are.
-for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo', 'daggersCombo'] as const) {
+for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo', 'daggersCombo', 'longbowCombo'] as const) {
   for (const key of Object.keys(tuning[section])) {
     const path = `${section}.${key}`;
     if (key.endsWith('WindupMs')) tuningRanges[path] = [20, 1200, 5];

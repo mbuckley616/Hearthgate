@@ -440,6 +440,11 @@ export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
   } else if (e.shape.family === 'daggers') {
     // A short grip, a crossguard and a narrow blade.
     g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.12, 8), wood, 0, 0.02, 0), mesh(new THREE.BoxGeometry(0.12, 0.02, 0.03), trim, 0, 0.09, 0), mesh(new THREE.BoxGeometry(0.04, 0.28, 0.01), base, 0, 0.24, 0));
+  } else if (e.shape.family === 'longbow') {
+    // A tall stave bent in a shallow arc, the grip at the hand, and its string.
+    const stave = mesh(new THREE.TorusGeometry(1.1, 0.02, 6, 24, 1.2), base, -1.02, 0.2, 0);
+    stave.rotation.z = -0.6;
+    g.add(stave, mesh(new THREE.BoxGeometry(0.008, 1.24, 0.008), trim, -0.11, 0.2, 0), mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.14, 8), wood, 0.08, 0.2, 0));
   } else if (e.shape.family === 'crossbow') {
     g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
   } else {

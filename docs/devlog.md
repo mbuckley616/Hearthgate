@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 165, the longbow (the builds pass, the rest of the roster)
+
+**What changed**
+
+The first Ranged family of the rest of the roster. The longbow takes both hands (no buckler, +20%). Three shots (`tuning.longbowCombo`): two long shots on the bow's quick shot (600 ms each against the bow's 410, 1.5 damage against 0.8) and a war shot on its power shot (heavy, piercing, 3.0). Every arrow it looses, its strings' included, flies 1.35 times as fast (`families.longbowArrowSpeedMult`), so in the same 1.5 s life it carries 1.35 times as far, about 69 m for a quick shot. The speed is applied in `fireAttack`, which prediction shares, so a player's own arrow leaves where it will land. String heavies at 1.25 times the damage and 1.2 the windup. A tall stave mesh (it was falling through to the wand's rod) and a bag icon; it drops and sells in every wood. check 539 green, parity identical (the bow multiplies by 1). Not yet seen in a browser.
+
+**Learned**
+
+`buildFamilyWeapon` drew any family it did not know as the wand; each new family needs its branch there or it holds a rod. A test that measures arrows after a chain finds the fast ones already gone into a wall; measure as they leave.
+
+**Next**
+
+Throwing knives, then the sceptre, focus orb and parrying dagger, one a session.
+
 ## 2026-11-09: Session 164, daggers (the builds pass, the rest of the roster)
 
 **What changed**
