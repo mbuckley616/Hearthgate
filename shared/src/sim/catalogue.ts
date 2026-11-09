@@ -133,6 +133,8 @@ export const SHAPES: readonly Shape[] = [
   // Weapon families (C5): each fights its style's fight with a chain of its own.
   { id: 'warhammer', slot: 'weapon', name: 'warhammer', families: ['metal'], weight: 0, kind: 'melee', style: 'sword', twoHanded: true, family: 'warhammer' },
   { id: 'crossbow', slot: 'weapon', name: 'crossbow', families: ['wood'], weight: 0, kind: 'ranged', style: 'bow', family: 'crossbow' },
+  // The mace (the builds pass): one-handed and blunt, so it takes a shield.
+  { id: 'mace', slot: 'weapon', name: 'mace', families: ['metal'], weight: 0, kind: 'melee', style: 'sword', family: 'mace' },
   { id: 'wand', slot: 'weapon', name: 'wand', families: ['wood'], weight: 0, kind: 'magic', style: 'staff', family: 'wand' },
   // Off-hands for them (C5): a tome with the wand, a buckler or a second crossbow with the crossbow.
   { id: 'tome', slot: 'shield', name: 'tome', families: ['cloth'], weight: 0, offhand: 'tome' },

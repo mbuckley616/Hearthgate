@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 162, the mace (the builds pass, Michael's A on the rest of the roster)
+
+**What changed**
+
+The first of the rest of the roster, on the C5 pattern. The mace is a Melee family in one hand, so it takes a shield and its bash on 3. Its chain is four blunt blows (`tuning.maceCombo`): a bash, a backhand and a bash on the sword's two slashes, then an overhead crush on the sword's leaping slam (heavy, 360°). Each blow is a little slower than the sword's and breaks about twice its poise (2.2 to 2.6 against 1; the crush 7 against 5), so a mace staggers where a sword cuts. Its heavies are the sword's strings at 1.2 times the damage and 1.1 times the windup (`families.mace*`), and a corpse it launches flies 1.25 times as far (`launch.maceMult`), the blunt weapons' own launch from K1. It drops and sells in every metal like the warhammer (`bronze-mace` and on), with a flanged-head mesh in `wardrobe.ts` and a bag icon. On the way: the four family chains (warhammer, crossbow, wand, mace) had no panel ranges; they now do, by the same rules as the slice's chains. check 534 green, parity identical (a family counts only when worn). Not yet seen in a browser.
+
+**Learned**
+
+C5's borrowed poses made a family a table and four map entries; the cost is that the mace's bash looks exactly like the sword's slash until it gets poses of its own.
+
+**Next**
+
+The axe, then daggers, longbow, throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
 ## 2026-11-08: Session 161, Detonate as a state; the three states are built (the builds pass, Michael's A)
 
 **What changed**

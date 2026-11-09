@@ -1,4 +1,4 @@
-import { abilityTiming, enemyStats, tuning, type Style } from '../config/tuning';
+import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
@@ -219,7 +219,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     if (tuning.launch.enabled && hit.heavy && !hit.projectile && isLight(e) && hero) {
       const l = tuning.launch;
       e.launched = { by: hero.id, damage: damage * l.damageShare, struck: [] };
-      push = Math.max(push, l.distanceM * (familyOf(hero) === 'warhammer' ? l.warhammerMult : 1) * stats.knockbackTaken);
+      push = Math.max(push, l.distanceM * launchMult(familyOf(hero)) * stats.knockbackTaken);
     }
   } else if (e.armour) {
     // Armour after a stagger (G1): the hit hurts, and nothing else.
@@ -618,4 +618,10 @@ export function nextRandom(state: SimState): number {
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** How much farther a blunt family launches a corpse (K1: the blunt weapons' own). */
+function launchMult(family: WeaponFamily | undefined): number {
+  const l = tuning.launch;
+  return family === 'warhammer' ? l.warhammerMult : family === 'mace' ? l.maceMult : 1;
 }

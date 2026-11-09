@@ -253,6 +253,54 @@ export const tuning = {
     hit3ArcDeg: 360,
   },
 
+  /** Mace (the builds pass): one hand, so a shield with it; four blunt blows a chain, each breaking poise more than a sword's, the last an overhead crush. Borrows the sword's slashes and its slam. */
+  maceCombo: {
+    // 1 · bash
+    hit1WindupMs: 160,
+    hit1ActiveMs: 90,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0.6,
+    hit1Damage: 1.1,
+    hit1Poise: 2.2,
+    hit1KnockbackM: 0.4,
+    hit1Heavy: 0,
+    hit1RangeM: 1.9,
+    hit1ArcDeg: 110,
+    // 2 · backhand
+    hit2WindupMs: 150,
+    hit2ActiveMs: 90,
+    hit2RecoveryMs: 280,
+    hit2LungeM: 0.6,
+    hit2Damage: 1.2,
+    hit2Poise: 2.2,
+    hit2KnockbackM: 0.4,
+    hit2Heavy: 0,
+    hit2RangeM: 1.9,
+    hit2ArcDeg: 110,
+    // 3 · bash
+    hit3WindupMs: 160,
+    hit3ActiveMs: 90,
+    hit3RecoveryMs: 280,
+    hit3LungeM: 0.6,
+    hit3Damage: 1.2,
+    hit3Poise: 2.6,
+    hit3KnockbackM: 0.6,
+    hit3Heavy: 0,
+    hit3RangeM: 1.9,
+    hit3ArcDeg: 110,
+    // 4 · overhead crush
+    hit4WindupMs: 220,
+    hit4ActiveMs: 260,
+    hit4RecoveryMs: 360,
+    hit4LungeM: 1.2,
+    hit4Damage: 2.4,
+    hit4Poise: 7,
+    hit4KnockbackM: 2.5,
+    hit4Heavy: 1,
+    hit4RangeM: 2.4,
+    hit4ArcDeg: 360,
+  },
+
   /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
   crossbowCombo: {
     // 1 · quick bolt
@@ -341,6 +389,8 @@ export const tuning = {
     crossbowHeavyWindup: 1,
     wandHeavyDamage: 0.8,
     wandHeavyWindup: 0.7,
+    maceHeavyDamage: 1.2,
+    maceHeavyWindup: 1.1,
   },
 
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
@@ -683,6 +733,8 @@ export const tuning = {
     distanceM: 5,
     /** The warhammer launches this much farther. */
     warhammerMult: 1.5,
+    /** The mace, blunt in one hand, launches this much farther. */
+    maceMult: 1.25,
     /** Share of the killing blow's damage each enemy it meets takes. */
     damageShare: 1 / 3,
     /** Knockback (m) on an enemy a corpse meets. */
@@ -2540,6 +2592,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'launch.distanceM': [0, 12, 0.5],
   'launch.warhammerMult': [1, 3, 0.1],
+  'launch.maceMult': [1, 3, 0.05],
   'launch.damageShare': [0, 1, 0.05],
   'launch.impactKnockbackM': [0, 4, 0.1],
   'launch.minSpeed': [0, 10, 0.5],
@@ -2738,6 +2791,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.quickShotDamage': [0, 5, 0.05],
   'families.warhammerHeavyDamage': [0.5, 3, 0.05],
   'families.warhammerHeavyWindup': [0.5, 3, 0.05],
+  'families.maceHeavyDamage': [0.5, 3, 0.05],
+  'families.maceHeavyWindup': [0.5, 3, 0.05],
   'families.crossbowHeavyDamage': [0.5, 3, 0.05],
   'families.crossbowHeavyWindup': [0.5, 3, 0.05],
   'families.wandHeavyDamage': [0.5, 3, 0.05],
@@ -3280,6 +3335,7 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   warhammer: tuning.warhammerCombo,
   crossbow: tuning.crossbowCombo,
   wand: tuning.wandCombo,
+  mace: tuning.maceCombo,
 };
 
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
@@ -3368,9 +3424,9 @@ export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash
  * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
  * the projectiles of one of its style's chain steps (FAMILY_ANIM).
  */
-export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand';
-export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff' };
-export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0] };
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -3419,6 +3475,23 @@ export interface EnemyStats {
 
 export function enemyStats(kind: EnemyKind): EnemyStats {
   return tuning[kind];
+}
+
+// A family's chain (C5 and the builds pass) on the panel, as the slice's chains are.
+for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo'] as const) {
+  for (const key of Object.keys(tuning[section])) {
+    const path = `${section}.${key}`;
+    if (key.endsWith('WindupMs')) tuningRanges[path] = [20, 1200, 5];
+    else if (key.endsWith('ActiveMs')) tuningRanges[path] = [20, 800, 5];
+    else if (key.endsWith('RecoveryMs')) tuningRanges[path] = [20, 1500, 5];
+    else if (key.endsWith('LungeM')) tuningRanges[path] = [-5, 5, 0.05];
+    else if (key.endsWith('Damage')) tuningRanges[path] = [0, 6, 0.05];
+    else if (key.endsWith('Poise')) tuningRanges[path] = [0, 15, 0.1];
+    else if (key.endsWith('KnockbackM')) tuningRanges[path] = [0, 8, 0.1];
+    else if (key.endsWith('Heavy')) tuningRanges[path] = [0, 1, 1];
+    else if (key.endsWith('RangeM')) tuningRanges[path] = [0.5, 6, 0.05];
+    else if (key.endsWith('ArcDeg')) tuningRanges[path] = [10, 360, 5];
+  }
 }
 
 for (const section of ['swordStrings', 'bowStrings', 'staffStrings'] as const) {

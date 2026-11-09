@@ -425,6 +425,15 @@ export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
   const g = new THREE.Group();
   if (e.shape.family === 'warhammer') {
     g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.95, 8), wood, 0, 0.3, 0), mesh(new THREE.BoxGeometry(0.3, 0.14, 0.14), base, 0, 0.8, 0), mesh(new THREE.BoxGeometry(0.32, 0.03, 0.15), trim, 0, 0.8, 0));
+  } else if (e.shape.family === 'mace') {
+    // A short haft and a flanged head.
+    g.add(mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.6, 8), wood, 0, 0.18, 0), mesh(new THREE.SphereGeometry(0.075, 10, 8), base, 0, 0.52, 0));
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      const flange = mesh(new THREE.BoxGeometry(0.02, 0.13, 0.05), trim, Math.cos(a) * 0.075, 0.52, Math.sin(a) * 0.075);
+      flange.rotation.y = -a;
+      g.add(flange);
+    }
   } else if (e.shape.family === 'crossbow') {
     g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
   } else {

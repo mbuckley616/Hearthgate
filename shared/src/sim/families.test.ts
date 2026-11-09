@@ -58,6 +58,31 @@ describe('weapon families (C5)', () => {
     expect(heroHit(p, 4).heavy).toBe(true);
   });
 
+  it('plays a mace as three bashes and an overhead crush, each breaking more poise than the sword’s step it borrows', () => {
+    const { s, p } = hero({ family: 'mace' }, 'sword');
+    expect(chain(s, p, 5)).toEqual([[0, 0], [1, 1], [2, 0], [3, 4], [0, 0]]);
+    const sword = hero({}, 'sword').p;
+    for (const [step, anim] of FAMILY_ANIM.mace.entries()) {
+      p.attackStep = step;
+      expect(heroHit(p, anim).poise).toBeGreaterThan(heroHit(sword, anim).poise);
+    }
+    p.attackStep = 3;
+    expect(heroHit(p, 4).heavy).toBe(true);
+    expect(heroHit(p, 4).damage).toBeCloseTo(tuning.maceCombo.hit4Damage * tuning.combat.baseDamage);
+    // Slower than the sword's first slash: a mace is weight in one hand.
+    p.attackStep = 0;
+    expect(heroHit(p, 0).windup).toBeGreaterThan(heroHit(sword, 0).windup);
+  });
+
+  it('wears a mace in one hand, with a shield and its bash', () => {
+    const w = (...pairs: [keyof Worn, string][]): Worn => Object.fromEntries(pairs.map(([slot, id]) => [slot, item(id)]));
+    const m = wornMods(w(['weapon', 'bronze-mace'], ['shield', 'bronze-squareShield']));
+    expect(m).toMatchObject({ family: 'mace', offhand: 'shield' });
+    expect(wornMods(w(['weapon', 'bronze-mace'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
+    const base = { name: 'Ann', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), maxHp: 100 };
+    expect(readLoadout({ ...base, mods: { ...emptyMods(), family: 'mace', offhand: 'shield' } })?.mods).toMatchObject({ family: 'mace', offhand: 'shield' });
+  });
+
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {
     const xb = hero({ family: 'crossbow' }, 'bow');
     expect(chain(xb.s, xb.p, 3).map((x) => x[1])).toEqual([...FAMILY_ANIM.crossbow]);

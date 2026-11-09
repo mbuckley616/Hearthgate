@@ -88,6 +88,19 @@ describe('launched corpses (K1; Michael, 30 Oct, A)', () => {
     expect(b / a).toBeCloseTo(1.5, 1);
   });
 
+  it('the mace, blunt in one hand, launches a quarter again as far', () => {
+    const plain = scene();
+    plain.next.z = -8;
+    damageEnemy(plain.s, plain.victim, blow(plain.p, plain.victim, true));
+    fly(plain.s, 120);
+    const mace = scene();
+    mace.next.z = -8;
+    mace.p.mods.family = 'mace';
+    damageEnemy(mace.s, mace.victim, blow(mace.p, mace.victim, true));
+    fly(mace.s, 120);
+    expect((mace.victim.x + 8.5) / (plain.victim.x + 8.5)).toBeCloseTo(tuning.launch.maceMult, 1);
+  });
+
   it('switched off (the slice), a heavy kill falls as before', () => {
     tuning.launch.enabled = false;
     const { s, p, victim, next } = scene();
