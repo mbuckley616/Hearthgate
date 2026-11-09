@@ -1,4 +1,4 @@
-import { abilityTiming, enemyStats, tuning, type Style } from '../config/tuning';
+import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
@@ -166,7 +166,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const marked = markedMult(state, e, hero, hit.dot);
   // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.
   const hexed = hexedMult(state, e, hero, hit.dot);
-  const damage = hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  // Daggers (the builds pass): a blow from behind lands harder.
+  const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
+  const damage = backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -198,7 +200,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   if (hero && hit.heavy) {
     hero.lastFinisherAt = state.time;
     // Bleed perk: finishers with the sword open a wound.
-    if (hit.style === 'sword' && hero.mods.perks.includes('bleed')) {
+    // The axe's heavies (the builds pass) open the same wound, its own without the perk.
+    if (hit.style === 'sword' && (hero.mods.perks.includes('bleed') || (familyOf(hero) === 'axe' && !hit.projectile))) {
       e.bleedTicks = slotted(hero, 'deepWounds') ? Math.round(tuning.gear.bleedTicks * tuning.champion.deepWoundsTicksMult) : tuning.gear.bleedTicks;
       e.bleedTimer = tuning.gear.bleedTickMs / 1000;
       e.bleedOwner = hero.id;
@@ -219,7 +222,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     if (tuning.launch.enabled && hit.heavy && !hit.projectile && isLight(e) && hero) {
       const l = tuning.launch;
       e.launched = { by: hero.id, damage: damage * l.damageShare, struck: [] };
-      push = Math.max(push, l.distanceM * (familyOf(hero) === 'warhammer' ? l.warhammerMult : 1) * stats.knockbackTaken);
+      push = Math.max(push, l.distanceM * launchMult(familyOf(hero)) * stats.knockbackTaken);
     }
   } else if (e.armour) {
     // Armour after a stagger (G1): the hit hurts, and nothing else.
@@ -618,4 +621,20 @@ export function nextRandom(state: SimState): number {
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** How much farther a blunt family launches a corpse (K1: the blunt weapons' own). */
+function launchMult(family: WeaponFamily | undefined): number {
+  const l = tuning.launch;
+  return family === 'warhammer' ? l.warhammerMult : family === 'mace' ? l.maceMult : 1;
+}
+
+/** Whether a hero stands in the cone behind an enemy (opposite its facing), `families.daggersBackstabArcDeg` wide. */
+export function fromBehind(e: EnemyState, hero: PlayerState): boolean {
+  const dx = hero.x - e.x;
+  const dz = hero.z - e.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-6) return false;
+  const along = (dx * Math.sin(e.yaw) + dz * Math.cos(e.yaw)) / d;
+  return along <= -Math.cos(((tuning.families.daggersBackstabArcDeg / 2) * Math.PI) / 180);
 }

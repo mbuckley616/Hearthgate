@@ -253,6 +253,261 @@ export const tuning = {
     hit3ArcDeg: 360,
   },
 
+  /** Mace (the builds pass): one hand, so a shield with it; four blunt blows a chain, each breaking poise more than a sword's, the last an overhead crush. Borrows the sword's slashes and its slam. */
+  maceCombo: {
+    // 1 · bash
+    hit1WindupMs: 160,
+    hit1ActiveMs: 90,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0.6,
+    hit1Damage: 1.1,
+    hit1Poise: 2.2,
+    hit1KnockbackM: 0.4,
+    hit1Heavy: 0,
+    hit1RangeM: 1.9,
+    hit1ArcDeg: 110,
+    // 2 · backhand
+    hit2WindupMs: 150,
+    hit2ActiveMs: 90,
+    hit2RecoveryMs: 280,
+    hit2LungeM: 0.6,
+    hit2Damage: 1.2,
+    hit2Poise: 2.2,
+    hit2KnockbackM: 0.4,
+    hit2Heavy: 0,
+    hit2RangeM: 1.9,
+    hit2ArcDeg: 110,
+    // 3 · bash
+    hit3WindupMs: 160,
+    hit3ActiveMs: 90,
+    hit3RecoveryMs: 280,
+    hit3LungeM: 0.6,
+    hit3Damage: 1.2,
+    hit3Poise: 2.6,
+    hit3KnockbackM: 0.6,
+    hit3Heavy: 0,
+    hit3RangeM: 1.9,
+    hit3ArcDeg: 110,
+    // 4 · overhead crush
+    hit4WindupMs: 220,
+    hit4ActiveMs: 260,
+    hit4RecoveryMs: 360,
+    hit4LungeM: 1.2,
+    hit4Damage: 2.4,
+    hit4Poise: 7,
+    hit4KnockbackM: 2.5,
+    hit4Heavy: 1,
+    hit4RangeM: 2.4,
+    hit4ArcDeg: 360,
+  },
+
+  /** Axe (the builds pass): one hand, so a shield with it; two wide chops and a spinning cleave, more damage than a sword and less poise, and its heavies open a bleed. Borrows the sword's sweep, slash and spin. */
+  axeCombo: {
+    // 1 · wide chop
+    hit1WindupMs: 150,
+    hit1ActiveMs: 100,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0.7,
+    hit1Damage: 1.3,
+    hit1Poise: 0.8,
+    hit1KnockbackM: 0.3,
+    hit1Heavy: 0,
+    hit1RangeM: 2.1,
+    hit1ArcDeg: 170,
+    // 2 · backhand chop
+    hit2WindupMs: 140,
+    hit2ActiveMs: 100,
+    hit2RecoveryMs: 280,
+    hit2LungeM: 0.6,
+    hit2Damage: 1.4,
+    hit2Poise: 0.8,
+    hit2KnockbackM: 0.3,
+    hit2Heavy: 0,
+    hit2RangeM: 2.1,
+    hit2ArcDeg: 150,
+    // 3 · spinning cleave
+    hit3WindupMs: 160,
+    hit3ActiveMs: 300,
+    hit3RecoveryMs: 400,
+    hit3LungeM: 1.2,
+    hit3Damage: 2.0,
+    hit3Poise: 2.5,
+    hit3KnockbackM: 2,
+    hit3Heavy: 1,
+    hit3RangeM: 2.4,
+    hit3ArcDeg: 360,
+  },
+
+  /** Daggers (the builds pass): one hand; four quick stabs and a hamstring slash, little damage or poise a blow, and every blow from behind an enemy lands harder (`families.daggersBackstab*`). Borrows the sword's slashes and its sweep. */
+  daggersCombo: {
+    // 1 · stab
+    hit1WindupMs: 70,
+    hit1ActiveMs: 60,
+    hit1RecoveryMs: 150,
+    hit1LungeM: 0.5,
+    hit1Damage: 0.6,
+    hit1Poise: 0.4,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    hit1RangeM: 1.7,
+    hit1ArcDeg: 70,
+    // 2 · stab
+    hit2WindupMs: 70,
+    hit2ActiveMs: 60,
+    hit2RecoveryMs: 150,
+    hit2LungeM: 0.5,
+    hit2Damage: 0.6,
+    hit2Poise: 0.4,
+    hit2KnockbackM: 0,
+    hit2Heavy: 0,
+    hit2RangeM: 1.7,
+    hit2ArcDeg: 70,
+    // 3 · stab
+    hit3WindupMs: 70,
+    hit3ActiveMs: 60,
+    hit3RecoveryMs: 160,
+    hit3LungeM: 0.5,
+    hit3Damage: 0.65,
+    hit3Poise: 0.4,
+    hit3KnockbackM: 0,
+    hit3Heavy: 0,
+    hit3RangeM: 1.7,
+    hit3ArcDeg: 70,
+    // 4 · stab
+    hit4WindupMs: 70,
+    hit4ActiveMs: 60,
+    hit4RecoveryMs: 170,
+    hit4LungeM: 0.5,
+    hit4Damage: 0.7,
+    hit4Poise: 0.4,
+    hit4KnockbackM: 0,
+    hit4Heavy: 0,
+    hit4RangeM: 1.7,
+    hit4ArcDeg: 70,
+    // 5 · hamstring slash
+    hit5WindupMs: 120,
+    hit5ActiveMs: 120,
+    hit5RecoveryMs: 320,
+    hit5LungeM: 1.0,
+    hit5Damage: 1.4,
+    hit5Poise: 2,
+    hit5KnockbackM: 1.5,
+    hit5Heavy: 1,
+    hit5RangeM: 2.0,
+    hit5ArcDeg: 140,
+  },
+
+  /** Longbow (the builds pass): two hands; two long shots and a war shot that pierces, slower than the bow and harder, its arrows flying faster and so farther (`families.longbowArrowSpeedMult`). Borrows the bow's quick and power shots. */
+  longbowCombo: {
+    // 1 · long shot
+    hit1WindupMs: 280,
+    hit1ActiveMs: 60,
+    hit1RecoveryMs: 260,
+    hit1LungeM: 0,
+    hit1Damage: 1.5,
+    hit1Poise: 1,
+    hit1KnockbackM: 0.3,
+    hit1Heavy: 0,
+    // 2 · long shot
+    hit2WindupMs: 280,
+    hit2ActiveMs: 60,
+    hit2RecoveryMs: 260,
+    hit2LungeM: 0,
+    hit2Damage: 1.5,
+    hit2Poise: 1,
+    hit2KnockbackM: 0.3,
+    hit2Heavy: 0,
+    // 3 · war shot
+    hit3WindupMs: 420,
+    hit3ActiveMs: 60,
+    hit3RecoveryMs: 380,
+    hit3LungeM: 0,
+    hit3Damage: 3.0,
+    hit3Poise: 4,
+    hit3KnockbackM: 1.5,
+    hit3Heavy: 1,
+  },
+
+  /** Throwing knives (the builds pass): one hand; three quick throws and a fan of knives, quicker than the bow and short of reach (`families.knivesLifeMult`). Borrows the bow's quick shots and its fan. */
+  knivesCombo: {
+    // 1 · throw
+    hit1WindupMs: 90,
+    hit1ActiveMs: 50,
+    hit1RecoveryMs: 150,
+    hit1LungeM: 0,
+    hit1Damage: 0.7,
+    hit1Poise: 0.4,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    // 2 · throw
+    hit2WindupMs: 90,
+    hit2ActiveMs: 50,
+    hit2RecoveryMs: 150,
+    hit2LungeM: 0,
+    hit2Damage: 0.7,
+    hit2Poise: 0.4,
+    hit2KnockbackM: 0,
+    hit2Heavy: 0,
+    // 3 · throw
+    hit3WindupMs: 90,
+    hit3ActiveMs: 50,
+    hit3RecoveryMs: 170,
+    hit3LungeM: 0,
+    hit3Damage: 0.75,
+    hit3Poise: 0.4,
+    hit3KnockbackM: 0,
+    hit3Heavy: 0,
+    // 4 · fan of knives
+    hit4WindupMs: 180,
+    hit4ActiveMs: 70,
+    hit4RecoveryMs: 320,
+    hit4LungeM: 0,
+    hit4Damage: 0.8,
+    hit4Poise: 1,
+    hit4KnockbackM: 0,
+    hit4Heavy: 1,
+  },
+
+  /** Sceptre (the builds pass): one hand, so a tome with it; a bolt and a burst, a bolt and a great burst, its bursts wider than the staff's (`families.sceptreBurstRadiusMult`). Borrows the staff's bolt, burst and great burst. */
+  sceptreCombo: {
+    // 1 · bolt
+    hit1WindupMs: 200,
+    hit1ActiveMs: 60,
+    hit1RecoveryMs: 240,
+    hit1LungeM: 0,
+    hit1Damage: 1.1,
+    hit1Poise: 0.7,
+    hit1KnockbackM: 0,
+    hit1Heavy: 0,
+    // 2 · burst
+    hit2WindupMs: 320,
+    hit2ActiveMs: 60,
+    hit2RecoveryMs: 420,
+    hit2LungeM: 0,
+    hit2Damage: 1.4,
+    hit2Poise: 3,
+    hit2KnockbackM: 1.5,
+    hit2Heavy: 1,
+    // 3 · bolt
+    hit3WindupMs: 200,
+    hit3ActiveMs: 60,
+    hit3RecoveryMs: 240,
+    hit3LungeM: 0,
+    hit3Damage: 1.1,
+    hit3Poise: 0.7,
+    hit3KnockbackM: 0,
+    hit3Heavy: 0,
+    // 4 · great burst
+    hit4WindupMs: 440,
+    hit4ActiveMs: 80,
+    hit4RecoveryMs: 520,
+    hit4LungeM: 0,
+    hit4Damage: 2.4,
+    hit4Poise: 5,
+    hit4KnockbackM: 2.5,
+    hit4Heavy: 1,
+  },
+
   /** Crossbow (C5): one hand, two quick bolts and a piercing shot, then a long reload. Borrows the bow's shots. */
   crossbowCombo: {
     // 1 · quick bolt
@@ -341,6 +596,28 @@ export const tuning = {
     crossbowHeavyWindup: 1,
     wandHeavyDamage: 0.8,
     wandHeavyWindup: 0.7,
+    maceHeavyDamage: 1.2,
+    maceHeavyWindup: 1.1,
+    axeHeavyDamage: 1.15,
+    axeHeavyWindup: 1.05,
+    daggersHeavyDamage: 0.85,
+    daggersHeavyWindup: 0.8,
+    /** A dagger's blow (not a bleed's tick) on an enemy from behind takes this much more damage. */
+    daggersBackstabMult: 1.5,
+    /** How wide the cone behind an enemy is that counts as behind it. */
+    daggersBackstabArcDeg: 120,
+    longbowHeavyDamage: 1.25,
+    longbowHeavyWindup: 1.2,
+    /** A longbow's arrows fly this much faster than the bow's, and so this much farther in their life. */
+    longbowArrowSpeedMult: 1.35,
+    knivesHeavyDamage: 0.8,
+    knivesHeavyWindup: 0.75,
+    /** A thrown knife falls after this share of an arrow's life: a short reach. */
+    knivesLifeMult: 0.45,
+    sceptreHeavyDamage: 1.1,
+    sceptreHeavyWindup: 1.1,
+    /** A sceptre's bursts reach this much wider than the staff's. */
+    sceptreBurstRadiusMult: 1.35,
   },
 
   /** Archer (bow) chain. Projectile attacks fire at the end of the windup; active is the release. */
@@ -683,6 +960,8 @@ export const tuning = {
     distanceM: 5,
     /** The warhammer launches this much farther. */
     warhammerMult: 1.5,
+    /** The mace, blunt in one hand, launches this much farther. */
+    maceMult: 1.25,
     /** Share of the killing blow's damage each enemy it meets takes. */
     damageShare: 1 / 3,
     /** Knockback (m) on an enemy a corpse meets. */
@@ -2540,6 +2819,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
 
   'launch.distanceM': [0, 12, 0.5],
   'launch.warhammerMult': [1, 3, 0.1],
+  'launch.maceMult': [1, 3, 0.05],
   'launch.damageShare': [0, 1, 0.05],
   'launch.impactKnockbackM': [0, 4, 0.1],
   'launch.minSpeed': [0, 10, 0.5],
@@ -2738,6 +3018,23 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.quickShotDamage': [0, 5, 0.05],
   'families.warhammerHeavyDamage': [0.5, 3, 0.05],
   'families.warhammerHeavyWindup': [0.5, 3, 0.05],
+  'families.maceHeavyDamage': [0.5, 3, 0.05],
+  'families.maceHeavyWindup': [0.5, 3, 0.05],
+  'families.axeHeavyDamage': [0.5, 3, 0.05],
+  'families.axeHeavyWindup': [0.5, 3, 0.05],
+  'families.daggersHeavyDamage': [0.5, 3, 0.05],
+  'families.daggersHeavyWindup': [0.5, 3, 0.05],
+  'families.daggersBackstabMult': [1, 3, 0.05],
+  'families.daggersBackstabArcDeg': [0, 360, 5],
+  'families.longbowHeavyDamage': [0.5, 3, 0.05],
+  'families.longbowHeavyWindup': [0.5, 3, 0.05],
+  'families.longbowArrowSpeedMult': [0.5, 3, 0.05],
+  'families.knivesHeavyDamage': [0.5, 3, 0.05],
+  'families.knivesHeavyWindup': [0.5, 3, 0.05],
+  'families.knivesLifeMult': [0.1, 1, 0.05],
+  'families.sceptreHeavyDamage': [0.5, 3, 0.05],
+  'families.sceptreHeavyWindup': [0.5, 3, 0.05],
+  'families.sceptreBurstRadiusMult': [0.5, 3, 0.05],
   'families.crossbowHeavyDamage': [0.5, 3, 0.05],
   'families.crossbowHeavyWindup': [0.5, 3, 0.05],
   'families.wandHeavyDamage': [0.5, 3, 0.05],
@@ -3280,6 +3577,12 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   warhammer: tuning.warhammerCombo,
   crossbow: tuning.crossbowCombo,
   wand: tuning.wandCombo,
+  mace: tuning.maceCombo,
+  axe: tuning.axeCombo,
+  daggers: tuning.daggersCombo,
+  longbow: tuning.longbowCombo,
+  knives: tuning.knivesCombo,
+  sceptre: tuning.sceptreCombo,
 };
 
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
@@ -3368,9 +3671,9 @@ export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash
  * fight (its levels, talents and strings) with a chain of its own, each step borrowing the pose and
  * the projectiles of one of its style's chain steps (FAMILY_ANIM).
  */
-export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand';
-export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff' };
-export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0] };
+export type WeaponFamily = 'warhammer' | 'crossbow' | 'wand' | 'mace' | 'axe' | 'daggers' | 'longbow' | 'knives' | 'sceptre';
+export const FAMILY_STYLE: Record<WeaponFamily, Style> = { warhammer: 'sword', crossbow: 'bow', wand: 'staff', mace: 'sword', axe: 'sword', daggers: 'sword', longbow: 'bow', knives: 'bow', sceptre: 'staff' };
+export const FAMILY_ANIM: Record<WeaponFamily, readonly number[]> = { warhammer: [2, 3, 4], crossbow: [0, 1, 2], wand: [0, 1, 0, 1, 0], mace: [0, 1, 0, 4], axe: [2, 1, 3], daggers: [0, 1, 0, 1, 2], longbow: [0, 0, 2], knives: [0, 1, 0, 3], sceptre: [0, 2, 0, 4] };
 /** Arrows in the ammo slot (C4): frost slows, barbed charged shots bleed. */
 export type AmmoKind = 'frost' | 'barbed';
 
@@ -3419,6 +3722,23 @@ export interface EnemyStats {
 
 export function enemyStats(kind: EnemyKind): EnemyStats {
   return tuning[kind];
+}
+
+// A family's chain (C5 and the builds pass) on the panel, as the slice's chains are.
+for (const section of ['warhammerCombo', 'crossbowCombo', 'wandCombo', 'maceCombo', 'axeCombo', 'daggersCombo', 'longbowCombo', 'knivesCombo', 'sceptreCombo'] as const) {
+  for (const key of Object.keys(tuning[section])) {
+    const path = `${section}.${key}`;
+    if (key.endsWith('WindupMs')) tuningRanges[path] = [20, 1200, 5];
+    else if (key.endsWith('ActiveMs')) tuningRanges[path] = [20, 800, 5];
+    else if (key.endsWith('RecoveryMs')) tuningRanges[path] = [20, 1500, 5];
+    else if (key.endsWith('LungeM')) tuningRanges[path] = [-5, 5, 0.05];
+    else if (key.endsWith('Damage')) tuningRanges[path] = [0, 6, 0.05];
+    else if (key.endsWith('Poise')) tuningRanges[path] = [0, 15, 0.1];
+    else if (key.endsWith('KnockbackM')) tuningRanges[path] = [0, 8, 0.1];
+    else if (key.endsWith('Heavy')) tuningRanges[path] = [0, 1, 1];
+    else if (key.endsWith('RangeM')) tuningRanges[path] = [0.5, 6, 0.05];
+    else if (key.endsWith('ArcDeg')) tuningRanges[path] = [10, 360, 5];
+  }
 }
 
 for (const section of ['swordStrings', 'bowStrings', 'staffStrings'] as const) {

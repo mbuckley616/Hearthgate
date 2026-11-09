@@ -2,6 +2,90 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 167, the sceptre (the builds pass, the rest of the roster)
+
+**What changed**
+
+The last weapon family of the roster. The sceptre is one-handed Magic, so the tome and its Ward go with it. Four casts (`tuning.sceptreCombo`): a bolt (1.1 damage against the staff's 0.9, a little slower), a burst (heavy), a bolt, and a great burst (heavy, 2.4), on the staff's bolt, burst and great burst. Its bursts, the strings' too, reach 1.35 times as wide (`families.sceptreBurstRadiusMult`), in `fireAttack` as the longbow's speed is. String heavies at 1.1 times the damage and the windup. A crowned rod mesh and a bag icon; it drops and sells in every wood. check 541 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+With the sceptre the roster's weapons are built (Melee five, Ranged four, Magic three, the slice's own among them), and every family has its character in one number on the panel (poise, bleed, backstab, arrow speed, reach, burst width), applied where the slice's own code already decided that thing. That is what kept seven families to a session each.
+
+**Next**
+
+The two off-hands left of the roster: the focus orb (magic) and the parrying dagger (with daggers). Each needs an ability of its own on 3, so they may want a design call first.
+
+## 2026-11-09: Session 166, throwing knives (the builds pass, the rest of the roster)
+
+**What changed**
+
+The second Ranged family of the rest of the roster. Throwing knives are one-handed and Ranged, so the buckler or the hand crossbow goes with them. Four throws (`tuning.knivesCombo`): three quick throws on the bow's quick shots (290 ms against 410, 0.7 damage, 0.4 poise) and a fan of knives on its fan (three, heavy). A knife falls after 0.45 of an arrow's life (`families.knivesLifeMult`), about 23 m against the bow's 51: close work at a bow's pace and better. Applied in `fireAttack` to whatever the throw spawned, so strings and prediction agree. String heavies at 0.8 times the damage and 0.75 the windup. Three knives in the hand as the mesh, three in the bag icon; they drop and sell in every metal, as a Ranged item. check 540 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+A shape's own `kind` beats its material's, so metal knives are Ranged gear and take the buckler, not the shield; the catalogue already allowed it.
+
+**Next**
+
+The sceptre, then the focus orb (a magic off-hand) and the parrying dagger (the daggers' off-hand), one a session.
+
+## 2026-11-09: Session 165, the longbow (the builds pass, the rest of the roster)
+
+**What changed**
+
+The first Ranged family of the rest of the roster. The longbow takes both hands (no buckler, +20%). Three shots (`tuning.longbowCombo`): two long shots on the bow's quick shot (600 ms each against the bow's 410, 1.5 damage against 0.8) and a war shot on its power shot (heavy, piercing, 3.0). Every arrow it looses, its strings' included, flies 1.35 times as fast (`families.longbowArrowSpeedMult`), so in the same 1.5 s life it carries 1.35 times as far, about 69 m for a quick shot. The speed is applied in `fireAttack`, which prediction shares, so a player's own arrow leaves where it will land. String heavies at 1.25 times the damage and 1.2 the windup. A tall stave mesh (it was falling through to the wand's rod) and a bag icon; it drops and sells in every wood. check 539 green, parity identical (the bow multiplies by 1). Not yet seen in a browser.
+
+**Learned**
+
+`buildFamilyWeapon` drew any family it did not know as the wand; each new family needs its branch there or it holds a rod. A test that measures arrows after a chain finds the fast ones already gone into a wall; measure as they leave.
+
+**Next**
+
+Throwing knives, then the sceptre, focus orb and parrying dagger, one a session.
+
+## 2026-11-09: Session 164, daggers (the builds pass, the rest of the roster)
+
+**What changed**
+
+The third family of the rest of the roster, the last Melee one. Daggers are one-handed (a shield now; the parrying dagger, still to come, is their off-hand). Five blows (`tuning.daggersCombo`): four stabs on the sword's two slashes, 280 ms a stab against the sword's 420 ms slash, 0.6 to 0.7 damage and 0.4 poise each, 70° and 1.7 m; then a hamstring slash (heavy, on the sword's low sweep). Any dagger blow, not a bleed's tick or a projectile, on an enemy whose back is to the wielder (a 120° cone behind its facing) lands 1.5 times as hard (`families.daggersBackstabMult`, `daggersBackstabArcDeg`, `fromBehind` in `combat.ts`). String heavies at 0.85 times the damage and 0.8 the windup. A narrow-blade mesh and a bag icon; it drops and sells in every metal. check 538 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Rogue's Shadowstep already puts a hero behind an enemy, so daggers and the Rogue meet without a rule joining them; whether a dagger's backstab should also stack with From the shadows' crit (it does, multiplied) is for play to judge.
+
+**Next**
+
+Melee has five families. The longbow, then throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
+## 2026-11-09: Session 163, the axe (the builds pass, the rest of the roster)
+
+**What changed**
+
+The second family of the rest of the roster. The axe is Melee in one hand, so it takes a shield and its bash. Its chain is three blows (`tuning.axeCombo`): a wide chop (170°, on the sword's low sweep), a backhand chop (150°, on its right slash), and a spinning cleave (heavy, 360°, on its spin). Step for step it hits harder than the sword (1.3, 1.4, 2.0 against 1.0, 1.1, 1.8) and breaks less poise (0.8 against 1; the cleave 2.5 against the sweep's 4): the mace staggers, the axe cuts. Its heavies, the cleave and its strings, open the sword's bleed perk's wound without the perk (`gear.bleedTicks`, ticking to the wielder), melee only. String heavies at 1.15 times the damage and 1.05 the windup (`families.axe*`). A bearded-blade mesh and a bag icon; it drops and sells in every metal. check 536 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The bleed was already a sword finisher's state on the enemy (`bleedTicks`, `bleedOwner`), so the axe's identity cost one condition; the family's character lives best in an existing state rather than a new one.
+
+**Next**
+
+Daggers, then longbow, throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
+## 2026-11-09: Session 162, the mace (the builds pass, Michael's A on the rest of the roster)
+
+**What changed**
+
+The first of the rest of the roster, on the C5 pattern. The mace is a Melee family in one hand, so it takes a shield and its bash on 3. Its chain is four blunt blows (`tuning.maceCombo`): a bash, a backhand and a bash on the sword's two slashes, then an overhead crush on the sword's leaping slam (heavy, 360°). Each blow is a little slower than the sword's and breaks about twice its poise (2.2 to 2.6 against 1; the crush 7 against 5), so a mace staggers where a sword cuts. Its heavies are the sword's strings at 1.2 times the damage and 1.1 times the windup (`families.mace*`), and a corpse it launches flies 1.25 times as far (`launch.maceMult`), the blunt weapons' own launch from K1. It drops and sells in every metal like the warhammer (`bronze-mace` and on), with a flanged-head mesh in `wardrobe.ts` and a bag icon. On the way: the four family chains (warhammer, crossbow, wand, mace) had no panel ranges; they now do, by the same rules as the slice's chains. check 534 green, parity identical (a family counts only when worn). Not yet seen in a browser.
+
+**Learned**
+
+C5's borrowed poses made a family a table and four map entries; the cost is that the mace's bash looks exactly like the sword's slash until it gets poses of its own.
+
+**Next**
+
+The axe, then daggers, longbow, throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
 ## 2026-11-08: Session 161, Detonate as a state; the three states are built (the builds pass, Michael's A)
 
 **What changed**

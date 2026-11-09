@@ -425,6 +425,37 @@ export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
   const g = new THREE.Group();
   if (e.shape.family === 'warhammer') {
     g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.95, 8), wood, 0, 0.3, 0), mesh(new THREE.BoxGeometry(0.3, 0.14, 0.14), base, 0, 0.8, 0), mesh(new THREE.BoxGeometry(0.32, 0.03, 0.15), trim, 0, 0.8, 0));
+  } else if (e.shape.family === 'mace') {
+    // A short haft and a flanged head.
+    g.add(mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.6, 8), wood, 0, 0.18, 0), mesh(new THREE.SphereGeometry(0.075, 10, 8), base, 0, 0.52, 0));
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      const flange = mesh(new THREE.BoxGeometry(0.02, 0.13, 0.05), trim, Math.cos(a) * 0.075, 0.52, Math.sin(a) * 0.075);
+      flange.rotation.y = -a;
+      g.add(flange);
+    }
+  } else if (e.shape.family === 'axe') {
+    // A haft, a bearded blade to one side and a short spike behind.
+    g.add(mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.7, 8), wood, 0, 0.22, 0), mesh(new THREE.BoxGeometry(0.16, 0.16, 0.02), base, 0.09, 0.5, 0), mesh(new THREE.BoxGeometry(0.02, 0.2, 0.025), trim, 0.17, 0.5, 0), mesh(new THREE.BoxGeometry(0.06, 0.04, 0.025), base, -0.05, 0.52, 0));
+  } else if (e.shape.family === 'daggers') {
+    // A short grip, a crossguard and a narrow blade.
+    g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.12, 8), wood, 0, 0.02, 0), mesh(new THREE.BoxGeometry(0.12, 0.02, 0.03), trim, 0, 0.09, 0), mesh(new THREE.BoxGeometry(0.04, 0.28, 0.01), base, 0, 0.24, 0));
+  } else if (e.shape.family === 'longbow') {
+    // A tall stave bent in a shallow arc, the grip at the hand, and its string.
+    const stave = mesh(new THREE.TorusGeometry(1.1, 0.02, 6, 24, 1.2), base, -1.02, 0.2, 0);
+    stave.rotation.z = -0.6;
+    g.add(stave, mesh(new THREE.BoxGeometry(0.008, 1.24, 0.008), trim, -0.11, 0.2, 0), mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.14, 8), wood, 0.08, 0.2, 0));
+  } else if (e.shape.family === 'knives') {
+    // A knife in the hand, two more at the ready behind it.
+    for (const [x, z] of [[0, 0], [0.03, -0.03], [-0.03, -0.03]])
+      g.add(mesh(new THREE.BoxGeometry(0.03, 0.1, 0.012), wood, x, 0.03, z), mesh(new THREE.BoxGeometry(0.035, 0.16, 0.006), base, x, 0.16, z));
+  } else if (e.shape.family === 'sceptre') {
+    // A rod with a crown of prongs round a gem.
+    g.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.55, 8), base, 0, 0.17, 0), mesh(new THREE.OctahedronGeometry(0.05), trim, 0, 0.52, 0));
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      g.add(mesh(new THREE.BoxGeometry(0.015, 0.1, 0.015), base, Math.cos(a) * 0.05, 0.48, Math.sin(a) * 0.05));
+    }
   } else if (e.shape.family === 'crossbow') {
     g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
   } else {
