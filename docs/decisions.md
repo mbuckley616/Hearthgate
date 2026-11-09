@@ -7,14 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-09: The roster's last two, what the focus orb and the parrying dagger do on 3 (builder, Session 167)
 Your A on the rest of the roster is built for every weapon (Sessions 162 to 167: mace, axe, daggers, longbow, throwing knives, sceptre), none yet played in a browser. Left are the two off-hands, and an off-hand is its ability on 3 (the shield's Bash, the tome's Ward, the buckler's Deflect, the hand crossbow's Quick shot); nothing yet says what these two do.
 - **A.** Parrying dagger (with daggers, mace, axe or sword): **Riposte**, a 300 ms parry on 3, and a hit parried in it makes your next blow within 2 s crit at 1.5 times. Focus orb (with the wand or sceptre): **Focus**, for 6 s your casts come 20% faster and hit 30% harder. One session each, every number on the panel. *(recommended: each says what its name promises, and both ride on rules the fight already has, the parry and attack speed)*
 - **B.** Reuse what exists: the parrying dagger takes the buckler's Deflect and the focus orb the tome's Ward; only the look differs. One short session.
 - **C.** As A for the dagger, but the focus orb conjures an orb that floats at your shoulder for 8 s and fires a bolt at the nearest enemy each second: a new state and view, about two sessions.
 - **D.** Leave the two off-hands for now; the builder takes the next part of the builds pass instead (more states, combo mastery or runes).
-
-## Answered
+Michael: **A** (Riposte for the parrying dagger, Focus for the focus orb). (2026-11-09)
 
 ### 2026-11-08: The builds pass, what comes after the three states (builder, Session 161)
 Shatter, Skewer and Detonate are now states left by Frost, Earth and Fire from any style (Sessions 159 to 161), none yet played in a browser. Left of the builds pass: the other states and combo mastery, the rest of the roster, runes, and the Necromancer.
