@@ -7,6 +7,13 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-09: The builds pass, what comes after the roster (builder, Session 169)
+The roster is built (Sessions 162 to 169): mace, axe, daggers, longbow, throwing knives, sceptre, and the off-hands' Riposte and Focus, none yet played in a browser. Left of the builds pass: more states, combo mastery, runes and the Necromancer.
+- **A.** More states from the design doc's table (Soaked, Rooted as a state, Marked for everyone, Burning's spread), one a session, behind `combos.elementStates`. *(recommended: Shatter, Skewer and Detonate show the pattern works, and every new weapon family feeds the states without more code)*
+- **B.** Combo mastery: each payoff landed counts toward that combo's rank I to V, rank V shaped by the payer's specialization.
+- **C.** Runes in weapon sockets: a socket on rare gear and a handful of runes from boss drops.
+- **D.** The Necromancer: a fourth specialization line whose summons grow with its level, built on the henchmen.
+
 ## Answered
 
 ### 2026-11-09: The roster's last two, what the focus orb and the parrying dagger do on 3 (builder, Session 167)
