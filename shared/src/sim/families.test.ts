@@ -74,12 +74,13 @@ describe('weapon families (C5)', () => {
     expect(heroHit(p, 0).windup).toBeGreaterThan(heroHit(sword, 0).windup);
   });
 
-  it('wears a mace or an axe in one hand, with a shield and its bash', () => {
+  it('wears a mace, an axe or daggers in one hand, with a shield and its bash', () => {
     const w = (...pairs: [keyof Worn, string][]): Worn => Object.fromEntries(pairs.map(([slot, id]) => [slot, item(id)]));
     const m = wornMods(w(['weapon', 'bronze-mace'], ['shield', 'bronze-squareShield']));
     expect(m).toMatchObject({ family: 'mace', offhand: 'shield' });
     expect(wornMods(w(['weapon', 'bronze-mace'], ['shield', 'linen-tome'])).offhand).toBeUndefined();
     expect(wornMods(w(['weapon', 'bronze-axe'], ['shield', 'bronze-kiteshield']))).toMatchObject({ family: 'axe', offhand: 'shield' });
+    expect(wornMods(w(['weapon', 'bronze-daggers'], ['shield', 'bronze-squareShield']))).toMatchObject({ family: 'daggers', offhand: 'shield' });
     const base = { name: 'Ann', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), maxHp: 100 };
     expect(readLoadout({ ...base, mods: { ...emptyMods(), family: 'mace', offhand: 'shield' } })?.mods).toMatchObject({ family: 'mace', offhand: 'shield' });
   });
@@ -111,6 +112,34 @@ describe('weapon families (C5)', () => {
     expect(cleft.bleedOwner).toBe('p1');
     expect(struck('axe', false).bleedTicks).toBe(0);
     expect(struck(undefined, true).bleedTicks).toBe(0);
+  });
+
+  it('plays daggers as four quick stabs and a hamstring slash, quicker than the sword', () => {
+    const { s, p } = hero({ family: 'daggers' }, 'sword');
+    expect(chain(s, p, 6)).toEqual([[0, 0], [1, 1], [2, 0], [3, 1], [4, 2], [0, 0]]);
+    const sword = hero({}, 'sword').p;
+    p.attackStep = 0;
+    const stab = heroHit(p, 0);
+    const slash = heroHit(sword, 0);
+    expect(stab.windup + stab.active + stab.recovery).toBeLessThan(slash.windup + slash.active + slash.recovery);
+    p.attackStep = 4;
+    expect(heroHit(p, 2).heavy).toBe(true);
+  });
+
+  it('lands a dagger’s blow from behind harder, and only a dagger’s', () => {
+    const stabbed = (family: Mods['family'], behind: boolean) => {
+      const { s, p } = hero(family ? { family } : {}, 'sword');
+      // The brute faces +z; the hero stands 1.5 m behind it (-z) or in front (+z).
+      const e = createEnemy(s, world, 'brute', p.x, p.z, 0);
+      Object.assign(e, { ai: 'chase', yaw: 0, x: p.x, z: p.z + (behind ? 1.5 : -1.5) });
+      s.enemies.push(e);
+      const hp = e.hp;
+      damageEnemy(s, e, { attackerId: p.id, damage: 5, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: e.x, y: 1, z: e.z, style: 'sword' });
+      return hp - e.hp;
+    };
+    const front = stabbed('daggers', false);
+    expect(stabbed('daggers', true) / front).toBeCloseTo(tuning.families.daggersBackstabMult);
+    expect(stabbed(undefined, true)).toBeCloseTo(stabbed(undefined, false));
   });
 
   it('fires a crossbow’s piercing third bolt, and a wand’s five quick ones', () => {

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-09: Session 164, daggers (the builds pass, the rest of the roster)
+
+**What changed**
+
+The third family of the rest of the roster, the last Melee one. Daggers are one-handed (a shield now; the parrying dagger, still to come, is their off-hand). Five blows (`tuning.daggersCombo`): four stabs on the sword's two slashes, 280 ms a stab against the sword's 420 ms slash, 0.6 to 0.7 damage and 0.4 poise each, 70° and 1.7 m; then a hamstring slash (heavy, on the sword's low sweep). Any dagger blow, not a bleed's tick or a projectile, on an enemy whose back is to the wielder (a 120° cone behind its facing) lands 1.5 times as hard (`families.daggersBackstabMult`, `daggersBackstabArcDeg`, `fromBehind` in `combat.ts`). String heavies at 0.85 times the damage and 0.8 the windup. A narrow-blade mesh and a bag icon; it drops and sells in every metal. check 538 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The Rogue's Shadowstep already puts a hero behind an enemy, so daggers and the Rogue meet without a rule joining them; whether a dagger's backstab should also stack with From the shadows' crit (it does, multiplied) is for play to judge.
+
+**Next**
+
+Melee has five families. The longbow, then throwing knives, sceptre, focus orb and the parrying dagger, one a session.
+
 ## 2026-11-09: Session 163, the axe (the builds pass, the rest of the roster)
 
 **What changed**

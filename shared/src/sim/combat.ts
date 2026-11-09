@@ -166,7 +166,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const marked = markedMult(state, e, hero, hit.dot);
   // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.
   const hexed = hexedMult(state, e, hero, hit.dot);
-  const damage = hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  // Daggers (the builds pass): a blow from behind lands harder.
+  const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
+  const damage = backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -625,4 +627,14 @@ export function nextRandom(state: SimState): number {
 function launchMult(family: WeaponFamily | undefined): number {
   const l = tuning.launch;
   return family === 'warhammer' ? l.warhammerMult : family === 'mace' ? l.maceMult : 1;
+}
+
+/** Whether a hero stands in the cone behind an enemy (opposite its facing), `families.daggersBackstabArcDeg` wide. */
+export function fromBehind(e: EnemyState, hero: PlayerState): boolean {
+  const dx = hero.x - e.x;
+  const dz = hero.z - e.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-6) return false;
+  const along = (dx * Math.sin(e.yaw) + dz * Math.cos(e.yaw)) / d;
+  return along <= -Math.cos(((tuning.families.daggersBackstabArcDeg / 2) * Math.PI) / 180);
 }

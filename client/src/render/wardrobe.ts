@@ -437,6 +437,9 @@ export function buildFamilyWeapon(p: Palette, e: CatalogueEntry): THREE.Group {
   } else if (e.shape.family === 'axe') {
     // A haft, a bearded blade to one side and a short spike behind.
     g.add(mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.7, 8), wood, 0, 0.22, 0), mesh(new THREE.BoxGeometry(0.16, 0.16, 0.02), base, 0.09, 0.5, 0), mesh(new THREE.BoxGeometry(0.02, 0.2, 0.025), trim, 0.17, 0.5, 0), mesh(new THREE.BoxGeometry(0.06, 0.04, 0.025), base, -0.05, 0.52, 0));
+  } else if (e.shape.family === 'daggers') {
+    // A short grip, a crossguard and a narrow blade.
+    g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.12, 8), wood, 0, 0.02, 0), mesh(new THREE.BoxGeometry(0.12, 0.02, 0.03), trim, 0, 0.09, 0), mesh(new THREE.BoxGeometry(0.04, 0.28, 0.01), base, 0, 0.24, 0));
   } else if (e.shape.family === 'crossbow') {
     g.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.06), base, 0, 0.18, 0), mesh(new THREE.BoxGeometry(0.5, 0.03, 0.04), trim, 0, 0.38, 0), mesh(new THREE.BoxGeometry(0.03, 0.08, 0.05), wood, 0, -0.05, 0));
   } else {
