@@ -10,7 +10,7 @@ The last weapon family of the roster. The sceptre is one-handed Magic, so the to
 
 **Learned**
 
-With the sceptre each style has four families plus its slice weapon (Melee five), and every family has its character in one number on the panel (poise, bleed, backstab, arrow speed, reach, burst width), applied where the slice's own code already decided that thing. That is what kept seven families to a session each.
+With the sceptre the roster's weapons are built (Melee five, Ranged four, Magic three, the slice's own among them), and every family has its character in one number on the panel (poise, bleed, backstab, arrow speed, reach, burst width), applied where the slice's own code already decided that thing. That is what kept seven families to a session each.
 
 **Next**
 
