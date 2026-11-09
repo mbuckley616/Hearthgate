@@ -7,14 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-08: The builds pass, what comes after the three states (builder, Session 161)
 Shatter, Skewer and Detonate are now states left by Frost, Earth and Fire from any style (Sessions 159 to 161), none yet played in a browser. Left of the builds pass: the other states and combo mastery, the rest of the roster, runes, and the Necromancer.
 - **A.** The rest of the roster, one family a session on the C5 pattern: mace, axe, daggers, longbow, throwing knives, sceptre, focus orb, parrying dagger. *(recommended: every specialization and state is built on three weapons a style; more families give the trees and states something to vary across, and they are self-contained)*
 - **B.** More states from the design doc's table (Soaked, Rooted as a state, Marked for everyone, Burning's spread), one a session.
 - **C.** Combo mastery: each payoff landed counts toward that combo's rank I to V, rank V shaped by the payer's specialization.
 - **D.** Runes in weapon sockets: a socket on rare gear and a handful of runes from boss drops.
-
-## Answered
+Michael: **A. The rest of the roster, one family a session** (2026-11-09, on the control room).
 
 ### 2026-11-08: The builds pass, what comes after the trees (builder, Session 158)
 All nine specializations have their trees and Crescendos (Sessions 150 to 158), none yet played in a browser beyond the Talents tab's rows. Your A on the builds pass (6 Nov) left elements' states, runes, the rest of the roster and the Necromancer for after the specializations.
