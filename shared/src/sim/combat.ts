@@ -2,7 +2,7 @@ import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
-import { damageTakenMult, familyOf, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
+import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
@@ -170,7 +170,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const hexed = hexedMult(state, e, hero, hit.dot);
   // Daggers (the builds pass): a blow from behind lands harder.
   const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
-  const damage = riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  // Focus (the focus orb): a cast lands harder while it lasts; a burn's tick does not.
+  const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
+  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);

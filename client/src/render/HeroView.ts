@@ -223,6 +223,12 @@ const ABILITY_POSES: Record<AbilityKind, { windup: UpperPose; strike: UpperPose;
     strike: pose(SWORD_GUARD, { offYaw: -10, offHeight: 0.36, offReach: 0.5, crouch: 0.14, lean: 6, twist: -8 }),
     hop: 0,
   },
+  // The focus orb's Focus (the builds pass): the orb lifted before the face, the weapon held low.
+  focus: {
+    windup: pose(STAFF_GUARD, { crouch: 0.08, offHeight: 0.36, offReach: 0.34, handHeight: 0.1 }),
+    strike: pose(STAFF_GUARD, { crouch: 0.04, offHeight: 0.48, offReach: 0.42, handHeight: 0.14, lean: -8 }),
+    hop: 0,
+  },
   // The hand crossbow (C5): the off arm thrown out to aim.
   quickShot: {
     windup: pose(BOW_GUARD, { offYaw: 0, offHeight: 0.36, offReach: 0.5 }),

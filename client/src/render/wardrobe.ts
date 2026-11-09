@@ -382,6 +382,9 @@ export function buildGearShield(p: Palette, e: CatalogueEntry): THREE.Group {
   } else if (e.shape.id === 'parryingDagger') {
     // A parrying dagger held point up (the builds pass): a grip, a wide swept guard and a narrow blade.
     g.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.11, 8), p.leather, 0, -0.08, 0), mesh(new THREE.BoxGeometry(0.18, 0.02, 0.03), trim, 0, -0.02, 0), mesh(new THREE.BoxGeometry(0.035, 0.26, 0.01), base, 0, 0.12, 0));
+  } else if (e.shape.id === 'focusOrb') {
+    // A focus orb held in the palm (the builds pass): a sphere in the trinket's metal over a small cradle.
+    g.add(mesh(new THREE.SphereGeometry(0.09, 16, 12), base, 0, 0.06, 0), mesh(new THREE.CylinderGeometry(0.05, 0.035, 0.04, 10), trim, 0, -0.04, 0));
   } else if (e.shape.id === 'handCrossbow') {
     // A small crossbow for the off hand (C5), pointing ahead.
     g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.26), base, 0, 0, 0.05), mesh(new THREE.BoxGeometry(0.26, 0.02, 0.03), trim, 0, 0, 0.15));

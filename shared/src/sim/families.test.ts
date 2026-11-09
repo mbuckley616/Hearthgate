@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FAMILY_ANIM, tuning, type Style } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { readLoadout } from '../net/validate';
-import { damageEnemy, hurtHero } from './combat';
+import { damageEnemy, hurtHero, styleDamageBonus } from './combat';
 import { wornMods, type GearItem, type Worn } from './catalogue';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
@@ -298,6 +298,36 @@ describe('weapon families (C5)', () => {
     const blade = wornMods({ weapon: item('iron-daggers'), shield: item('iron-parryingDagger') });
     expect(blade.offhand).toBe('parryingDagger');
     expect(wornMods({ weapon: item('oak-crossbow'), shield: item('iron-parryingDagger') }).offhand).toBeUndefined();
+  });
+
+  it('focuses with the focus orb: casts 20% faster and 30% harder for 6 s', () => {
+    const { s, p } = hero({ family: 'sceptre', offhand: 'focusOrb' }, 'staff');
+    const before = heroHit(p, 0).windup;
+    press(s, p, { ability3: true }, 30);
+    expect(p.ability === 'focus' || p.mode === 'move').toBe(true);
+    expect(p.focusTime).toBeGreaterThan(tuning.abilities.focusSeconds - 0.6);
+    expect(heroHit(p, 0).windup).toBeCloseTo(before / (1 + tuning.abilities.focusSpeed));
+    const e = createEnemy(s, world, 'brute', p.x, p.z + 4, Math.PI);
+    e.ai = 'chase';
+    s.enemies.push(e);
+    const cast = { x: e.x, y: 1, z: e.z, attackerId: p.id, damage: 10, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, style: 'staff' as const };
+    let hp = e.hp;
+    damageEnemy(s, e, cast);
+    expect(hp - e.hp).toBeCloseTo(10 * tuning.abilities.focusDamageMult * (1 + styleDamageBonus(p, 'staff')));
+    // Over in its 6 s.
+    press(s, p, {}, Math.ceil(tuning.abilities.focusSeconds / DT));
+    expect(p.focusTime).toBeUndefined();
+    expect(heroHit(p, 0).windup).toBeCloseTo(before);
+    hp = e.hp;
+    damageEnemy(s, e, cast);
+    expect(hp - e.hp).toBeCloseTo(10 * (1 + styleDamageBonus(p, 'staff')));
+  });
+
+  it('takes the focus orb with a wand or sceptre, not a sword or the two-handed staff', () => {
+    expect(wornMods({ weapon: item('oak-wand'), shield: item('gold-focusOrb') }).offhand).toBe('focusOrb');
+    expect(wornMods({ weapon: item('oak-sceptre'), shield: item('gold-focusOrb') }).offhand).toBe('focusOrb');
+    expect(wornMods({ weapon: item('oak-staff'), shield: item('gold-focusOrb') }).offhand).toBeUndefined();
+    expect(wornMods({ weapon: item('iron-sword'), shield: item('gold-focusOrb') }).offhand).toBeUndefined();
   });
 
   it('shoots two bolts from the hand crossbow', () => {

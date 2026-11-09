@@ -292,6 +292,25 @@ export const ICONS: Record<string, string[]> = {
     '..knk...k.......',
     '..kk............',
   ],
+  // The focus orb's Focus (the builds pass): an orb on its stand, gathering light.
+  focus: [
+    '................',
+    '.......p........',
+    '..p....p....p...',
+    '...p.......p....',
+    '......kkk.......',
+    '.....kcwck......',
+    '.p..kcwccck..p..',
+    '....kcccccpk....',
+    '....kccccppk....',
+    '.....kcppk......',
+    '...p..kkk...p...',
+    '......kgk.......',
+    '.....kgggk......',
+    '..p..kkkkk..p...',
+    '.......p........',
+    '................',
+  ],
   // The buckler's deflect (C5): a round shield turning a bolt aside.
   deflect: [
     '................',

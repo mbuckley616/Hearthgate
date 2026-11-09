@@ -498,6 +498,10 @@ export function stepPlayer(
     cds[1] = Math.max(0, cds[1] - dt);
   }
   if (p.offhandCooldown !== undefined) p.offhandCooldown = Math.max(0, p.offhandCooldown - dt);
+  if (p.focusTime !== undefined) {
+    p.focusTime -= dt;
+    if (p.focusTime <= 0) delete p.focusTime;
+  }
   if (p.potionCooldown !== undefined) p.potionCooldown = Math.max(0, p.potionCooldown - dt);
   if (cmd.drink) drinkPotion(state, p);
   const abilitySlot: 0 | 1 | 2 | null = cmd.ability1 ? 0 : cmd.ability2 ? 1 : cmd.ability3 ? 2 : null;

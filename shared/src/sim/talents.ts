@@ -133,6 +133,7 @@ export function talentText(style: Style, id: TalentId): string {
     case 'deflect':
     case 'quickShot':
     case 'riposte':
+    case 'focus':
       // The off-hand's ability (C4) has no talent ranks: the Q and E rows are the weapon's two.
       return '';
   }
@@ -176,7 +177,12 @@ export function abilityRank(p: PlayerState, kind: AbilityKind): number {
 // --- Effects ---
 
 export function attackSpeed(p: PlayerState): number {
-  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p);
+  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p) + (focused(p) ? tuning.abilities.focusSpeed : 0);
+}
+
+/** Under the focus orb's Focus with a magic weapon in hand: casts come faster and hit harder. */
+export function focused(p: PlayerState): boolean {
+  return (p.focusTime ?? 0) > 0 && p.style === 'staff';
 }
 
 /** The weapon family the hero fights with (C5), if the one in hand is not its style's first. */
