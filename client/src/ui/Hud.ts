@@ -14,7 +14,7 @@ const TOAST_MS = 4200;
 function masteryNext(combo: Combo, rank: number): string {
   const next = masteryThresholds()[rank];
   const bonus = rank <= MASTERY_PAYOFF_RANKS ? `+${Math.round(rank * tuning.mastery.payoffPerRank * 100)}% to its payoff. ` : '';
-  return next === undefined ? `${bonus}The highest rank` : `${bonus}${next} ${COMBO_WORDS[combo]} payoffs for rank ${ROMAN[rank]}`;
+  return next === undefined ? `${bonus}Your specialization now gives every payoff its twist` : `${bonus}${next} ${COMBO_WORDS[combo]} payoffs for rank ${ROMAN[rank]}`;
 }
 
 

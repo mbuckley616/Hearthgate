@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 178, Mastery rank V: the sword's twists
+
+**What changed**
+
+A player at rank V in a combo now gets their specialization's twist on each payoff of it, by the specialization of the style they hold (Michael's A). The sword's three: a Paladin's payoff heals every ally within `specs.bulwarkRadius` (4 m) by `mastery.paladinHeal` (5%) of their health, with Bulwark's pulse for its light and sound; a Spellblade's leaves a square patch of their element's ground where it landed (`mastery.spellbladeGroundWidth` 3 m, `spellbladeGroundSeconds` 3 s), burning as Blazing Charge's trail does; a Rogue's resets Shadowstep's cooldown. `masteryTwist` in `sim/specs.ts`, fired from `payCombo` at the rank before the payoff counts (`masteryTwists` in `mastery.ts`). Henchmen get none; off with `mastery.enabled` in the parity test. `TrailView` draws eight strips instead of four so a patch sits beside a Charge's trail. The rank V toast says the twist is on. A case added to `mastery.test.ts`; check 568 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The twist follows the held style's specialization, so Shatter (always a melee finisher) only ever twists for the sword's three, Skewer for the bow's and Detonate for the staff's; Uproot and Wildfire can twist for any. The trail store took a patch with no new state: a strip as long as it is wide, with a seq no Charge has, so Blazing Charge never stretches it.
+
+**Next**
+
+Rank V's twists for the bow's three (Ranger, Scout, Assassin), then the staff's three, a style a session. The design doc names none of them; the builder will keep each to its specialization's existing kit, as the sword's were.
+
 ## 2026-11-10: Session 177, Combo mastery ranks I to IV (Michael's A on what a rank gives)
 
 **What changed**

@@ -1728,6 +1728,12 @@ export const tuning = {
      * a specialization's twist instead of a fifth step.
      */
     payoffPerRank: 0.06,
+    /** Rank V, the Paladin's twist: a payoff heals every ally within `specs.bulwarkRadius` by this much of their health. */
+    paladinHeal: 0.05,
+    /** Rank V, the Spellblade's twist: a payoff leaves a patch of their element's ground this wide, burning as Blazing Charge's trail does. */
+    spellbladeGroundWidth: 3,
+    /** Seconds the Spellblade's patch lasts. */
+    spellbladeGroundSeconds: 3,
   },
 
   /**
@@ -2683,6 +2689,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank4': [1, 1000, 1],
   'mastery.rank5': [1, 2000, 1],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
+  'mastery.paladinHeal': [0, 0.25, 0.01],
+  'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],
+  'mastery.spellbladeGroundSeconds': [0, 10, 0.5],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

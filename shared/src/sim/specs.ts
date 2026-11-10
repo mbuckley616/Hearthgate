@@ -1518,3 +1518,60 @@ export function elementalNova(p: PlayerState, hit: HitSpec): void {
   else if (el === 'earth') hit.poise *= s.attuneEarthPoise;
   else if (el === 'air') hit.knockback = Math.max(hit.knockback, s.attuneAirKnockback);
 }
+
+/**
+ * Rank V of a combo's mastery (Michael's A, 10 Nov): the payer's specialization in the style they hold
+ * gives each payoff of that combo a twist. The sword's three: the Paladin's heals the party a little,
+ * the Spellblade's leaves a patch of their element's ground where it landed, the Rogue's resets
+ * Shadowstep. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
+ * the server's heal and ground are the truth. Returns whether a twist fired.
+ */
+export function masteryTwist(state: SimState, p: PlayerState, x: number, z: number): boolean {
+  const m = tuning.mastery;
+  switch (specOf(p)) {
+    case 'paladin': {
+      if (m.paladinHeal <= 0) return false;
+      let healed = 0;
+      for (const o of state.players) {
+        if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > tuning.specs.bulwarkRadius) continue;
+        const before = o.hp;
+        o.hp = Math.min(o.maxHp, o.hp + o.maxHp * m.paladinHeal);
+        if (o.hp > before) healed++;
+      }
+      // Bulwark's pulse, its light and sound, a smaller dose.
+      state.events.push({ kind: 'holyPulse', playerId: p.id, x: p.x, y: p.y, z: p.z, healed });
+      return true;
+    }
+    case 'spellblade': {
+      if (m.spellbladeGroundSeconds <= 0) return false;
+      const s = tuning.specs;
+      const tick = Math.max(0.05, s.blazingTrailTickMs / 1000);
+      const half = m.spellbladeGroundWidth / 2;
+      // A square patch: a strip as long as it is wide, across the hero's facing. Its seq is no Charge's,
+      // so a Blazing Charge never stretches it, and it sits beside the hero's own trail.
+      const ax = Math.cos(p.yaw) * half;
+      const az = -Math.sin(p.yaw) * half;
+      (state.trails ??= []).push({
+        by: p.id,
+        seq: -1,
+        style: 'sword',
+        x0: x - ax,
+        z0: z - az,
+        x1: x + ax,
+        z1: z + az,
+        y: p.y,
+        width: m.spellbladeGroundWidth,
+        until: state.time + m.spellbladeGroundSeconds,
+        tickDamage: tuning.abilities.chargeDamage * tuning.combat.baseDamage * s.blazingTrailDamage * tick,
+        next: state.time + tick,
+        element: elementFor(p, 'sword') ?? 'fire',
+      });
+      return true;
+    }
+    case 'rogue':
+      p.cooldowns.sword[0] = 0;
+      return true;
+    default:
+      return false;
+  }
+}

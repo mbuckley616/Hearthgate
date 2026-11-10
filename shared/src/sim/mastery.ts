@@ -43,6 +43,11 @@ export function masteryPayoffMult(p: PlayerState | undefined, combo: Combo): num
   return 1 + masteryBonus(p.mastery?.[combo]);
 }
 
+/** Whether this payer has rank V in this combo before this payoff counts: its specialization's twist rides the payoff. */
+export function masteryTwists(p: PlayerState | undefined, combo: Combo): boolean {
+  return tuning.mastery.enabled && !!p && !p.henchman && masteryRank(p.mastery?.[combo]) >= 5;
+}
+
 /** The payoff bonus a count has earned, as a fraction (0.12 at rank II), for the payoff and the Talents tab alike. */
 export function masteryBonus(count: number | undefined): number {
   return Math.min(MASTERY_PAYOFF_RANKS, masteryRank(count)) * tuning.mastery.payoffPerRank;

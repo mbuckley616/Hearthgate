@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { ELEMENT_COLOUR } from '@hearthgate/shared/sim/specs';
 import type { TrailGround } from '@hearthgate/shared/sim/types';
 
-/** At most this many trails drawn at once: one a Spellblade, four heroes. */
-const POOL = 4;
+/** At most this many trails drawn at once: a Spellblade's Charge and a mastery patch, four heroes. */
+const POOL = 8;
 /** The last second of a trail fades it out, as Consecrate's rings do. */
 const FADE_S = 1;
 

@@ -141,4 +141,50 @@ describe('combo mastery', () => {
     // The payoff that reaches rank I is still paid at rank 0.
     expect(dealt(tuning.mastery.rank1 - 1)).toBeCloseTo(plain);
   });
+
+  it('rank V gives the sword’s specializations their twists; rank IV gives none', () => {
+    const v = tuning.mastery.rank5;
+    // The Rogue's resets Shadowstep.
+    let s = party();
+    let p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'rogue' };
+    p.cooldowns.sword[0] = 5;
+    p.mastery = { shatter: v - 1 };
+    payCombo(s, 'shatter', p.id, 0, 0, 0);
+    expect(p.cooldowns.sword[0]).toBe(5);
+    payCombo(s, 'shatter', p.id, 0, 0, 0);
+    expect(p.cooldowns.sword[0]).toBe(0);
+    // The Paladin's heals allies near them a little.
+    s = party();
+    p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'paladin' };
+    p.mastery = { uproot: v };
+    const ally = s.players[1];
+    ally.x = p.x + 1;
+    ally.z = p.z;
+    ally.hp = ally.maxHp / 2;
+    payCombo(s, 'uproot', p.id, 0, 0, 0);
+    expect(ally.hp).toBeCloseTo(ally.maxHp * (0.5 + tuning.mastery.paladinHeal));
+    expect(s.events.some((ev) => ev.kind === 'holyPulse')).toBe(true);
+    // The Spellblade's leaves its element's ground where the payoff landed, and it burns.
+    s = party();
+    p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'spellblade' };
+    p.elements = { sword: 'frost' };
+    p.mastery = { shatter: v };
+    payCombo(s, 'shatter', p.id, 4, 1, 2);
+    expect(s.trails).toHaveLength(1);
+    const g = s.trails![0];
+    expect(g.element).toBe('frost');
+    expect((g.x0 + g.x1) / 2).toBeCloseTo(4);
+    expect((g.z0 + g.z1) / 2).toBeCloseTo(2);
+    expect(g.tickDamage).toBeGreaterThan(0);
+    // A henchman gets no twist.
+    p.henchman = true;
+    payCombo(s, 'shatter', p.id, 4, 1, 2);
+    expect(s.trails).toHaveLength(1);
+  });
 });
