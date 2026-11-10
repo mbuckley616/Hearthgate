@@ -1524,7 +1524,9 @@ export function elementalNova(p: PlayerState, hit: HitSpec): void {
  * gives each payoff of that combo a twist. The sword's three: the Paladin's heals the party a little,
  * the Spellblade's leaves a patch of their element's ground where it landed, the Rogue's resets
  * Shadowstep. The bow's, each from its own kit: the Ranger's seeds brambles where it landed, the
- * Scout's marks every enemy near it, the Assassin's resets Smoke Bomb. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
+ * Scout's marks every enemy near it, the Assassin's resets Smoke Bomb. The staff's: the Warlock's
+ * hexes every enemy near it, the Druid's grows a grove at their feet, the Sorcerer's resets
+ * Elemental Step. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
  * the server's heal and ground are the truth. Returns whether a twist fired.
  */
 export function masteryTwist(state: SimState, p: PlayerState, x: number, z: number): boolean {
@@ -1586,6 +1588,20 @@ export function masteryTwist(state: SimState, p: PlayerState, x: number, z: numb
     case 'assassin':
       // Smoke Bomb is the Assassin's Disengage, the bow's second.
       p.cooldowns.bow[1] = 0;
+      return true;
+    case 'warlock': {
+      if (m.warlockHexRadius <= 0 || tuning.specs.hexSeconds <= 0) return false;
+      for (const e of state.enemies) {
+        if (isTargetable(e) && Math.hypot(e.x - x, e.z - z) <= m.warlockHexRadius + enemyStats(e.kind).radius) hexOn(state, p, e);
+      }
+      return true;
+    }
+    case 'druid':
+      // A Wild Growth grove at the Druid's feet, their one grove as a Blink's is.
+      return wildGrowth(state, p, p.x, p.z);
+    case 'sorcerer':
+      // Elemental Step is the Sorcerer's Blink, the staff's second.
+      p.cooldowns.staff[1] = 0;
       return true;
     default:
       return false;

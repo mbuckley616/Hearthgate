@@ -1738,6 +1738,8 @@ export const tuning = {
     rangerBrambleRadius: 2.5,
     /** Rank V, the Scout's twist: a payoff marks every enemy within this many metres of it. */
     scoutMarkRadius: 4,
+    /** Rank V, the Warlock's twist: a payoff hexes every enemy within this many metres of it. */
+    warlockHexRadius: 4,
   },
 
   /**
@@ -2698,6 +2700,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.spellbladeGroundSeconds': [0, 10, 0.5],
   'mastery.rangerBrambleRadius': [0, 6, 0.25],
   'mastery.scoutMarkRadius': [0, 12, 0.5],
+  'mastery.warlockHexRadius': [0, 12, 0.5],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

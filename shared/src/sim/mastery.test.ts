@@ -216,4 +216,33 @@ describe('combo mastery', () => {
     expect(assassin.players[0].cooldowns.bow[1]).toBe(0);
     expect(ranger.players[0].cooldowns.bow[1]).toBe(4);
   });
+
+  it('rank V gives the staff’s specializations theirs: hexes, a grove, a fresh Elemental Step', () => {
+    const v = tuning.mastery.rank5;
+    const at = (spec: 'warlock' | 'druid' | 'sorcerer'): SimState => {
+      const s = party();
+      const p = s.players[0];
+      p.style = 'staff';
+      p.spec = { staff: spec };
+      p.mastery = { detonate: v };
+      p.cooldowns.staff[1] = 4;
+      for (const [x, z] of [[5, 5], [7, 5], [20, 20]]) {
+        const e = createEnemy(s, world, 'grunt', x, 0, z);
+        e.x = x;
+        e.z = z;
+        e.y = 0;
+        e.ai = 'chase';
+      }
+      payCombo(s, 'detonate', p.id, 5, 1, 5);
+      return s;
+    };
+    const warlock = at('warlock');
+    expect(warlock.enemies.map((e) => e.hex?.by)).toEqual(['p1', 'p1', undefined]);
+    const druid = at('druid');
+    expect(druid.groves).toHaveLength(1);
+    expect(druid.groves![0]).toMatchObject({ by: 'p1', x: druid.players[0].x, z: druid.players[0].z });
+    expect(druid.players[0].cooldowns.staff[1]).toBe(4);
+    const sorcerer = at('sorcerer');
+    expect(sorcerer.players[0].cooldowns.staff[1]).toBe(0);
+  });
 });

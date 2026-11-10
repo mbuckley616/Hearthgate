@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 180, Mastery rank V: the staff's twists (combo mastery built)
+
+**What changed**
+
+The staff's three get their rank V twists from their kits: a Warlock's payoff hexes every enemy within `mastery.warlockHexRadius` (4 m, on the panel) of it, with their own hex's length and nodes; a Druid's grows a Wild Growth grove at their feet (their one grove, as a Blink's is); a Sorcerer's resets Elemental Step (the Blink's cooldown). All nine specializations now have a twist, so Michael's A on what a rank gives is built: +6% a rank to I to IV, a twist at V. A case added to `mastery.test.ts` (10 now); check 570 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+Three of the nine twists are cooldown resets (Rogue, Assassin, Sorcerer: each style's mobility move), which keeps them felt without new state; the other six reuse grounds and marks the specializations already lay, so nothing new crosses the wire. Rank V takes 300 payoffs of one combo, so no play yet will have seen one: the panel's `mastery.rank5` (and `rank1`–`rank4`) is how to try them.
+
+**Next**
+
+Nothing is left for the builder in the current section: the builds pass's next part (runes in weapon sockets, the rest of the list) and E1i wait on Michael. A playtest of the ranks with `mastery.rank5` lowered on the panel would show whether +6% a rank is felt.
+
 ## 2026-11-10: Session 179, Mastery rank V: the bow's twists
 
 **What changed**
