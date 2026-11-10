@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
-import { burns, chills, damageEnemy, shatterPays, skewerSets, type HitSpec } from './combat';
+import { burns, chills, damageEnemy, fansFlames, shatterPays, skewerSets, uprootPays, type HitSpec } from './combat';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { emptyTalents } from './talents';
+import { markedMult, scoutMark } from './specs';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
 
@@ -146,5 +147,145 @@ describe('the states: Shatter (the builds pass)', () => {
     a.elements = { sword: 'fire', staff: 'fire' };
     tuning.combos.elementStates = false;
     expect(burns(a, hit(a.id, 'sword', { dot: true }))).toBe(false);
+  });
+});
+
+describe('the states: Rooted (the builds pass, Michael\'s A on more states)', () => {
+  const rooted = (s: SimState): EnemyState => {
+    const e = grunt(s);
+    e.rootUntil = s.time + 2;
+    return e;
+  };
+  const uproots = (s: SimState) => s.events.filter((ev) => ev.kind === 'combo' && ev.combo === 'uproot');
+
+  it('an area attack on a Rooted enemy lands harder, spends the root and calls Uproot once', () => {
+    const { s, a } = fight();
+    const e = rooted(s);
+    const o = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    damageEnemy(s, o, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(1000 - e.hp).toBeCloseTo(10 * (1 + tuning.combos.rootedAreaBonus), 0);
+    expect(1000 - o.hp).toBeCloseTo(10 * (1 + tuning.combos.rootedAreaBonus), 0);
+    expect(e.rootUntil).toBeUndefined();
+    expect(o.rootUntil).toBeUndefined();
+    // One call and one Flow tier for the burst, however many roots it spent.
+    expect(uproots(s)).toHaveLength(1);
+    // The root is spent: the next area hit lands plain.
+    const before = e.hp;
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(before - e.hp).toBeCloseTo(10, 5);
+  });
+
+  it('a single-target hit, a tick of ground or poison, or an unrooted enemy pays nothing', () => {
+    const { s, a } = fight();
+    const e = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'sword'));
+    expect(1000 - e.hp).toBeCloseTo(10, 5);
+    expect(e.rootUntil).toBeGreaterThan(s.time);
+    expect(uprootPays(s, e, hit(a.id, 'bow', { area: true, dot: true }))).toBe(false);
+    const free = grunt(s);
+    expect(uprootPays(s, free, hit(a.id, 'staff', { area: true }))).toBe(false);
+    // A root that has run out is not a state.
+    const old = grunt(s);
+    old.rootUntil = s.time - 0.1;
+    expect(uprootPays(s, old, hit(a.id, 'staff', { area: true }))).toBe(false);
+    expect(uproots(s)).toHaveLength(0);
+  });
+
+  it('the slice has no Uproot: off with element states', () => {
+    tuning.combos.elementStates = false;
+    const { s, a } = fight();
+    const e = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(1000 - e.hp).toBeCloseTo(10, 5);
+    expect(e.rootUntil).toBeGreaterThan(s.time);
+    expect(uproots(s)).toHaveLength(0);
+  });
+
+  it('the Uproot is the area attacker\'s, and each player\'s area attack calls its own', () => {
+    const { s, a, b } = fight();
+    damageEnemy(s, rooted(s), hit(b.id, 'staff', { area: true }));
+    damageEnemy(s, rooted(s), hit(a.id, 'sword', { area: true }));
+    expect(uproots(s).map((ev) => ev.kind === 'combo' && ev.playerId)).toEqual([b.id, a.id]);
+  });
+});
+
+describe('the states: Burning\'s spread (the builds pass, Michael\'s A on more states)', () => {
+  const at = (s: SimState, x: number, z: number): EnemyState => {
+    const e = grunt(s);
+    e.x = x;
+    e.z = z;
+    return e;
+  };
+  const fans = (s: SimState) => s.events.filter((ev) => ev.kind === 'combo' && ev.combo === 'fan');
+
+  it('a Scout\'s arrow on a Burning enemy fans it on to the group, for what is left of it, once a tick', () => {
+    const { s, a, b } = fight();
+    a.spec = { staff: 'sorcerer' };
+    a.elements = { staff: 'fire' };
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    const near = at(s, 2, 0);
+    const far = at(s, 30, 0);
+    damageEnemy(s, e, hit(a.id, 'staff', { projectile: true }));
+    expect(e.detonateUntil).toBeGreaterThan(s.time);
+    expect(near.detonateUntil).toBeLessThan(s.time);
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(near.detonateUntil).toBe(e.detonateUntil);
+    expect(far.detonateUntil).toBeLessThan(s.time);
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(fans(s)).toHaveLength(1);
+    expect(fans(s)[0]).toMatchObject({ playerId: b.id });
+  });
+
+  it('only Air fans, never a tick, never an enemy not Burning, never with element states off', () => {
+    const { s, a, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(false);
+    e.detonateUntil = s.time + 2;
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(true);
+    expect(fansFlames(s, e, b, hit(b.id, 'bow', { dot: true }))).toBe(false);
+    expect(fansFlames(s, e, a, hit(a.id, 'bow'))).toBe(false);
+    tuning.combos.elementStates = false;
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(false);
+  });
+
+  it('a fan that reaches no one new calls nothing', () => {
+    const { s, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    e.detonateUntil = s.time + 2;
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(fans(s)).toHaveLength(0);
+  });
+});
+
+describe('the states: Marked for everyone (the builds pass, Michael\'s A on more states)', () => {
+  it('any hero\'s charged shot marks, and the whole party\'s hits pay the plain bonus', () => {
+    const { s, a, b } = fight();
+    const e = grunt(s);
+    scoutMark(s, a, e, false);
+    expect(e.scoutMark).toBeUndefined();
+    scoutMark(s, a, e, true);
+    expect(e.scoutMark).toMatchObject({ by: a.id });
+    expect(e.scoutMark!.until).toBeCloseTo(s.time + tuning.combos.huntMarkSeconds, 5);
+    expect(s.events.some((ev) => ev.kind === 'scoutMarked' && ev.playerId === a.id)).toBe(true);
+    // Plain: the Scout's Exposed would make it more, and no Flow is the marker's to gain.
+    expect(markedMult(s, e, b, false)).toBeCloseTo(1 + tuning.specs.markDamageBonus, 5);
+    expect(markedMult(s, e, b, true)).toBe(1);
+  });
+
+  it('a hunter\'s mark never overwrites a live Scout\'s; with element states off nobody but a Scout marks', () => {
+    const { s, a, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = grunt(s);
+    scoutMark(s, b, e);
+    scoutMark(s, a, e, true);
+    expect(e.scoutMark?.by).toBe(b.id);
+    tuning.combos.elementStates = false;
+    const o = grunt(s);
+    scoutMark(s, a, o, true);
+    expect(o.scoutMark).toBeUndefined();
   });
 });

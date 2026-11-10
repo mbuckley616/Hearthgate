@@ -271,7 +271,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   if (pr.kind === 'arrow' && pr.style === 'bow' && pr.owner[0] !== 'e') {
     const owner = state.players.find((p) => p.id === pr.owner);
     if (pr.charged) thornshot(state, owner, e);
-    scoutMark(state, owner, e);
+    scoutMark(state, owner, e, pr.charged);
     if (pr.marks) stormChain(state, owner, pr, e);
     if (pr.marks) venomVolley(state, owner, pr, e);
   }
@@ -333,6 +333,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
             slowTime: pr.slowTime,
             style: pr.style,
             combo: marked || undefined,
+            area: true,
           });
         }
       }

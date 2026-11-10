@@ -2,6 +2,48 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 174, Marked for everyone (the builds pass, Michael's A on more states)
+
+**What changed**
+
+The Scout's mark becomes a state anyone can leave. With `combos.elementStates`, any hero's charged shot marks the enemy it hits for `combos.huntMarkSeconds` (4 s, on the panel), and every party member's hits on it land `specs.markDamageBonus` (10%) harder, as the design doc's Marked has it (Hunter abilities apply, any party member consumes). It is a plain mark: the Flow it feeds and the Exposed, Rising Tempo and Hunter's Mark nodes stay the Scout's, and it never overwrites a live Scout's mark, which is the stronger; the Scout's own arrows overwrite it. Same `scoutMark` field and `scoutMarked` event, so the sound and nothing on the wire changes. `scoutMark` takes the arrow's `charged`; `markedMult` pays a non-Scout's mark plainly. Two new cases in `states.test.ts`; check 560 green, parity identical (off in the parity test). Not yet seen in a browser.
+
+**Learned**
+
+Marked had its payoff for everyone already (the Scout's signature pays any party hit); what was missing was anyone but a Scout leaving it. The mark has a sound but no look on the enemy, so in a browser a hunter's mark is heard and not seen; worth a small view if the critic or Michael finds it unreadable.
+
+**Next**
+
+Of Michael's A on more states, Rooted (Uproot), Burning's spread (Wildfire) and Marked are built; Soaked waits on its question in `decisions.md` Pending, which also asks what follows (recommended A: leave Soaked for Tidewater, combo mastery next). Nothing else is left for the builder in the current section until that or the next part of the builds pass is answered.
+
+## 2026-11-10: Session 173, Burning's spread: Wildfire (the builds pass, Michael's A on more states)
+
+**What changed**
+
+The fifth state's payoff. A hit in a hero's Air element (a Scout's arrows, an Air Spellblade's chain, an Air Sorcerer's bolts, Nova and Attunement) on a Burning enemy fans the Burning on to every standing enemy within `combos.burnSpreadRadius` (4 m, on the panel), for what is left of the fire and credited to whoever lit it, so the next magic burst detonates the whole group. A fan never lengthens a fire, so two players cannot keep a room alight between them. The call is `fan`, a new `Combo`: "Wildfire!" in amber, a ring the spread's size, a rising whoosh, one call and Flow tier a tick for the fanner and only when the fire reached someone new. `fansFlames` in `combat.ts`, under `combos.elementStates` (off in the parity test); three new cases in `states.test.ts`. check 558 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The design doc consumes Burning with Oil or Wind; no Oil exists, so Wind (Air) is the whole rule, and the Scout's default element is Air, which makes a Fire Sorcerer and a Scout the natural pair: light one, arrow it, burst the group. The fire is not spent by the fan (the table's "consumed" read as "used"), since a spread that put out its source would be a sideways move.
+
+**Next**
+
+Marked for everyone, the last of the four; Soaked waits on `decisions.md` Pending.
+
+## 2026-11-10: Session 172, Rooted as a state: Uproot (the builds pass, Michael's A on more states)
+
+**What changed**
+
+The fourth state. A Rooted enemy (held by a Ranger's Thornshot, Bramble Rain or Snare, or a Druid's Bloom or Thorn Ring) is now cashed in by an area attack: a magic burst (the staff's and sceptre's, Detonate's included), the frost ring and everything it becomes (a Sorcerer's Nova, a Warlock's Curse Ring, a Druid's Thorn Ring), a Whirlwind's tick, Cataclysm and a Fire Attunement's burst. It lands `combos.rootedAreaBonus` (40%, on the panel) harder on each Rooted enemy it catches, with the Finisher and champion combo bonuses Shatter takes, and spends the root. The payoff is `uproot`, a new `Combo`: "Uproot!" in green over the HUD, a green ring and sparks, a cracking snap; one call and one Flow tier an attack per player however many roots it spends (deduped against the tick's events, so prediction and server agree). `HitSpec.area` marks the area hits; `uprootPays` in `combat.ts` is the rule, tested in `states.test.ts` (four new cases). Behind `combos.elementStates`, off in the parity test. check 555 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The design doc's payoff, "enemies cannot dodge the area", has nothing to bite on here (enemies never dodge), so the payoff is the hit itself, and the root is spent as the table's "consumed by" says. Unlike Chill and Burning there was nothing to widen on the setup side: no Nature ground exists (the trails are Fire, Frost, Earth and Air), and rooting on Nature arrows or venom would root every light enemy a Ranger or Assassin touches. Bramble Rain re-roots each tick an enemy stands in it, so a Whirlwind in the brambles uproots on every tick: the strongest pairing, worth watching on the panel. Soaked has no source at all (no Water element, no Tidewater consumables), so it is asked rather than invented.
+
+**Next**
+
+Marked for everyone (the Scout's mark today; the design doc has any party member consume it) or Burning's spread, one a session; Soaked waits on `decisions.md` Pending.
+
 ## 2026-11-09: Session 171, a mispredicted swing eases instead of snapping (deep-work session, the bow's backflip snap, part 2)
 
 **What changed**
