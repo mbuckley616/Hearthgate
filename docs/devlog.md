@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 176, Combo mastery on the Talents tab
+
+**What changed**
+
+The hero screen's Talents tab gains a line under the three columns: each combo's mastery rank and its count toward the next (Shatter II 34/75, Uproot – 0/10), gold once a rank is reached, from the save's count (the server's, synced as XP is). Read-only, so no key or button is needed. The combos' names (`COMBO_NAMES`, Wildfire for the spread) and the ranks' numerals moved into `sim/mastery.ts` so the callout, the toast and the tab say the same words. A line added to `mastery.test.ts`; check 565 green. Client only; not yet seen in a browser.
+
+**Learned**
+
+Between toasts at 10 and 30 payoffs a player had no way to see how close a rank was; one line on a screen they already open for talents answers it without a new HUD element.
+
+**Next**
+
+What a rank gives waits on `decisions.md` Pending (recommended A: +6% a rank to that payoff, a specialization twist at V). Nothing else is left for the builder in the current section until it is answered.
+
 ## 2026-11-10: Session 175, Combo mastery counted (the builds pass, Michael's A on Soaked)
 
 **What changed**

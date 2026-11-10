@@ -6,7 +6,7 @@ import { damageEnemy, payCombo, type HitSpec } from './combat';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { masteryRank, readMastery } from './mastery';
+import { COMBOS, COMBO_NAMES, masteryRank, readMastery } from './mastery';
 import { emptyTalents } from './talents';
 import type { SimState } from './types';
 import { createSimState } from './world';
@@ -47,6 +47,8 @@ describe('combo mastery', () => {
     expect(masteryRank(m.rank1)).toBe(1);
     expect(masteryRank(m.rank3)).toBe(3);
     expect(masteryRank(m.rank5 * 10)).toBe(5);
+    // The Talents tab lists every combo by its callout's name.
+    expect(COMBOS.map((c) => COMBO_NAMES[c])).toEqual(['Shatter', 'Skewer', 'Detonate', 'Uproot', 'Wildfire']);
   });
 
   it('a payoff the server decides counts for its payer alone', () => {

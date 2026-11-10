@@ -4,6 +4,12 @@ import type { Combo, PlayerState, SimState } from './types';
 /** Every combo a payoff can count toward (the builds pass: combo mastery, Michael's A, 10 Nov). */
 export const COMBOS: readonly Combo[] = ['shatter', 'skewer', 'detonate', 'uproot', 'fan'];
 
+/** Each combo's name as the callout says it (Burning's spread is called Wildfire). */
+export const COMBO_NAMES: Record<Combo, string> = { shatter: 'Shatter', skewer: 'Skewer', detonate: 'Detonate', uproot: 'Uproot', fan: 'Wildfire' };
+
+/** Ranks as written. */
+export const MASTERY_ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+
 /** Payoffs counted per combo: the player's, kept in the browser's save until Phase 3 and carried on the loadout. */
 export type ComboMastery = Partial<Record<Combo, number>>;
 

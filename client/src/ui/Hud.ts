@@ -1,4 +1,4 @@
-import { masteryThresholds } from '@hearthgate/shared/sim/mastery';
+import { COMBO_NAMES as COMBO_WORDS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
@@ -9,7 +9,6 @@ import { abilityTitle, heroTitle } from '@hearthgate/shared/sim/specs';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 
 const TOAST_MS = 4200;
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
 
 /** What the next rank asks for, or that this was the last. */
 function masteryNext(combo: Combo, rank: number): string {
@@ -17,7 +16,6 @@ function masteryNext(combo: Combo, rank: number): string {
   return next === undefined ? 'The highest rank' : `${next} ${COMBO_WORDS[combo]} payoffs for rank ${ROMAN[rank]}`;
 }
 
-const COMBO_WORDS: Record<Combo, string> = { shatter: 'Shatter', skewer: 'Skewer', detonate: 'Detonate', uproot: 'Uproot', fan: 'Wildfire' };
 
 /**
  * Combat HUD from the brief: the weapon in hand's level over health, dodge charges and a combo
