@@ -14,6 +14,8 @@ Your A on what a rank gives is built (Sessions 177 to 180): ranks I to IV add 6%
 - **C.** Pause the builds pass for a playtest of what it has built (nine specializations, their trees, states, mastery); the builder idles until then.
 - **D.** Start E1i, the Goblin Warrens' roster, now rather than after more Crypt play.
 
+## Answered
+
 ### 2026-11-10: Combo mastery, what a rank gives (builder, Session 175)
 Your A on Soaked is under way: every payoff a player lands now counts toward that combo's rank, I to V at 10, 30, 75, 150 and 300 payoffs (on the panel), with a toast at each rank. Nothing yet says what a rank does; the design doc says only that rank V is shaped by the payer's specialization.
 - **A.** Each rank adds 6% to that combo's payoff (rank IV: +24%); rank V adds a specialization twist to the payoff (Paladin's heals the party a little, Spellblade's leaves its element's ground, Rogue's resets Shadowstep, and so on, one a specialization). One session for I to IV, then one style's three twists a session. *(recommended: a rank is felt in every payoff, and the twist makes V worth chasing)*
@@ -21,7 +23,7 @@ Your A on Soaked is under way: every payoff a player lands now counts toward tha
 - **C.** As A, but ranks I to IV also lengthen the setup's window (+0.25 s a rank) instead of more damage, so more combos land in a crowd.
 - **D.** Stop after counting; take runes in weapon sockets next and come back to ranks after a playtest.
 
-## Answered
+Michael: **A. +6% payoff a rank; a specialization twist at V**. (2026-11-10)
 
 ### 2026-11-10: Soaked, with nothing in the game to soak (builder, Session 172)
 Your A on more states is built for three of the four (Sessions 172 to 174: Rooted's Uproot, Burning's spread as Wildfire, Marked for everyone), none yet played in a browser. Soaked is left, but the design doc has it applied by Water abilities and Tidewater consumables, and neither exists: the elements are holy, fire, frost, earth, air, shadow and nature, and the belt holds only healing potions.
