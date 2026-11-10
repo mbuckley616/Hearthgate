@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 177, Combo mastery ranks I to IV (Michael's A on what a rank gives)
+
+**What changed**
+
+A combo's mastery rank now shows in its payoff: ranks I to IV each add `mastery.payoffPerRank` (6%, on the panel), so rank IV pays 24% more. Shatter's finisher and its splash, a Skewer shot, a Detonate burst and an Uproot hit all scale by the payer's rank in that combo (`masteryPayoffMult` in `sim/mastery.ts`); Wildfire, whose payoff is the spread rather than damage, reaches 6% further a rank. The rank is read before the payoff counts, so the payoff that reaches rank I is still paid at rank 0. Rank V adds no fifth step; it waits for its specialization twist. Henchmen and enemies get nothing; off with `mastery.enabled` (the parity test). The Talents tab shows the bonus beside each rank (Shatter II +12%), and the rank toast says what the new rank gives. Two cases added to `mastery.test.ts`; check 567 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Every payoff already had one place its bonus was applied, so the rank multiplies there; the shatter splash had to read the rank before `payCombo` counted it, or the burst would pay one rank ahead of the finisher on the payoff that crosses a threshold.
+
+**Next**
+
+Rank V's twists, one style's three specializations a session (Michael's A: the Paladin's heals the party a little, the Spellblade's leaves its element's ground, the Rogue's resets Shadowstep, and so on).
+
 ## 2026-11-10: Session 176, Combo mastery on the Talents tab
 
 **What changed**

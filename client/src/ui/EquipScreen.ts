@@ -1,4 +1,4 @@
-import { COMBOS, COMBO_NAMES, MASTERY_ROMAN, masteryRank, masteryThresholds } from '@hearthgate/shared/sim/mastery';
+import { COMBOS, COMBO_NAMES, MASTERY_ROMAN, masteryBonus, masteryRank, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
@@ -549,7 +549,7 @@ export class EquipScreen {
       const n = counts[c] ?? 0;
       const rank = masteryRank(n);
       const next = steps[rank];
-      return `<span class="mastery-item${rank > 0 ? ' has' : ''}"><b>${COMBO_NAMES[c]} ${rank > 0 ? MASTERY_ROMAN[rank - 1] : '–'}</b> ${next === undefined ? n : `${n}/${next}`}</span>`;
+      return `<span class="mastery-item${rank > 0 ? ' has' : ''}"><b>${COMBO_NAMES[c]} ${rank > 0 ? MASTERY_ROMAN[rank - 1] : '–'}</b>${rank > 0 ? ` +${Math.round(masteryBonus(n) * 100)}%` : ''} ${next === undefined ? n : `${n}/${next}`}</span>`;
     }).join('');
     return `<div class="mastery-row"><span class="talent-sub">Combo mastery</span>${items}</div>`;
   }

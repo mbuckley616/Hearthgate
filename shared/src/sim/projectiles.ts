@@ -4,6 +4,7 @@ import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo, type HitSpec } from './combat';
 import { attuneAfter, attuneHit, bloomHeal, bloomRoot, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
+import { masteryPayoffMult } from './mastery';
 import { abilityRank } from './talents';
 import type { EnemyState, PlayerState, ProjectileState, SimState } from './types';
 
@@ -241,6 +242,8 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   const ammo = pr.kind === 'arrow' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner)?.mods.ammo : undefined;
   // Deadeye (the Assassin's signature): a charged shot in the back crits.
   const backshot = pr.kind === 'arrow' && pr.owner[0] !== 'e' ? deadeye(state.players.find((p) => p.id === pr.owner), pr, e, dir.x, dir.z) : 1;
+  // Combo mastery (Michael's A, 10 Nov): the shooter's Skewer rank, read before this payoff counts.
+  const skewerMult = skewer ? (1 + tuning.combos.skewerDamageBonus) * masteryPayoffMult(state.players.find((p) => p.id === pr.owner), 'skewer') : 1;
   if (skewer && !pr.comboed) {
     pr.comboed = true;
     payCombo(state, 'skewer', pr.owner, e.x, e.y + 1.2, e.z);
@@ -248,7 +251,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   const hit: HitSpec = {
     projectile: true,
     attackerId: pr.owner,
-    damage: pr.damage * (skewer ? 1 + tuning.combos.skewerDamageBonus : 1) * backshot,
+    damage: pr.damage * skewerMult * backshot,
     poise: pr.poise,
     knockback: pr.knockback,
     heavy: pr.heavy,
@@ -307,7 +310,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
         const cb = tuning.combos;
         if (marked && pr.owner[0] !== 'e') {
           pr.radius *= 1 + cb.detonateRadiusBonus;
-          pr.damage *= 1 + cb.detonateDamageBonus;
+          pr.damage *= (1 + cb.detonateDamageBonus) * masteryPayoffMult(state.players.find((p) => p.id === pr.owner), 'detonate');
           payCombo(state, 'detonate', pr.owner, pr.x, pr.y + 1, pr.z);
         }
         if (pr.owner[0] !== 'e') smashCircle(state, props, pr.owner, pr.x, pr.y, pr.z, pr.radius);

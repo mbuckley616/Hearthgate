@@ -1722,6 +1722,12 @@ export const tuning = {
     rank3: 75,
     rank4: 150,
     rank5: 300,
+    /**
+     * What a rank gives (Michael's A, 10 Nov): each of ranks I to IV adds this much to that combo's
+     * payoff (its bonus damage, its splash; Wildfire's spread reach), so rank IV is +24%. Rank V adds
+     * a specialization's twist instead of a fifth step.
+     */
+    payoffPerRank: 0.06,
   },
 
   /**
@@ -2676,6 +2682,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank3': [1, 600, 1],
   'mastery.rank4': [1, 1000, 1],
   'mastery.rank5': [1, 2000, 1],
+  'mastery.payoffPerRank': [0, 0.25, 0.01],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

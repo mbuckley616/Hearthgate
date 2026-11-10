@@ -6,7 +6,7 @@ import { damageEnemy, payCombo, type HitSpec } from './combat';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { COMBOS, COMBO_NAMES, masteryRank, readMastery } from './mastery';
+import { COMBOS, COMBO_NAMES, masteryPayoffMult, masteryRank, readMastery } from './mastery';
 import { emptyTalents } from './talents';
 import type { SimState } from './types';
 import { createSimState } from './world';
@@ -100,5 +100,45 @@ describe('combo mastery', () => {
     expect(s.players[0].mastery).toEqual({ uproot: 12 });
     applyLoadout(s.players[0], loadout('Ann'), false);
     expect(s.players[0].mastery).toBeUndefined();
+  });
+
+  it('ranks I to IV each add the panel’s step to the payoff; V adds no fifth', () => {
+    const s = party();
+    const p = s.players[0];
+    const m = tuning.mastery;
+    expect(masteryPayoffMult(p, 'shatter')).toBe(1);
+    p.mastery = { shatter: m.rank1, skewer: m.rank4, detonate: m.rank5 };
+    expect(masteryPayoffMult(p, 'shatter')).toBeCloseTo(1 + m.payoffPerRank);
+    expect(masteryPayoffMult(p, 'skewer')).toBeCloseTo(1 + 4 * m.payoffPerRank);
+    expect(masteryPayoffMult(p, 'detonate')).toBeCloseTo(1 + 4 * m.payoffPerRank);
+    expect(masteryPayoffMult(undefined, 'shatter')).toBe(1);
+    p.henchman = true;
+    expect(masteryPayoffMult(p, 'skewer')).toBe(1);
+    p.henchman = undefined;
+    tuning.mastery.enabled = false;
+    expect(masteryPayoffMult(p, 'skewer')).toBe(1);
+  });
+
+  it('a rank IV Shatter lands 24% harder than a first one, at the rank before it counts', () => {
+    const dealt = (count: number | undefined): number => {
+      const s = party();
+      if (count !== undefined) s.players[1].mastery = { shatter: count };
+      const e = createEnemy(s, world, 'grunt', 0, 0, 0);
+      e.x = 0;
+      e.z = 0;
+      e.y = 0;
+      e.ai = 'chase';
+      e.hp = e.maxHp = 1000;
+      e.poise = 1000;
+      s.enemies.push(e);
+      damageEnemy(s, e, hit('p1', 'bow', { slowTime: 1 }));
+      const before = e.hp;
+      damageEnemy(s, e, hit('p2', 'sword', { heavy: true }));
+      return before - e.hp;
+    };
+    const plain = dealt(undefined);
+    expect(dealt(tuning.mastery.rank4)).toBeCloseTo(plain * (1 + 4 * tuning.mastery.payoffPerRank));
+    // The payoff that reaches rank I is still paid at rank 0.
+    expect(dealt(tuning.mastery.rank1 - 1)).toBeCloseTo(plain);
   });
 });

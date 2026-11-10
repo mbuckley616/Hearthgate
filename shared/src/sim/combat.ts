@@ -5,7 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { countPayoff } from './mastery';
+import { countPayoff, masteryPayoffMult } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
@@ -179,7 +179,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
   // Focus (the focus orb): a cast lands harder while it lasts; a burn's tick does not.
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
-  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher);
+  // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
+  const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
+  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -385,7 +387,8 @@ export function fansFlames(state: SimState, e: EnemyState, hero: PlayerState | u
  * Flow tier go to the fanner once a tick, and only when the fire reached someone new.
  */
 function fanFlames(state: SimState, e: EnemyState, hero: PlayerState): void {
-  const r = tuning.combos.burnSpreadRadius;
+  // Mastery of Wildfire carries the fire further: its payoff is the spread, not damage.
+  const r = tuning.combos.burnSpreadRadius * masteryPayoffMult(hero, 'fan');
   let caught = false;
   for (const o of state.enemies) {
     if (o === e || !isTargetable(o) || o.detonateUntil >= e.detonateUntil || Math.abs(o.y - e.y) > 1.2) continue;
@@ -403,8 +406,10 @@ function fanFlames(state: SimState, e: EnemyState, hero: PlayerState): void {
 /** Shatter payoff: the finisher bursts out into the enemies around. */
 function shatterAround(state: SimState, e: EnemyState, hit: HitSpec): void {
   const cb = tuning.combos;
-  payCombo(state, 'shatter', hit.attackerId, e.x, e.y + 1, e.z);
   const hero = state.players.find((p) => p.id === hit.attackerId);
+  // Mastery grows the burst as it grows the finisher, at the rank before this payoff counts.
+  const splash = hit.damage * cb.shatterSplashFrac * masteryPayoffMult(hero, 'shatter');
+  payCombo(state, 'shatter', hit.attackerId, e.x, e.y + 1, e.z);
   const radius = slotted(hero, 'wideShatter') ? cb.shatterRadius * tuning.champion.wideShatterRadiusMult : cb.shatterRadius;
   for (const o of state.enemies) {
     if (o === e || !isTargetable(o) || Math.abs(o.y - e.y) > 1.2) continue;
@@ -414,7 +419,7 @@ function shatterAround(state: SimState, e: EnemyState, hit: HitSpec): void {
     if (d > radius + enemyStats(o.kind).radius) continue;
     damageEnemy(state, o, {
       attackerId: hit.attackerId,
-      damage: hit.damage * cb.shatterSplashFrac,
+      damage: splash,
       poise: hit.poise * 0.5,
       knockback: 1,
       heavy: false,
