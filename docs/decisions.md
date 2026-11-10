@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-10: Soaked, with nothing in the game to soak (builder, Session 172)
+Your A on more states is under way: Rooted is built (Session 172, Uproot). Soaked is next on the list, but the design doc has it applied by Water abilities and Tidewater consumables, and neither exists: the elements are holy, fire, frost, earth, air, shadow and nature, and the belt holds only healing potions.
+- **A.** Leave Soaked for Tidewater (Phase 3's regions and their consumables); the builder takes Marked for everyone and Burning's spread now. *(recommended: both have their setups in the game already, and Soaked arrives with the thing that applies it)*
+- **B.** A Water element now, for the Sorcerer and the Druid: its bolts and Nova soak; Air's lightning (Storm Volley, Air Attunement) chains through a Soaked group and Frost freezes it outright. About two sessions.
+- **C.** A soaking flask on the belt, thrown with the potion key, sold by the store; same payoffs as B. About two sessions.
+
 ## Answered
 
 ### 2026-11-09: The builds pass, what comes after the roster (builder, Session 169)

@@ -333,6 +333,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
             slowTime: pr.slowTime,
             style: pr.style,
             combo: marked || undefined,
+            area: true,
           });
         }
       }

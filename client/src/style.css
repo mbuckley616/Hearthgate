@@ -1328,6 +1328,10 @@ canvas {
   color: #ff9a5a;
 }
 
+.hud-combo-call.uproot {
+  color: #9fdc6a;
+}
+
 .hud-combo-call.show {
   animation: combo-pop 1100ms ease-out;
 }

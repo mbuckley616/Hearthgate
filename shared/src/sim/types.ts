@@ -541,7 +541,7 @@ export type SimEvent =
   | { kind: 'bagLost'; playerId: string }
   | { kind: 'perk'; playerId: string; perk: Perk; x: number; z: number };
 
-export type Combo = 'shatter' | 'skewer' | 'detonate';
+export type Combo = 'shatter' | 'skewer' | 'detonate' | 'uproot';
 
 /** An enemy attack reaching a hero. */
 export interface HeroHit {

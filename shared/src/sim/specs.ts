@@ -432,6 +432,7 @@ function cataclysm(state: SimState, p: PlayerState): void {
       y: e.y + 1,
       z: e.z,
       style: 'staff',
+      area: true,
       ...(el === 'frost' ? { freezeTime: s.attuneFreezeS } : {}),
     };
     damageEnemy(state, e, hit);
@@ -1438,7 +1439,7 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
       if (d > fireRadius + enemyStats(e.kind).radius) continue;
       damageEnemy(state, e, {
         attackerId: owner.id, damage: pr.damage * s.attuneFireDamage * harder, poise: 0.3, knockback: 0.3, heavy: false,
-        dirX: d > 0 ? dx / d : 0, dirZ: d > 0 ? dz / d : 1, x: e.x, y: e.y + 1, z: e.z, style: 'staff', projectile: true,
+        dirX: d > 0 ? dx / d : 0, dirZ: d > 0 ? dz / d : 1, x: e.x, y: e.y + 1, z: e.z, style: 'staff', projectile: true, area: true,
       });
     }
     return;

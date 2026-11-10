@@ -1692,6 +1692,12 @@ export const tuning = {
     /** Detonate: volley marks, then a magic burst. */
     detonateRadiusBonus: 0.5,
     detonateDamageBonus: 0.3,
+    /**
+     * Rooted as a state (the builds pass, Michael's A on more states, 10 Nov): an area attack (a burst,
+     * a ring, a Whirlwind's tick, Cataclysm, a Fire Attunement's burst) on a Rooted enemy uproots it,
+     * landing this much harder and spending the root. Under `elementStates`.
+     */
+    rootedAreaBonus: 0.4,
   },
 
   /**
@@ -2639,6 +2645,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combos.skewerDamageBonus': [0, 2, 0.05],
   'combos.detonateRadiusBonus': [0, 2, 0.05],
   'combos.detonateDamageBonus': [0, 2, 0.05],
+  'combos.rootedAreaBonus': [0, 2, 0.05],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],
   'guard.moveSpeedFrac': [0, 1, 0.05],

@@ -278,6 +278,10 @@ export class Sfx {
           } else if (ev.combo === 'skewer') {
             this.tone('sawtooth', 300, 1400, 0.18, 0.18, 0.002);
             this.tone('triangle', 1400, 1300, 0.35, 0.16, 0.01);
+          } else if (ev.combo === 'uproot') {
+            // Roots tearing: a low crack and a woody snap.
+            this.noiseBurst('bandpass', 900, 300, 0.6, 0.35, 0.25);
+            this.tone('square', 180, 70, 0.22, 0.12, 0.002);
           } else {
             this.impact(true);
             this.rumble(0.7);

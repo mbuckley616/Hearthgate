@@ -3,9 +3,9 @@ import { championCombo, championDamage, championOpen, championPointsEarned, cham
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
-import type { EnemyState, HeroHit, PlayerState, SimState } from './types';
+import type { Combo, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
-import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, markedMult, shadowStrike, warlockHex } from './specs';
+import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -14,7 +14,7 @@ export function comboWindow(hero: PlayerState | undefined): number {
 }
 
 /** A combo paid off: the callout, and Momentum's cut to the payer's cooldowns (T6c). */
-export function payCombo(state: SimState, combo: 'shatter' | 'skewer' | 'detonate', playerId: string, x: number, y: number, z: number): void {
+export function payCombo(state: SimState, combo: Combo, playerId: string, x: number, y: number, z: number): void {
   state.events.push({ kind: 'combo', combo, playerId, x, y, z });
   const p = state.players.find((pl) => pl.id === playerId);
   // A combo payoff is worth a whole tier of Flow (C2).
@@ -53,6 +53,8 @@ export interface HitSpec {
   projectile?: boolean;
   /** A Skewer or Detonate payoff (Shatter is found here), for the Finisher talent. */
   combo?: boolean;
+  /** An area attack (a burst, a ring, a Whirlwind's tick, Cataclysm): it uproots a Rooted enemy. */
+  area?: boolean;
 }
 
 /** Damage multiplier for a hero's style: level 4 bonus, gear and the might talent. */
@@ -153,10 +155,13 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const cb = tuning.combos;
   const shatter = shatterPays(hit) && e.shatterUntil >= state.time;
   if (shatter) e.shatterUntil = -1;
+  // Uproot (Rooted as a state): an area attack cashes in a Rooted enemy and spends the root.
+  const uproot = uprootPays(state, e, hit);
+  if (uproot) delete e.rootUntil;
   // Teamwork (T6c): a payoff on a setup an ally made.
   const setter = shatter ? e.shatterBy : hit.combo ? (hit.style === 'bow' ? e.skewerBy : e.detonateBy) : undefined;
   const teamwork = setter !== undefined && setter !== hero?.id && slotted(hero, 'teamwork') ? tuning.champion.teamworkBonus : 0;
-  const finisher = hero && hit.style && (shatter || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
+  const finisher = hero && hit.style && (shatter || uproot || hit.combo) ? talentFinisher(hero, hit.style) + championCombo(hero) + teamwork + harmonyBonus(state, hero) : 0;
   // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
   const shadow = hero ? shadowStrike(state, hero, hit) : 1;
   if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
@@ -172,7 +177,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const backstab = hero && !hit.dot && !hit.projectile && familyOf(hero) === 'daggers' && fromBehind(e, hero) ? tuning.families.daggersBackstabMult : 1;
   // Focus (the focus orb): a cast lands harder while it lasts; a burn's tick does not.
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
-  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (1 + finisher);
+  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher);
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -192,6 +197,10 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   if (hero && burns(hero, hit)) {
     e.detonateUntil = state.time + comboWindow(hero);
     if (hero.champion) e.detonateBy = hero.id;
+  }
+  // One call and one Flow tier for an area attack however many roots it spends (events are a tick's).
+  if (uproot && hero && !state.events.some((ev) => ev.kind === 'combo' && ev.combo === 'uproot' && ev.playerId === hero.id)) {
+    payCombo(state, 'uproot', hero.id, e.x, e.y + 1, e.z);
   }
   if (hit.dot) {
     // Bleed ticks: just damage (and a kill if it finishes them).
@@ -338,6 +347,19 @@ export function burns(hero: PlayerState | undefined, hit: HitSpec): boolean {
   if (!tuning.combos.elementStates || !hero || !hit.style || hit.combo || hit.heavy) return false;
   if (!hit.dot && !hit.projectile) return false;
   return elementFor(hero, hit.style) === 'fire';
+}
+
+/**
+ * Whether a hit uproots a Rooted enemy (the states, Michael's A on more states, 10 Nov; the design
+ * doc's Rooted: area attacks consume it, the enemies cannot dodge the area). Enemies here never dodge,
+ * so the payoff is the hit: an area attack lands `combos.rootedAreaBonus` harder on each Rooted enemy
+ * it catches and spends the root. A tick of ground, poison or a bleed never does. The setups are the
+ * roots the fight already has (a Ranger's Thornshot, Bramble Rain and Snare, a Druid's Bloom and Thorn
+ * Ring): no Nature ground exists to widen them as Frost and Fire ground widen Chill and Burning. The slice has no roots: off with `combos.elementStates`.
+ */
+export function uprootPays(state: SimState, e: EnemyState, hit: HitSpec): boolean {
+  if (!tuning.combos.elementStates || !hit.area || hit.dot || !hit.attackerId) return false;
+  return isRooted(state, e);
 }
 
 /** Shatter payoff: the finisher bursts out into the enemies around. */

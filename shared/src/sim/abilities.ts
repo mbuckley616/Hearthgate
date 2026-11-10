@@ -155,6 +155,7 @@ export function stepAbility(
             x: e.x - (dx / Math.max(d, 1e-3)) * er,
             y: e.y + 1,
             z: e.z - (dz / Math.max(d, 1e-3)) * er,
+            area: true,
           });
         }
       }
@@ -300,6 +301,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
           y: e.y + 1,
           z: e.z,
           freezeTime: curse || thorns ? undefined : (a.frostFreezeMs + rank * tl.frostFreezeMsPerRank) / 1000,
+          area: true,
         };
         elementalNova(p, hit);
         damageEnemy(state, e, hit);

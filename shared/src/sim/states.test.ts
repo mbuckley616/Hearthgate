@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
-import { burns, chills, damageEnemy, shatterPays, skewerSets, type HitSpec } from './combat';
+import { burns, chills, damageEnemy, shatterPays, skewerSets, uprootPays, type HitSpec } from './combat';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
@@ -146,5 +146,65 @@ describe('the states: Shatter (the builds pass)', () => {
     a.elements = { sword: 'fire', staff: 'fire' };
     tuning.combos.elementStates = false;
     expect(burns(a, hit(a.id, 'sword', { dot: true }))).toBe(false);
+  });
+});
+
+describe('the states: Rooted (the builds pass, Michael\'s A on more states)', () => {
+  const rooted = (s: SimState): EnemyState => {
+    const e = grunt(s);
+    e.rootUntil = s.time + 2;
+    return e;
+  };
+  const uproots = (s: SimState) => s.events.filter((ev) => ev.kind === 'combo' && ev.combo === 'uproot');
+
+  it('an area attack on a Rooted enemy lands harder, spends the root and calls Uproot once', () => {
+    const { s, a } = fight();
+    const e = rooted(s);
+    const o = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    damageEnemy(s, o, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(1000 - e.hp).toBeCloseTo(10 * (1 + tuning.combos.rootedAreaBonus), 0);
+    expect(1000 - o.hp).toBeCloseTo(10 * (1 + tuning.combos.rootedAreaBonus), 0);
+    expect(e.rootUntil).toBeUndefined();
+    expect(o.rootUntil).toBeUndefined();
+    // One call and one Flow tier for the burst, however many roots it spent.
+    expect(uproots(s)).toHaveLength(1);
+    // The root is spent: the next area hit lands plain.
+    const before = e.hp;
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(before - e.hp).toBeCloseTo(10, 5);
+  });
+
+  it('a single-target hit, a tick of ground or poison, or an unrooted enemy pays nothing', () => {
+    const { s, a } = fight();
+    const e = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'sword'));
+    expect(1000 - e.hp).toBeCloseTo(10, 5);
+    expect(e.rootUntil).toBeGreaterThan(s.time);
+    expect(uprootPays(s, e, hit(a.id, 'bow', { area: true, dot: true }))).toBe(false);
+    const free = grunt(s);
+    expect(uprootPays(s, free, hit(a.id, 'staff', { area: true }))).toBe(false);
+    // A root that has run out is not a state.
+    const old = grunt(s);
+    old.rootUntil = s.time - 0.1;
+    expect(uprootPays(s, old, hit(a.id, 'staff', { area: true }))).toBe(false);
+    expect(uproots(s)).toHaveLength(0);
+  });
+
+  it('the slice has no Uproot: off with element states', () => {
+    tuning.combos.elementStates = false;
+    const { s, a } = fight();
+    const e = rooted(s);
+    damageEnemy(s, e, hit(a.id, 'staff', { area: true, projectile: true }));
+    expect(1000 - e.hp).toBeCloseTo(10, 5);
+    expect(e.rootUntil).toBeGreaterThan(s.time);
+    expect(uproots(s)).toHaveLength(0);
+  });
+
+  it('the Uproot is the area attacker\'s, and each player\'s area attack calls its own', () => {
+    const { s, a, b } = fight();
+    damageEnemy(s, rooted(s), hit(b.id, 'staff', { area: true }));
+    damageEnemy(s, rooted(s), hit(a.id, 'sword', { area: true }));
+    expect(uproots(s).map((ev) => ev.kind === 'combo' && ev.playerId)).toEqual([b.id, a.id]);
   });
 });
