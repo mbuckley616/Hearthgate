@@ -14,7 +14,7 @@ Marked had its payoff for everyone already (the Scout's signature pays any party
 
 **Next**
 
-Of Michael's A on more states, Rooted (Uproot), Burning's spread (Wildfire) and Marked are built; Soaked waits on its question in `decisions.md` Pending (recommended A: leave it for Tidewater). Nothing else is left for the builder in the current section until that or the next part of the builds pass is answered.
+Of Michael's A on more states, Rooted (Uproot), Burning's spread (Wildfire) and Marked are built; Soaked waits on its question in `decisions.md` Pending, which also asks what follows (recommended A: leave Soaked for Tidewater, combo mastery next). Nothing else is left for the builder in the current section until that or the next part of the builds pass is answered.
 
 ## 2026-11-10: Session 173, Burning's spread: Wildfire (the builds pass, Michael's A on more states)
 
