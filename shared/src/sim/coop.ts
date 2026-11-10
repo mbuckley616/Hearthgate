@@ -7,6 +7,7 @@ import { createPlayer, levelHealth } from './player';
 import { reflectFromHero } from './projectiles';
 import type { TalentRanks } from './talents';
 import type { SpecElements, Specs, SpecTree } from './specs';
+import type { ComboMastery } from './mastery';
 import { championHealth, championRevive, slotted, type ChampionState } from './champion';
 import type { PlayerCommand, PlayerState, SimState } from './types';
 
@@ -37,6 +38,8 @@ export interface Loadout {
   elements?: SpecElements;
   /** A specialization's tree picks (Michael's A, 8 Nov); each its specialization's, one a row, opened by level. */
   tree?: SpecTree;
+  /** Payoffs landed per combo (combo mastery), counted on from here by the server. */
+  mastery?: ComboMastery;
 }
 
 /** Put a loadout on a hero; refill = full health (between runs). */
@@ -67,6 +70,8 @@ export function applyLoadout(p: PlayerState, l: Loadout, refill: boolean): void 
   else delete p.elements;
   if (p.spec && l.tree && Object.keys(l.tree).length > 0) p.tree = structuredClone(l.tree);
   else delete p.tree;
+  if (l.mastery && Object.keys(l.mastery).length > 0) p.mastery = { ...l.mastery };
+  else delete p.mastery;
   p.hp = refill ? p.maxHp : Math.min(p.hp, p.maxHp);
 }
 

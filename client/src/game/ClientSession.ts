@@ -40,7 +40,7 @@ function villageOnly(v: VillageSave): VillageSave {
 }
 
 /** The events the save reads (`Game.progress`): a hand-off must not drop them with the old room's effects. */
-const SAVE_EVENTS: ReadonlySet<SimEvent['kind']> = new Set(['banked', 'findsLost', 'bagLost', 'pickup', 'lootTaken', 'levelUp', 'potionTaken', 'drank', 'runWon', 'runLost']);
+const SAVE_EVENTS: ReadonlySet<SimEvent['kind']> = new Set(['banked', 'findsLost', 'bagLost', 'pickup', 'lootTaken', 'levelUp', 'potionTaken', 'drank', 'runWon', 'runLost', 'masteryRank']);
 
 export function keptAcrossHandoff(ev: SimEvent): boolean {
   return SAVE_EVENTS.has(ev.kind);
@@ -507,6 +507,7 @@ export class ClientSession implements Session {
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
+    const mastery = mine.mastery ? { ...mine.mastery } : undefined;
     const serverMine = this.diag ? scalars(mine) : null;
     const predAtAck = this.diag ? this.diagPred.get(ack) : undefined;
     if (this.diag) for (const k of this.diagPred.keys()) if (k <= ack) this.diagPred.delete(k);
@@ -516,6 +517,9 @@ export class ClientSession implements Session {
     }
     // Replayed hits mustn't count XP twice; the server's number is the truth.
     mine.xp = xp;
+    // Nor payoffs count toward mastery twice.
+    if (mastery) mine.mastery = mastery;
+    else delete mine.mastery;
     base.events = [];
     // A swing decided on the other side of the heavy line from the server's runs a different step,
     // and a step's lunge (the bow's 2.5 m backflip) is a correction past the snap limit that is

@@ -837,6 +837,20 @@ canvas {
   font-size: 11px;
 }
 
+.mastery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.mastery-item.has {
+  color: #ffd27a;
+}
+
 .talent-cols {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

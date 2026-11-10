@@ -1,3 +1,4 @@
+import { readMastery, type ComboMastery } from '@hearthgate/shared/sim/mastery';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import {
   BAG_SIZE,
@@ -80,6 +81,8 @@ export interface ProfileData {
   elements?: SpecElements;
   /** Tree picks for each specialization (Michael's A, 8 Nov): node ids, one a row. */
   tree?: SpecTree;
+  /** Payoffs landed per combo (combo mastery): the server's count, saved so the next room counts on from it. */
+  mastery?: ComboMastery;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -213,7 +216,8 @@ export class Profile {
       (parsed.bag ?? []).slice(0, BAG_SIZE).forEach((i, n) => (bag[n] = known(i)));
       const worn: Worn = {};
       for (const [slot, item] of Object.entries(parsed.worn ?? {})) if (known(item)) worn[slot as BodySlot] = item;
-      return { ...fresh(), ...parsed, bag, worn, xp: { ...fresh().xp, ...parsed.xp }, talents: { ...emptyTalents(), ...parsed.talents } };
+      const mastery = parsed.mastery === undefined ? undefined : (readMastery(parsed.mastery) ?? undefined);
+      return { ...fresh(), ...parsed, mastery, bag, worn, xp: { ...fresh().xp, ...parsed.xp }, talents: { ...emptyTalents(), ...parsed.talents } };
     } catch {
       return fresh();
     }
@@ -598,6 +602,7 @@ export class Profile {
       ...(Object.keys(this.specs()).length > 0 ? { spec: this.specs() } : {}),
       ...(Object.keys(this.elements()).length > 0 ? { elements: this.elements() } : {}),
       ...(Object.keys(this.tree()).length > 0 ? { tree: this.tree() } : {}),
+      ...(this.data.mastery && Object.keys(this.data.mastery).length > 0 ? { mastery: { ...this.data.mastery } } : {}),
     };
   }
 
@@ -681,5 +686,6 @@ export class Profile {
     this.data.xp = { ...p.xp };
     if (p.champion) this.champion.xp = p.champion.xp;
     this.data.potions = p.potions ?? 0;
+    if (p.mastery) this.data.mastery = { ...p.mastery };
   }
 }

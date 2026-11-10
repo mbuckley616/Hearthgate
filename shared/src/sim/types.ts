@@ -1,5 +1,6 @@
 import type { BagRoom } from './bagRoom';
 import type { ChampionState } from './champion';
+import type { ComboMastery } from './mastery';
 import type { AbilityKind, EnemyKind, Style } from '../config/tuning';
 import type { Item, Mods, Perk } from './gear';
 import type { GearItem } from './catalogue';
@@ -175,6 +176,8 @@ export interface PlayerState {
   elements?: SpecElements;
   /** The tree nodes picked for each of those specializations (Michael's A, 8 Nov); absent, none. */
   tree?: SpecTree;
+  /** Payoffs landed per combo (combo mastery): the player's, from the loadout, counted by the server. */
+  mastery?: ComboMastery;
   /** A Rogue's roll went through an enemy: their next hit crits from behind until this sim time (From the shadows). */
   shadowUntil?: number;
   /** The parrying dagger's Riposte parried a hit: the next blow before this sim time crits. Absent otherwise. */
@@ -442,6 +445,8 @@ export type SimEvent =
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
   | { kind: 'scoutMarked'; playerId: string; enemyId: number; x: number; z: number }
+  /** A player's mastery of a combo reached a new rank, I to V (the builds pass: combo mastery). */
+  | { kind: 'masteryRank'; playerId: string; combo: Combo; rank: number }
   | { kind: 'bloom'; playerId: string; healedId: string; x: number; y: number; z: number; healed: number }
   /** A Sorcerer's bolt lands in its element (Attunement): Fire's burst `radius` wide, Air's arc on to `toX`, `toZ`. */
   | { kind: 'attune'; playerId: string; element: Element; x: number; y: number; z: number; radius: number; toX?: number; toZ?: number }

@@ -1711,6 +1711,20 @@ export const tuning = {
   },
 
   /**
+   * Combo mastery (the builds pass, Michael's A on Soaked, 10 Nov): every payoff a player lands counts
+   * toward that combo's rank, I to V, at these many payoffs. Counted by the server, kept in the
+   * browser's save. Off in the parity test: the slice counts nothing.
+   */
+  mastery: {
+    enabled: true,
+    rank1: 10,
+    rank2: 30,
+    rank3: 75,
+    rank4: 150,
+    rank5: 300,
+  },
+
+  /**
    * The loop's stakes and rewards (P1; design doc: Core loop, Rest rooms). On a generated floor finds
    * are carried until a rest room or the Warden's fall banks them, and a wipe loses them. Banking pays
    * for the fight rooms cleared on that floor: coin to each player, lumber and stone to the village
@@ -2657,6 +2671,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combos.detonateDamageBonus': [0, 2, 0.05],
   'combos.rootedAreaBonus': [0, 2, 0.05],
   'combos.burnSpreadRadius': [0, 10, 0.25],
+  'mastery.rank1': [1, 100, 1],
+  'mastery.rank2': [1, 300, 1],
+  'mastery.rank3': [1, 600, 1],
+  'mastery.rank4': [1, 1000, 1],
+  'mastery.rank5': [1, 2000, 1],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],
