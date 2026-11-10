@@ -1703,6 +1703,11 @@ export const tuning = {
      * every enemy within this many metres, for what is left of it. Under `elementStates`.
      */
     burnSpreadRadius: 4,
+    /**
+     * Marked for everyone (10 Nov): seconds any hero's charged shot marks an enemy for, a plain mark
+     * whose party bonus is `specs.markDamageBonus`. Under `elementStates`.
+     */
+    huntMarkSeconds: 4,
   },
 
   /**
@@ -2652,6 +2657,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combos.detonateDamageBonus': [0, 2, 0.05],
   'combos.rootedAreaBonus': [0, 2, 0.05],
   'combos.burnSpreadRadius': [0, 10, 0.25],
+  'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],
   'guard.moveSpeedFrac': [0, 1, 0.05],

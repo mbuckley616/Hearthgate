@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 174, Marked for everyone (the builds pass, Michael's A on more states)
+
+**What changed**
+
+The Scout's mark becomes a state anyone can leave. With `combos.elementStates`, any hero's charged shot marks the enemy it hits for `combos.huntMarkSeconds` (4 s, on the panel), and every party member's hits on it land `specs.markDamageBonus` (10%) harder, as the design doc's Marked has it (Hunter abilities apply, any party member consumes). It is a plain mark: the Flow it feeds and the Exposed, Rising Tempo and Hunter's Mark nodes stay the Scout's, and it never overwrites a live Scout's mark, which is the stronger; the Scout's own arrows overwrite it. Same `scoutMark` field and `scoutMarked` event, so the sound and nothing on the wire changes. `scoutMark` takes the arrow's `charged`; `markedMult` pays a non-Scout's mark plainly. Two new cases in `states.test.ts`; check 560 green, parity identical (off in the parity test). Not yet seen in a browser.
+
+**Learned**
+
+Marked had its payoff for everyone already (the Scout's signature pays any party hit); what was missing was anyone but a Scout leaving it. The mark has a sound but no look on the enemy, so in a browser a hunter's mark is heard and not seen; worth a small view if the critic or Michael finds it unreadable.
+
+**Next**
+
+Of Michael's A on more states, Rooted (Uproot), Burning's spread (Wildfire) and Marked are built; Soaked waits on its question in `decisions.md` Pending (recommended A: leave it for Tidewater). Nothing else is left for the builder in the current section until that or the next part of the builds pass is answered.
+
 ## 2026-11-10: Session 173, Burning's spread: Wildfire (the builds pass, Michael's A on more states)
 
 **What changed**

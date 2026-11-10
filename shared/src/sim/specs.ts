@@ -759,12 +759,30 @@ export function stepSnares(state: SimState): void {
 /**
  * Marked (the Scout's signature): every arrow a Scout lands marks its enemy for `specs.markSeconds`,
  * after the arrow's own damage. Called as the arrow lands, so prediction marks its own copy too.
+ * Marked for everyone (the states, Michael's A on more states, 10 Nov; the design doc's Marked:
+ * Hunter abilities apply it, any party member consumes it): with `combos.elementStates` any hero's
+ * charged shot marks for `combos.huntMarkSeconds`, a plain mark (the party's bonus, none of the
+ * Scout's Flow or tree), and never over a live Scout's mark, which is the stronger.
  */
-export function scoutMark(state: SimState, owner: PlayerState | undefined, e: EnemyState): void {
-  if (!owner || owner.spec?.bow !== 'scout' || tuning.specs.markSeconds <= 0 || !isTargetable(e)) return;
+export function scoutMark(state: SimState, owner: PlayerState | undefined, e: EnemyState, charged = false): void {
+  if (!owner || tuning.specs.markSeconds <= 0 || !isTargetable(e)) return;
+  if (owner.spec?.bow !== 'scout') {
+    huntMark(state, owner, e, charged);
+    return;
+  }
   const fresh = !e.scoutMark || e.scoutMark.until <= state.time;
   e.scoutMark = { by: owner.id, until: state.time + (hasStyleNode(owner, 'bow', 'hunters-mark') ? tuning.specs.treeMarkSeconds : tuning.specs.markSeconds) };
   if (fresh) state.events.push({ kind: 'scoutMarked', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
+}
+
+function huntMark(state: SimState, owner: PlayerState, e: EnemyState, charged: boolean): void {
+  const c = tuning.combos;
+  if (!c.elementStates || !charged || c.huntMarkSeconds <= 0) return;
+  const m = e.scoutMark;
+  const live = !!m && m.until > state.time;
+  if (live && m!.by !== owner.id && state.players.find((p) => p.id === m!.by)?.spec?.bow === 'scout') return;
+  e.scoutMark = { by: owner.id, until: Math.max(live ? m!.until : 0, state.time + c.huntMarkSeconds) };
+  if (!live) state.events.push({ kind: 'scoutMarked', playerId: owner.id, enemyId: e.id, x: e.x, z: e.z });
 }
 
 /**
@@ -781,7 +799,10 @@ export function markedMult(state: SimState, e: EnemyState, hero: PlayerState | u
   }
   if (!hero || dot) return 1;
   const s = tuning.specs;
-  const scout = state.players.find((p) => p.id === m.by);
+  const marker = state.players.find((p) => p.id === m.by);
+  // A hunter's mark (anyone's charged shot) pays the party and nothing more: the Flow and the tree are the Scout's.
+  if (marker?.spec?.bow !== 'scout') return 1 + s.markDamageBonus;
+  const scout = marker;
   gainFlow(scout, s.markFlowGain * (scout && hasStyleNode(scout, 'bow', 'rising-tempo') ? s.treeTempoFlowMult : 1));
   return 1 + (scout && hasStyleNode(scout, 'bow', 'exposed') ? s.treeExposedBonus : s.markDamageBonus);
 }

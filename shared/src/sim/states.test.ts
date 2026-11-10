@@ -6,6 +6,7 @@ import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
 import { emptyTalents } from './talents';
+import { markedMult, scoutMark } from './specs';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
 
@@ -257,5 +258,34 @@ describe('the states: Burning\'s spread (the builds pass, Michael\'s A on more s
     e.detonateUntil = s.time + 2;
     damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
     expect(fans(s)).toHaveLength(0);
+  });
+});
+
+describe('the states: Marked for everyone (the builds pass, Michael\'s A on more states)', () => {
+  it('any hero\'s charged shot marks, and the whole party\'s hits pay the plain bonus', () => {
+    const { s, a, b } = fight();
+    const e = grunt(s);
+    scoutMark(s, a, e, false);
+    expect(e.scoutMark).toBeUndefined();
+    scoutMark(s, a, e, true);
+    expect(e.scoutMark).toMatchObject({ by: a.id });
+    expect(e.scoutMark!.until).toBeCloseTo(s.time + tuning.combos.huntMarkSeconds, 5);
+    expect(s.events.some((ev) => ev.kind === 'scoutMarked' && ev.playerId === a.id)).toBe(true);
+    // Plain: the Scout's Exposed would make it more, and no Flow is the marker's to gain.
+    expect(markedMult(s, e, b, false)).toBeCloseTo(1 + tuning.specs.markDamageBonus, 5);
+    expect(markedMult(s, e, b, true)).toBe(1);
+  });
+
+  it('a hunter\'s mark never overwrites a live Scout\'s; with element states off nobody but a Scout marks', () => {
+    const { s, a, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = grunt(s);
+    scoutMark(s, b, e);
+    scoutMark(s, a, e, true);
+    expect(e.scoutMark?.by).toBe(b.id);
+    tuning.combos.elementStates = false;
+    const o = grunt(s);
+    scoutMark(s, a, o, true);
+    expect(o.scoutMark).toBeUndefined();
   });
 });
