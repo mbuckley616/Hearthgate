@@ -3,6 +3,7 @@ import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
 import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
+import { readMastery } from '../sim/mastery';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
 import type { PlayerCommand } from '../sim/types';
 import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, treeProblem, type Element, type SpecElements, type SpecId, type Specs, type SpecTree } from '../sim/specs';
@@ -142,6 +143,12 @@ export function readLoadout(v: unknown): Loadout | null {
     }
     if (championProblem(champion)) return null;
     loadout.champion = champion;
+  }
+  // Combo mastery: counts the player's own save holds (accepted until Phase 3, as XP is).
+  if (v.mastery !== undefined) {
+    const mastery = readMastery(v.mastery);
+    if (!mastery) return null;
+    if (Object.keys(mastery).length > 0) loadout.mastery = mastery;
   }
   // What the hero wears (T5c): catalogue ids, at most one a slot. Only drawn, never fought with.
   if (v.look !== undefined) {

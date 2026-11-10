@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 176, Combo mastery on the Talents tab
+
+**What changed**
+
+The hero screen's Talents tab gains a line under the three columns: each combo's mastery rank and its count toward the next (Shatter II 34/75, Uproot – 0/10), gold once a rank is reached, from the save's count (the server's, synced as XP is). Read-only, so no key or button is needed. The combos' names (`COMBO_NAMES`, Wildfire for the spread) and the ranks' numerals moved into `sim/mastery.ts` so the callout, the toast and the tab say the same words. A line added to `mastery.test.ts`; check 565 green. Client only; not yet seen in a browser.
+
+**Learned**
+
+Between toasts at 10 and 30 payoffs a player had no way to see how close a rank was; one line on a screen they already open for talents answers it without a new HUD element.
+
+**Next**
+
+What a rank gives waits on `decisions.md` Pending (recommended A: +6% a rank to that payoff, a specialization twist at V). Nothing else is left for the builder in the current section until it is answered.
+
+## 2026-11-10: Session 175, Combo mastery counted (the builds pass, Michael's A on Soaked)
+
+**What changed**
+
+Every combo payoff a player lands now counts toward that combo's mastery, ranks I to V at 10, 30, 75, 150 and 300 payoffs (`tuning.mastery.rank1` to `rank5`, on the panel). The server counts in `payCombo` (`sim/mastery.ts`, `countPayoff`) into an optional `PlayerState.mastery`, one count a combo (Shatter, Skewer, Detonate, Uproot, Wildfire); henchmen count nothing. A rank reached pushes a `masteryRank` event, and the payer's corner toasts "Shatter mastery II" with what the next rank asks for. The count lives in the browser's save (`ProfileData.mastery`, synced from the server's hero as XP is, saved on the rank event) and rides the loadout back (`Loadout.mastery`, `readMastery` refuses unknown combos, negatives and anything past ten million). Prediction puts the server's count back after its replay, as it does XP. Behind `mastery.enabled`, off in the parity test. `mastery.test.ts` (5 cases); check 565 green, parity identical, test:net green (one walkFloor timeout on the first run, green on the two after). Ranks do nothing yet in the fight; not yet seen in a browser.
+
+**Learned**
+
+The design doc says only that ranks exist and that rank V is shaped by the payer's specialization; nothing says what ranks I to IV give. Counting is the part every answer needs, so it went first; what a rank does is asked in `decisions.md` Pending. The count is the browser's to send, like XP, until Phase 3's server-side saves.
+
+**Next**
+
+What a rank gives, and rank V by specialization, once answered. A mastery list on the Talents tab would show progress between toasts; small, and worth doing with the ranks' effects.
+
 ## 2026-11-10: Session 174, Marked for everyone (the builds pass, Michael's A on more states)
 
 **What changed**

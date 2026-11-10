@@ -5,6 +5,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
+import { countPayoff } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
@@ -19,6 +20,7 @@ export function payCombo(state: SimState, combo: Combo, playerId: string, x: num
   const p = state.players.find((pl) => pl.id === playerId);
   // A combo payoff is worth a whole tier of Flow (C2).
   gainFlow(p, tuning.flow.comboGain);
+  countPayoff(state, p, combo);
   if (!p || !slotted(p, 'momentum')) return;
   const cut = tuning.champion.momentumCooldownMs / 1000;
   for (const cds of Object.values(p.cooldowns)) for (let i = 0; i < cds.length; i++) cds[i] = Math.max(0, cds[i] - cut);

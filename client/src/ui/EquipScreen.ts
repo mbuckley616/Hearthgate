@@ -1,3 +1,4 @@
+import { COMBOS, COMBO_NAMES, MASTERY_ROMAN, masteryRank, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
@@ -535,8 +536,22 @@ export class EquipScreen {
         <button class="talent-respec" data-action="respec" data-style="${s}">Reset</button>
       </div>`;
     }).join('');
-    return `<div class="talent-cols">${cols}</div>
+    return `<div class="talent-cols">${cols}</div>${this.masteryHtml()}
       <div class="muted talent-note">Every level after the first gives that weapon kind a point; a new row opens every ten levels. Resetting is free between fights. Move to choose · F or A: add · Q or X: take off · E or Y twice: reset</div>${this.armedNote()}`;
+  }
+
+  /** Combo mastery: each combo's rank and how far to the next, from the save (the server's count). */
+  private masteryHtml(): string {
+    if (!tuning.mastery.enabled) return '';
+    const counts = this.profile.data.mastery ?? {};
+    const steps = masteryThresholds();
+    const items = COMBOS.map((c) => {
+      const n = counts[c] ?? 0;
+      const rank = masteryRank(n);
+      const next = steps[rank];
+      return `<span class="mastery-item${rank > 0 ? ' has' : ''}"><b>${COMBO_NAMES[c]} ${rank > 0 ? MASTERY_ROMAN[rank - 1] : '–'}</b> ${next === undefined ? n : `${n}/${next}`}</span>`;
+    }).join('');
+    return `<div class="mastery-row"><span class="talent-sub">Combo mastery</span>${items}</div>`;
   }
 
   /** A weapon kind's specialization (the builds pass): one of three from level 10, changed where slotted perks change. */
