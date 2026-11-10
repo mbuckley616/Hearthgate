@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-10: Soaked, with nothing in the game to soak (builder, Session 172)
 Your A on more states is built for three of the four (Sessions 172 to 174: Rooted's Uproot, Burning's spread as Wildfire, Marked for everyone), none yet played in a browser. Soaked is left, but the design doc has it applied by Water abilities and Tidewater consumables, and neither exists: the elements are holy, fire, frost, earth, air, shadow and nature, and the belt holds only healing potions.
 - **A.** Leave Soaked for Tidewater (Phase 3's regions and their consumables); the builder takes combo mastery next (each payoff landed counts toward that combo's rank I to V, rank V shaped by the payer's specialization), one session a part. *(recommended: Soaked arrives with the thing that applies it, and mastery now has seven payoffs to count)*
@@ -14,7 +16,7 @@ Your A on more states is built for three of the four (Sessions 172 to 174: Roote
 - **C.** A soaking flask on the belt, thrown with the potion key, sold by the store; same payoffs as B. About two sessions.
 - **D.** Leave Soaked for Tidewater; the builder takes runes in weapon sockets next instead (a socket on rare gear, a handful of runes from boss drops).
 
-## Answered
+Michael: **A. Leave Soaked for Tidewater; combo mastery next**. (2026-11-10)
 
 ### 2026-11-09: The builds pass, what comes after the roster (builder, Session 169)
 The roster is built (Sessions 162 to 169): mace, axe, daggers, longbow, throwing knives, sceptre, and the off-hands' Riposte and Focus, none yet played in a browser. Left of the builds pass: more states, combo mastery, runes and the Necromancer.
