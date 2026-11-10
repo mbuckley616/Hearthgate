@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
-import { burns, chills, damageEnemy, shatterPays, skewerSets, uprootPays, type HitSpec } from './combat';
+import { burns, chills, damageEnemy, fansFlames, shatterPays, skewerSets, uprootPays, type HitSpec } from './combat';
 import { addPlayer, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
@@ -206,5 +206,56 @@ describe('the states: Rooted (the builds pass, Michael\'s A on more states)', ()
     damageEnemy(s, rooted(s), hit(b.id, 'staff', { area: true }));
     damageEnemy(s, rooted(s), hit(a.id, 'sword', { area: true }));
     expect(uproots(s).map((ev) => ev.kind === 'combo' && ev.playerId)).toEqual([b.id, a.id]);
+  });
+});
+
+describe('the states: Burning\'s spread (the builds pass, Michael\'s A on more states)', () => {
+  const at = (s: SimState, x: number, z: number): EnemyState => {
+    const e = grunt(s);
+    e.x = x;
+    e.z = z;
+    return e;
+  };
+  const fans = (s: SimState) => s.events.filter((ev) => ev.kind === 'combo' && ev.combo === 'fan');
+
+  it('a Scout\'s arrow on a Burning enemy fans it on to the group, for what is left of it, once a tick', () => {
+    const { s, a, b } = fight();
+    a.spec = { staff: 'sorcerer' };
+    a.elements = { staff: 'fire' };
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    const near = at(s, 2, 0);
+    const far = at(s, 30, 0);
+    damageEnemy(s, e, hit(a.id, 'staff', { projectile: true }));
+    expect(e.detonateUntil).toBeGreaterThan(s.time);
+    expect(near.detonateUntil).toBeLessThan(s.time);
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(near.detonateUntil).toBe(e.detonateUntil);
+    expect(far.detonateUntil).toBeLessThan(s.time);
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(fans(s)).toHaveLength(1);
+    expect(fans(s)[0]).toMatchObject({ playerId: b.id });
+  });
+
+  it('only Air fans, never a tick, never an enemy not Burning, never with element states off', () => {
+    const { s, a, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(false);
+    e.detonateUntil = s.time + 2;
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(true);
+    expect(fansFlames(s, e, b, hit(b.id, 'bow', { dot: true }))).toBe(false);
+    expect(fansFlames(s, e, a, hit(a.id, 'bow'))).toBe(false);
+    tuning.combos.elementStates = false;
+    expect(fansFlames(s, e, b, hit(b.id, 'bow'))).toBe(false);
+  });
+
+  it('a fan that reaches no one new calls nothing', () => {
+    const { s, b } = fight();
+    b.spec = { bow: 'scout' };
+    const e = at(s, 0, 0);
+    e.detonateUntil = s.time + 2;
+    damageEnemy(s, e, hit(b.id, 'bow', { projectile: true }));
+    expect(fans(s)).toHaveLength(0);
   });
 });

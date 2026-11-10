@@ -1698,6 +1698,11 @@ export const tuning = {
      * landing this much harder and spending the root. Under `elementStates`.
      */
     rootedAreaBonus: 0.4,
+    /**
+     * Burning's spread (10 Nov): a hit in a hero's Air element on a Burning enemy fans the Burning on to
+     * every enemy within this many metres, for what is left of it. Under `elementStates`.
+     */
+    burnSpreadRadius: 4,
   },
 
   /**
@@ -2646,6 +2651,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'combos.detonateRadiusBonus': [0, 2, 0.05],
   'combos.detonateDamageBonus': [0, 2, 0.05],
   'combos.rootedAreaBonus': [0, 2, 0.05],
+  'combos.burnSpreadRadius': [0, 10, 0.25],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],
   'guard.moveSpeedFrac': [0, 1, 0.05],

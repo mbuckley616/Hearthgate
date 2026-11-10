@@ -1328,6 +1328,10 @@ canvas {
   color: #ff9a5a;
 }
 
+.hud-combo-call.fan {
+  color: #ffb347;
+}
+
 .hud-combo-call.uproot {
   color: #9fdc6a;
 }

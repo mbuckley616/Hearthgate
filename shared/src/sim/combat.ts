@@ -198,6 +198,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     e.detonateUntil = state.time + comboWindow(hero);
     if (hero.champion) e.detonateBy = hero.id;
   }
+  // Burning's spread: Air on a Burning enemy fans the flames on to the enemies around it.
+  if (hero && fansFlames(state, e, hero, hit)) fanFlames(state, e, hero);
   // One call and one Flow tier for an area attack however many roots it spends (events are a tick's).
   if (uproot && hero && !state.events.some((ev) => ev.kind === 'combo' && ev.combo === 'uproot' && ev.playerId === hero.id)) {
     payCombo(state, 'uproot', hero.id, e.x, e.y + 1, e.z);
@@ -360,6 +362,40 @@ export function burns(hero: PlayerState | undefined, hit: HitSpec): boolean {
 export function uprootPays(state: SimState, e: EnemyState, hit: HitSpec): boolean {
   if (!tuning.combos.elementStates || !hit.area || hit.dot || !hit.attackerId) return false;
   return isRooted(state, e);
+}
+
+/**
+ * Whether a hit fans a Burning enemy's flames (the states, Michael's A on more states, 10 Nov; the
+ * design doc's Burning: consumed by Oil or Wind, spread to a group). With `combos.elementStates`, a
+ * hit in a hero's Air element (a Scout's arrows, an Air Spellblade's chain, an Air Sorcerer's bolts,
+ * Nova and Attunement) on a Burning enemy. A tick of ground, poison or a bleed never does. No Oil
+ * exists yet, so Wind is the whole rule.
+ */
+export function fansFlames(state: SimState, e: EnemyState, hero: PlayerState | undefined, hit: HitSpec): boolean {
+  if (!tuning.combos.elementStates || !hero || !hit.style || hit.dot || e.detonateUntil < state.time) return false;
+  return elementFor(hero, hit.style) === 'air';
+}
+
+/**
+ * Burning's spread: every standing enemy within `combos.burnSpreadRadius` catches the Burning, for
+ * what is left of it (a fan never makes a fire last longer, so it cannot keep a room alight alone),
+ * credited to whoever lit it, so the next magic burst detonates the group. The `fan` call and its
+ * Flow tier go to the fanner once a tick, and only when the fire reached someone new.
+ */
+function fanFlames(state: SimState, e: EnemyState, hero: PlayerState): void {
+  const r = tuning.combos.burnSpreadRadius;
+  let caught = false;
+  for (const o of state.enemies) {
+    if (o === e || !isTargetable(o) || o.detonateUntil >= e.detonateUntil || Math.abs(o.y - e.y) > 1.2) continue;
+    if (Math.hypot(o.x - e.x, o.z - e.z) > r + enemyStats(o.kind).radius) continue;
+    if (o.detonateUntil < state.time) caught = true;
+    o.detonateUntil = e.detonateUntil;
+    if (e.detonateBy !== undefined) o.detonateBy = e.detonateBy;
+    else delete o.detonateBy;
+  }
+  if (caught && !state.events.some((ev) => ev.kind === 'combo' && ev.combo === 'fan' && ev.playerId === hero.id)) {
+    payCombo(state, 'fan', hero.id, e.x, e.y + 1, e.z);
+  }
 }
 
 /** Shatter payoff: the finisher bursts out into the enemies around. */

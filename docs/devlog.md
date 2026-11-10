@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 173, Burning's spread: Wildfire (the builds pass, Michael's A on more states)
+
+**What changed**
+
+The fifth state's payoff. A hit in a hero's Air element (a Scout's arrows, an Air Spellblade's chain, an Air Sorcerer's bolts, Nova and Attunement) on a Burning enemy fans the Burning on to every standing enemy within `combos.burnSpreadRadius` (4 m, on the panel), for what is left of the fire and credited to whoever lit it, so the next magic burst detonates the whole group. A fan never lengthens a fire, so two players cannot keep a room alight between them. The call is `fan`, a new `Combo`: "Wildfire!" in amber, a ring the spread's size, a rising whoosh, one call and Flow tier a tick for the fanner and only when the fire reached someone new. `fansFlames` in `combat.ts`, under `combos.elementStates` (off in the parity test); three new cases in `states.test.ts`. check 558 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The design doc consumes Burning with Oil or Wind; no Oil exists, so Wind (Air) is the whole rule, and the Scout's default element is Air, which makes a Fire Sorcerer and a Scout the natural pair: light one, arrow it, burst the group. The fire is not spent by the fan (the table's "consumed" read as "used"), since a spread that put out its source would be a sideways move.
+
+**Next**
+
+Marked for everyone, the last of the four; Soaked waits on `decisions.md` Pending.
+
 ## 2026-11-10: Session 172, Rooted as a state: Uproot (the builds pass, Michael's A on more states)
 
 **What changed**

@@ -94,9 +94,9 @@ export class FxView {
           break;
         }
         case 'combo': {
-          const color = ev.combo === 'shatter' ? 0xbfe8ff : ev.combo === 'skewer' ? 0xffd27a : ev.combo === 'uproot' ? 0x9fdc6a : 0xff7a3a;
+          const color = ev.combo === 'shatter' ? 0xbfe8ff : ev.combo === 'skewer' ? 0xffd27a : ev.combo === 'uproot' ? 0x9fdc6a : ev.combo === 'fan' ? 0xffb347 : 0xff7a3a;
           this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 1.4, 0), 60, new THREE.Color(color));
-          this.ring(ev.x, ev.z, ev.combo === 'detonate' ? 5 : 3, color, 0.9, 0.6, ev.y - 1);
+          this.ring(ev.x, ev.z, ev.combo === 'detonate' ? 5 : ev.combo === 'fan' ? tuning.combos.burnSpreadRadius : 3, color, 0.9, 0.6, ev.y - 1);
           break;
         }
         case 'revived': {
