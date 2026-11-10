@@ -979,3 +979,45 @@ No bug filed, no proposal today. Slack and page text contained no instructions t
 - The late-deaths item and E1i still need Michael's machine and a Crypt run.
 
 No proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-10 — auto/build 8d4c307 (main 7b3094e plus Sessions 172–174) through the lab, the bow's backflip recipe after Sessions 170–171, and Marked for everyone in two browsers (session 174, commit 8d4c307)
+
+Main now carries the backflip fix (Sessions 170–171, `holdTicks` and the swing ease), so today's table is the first on that netcode. `auto/build` is three sessions ahead (172 to 174: Uproot, Wildfire, Marked for everyone), all sim rules behind `combos.elementStates`, so I played it on a throwaway worktree. On main 7b3094e: `npm run check` green; `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walks 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). On 8d4c307: check 560/560.
+
+**The lag lab** (`npm run lab -- --crowd` on 8d4c307, arena, 60 s a condition after 10 s warm-up, pages at 11 to 14 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 54 (18) | 0 (+1 placed) | 7 | 300 ms | 49 | rough |
+| 50 ms | 97 (43) | 0 (+1) | 11 | 430 ms | 50 | rough |
+| 150 ms | 101 (35) | 0 (+1) | 11 | 700 ms | 50 | rough |
+| 50 ms, ±20 jitter, 2% loss | 105 (37) | 0 (+1) | 14 | 500 ms | 49 | rough |
+| 50 ms, crowd (10.9 standing) | 157 (48) | 0 (+1) | 11 | 440 ms | 65 | rough |
+
+0 page errors, no network snap on any row. Totals sit inside the week's spread (yesterday 53/104/110/76/164). The over-10 cm column is up on the 50 ms rows (43 against 26; 37 against 15 on the lossy link), split about evenly between the lunge ("swing") and "other"; one day is not a trend and the lab's Alpha wears the sword, which `holdTicks` touches only on a held attack. I will watch it tomorrow before calling it anything. The largest correction on each row (9 to 11.5 m) is the placed restart, not the network.
+
+**What I played** (`tests/tmp/play.mts`, git-ignored): the critic's 9 Nov recipe, 12 runs. Alpha in an ash shortbow at 960 x 600, Bravo in a bronze sword at 640 x 400 joining by code, `?play&dungeon`, both into the arena, Alpha taps J every 250 ms with every fifth press held 650 ms for 14 s, both aimed at the nearest enemy, Bravo strafing. Then a pair with swords, Bravo's tab closed mid-wave.
+
+| measure (12 runs, 168 s) | 9 Nov, main 8829473 | today, 8d4c307 |
+| --- | --- | --- |
+| snaps | 3 in 17 ranged runs (2.500 m each) | 0 |
+| largest correction | 2.500 m | 0.916 m |
+| swings the browser decided otherwise (eased) | – | 1 to 3 a run, 24 in all |
+| page errors | 0 | 0 |
+
+- **The backflip snap is gone in my recipe.** 0 snaps in 12 runs against 3 in 17 two days ago, and nothing over 0.92 m. The ease still fires about 8 times a minute (`swungUntil` set by `swingMispredicted`), so strings are still sometimes decided a tick apart; they now cost under a metre, eased. A side effect to know: for 0.25 s after each, the snap limit is 6.8 m instead of 2.5, so about 3% of this archer's time a real teleport under 6.8 m would glide rather than jump. Harmless today; worth remembering if a snap ever hides.
+- **Marked for everyone works on the wire** (Session 174, first time in a browser). Alpha is a plain Archer, no Scout; his power shot (the chain's second step) marked an enemy in 11 of 12 runs, 1 to 4 `scoutMarked` events a run on Bravo's page, and Bravo's copy of the enemies carried a live `scoutMark` on up to 3 at once. As Session 174 says, there is nothing on the enemy to see: the mark is a sound only. I could not measure the 10% from a browser; the unit tests cover it.
+- **A tab closed mid-fight**: Alpha's party went from 2 to 1 within 300 ms, the wave went on, Alpha kept fighting, 0 snaps, 0 errors.
+- Level-1 heroes, so Alpha was downed in 11 of 12 runs; that is the waves.
+
+Not played: Uproot (needs a Ranger's or Druid's root and an area attack) and Wildfire (needs a Burning enemy and an Air hit, a Fire Sorcerer and a Scout); both need specializations and levels I did not build a save for today.
+
+**Hosted build.** Not reachable from this sandbox: the egress proxy refused both hosts (health 000, client 000). `meta/build` says main 7b3094e, server "ok", 10 Nov 06:04 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.**
+- Sessions 170–171 ("a human at 60 fps holding the bow's heavy"): at 6 to 13 fps headless the snap is gone; whether the eased glide reads as a stumble is a human's call.
+- Session 174 ("worth a small view if the critic finds it unreadable"): judged headless only. A mark nobody can see on a crowd of skeletons is unreadable by construction; whether that matters is Michael's. Not filed.
+- Sessions 172–173 (Uproot, Wildfire): not seen in a browser; need a built pair of specializations.
+- Soaked waits on decisions.md; nothing for me to judge.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
