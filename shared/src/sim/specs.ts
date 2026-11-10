@@ -1523,7 +1523,8 @@ export function elementalNova(p: PlayerState, hit: HitSpec): void {
  * Rank V of a combo's mastery (Michael's A, 10 Nov): the payer's specialization in the style they hold
  * gives each payoff of that combo a twist. The sword's three: the Paladin's heals the party a little,
  * the Spellblade's leaves a patch of their element's ground where it landed, the Rogue's resets
- * Shadowstep. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
+ * Shadowstep. The bow's, each from its own kit: the Ranger's seeds brambles where it landed, the
+ * Scout's marks every enemy near it, the Assassin's resets Smoke Bomb. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
  * the server's heal and ground are the truth. Returns whether a twist fired.
  */
 export function masteryTwist(state: SimState, p: PlayerState, x: number, z: number): boolean {
@@ -1570,6 +1571,21 @@ export function masteryTwist(state: SimState, p: PlayerState, x: number, z: numb
     }
     case 'rogue':
       p.cooldowns.sword[0] = 0;
+      return true;
+    case 'ranger':
+      if (m.rangerBrambleRadius <= 0 || tuning.specs.brambleSeconds <= 0) return false;
+      seedBrambles(state, p, x, z, m.rangerBrambleRadius);
+      return true;
+    case 'scout': {
+      if (m.scoutMarkRadius <= 0) return false;
+      for (const e of state.enemies) {
+        if (Math.hypot(e.x - x, e.z - z) <= m.scoutMarkRadius + enemyStats(e.kind).radius) scoutMark(state, p, e);
+      }
+      return true;
+    }
+    case 'assassin':
+      // Smoke Bomb is the Assassin's Disengage, the bow's second.
+      p.cooldowns.bow[1] = 0;
       return true;
     default:
       return false;

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 179, Mastery rank V: the bow's twists
+
+**What changed**
+
+The bow's three specializations get their rank V twists, each taken from its own kit since Michael's A named only the sword's: a Ranger's payoff seeds a bramble patch `mastery.rangerBrambleRadius` (2.5 m) across where it landed (their one patch, replacing a Bramble Rain's as a new Rain does); a Scout's marks every enemy within `mastery.scoutMarkRadius` (4 m) of it with the Scout's own mark; an Assassin's resets Smoke Bomb's cooldown, as the Rogue's resets Shadowstep. Both numbers on the panel. A case added to `mastery.test.ts`; check 569 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+`createEnemy` already puts the enemy in the state; the first draft of the test pushed each one twice. A Skewer is always a bow payoff, so these three are the twists a bow player meets first.
+
+**Next**
+
+The staff's three (Warlock, Druid, Sorcerer), which finishes Michael's A on combo mastery.
+
 ## 2026-11-10: Session 178, Mastery rank V: the sword's twists
 
 **What changed**

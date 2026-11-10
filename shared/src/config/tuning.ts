@@ -1734,6 +1734,10 @@ export const tuning = {
     spellbladeGroundWidth: 3,
     /** Seconds the Spellblade's patch lasts. */
     spellbladeGroundSeconds: 3,
+    /** Rank V, the Ranger's twist: a payoff seeds a bramble patch this wide where it landed (their one patch, as Bramble Rain's). */
+    rangerBrambleRadius: 2.5,
+    /** Rank V, the Scout's twist: a payoff marks every enemy within this many metres of it. */
+    scoutMarkRadius: 4,
   },
 
   /**
@@ -2692,6 +2696,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],
   'mastery.spellbladeGroundSeconds': [0, 10, 0.5],
+  'mastery.rangerBrambleRadius': [0, 6, 0.25],
+  'mastery.scoutMarkRadius': [0, 12, 0.5],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

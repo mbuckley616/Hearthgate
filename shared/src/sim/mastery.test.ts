@@ -187,4 +187,33 @@ describe('combo mastery', () => {
     payCombo(s, 'shatter', p.id, 4, 1, 2);
     expect(s.trails).toHaveLength(1);
   });
+
+  it('rank V gives the bow’s specializations theirs: brambles, marks, a fresh Smoke Bomb', () => {
+    const v = tuning.mastery.rank5;
+    const at = (spec: 'ranger' | 'scout' | 'assassin'): SimState => {
+      const s = party();
+      const p = s.players[0];
+      p.style = 'bow';
+      p.spec = { bow: spec };
+      p.mastery = { skewer: v };
+      p.cooldowns.bow[1] = 4;
+      for (const [x, z] of [[5, 5], [7, 5], [20, 20]]) {
+        const e = createEnemy(s, world, 'grunt', x, 0, z);
+        e.x = x;
+        e.z = z;
+        e.y = 0;
+        e.ai = 'chase';
+      }
+      payCombo(s, 'skewer', p.id, 5, 1, 5);
+      return s;
+    };
+    const ranger = at('ranger');
+    expect(ranger.brambles).toHaveLength(1);
+    expect(ranger.brambles![0]).toMatchObject({ by: 'p1', x: 5, z: 5, radius: tuning.mastery.rangerBrambleRadius });
+    const scout = at('scout');
+    expect(scout.enemies.map((e) => e.scoutMark?.by)).toEqual(['p1', 'p1', undefined]);
+    const assassin = at('assassin');
+    expect(assassin.players[0].cooldowns.bow[1]).toBe(0);
+    expect(ranger.players[0].cooldowns.bow[1]).toBe(4);
+  });
 });
