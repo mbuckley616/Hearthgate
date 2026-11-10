@@ -7,6 +7,13 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-10: Combo mastery, what a rank gives (builder, Session 175)
+Your A on Soaked is under way: every payoff a player lands now counts toward that combo's rank, I to V at 10, 30, 75, 150 and 300 payoffs (on the panel), with a toast at each rank. Nothing yet says what a rank does; the design doc says only that rank V is shaped by the payer's specialization.
+- **A.** Each rank adds 6% to that combo's payoff (rank IV: +24%); rank V adds a specialization twist to the payoff (Paladin's heals the party a little, Spellblade's leaves its element's ground, Rogue's resets Shadowstep, and so on, one a specialization). One session for I to IV, then one style's three twists a session. *(recommended: a rank is felt in every payoff, and the twist makes V worth chasing)*
+- **B.** Ranks are cosmetic: the callout grows and changes colour by rank, and rank V shows a title on the party frame. One session.
+- **C.** As A, but ranks I to IV also lengthen the setup's window (+0.25 s a rank) instead of more damage, so more combos land in a crowd.
+- **D.** Stop after counting; take runes in weapon sockets next and come back to ranks after a playtest.
+
 ## Answered
 
 ### 2026-11-10: Soaked, with nothing in the game to soak (builder, Session 172)
