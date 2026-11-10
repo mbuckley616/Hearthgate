@@ -1,4 +1,4 @@
-import { tuning } from '../config/tuning';
+import { longestLungeM, tuning } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '../sim/types';
 
@@ -75,6 +75,31 @@ const PLACED_EASE_S = 0.5;
  */
 export function placedBy(events: readonly SimEvent[], id: string): boolean {
   return events.some((ev) => ev.kind === 'tileFell' && ev.put.includes(id));
+}
+
+/**
+ * Did prediction play a different swing from the server's? A held attack decided a tick apart
+ * (C1: the string HH on one side, HL on the other) runs a different step, and the bow's fifth
+ * backflips 2.5 m, the snap limit (critic, 9 Nov). The attack's own fields witness it, as the
+ * dodge cooldown witnessed a refused dodge (Session 37): the same seq of commands made a different
+ * swing, so the error is a lunge run or not run, not a teleport.
+ */
+export function swingMispredicted(predicted: PlayerState, server: PlayerState): boolean {
+  // The fields outlive the swing (the string stands until the chain ends), so a snapshot that lands
+  // after both sides have finished still tells.
+  return (
+    (predicted.mode !== server.mode && (predicted.mode === 'attack' || server.mode === 'attack')) ||
+    predicted.attackSeq !== server.attackSeq ||
+    predicted.attackHit !== server.attackHit ||
+    predicted.attackStep !== server.attackStep ||
+    predicted.attackString !== server.attackString ||
+    predicted.attackMove !== server.attackMove
+  );
+}
+
+/** The furthest a mispredicted swing's correction eases rather than snaps: the snap limit, the longest lunge and its pull to a target. */
+export function swingEaseM(): number {
+  return SNAP_M + longestLungeM() + tuning.targeting.lungeMagnetM;
 }
 
 /** The furthest a placement's correction eases rather than snaps: the snap limit and half a second of sprinting. */

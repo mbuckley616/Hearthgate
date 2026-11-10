@@ -27,6 +27,15 @@ import { mergePresses, withoutPresses } from './Session';
  * by a frame's worth and drains back to the cushion before the next frame (Session 64; folding on
  * the jump put its hero off the prediction). A slow server's low point creeps up instead.
  *
+ * A held attack (C1) is counted by the browser one tick per command, and the sim turns a step heavy
+ * once that count reaches `combo.heavyHoldMs`. A tick that stands in for a late input guesses its
+ * held buttons, a cushion tick stands for no input at all, and a fold uses two inputs in one tick, so
+ * the server's count drifted from the browser's by a tick or more, and at 7 fps, where a tap lasts a
+ * frame or two of 140 ms against a 250 ms line, a tick decided a string's step on one side only (the
+ * bow's 2.5 m backflip snap, critic 9 Nov). So the slots keep the browser's count for each seq they
+ * use (`runs`, guesses replaced as the real inputs land) and tell the sim how many ticks this one
+ * counts (`holdTicks`), landing its count on the browser's for the input just used.
+ *
  * Pure and clock-free, so the unit tests can play any arrival pattern through it.
  */
 
@@ -71,6 +80,13 @@ export interface Slots {
   low: number;
   /** Inputs to fold at the next tick: the standing excess the last message's gap showed. */
   excess: number;
+  /**
+   * The browser's held-attack count after each recent seq used, in seq order: held ticks in a row,
+   * real where the input arrived and guessed where it stood in (corrected when it lands).
+   */
+  runs: { seq: number; held: boolean; run: number }[];
+  /** The held-attack count the sim has, by the slots' reckoning, after the last tick. */
+  simRun: number;
   /** Counters for tests and the lab. */
   stats: { applied: number; guessed: number; late: number; widened: number; narrowed: number; resynced: number; folded: number };
 }
@@ -89,6 +105,8 @@ export function createSlots(cfg: SlotConfig): Slots {
     calm: 0,
     low: Infinity,
     excess: 0,
+    runs: [],
+    simRun: 0,
     stats: { applied: 0, guessed: 0, late: 0, widened: 0, narrowed: 0, resynced: 0, folded: 0 },
   };
 }
@@ -106,6 +124,7 @@ export function receiveInputs(s: Slots, cfg: SlotConfig, cmds: SeqCommand[]): vo
       if (s.guessed.delete(c.seq)) {
         s.carry = s.carry ? mergePresses(s.carry, c.cmd) : c.cmd;
         late++;
+        correctRun(s, c.seq, !!c.cmd.attackHeld);
       }
       continue;
     }
@@ -136,6 +155,19 @@ export function receiveInputs(s: Slots, cfg: SlotConfig, cmds: SeqCommand[]): vo
 
 /** This tick's command for the player, consuming the input whose slot it is. */
 export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
+  const cmd = pickCommand(s, cfg);
+  if (!cmd.attackHeld) {
+    s.simRun = 0;
+    return cmd;
+  }
+  // The sim adds holdTicks to its count; land it on the browser's after the last input used.
+  const want = s.runs.length ? s.runs[s.runs.length - 1].run : s.simRun;
+  const ticks = Math.max(0, want) - s.simRun;
+  s.simRun = Math.max(0, s.simRun + ticks);
+  return ticks === 1 ? cmd : { ...cmd, holdTicks: ticks };
+}
+
+function pickCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
   if (s.next === null) return withCarry(s, s.last);
   if (s.hold > 0) {
     // Building the cushion: a tick of the held buttons that stands for no input.
@@ -155,6 +187,7 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     s.ack = a.seq;
     s.next = a.seq + 1;
     s.carry = s.carry ? mergePresses(s.carry, a.cmd) : a.cmd;
+    recordRun(s, cfg, a.seq, !!a.cmd.attackHeld);
     s.stats.folded++;
   }
   s.excess = 0;
@@ -164,6 +197,7 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     s.ack = a.seq;
     s.next = a.seq + 1;
     s.carry = s.carry ? mergePresses(s.carry, a.cmd) : a.cmd;
+    recordRun(s, cfg, a.seq, !!a.cmd.attackHeld);
     s.cushion--;
     s.calm = 0;
     s.stats.narrowed++;
@@ -175,6 +209,7 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     s.next = head.seq + 1;
     s.quiet = 0;
     s.last = withoutPresses(head.cmd);
+    recordRun(s, cfg, head.seq, !!head.cmd.attackHeld);
     s.stats.applied++;
     return withCarry(s, head.cmd);
   }
@@ -187,6 +222,7 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     s.next = head.seq + 1;
     s.quiet = 0;
     s.last = withoutPresses(head.cmd);
+    recordRun(s, cfg, head.seq, !!head.cmd.attackHeld);
     s.stats.applied++;
     s.stats.resynced++;
     return withCarry(s, head.cmd);
@@ -196,6 +232,7 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
   if (s.quiet > cfg.staleTicks) s.last = { ...idleCommand(), aimX: s.last.aimX, aimZ: s.last.aimZ };
   if (s.quiet <= cfg.maxGuess) {
     s.guessed.add(s.next);
+    recordRun(s, cfg, s.next, !!s.last.attackHeld);
     s.ack = s.next;
     s.next++;
     s.stats.guessed++;
@@ -203,6 +240,28 @@ export function nextSlotCommand(s: Slots, cfg: SlotConfig): PlayerCommand {
     for (const g of s.guessed) if (g < s.next - cfg.maxGuess * 2) s.guessed.delete(g);
   }
   return withCarry(s, s.last);
+}
+
+/** The browser's count after `seq`: one more than after the input before it while held, else none. */
+function recordRun(s: Slots, cfg: SlotConfig, seq: number, held: boolean): void {
+  const prev = s.runs.length ? s.runs[s.runs.length - 1].run : 0;
+  s.runs.push({ seq, held, run: held ? prev + 1 : 0 });
+  // Only inputs that can still arrive late need their place kept: the guesses still expected.
+  const keep = cfg.maxGuess * 2 + 2;
+  if (s.runs.length > keep) s.runs.splice(0, s.runs.length - keep);
+}
+
+/** A guessed input has landed: count it as it was, and every count after it again. */
+function correctRun(s: Slots, seq: number, held: boolean): void {
+  const i = s.runs.findIndex((r) => r.seq === seq);
+  if (i < 0 || s.runs[i].held === held) return;
+  // The count before it: the entry before, or (the oldest kept) what its own count was built on.
+  let prev = i > 0 ? s.runs[i - 1].run : s.runs[i].held ? s.runs[i].run - 1 : 0;
+  s.runs[i].held = held;
+  for (let j = i; j < s.runs.length; j++) {
+    s.runs[j].run = s.runs[j].held ? prev + 1 : 0;
+    prev = s.runs[j].run;
+  }
 }
 
 function withCarry(s: Slots, cmd: PlayerCommand): PlayerCommand {

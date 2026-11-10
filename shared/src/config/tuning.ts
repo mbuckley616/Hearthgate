@@ -3610,6 +3610,15 @@ const FAMILY_TABLES: Record<WeaponFamily, object> = {
   sceptre: tuning.sceptreCombo,
 };
 
+/** The longest lunge any step of any chain carries, forward or back (m): what a mispredicted swing can move a hero. */
+export function longestLungeM(): number {
+  let most = 0;
+  for (const table of [...Object.values(COMBO_TABLES), ...Object.values(FAMILY_TABLES)]) {
+    for (const [k, v] of Object.entries(table)) if (/^hit\dLungeM$/.test(k) && typeof v === 'number') most = Math.max(most, Math.abs(v));
+  }
+  return most;
+}
+
 /** Step i of a weapon family's chain (C5), with its style's borrowed reach where it has none of its own. */
 export function familyHit(family: WeaponFamily, i: number, speed = 1): ComboHit {
   const c = FAMILY_TABLES[family] as Record<string, number>;

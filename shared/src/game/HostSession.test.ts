@@ -101,6 +101,25 @@ describe('the input slots (T2: each input at its own tick, behind a cushion)', (
     expect(host.queuedOf('a')).toBe(1);
   });
 
+  it("counts a held attack as the browser did when the press came late (the bow's backflip snap)", () => {
+    // Attack pressed at 10 and held to 40; 10 to 13 are held up, so the server stood in for the first two
+    // with the buttons held before (none) and then carried the press. The browser counted every
+    // held input; before the fix the server's count stayed short by the two ticks it guessed.
+    const c = (seq: number) => cmd({ attack: seq === 10, ...(seq >= 10 && seq <= 40 ? { attackHeld: true } : {}) });
+    input('a', 1, 2, c);
+    for (let seq = 3; seq <= 30; seq++) {
+      if (seq < 10 || seq > 13) input('a', seq, seq, c);
+      if (seq === 16) input('a', 10, 13, c);
+      host.tick();
+    }
+    const s = host.slotsOf('a')!;
+    expect(s.stats.late).toBe(2);
+    expect(s.guessed.size).toBe(0);
+    const held = host.ackOf('a') - 9;
+    expect(held).toBeGreaterThan(8);
+    expect(player('p1').attackHold! * tuning.sim.tickRate).toBeCloseTo(held, 6);
+  });
+
   it('stands in for a late input with the held buttons, acks it, and carries its presses when it lands', () => {
     // A browser running north, one input a tick; inputs 10 to 21 are held up by a lost packet,
     // and 15 has an attack press in it.
