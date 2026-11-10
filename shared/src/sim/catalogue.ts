@@ -149,6 +149,10 @@ export const SHAPES: readonly Shape[] = [
   // Off-hands for them (C5): a tome with the wand, a buckler or a second crossbow with the crossbow.
   { id: 'tome', slot: 'shield', name: 'tome', families: ['cloth'], weight: 0, offhand: 'tome' },
   { id: 'buckler', slot: 'shield', name: 'buckler', families: ['hide'], weight: 0.5, offhand: 'buckler' },
+  // The parrying dagger (the builds pass): the off-hand for a one-handed blade, its Riposte on 3.
+  { id: 'parryingDagger', slot: 'shield', name: 'parrying dagger', families: ['metal'], weight: 0, kind: 'melee', offhand: 'parryingDagger' },
+  // The focus orb (the builds pass): the off-hand for a wand or sceptre, its Focus on 3.
+  { id: 'focusOrb', slot: 'shield', name: 'focus orb', families: ['trinket'], weight: 0, kind: 'magic', offhand: 'focusOrb' },
   { id: 'handCrossbow', slot: 'shield', name: 'hand crossbow', families: ['wood'], weight: 0, kind: 'ranged', offhand: 'handCrossbow' },
 ];
 

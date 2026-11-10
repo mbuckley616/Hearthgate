@@ -199,6 +199,10 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
       }
       break;
     }
+    case 'focus':
+      // The focus orb (the builds pass): its casts come faster (attackSpeed) and harder (damageEnemy) for a while.
+      p.focusTime = a.focusSeconds;
+      break;
     case 'quickShot': {
       // The hand crossbow (C5): two bolts from the off hand, a little apart.
       state.events.push({ kind: 'fire', playerId: p.id, projectile: 'arrow', heavy: false });

@@ -2265,6 +2265,23 @@ export const tuning = {
     deflectDurationMs: 450,
     deflectRecoveryMs: 150,
     deflectCooldownMs: 5000,
+    // The parrying dagger's riposte (the builds pass, Michael's A, 9 Nov): a short parry on 3, and a hit
+    // parried in it makes the next blow within the window a crit.
+    riposteWindupMs: 0,
+    riposteDurationMs: 300,
+    riposteRecoveryMs: 150,
+    riposteCooldownMs: 5000,
+    riposteWindowMs: 2000,
+    riposteCritMult: 1.5,
+    // The focus orb's Focus (the builds pass, Michael's A, 9 Nov): for a while every cast comes
+    // faster and hits harder.
+    focusWindupMs: 150,
+    focusDurationMs: 100,
+    focusRecoveryMs: 200,
+    focusCooldownMs: 15000,
+    focusSeconds: 6,
+    focusSpeed: 0.2,
+    focusDamageMult: 1.3,
     // The hand crossbow's quick shot (C5): two bolts from the off hand.
     quickShotWindupMs: 100,
     quickShotDurationMs: 60,
@@ -3014,6 +3031,14 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'abilities.wardSeconds': [0, 30, 0.5],
   'abilities.deflectDurationMs': [0, 1500, 10],
   'abilities.deflectCooldownMs': [0, 20000, 100],
+  'abilities.riposteDurationMs': [0, 1500, 10],
+  'abilities.riposteCooldownMs': [0, 20000, 100],
+  'abilities.riposteWindowMs': [0, 6000, 100],
+  'abilities.riposteCritMult': [1, 3, 0.05],
+  'abilities.focusCooldownMs': [0, 40000, 500],
+  'abilities.focusSeconds': [0, 20, 0.5],
+  'abilities.focusSpeed': [0, 1, 0.05],
+  'abilities.focusDamageMult': [1, 3, 0.05],
   'abilities.quickShotCooldownMs': [0, 20000, 100],
   'abilities.quickShotDamage': [0, 5, 0.05],
   'families.warhammerHeavyDamage': [0.5, 3, 0.05],
@@ -3660,11 +3685,11 @@ export function comboHit(style: Style, i: number, speed = 1): ComboHit {
   };
 }
 
-export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink' | 'bash' | 'ward' | 'deflect' | 'quickShot';
+export type AbilityKind = 'charge' | 'whirlwind' | 'volley' | 'disengage' | 'frostRing' | 'blink' | 'bash' | 'ward' | 'deflect' | 'quickShot' | 'riposte' | 'focus';
 
 /** What an off-hand is (C4, C5): its ability is the third, on 3. */
-export type OffhandKind = 'shield' | 'tome' | 'buckler' | 'handCrossbow';
-export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash', tome: 'ward', buckler: 'deflect', handCrossbow: 'quickShot' };
+export type OffhandKind = 'shield' | 'tome' | 'buckler' | 'handCrossbow' | 'parryingDagger' | 'focusOrb';
+export const OFFHAND_ABILITY: Record<OffhandKind, AbilityKind> = { shield: 'bash', tome: 'ward', buckler: 'deflect', handCrossbow: 'quickShot', parryingDagger: 'riposte', focusOrb: 'focus' };
 
 /**
  * Weapon families (C5; Michael, 28 Oct): more than one weapon to a style. A family fights its style's
@@ -3695,6 +3720,8 @@ export const ABILITY_NAMES: Record<AbilityKind, string> = {
   ward: 'Ward',
   deflect: 'Deflect',
   quickShot: 'Quick shot',
+  riposte: 'Riposte',
+  focus: 'Focus',
 };
 
 /** An ability's phases in seconds: the effect fires at the end of the windup, then active, then recovery. */
