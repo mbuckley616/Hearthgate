@@ -16,7 +16,7 @@ import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate
 import { createSimState, worldNow } from '@hearthgate/shared/sim/world';
 import { addArrivalSample, createClockSync, remoteTimeAt, type ClockConfig, type ClockSync } from '@hearthgate/shared/net/clock';
 import { ServerLink, type LinkEvent } from '../net/ServerLink';
-import { SNAP_M, isPredictedFor, placedBy, placedEaseM, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
+import { SNAP_M, isPredictedFor, placedBy, placedEaseM, swingEaseM, swingMispredicted, withoutPresses, type Blend, type Session } from '@hearthgate/shared/game/Session';
 
 /**
  * A replay that moves the hero further than this counts as a correction: Hearthgate's lab has counted
@@ -148,6 +148,8 @@ export class ClientSession implements Session {
   private departed: { id: string; events: SimEvent[] } | null = null;
   /** Until this server time a correction eases up to `placedEaseM()`: the server just placed our hero (a tile's fall). */
   private placedUntil = -1;
+  /** Server time until which a mispredicted swing's correction eases (the bow's backflip, 9 Nov). */
+  private swungUntil = -1;
   /** Visual-only offset that eases out prediction corrections. */
   private err = { x: 0, y: 0, z: 0 };
   private loadout: Loadout;
@@ -456,6 +458,7 @@ export class ClientSession implements Session {
     this.inbox = [];
     this.err = { x: 0, y: 0, z: 0 };
     this.placedUntil = -1;
+    this.swungUntil = -1;
     this.portals = [];
     this.village = null;
     this.villageVersion++;
@@ -500,6 +503,7 @@ export class ClientSession implements Session {
     // It takes a few snapshots to fade, so the wider limit holds for half a second of server time.
     const placed = placedBy(events, this.localId);
     if (placed) this.placedUntil = s.time + 0.5;
+    const predicted = this.me;
     this.pred = base;
     this.me = mine;
     const xp = { ...mine.xp };
@@ -513,6 +517,10 @@ export class ClientSession implements Session {
     // Replayed hits mustn't count XP twice; the server's number is the truth.
     mine.xp = xp;
     base.events = [];
+    // A swing decided on the other side of the heavy line from the server's runs a different step,
+    // and a step's lunge (the bow's 2.5 m backflip) is a correction past the snap limit that is
+    // really a prediction gone wrong: ease it, and the one that undoes it a few ticks later.
+    if (predicted && swingMispredicted(predicted, mine)) this.swungUntil = s.time + 0.25;
     if (before && this.prevMe) {
       const d = { x: before.x - mine.x, y: before.y - mine.y, z: before.z - mine.z };
       const size = Math.hypot(d.x, d.y, d.z);
@@ -543,7 +551,8 @@ export class ClientSession implements Session {
       this.prevMe.z -= d.z;
       // Far off (a teleport, a restart): just snap. A door into an interior is the server's to take and
       // lands tens of metres away: that is a door, not a prediction gone wrong, so it is not counted.
-      if (Math.hypot(this.err.x, this.err.z) > (s.time < this.placedUntil ? placedEaseM() : SNAP_M)) {
+      const limit = Math.max(SNAP_M, s.time < this.placedUntil ? placedEaseM() : 0, s.time < this.swungUntil ? swingEaseM() : 0);
+      if (Math.hypot(this.err.x, this.err.z) > limit) {
         if (Math.hypot(this.err.x, this.err.z) < DOOR_JUMP_M) this.stats.snaps++;
         this.err = { x: 0, y: 0, z: 0 };
         this.prevMe = structuredClone(mine);
