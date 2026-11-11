@@ -1737,6 +1737,11 @@ export const tuning = {
     whipDamage: 0.6,
     /** Rune of Draining: every staff heavy's orb gives its caster back this share of the damage it deals. */
     drainShare: 0.2,
+    /** Rune of Splitting: a staff light finisher's orb breaks into this many bolts where it lands, fanned this wide. */
+    splitBolts: 3,
+    splitSpreadDeg: 50,
+    /** Each bolt's hit, as a share of the orb's. */
+    splitDamage: 0.35,
   },
 
   /**
@@ -2736,6 +2741,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'runes.whipWidthM': [0.2, 3, 0.1],
   'runes.whipDamage': [0, 2, 0.05],
   'runes.drainShare': [0, 1, 0.05],
+  'runes.splitBolts': [1, 7, 1],
+  'runes.splitSpreadDeg': [0, 180, 5],
+  'runes.splitDamage': [0, 1.5, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

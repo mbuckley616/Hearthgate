@@ -368,6 +368,8 @@ export interface ProjectileState {
   healedIds?: string[];
   /** Rune of Draining: a staff heavy's orb, giving its caster back a share of what it deals. */
   drains?: boolean;
+  /** Rune of Splitting: a staff light finisher's orb, which breaks into smaller bolts where it lands. */
+  splits?: boolean;
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 186, Rune of Splitting
+
+**What changed**
+
+The fourth rune, the last the design doc names, acts. A staff-style weapon with the Rune of Splitting set marks the orb its light finisher looses (`ProjectileState.splits`; the finisher is `isLightFinisher`'s, the light chain's last step, tapped): where it is spent, a burst as it lands or a bolt at the first enemy it strikes, it breaks into `runes.splitBolts` (3) bolts fanned `runes.splitSpreadDeg` (50) across the way it was cast, each for `runes.splitDamage` (0.35) of its hit, flying half a bolt's life, never striking the enemy the orb struck and never splitting again. They are plain bolts, so they draw and sound as bolts and the Sorcerer's and Druid's bolt signatures apply to them. `runeSplit.test.ts`, 3 cases; check 597 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+At level 3 a staff chain is four steps and its finisher is the nova, a ring of bolts; each of those splits on its first hit, which is a lot of bolts for one step but each a third of a small hit, and the chain is five steps from level 4. Worth watching in play.
+
+**Next**
+
+The four runes the design doc names are built, sword and staff only. A bow rune is not named anywhere: asked in `decisions.md` Pending (A recommended). Without an answer the builder has nothing left in the builds pass's runes.
+
 ## 2026-11-11: Session 185, Rune of Draining
 
 **What changed**

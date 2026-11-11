@@ -258,6 +258,8 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     }
     // Rune of Draining (the builds pass): every orb a heavy looses drains back what it deals.
     if (p.attackCharge !== undefined && hasRune(p.mods, 'drain')) for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].drains = true;
+    // Rune of Splitting: the light finisher's orb breaks into bolts where it is spent.
+    if (hasRune(p.mods, 'split') && isLightFinisher(p)) for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].splits = true;
   } else {
     state.events.push({ kind: 'swing', playerId: p.id, heavy: hit.heavy, x: p.x, z: p.z, yaw: p.yaw, range: hit.range, arcDeg: hit.arcDeg });
     runeWhip(state, p, hit, colliders);

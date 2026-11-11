@@ -265,6 +265,42 @@ function segmentHitsCapsule(
 }
 
 /**
+ * Rune of Splitting (the builds pass, Michael's A, 11 Nov): an orb a staff light finisher loosed
+ * breaks where it is spent (a burst as it lands, a bolt at the first enemy it strikes) into
+ * `runes.splitBolts` bolts fanned `runes.splitSpreadDeg` across the way it was going, each for
+ * `runes.splitDamage` of its hit. They start just past the point and do not split again.
+ */
+function splitOrb(state: SimState, pr: ProjectileState, x: number, y: number, z: number, yaw: number): void {
+  if (!pr.splits) return;
+  pr.splits = false;
+  const owner = state.players.find((p) => p.id === pr.owner);
+  if (!owner) return;
+  const r = tuning.runes;
+  const m = tuning.magicCombo;
+  const n = Math.max(1, Math.round(r.splitBolts));
+  const spread = r.splitSpreadDeg * (Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    const a = yaw + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
+    const fx = Math.sin(a);
+    const fz = Math.cos(a);
+    spawn(state, owner, { damage: pr.damage * r.splitDamage, poise: pr.poise * r.splitDamage, knockback: 0, heavy: false }, {
+      kind: 'bolt',
+      x: x + fx * 0.6,
+      y,
+      z: z + fz * 0.6,
+      vx: fx * m.boltSpeed,
+      vy: 0,
+      vz: fz * m.boltSpeed,
+      life: (m.boltLifeMs / 1000) * 0.5,
+      style: pr.style,
+      // The enemy the orb struck is not hit again by its own pieces.
+      hitIds: [...pr.hitIds],
+    });
+  }
+  state.events.push({ kind: 'fire', playerId: owner.id, projectile: 'bolt', heavy: false });
+}
+
+/**
  * Rune of Draining (the builds pass, Michael's A, 11 Nov): an orb loosed by a staff heavy gives its
  * caster back `runes.drainShare` of the damage it dealt (a burst's over everything it caught, one
  * heal), never past full and never to a downed hero. A blocked or shielded hit deals nothing back.
@@ -317,6 +353,7 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   damageEnemy(state, e, hit);
   drainBack(state, pr, before - Math.max(0, e.hp), e.x, e.y, e.z);
   pr.hitIds.push(e.id);
+  splitOrb(state, pr, pr.x, pr.y, pr.z, Math.atan2(dir.x, dir.z));
   attuneAfter(state, sorcerer, pr, e);
   if (pr.kind === 'arrow' && pr.style === 'bow' && pr.owner[0] !== 'e') {
     const owner = state.players.find((p) => p.id === pr.owner);
@@ -390,6 +427,9 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           dealt += before - Math.max(0, e.hp);
         }
         drainBack(state, pr, dealt, pr.x, pr.y, pr.z);
+        // Pieces of a split burst fly on the way it was cast, from where it landed.
+        const caster = state.players.find((p) => p.id === pr.owner);
+        if (caster) splitOrb(state, pr, pr.x, pr.y + 1, pr.z, Math.atan2(pr.x - caster.x, pr.z - caster.z));
       }
       continue;
     }
