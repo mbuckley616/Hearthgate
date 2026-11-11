@@ -56,7 +56,7 @@ export function mergePresses(a: PlayerCommand, b: PlayerCommand): PlayerCommand 
 }
 
 /** Events a joiner shows from its own prediction instead of waiting for the host (brief: "effects also play locally"). */
-const PREDICTED_KINDS = new Set<SimEvent['kind']>(['swing', 'fire', 'ability', 'frostRing', 'blink', 'whirlTick', 'land']);
+const PREDICTED_KINDS = new Set<SimEvent['kind']>(['swing', 'fire', 'ability', 'frostRing', 'blink', 'whirlTick', 'land', 'whip']);
 
 export function isPredictedFor(ev: SimEvent, id: string): boolean {
   if (ev.kind === 'hit') return ev.attackerId === id && ev.local;

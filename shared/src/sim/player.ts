@@ -7,6 +7,7 @@ import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
 import { spawnArrow, spawnBolt, spawnBurst, spawnRuneBlades } from './projectiles';
 import { hasRune } from './runes';
+import { runeWhip } from './runeWhip';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
 import { drinkPotion, smashArc } from './smash';
 import type { PropInfo } from '../level/floor';
@@ -256,6 +257,7 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     }
   } else {
     state.events.push({ kind: 'swing', playerId: p.id, heavy: hit.heavy, x: p.x, z: p.z, yaw: p.yaw, range: hit.range, arcDeg: hit.arcDeg });
+    runeWhip(state, p, hit, colliders);
   }
 }
 

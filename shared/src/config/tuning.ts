@@ -1730,6 +1730,11 @@ export const tuning = {
     bladesRangeM: 8,
     /** Enemies each blade passes through before it is spent. */
     bladesPierce: 3,
+    /** Rune of the Whip: every sword heavy lashes a fire whip this far ahead, this wide. */
+    whipRangeM: 8,
+    whipWidthM: 0.9,
+    /** Its hit on each enemy past the swing's reach, as a share of the heavy's. */
+    whipDamage: 0.6,
   },
 
   /**
@@ -2725,6 +2730,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'runes.bladesSpeed': [4, 40, 1],
   'runes.bladesRangeM': [2, 20, 0.5],
   'runes.bladesPierce': [1, 10, 1],
+  'runes.whipRangeM': [1, 15, 0.5],
+  'runes.whipWidthM': [0.2, 3, 0.1],
+  'runes.whipDamage': [0, 2, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

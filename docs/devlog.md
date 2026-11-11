@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 184, Rune of the Whip
+
+**What changed**
+
+The second rune acts. A sword-style weapon with the Rune of the Whip set lashes a fire whip straight ahead on every heavy (a held attack, `attackCharge` set; never a tap), as the heavy's hit opens: a line `runes.whipRangeM` (8 m) long and `runes.whipWidthM` (0.9 m) wide from the hero, stopped by the first wall or pillar (a sphere cast at chest height). Each enemy in it past the heavy's own reach takes `runes.whipDamage` (0.6) of the heavy's hit as sword damage; the ones within reach are the swing's. With the element states on (`combos.elementStates`) whatever it cuts is left Burning for the combo window, ready for a Detonate, whatever the hero's own element. `sim/runeWhip.ts`, called from `fireAttack`; a `whip` event drawn as a lash of fire sparks along the line it reached, brightest at the tip (`FxView`), with the burst's whoomph (`Sfx`); `whip` joins the predicted kinds, so a player's own lash plays from prediction at once and the server's copy is skipped. `runeWhip.test.ts`, 4 cases; check 591 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+The whip leaves from where the hero stands as the hit opens, before the heavy's lunge carries them on, so at 6 m it reached barely past the heavy's own sweep; 8 m keeps a clear lash beyond it. The arena's centre pillar stops it a quarter metre out, which is the wall rule doing its job, and why the test walks a lane at x = 3.
+
+**Next**
+
+The Rune of Draining (every staff heavy's orb drains health back), then Splitting (a staff light finisher's orb splits in three); a bow's rune is not yet named.
+
 ## 2026-11-11: Session 183, Rune of Blades
 
 **What changed**

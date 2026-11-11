@@ -49,6 +49,10 @@ export class Sfx {
     let hits = 0;
     for (const ev of events) {
       switch (ev.kind) {
+        case 'whip':
+          // Rune of the Whip: the crack of the lash over the heavy's swoosh.
+          this.whoomph();
+          break;
         case 'swing':
           this.swoosh(ev.heavy ? 0.32 : 0.2, ev.heavy ? 700 : 1100, 0.5);
           break;

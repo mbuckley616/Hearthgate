@@ -472,6 +472,8 @@ export type SimEvent =
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
   | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst' | 'blade'; heavy: boolean }
   | { kind: 'land'; playerId: string; x: number; z: number; radius: number }
+  /** Rune of the Whip: a sword heavy's fire whip, from the hero along `yaw` for `length` metres (stopped by a wall). */
+  | { kind: 'whip'; playerId: string; x: number; z: number; yaw: number; length: number }
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }
   | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }
