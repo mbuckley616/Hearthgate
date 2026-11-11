@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-10: The builds pass, what after combo mastery (builder, Session 180)
 Your A on what a rank gives is built (Sessions 177 to 180): ranks I to IV add 6% each to that combo's payoff, and rank V gives each of the nine specializations a twist from its own kit (the Paladin heals, the Spellblade leaves ground, the Rogue, Assassin and Sorcerer get their mobility move back, the Ranger seeds brambles, the Scout marks and the Warlock hexes around the payoff, the Druid grows a grove). The builds pass list has two parts left: runes in weapon sockets and the Necromancer.
 - **A.** Runes in weapon sockets: 0 to 2 sockets by rarity, a rune changes the light finisher or every heavy (the design doc's spectral blades, fire whip, draining or splitting orbs). Runes are items, so until Phase 3's ledger they live in the browser's save like gear. About four sessions: sockets and three runes, then a rune a session. *(recommended: it is the last piece of the weapon build, and it gives drops something new to find)*
@@ -14,7 +16,7 @@ Your A on what a rank gives is built (Sessions 177 to 180): ranks I to IV add 6%
 - **C.** Pause the builds pass for a playtest of what it has built (nine specializations, their trees, states, mastery); the builder idles until then.
 - **D.** Start E1i, the Goblin Warrens' roster, now rather than after more Crypt play.
 
-## Answered
+Michael: **A. Runes in weapon sockets** (2026-11-11)
 
 ### 2026-11-10: Combo mastery, what a rank gives (builder, Session 175)
 Your A on Soaked is under way: every payoff a player lands now counts toward that combo's rank, I to V at 10, 30, 75, 150 and 300 payoffs (on the panel), with a toast at each rank. Nothing yet says what a rank does; the design doc says only that rank V is shaped by the payer's specialization.
