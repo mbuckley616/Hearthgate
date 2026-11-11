@@ -1,5 +1,5 @@
 import { readMastery, type ComboMastery } from '@hearthgate/shared/sim/mastery';
-import { isRuneKind } from '@hearthgate/shared/sim/runes';
+import { RUNES, RUNE_KINDS, isRuneKind, type RuneKind } from '@hearthgate/shared/sim/runes';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import {
   BAG_SIZE,
@@ -9,7 +9,9 @@ import {
   fromSliceItem,
   isGearItem,
   starterGear,
+  socketRune,
   socketsOf,
+  unsocketRune,
   lookOf,
   wornMods,
   wornStyle,
@@ -85,6 +87,8 @@ export interface ProfileData {
   tree?: SpecTree;
   /** Payoffs landed per combo (combo mastery): the server's count, saved so the next room counts on from it. */
   mastery?: ComboMastery;
+  /** Runes taken out of weapons (the builds pass), by kind; items, so the browser's until Phase 3's ledger. */
+  runes?: Partial<Record<RuneKind, number>>;
 }
 
 function emptyBag(): (GearItem | null)[] {
@@ -228,7 +232,12 @@ export class Profile {
       const worn: Worn = {};
       for (const [slot, item] of Object.entries(parsed.worn ?? {})) if (known(item)) worn[slot as BodySlot] = item;
       const mastery = parsed.mastery === undefined ? undefined : (readMastery(parsed.mastery) ?? undefined);
-      return { ...fresh(), ...parsed, mastery, bag, worn, xp: { ...fresh().xp, ...parsed.xp }, talents: { ...emptyTalents(), ...parsed.talents } };
+      const runes: Partial<Record<RuneKind, number>> = {};
+      for (const k of RUNE_KINDS) {
+        const n = parsed.runes?.[k];
+        if (typeof n === 'number' && Number.isFinite(n) && n >= 1) runes[k] = Math.min(99, Math.floor(n));
+      }
+      return { ...fresh(), ...parsed, mastery, runes, bag, worn, xp: { ...fresh().xp, ...parsed.xp }, talents: { ...emptyTalents(), ...parsed.talents } };
     } catch {
       return fresh();
     }
@@ -354,6 +363,42 @@ export class Profile {
     this.spaceOf(at)[at.i] = null;
     this.save();
     return true;
+  }
+
+  /** The runes in the pouch (the builds pass), in the order the catalogue names them. */
+  runePouch(): [RuneKind, number][] {
+    return RUNE_KINDS.flatMap((k): [RuneKind, number][] => ((this.data.runes?.[k] ?? 0) > 0 ? [[k, this.data.runes![k]!]] : []));
+  }
+
+  /**
+   * E or Y on a weapon (the builds pass): set the first rune from the pouch that fits it (its style's,
+   * not already in it) into its next free socket; when none can go in, take all its runes out into the
+   * pouch. The item changes where it lies, bag, body or stash. Words for the hero screen.
+   */
+  turnRune(item: GearItem): string {
+    const sockets = socketsOf(item);
+    if (sockets === 0) return entryOf(item).slot === 'weapon' ? 'No sockets: a rare weapon has two, a common one of steel or better one.' : 'Only weapons take runes.';
+    if (this.isCarried(item)) return 'Bank it first: a carried find is lost with its runes if the party wipes.';
+    const pouch = (this.data.runes ??= {});
+    const held = item.runes ?? [];
+    const style = entryOf(item).shape.style;
+    const fit = held.length < sockets ? RUNE_KINDS.find((k) => (pouch[k] ?? 0) > 0 && RUNES[k].style === style && !held.includes(k)) : undefined;
+    if (fit) {
+      item.runes = socketRune(item, fit, held.length)!.runes;
+      if (--pouch[fit]! <= 0) delete pouch[fit];
+      this.save();
+      return `Set ${RUNES[fit].name}.`;
+    }
+    if (held.length === 0) return 'No rune in your pouch fits it.';
+    let left: GearItem = item;
+    while (left.runes?.length) {
+      const out = unsocketRune(left, left.runes.length - 1);
+      pouch[out.rune!] = (pouch[out.rune!] ?? 0) + 1;
+      left = out.item;
+    }
+    delete item.runes;
+    this.save();
+    return `Took out ${held.map((r) => RUNES[r].name).join(' and ')}: in your pouch.`;
   }
 
   /** Whether this item is a carried find (D3), not yet banked. */

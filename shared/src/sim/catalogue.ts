@@ -1,5 +1,5 @@
 import { tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
-import { activeRunes, socketCount, type RuneKind } from './runes';
+import { RUNES, RUNE_KINDS, activeRunes, socketCount, type RuneKind } from './runes';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
 /**
@@ -353,7 +353,11 @@ export function rollGear(rand: () => number, forceRare = false, rareMult = 1, mi
   }
   const perks = PERKS_FOR[entry.kind];
   const perk = rare && rand() < 0.6 ? perks[Math.floor(rand() * perks.length)] : null;
-  return { uid: '', id: entry.id, rarity, perk, bonus };
+  const item: GearItem = { uid: '', id: entry.id, rarity, perk, bonus };
+  // Runes are found set in a rare weapon (the builds pass), drawn last so every other roll is as it was.
+  const fits = rare && entry.slot === 'weapon' ? RUNE_KINDS.filter((k) => RUNES[k].style === entry.shape.style) : [];
+  if (fits.length > 0 && rand() < tuning.runes.foundChance) item.runes = [fits[Math.floor(rand() * fits.length)]];
+  return item;
 }
 
 /** A slice item (an old save, or loot rolled with the catalogue off) as a catalogue item, keeping its name, stat and perk. */

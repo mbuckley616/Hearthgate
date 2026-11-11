@@ -1,6 +1,7 @@
 import { COMBOS, COMBO_NAMES, MASTERY_ROMAN, masteryBonus, masteryRank, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { STYLES, tuning, type Style } from '@hearthgate/shared/config/tuning';
-import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
+import { BODY_SLOTS, BODY_SLOT_NAMES, STYLE_KIND, entryOf, socketsOf, type BodySlot, type GearItem } from '@hearthgate/shared/sim/catalogue';
+import { RUNES } from '@hearthgate/shared/sim/runes';
 import { levelUnlock, levelFor, levelProgress, maxLevel } from '@hearthgate/shared/sim/gear';
 import { TALENT_IDS, maxRanks, talentLevel, talentName, talentText, type TalentId } from '@hearthgate/shared/sim/talents';
 import { CRESCENDO_LEVEL, ELEMENT_COLOUR, ELEMENT_NAMES, TREE_LEVELS, elementFor, specInfo, specsFor, type Element, type SpecId } from '@hearthgate/shared/sim/specs';
@@ -248,7 +249,7 @@ export class EquipScreen {
     } else if (take) {
       this.holding = null;
       this.drop(this.grid[this.cursor]);
-    }
+    } else if (reset) this.rune(this.grid[this.cursor]);
   }
 
   /** The first E or Y on a board arms the reset and says so; true when this press is the second, inside the window. */
@@ -363,6 +364,16 @@ export class EquipScreen {
     this.render();
   }
 
+  /** E or Y (or the Runes button): set a rune from the pouch in the chosen weapon, or take its runes out. */
+  private rune(c: Cell): void {
+    const item = this.itemAt(c);
+    if (!item) return;
+    this.holding = null;
+    this.note = this.profile.turnRune(item);
+    if (c.area === 'worn') this.onChange();
+    this.render();
+  }
+
   private drop(c: Cell): void {
     if (c.area !== 'bag') return;
     const item = this.profile.data.bag[c.space];
@@ -390,6 +401,7 @@ export class EquipScreen {
       this.cursor = i;
     }
     if (action === 'drop') this.drop(this.grid[this.cursor]);
+    if (action === 'rune') this.rune(this.grid[this.cursor]);
     if (action === 'tab') this.tab = el.dataset.tab === 'talents' || el.dataset.tab === 'champion' ? el.dataset.tab : 'gear';
     if (action === 'cpUp' && talent) this.profile.changeChampion(talent as ChampionId, 1);
     if (action === 'cpDown' && talent) this.takeBack(() => this.profile.changeChampion(talent as ChampionId, -1));
@@ -481,7 +493,7 @@ export class EquipScreen {
       ? `<div class="item-name ${item.rarity}">${nameOf(item)}</div>
          <div class="item-stat">${gearLine(item)}</div>
          ${this.profile.isCarried(item) ? '<div class="gear-warn">Carried: found on this run and lost if the party wipes, even worn, until the gold ring home banks it.</div>' : ''}
-         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or X: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}</div>`
+         <div class="gear-hint">${c.area === 'bag' ? 'F or A: pick up · J or RT: wear · Q or X: drop it at your feet' : c.slot === 'weapon' ? 'Your weapon for this outing: pick another from the bag, outside a fight' : 'F or A: pick up · J or RT: take off'}${socketsOf(item) > 0 ? ' · E or Y: set a rune, or take them out when none fits' : ''}</div>`
       : c.area === 'bag' && this.profile.materialStacks().has(c.space)
         ? `<div class="item-name">${matLine(this.profile.materialStacks().get(c.space)!)}</div><div class="gear-warn">Carried for the village: it goes to the village when the gold ring home banks the run, and is lost if the party wipes.</div><div class="gear-hint">Q or X: drop it at your feet, to make room</div>`
         : `<div class="muted">${c.area === 'bag' ? 'An empty space' : `Nothing on your ${BODY_SLOT_NAMES[c.slot].toLowerCase()}`}</div>`;
@@ -491,6 +503,9 @@ export class EquipScreen {
       ? `<div class="gear-held">Holding <b class="${heldItem.rarity}">${nameOf(heldItem)}</b>: F or A puts it down here · Esc or B puts it back</div>`
       : '';
     const note = this.note ? `<div class="gear-warn">${this.note}</div>` : '';
+    // The rune pouch (the builds pass): runes taken out of weapons, waiting for a socket.
+    const runes = this.profile.runePouch();
+    const pouch = runes.length ? `<div class="muted gear-runes">Runes: ${runes.map(([k, n]) => `${RUNES[k].name}${n > 1 ? ` x${n}` : ''}`).join(', ')}</div>` : '';
     return `<div class="gear-layout">
         <div class="gear-grid">${grid}</div>
         <div class="gear-detail">
@@ -500,7 +515,9 @@ export class EquipScreen {
           ${detail}
           ${penalty}
           <div class="muted gear-free">${free} of 28 spaces free · move to choose (WASD, arrows, stick)</div>
+          ${pouch}
           ${c.area === 'bag' && (item || this.profile.materialStacks().has(c.space)) ? '<button data-action="drop">Drop</button>' : ''}
+          ${item && socketsOf(item) > 0 ? '<button data-action="rune">Runes</button>' : ''}
         </div>
       </div>`;
   }

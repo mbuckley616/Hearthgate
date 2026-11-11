@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { readGearItem, readLoadout } from '../net/validate';
-import { socketRune, socketsOf, unsocketRune, wornMods, type GearItem } from './catalogue';
+import { entryOf, rollGear, socketRune, socketsOf, unsocketRune, wornMods, type GearItem } from './catalogue';
 import { emptyMods } from './gear';
 import { emptyTalents } from './talents';
 import { activeRunes, hasRune, socketCount } from './runes';
@@ -72,6 +72,33 @@ describe('the fight sees the worn weapon’s', () => {
   it('a weapon with none leaves the slice’s Mods as they were', () => {
     expect('runes' in wornMods({ weapon: item('steel-sword', 'rare') })).toBe(false);
     expect(hasRune(emptyMods(), 'blades')).toBe(false);
+  });
+});
+
+describe('found', () => {
+  // A seeded stand-in for state.rng.
+  const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  it('a rare weapon sometimes comes with one of its style’s runes set; nothing else ever does', () => {
+    tuning.runes.foundChance = 1;
+    const rand = seeded(7);
+    let set = 0;
+    for (let n = 0; n < 400; n++) {
+      const item = rollGear(rand, n % 2 === 0);
+      const e = entryOf(item);
+      if (!item.runes) continue;
+      set++;
+      expect(item.rarity).toBe('rare');
+      expect(e.slot).toBe('weapon');
+      expect(item.runes).toHaveLength(1);
+      expect(wornMods({ weapon: item }).runes).toEqual(item.runes);
+    }
+    expect(set).toBeGreaterThan(5);
+  });
+  it('with the chance at nought none is ever found', () => {
+    tuning.runes.foundChance = 0;
+    const a = seeded(11);
+    const items = Array.from({ length: 50 }, () => rollGear(a, true));
+    expect(items.every((i) => !i.runes)).toBe(true);
   });
 });
 

@@ -1719,6 +1719,8 @@ export const tuning = {
     rareSockets: 2,
     /** A common weapon of this tier or better has one socket; below it, none. */
     commonSocketTier: 3,
+    /** A rare weapon dropped with one of its style's runes already set: the way runes are found until crafting. */
+    foundChance: 0.35,
   },
 
   /**
@@ -2707,6 +2709,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank5': [1, 2000, 1],
   'runes.rareSockets': [0, 2, 1],
   'runes.commonSocketTier': [1, 6, 1],
+  'runes.foundChance': [0, 1, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 182, Runes: found in rare weapons, the pouch, set on the hero screen
+
+**What changed**
+
+Runes can now be found and moved. A rare weapon rolled from the catalogue comes with one of its style's runes already set `runes.foundChance` of the time (0.35, on the panel), drawn after every other roll so the rest of a drop is as it was; a bow has no rune yet, so a rare bow comes with none. The browser's save has a rune pouch (`ProfileData.runes`, counts by kind, trimmed to known kinds on load). On the hero screen's Bag and body tab, E or Y (or the Runes button) on a weapon with sockets sets the first pouch rune of its style it does not already hold in its next free socket; when none fits, it takes all its runes out into the pouch. A carried find refuses ("Bank it first"), a weapon without sockets says how to get one. Changing the worn weapon's runes sends the loadout, so `Mods.runes` follows. The detail panel lists the pouch and the item line lists each socket. `tests/rune-pouch.ts` (in `npm run check`, a stubbed localStorage) and two cases in `runes.test.ts`; check 582 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Finding a rune already set in a rare weapon needs no new loot kind, pickup event or bag space: it rides the drop, the carry and the bank as the weapon does, and the pouch only ever fills from runes a player took out. A rune as a drop of its own can come with crafting (Rune-crafting is a design-doc skill). One key both sets and empties because the gear tab had only E or Y free; emptying all at once keeps a second rune reachable without a fifth key.
+
+**Next**
+
+The three runes' effects, one a session: Blades (a sword's light finisher looses two spectral blades), the Whip (every sword heavy lashes a fire whip ahead), Draining (every staff heavy's orb drains health back); Splitting after, and a bow's rune is not yet named.
+
 ## 2026-11-11: Session 181, Runes: weapon sockets and the path to the fight (Michael's A)
 
 **What changed**
