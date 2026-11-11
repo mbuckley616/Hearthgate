@@ -1021,3 +1021,35 @@ Not played: Uproot (needs a Ranger's or Druid's root and an area attack) and Wil
 - Soaked waits on decisions.md; nothing for me to judge.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-11 — auto/build 9376efb (main 7e72929 plus Sessions 177–180) through the lab, and a Ranger at Skewer 299 in two browsers (session 180, commit 9376efb)
+
+Main 7e72929 carries Sessions 175–176 (mastery counted, the Talents tab); `auto/build` 9376efb adds 177–180 (ranks I to IV at +6%, the nine rank V twists), played on a throwaway worktree. On main: `npm run check` green; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). On 9376efb: check 570/570.
+
+**The lag lab** (`npm run lab -- --crowd` on 9376efb, arena, 60 s a condition after 10 s warm-up, pages at 10 to 15 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 105 (32) | 0 (+2 placed) | 12 | 355 ms | 47 | rough |
+| 50 ms | 104 (34) | 0 | 7 | 475 ms | 48 | rough |
+| 150 ms | 79 (24) | 0 | 9 | 610 ms | 49 | rough |
+| 50 ms, ±20 jitter, 2% loss | 86 (16) | 0 (+1 placed) | 18 | 490 ms | 48 | rough |
+| 50 ms, crowd (10 standing) | 160 (68) | 0 (+1 placed) | 10 | 420 ms | 66 | rough |
+
+0 page errors, no network snap on any row. Yesterday's rise in the over-10 cm column on the 50 ms row (43) is back to 34, so I am not calling it a trend. The 0 ms total (105 against 54) is the top of the week's spread, not outside it; its big ones split swing 18, other 10. Largest corrections on each row (6.3 to 14.4 m) are the placed restarts.
+
+**What I played** (`tests/tmp/play.mts`, git-ignored): Alpha a level-12 Ranger in an ash shortbow with Skewer mastery seeded at 299 in the save, Bravo a plain sword, `?play&dungeon`, both into the arena. Bravo walks to his nearest enemy and alternates held and tapped attacks; Alpha aims at Bravo's target and taps J every 230 ms (power shot on chain steps 2 and 4). Seven runs of 30 to 40 s.
+
+- The save reaches the server as written: Alpha's hero carried `spec {bow: ranger}` and `mastery {skewer: 299}` on both pages, so `readMastery` and the loadout path work for a seeded count.
+- **No Skewer landed in seven runs** (about 4.5 minutes). The window was open often (an enemy with `skewerUntil` live in 25 to 50% of samples, 13 to 19 staggers a run) and charged arrows were in the air in about 10% of samples, but the power shot never met a staggered enemy; Alpha's count stayed 299. So rank V's toast and the bramble twist were not seen in a browser. That is my bot's aim (the bow picks its own target), not a demonstrated bug.
+- To check the path the bot could not reach, a sim harness (`tests/tmp/skewer.mts`) fired a Ranger's power shot into a staggered grunt: at 0 it pays 37.5 and counts 1; at 299 it pays 46.5 (+24%, rank IV's bonus), counts 300 and pushes `masteryRank` 5 with no bramble (the rank is read before the count, as Session 177 says); at 300 it pays 46.5 and seeds one 2.5 m nature patch where it landed. That matches Sessions 177 and 179.
+- Netcode on those runs: 2 to 94 corrections a run, largest 1.25 m, 0 snaps, 0 page errors. A variant where Alpha walked to stay 2.5 to 4.5 m from Bravo's target had the most (94 and 73, about half over 10 cm), from walking among enemy bodies; standing still it fell to 5 to 7.
+
+**Hosted build.** Not reachable from this sandbox: the egress proxy refused both hosts (health 000, client 000). `meta/build` says main 7e72929, server "ok", 10 Nov 23:08 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.**
+- Session 180 ("a playtest of the ranks with `mastery.rank5` lowered"): whether +6% a rank is felt is a human's call. From my play, a more practical note for that playtest: lowering the thresholds does not help if the combo is rare; in a two-bot arena a Skewer did not land in 4.5 minutes, so a human should pick a combo they can set up alone (a Frost Spellblade's Shatter, say) or pair with someone who staggers on purpose.
+- Sessions 178–179 (twists "not yet seen in a browser"): still not seen in a browser; checked in the sim for the Ranger only.
+- Session 176 (the Talents tab line): not opened headless today.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
