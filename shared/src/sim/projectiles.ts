@@ -159,6 +159,36 @@ export function spawnBolt(state: SimState, p: PlayerState, payload: Payload, yaw
 }
 
 /**
+ * Rune of Blades (the builds pass): a sword's light finisher looses `runes.blades` spectral blades,
+ * fanned `runes.bladesSpreadDeg` apart about the hero's facing, flying level and straight for
+ * `runes.bladesRangeM`, each through `runes.bladesPierce` enemies for `runes.bladesDamage` of the
+ * finisher's hit. Sword damage, so the style's talents and the mismatch rule hold.
+ */
+export function spawnRuneBlades(state: SimState, p: PlayerState, payload: Payload): void {
+  const r = tuning.runes;
+  const n = Math.max(1, Math.round(r.blades));
+  const spread = r.bladesSpreadDeg * (Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    const yaw = p.yaw + (n > 1 ? (i / (n - 1) - 0.5) * spread * (n - 1) : 0);
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    spawn(state, p, { damage: payload.damage * r.bladesDamage, poise: payload.poise * r.bladesDamage, knockback: 0, heavy: false }, {
+      kind: 'blade',
+      x: p.x + fx * 0.6,
+      y: p.y + 1.0,
+      z: p.z + fz * 0.6,
+      vx: fx * r.bladesSpeed,
+      vy: 0,
+      vz: fz * r.bladesSpeed,
+      life: r.bladesRangeM / Math.max(1, r.bladesSpeed),
+      pierce: Math.max(1, Math.round(r.bladesPierce)),
+      style: 'sword',
+    });
+  }
+  state.events.push({ kind: 'fire', playerId: p.id, projectile: 'blade', heavy: false });
+}
+
+/**
  * Vertical aim toward the soft target's chest, so shots reach archers on the
  * ledge (or heroes on it can shoot down). Level when there's no target, or
  * through the reticle with free aim (D12).

@@ -1721,6 +1721,15 @@ export const tuning = {
     commonSocketTier: 3,
     /** A rare weapon dropped with one of its style's runes already set: the way runes are found until crafting. */
     foundChance: 0.35,
+    /** Rune of Blades: spectral blades a sword's light finisher looses ahead, fanned this many degrees apart. */
+    blades: 2,
+    bladesSpreadDeg: 6,
+    /** Each blade's hit, as a share of the finisher's. */
+    bladesDamage: 0.5,
+    bladesSpeed: 16,
+    bladesRangeM: 8,
+    /** Enemies each blade passes through before it is spent. */
+    bladesPierce: 3,
   },
 
   /**
@@ -2710,6 +2719,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'runes.rareSockets': [0, 2, 1],
   'runes.commonSocketTier': [1, 6, 1],
   'runes.foundChance': [0, 1, 0.05],
+  'runes.blades': [1, 5, 1],
+  'runes.bladesSpreadDeg': [0, 60, 1],
+  'runes.bladesDamage': [0, 2, 0.05],
+  'runes.bladesSpeed': [4, 40, 1],
+  'runes.bladesRangeM': [2, 20, 0.5],
+  'runes.bladesPierce': [1, 10, 1],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

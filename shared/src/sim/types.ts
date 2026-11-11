@@ -337,7 +337,7 @@ export interface EnemyState {
 /** Arrows, magic bolts and bursts. Bursts sit still and expand. */
 export interface ProjectileState {
   id: number;
-  kind: 'arrow' | 'bolt' | 'burst';
+  kind: 'arrow' | 'bolt' | 'burst' | 'blade';
   owner: string;
   x: number;
   y: number;
@@ -470,7 +470,7 @@ export type SimEvent =
   | { kind: 'tileFell'; x: number; z: number; caught: number; put: string[] }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
-  | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }
+  | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst' | 'blade'; heavy: boolean }
   | { kind: 'land'; playerId: string; x: number; z: number; radius: number }
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }

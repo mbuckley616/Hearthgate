@@ -55,6 +55,8 @@ export class Sfx {
         case 'fire':
           if (ev.projectile === 'arrow') this.twang(ev.heavy);
           else if (ev.projectile === 'bolt') this.zap();
+          // Rune of Blades: a thin, high swoosh for the spectral blades.
+          else if (ev.projectile === 'blade') this.swoosh(0.16, 1500, 0.35);
           else this.whoomph();
           break;
         case 'hit':

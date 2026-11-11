@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 183, Rune of Blades
+
+**What changed**
+
+The first rune acts. A sword-style weapon (the sword and its families) with the Rune of Blades set looses `runes.blades` (2) spectral blades as its light finisher's hit opens: the light chain's last step at the hero's level (the third at levels 1 and 2, the fifth from 4; a family's own last step), tapped, never a held heavy. They fly level and straight from the hero's chest, fanned `runes.bladesSpreadDeg` (6) apart, at `runes.bladesSpeed` (16 m/s) for `runes.bladesRangeM` (8 m), each through `runes.bladesPierce` (3) enemies for `runes.bladesDamage` (0.5) of the finisher's hit, as sword damage, so talents, the mismatch rule and the rest apply; a wall ends them. A new projectile kind, `blade`, drawn as a pale ghost sword point first (`ProjectileView`) with a thin high swoosh (`Sfx`). `isLightFinisher` in `player.ts` is the one test of "the light finisher" the other finisher runes will use. `runeBlades.test.ts`, 5 cases; check 587 green, parity identical (no slice loadout carries runes). Not yet seen in a browser.
+
+**Learned**
+
+At the first spread tried (16 degrees) both blades passed either side of a grunt 4 m out, a gap of over a metre at that range; 6 degrees keeps both on one enemy to about 5 m and still fans past a single target at the far end. The blades spawn in `stepPlayer` as arrows do, so prediction shows them at once.
+
+**Next**
+
+The Rune of the Whip (every sword heavy lashes a fire whip ahead), then Draining (every staff heavy's orb drains health back), then Splitting.
+
 ## 2026-11-11: Session 182, Runes: found in rare weapons, the pouch, set on the hero screen
 
 **What changed**
