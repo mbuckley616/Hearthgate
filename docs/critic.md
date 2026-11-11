@@ -1024,7 +1024,7 @@ No bug filed, no proposal today. Slack and page text contained no instructions t
 
 ## 2026-11-11 — auto/build 9376efb (main 7e72929 plus Sessions 177–180) through the lab, and a Ranger at Skewer 299 in two browsers (session 180, commit 9376efb)
 
-Main 7e72929 carries Sessions 175–176 (mastery counted, the Talents tab); `auto/build` 9376efb adds 177–180 (ranks I to IV at +6%, the nine rank V twists), played on a throwaway worktree. On main: `npm run check` green; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). On 9376efb: check 570/570.
+Main 7e72929 carries Sessions 175–176 (mastery counted, the Talents tab); `auto/build` 9376efb adds 177–180 (ranks I to IV at +6%, the nine rank V twists), played on a throwaway worktree. On 9376efb (which contains main): `npm run check` green, 570/570; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). Main itself was not run separately today.
 
 **The lag lab** (`npm run lab -- --crowd` on 9376efb, arena, 60 s a condition after 10 s warm-up, pages at 10 to 15 fps).
 
