@@ -264,6 +264,21 @@ function segmentHitsCapsule(
   return y >= e.y && y <= e.y + s.height ? t : Infinity;
 }
 
+/**
+ * Rune of Draining (the builds pass, Michael's A, 11 Nov): an orb loosed by a staff heavy gives its
+ * caster back `runes.drainShare` of the damage it dealt (a burst's over everything it caught, one
+ * heal), never past full and never to a downed hero. A blocked or shielded hit deals nothing back.
+ */
+function drainBack(state: SimState, pr: ProjectileState, dealt: number, x: number, y: number, z: number): void {
+  if (!pr.drains || dealt <= 0) return;
+  const hero = state.players.find((p) => p.id === pr.owner);
+  if (!hero || hero.mode === 'down') return;
+  const heal = Math.min(hero.maxHp - hero.hp, dealt * tuning.runes.drainShare);
+  if (heal <= 0) return;
+  hero.hp += heal;
+  state.events.push({ kind: 'runeDrain', playerId: hero.id, x, y: y + 1, z, amount: heal });
+}
+
 function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, dir: { x: number; z: number }): void {
   const len = Math.hypot(dir.x, dir.z) || 1;
   // Skewer payoff: a charged shot through melee-staggered enemies hits harder and doesn't stop.
@@ -298,7 +313,9 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   // Attunement (the Sorcerer's signature): the bolt's element reshapes the hit.
   const sorcerer = pr.kind === 'bolt' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner) : undefined;
   attuneHit(state, sorcerer, pr, e, hit);
+  const before = e.hp;
   damageEnemy(state, e, hit);
+  drainBack(state, pr, before - Math.max(0, e.hp), e.x, e.y, e.z);
   pr.hitIds.push(e.id);
   attuneAfter(state, sorcerer, pr, e);
   if (pr.kind === 'arrow' && pr.style === 'bow' && pr.owner[0] !== 'e') {
@@ -344,6 +361,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           payCombo(state, 'detonate', pr.owner, pr.x, pr.y + 1, pr.z);
         }
         if (pr.owner[0] !== 'e') smashCircle(state, props, pr.owner, pr.x, pr.y, pr.z, pr.radius);
+        let dealt = 0;
         for (const e of state.enemies) {
           if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.2) continue;
           const dx = e.x - pr.x;
@@ -351,6 +369,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           const d = Math.hypot(dx, dz);
           if (d > pr.radius + enemyStats(e.kind).radius) continue;
           if (marked) e.detonateUntil = -1;
+          const before = e.hp;
           damageEnemy(state, e, {
             projectile: true,
             attackerId: pr.owner,
@@ -368,7 +387,9 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
             combo: marked || undefined,
             area: true,
           });
+          dealt += before - Math.max(0, e.hp);
         }
+        drainBack(state, pr, dealt, pr.x, pr.y, pr.z);
       }
       continue;
     }

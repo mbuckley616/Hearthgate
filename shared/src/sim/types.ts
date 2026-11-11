@@ -366,6 +366,8 @@ export interface ProjectileState {
   hitIds: number[];
   /** The heroes a Druid's bolt has healed passing through them (Bloom), each once. */
   healedIds?: string[];
+  /** Rune of Draining: a staff heavy's orb, giving its caster back a share of what it deals. */
+  drains?: boolean;
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */
@@ -474,6 +476,8 @@ export type SimEvent =
   | { kind: 'land'; playerId: string; x: number; z: number; radius: number }
   /** Rune of the Whip: a sword heavy's fire whip, from the hero along `yaw` for `length` metres (stopped by a wall). */
   | { kind: 'whip'; playerId: string; x: number; z: number; yaw: number; length: number }
+  /** Rune of Draining: a heavy's orb gave its caster back `amount` health, drawn from (x, y, z). */
+  | { kind: 'runeDrain'; playerId: string; x: number; y: number; z: number; amount: number }
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }
   | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }

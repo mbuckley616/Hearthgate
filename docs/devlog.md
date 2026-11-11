@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 185, Rune of Draining
+
+**What changed**
+
+The third rune acts, and with it the staff has one. A staff-style weapon (the staff, the wand, the sceptre) with the Rune of Draining set marks every orb its heavies loose (`ProjectileState.drains`, optional, so the slice's projectiles never carry it): a bolt gives its caster back `runes.drainShare` (0.2, on the panel) of the damage it dealt, a burst the share of everything it caught as one heal, never past full health and never to a downed hero; a hit a shield turns deals nothing and so drains nothing. Light orbs never drain. A `runeDrain` event draws a crimson wisp where the orb struck and the caster's own glow (`FxView`). `runeDrain.test.ts`, 3 cases; check 594 green, parity identical, test:net green. Not yet seen in a browser. This is the A's "sockets and three runes": Blades, the Whip and Draining all act.
+
+**Learned**
+
+The heal is the server's alone: projectile hits are the host's call, and prediction restarts the hero's health from each snapshot, so nothing crosses the wire but the flag on the orb. Measuring what was dealt as health before and after `damageEnemy` takes in every bonus and shield on the way without a second copy of the damage rules.
+
+**Next**
+
+The Rune of Splitting (a staff light finisher's orb splits in three), a rune a session after that; the bow has no rune named yet, so a bow rune (or two) will need Michael's word on what it does.
+
 ## 2026-11-11: Session 184, Rune of the Whip
 
 **What changed**

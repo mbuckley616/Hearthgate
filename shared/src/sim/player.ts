@@ -236,6 +236,7 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     // Throwing knives (the builds pass) fall short.
     if (familyOf(p) === 'knives') for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].life *= tuning.families.knivesLifeMult;
   } else if (p.style === 'staff') {
+    const loosed = state.projectiles.length;
     const burst = p.attackHit === 2 || p.attackHit === 4;
     state.events.push({ kind: 'fire', playerId: p.id, projectile: burst ? 'burst' : 'bolt', heavy: hit.heavy });
     // The sceptre (the builds pass): its bursts reach wider.
@@ -255,6 +256,8 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
         spawnBolt(state, p, hit, 0, p.attackTarget, p.nextBoltCrit);
         p.nextBoltCrit = false;
     }
+    // Rune of Draining (the builds pass): every orb a heavy looses drains back what it deals.
+    if (p.attackCharge !== undefined && hasRune(p.mods, 'drain')) for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].drains = true;
   } else {
     state.events.push({ kind: 'swing', playerId: p.id, heavy: hit.heavy, x: p.x, z: p.z, yaw: p.yaw, range: hit.range, arcDeg: hit.arcDeg });
     runeWhip(state, p, hit, colliders);

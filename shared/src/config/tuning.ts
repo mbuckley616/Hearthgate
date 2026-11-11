@@ -1735,6 +1735,8 @@ export const tuning = {
     whipWidthM: 0.9,
     /** Its hit on each enemy past the swing's reach, as a share of the heavy's. */
     whipDamage: 0.6,
+    /** Rune of Draining: every staff heavy's orb gives its caster back this share of the damage it deals. */
+    drainShare: 0.2,
   },
 
   /**
@@ -2733,6 +2735,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'runes.whipRangeM': [1, 15, 0.5],
   'runes.whipWidthM': [0.2, 3, 0.1],
   'runes.whipDamage': [0, 2, 0.05],
+  'runes.drainShare': [0, 1, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

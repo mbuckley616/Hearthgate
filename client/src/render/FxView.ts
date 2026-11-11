@@ -135,6 +135,13 @@ export class FxView {
           // Ground decal for wide swings: the sweep's half circle and the spin's full ring.
           if (ev.arcDeg >= 180) this.arcDecal(ev.x, ev.z, ev.yaw, ev.range, ev.arcDeg, ev.heavy ? 0.32 : 0.16);
           break;
+        case 'runeDrain': {
+          // Rune of Draining: a crimson wisp where the orb struck, and the caster's own glow as it lands.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 1, 0), 10, new THREE.Color(0xc0304a));
+          const p = sim.players.find((o) => o.id === ev.playerId);
+          if (p) this.spawnSparks(new THREE.Vector3(p.x, p.y + 1.1, p.z), new THREE.Vector3(0, 1.2, 0), 12, new THREE.Color(0xff5a6e));
+          break;
+        }
         case 'whip': {
           // Rune of the Whip: a lash of fire along the line it reached, brightest at the tip.
           const y = sim.players.find((p) => p.id === ev.playerId)?.y ?? 0;
