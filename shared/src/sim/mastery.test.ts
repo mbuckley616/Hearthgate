@@ -6,7 +6,7 @@ import { damageEnemy, payCombo, type HitSpec } from './combat';
 import { addPlayer, applyLoadout, type Loadout } from './coop';
 import { createEnemy } from './enemies';
 import { emptyMods, xpForLevel } from './gear';
-import { COMBOS, COMBO_NAMES, masteryRank, readMastery } from './mastery';
+import { COMBOS, COMBO_NAMES, masteryPayoffMult, masteryRank, readMastery } from './mastery';
 import { emptyTalents } from './talents';
 import type { SimState } from './types';
 import { createSimState } from './world';
@@ -100,5 +100,149 @@ describe('combo mastery', () => {
     expect(s.players[0].mastery).toEqual({ uproot: 12 });
     applyLoadout(s.players[0], loadout('Ann'), false);
     expect(s.players[0].mastery).toBeUndefined();
+  });
+
+  it('ranks I to IV each add the panel’s step to the payoff; V adds no fifth', () => {
+    const s = party();
+    const p = s.players[0];
+    const m = tuning.mastery;
+    expect(masteryPayoffMult(p, 'shatter')).toBe(1);
+    p.mastery = { shatter: m.rank1, skewer: m.rank4, detonate: m.rank5 };
+    expect(masteryPayoffMult(p, 'shatter')).toBeCloseTo(1 + m.payoffPerRank);
+    expect(masteryPayoffMult(p, 'skewer')).toBeCloseTo(1 + 4 * m.payoffPerRank);
+    expect(masteryPayoffMult(p, 'detonate')).toBeCloseTo(1 + 4 * m.payoffPerRank);
+    expect(masteryPayoffMult(undefined, 'shatter')).toBe(1);
+    p.henchman = true;
+    expect(masteryPayoffMult(p, 'skewer')).toBe(1);
+    p.henchman = undefined;
+    tuning.mastery.enabled = false;
+    expect(masteryPayoffMult(p, 'skewer')).toBe(1);
+  });
+
+  it('a rank IV Shatter lands 24% harder than a first one, at the rank before it counts', () => {
+    const dealt = (count: number | undefined): number => {
+      const s = party();
+      if (count !== undefined) s.players[1].mastery = { shatter: count };
+      const e = createEnemy(s, world, 'grunt', 0, 0, 0);
+      e.x = 0;
+      e.z = 0;
+      e.y = 0;
+      e.ai = 'chase';
+      e.hp = e.maxHp = 1000;
+      e.poise = 1000;
+      s.enemies.push(e);
+      damageEnemy(s, e, hit('p1', 'bow', { slowTime: 1 }));
+      const before = e.hp;
+      damageEnemy(s, e, hit('p2', 'sword', { heavy: true }));
+      return before - e.hp;
+    };
+    const plain = dealt(undefined);
+    expect(dealt(tuning.mastery.rank4)).toBeCloseTo(plain * (1 + 4 * tuning.mastery.payoffPerRank));
+    // The payoff that reaches rank I is still paid at rank 0.
+    expect(dealt(tuning.mastery.rank1 - 1)).toBeCloseTo(plain);
+  });
+
+  it('rank V gives the sword’s specializations their twists; rank IV gives none', () => {
+    const v = tuning.mastery.rank5;
+    // The Rogue's resets Shadowstep.
+    let s = party();
+    let p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'rogue' };
+    p.cooldowns.sword[0] = 5;
+    p.mastery = { shatter: v - 1 };
+    payCombo(s, 'shatter', p.id, 0, 0, 0);
+    expect(p.cooldowns.sword[0]).toBe(5);
+    payCombo(s, 'shatter', p.id, 0, 0, 0);
+    expect(p.cooldowns.sword[0]).toBe(0);
+    // The Paladin's heals allies near them a little.
+    s = party();
+    p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'paladin' };
+    p.mastery = { uproot: v };
+    const ally = s.players[1];
+    ally.x = p.x + 1;
+    ally.z = p.z;
+    ally.hp = ally.maxHp / 2;
+    payCombo(s, 'uproot', p.id, 0, 0, 0);
+    expect(ally.hp).toBeCloseTo(ally.maxHp * (0.5 + tuning.mastery.paladinHeal));
+    expect(s.events.some((ev) => ev.kind === 'holyPulse')).toBe(true);
+    // The Spellblade's leaves its element's ground where the payoff landed, and it burns.
+    s = party();
+    p = s.players[0];
+    p.style = 'sword';
+    p.spec = { sword: 'spellblade' };
+    p.elements = { sword: 'frost' };
+    p.mastery = { shatter: v };
+    payCombo(s, 'shatter', p.id, 4, 1, 2);
+    expect(s.trails).toHaveLength(1);
+    const g = s.trails![0];
+    expect(g.element).toBe('frost');
+    expect((g.x0 + g.x1) / 2).toBeCloseTo(4);
+    expect((g.z0 + g.z1) / 2).toBeCloseTo(2);
+    expect(g.tickDamage).toBeGreaterThan(0);
+    // A henchman gets no twist.
+    p.henchman = true;
+    payCombo(s, 'shatter', p.id, 4, 1, 2);
+    expect(s.trails).toHaveLength(1);
+  });
+
+  it('rank V gives the bow’s specializations theirs: brambles, marks, a fresh Smoke Bomb', () => {
+    const v = tuning.mastery.rank5;
+    const at = (spec: 'ranger' | 'scout' | 'assassin'): SimState => {
+      const s = party();
+      const p = s.players[0];
+      p.style = 'bow';
+      p.spec = { bow: spec };
+      p.mastery = { skewer: v };
+      p.cooldowns.bow[1] = 4;
+      for (const [x, z] of [[5, 5], [7, 5], [20, 20]]) {
+        const e = createEnemy(s, world, 'grunt', x, 0, z);
+        e.x = x;
+        e.z = z;
+        e.y = 0;
+        e.ai = 'chase';
+      }
+      payCombo(s, 'skewer', p.id, 5, 1, 5);
+      return s;
+    };
+    const ranger = at('ranger');
+    expect(ranger.brambles).toHaveLength(1);
+    expect(ranger.brambles![0]).toMatchObject({ by: 'p1', x: 5, z: 5, radius: tuning.mastery.rangerBrambleRadius });
+    const scout = at('scout');
+    expect(scout.enemies.map((e) => e.scoutMark?.by)).toEqual(['p1', 'p1', undefined]);
+    const assassin = at('assassin');
+    expect(assassin.players[0].cooldowns.bow[1]).toBe(0);
+    expect(ranger.players[0].cooldowns.bow[1]).toBe(4);
+  });
+
+  it('rank V gives the staff’s specializations theirs: hexes, a grove, a fresh Elemental Step', () => {
+    const v = tuning.mastery.rank5;
+    const at = (spec: 'warlock' | 'druid' | 'sorcerer'): SimState => {
+      const s = party();
+      const p = s.players[0];
+      p.style = 'staff';
+      p.spec = { staff: spec };
+      p.mastery = { detonate: v };
+      p.cooldowns.staff[1] = 4;
+      for (const [x, z] of [[5, 5], [7, 5], [20, 20]]) {
+        const e = createEnemy(s, world, 'grunt', x, 0, z);
+        e.x = x;
+        e.z = z;
+        e.y = 0;
+        e.ai = 'chase';
+      }
+      payCombo(s, 'detonate', p.id, 5, 1, 5);
+      return s;
+    };
+    const warlock = at('warlock');
+    expect(warlock.enemies.map((e) => e.hex?.by)).toEqual(['p1', 'p1', undefined]);
+    const druid = at('druid');
+    expect(druid.groves).toHaveLength(1);
+    expect(druid.groves![0]).toMatchObject({ by: 'p1', x: druid.players[0].x, z: druid.players[0].z });
+    expect(druid.players[0].cooldowns.staff[1]).toBe(4);
+    const sorcerer = at('sorcerer');
+    expect(sorcerer.players[0].cooldowns.staff[1]).toBe(0);
   });
 });

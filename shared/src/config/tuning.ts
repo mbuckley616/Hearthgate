@@ -1722,6 +1722,24 @@ export const tuning = {
     rank3: 75,
     rank4: 150,
     rank5: 300,
+    /**
+     * What a rank gives (Michael's A, 10 Nov): each of ranks I to IV adds this much to that combo's
+     * payoff (its bonus damage, its splash; Wildfire's spread reach), so rank IV is +24%. Rank V adds
+     * a specialization's twist instead of a fifth step.
+     */
+    payoffPerRank: 0.06,
+    /** Rank V, the Paladin's twist: a payoff heals every ally within `specs.bulwarkRadius` by this much of their health. */
+    paladinHeal: 0.05,
+    /** Rank V, the Spellblade's twist: a payoff leaves a patch of their element's ground this wide, burning as Blazing Charge's trail does. */
+    spellbladeGroundWidth: 3,
+    /** Seconds the Spellblade's patch lasts. */
+    spellbladeGroundSeconds: 3,
+    /** Rank V, the Ranger's twist: a payoff seeds a bramble patch this wide where it landed (their one patch, as Bramble Rain's). */
+    rangerBrambleRadius: 2.5,
+    /** Rank V, the Scout's twist: a payoff marks every enemy within this many metres of it. */
+    scoutMarkRadius: 4,
+    /** Rank V, the Warlock's twist: a payoff hexes every enemy within this many metres of it. */
+    warlockHexRadius: 4,
   },
 
   /**
@@ -2676,6 +2694,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank3': [1, 600, 1],
   'mastery.rank4': [1, 1000, 1],
   'mastery.rank5': [1, 2000, 1],
+  'mastery.payoffPerRank': [0, 0.25, 0.01],
+  'mastery.paladinHeal': [0, 0.25, 0.01],
+  'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],
+  'mastery.spellbladeGroundSeconds': [0, 10, 0.5],
+  'mastery.rangerBrambleRadius': [0, 6, 0.25],
+  'mastery.scoutMarkRadius': [0, 12, 0.5],
+  'mastery.warlockHexRadius': [0, 12, 0.5],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

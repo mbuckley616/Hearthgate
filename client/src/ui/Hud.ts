@@ -1,4 +1,4 @@
-import { COMBO_NAMES as COMBO_WORDS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
+import { COMBO_NAMES as COMBO_WORDS, MASTERY_PAYOFF_RANKS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
@@ -13,7 +13,8 @@ const TOAST_MS = 4200;
 /** What the next rank asks for, or that this was the last. */
 function masteryNext(combo: Combo, rank: number): string {
   const next = masteryThresholds()[rank];
-  return next === undefined ? 'The highest rank' : `${next} ${COMBO_WORDS[combo]} payoffs for rank ${ROMAN[rank]}`;
+  const bonus = rank <= MASTERY_PAYOFF_RANKS ? `+${Math.round(rank * tuning.mastery.payoffPerRank * 100)}% to its payoff. ` : '';
+  return next === undefined ? `${bonus}Your specialization now gives every payoff its twist` : `${bonus}${next} ${COMBO_WORDS[combo]} payoffs for rank ${ROMAN[rank]}`;
 }
 
 

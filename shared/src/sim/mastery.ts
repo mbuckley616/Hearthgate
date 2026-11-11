@@ -30,6 +30,29 @@ export function masteryRank(count: number | undefined): number {
   return rank;
 }
 
+/** Ranks whose payoff step counts: I to IV; V gives its specialization's twist instead. */
+export const MASTERY_PAYOFF_RANKS = 4;
+
+/**
+ * What a payer's mastery of a combo adds to its payoff, as a multiplier (Michael's A, 10 Nov):
+ * `mastery.payoffPerRank` for each of ranks I to IV, from the count before this payoff is counted.
+ * 1 for a henchman, an enemy's shot, or with mastery off (the parity test).
+ */
+export function masteryPayoffMult(p: PlayerState | undefined, combo: Combo): number {
+  if (!tuning.mastery.enabled || !p || p.henchman) return 1;
+  return 1 + masteryBonus(p.mastery?.[combo]);
+}
+
+/** Whether this payer has rank V in this combo before this payoff counts: its specialization's twist rides the payoff. */
+export function masteryTwists(p: PlayerState | undefined, combo: Combo): boolean {
+  return tuning.mastery.enabled && !!p && !p.henchman && masteryRank(p.mastery?.[combo]) >= 5;
+}
+
+/** The payoff bonus a count has earned, as a fraction (0.12 at rank II), for the payoff and the Talents tab alike. */
+export function masteryBonus(count: number | undefined): number {
+  return Math.min(MASTERY_PAYOFF_RANKS, masteryRank(count)) * tuning.mastery.payoffPerRank;
+}
+
 /**
  * A payoff the server decided counts toward its payer's mastery of that combo, and a rank reached
  * says so. Henchmen keep none: mastery is a player's. Off in the parity test (the slice counts nothing).

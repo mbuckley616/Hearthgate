@@ -2,6 +2,62 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-10: Session 180, Mastery rank V: the staff's twists (combo mastery built)
+
+**What changed**
+
+The staff's three get their rank V twists from their kits: a Warlock's payoff hexes every enemy within `mastery.warlockHexRadius` (4 m, on the panel) of it, with their own hex's length and nodes; a Druid's grows a Wild Growth grove at their feet (their one grove, as a Blink's is); a Sorcerer's resets Elemental Step (the Blink's cooldown). All nine specializations now have a twist, so Michael's A on what a rank gives is built: +6% a rank to I to IV, a twist at V. A case added to `mastery.test.ts` (10 now); check 570 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+Three of the nine twists are cooldown resets (Rogue, Assassin, Sorcerer: each style's mobility move), which keeps them felt without new state; the other six reuse grounds and marks the specializations already lay, so nothing new crosses the wire. Rank V takes 300 payoffs of one combo, so no play yet will have seen one: the panel's `mastery.rank5` (and `rank1`–`rank4`) is how to try them.
+
+**Next**
+
+Nothing is left for the builder in the current section: the builds pass's next part (runes in weapon sockets, the rest of the list) and E1i wait on Michael. A playtest of the ranks with `mastery.rank5` lowered on the panel would show whether +6% a rank is felt.
+
+## 2026-11-10: Session 179, Mastery rank V: the bow's twists
+
+**What changed**
+
+The bow's three specializations get their rank V twists, each taken from its own kit since Michael's A named only the sword's: a Ranger's payoff seeds a bramble patch `mastery.rangerBrambleRadius` (2.5 m) across where it landed (their one patch, replacing a Bramble Rain's as a new Rain does); a Scout's marks every enemy within `mastery.scoutMarkRadius` (4 m) of it with the Scout's own mark; an Assassin's resets Smoke Bomb's cooldown, as the Rogue's resets Shadowstep. Both numbers on the panel. A case added to `mastery.test.ts`; check 569 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+`createEnemy` already puts the enemy in the state; the first draft of the test pushed each one twice. A Skewer is always a bow payoff, so these three are the twists a bow player meets first.
+
+**Next**
+
+The staff's three (Warlock, Druid, Sorcerer), which finishes Michael's A on combo mastery.
+
+## 2026-11-10: Session 178, Mastery rank V: the sword's twists
+
+**What changed**
+
+A player at rank V in a combo now gets their specialization's twist on each payoff of it, by the specialization of the style they hold (Michael's A). The sword's three: a Paladin's payoff heals every ally within `specs.bulwarkRadius` (4 m) by `mastery.paladinHeal` (5%) of their health, with Bulwark's pulse for its light and sound; a Spellblade's leaves a square patch of their element's ground where it landed (`mastery.spellbladeGroundWidth` 3 m, `spellbladeGroundSeconds` 3 s), burning as Blazing Charge's trail does; a Rogue's resets Shadowstep's cooldown. `masteryTwist` in `sim/specs.ts`, fired from `payCombo` at the rank before the payoff counts (`masteryTwists` in `mastery.ts`). Henchmen get none; off with `mastery.enabled` in the parity test. `TrailView` draws eight strips instead of four so a patch sits beside a Charge's trail. The rank V toast says the twist is on. A case added to `mastery.test.ts`; check 568 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+The twist follows the held style's specialization, so Shatter (always a melee finisher) only ever twists for the sword's three, Skewer for the bow's and Detonate for the staff's; Uproot and Wildfire can twist for any. The trail store took a patch with no new state: a strip as long as it is wide, with a seq no Charge has, so Blazing Charge never stretches it.
+
+**Next**
+
+Rank V's twists for the bow's three (Ranger, Scout, Assassin), then the staff's three, a style a session. The design doc names none of them; the builder will keep each to its specialization's existing kit, as the sword's were.
+
+## 2026-11-10: Session 177, Combo mastery ranks I to IV (Michael's A on what a rank gives)
+
+**What changed**
+
+A combo's mastery rank now shows in its payoff: ranks I to IV each add `mastery.payoffPerRank` (6%, on the panel), so rank IV pays 24% more. Shatter's finisher and its splash, a Skewer shot, a Detonate burst and an Uproot hit all scale by the payer's rank in that combo (`masteryPayoffMult` in `sim/mastery.ts`); Wildfire, whose payoff is the spread rather than damage, reaches 6% further a rank. The rank is read before the payoff counts, so the payoff that reaches rank I is still paid at rank 0. Rank V adds no fifth step; it waits for its specialization twist. Henchmen and enemies get nothing; off with `mastery.enabled` (the parity test). The Talents tab shows the bonus beside each rank (Shatter II +12%), and the rank toast says what the new rank gives. Two cases added to `mastery.test.ts`; check 567 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Every payoff already had one place its bonus was applied, so the rank multiplies there; the shatter splash had to read the rank before `payCombo` counted it, or the burst would pay one rank ahead of the finisher on the payoff that crosses a threshold.
+
+**Next**
+
+Rank V's twists, one style's three specializations a session (Michael's A: the Paladin's heals the party a little, the Spellblade's leaves its element's ground, the Rogue's resets Shadowstep, and so on).
+
 ## 2026-11-10: Session 176, Combo mastery on the Talents tab
 
 **What changed**
