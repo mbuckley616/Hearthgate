@@ -1,4 +1,5 @@
 import { tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { activeRunes, socketCount, type RuneKind } from './runes';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
 /**
@@ -196,6 +197,38 @@ export interface GearItem {
   bonus: { kind: StatKind; value: number } | null;
   /** A rare carried over from the slice's loot keeps its name (Emberbrand, Warden's Plate). */
   name?: string;
+  /** Runes set in a weapon's sockets (the builds pass), in socket order; absent when none. */
+  runes?: RuneKind[];
+}
+
+/** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
+export function socketsOf(item: GearItem): number {
+  const e = entryOf(item);
+  return socketCount(e.slot, item.rarity, e.tier);
+}
+
+/**
+ * The item with `rune` set in socket `at` (replacing what was there), or null when it has no such
+ * socket or already holds that rune elsewhere. The rune taken out, if any, is the caller's to keep.
+ */
+export function socketRune(item: GearItem, rune: RuneKind, at: number): GearItem | null {
+  if (!Number.isInteger(at) || at < 0 || at >= socketsOf(item)) return null;
+  const runes = [...(item.runes ?? [])];
+  if (runes.some((r, n) => r === rune && n !== at)) return null;
+  if (at > runes.length) return null;
+  runes[at] = rune;
+  return { ...item, runes };
+}
+
+/** The item with socket `at` emptied (later runes move up a socket), and the rune that came out. */
+export function unsocketRune(item: GearItem, at: number): { item: GearItem; rune: RuneKind | null } {
+  const runes = [...(item.runes ?? [])];
+  const rune = runes[at] ?? null;
+  if (!rune) return { item, rune: null };
+  runes.splice(at, 1);
+  const out: GearItem = { ...item, runes };
+  if (runes.length === 0) delete out.runes;
+  return { item: out, rune };
 }
 
 export function isGearItem(item: Item | GearItem): item is GearItem {
@@ -288,6 +321,9 @@ export function wornMods(worn: Worn): Mods {
   const off = worn.shield ? entryOf(worn.shield) : null;
   if (weapon && !twoHanded && off?.shape.offhand && off.kind === weapon.kind) m.offhand = off.shape.offhand;
   if (weapon?.shape.family) m.family = weapon.shape.family;
+  // Runes (the builds pass): only the worn weapon's, as many as its sockets, those of its style.
+  const runes = worn.weapon ? activeRunes(worn.weapon.runes, socketsOf(worn.weapon), style) : [];
+  if (runes.length > 0) m.runes = runes;
   const ammo = worn.ammo ? entryOf(worn.ammo) : null;
   if (ammo && style === 'bow') m.ammo = ammo.material.id as AmmoKind;
   // Only set when worn: a hero in the slice's gear (or none) never carries the field.

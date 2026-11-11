@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-11: Session 181, Runes: weapon sockets and the path to the fight (Michael's A)
+
+**What changed**
+
+Michael's A on what follows combo mastery, its first part: weapons now have sockets and runes have somewhere to go. `sim/runes.ts` names the design doc's four (Rune of Blades and of the Whip for the sword, of Draining and of Splitting for the staff), each with the style it works in and whether it changes the light finisher or every heavy. A rare weapon has `runes.rareSockets` (2) sockets, a common one of tier `runes.commonSocketTier` (3, steel and its kin) or better has one, below that none, and nothing but a weapon has any (both on the panel, never past two). A `GearItem` carries the runes set in it (`runes`, socket order); `socketRune` and `unsocketRune` set one and take one out, filling in order. `wornMods` passes the worn weapon's acting runes (its style's, as many as its sockets) to the fight as `Mods.runes`, absent when none, so the slice's Mods are untouched. The server's `readLoadout` takes known runes, two at most, each once (and of the family's style where there is a family); `readGearItem` keeps a dropped or sold weapon's runes only if its sockets hold them; the browser's save trims a weapon's runes to its sockets on load. The hero screen's item line lists a weapon's sockets ("2 sockets: Rune of Blades, empty"). `runes.test.ts`, 10 cases; check 580 green, parity identical, test:net green. Nothing finds or sets a rune yet, and no rune does anything yet.
+
+**Learned**
+
+There are only two rarities, so "0 to 2 by rarity" needed the tier for a common's: a bronze sword with a socket would make every starter weapon a rune holder from the first minute, which takes the find out of finding a steel one. A rune of the wrong style rides along idle rather than being refused, as an off-hand of the wrong kind does, so swapping weapons never strips a save.
+
+**Next**
+
+The rune pouch in the save, runes found (a rare drop from fight rooms and the Warden's special drops), and setting and taking them out on the hero screen by key and pad. Then the three runes' effects, one a session: Blades (the sword's finisher looses spectral blades), the Whip (every sword heavy lashes a fire whip), Draining (a staff heavy's orb drains health back); Splitting after.
+
 ## 2026-11-10: Session 180, Mastery rank V: the staff's twists (combo mastery built)
 
 **What changed**

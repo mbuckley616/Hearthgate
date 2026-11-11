@@ -1,7 +1,7 @@
 import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
-import { BAG_SIZE, BODY_SLOTS, CATALOGUE, type GearItem } from '../sim/catalogue';
+import { BAG_SIZE, BODY_SLOTS, CATALOGUE, socketsOf, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { readMastery } from '../sim/mastery';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
@@ -11,6 +11,7 @@ import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
 import { readPortalChoice } from '../game/portalChoice';
 import { CHEATS, type Cheat, type SeqCommand, type ToHost } from './protocol';
+import { MAX_SOCKETS, RUNES, isRuneKind } from '../sim/runes';
 
 /**
  * The server's checks on what a player sends. In the slice the host trusted its friends' browsers;
@@ -119,6 +120,15 @@ export function readLoadout(v: unknown): Loadout | null {
   if (m.ammo !== undefined) {
     if (m.ammo !== 'frost' && m.ammo !== 'barbed') return null;
     mods.ammo = m.ammo;
+  }
+  // Runes (the builds pass): known kinds, each once, no more than a weapon's sockets, of the
+  // style the weapon in hand fights with (its family's, or the sword with none).
+  if (m.runes !== undefined) {
+    if (!Array.isArray(m.runes) || m.runes.length === 0 || m.runes.length > MAX_SOCKETS) return null;
+    if (!m.runes.every(isRuneKind) || new Set(m.runes).size !== m.runes.length) return null;
+    const style = mods.family ? FAMILY_STYLE[mods.family] : null;
+    if (style && !m.runes.every((r) => RUNES[r].style === style)) return null;
+    mods.runes = [...m.runes];
   }
   // Worn armour (T5b): a share of damage taken, never more than the most the catalogue allows.
   if (m.armour !== undefined) {
@@ -237,6 +247,11 @@ export function readGearItem(v: unknown): GearItem | null {
   if (v.name !== undefined) {
     if (typeof v.name !== 'string' || v.name.length > 40) return null;
     item.name = v.name;
+  }
+  if (v.runes !== undefined) {
+    const r = v.runes;
+    if (!Array.isArray(r) || r.length === 0 || r.length > socketsOf(item) || !r.every(isRuneKind) || new Set(r).size !== r.length) return null;
+    item.runes = [...r];
   }
   return item;
 }

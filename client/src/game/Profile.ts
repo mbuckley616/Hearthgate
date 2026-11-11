@@ -1,4 +1,5 @@
 import { readMastery, type ComboMastery } from '@hearthgate/shared/sim/mastery';
+import { isRuneKind } from '@hearthgate/shared/sim/runes';
 import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import {
   BAG_SIZE,
@@ -8,6 +9,7 @@ import {
   fromSliceItem,
   isGearItem,
   starterGear,
+  socketsOf,
   lookOf,
   wornMods,
   wornStyle,
@@ -211,7 +213,16 @@ export class Profile {
       }
       const parsed = JSON.parse(raw) as ProfileData;
       if (parsed.version !== 2) return fresh();
-      const known = (i: GearItem | null | undefined) => (i && CATALOGUE.has(i.id) ? i : null);
+      // A weapon keeps only the runes its sockets can hold (the builds pass), so an old or edited save
+      // never sends a loadout the server would refuse.
+      const known = (i: GearItem | null | undefined) => {
+        if (!i || !CATALOGUE.has(i.id)) return null;
+        if (i.runes === undefined) return i;
+        const runes = i.runes.filter((r, n) => isRuneKind(r) && i.runes!.indexOf(r) === n).slice(0, socketsOf(i));
+        const kept: GearItem = { ...i, runes };
+        if (runes.length === 0) delete kept.runes;
+        return kept;
+      };
       const bag = emptyBag();
       (parsed.bag ?? []).slice(0, BAG_SIZE).forEach((i, n) => (bag[n] = known(i)));
       const worn: Worn = {};

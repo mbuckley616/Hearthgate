@@ -1,6 +1,7 @@
 import { ABILITY_NAMES, OFFHAND_ABILITY, tuning } from '@hearthgate/shared/config/tuning';
-import { armourOf, entryOf, isGearItem, itemName, type GearItem } from '@hearthgate/shared/sim/catalogue';
+import { armourOf, entryOf, isGearItem, itemName, socketsOf, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import { PERK_TEXT, statText, type Item } from '@hearthgate/shared/sim/gear';
+import { RUNES } from '@hearthgate/shared/sim/runes';
 
 const KIND_WORDS = { melee: 'Melee', ranged: 'Ranged', magic: 'Magic', none: '' } as const;
 const STYLE_WORDS = { sword: 'a sword', bow: 'a bow', staff: 'a staff' } as const;
@@ -32,5 +33,11 @@ export function gearLine(item: Item | GearItem): string {
   if (e.slot === 'cape') parts.push(`-${Math.round(e.tier * tuning.gear.capeDodgePerTier * 100)}% dodge recharge`);
   if (item.bonus) parts.push(statText(item.bonus, e.shape.style ?? 'body'));
   if (item.perk) parts.push(PERK_TEXT[item.perk]);
+  // Runes (the builds pass): each socket, what is set in it or that it is empty.
+  const sockets = socketsOf(item);
+  if (sockets > 0) {
+    const set = Array.from({ length: sockets }, (_, n) => (item.runes?.[n] ? RUNES[item.runes[n]].name : 'empty'));
+    parts.push(`${sockets === 1 ? '1 socket' : `${sockets} sockets`}: ${set.join(', ')}`);
+  }
   return parts.join(' · ');
 }

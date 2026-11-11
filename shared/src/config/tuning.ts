@@ -1711,6 +1711,17 @@ export const tuning = {
   },
 
   /**
+   * Runes in weapon sockets (the builds pass, Michael's A, 11 Nov): sockets by rarity, a rune set in
+   * one changes the light finisher or every heavy (`sim/runes.ts`).
+   */
+  runes: {
+    /** Sockets on a rare weapon. */
+    rareSockets: 2,
+    /** A common weapon of this tier or better has one socket; below it, none. */
+    commonSocketTier: 3,
+  },
+
+  /**
    * Combo mastery (the builds pass, Michael's A on Soaked, 10 Nov): every payoff a player lands counts
    * toward that combo's rank, I to V, at these many payoffs. Counted by the server, kept in the
    * browser's save. Off in the parity test: the slice counts nothing.
@@ -2694,6 +2705,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank3': [1, 600, 1],
   'mastery.rank4': [1, 1000, 1],
   'mastery.rank5': [1, 2000, 1],
+  'runes.rareSockets': [0, 2, 1],
+  'runes.commonSocketTier': [1, 6, 1],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],
