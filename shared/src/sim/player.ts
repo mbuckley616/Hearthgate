@@ -5,7 +5,9 @@ import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
-import { spawnArrow, spawnBolt, spawnBurst } from './projectiles';
+import { spawnArrow, spawnBolt, spawnBurst, spawnRuneBlades } from './projectiles';
+import { hasRune } from './runes';
+import { runeWhip } from './runeWhip';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
 import { drinkPotion, smashArc } from './smash';
 import type { PropInfo } from '../level/floor';
@@ -234,6 +236,7 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     // Throwing knives (the builds pass) fall short.
     if (familyOf(p) === 'knives') for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].life *= tuning.families.knivesLifeMult;
   } else if (p.style === 'staff') {
+    const loosed = state.projectiles.length;
     const burst = p.attackHit === 2 || p.attackHit === 4;
     state.events.push({ kind: 'fire', playerId: p.id, projectile: burst ? 'burst' : 'bolt', heavy: hit.heavy });
     // The sceptre (the builds pass): its bursts reach wider.
@@ -253,9 +256,27 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
         spawnBolt(state, p, hit, 0, p.attackTarget, p.nextBoltCrit);
         p.nextBoltCrit = false;
     }
+    // Rune of Draining (the builds pass): every orb a heavy looses drains back what it deals.
+    if (p.attackCharge !== undefined && hasRune(p.mods, 'drain')) for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].drains = true;
+    // Rune of Splitting: the light finisher's orb breaks into bolts where it is spent.
+    if (hasRune(p.mods, 'split') && isLightFinisher(p)) for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].splits = true;
   } else {
     state.events.push({ kind: 'swing', playerId: p.id, heavy: hit.heavy, x: p.x, z: p.z, yaw: p.yaw, range: hit.range, arcDeg: hit.arcDeg });
+    runeWhip(state, p, hit, colliders);
   }
+}
+
+/** Steps in this hero's light chain: their level's, no longer than their family's. */
+function chainLength(p: PlayerState): number {
+  const fam = familyOf(p);
+  return Math.min(chainLengthFor(levelFor(p.xp[p.style])), fam ? FAMILY_ANIM[fam].length : 5);
+}
+
+/** The swing is the light chain's last step, tapped: its finisher (a heavy or a charged step is not). */
+export function isLightFinisher(p: PlayerState): boolean {
+  if (p.mode !== 'attack' || p.attackCharge !== undefined) return false;
+  const step = tuning.combo.heavies && p.attackString ? p.attackString.length - 1 : (p.attackStep ?? p.attackHit);
+  return step === chainLength(p) - 1;
 }
 
 /**
@@ -273,6 +294,11 @@ function swordHits(p: PlayerState, state: SimState, props?: readonly PropInfo[])
   // The slam lands a step ahead; swings are centred on the knight.
   const cx = p.x + (isSlam ? fx : 0);
   const cz = p.z + (isSlam ? fz : 0);
+  // Rune of Blades (the builds pass): the light finisher looses its blades once, as its hit opens.
+  if (!p.attackHitIds.includes(-2) && hasRune(p.mods, 'blades') && isLightFinisher(p)) {
+    p.attackHitIds.push(-2);
+    spawnRuneBlades(state, p, hit);
+  }
   if (isSlam && !p.attackHitIds.includes(-1)) {
     p.attackHitIds.push(-1);
     state.events.push({ kind: 'land', playerId: p.id, x: cx, z: cz, radius: hit.range });
@@ -678,8 +704,7 @@ export function stepPlayer(
       p.mode = 'move';
     } else if (p.attackQueued && p.attackTime >= chainOpen) {
       // Chains are 3 hits until levels unlock steps 4 and 5.
-      const fam = familyOf(p);
-      const length = Math.min(chainLengthFor(levelFor(p.xp[p.style])), fam ? FAMILY_ANIM[fam].length : 5);
+      const length = chainLength(p);
       if (tuning.combo.heavies) {
         // The next light is the step after the string so far; a string as long as the chain starts again.
         const s = p.attackString ?? '';

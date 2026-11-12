@@ -1711,6 +1711,40 @@ export const tuning = {
   },
 
   /**
+   * Runes in weapon sockets (the builds pass, Michael's A, 11 Nov): sockets by rarity, a rune set in
+   * one changes the light finisher or every heavy (`sim/runes.ts`).
+   */
+  runes: {
+    /** Sockets on a rare weapon. */
+    rareSockets: 2,
+    /** A common weapon of this tier or better has one socket; below it, none. */
+    commonSocketTier: 3,
+    /** A rare weapon dropped with one of its style's runes already set: the way runes are found until crafting. */
+    foundChance: 0.35,
+    /** Rune of Blades: spectral blades a sword's light finisher looses ahead, fanned this many degrees apart. */
+    blades: 2,
+    bladesSpreadDeg: 6,
+    /** Each blade's hit, as a share of the finisher's. */
+    bladesDamage: 0.5,
+    bladesSpeed: 16,
+    bladesRangeM: 8,
+    /** Enemies each blade passes through before it is spent. */
+    bladesPierce: 3,
+    /** Rune of the Whip: every sword heavy lashes a fire whip this far ahead, this wide. */
+    whipRangeM: 8,
+    whipWidthM: 0.9,
+    /** Its hit on each enemy past the swing's reach, as a share of the heavy's. */
+    whipDamage: 0.6,
+    /** Rune of Draining: every staff heavy's orb gives its caster back this share of the damage it deals. */
+    drainShare: 0.2,
+    /** Rune of Splitting: a staff light finisher's orb breaks into this many bolts where it lands, fanned this wide. */
+    splitBolts: 3,
+    splitSpreadDeg: 50,
+    /** Each bolt's hit, as a share of the orb's. */
+    splitDamage: 0.35,
+  },
+
+  /**
    * Combo mastery (the builds pass, Michael's A on Soaked, 10 Nov): every payoff a player lands counts
    * toward that combo's rank, I to V, at these many payoffs. Counted by the server, kept in the
    * browser's save. Off in the parity test: the slice counts nothing.
@@ -2694,6 +2728,22 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rank3': [1, 600, 1],
   'mastery.rank4': [1, 1000, 1],
   'mastery.rank5': [1, 2000, 1],
+  'runes.rareSockets': [0, 2, 1],
+  'runes.commonSocketTier': [1, 6, 1],
+  'runes.foundChance': [0, 1, 0.05],
+  'runes.blades': [1, 5, 1],
+  'runes.bladesSpreadDeg': [0, 60, 1],
+  'runes.bladesDamage': [0, 2, 0.05],
+  'runes.bladesSpeed': [4, 40, 1],
+  'runes.bladesRangeM': [2, 20, 0.5],
+  'runes.bladesPierce': [1, 10, 1],
+  'runes.whipRangeM': [1, 15, 0.5],
+  'runes.whipWidthM': [0.2, 3, 0.1],
+  'runes.whipDamage': [0, 2, 0.05],
+  'runes.drainShare': [0, 1, 0.05],
+  'runes.splitBolts': [1, 7, 1],
+  'runes.splitSpreadDeg': [0, 180, 5],
+  'runes.splitDamage': [0, 1.5, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

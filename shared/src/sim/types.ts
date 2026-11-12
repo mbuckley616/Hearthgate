@@ -337,7 +337,7 @@ export interface EnemyState {
 /** Arrows, magic bolts and bursts. Bursts sit still and expand. */
 export interface ProjectileState {
   id: number;
-  kind: 'arrow' | 'bolt' | 'burst';
+  kind: 'arrow' | 'bolt' | 'burst' | 'blade';
   owner: string;
   x: number;
   y: number;
@@ -366,6 +366,10 @@ export interface ProjectileState {
   hitIds: number[];
   /** The heroes a Druid's bolt has healed passing through them (Bloom), each once. */
   healedIds?: string[];
+  /** Rune of Draining: a staff heavy's orb, giving its caster back a share of what it deals. */
+  drains?: boolean;
+  /** Rune of Splitting: a staff light finisher's orb, which breaks into smaller bolts where it lands. */
+  splits?: boolean;
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */
@@ -470,8 +474,12 @@ export type SimEvent =
   | { kind: 'tileFell'; x: number; z: number; caught: number; put: string[] }
   | { kind: 'block'; playerId: string; x: number; y: number; z: number; broke: boolean }
   | { kind: 'swing'; playerId: string; heavy: boolean; x: number; z: number; yaw: number; range: number; arcDeg: number }
-  | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst'; heavy: boolean }
+  | { kind: 'fire'; playerId: string; projectile: 'arrow' | 'bolt' | 'burst' | 'blade'; heavy: boolean }
   | { kind: 'land'; playerId: string; x: number; z: number; radius: number }
+  /** Rune of the Whip: a sword heavy's fire whip, from the hero along `yaw` for `length` metres (stopped by a wall). */
+  | { kind: 'whip'; playerId: string; x: number; z: number; yaw: number; length: number }
+  /** Rune of Draining: a heavy's orb gave its caster back `amount` health, drawn from (x, y, z). */
+  | { kind: 'runeDrain'; playerId: string; x: number; y: number; z: number; amount: number }
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }
   | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }

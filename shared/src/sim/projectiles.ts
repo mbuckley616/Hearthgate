@@ -159,6 +159,36 @@ export function spawnBolt(state: SimState, p: PlayerState, payload: Payload, yaw
 }
 
 /**
+ * Rune of Blades (the builds pass): a sword's light finisher looses `runes.blades` spectral blades,
+ * fanned `runes.bladesSpreadDeg` apart about the hero's facing, flying level and straight for
+ * `runes.bladesRangeM`, each through `runes.bladesPierce` enemies for `runes.bladesDamage` of the
+ * finisher's hit. Sword damage, so the style's talents and the mismatch rule hold.
+ */
+export function spawnRuneBlades(state: SimState, p: PlayerState, payload: Payload): void {
+  const r = tuning.runes;
+  const n = Math.max(1, Math.round(r.blades));
+  const spread = r.bladesSpreadDeg * (Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    const yaw = p.yaw + (n > 1 ? (i / (n - 1) - 0.5) * spread * (n - 1) : 0);
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    spawn(state, p, { damage: payload.damage * r.bladesDamage, poise: payload.poise * r.bladesDamage, knockback: 0, heavy: false }, {
+      kind: 'blade',
+      x: p.x + fx * 0.6,
+      y: p.y + 1.0,
+      z: p.z + fz * 0.6,
+      vx: fx * r.bladesSpeed,
+      vy: 0,
+      vz: fz * r.bladesSpeed,
+      life: r.bladesRangeM / Math.max(1, r.bladesSpeed),
+      pierce: Math.max(1, Math.round(r.bladesPierce)),
+      style: 'sword',
+    });
+  }
+  state.events.push({ kind: 'fire', playerId: p.id, projectile: 'blade', heavy: false });
+}
+
+/**
  * Vertical aim toward the soft target's chest, so shots reach archers on the
  * ledge (or heroes on it can shoot down). Level when there's no target, or
  * through the reticle with free aim (D12).
@@ -234,6 +264,57 @@ function segmentHitsCapsule(
   return y >= e.y && y <= e.y + s.height ? t : Infinity;
 }
 
+/**
+ * Rune of Splitting (the builds pass, Michael's A, 11 Nov): an orb a staff light finisher loosed
+ * breaks where it is spent (a burst as it lands, a bolt at the first enemy it strikes) into
+ * `runes.splitBolts` bolts fanned `runes.splitSpreadDeg` across the way it was going, each for
+ * `runes.splitDamage` of its hit. They start just past the point and do not split again.
+ */
+function splitOrb(state: SimState, pr: ProjectileState, x: number, y: number, z: number, yaw: number): void {
+  if (!pr.splits) return;
+  pr.splits = false;
+  const owner = state.players.find((p) => p.id === pr.owner);
+  if (!owner) return;
+  const r = tuning.runes;
+  const m = tuning.magicCombo;
+  const n = Math.max(1, Math.round(r.splitBolts));
+  const spread = r.splitSpreadDeg * (Math.PI / 180);
+  for (let i = 0; i < n; i++) {
+    const a = yaw + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
+    const fx = Math.sin(a);
+    const fz = Math.cos(a);
+    spawn(state, owner, { damage: pr.damage * r.splitDamage, poise: pr.poise * r.splitDamage, knockback: 0, heavy: false }, {
+      kind: 'bolt',
+      x: x + fx * 0.6,
+      y,
+      z: z + fz * 0.6,
+      vx: fx * m.boltSpeed,
+      vy: 0,
+      vz: fz * m.boltSpeed,
+      life: (m.boltLifeMs / 1000) * 0.5,
+      style: pr.style,
+      // The enemy the orb struck is not hit again by its own pieces.
+      hitIds: [...pr.hitIds],
+    });
+  }
+  state.events.push({ kind: 'fire', playerId: owner.id, projectile: 'bolt', heavy: false });
+}
+
+/**
+ * Rune of Draining (the builds pass, Michael's A, 11 Nov): an orb loosed by a staff heavy gives its
+ * caster back `runes.drainShare` of the damage it dealt (a burst's over everything it caught, one
+ * heal), never past full and never to a downed hero. A blocked or shielded hit deals nothing back.
+ */
+function drainBack(state: SimState, pr: ProjectileState, dealt: number, x: number, y: number, z: number): void {
+  if (!pr.drains || dealt <= 0) return;
+  const hero = state.players.find((p) => p.id === pr.owner);
+  if (!hero || hero.mode === 'down') return;
+  const heal = Math.min(hero.maxHp - hero.hp, dealt * tuning.runes.drainShare);
+  if (heal <= 0) return;
+  hero.hp += heal;
+  state.events.push({ kind: 'runeDrain', playerId: hero.id, x, y: y + 1, z, amount: heal });
+}
+
 function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, dir: { x: number; z: number }): void {
   const len = Math.hypot(dir.x, dir.z) || 1;
   // Skewer payoff: a charged shot through melee-staggered enemies hits harder and doesn't stop.
@@ -268,8 +349,11 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   // Attunement (the Sorcerer's signature): the bolt's element reshapes the hit.
   const sorcerer = pr.kind === 'bolt' && pr.owner[0] !== 'e' ? state.players.find((p) => p.id === pr.owner) : undefined;
   attuneHit(state, sorcerer, pr, e, hit);
+  const before = e.hp;
   damageEnemy(state, e, hit);
+  drainBack(state, pr, before - Math.max(0, e.hp), e.x, e.y, e.z);
   pr.hitIds.push(e.id);
+  splitOrb(state, pr, pr.x, pr.y, pr.z, Math.atan2(dir.x, dir.z));
   attuneAfter(state, sorcerer, pr, e);
   if (pr.kind === 'arrow' && pr.style === 'bow' && pr.owner[0] !== 'e') {
     const owner = state.players.find((p) => p.id === pr.owner);
@@ -314,6 +398,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           payCombo(state, 'detonate', pr.owner, pr.x, pr.y + 1, pr.z);
         }
         if (pr.owner[0] !== 'e') smashCircle(state, props, pr.owner, pr.x, pr.y, pr.z, pr.radius);
+        let dealt = 0;
         for (const e of state.enemies) {
           if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.2) continue;
           const dx = e.x - pr.x;
@@ -321,6 +406,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           const d = Math.hypot(dx, dz);
           if (d > pr.radius + enemyStats(e.kind).radius) continue;
           if (marked) e.detonateUntil = -1;
+          const before = e.hp;
           damageEnemy(state, e, {
             projectile: true,
             attackerId: pr.owner,
@@ -338,7 +424,12 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
             combo: marked || undefined,
             area: true,
           });
+          dealt += before - Math.max(0, e.hp);
         }
+        drainBack(state, pr, dealt, pr.x, pr.y, pr.z);
+        // Pieces of a split burst fly on the way it was cast, from where it landed.
+        const caster = state.players.find((p) => p.id === pr.owner);
+        if (caster) splitOrb(state, pr, pr.x, pr.y + 1, pr.z, Math.atan2(pr.x - caster.x, pr.z - caster.z));
       }
       continue;
     }

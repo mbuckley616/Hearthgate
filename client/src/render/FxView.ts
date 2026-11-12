@@ -135,6 +135,25 @@ export class FxView {
           // Ground decal for wide swings: the sweep's half circle and the spin's full ring.
           if (ev.arcDeg >= 180) this.arcDecal(ev.x, ev.z, ev.yaw, ev.range, ev.arcDeg, ev.heavy ? 0.32 : 0.16);
           break;
+        case 'runeDrain': {
+          // Rune of Draining: a crimson wisp where the orb struck, and the caster's own glow as it lands.
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y, ev.z), new THREE.Vector3(0, 1, 0), 10, new THREE.Color(0xc0304a));
+          const p = sim.players.find((o) => o.id === ev.playerId);
+          if (p) this.spawnSparks(new THREE.Vector3(p.x, p.y + 1.1, p.z), new THREE.Vector3(0, 1.2, 0), 12, new THREE.Color(0xff5a6e));
+          break;
+        }
+        case 'whip': {
+          // Rune of the Whip: a lash of fire along the line it reached, brightest at the tip.
+          const y = sim.players.find((p) => p.id === ev.playerId)?.y ?? 0;
+          const fx = Math.sin(ev.yaw);
+          const fz = Math.cos(ev.yaw);
+          const steps = Math.max(2, Math.round(ev.length / 0.75));
+          for (let i = 1; i <= steps; i++) {
+            const d = (ev.length * i) / steps;
+            this.spawnSparks(new THREE.Vector3(ev.x + fx * d, y + 1 - 0.5 * (i / steps), ev.z + fz * d), new THREE.Vector3(0, 0.8, 0), i === steps ? 14 : 5, new THREE.Color(i === steps ? 0xffd27a : 0xff6a2a));
+          }
+          break;
+        }
         case 'land':
           this.ring(ev.x, ev.z, ev.radius, 0xffc87a, 0.8, 0.5);
           this.puff(ev.x, 0.2, ev.z, 0x4a4038, 1.6, 0.6);

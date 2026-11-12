@@ -2,6 +2,104 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 187, an arena restart keeps who the hero is
+
+**What changed**
+
+`restartRun` (`shared/src/sim/run.ts`) rebuilt each hero with `createPlayer` and copied back only the slice's fields (style, name, XP, talents, mods, health, lag grace), so an arena restart dropped everything Hearthgate has added to a hero since: specialization, element, tree, combo mastery, champion state, worn look, the bag's room, the belt, and a henchman's flag and brain. The browser sends no loadout after a restart, so the rest of the session played without a specialization, and the first payoff afterwards began a fresh mastery count that the next run's end saved over the real one (the critic's 299 Shatter became 1). Each of those is now carried over when the hero has it; position, state, cooldowns and health still reset. None is the slice's, so the parity hashes are untouched. `shared/src/sim/restart.test.ts`: a specialized hero keeps all of it through a restart, a 299 Shatter count goes to 300 on the next payoff, and a slice hero gains nothing (the first two fail without the fix).
+
+**Learned**
+
+`applyLoadout` is the list of what a hero is; anything added there and not to `restartRun` is lost on F. Floors never restart, so only the arena had it.
+
+**Next**
+
+The builds pass waits on "Runes for the bow" (`decisions.md` Pending). The other open Found-in-play item, late deaths in a crowd, needs a real machine's frame rate.
+
+## 2026-11-11: Session 186, Rune of Splitting
+
+**What changed**
+
+The fourth rune, the last the design doc names, acts. A staff-style weapon with the Rune of Splitting set marks the orb its light finisher looses (`ProjectileState.splits`; the finisher is `isLightFinisher`'s, the light chain's last step, tapped): where it is spent, a burst as it lands or a bolt at the first enemy it strikes, it breaks into `runes.splitBolts` (3) bolts fanned `runes.splitSpreadDeg` (50) across the way it was cast, each for `runes.splitDamage` (0.35) of its hit, flying half a bolt's life, never striking the enemy the orb struck and never splitting again. They are plain bolts, so they draw and sound as bolts and the Sorcerer's and Druid's bolt signatures apply to them. `runeSplit.test.ts`, 3 cases; check 597 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+At level 3 a staff chain is four steps and its finisher is the nova, a ring of bolts; each of those splits on its first hit, which is a lot of bolts for one step but each a third of a small hit, and the chain is five steps from level 4. Worth watching in play.
+
+**Next**
+
+The four runes the design doc names are built, sword and staff only. A bow rune is not named anywhere: asked in `decisions.md` Pending (A recommended). Without an answer the builder has nothing left in the builds pass's runes.
+
+## 2026-11-11: Session 185, Rune of Draining
+
+**What changed**
+
+The third rune acts, and with it the staff has one. A staff-style weapon (the staff, the wand, the sceptre) with the Rune of Draining set marks every orb its heavies loose (`ProjectileState.drains`, optional, so the slice's projectiles never carry it): a bolt gives its caster back `runes.drainShare` (0.2, on the panel) of the damage it dealt, a burst the share of everything it caught as one heal, never past full health and never to a downed hero; a hit a shield turns deals nothing and so drains nothing. Light orbs never drain. A `runeDrain` event draws a crimson wisp where the orb struck and the caster's own glow (`FxView`). `runeDrain.test.ts`, 3 cases; check 594 green, parity identical, test:net green. Not yet seen in a browser. This is the A's "sockets and three runes": Blades, the Whip and Draining all act.
+
+**Learned**
+
+The heal is the server's alone: projectile hits are the host's call, and prediction restarts the hero's health from each snapshot, so nothing crosses the wire but the flag on the orb. Measuring what was dealt as health before and after `damageEnemy` takes in every bonus and shield on the way without a second copy of the damage rules.
+
+**Next**
+
+The Rune of Splitting (a staff light finisher's orb splits in three), a rune a session after that; the bow has no rune named yet, so a bow rune (or two) will need Michael's word on what it does.
+
+## 2026-11-11: Session 184, Rune of the Whip
+
+**What changed**
+
+The second rune acts. A sword-style weapon with the Rune of the Whip set lashes a fire whip straight ahead on every heavy (a held attack, `attackCharge` set; never a tap), as the heavy's hit opens: a line `runes.whipRangeM` (8 m) long and `runes.whipWidthM` (0.9 m) wide from the hero, stopped by the first wall or pillar (a sphere cast at chest height). Each enemy in it past the heavy's own reach takes `runes.whipDamage` (0.6) of the heavy's hit as sword damage; the ones within reach are the swing's. With the element states on (`combos.elementStates`) whatever it cuts is left Burning for the combo window, ready for a Detonate, whatever the hero's own element. `sim/runeWhip.ts`, called from `fireAttack`; a `whip` event drawn as a lash of fire sparks along the line it reached, brightest at the tip (`FxView`), with the burst's whoomph (`Sfx`); `whip` joins the predicted kinds, so a player's own lash plays from prediction at once and the server's copy is skipped. `runeWhip.test.ts`, 4 cases; check 591 green, parity identical, test:net green. Not yet seen in a browser.
+
+**Learned**
+
+The whip leaves from where the hero stands as the hit opens, before the heavy's lunge carries them on, so at 6 m it reached barely past the heavy's own sweep; 8 m keeps a clear lash beyond it. The arena's centre pillar stops it a quarter metre out, which is the wall rule doing its job, and why the test walks a lane at x = 3.
+
+**Next**
+
+The Rune of Draining (every staff heavy's orb drains health back), then Splitting (a staff light finisher's orb splits in three); a bow's rune is not yet named.
+
+## 2026-11-11: Session 183, Rune of Blades
+
+**What changed**
+
+The first rune acts. A sword-style weapon (the sword and its families) with the Rune of Blades set looses `runes.blades` (2) spectral blades as its light finisher's hit opens: the light chain's last step at the hero's level (the third at levels 1 and 2, the fifth from 4; a family's own last step), tapped, never a held heavy. They fly level and straight from the hero's chest, fanned `runes.bladesSpreadDeg` (6) apart, at `runes.bladesSpeed` (16 m/s) for `runes.bladesRangeM` (8 m), each through `runes.bladesPierce` (3) enemies for `runes.bladesDamage` (0.5) of the finisher's hit, as sword damage, so talents, the mismatch rule and the rest apply; a wall ends them. A new projectile kind, `blade`, drawn as a pale ghost sword point first (`ProjectileView`) with a thin high swoosh (`Sfx`). `isLightFinisher` in `player.ts` is the one test of "the light finisher" the other finisher runes will use. `runeBlades.test.ts`, 5 cases; check 587 green, parity identical (no slice loadout carries runes). Not yet seen in a browser.
+
+**Learned**
+
+At the first spread tried (16 degrees) both blades passed either side of a grunt 4 m out, a gap of over a metre at that range; 6 degrees keeps both on one enemy to about 5 m and still fans past a single target at the far end. The blades spawn in `stepPlayer` as arrows do, so prediction shows them at once.
+
+**Next**
+
+The Rune of the Whip (every sword heavy lashes a fire whip ahead), then Draining (every staff heavy's orb drains health back), then Splitting.
+
+## 2026-11-11: Session 182, Runes: found in rare weapons, the pouch, set on the hero screen
+
+**What changed**
+
+Runes can now be found and moved. A rare weapon rolled from the catalogue comes with one of its style's runes already set `runes.foundChance` of the time (0.35, on the panel), drawn after every other roll so the rest of a drop is as it was; a bow has no rune yet, so a rare bow comes with none. The browser's save has a rune pouch (`ProfileData.runes`, counts by kind, trimmed to known kinds on load). On the hero screen's Bag and body tab, E or Y (or the Runes button) on a weapon with sockets sets the first pouch rune of its style it does not already hold in its next free socket; when none fits, it takes all its runes out into the pouch. A carried find refuses ("Bank it first"), a weapon without sockets says how to get one. Changing the worn weapon's runes sends the loadout, so `Mods.runes` follows. The detail panel lists the pouch and the item line lists each socket. `tests/rune-pouch.ts` (in `npm run check`, a stubbed localStorage) and two cases in `runes.test.ts`; check 582 green, parity identical. Not yet seen in a browser.
+
+**Learned**
+
+Finding a rune already set in a rare weapon needs no new loot kind, pickup event or bag space: it rides the drop, the carry and the bank as the weapon does, and the pouch only ever fills from runes a player took out. A rune as a drop of its own can come with crafting (Rune-crafting is a design-doc skill). One key both sets and empties because the gear tab had only E or Y free; emptying all at once keeps a second rune reachable without a fifth key.
+
+**Next**
+
+The three runes' effects, one a session: Blades (a sword's light finisher looses two spectral blades), the Whip (every sword heavy lashes a fire whip ahead), Draining (every staff heavy's orb drains health back); Splitting after, and a bow's rune is not yet named.
+
+## 2026-11-11: Session 181, Runes: weapon sockets and the path to the fight (Michael's A)
+
+**What changed**
+
+Michael's A on what follows combo mastery, its first part: weapons now have sockets and runes have somewhere to go. `sim/runes.ts` names the design doc's four (Rune of Blades and of the Whip for the sword, of Draining and of Splitting for the staff), each with the style it works in and whether it changes the light finisher or every heavy. A rare weapon has `runes.rareSockets` (2) sockets, a common one of tier `runes.commonSocketTier` (3, steel and its kin) or better has one, below that none, and nothing but a weapon has any (both on the panel, never past two). A `GearItem` carries the runes set in it (`runes`, socket order); `socketRune` and `unsocketRune` set one and take one out, filling in order. `wornMods` passes the worn weapon's acting runes (its style's, as many as its sockets) to the fight as `Mods.runes`, absent when none, so the slice's Mods are untouched. The server's `readLoadout` takes known runes, two at most, each once (and of the family's style where there is a family); `readGearItem` keeps a dropped or sold weapon's runes only if its sockets hold them; the browser's save trims a weapon's runes to its sockets on load. The hero screen's item line lists a weapon's sockets ("2 sockets: Rune of Blades, empty"). `runes.test.ts`, 10 cases; check 580 green, parity identical, test:net green. Nothing finds or sets a rune yet, and no rune does anything yet.
+
+**Learned**
+
+There are only two rarities, so "0 to 2 by rarity" needed the tier for a common's: a bronze sword with a socket would make every starter weapon a rune holder from the first minute, which takes the find out of finding a steel one. A rune of the wrong style rides along idle rather than being refused, as an off-hand of the wrong kind does, so swapping weapons never strips a save.
+
+**Next**
+
+The rune pouch in the save, runes found (a rare drop from fight rooms and the Warden's special drops), and setting and taking them out on the hero screen by key and pad. Then the three runes' effects, one a session: Blades (the sword's finisher looses spectral blades), the Whip (every sword heavy lashes a fire whip), Draining (a staff heavy's orb drains health back); Splitting after.
+
 ## 2026-11-10: Session 180, Mastery rank V: the staff's twists (combo mastery built)
 
 **What changed**

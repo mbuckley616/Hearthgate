@@ -27,6 +27,9 @@ export class ProjectileView {
   private boltHalo = new THREE.SphereGeometry(0.22, 12, 8);
   private trailGeo = new THREE.SphereGeometry(0.07, 8, 6);
   private streakGeo = new THREE.CylinderGeometry(0.0, 0.012, 1, 6).rotateX(-Math.PI / 2).translate(0, 0, -0.5);
+  // Rune of Blades: a ghostly sword flying point first, as the Spellblade's spectral blades are drawn.
+  private bladeGeo = new THREE.BoxGeometry(0.1, 0.03, 0.9).translate(0, 0, 0.1);
+  private bladeGuardGeo = new THREE.BoxGeometry(0.34, 0.05, 0.07).translate(0, 0, -0.35);
 
   constructor(private palette: Palette) {}
 
@@ -57,6 +60,9 @@ export class ProjectileView {
           v.streak.visible = !pr.stuck;
           v.streak.scale.set(1, 1, Math.min(1.6, pr.age * 12));
         }
+      } else if (pr.kind === 'blade') {
+        const vel = new THREE.Vector3(pr.vx, pr.vy, pr.vz);
+        if (vel.lengthSq() > 1e-6) v.obj.quaternion.setFromUnitVectors(FORWARD, vel.normalize());
       } else if (pr.kind === 'bolt') {
         v.history.unshift(pos.clone());
         if (v.history.length > TRAIL_POINTS) v.history.length = TRAIL_POINTS;
@@ -108,6 +114,12 @@ export class ProjectileView {
       streak.position.z = -0.7;
       obj.add(streak);
       return { ...base, obj, streak };
+    }
+    if (pr.kind === 'blade') {
+      const obj = new THREE.Group();
+      const mat = glowMaterial(0xcfe6ff, 0.75);
+      obj.add(new THREE.Mesh(this.bladeGeo, mat), new THREE.Mesh(this.bladeGuardGeo, mat));
+      return { ...base, obj };
     }
     if (pr.kind === 'bolt') {
       const obj = new THREE.Group();

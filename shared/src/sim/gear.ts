@@ -1,4 +1,5 @@
 import { STYLES, tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import type { RuneKind } from './runes';
 
 /**
  * Gear and levels: plain data and pure functions shared by the sim (effects),
@@ -71,6 +72,8 @@ export interface Mods {
   ammo?: AmmoKind;
   /** The weapon family in hand (C5), when it is not its style's first (sword, shortbow, staff). */
   family?: WeaponFamily;
+  /** The runes acting in the worn weapon's sockets (the builds pass); absent when none. */
+  runes?: RuneKind[];
 }
 
 export function emptyMods(): Mods {
