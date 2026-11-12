@@ -58,7 +58,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   stepTraps(state, world, dt);
   unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
-  stepSummons(state);
+  stepSummons(state, w);
   stepPendingHits(state);
   if (state.brambles) stepBrambles(state);
   if (state.snares) stepSnares(state);

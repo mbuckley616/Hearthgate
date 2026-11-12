@@ -84,10 +84,18 @@ function crumble(state: SimState, s: PlayerState): void {
 }
 
 /**
- * Each tick: a skeleton whose time is up, that has fallen (a summon is never revived), or whose
+ * Each tick, after the skeletons asked for are raised: a skeleton whose time is up, that has fallen (a summon is never revived), or whose
  * Necromancer has left the room crumbles.
  */
-export function stepSummons(state: SimState): void {
+export function stepSummons(state: SimState, world: World): void {
+  // What a Necromancer's Q or E asked for this tick (askSkeleton), raised here on the server alone.
+  for (const p of state.players) {
+    if (!p.raise) continue;
+    const asks = p.raise;
+    delete p.raise;
+    if (p.mode === 'down') continue;
+    for (const at of asks) raiseSkeleton(state, world, p, at.x, at.z);
+  }
   for (const s of state.players.filter((p) => p.summon)) {
     const owner = state.players.find((p) => p.id === s.summon!.owner);
     if (state.time >= s.summon!.until || s.mode === 'down' || s.hp <= 0 || !owner) crumble(state, s);

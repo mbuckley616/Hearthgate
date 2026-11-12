@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 191, Grave Call and Bone Step
+
+**What changed**
+
+The Necromancer is the fourth staff specialization (`SpecId` 'necromancer', Shadow), on the Talents tab as "soon" until it is offered. Its Q, Grave Call, is the frost ring in shadow: it hits as the ring does, freezes nothing (it goes through `novaElement`, so the ring's view draws it violet with no new code), and raises a skeleton 1.5 m ahead. Its E, Bone Step, is the Blink, and raises a skeleton where the Necromancer stood. Its signature, Legion, is Session 190's growth: two standing at 25, three at 40, each fighting harder. The abilities only ask (`askSkeleton`, `PlayerState.raise`, optional), in `stepAbility`, so the prediction's hero asks too; `stepSummons`, in `stepSim` and so the server's alone, raises them and clears the ask within the tick, so a summon is never a party member prediction made. `summons.test.ts`, now 8 cases: the ring in shadow hurts, freezes nothing and raises one; the Blink raises one at its start; a Warlock's raises none; prediction's step only asks. check 617 green, parity identical.
+
+**Learned**
+
+The Sorcerer's Nova already carried an element to the ring's view and sound, and froze nothing when it did; Grave Call is the same ring with 'shadow', so it needed no view of its own.
+
+**Next**
+
+The skeleton's look: a bony figure in `HeroView` for a hero with `summon`, a rise and a crumble in `FxView` on the `raised` and `crumbled` events. Then its tree and Crescendo, then offering it.
+
 ## 2026-11-12: Session 190, the Necromancer's skeleton
 
 **What changed**

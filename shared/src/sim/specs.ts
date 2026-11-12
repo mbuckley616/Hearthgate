@@ -14,7 +14,7 @@ import type { BrambleGround, EnemyState, PlayerState, ProjectileState, SimState,
  * the sim reads; a hero with none (the slice, the parity test, anyone under level 10) is unchanged.
  */
 
-export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock' | 'druid' | 'sorcerer';
+export type SpecId = 'paladin' | 'spellblade' | 'rogue' | 'ranger' | 'scout' | 'assassin' | 'warlock' | 'druid' | 'sorcerer' | 'necromancer';
 export type Element = 'holy' | 'fire' | 'frost' | 'earth' | 'air' | 'shadow' | 'nature';
 /** A hero's specializations, one a style at most. */
 export type Specs = Partial<Record<Style, SpecId>>;
@@ -290,6 +290,18 @@ export const SPECS: readonly SpecInfo[] = [
       ],
     ],
     crescendo: ['Cataclysm', 'A Crescendo bursts in your element around you: Fire burns, Frost freezes, Earth staggers, Air throws.'],
+  },
+  {
+    // The fourth staff specialization (Michael's A, 12 Nov, "what after runes"): its summons are henchmen with a short life (`sim/summons.ts`).
+    id: 'necromancer',
+    style: 'staff',
+    name: 'Necromancer',
+    element: 'shadow',
+    elements: ['shadow'],
+    q: ['Grave Call', 'Frost ring turns to shadow and raises a skeleton beside you; it freezes nothing.'],
+    e: ['Bone Step', 'Blink raises a skeleton where you stood.'],
+    sig: ['Legion', 'Your skeletons fight for 12 s. More stand at once as your staff level grows (two at 25, three at 40), and each fights harder.'],
+    built: false,
   },
 ];
 
@@ -1496,6 +1508,8 @@ export function attuneAfter(state: SimState, owner: PlayerState | undefined, pr:
  * frost ring: anyone else's, or a Frost Sorcerer's, which freezes as it always did.
  */
 export function novaElement(p: PlayerState): Element | undefined {
+  // A Necromancer's Grave Call is the ring in shadow (and freezes nothing, as a Nova does).
+  if (isGraveCall(p)) return 'shadow';
   if (p.spec?.staff !== 'sorcerer' || p.style !== 'staff') return undefined;
   const el = elementFor(p, 'staff');
   return el === 'frost' ? undefined : el;
@@ -1606,4 +1620,19 @@ export function masteryTwist(state: SimState, p: PlayerState, x: number, z: numb
     default:
       return false;
   }
+}
+
+/** Whether this hero's frost ring is Grave Call (the Necromancer's): it raises a skeleton. */
+export function isGraveCall(p: PlayerState): boolean {
+  return p.spec?.staff === 'necromancer' && p.style === 'staff';
+}
+
+/**
+ * A Necromancer's Q and E (Grave Call, Bone Step) ask for a skeleton here. Asked in stepAbility, so
+ * the prediction's hero asks too, but only `stepSummons` (stepSim, the server's alone) raises one:
+ * a summon is a new party member, which prediction never makes. The ask is gone within the tick.
+ */
+export function askSkeleton(p: PlayerState, x: number, z: number): void {
+  if (!isGraveCall(p)) return;
+  (p.raise ??= []).push({ x, z });
 }

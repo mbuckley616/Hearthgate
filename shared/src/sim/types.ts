@@ -104,6 +104,8 @@ export interface PlayerState {
   brain?: HenchmanBrain;
   /** A summon (the Necromancer's skeleton, `sim/summons.ts`): a henchman raised in the fight, whose it is and when it crumbles. Never banked, never carried to another room. */
   summon?: { owner: string; until: number };
+  /** Skeletons a Necromancer's Q or E asked for this tick, where (`askSkeleton`); raised and cleared by `stepSummons`. */
+  raise?: { x: number; z: number }[];
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
   /** Room in the browser's bag for lumber, stone and finds (Michael, 31 Oct, A: sim/bagRoom.ts), from the loadout; absent in the slice. */

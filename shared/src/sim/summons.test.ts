@@ -5,10 +5,14 @@ import { arena, buildWorld } from '../level/arena';
 import { PROTOCOL_VERSION } from '../net/protocol';
 import { createEnemy } from './enemies';
 import { emptyMods, levelFor, xpForLevel } from './gear';
+import { addPlayer } from './coop';
+import { stepPlayer } from './player';
 import { restartRun } from './run';
+import { specInfo, specsFor } from './specs';
 import { partyOf, raiseSkeleton, skeletonCap, skeletonLevel, stepSummons, summonsOf } from './summons';
 import { emptyTalents } from './talents';
-import type { SimEvent } from './types';
+import { idleCommand, type PlayerCommand, type SimEvent } from './types';
+import { createSimState, stepSim } from './world';
 
 const world = buildWorld(arena);
 
@@ -71,7 +75,7 @@ describe("the Necromancer's skeletons (summons)", () => {
     b.hp = 0;
     b.mode = 'down';
     // Straight to the step: the arena's antechamber would stand a downed hero up first.
-    stepSummons(host.sim);
+    stepSummons(host.sim, world);
     expect(summonsOf(host.sim, me.id).map((p) => p.id)).toEqual([c.id]);
   });
 
@@ -95,5 +99,73 @@ describe("the Necromancer's skeletons (summons)", () => {
     host.sim.players = host.sim.players.filter((p) => p.id !== me.id);
     host.tick();
     expect(host.sim.players.some((p) => p.summon)).toBe(false);
+  });
+});
+
+describe("the Necromancer's Grave Call and Bone Step", () => {
+  const DT = 1 / 60;
+  /** A staff hero at level 25 (two skeletons), a Necromancer or not, facing a grunt 4 m off. */
+  function scene(spec: 'necromancer' | 'warlock' | undefined) {
+    const s = createSimState(arena, [], world);
+    const p = addPlayer(s, world, 'p1', { name: 'n', xp: { sword: 0, bow: 0, staff: xpForLevel(25) }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 }, false);
+    Object.assign(p, { x: 0, z: 10, yaw: Math.PI, style: 'staff', mode: 'move', invulnTime: 0, ...(spec ? { spec: { staff: spec } } : {}) });
+    const e = createEnemy(s, world, 'grunt', 0, 6, 0);
+    Object.assign(e, { x: 0, z: 6, ai: 'chase', aiTime: 0, cooldown: 0, hp: 9999 });
+    s.enemies.push(e);
+    return { s, p, e };
+  }
+  /** Press a slot once and step the server's sim for 40 ticks; the events of every tick. */
+  function press(sc: ReturnType<typeof scene>, slot: 'ability1' | 'ability2', moveZ = 0): SimEvent[] {
+    const events: SimEvent[] = [];
+    for (let i = 0; i < 40; i++) {
+      const cmd: PlayerCommand = { ...idleCommand(), [slot]: i === 0, moveZ: i === 0 ? moveZ : 0 };
+      stepSim(sc.s, { p1: cmd }, DT, world);
+      events.push(...sc.s.events);
+    }
+    return events;
+  }
+
+  it('is the fourth staff specialization, Shadow, not offered yet', () => {
+    expect(specsFor('staff').map((x) => x.id)).toContain('necromancer');
+    expect(specInfo('necromancer').element).toBe('shadow');
+    expect(specInfo('necromancer').built).toBe(false);
+  });
+
+  it("Grave Call: the ring hits in shadow, freezes nothing, and raises a skeleton a step ahead", () => {
+    const sc = scene('necromancer');
+    const events = press(sc, 'ability1');
+    const ring = events.find((x) => x.kind === 'frostRing');
+    expect(ring && ring.kind === 'frostRing' && ring.element).toBe('shadow');
+    expect(sc.e.hp).toBeLessThan(9999);
+    expect(sc.e.frozen).toBe(0);
+    const mine = summonsOf(sc.s, 'p1');
+    expect(mine.length).toBe(1);
+    expect(events.some((x) => x.kind === 'raised' && x.owner === 'p1')).toBe(true);
+    expect(sc.p.raise).toBeUndefined();
+  });
+
+  it('Bone Step: a Blink raises a skeleton where the Necromancer stood', () => {
+    const sc = scene('necromancer');
+    sc.s.enemies = [];
+    const from = { x: sc.p.x, z: sc.p.z };
+    const events = press(sc, 'ability2', -1);
+    expect(events.some((x) => x.kind === 'blink')).toBe(true);
+    expect(Math.hypot(sc.p.x - from.x, sc.p.z - from.z)).toBeGreaterThan(2);
+    const raised = events.find((x) => x.kind === 'raised');
+    expect(raised && raised.kind === 'raised' && Math.hypot(raised.x - from.x, raised.z - from.z)).toBeLessThan(0.01);
+  });
+
+  it("a Warlock's ring and Blink raise nothing, and the Necromancer's prediction only asks", () => {
+    const w = scene('warlock');
+    press(w, 'ability1');
+    expect(summonsOf(w.s, 'p1').length).toBe(0);
+    // Prediction steps only the hero (stepPlayer): it asks, and no skeleton joins its world.
+    const sc = scene('necromancer');
+    for (let i = 0; i < 40; i++) {
+      stepPlayer(sc.p, { ...idleCommand(), ability1: i === 0 }, DT, world, sc.s);
+      sc.s.time += DT;
+    }
+    expect(sc.p.raise?.length).toBe(1);
+    expect(summonsOf(sc.s, 'p1').length).toBe(0);
   });
 });
