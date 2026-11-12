@@ -91,7 +91,7 @@ export class VillageRoom extends HostRoom {
    */
   private onHire(client: Client, msg: Extract<ToHost, { k: "hire" }>) {
     const tier = this.save?.tiers.tavern ?? 1;
-    const hench = this.host.sim.players.filter((p) => p.henchman);
+    const hench = this.host.sim.players.filter((p) => p.henchman && !p.summon);
     if (hench.length >= tavernHenchmen(tier) || hench.some((p) => p.style === msg.kit)) return;
     if (msg.coin < tuning.village.hireCoin) return;
     const h = this.host.addHenchman(this.host.playerOf(client.sessionId), msg.kit, { quick: tier >= 4, xp: 0 });

@@ -139,8 +139,8 @@ export class PartyUi {
     this.endedBanner.style.display = ended ? 'block' : 'none';
     if (ended) this.endedBanner.textContent = `${statusText}. "Play solo instead" is in the menu.`;
 
-    // Everyone else in the party: name, health, down.
-    const others = sim.players.filter((p) => p.id !== localId);
+    // Everyone else in the party: name, health, down. A Necromancer's skeletons come and go too fast for a frame.
+    const others = sim.players.filter((p) => p.id !== localId && !p.summon);
     const html = others
       .map((p) => {
         const frac = Math.max(0, p.hp / p.maxHp);

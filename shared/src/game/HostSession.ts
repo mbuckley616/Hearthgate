@@ -4,6 +4,7 @@ import { groundHeight, type World } from '../level/arena';
 import type { HandDungeon } from '../level/handmade';
 import { choiceLabel, type PortalChoice } from './portalChoice';
 import { HIRES, henchmanCard, henchmanCommand, type HenchmanCard } from '../sim/henchman';
+import { partyOf } from '../sim/summons';
 import { emptyMods, xpForLevel } from '../sim/gear';
 import { emptyTalents } from '../sim/talents';
 import { PROTOCOL_VERSION, slotPlayerId, type Cheat, type ToHost, type ToPeer } from '../net/protocol';
@@ -117,8 +118,9 @@ export class HostSession {
       if (msg.version !== PROTOCOL_VERSION) return send({ k: 'refused', reason: 'Different game version; refresh the page' });
       if (this.remotes.has(peer)) return;
       // A friend joining a full party takes a henchman's slot (P10); only a party of players is full.
-      if (this.sim.players.length >= tuning.coop.maxPlayers) {
-        const hench = [...this.sim.players].reverse().find((p) => p.henchman);
+      // A summon is not a seat (sim/summons.ts), so it neither fills the party nor is replaced.
+      if (partyOf(this.sim).length >= tuning.coop.maxPlayers) {
+        const hench = [...this.sim.players].reverse().find((p) => p.henchman && !p.summon);
         if (!hench) return send({ k: 'refused', reason: 'The party is full' });
         this.between(() => removePlayer(this.sim, hench.id));
       }
@@ -253,8 +255,8 @@ export class HostSession {
    */
   addHenchman(beside: PlayerState | undefined, style?: Style, card?: Partial<HenchmanCard>): PlayerState | null {
     const sim = this.sim;
-    if (sim.players.length >= tuning.coop.maxPlayers) return null;
-    const n = sim.players.filter((p) => p.henchman).length;
+    if (partyOf(sim).length >= tuning.coop.maxPlayers) return null;
+    const n = sim.players.filter((p) => p.henchman && !p.summon).length;
     const kit: Style = style ?? card?.style ?? STYLES[n % STYLES.length];
     const name = card?.name ?? HIRES[kit].name;
     const best = card?.xp ?? (beside ? Math.max(beside.xp.sword, beside.xp.bow, beside.xp.staff) : 0);
@@ -277,7 +279,7 @@ export class HostSession {
    */
   settleHenchmen(cap: number, banked: Partial<Record<Style, number>>, quick: boolean): void {
     for (const h of this.sim.players) {
-      if (!h.henchman) continue;
+      if (!h.henchman || h.summon) continue;
       h.brain = { ...(h.brain ?? { threat: -1, seenAt: 0, answered: -1, guardUntil: -1 }), cap };
       if (quick) h.brain.quick = true;
       h.xp = { sword: 0, bow: 0, staff: 0, [h.style]: Math.min(banked[h.style] ?? 0, xpForLevel(cap)) };
@@ -286,7 +288,8 @@ export class HostSession {
 
   /** The party's henchmen as they travel to the next room (P10), taken out of this one. */
   takeHenchmen(): HenchmanCard[] {
-    const hench = this.sim.players.filter((p) => p.henchman);
+    // A summon stays behind and crumbles with the room (its Necromancer has gone): only hires travel.
+    const hench = this.sim.players.filter((p) => p.henchman && !p.summon);
     this.between(() => {
       for (const h of hench) removePlayer(this.sim, h.id);
     });
@@ -302,7 +305,7 @@ export class HostSession {
 
   /** A henchman let go (P10), by kit. */
   dismissHenchman(kit: Style): boolean {
-    const h = this.sim.players.find((p) => p.henchman && p.style === kit);
+    const h = this.sim.players.find((p) => p.henchman && !p.summon && p.style === kit);
     if (h) this.between(() => removePlayer(this.sim, h.id));
     return !!h;
   }

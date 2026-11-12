@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 190, the Necromancer's skeleton
+
+**What changed**
+
+Michael's A on what follows runes (12 Nov, on the control room): the Necromancer, about four sessions. This is the first, the summon itself. A skeleton is a henchman raised in the fight (`sim/summons.ts`, `raiseSkeleton`): a sword henchman named Skeleton, with `PlayerState.summon` (optional) saying whose it is and when it crumbles, so the henchman brain, the fight, the snapshots and the views carry it with nothing new. It stands `necro.skeletonLifeS` (12 s); a Necromancer may have `necro.skeletonsAtStart` (1) standing at the specialization's level 10, one more each `necro.extraSkeletonEveryLevels` (15) staff levels, up to `necro.skeletonMax` (3), and at the cap a new one crumbles the oldest. It fights at `necro.skeletonLevelShare` (0.6) of the staff level (so its hits grow through `hirelings.damagePerLevel`) with `necro.skeletonHealth` (0.5) of a hero's health at that level. `stepSummons` (in `stepSim`, after the revives) crumbles one whose time is up, that has fallen (a summon is never revived) or whose Necromancer has left; `raised` and `crumbled` events. It is not a seat: the party's size (`partyOf`) leaves it out, so a hire and a friend still join; the floor's bank, a room's hand-off of henchmen, a dismissal, the Tavern's count and an arena restart all pass it by; its ids (`k<n>`, from `nextId`) are never reused, so no view mistakes a new one for a crumbled one; it has no party frame. Nothing raises one yet. All on the panel. `summons.test.ts`, 4 cases; check 613 green, parity identical, test:net green.
+
+**Learned**
+
+`restartRun` rebuilds each hero from a fresh `createPlayer` and copies back what it knows, so a summon would have come back from a restart as a permanent henchman without its `summon` flag; it is filtered out first. The arena's antechamber stands a downed hero up before a later step sees it, so the fallen case is tested on the step itself.
+
+**Next**
+
+The Necromancer's Q and E: a fourth staff `SpecId` (Shadow, not yet offered) whose Frost ring and Blink raise skeletons through `raiseSkeleton`, then a skeleton's look in the views, its tree and Crescendo, and offering it.
+
 ## 2026-11-12: Session 189, Rune of Embers
 
 **What changed**
