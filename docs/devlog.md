@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 192, the skeleton's look
+
+**What changed**
+
+A summon is drawn as a skeleton. `buildSkeleton` (`client/src/render/outfits.ts`) is an outfit on the heroes' rig, so it walks, swings and rolls as a hero does: a spine and four open ribs, a collar bone, a skull with a jaw and dark sockets lit violet (the shadow's colour), thin bone limbs with knobbed joints, in two new palette materials (`bone`, `boneDark`) and `soul`. `HeroView` builds it the first time a hero has `summon` (never for anyone else), shows it in place of the style's figure or a worn look, keeps the sword in hand and drops the shield; its swap flash is violet, so it appears in a burst. `FxView`: a `raised` event draws a violet ring with bone dust thrown up, a `crumbled` one a fall of dust and a dim violet puff. `tests/skeleton-look.ts`, run by `npm run check`, builds a `HeroView` in node and counts what is drawn: a hero shows the knight's helm and no bone; a summon shows bones, exactly two violet eyes, the blade and no helm or royal shield. check 617 green plus the new check, parity identical. Not yet seen in a browser: nothing raises one until the Necromancer is offered.
+
+**Learned**
+
+A `HeroView` builds and updates in node with a bare `THREE.Texture` for the palette's environment, so a figure's parts can be checked by material without a browser.
+
+**Next**
+
+The Necromancer's tree and its Crescendo, then offering it on the Talents tab.
+
 ## 2026-11-12: Session 191, Grave Call and Bone Step
 
 **What changed**

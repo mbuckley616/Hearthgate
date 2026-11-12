@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { abilityTiming, tuning, type AbilityKind, type Style } from '@hearthgate/shared/config/tuning';
 import type { PlayerState } from '@hearthgate/shared/sim/types';
 import { flowTier } from '@hearthgate/shared/sim/flow';
-import { BODY, buildArcher, buildKnight, buildMage, type Outfit } from './outfits';
+import { BODY, buildArcher, buildKnight, buildMage, buildSkeleton, type Outfit } from './outfits';
 import { ARROW_LENGTH, Bow, FORWARD, FROST, Palette, Staff, UP, buildArrow, buildQuiver, buildShield, buildSword, glowMaterial } from './props';
 import { buildFamilyWeapon, buildGearShield, dress, outfitParts, undress, weaponMaterial, type Look } from './wardrobe';
 import { lookSlots } from '@hearthgate/shared/sim/catalogue';
@@ -313,6 +313,9 @@ export class HeroView {
    * for a hero with no look (the slice's figures by style).
    */
   private dressed: Outfit | null = null;
+  /** A Necromancer's skeleton's figure (sim/summons.ts), built the first time this hero is one. */
+  private bones: Outfit | null = null;
+  private summoned = false;
   private worn: Look = {};
   private lookKey: string | null = null;
   private readonly palette: Palette;
@@ -510,12 +513,15 @@ export class HeroView {
 
   /** Show one hero's outfit and weapons, hide the others. */
   private showStyle(style: Style): void {
-    const dressed = this.dressed;
+    const bones = this.summoned ? this.bones : null;
+    const dressed = bones ? null : this.dressed;
     for (const [s, o] of Object.entries(this.outfits) as [Style, Outfit][]) {
-      const on = !dressed && s === style;
+      const on = !dressed && !bones && s === style;
       for (const part of outfitParts(o)) part.visible = on;
     }
-    this.outfit = dressed ?? this.outfits[style];
+    if (this.dressed) for (const part of outfitParts(this.dressed)) part.visible = !bones;
+    if (this.bones) for (const part of outfitParts(this.bones)) part.visible = !!bones;
+    this.outfit = bones ?? dressed ?? this.outfits[style];
     // A dressed hero holds only the weapon they wear: with none in hand they fight bare-handed.
     const family = dressed ? this.worn.weapon?.shape.family : undefined;
     const held = (s: Style) => style === s && !family && (!dressed || this.worn.weapon?.shape.style === s);
@@ -524,7 +530,8 @@ export class HeroView {
     this.staff.group.visible = held('staff');
     this.familyWeapon.visible = !!family && this.worn.weapon?.shape.style === style;
     this.quiver.visible = !!dressed && style === 'bow';
-    this.shield.visible = dressed ? !!this.worn.shield : style === 'sword';
+    // A skeleton fights with a bare blade.
+    this.shield.visible = bones ? false : dressed ? !!this.worn.shield : style === 'sword';
     if (dressed && (style !== 'sword' || this.worn.weapon?.shape.twoHanded) && !(this.worn.weapon && !this.worn.weapon.shape.twoHanded)) {
       // A two-handed weapon (bow, staff, warhammer) leaves the off-hand slung on the back (T5b, C4).
       this.shield.position.set(0, 0.2, -0.23);
@@ -543,7 +550,18 @@ export class HeroView {
     const lookKey = curr.look ? curr.look.join(',') : null;
     const relook = lookKey !== this.lookKey;
     if (relook) this.setLook(curr.look, lookKey);
-    if (relook || curr.style !== this.shownStyle) this.showStyle(curr.style);
+    const summoned = !!curr.summon;
+    if (summoned && !this.bones) {
+      this.bones = buildSkeleton(this.palette);
+      this.attach(this.bones);
+      for (const part of outfitParts(this.bones))
+        part.traverse((o) => {
+          if (o instanceof THREE.Mesh) o.castShadow = true;
+        });
+    }
+    const resummon = summoned !== this.summoned;
+    this.summoned = summoned;
+    if (relook || resummon || curr.style !== this.shownStyle) this.showStyle(curr.style);
     for (const [s, g] of Object.entries(this.glows) as [Style, THREE.Mesh][]) {
       const level = levelFor(curr.xp[s]);
       g.visible = level >= tuning.progression.glowLevel;

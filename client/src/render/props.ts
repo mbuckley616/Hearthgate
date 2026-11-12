@@ -74,6 +74,10 @@ export class Palette {
   readonly skinDeep: THREE.MeshStandardMaterial;
   readonly hairWhite: THREE.MeshStandardMaterial;
   readonly slit = new THREE.MeshBasicMaterial({ color: 0x07070a });
+  /** A Necromancer's skeleton (sim/summons.ts): old bone, and the shadow's violet in its eyes. */
+  readonly bone: THREE.MeshStandardMaterial;
+  readonly boneDark: THREE.MeshStandardMaterial;
+  readonly soul = new THREE.MeshBasicMaterial({ color: 0xa274ff });
 
   constructor(private envMap: THREE.Texture) {
     this.steel = this.make({ color: 0xaab2bd, metalness: 0.85, roughness: 0.42 }, true);
@@ -103,6 +107,8 @@ export class Palette {
     this.robeDark = this.make({ color: 0xd9a032, roughness: 0.85, side: THREE.DoubleSide }, false, false);
     this.skin = this.make({ color: 0xe0b48f, roughness: 0.7 });
     this.beard = this.make({ color: 0xdedad2, roughness: 0.95 });
+    this.bone = this.make({ color: 0xd9d0b4, roughness: 0.85 });
+    this.boneDark = this.make({ color: 0x8c8268, roughness: 0.9 });
   }
 
   /** MeshStandardMaterial with optional reflections (metal) and the character rim light. */
