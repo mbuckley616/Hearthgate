@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 189, Rune of Embers
+
+**What changed**
+
+The bow's second rune, and with it Michael's A on runes for the bow is built. A bow-style weapon with the Rune of Embers set marks every charged shot it looses (`ProjectileState.embers`, optional; the power and piercing shots, and every heavy that borrows them); where the shot stops (spent in the enemy that ends its pierce, in a crate, stuck in a wall or the floor, or out of flight) a ring of fire `runes.embersRadiusM` (1.75 m) wide hits every enemy in it for `runes.embersDamage` (0.4) of the shot's hit as bow damage, once a shot (`emberBurst` in `sim/projectiles.ts`). With the element states on it leaves them Burning, ready for a Detonate, as the Whip does: fire whatever the hero's element. It is an area hit, so it uproots a Rooted enemy too (a Ranger's Thornshot then a second charged shot). An `embers` event draws two rings of fire on the floor under it and a spray of sparks, with the burst's whoomph. An echo's ghost never bursts. Both numbers on the panel. `runeEmbers.test.ts`: a charged shot bursts once, a light one never, none without the rune; the ring hits the struck enemy and its neighbour and burns them, not one 5 m off; a piercing shot bursts where it is spent, past what it went through; with the element states off it hurts and burns nothing.
+
+**Learned**
+
+A charged shot pierces three, so in a line of two the ring lands at the wall behind them, not on either; that is "where it stops", and reads well as a shot that went through. Worth seeing in play whether it should burst on the first enemy instead.
+
+**Next**
+
+Michael's A on runes for the bow is built: six runes, two a style. The builds pass's list has the Necromancer left; what comes next asked in `decisions.md` Pending.
+
+## 2026-11-12: Session 188, Rune of Echoes
+
+**What changed**
+
+The bow's first rune (Michael's A, 12 Nov, "Runes for the bow"). A bow-style weapon (the bow, the longbow, throwing knives) with the Rune of Echoes set gives each arrow its light finisher looses a ghost (`echoArrows` in `sim/projectiles.ts`): a copy that waits `runes.echoDelayMs` (150 ms) where the arrow was loosed, unseen and hitting nothing (`ProjectileState.waits`, optional), then flies the same line for `runes.echoDamage` (0.5) of its hit, with a `fire` event so it sounds as it goes. It is a second arrow, so it can hit what the first hit again; a piercing finisher's echo pierces too. `ProjectileView` hides a waiting echo and draws it pale blue and see-through. Rare bows now find it (the found-rune roll draws from a weapon's style's runes). Both numbers on the panel. `runeEcho.test.ts`: only the finisher echoes, none without the rune, a level-1 hero's third step is its finisher, and the echo waits in place for the delay, then flies its line at half damage.
+
+**Learned**
+
+The finisher is the chain's last step, so at level 1 to 3 it is the power shot, not the fan; from level 4 the piercing shot before the backflip. An echo of a piercing shot carries the gold streak's pierce but none of the backflip.
+
+**Next**
+
+The Rune of Embers: every charged shot bursts in a small ring of fire where it stops, leaving Burning with the element states on. Then Michael's A on bow runes is built.
+
 ## 2026-11-12: Session 187, an arena restart keeps who the hero is
 
 **What changed**
