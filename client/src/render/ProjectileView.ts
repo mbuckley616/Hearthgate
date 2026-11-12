@@ -4,6 +4,8 @@ import { FORWARD, FROST, Palette, buildArrow, glowMaterial } from './props';
 
 const TRAIL_POINTS = 10;
 const PUFF_LIFE = 0.3;
+/** The Rune of Echoes' ghost arrows. */
+const GHOST = 0x9fd8ff;
 
 interface Visual {
   kind: ProjectileState['kind'];
@@ -50,6 +52,8 @@ export class ProjectileView {
         ? new THREE.Vector3(before.x + (pr.x - before.x) * alpha, before.y + (pr.y - before.y) * alpha, before.z + (pr.z - before.z) * alpha)
         : new THREE.Vector3(pr.x, pr.y, pr.z);
       v.obj.position.copy(pos);
+      // A Rune of Echoes ghost is nowhere until it flies.
+      v.obj.visible = pr.waits === undefined;
       v.last.copy(pos);
       v.stuck = pr.stuck;
 
@@ -108,9 +112,15 @@ export class ProjectileView {
     const base = { kind: pr.kind, history: [], last: new THREE.Vector3(pr.x, pr.y, pr.z), stuck: pr.stuck };
     if (pr.kind === 'arrow') {
       const obj = buildArrow(this.palette);
+      // A Rune of Echoes ghost: the same arrow, pale and see-through.
+      if (pr.echo) {
+        obj.traverse((o) => {
+          if (o instanceof THREE.Mesh) o.material = glowMaterial(GHOST, 0.45);
+        });
+      }
       // Enemy arrows streak red so they read as danger.
-      const color = pr.hostile ? 0xff4a3a : pr.charged ? 0xffc35a : 0xfff2dc;
-      const streak = new THREE.Mesh(this.streakGeo, glowMaterial(color, pr.hostile || pr.charged ? 0.9 : 0.45));
+      const color = pr.echo ? GHOST : pr.hostile ? 0xff4a3a : pr.charged ? 0xffc35a : 0xfff2dc;
+      const streak = new THREE.Mesh(this.streakGeo, glowMaterial(color, pr.hostile || pr.charged || pr.echo ? 0.9 : 0.45));
       streak.position.z = -0.7;
       obj.add(streak);
       return { ...base, obj, streak };

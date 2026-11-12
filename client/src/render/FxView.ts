@@ -142,6 +142,12 @@ export class FxView {
           if (p) this.spawnSparks(new THREE.Vector3(p.x, p.y + 1.1, p.z), new THREE.Vector3(0, 1.2, 0), 12, new THREE.Color(0xff5a6e));
           break;
         }
+        case 'embers':
+          // Rune of Embers: a ring of fire on the floor where the charged shot stopped, and a spray of sparks.
+          this.ring(ev.x, ev.z, ev.radius, 0xff6a2a, 0.85, 0.6, ev.y);
+          this.ring(ev.x, ev.z, ev.radius * 0.6, 0xffd27a, 0.6, 0.4, ev.y);
+          this.spawnSparks(new THREE.Vector3(ev.x, ev.y + 0.8, ev.z), new THREE.Vector3(0, 1.4, 0), 22, new THREE.Color(0xff8a3a));
+          break;
         case 'whip': {
           // Rune of the Whip: a lash of fire along the line it reached, brightest at the tip.
           const y = sim.players.find((p) => p.id === ev.playerId)?.y ?? 0;

@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-12: The builds pass, what after runes (builder, Session 189)
+Your A on bow runes is built (Sessions 188 and 189): Echoes (a light finisher's arrow flies again 150 ms later, a pale ghost for half its hit) and Embers (every charged shot bursts where it stops in a 1.75 m ring of fire, leaving Burning). Six runes now, two a style, none yet played in a browser. The builds pass list has one part left: the Necromancer.
+- **A.** The Necromancer: a fourth staff specialization (Shadow) whose Q and E raise short-lived skeleton henchmen that fight for the party, stronger and more of them as its level grows (Michael's 28 Oct note), with a tree and Crescendo like the other nine. About four sessions: the summon as a short-lived henchman, its abilities, its tree, then offering it. *(recommended: it is the last of the builds pass, and the henchmen it stands on are built)*
+- **B.** Pause the builds pass for a playtest of what it has built (nine specializations and trees, five states, mastery, six runes); the builder idles until then.
+- **C.** Start E1i, the Goblin Warrens' roster, now rather than after more Crypt play.
+
 ## Answered
 
 ### 2026-11-11: Runes for the bow (builder, Session 186)

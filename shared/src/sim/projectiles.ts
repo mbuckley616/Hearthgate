@@ -265,6 +265,30 @@ function segmentHitsCapsule(
 }
 
 /**
+ * Rune of Echoes (the builds pass, Michael's A, 12 Nov): each arrow a bow light finisher loosed
+ * (from `from` on in the list) gets a ghost that waits `runes.echoDelayMs` where the arrow was
+ * loosed and then flies its line, for `runes.echoDamage` of its hit. It hits what the arrow hit
+ * again: a second arrow, not a piece of the first.
+ */
+export function echoArrows(state: SimState, from: number): void {
+  const r = tuning.runes;
+  const n = state.projectiles.length;
+  for (let i = from; i < n; i++) {
+    const pr = state.projectiles[i];
+    if (pr.kind !== 'arrow' || pr.echo) continue;
+    state.projectiles.push({
+      ...pr,
+      id: state.nextId++,
+      damage: pr.damage * r.echoDamage,
+      poise: pr.poise * r.echoDamage,
+      hitIds: [],
+      echo: true,
+      waits: Math.max(0, r.echoDelayMs / 1000),
+    });
+  }
+}
+
+/**
  * Rune of Splitting (the builds pass, Michael's A, 11 Nov): an orb a staff light finisher loosed
  * breaks where it is spent (a burst as it lands, a bolt at the first enemy it strikes) into
  * `runes.splitBolts` bolts fanned `runes.splitSpreadDeg` across the way it was going, each for
@@ -380,6 +404,13 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
 
 export function stepProjectiles(state: SimState, dt: number, colliders: readonly Collider[], props?: readonly PropInfo[]): void {
   for (const pr of state.projectiles) {
+    // An echo waiting to fly is nowhere yet; it sounds as it goes.
+    if (pr.waits !== undefined) {
+      pr.waits -= dt;
+      if (pr.waits > 1e-6) continue;
+      delete pr.waits;
+      state.events.push({ kind: 'fire', playerId: pr.owner, projectile: 'arrow', heavy: false });
+    }
     pr.age += dt;
     pr.life -= dt;
 
@@ -520,7 +551,47 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
       }
     }
   }
+  // Rune of Embers: a charged shot that has stopped (spent in an enemy, in a crate, in a wall or the floor, or out of flight) bursts.
+  for (const pr of state.projectiles) if (pr.embers && (pr.stuck || pr.life <= 0)) emberBurst(state, pr);
   state.projectiles = state.projectiles.filter((pr) => pr.life > 0);
+}
+
+/**
+ * Rune of Embers (the builds pass, Michael's A, 12 Nov): where a charged shot from a bow-style weapon
+ * with the rune stops, a ring of fire `runes.embersRadiusM` wide hits every enemy in it for
+ * `runes.embersDamage` of the shot's hit, as bow damage, and with the element states on leaves it
+ * Burning, ready for a Detonate. Fire, whatever the hero's element, as the Whip's is. Once a shot.
+ */
+function emberBurst(state: SimState, pr: ProjectileState): void {
+  pr.embers = false;
+  const r = tuning.runes;
+  const radius = r.embersRadiusM;
+  const hero = state.players.find((p) => p.id === pr.owner);
+  // The ring lies on the floor the shooter stands on (an arrow flies about chest high).
+  state.events.push({ kind: 'embers', playerId: pr.owner, x: pr.x, y: Math.min(pr.y, hero ? hero.y : pr.y), z: pr.z, radius });
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.6) continue;
+    const dx = e.x - pr.x;
+    const dz = e.z - pr.z;
+    const d = Math.hypot(dx, dz);
+    if (d > radius + enemyStats(e.kind).radius) continue;
+    damageEnemy(state, e, {
+      projectile: true,
+      attackerId: pr.owner,
+      damage: pr.damage * r.embersDamage,
+      poise: pr.poise * r.embersDamage,
+      knockback: 0,
+      heavy: false,
+      dirX: d > 1e-3 ? dx / d : 0,
+      dirZ: d > 1e-3 ? dz / d : 1,
+      x: e.x,
+      y: e.y + 1,
+      z: e.z,
+      style: pr.style,
+      area: true,
+    });
+    if (tuning.combos.elementStates && isTargetable(e)) e.detonateUntil = state.time + comboWindow(hero);
+  }
 }
 
 /** Bolts curve toward their target, a limited total amount (brief: "Homes up to 15 degrees"). */

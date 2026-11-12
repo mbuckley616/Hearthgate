@@ -1742,6 +1742,14 @@ export const tuning = {
     splitSpreadDeg: 50,
     /** Each bolt's hit, as a share of the orb's. */
     splitDamage: 0.35,
+    /** Rune of Echoes: a bow light finisher's arrows fly again from where they were loosed, this long after. */
+    echoDelayMs: 150,
+    /** Each echo's hit, as a share of its arrow's. */
+    echoDamage: 0.5,
+    /** Rune of Embers: every charged shot bursts where it stops in a ring of fire this wide (m)... */
+    embersRadiusM: 1.75,
+    /** ...hitting each enemy in it for this share of the shot's hit, and leaving it Burning with the element states on. */
+    embersDamage: 0.4,
   },
 
   /**
@@ -2744,6 +2752,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'runes.splitBolts': [1, 7, 1],
   'runes.splitSpreadDeg': [0, 180, 5],
   'runes.splitDamage': [0, 1.5, 0.05],
+  'runes.echoDelayMs': [0, 600, 10],
+  'runes.echoDamage': [0, 1.5, 0.05],
+  'runes.embersRadiusM': [0.5, 5, 0.25],
+  'runes.embersDamage': [0, 1.5, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],
