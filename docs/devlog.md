@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 194, the Necromancer is offered
+
+**What changed**
+
+The Necromancer is `built`, so the Talents tab offers it to a staff hero from level 10 beside the Warlock, the Druid and the Sorcerer, Shadow only, and the server's `readLoadout` takes it with its tree (a tree pick its level has not opened, or another element, is refused). Seen in a browser: `tests/necromancer.e2e.ts` (Playwright, not part of `check`) saves a level-40 staff hero who chose it, wears the starter staff, joins the arena and presses Q; the server's snapshot holds one "Skeleton" whose owner is that player, drawn as bones beside them with "Skeleton · Lv 24" over it (0.6 of 40), the HUD reading "Necromancer · Level 40", Grave Call and Bone Step on the ability slots, no page errors. `summons.test.ts` checks the offer and the server's reading of it; the Druid's offer test now lists four staff specializations. check 623 green, parity identical.
+
+**Learned**
+
+Michael's A on the Necromancer took four sessions as estimated (190 to 194, the look its own). The other nine specializations have a rank V mastery twist (Session 180); the Necromancer has none, so a mastered combo's payoff only adds its 24%.
+
+**Next**
+
+Michael's A on the Necromancer is built, and with it every part of the builds pass's list, none yet played by a person beyond this check. What comes next is asked in `decisions.md` Pending.
+
 ## 2026-11-12: Session 193, the Necromancer's tree and Crescendo
 
 **What changed**

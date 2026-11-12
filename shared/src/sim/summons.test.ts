@@ -8,7 +8,8 @@ import { emptyMods, levelFor, xpForLevel } from './gear';
 import { addPlayer } from './coop';
 import { stepPlayer } from './player';
 import { restartRun } from './run';
-import { specCrescendo, specInfo, specsFor, treeProblem } from './specs';
+import { specCrescendo, specInfo, specProblem, specsFor, treeProblem } from './specs';
+import { readLoadout } from '../net/validate';
 import { partyOf, raiseSkeleton, skeletonCap, skeletonLevel, stepSummons, summonsOf } from './summons';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerCommand, type SimEvent } from './types';
@@ -125,10 +126,19 @@ describe("the Necromancer's Grave Call and Bone Step", () => {
     return events;
   }
 
-  it('is the fourth staff specialization, Shadow, not offered yet', () => {
-    expect(specsFor('staff').map((x) => x.id)).toContain('necromancer');
+  it('is the fourth staff specialization, Shadow, offered from staff level 10 and taken by the server with its tree', () => {
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toContain('necromancer');
     expect(specInfo('necromancer').element).toBe('shadow');
-    expect(specInfo('necromancer').built).toBe(false);
+    const at = (l: number) => ({ sword: 0, bow: 0, staff: xpForLevel(l) });
+    expect(specProblem(at(tuning.specs.level), { staff: 'necromancer' })).toBeNull();
+    expect(specProblem(at(tuning.specs.level - 1), { staff: 'necromancer' })).not.toBeNull();
+    expect(specProblem(at(tuning.specs.level), { sword: 'necromancer' })).not.toBeNull();
+    const l = { name: 'n', xp: at(30), talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+    const read = readLoadout({ ...l, spec: { staff: 'necromancer' }, tree: { staff: ['thick-bones', 'grasping-dead'] } });
+    expect(read?.spec).toEqual({ staff: 'necromancer' });
+    expect(read?.tree).toEqual({ staff: ['thick-bones', 'grasping-dead'] });
+    expect(readLoadout({ ...l, spec: { staff: 'necromancer' }, elements: { staff: 'fire' } })).toBeNull();
+    expect(readLoadout({ ...l, spec: { staff: 'necromancer' }, tree: { staff: ['marrow'] } })).toBeNull();
   });
 
   it("Grave Call: the ring hits in shadow, freezes nothing, and raises a skeleton a step ahead", () => {

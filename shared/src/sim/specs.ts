@@ -302,7 +302,7 @@ export const SPECS: readonly SpecInfo[] = [
     q: ['Grave Call', 'Frost ring turns to shadow and raises a skeleton beside you; it freezes nothing.'],
     e: ['Bone Step', 'Blink raises a skeleton where you stood.'],
     sig: ['Legion', 'Your skeletons fight for 12 s. More stand at once as your staff level grows (two at 25, three at 40), and each fights harder.'],
-    built: false,
+    built: true,
     tree: [
       [
         { id: 'long-dead', name: 'Long Dead', text: 'Your skeletons stand for 18 s.' },
