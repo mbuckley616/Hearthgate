@@ -551,7 +551,47 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
       }
     }
   }
+  // Rune of Embers: a charged shot that has stopped (spent in an enemy, in a crate, in a wall or the floor, or out of flight) bursts.
+  for (const pr of state.projectiles) if (pr.embers && (pr.stuck || pr.life <= 0)) emberBurst(state, pr);
   state.projectiles = state.projectiles.filter((pr) => pr.life > 0);
+}
+
+/**
+ * Rune of Embers (the builds pass, Michael's A, 12 Nov): where a charged shot from a bow-style weapon
+ * with the rune stops, a ring of fire `runes.embersRadiusM` wide hits every enemy in it for
+ * `runes.embersDamage` of the shot's hit, as bow damage, and with the element states on leaves it
+ * Burning, ready for a Detonate. Fire, whatever the hero's element, as the Whip's is. Once a shot.
+ */
+function emberBurst(state: SimState, pr: ProjectileState): void {
+  pr.embers = false;
+  const r = tuning.runes;
+  const radius = r.embersRadiusM;
+  const hero = state.players.find((p) => p.id === pr.owner);
+  // The ring lies on the floor the shooter stands on (an arrow flies about chest high).
+  state.events.push({ kind: 'embers', playerId: pr.owner, x: pr.x, y: Math.min(pr.y, hero ? hero.y : pr.y), z: pr.z, radius });
+  for (const e of state.enemies) {
+    if (!isTargetable(e) || Math.abs(e.y - pr.y) > 1.6) continue;
+    const dx = e.x - pr.x;
+    const dz = e.z - pr.z;
+    const d = Math.hypot(dx, dz);
+    if (d > radius + enemyStats(e.kind).radius) continue;
+    damageEnemy(state, e, {
+      projectile: true,
+      attackerId: pr.owner,
+      damage: pr.damage * r.embersDamage,
+      poise: pr.poise * r.embersDamage,
+      knockback: 0,
+      heavy: false,
+      dirX: d > 1e-3 ? dx / d : 0,
+      dirZ: d > 1e-3 ? dz / d : 1,
+      x: e.x,
+      y: e.y + 1,
+      z: e.z,
+      style: pr.style,
+      area: true,
+    });
+    if (tuning.combos.elementStates && isTargetable(e)) e.detonateUntil = state.time + comboWindow(hero);
+  }
 }
 
 /** Bolts curve toward their target, a limited total amount (brief: "Homes up to 15 degrees"). */

@@ -49,6 +49,10 @@ export class Sfx {
     let hits = 0;
     for (const ev of events) {
       switch (ev.kind) {
+        case 'embers':
+          // Rune of Embers: the fire bursting where the shot stopped.
+          this.whoomph();
+          break;
         case 'whip':
           // Rune of the Whip: the crack of the lash over the heavy's swoosh.
           this.whoomph();

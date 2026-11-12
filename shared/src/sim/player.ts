@@ -237,6 +237,8 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     if (familyOf(p) === 'knives') for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].life *= tuning.families.knivesLifeMult;
     // Rune of Echoes: the light finisher's arrows fly again, ghosts along the same line.
     if (hasRune(p.mods, 'echo') && isLightFinisher(p)) echoArrows(state, loosed);
+    // Rune of Embers: every charged shot bursts in fire where it stops (an echo's ghost does not).
+    if (hasRune(p.mods, 'embers')) for (let i = loosed; i < state.projectiles.length; i++) if (state.projectiles[i].charged && !state.projectiles[i].echo) state.projectiles[i].embers = true;
   } else if (p.style === 'staff') {
     const loosed = state.projectiles.length;
     const burst = p.attackHit === 2 || p.attackHit === 4;

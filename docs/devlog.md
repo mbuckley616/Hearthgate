@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 189, Rune of Embers
+
+**What changed**
+
+The bow's second rune, and with it Michael's A on runes for the bow is built. A bow-style weapon with the Rune of Embers set marks every charged shot it looses (`ProjectileState.embers`, optional; the power and piercing shots, and every heavy that borrows them); where the shot stops (spent in the enemy that ends its pierce, in a crate, stuck in a wall or the floor, or out of flight) a ring of fire `runes.embersRadiusM` (1.75 m) wide hits every enemy in it for `runes.embersDamage` (0.4) of the shot's hit as bow damage, once a shot (`emberBurst` in `sim/projectiles.ts`). With the element states on it leaves them Burning, ready for a Detonate, as the Whip does: fire whatever the hero's element. It is an area hit, so it uproots a Rooted enemy too (a Ranger's Thornshot then a second charged shot). An `embers` event draws two rings of fire on the floor under it and a spray of sparks, with the burst's whoomph. An echo's ghost never bursts. Both numbers on the panel. `runeEmbers.test.ts`: a charged shot bursts once, a light one never, none without the rune; the ring hits the struck enemy and its neighbour and burns them, not one 5 m off; a piercing shot bursts where it is spent, past what it went through; with the element states off it hurts and burns nothing.
+
+**Learned**
+
+A charged shot pierces three, so in a line of two the ring lands at the wall behind them, not on either; that is "where it stops", and reads well as a shot that went through. Worth seeing in play whether it should burst on the first enemy instead.
+
+**Next**
+
+Michael's A on runes for the bow is built: six runes, two a style. The builds pass's list has the Necromancer left; what comes next asked in `decisions.md` Pending.
+
 ## 2026-11-12: Session 188, Rune of Echoes
 
 **What changed**

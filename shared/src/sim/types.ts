@@ -372,6 +372,8 @@ export interface ProjectileState {
   splits?: boolean;
   /** Rune of Echoes: a ghost of a bow light finisher's arrow, drawn pale. */
   echo?: boolean;
+  /** Rune of Embers: a charged shot that bursts in a ring of fire where it stops. */
+  embers?: boolean;
   /** Seconds before it flies: until then it stands still where it was loosed, unseen, hitting nothing. */
   waits?: number;
   /** Burst only: slow applied to enemies caught in it (seconds). */
@@ -484,6 +486,8 @@ export type SimEvent =
   | { kind: 'whip'; playerId: string; x: number; z: number; yaw: number; length: number }
   /** Rune of Draining: a heavy's orb gave its caster back `amount` health, drawn from (x, y, z). */
   | { kind: 'runeDrain'; playerId: string; x: number; y: number; z: number; amount: number }
+  /** Rune of Embers: a charged shot burst in a ring of fire, this wide; `y` is the floor under it. */
+  | { kind: 'embers'; playerId: string; x: number; y: number; z: number; radius: number }
   | { kind: 'enemyTelegraph'; enemyId: number }
   | { kind: 'enemySwing'; enemyId: number }
   | { kind: 'enemySpawn'; enemyId: number; x: number; z: number }
