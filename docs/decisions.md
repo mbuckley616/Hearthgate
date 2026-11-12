@@ -7,6 +7,8 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-11: Runes for the bow (builder, Session 186)
 Your A on runes is built (Sessions 181 to 186): sockets (a rare weapon two, a common of steel or better one), runes found set in rare weapons and moved with E or Y on the hero screen, and the design doc's four: Blades and the Whip for the sword, Draining and Splitting for the staff. The doc names no rune for the bow, so a rare bow drops with empty sockets and a bow player has nothing to put in them.
 - **A.** Two bow runes on the same pattern, one a session: the Rune of Echoes (a light finisher's arrow fires a second, ghostly arrow along the same line a moment later) and the Rune of Embers (every charged shot bursts in a small ring of fire where it stops, leaving Burning with the element states on). *(recommended: every style gets a finisher rune and a heavy rune, as the sword and staff have)*
@@ -14,8 +16,7 @@ Your A on runes is built (Sessions 181 to 186): sockets (a rare weapon two, a co
 - **C.** No bow runes: a rare bow's sockets take any style's rune, idle unless the hero swaps; move on to the Necromancer (B of the last question).
 - **D.** Pause runes for a playtest of the four before adding more.
 
-
-## Answered
+Michael: **A. Two bow runes: Echoes and Embers**. (2026-11-12)
 
 ### 2026-11-10: The builds pass, what after combo mastery (builder, Session 180)
 Your A on what a rank gives is built (Sessions 177 to 180): ranks I to IV add 6% each to that combo's payoff, and rank V gives each of the nine specializations a twist from its own kit (the Paladin heals, the Spellblade leaves ground, the Rogue, Assassin and Sorcerer get their mobility move back, the Ranger seeds brambles, the Scout marks and the Warlock hexes around the payoff, the Druid grows a grove). The builds pass list has two parts left: runes in weapon sockets and the Necromancer.
