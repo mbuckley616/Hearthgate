@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 193, the Necromancer's tree and Crescendo
+
+**What changed**
+
+The Necromancer's tree, three rows of two at 20, 30 and 40, each strengthening its skeletons, and its Crescendo, all acting in `sim/summons.ts` from the Necromancer's picks (`hasStyleNode`, so a skeleton keeps its Necromancer's tree whatever it holds). Row one: Long Dead (they stand `necro.treeLongLifeS`, 18 s) or Thick Bones (`necro.treeThickBonesMult`, 1.5x health). Row two: Restless Dead (`necro.treeRestlessExtra`, one more may stand, past the usual three) or Grasping Dead (Grave Call raises two, either side of a step ahead). Row three: Corpse Burst (a skeleton crumbling for any reason but its Necromancer leaving bursts in shadow, every enemy within `necro.burstRadiusM`, 2.5 m, taking `necro.burstDamage`, half a Charge's hit, as the Necromancer's staff damage; drawn as a shadow `attune` burst) or Marrow (they fight at the full staff level, `necro.treeMarrowShare`). Army of the Dead, the Crescendo: as many skeletons as may stand, asked in a ring 1.6 m round the Necromancer, raised by the server's step (the old ones crumble to make room). All on the panel. `summons.test.ts`, now 14 cases; check 623 green, parity identical.
+
+**Learned**
+
+Corpse Burst on a replaced skeleton is a choice: Grave Call at the cap crumbles the oldest, so with the node every press past the cap is a free burst where the oldest stood. It reads as the point of the node; worth watching in play.
+
+**Next**
+
+Offering the Necromancer: `built: true`, so the Talents tab lets a staff hero of level 10 choose it and the server takes it; a check that a loadout naming it is read; then the builds pass's list is done.
+
 ## 2026-11-12: Session 192, the skeleton's look
 
 **What changed**

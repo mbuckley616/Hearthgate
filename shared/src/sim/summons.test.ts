@@ -8,7 +8,7 @@ import { emptyMods, levelFor, xpForLevel } from './gear';
 import { addPlayer } from './coop';
 import { stepPlayer } from './player';
 import { restartRun } from './run';
-import { specInfo, specsFor } from './specs';
+import { specCrescendo, specInfo, specsFor, treeProblem } from './specs';
 import { partyOf, raiseSkeleton, skeletonCap, skeletonLevel, stepSummons, summonsOf } from './summons';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerCommand, type SimEvent } from './types';
@@ -167,5 +167,86 @@ describe("the Necromancer's Grave Call and Bone Step", () => {
     }
     expect(sc.p.raise?.length).toBe(1);
     expect(summonsOf(sc.s, 'p1').length).toBe(0);
+  });
+});
+
+describe("the Necromancer's tree and Crescendo", () => {
+  /** A Necromancer at a staff level with these tree picks, alone in the arena (a HostSession, so its ticks are the server's). */
+  function necro(level: number, tree: string[]) {
+    const { host, me } = solo(level);
+    Object.assign(me, { spec: { staff: 'necromancer' }, tree: { staff: tree } });
+    return { host, me };
+  }
+
+  it('three rows of two, each opened at its level', () => {
+    const xp = (l: number) => ({ sword: 0, bow: 0, staff: xpForLevel(l) });
+    expect(treeProblem(xp(40), { staff: 'necromancer' }, { staff: ['long-dead', 'grasping-dead', 'corpse-burst'] })).toBeNull();
+    expect(treeProblem(xp(39), { staff: 'necromancer' }, { staff: ['marrow'] })).not.toBeNull();
+    expect(treeProblem(xp(40), { staff: 'necromancer' }, { staff: ['long-dead', 'thick-bones'] })).not.toBeNull();
+    expect(specInfo('necromancer').crescendo?.[0]).toBe('Army of the Dead');
+  });
+
+  it('Long Dead, Thick Bones and Marrow: longer, sturdier, at the full staff level', () => {
+    const plain = necro(40, []);
+    const a = raiseSkeleton(plain.host.sim, world, plain.me);
+    const tree = necro(40, ['long-dead', 'restless-dead', 'marrow']);
+    const b = raiseSkeleton(tree.host.sim, world, tree.me);
+    expect(a.summon!.until - plain.host.sim.time).toBeCloseTo(tuning.necro.skeletonLifeS);
+    expect(b.summon!.until - tree.host.sim.time).toBeCloseTo(tuning.necro.treeLongLifeS);
+    expect(levelFor(a.xp.sword)).toBe(skeletonLevel(40));
+    expect(levelFor(b.xp.sword)).toBe(40);
+    const thick = necro(40, ['thick-bones']);
+    const c = raiseSkeleton(thick.host.sim, world, thick.me);
+    expect(c.maxHp).toBe(Math.round((a.maxHp / tuning.necro.skeletonHealth) * tuning.necro.skeletonHealth * tuning.necro.treeThickBonesMult));
+  });
+
+  it('Restless Dead lets one more stand', () => {
+    const { host, me } = necro(25, ['long-dead', 'restless-dead']);
+    expect(skeletonCap(25, me)).toBe(3);
+    for (let i = 0; i < 4; i++) raiseSkeleton(host.sim, world, me);
+    expect(summonsOf(host.sim, me.id).length).toBe(3);
+  });
+
+  it('Grasping Dead: Grave Call raises two', () => {
+    const { host, me } = necro(25, ['long-dead', 'grasping-dead']);
+    for (let i = 0; i < 40; i++) {
+      stepSim(host.sim, { [me.id]: { ...idleCommand(), ability1: i === 0 } }, 1 / 60, world);
+    }
+    expect(summonsOf(host.sim, me.id).length).toBe(2);
+  });
+
+  it('Corpse Burst: a crumbling skeleton hits the enemies near it, not one 5 m off', () => {
+    const { host, me } = necro(40, ['long-dead', 'grasping-dead', 'corpse-burst']);
+    me.x = 0;
+    me.z = 14;
+    const s = raiseSkeleton(host.sim, world, me, 0, 0);
+    const near = createEnemy(host.sim, world, 'grunt', 1.5, 0, 0);
+    const far = createEnemy(host.sim, world, 'grunt', 5, 0, 0);
+    for (const e of [near, far]) Object.assign(e, { hp: 9999, ai: 'idle' });
+    host.sim.enemies.push(near, far);
+    s.summon!.until = host.sim.time;
+    stepSummons(host.sim, world);
+    expect(near.hp).toBeLessThan(9999);
+    expect(far.hp).toBe(9999);
+    // Without the node, a crumble hurts nothing.
+    const plain = necro(40, []);
+    const t = raiseSkeleton(plain.host.sim, world, plain.me, 0, 0);
+    const e = createEnemy(plain.host.sim, world, 'grunt', 1.5, 0, 0);
+    Object.assign(e, { hp: 9999, ai: 'idle' });
+    plain.host.sim.enemies.push(e);
+    t.summon!.until = plain.host.sim.time;
+    stepSummons(plain.host.sim, world);
+    expect(e.hp).toBe(9999);
+  });
+
+  it('Army of the Dead: a Crescendo raises as many as may stand, in a ring', () => {
+    const { host, me } = necro(50, []);
+    raiseSkeleton(host.sim, world, me);
+    specCrescendo(host.sim, me);
+    expect(me.raise?.length).toBe(skeletonCap(50));
+    stepSummons(host.sim, world);
+    const mine = summonsOf(host.sim, me.id);
+    expect(mine.length).toBe(skeletonCap(50));
+    for (const k of mine) expect(Math.hypot(k.x - me.x, k.z - me.z)).toBeCloseTo(1.6, 1);
   });
 });

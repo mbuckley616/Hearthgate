@@ -1767,6 +1767,14 @@ export const tuning = {
     skeletonLevelShare: 0.6,
     /** Its health, as a share of a hero's at that level. */
     skeletonHealth: 0.5,
+    /** The tree: Long Dead's life (s), Thick Bones' health, Restless Dead's extra skeleton, Marrow's share of the staff level. */
+    treeLongLifeS: 18,
+    treeThickBonesMult: 1.5,
+    treeRestlessExtra: 1,
+    treeMarrowShare: 1,
+    /** Corpse Burst: a crumbling skeleton hits every enemy this near for this share of a Charge's hit. */
+    burstRadiusM: 2.5,
+    burstDamage: 0.5,
   },
 
   /**
@@ -2779,6 +2787,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'necro.skeletonMax': [1, 6, 1],
   'necro.skeletonLevelShare': [0.1, 1.5, 0.05],
   'necro.skeletonHealth': [0.1, 2, 0.05],
+  'necro.treeLongLifeS': [1, 60, 1],
+  'necro.treeThickBonesMult': [1, 3, 0.05],
+  'necro.treeRestlessExtra': [0, 3, 1],
+  'necro.treeMarrowShare': [0.1, 1.5, 0.05],
+  'necro.burstRadiusM': [0.5, 6, 0.25],
+  'necro.burstDamage': [0, 2, 0.05],
   'mastery.payoffPerRank': [0, 0.25, 0.01],
   'mastery.paladinHeal': [0, 0.25, 0.01],
   'mastery.spellbladeGroundWidth': [0.5, 8, 0.25],

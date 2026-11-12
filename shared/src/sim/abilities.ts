@@ -6,7 +6,7 @@ import { levelFor } from './gear';
 import { abilityRank, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
-import { askSkeleton, bladeStorm, blazingTrail, elementalStep, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
+import { askSkeleton, graveCall, bladeStorm, blazingTrail, elementalStep, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
 import type { EnemyState, PlayerCommand, PlayerState, SimState } from './types';
 
 const DEG = Math.PI / 180;
@@ -309,7 +309,7 @@ function fire(state: SimState, p: PlayerState, kind: AbilityKind, cmd: PlayerCom
         thornRing(state, p, e);
       }
       // Grave Call (the Necromancer's): a skeleton rises a step ahead.
-      askSkeleton(p, p.x + Math.sin(p.yaw) * 1.5, p.z + Math.cos(p.yaw) * 1.5);
+      graveCall(p);
       break;
     }
     case 'blink': {
