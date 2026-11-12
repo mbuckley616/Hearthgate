@@ -7,7 +7,7 @@ import { tuning, type Style } from '../config/tuning';
  * weapon they were set in; the fight sees only `Mods.runes`, the worn weapon's, checked on the
  * server as any loadout is.
  */
-export type RuneKind = 'blades' | 'whip' | 'drain' | 'split';
+export type RuneKind = 'blades' | 'whip' | 'drain' | 'split' | 'echo';
 
 export interface RuneDef {
   name: string;
@@ -24,6 +24,7 @@ export const RUNES: Record<RuneKind, RuneDef> = {
   whip: { name: 'Rune of the Whip', style: 'sword', changes: 'heavy', words: 'Every heavy lashes a fire whip ahead' },
   drain: { name: 'Rune of Draining', style: 'staff', changes: 'heavy', words: 'Every heavy’s orb drains health back' },
   split: { name: 'Rune of Splitting', style: 'staff', changes: 'finisher', words: 'A light finisher’s orb splits in three' },
+  echo: { name: 'Rune of Echoes', style: 'bow', changes: 'finisher', words: 'A light finisher’s arrow echoes a moment later' },
 };
 
 export const RUNE_KINDS = Object.keys(RUNES) as RuneKind[];

@@ -265,6 +265,30 @@ function segmentHitsCapsule(
 }
 
 /**
+ * Rune of Echoes (the builds pass, Michael's A, 12 Nov): each arrow a bow light finisher loosed
+ * (from `from` on in the list) gets a ghost that waits `runes.echoDelayMs` where the arrow was
+ * loosed and then flies its line, for `runes.echoDamage` of its hit. It hits what the arrow hit
+ * again: a second arrow, not a piece of the first.
+ */
+export function echoArrows(state: SimState, from: number): void {
+  const r = tuning.runes;
+  const n = state.projectiles.length;
+  for (let i = from; i < n; i++) {
+    const pr = state.projectiles[i];
+    if (pr.kind !== 'arrow' || pr.echo) continue;
+    state.projectiles.push({
+      ...pr,
+      id: state.nextId++,
+      damage: pr.damage * r.echoDamage,
+      poise: pr.poise * r.echoDamage,
+      hitIds: [],
+      echo: true,
+      waits: Math.max(0, r.echoDelayMs / 1000),
+    });
+  }
+}
+
+/**
  * Rune of Splitting (the builds pass, Michael's A, 11 Nov): an orb a staff light finisher loosed
  * breaks where it is spent (a burst as it lands, a bolt at the first enemy it strikes) into
  * `runes.splitBolts` bolts fanned `runes.splitSpreadDeg` across the way it was going, each for
@@ -380,6 +404,13 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
 
 export function stepProjectiles(state: SimState, dt: number, colliders: readonly Collider[], props?: readonly PropInfo[]): void {
   for (const pr of state.projectiles) {
+    // An echo waiting to fly is nowhere yet; it sounds as it goes.
+    if (pr.waits !== undefined) {
+      pr.waits -= dt;
+      if (pr.waits > 1e-6) continue;
+      delete pr.waits;
+      state.events.push({ kind: 'fire', playerId: pr.owner, projectile: 'arrow', heavy: false });
+    }
     pr.age += dt;
     pr.life -= dt;
 

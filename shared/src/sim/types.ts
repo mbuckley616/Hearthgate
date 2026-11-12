@@ -370,6 +370,10 @@ export interface ProjectileState {
   drains?: boolean;
   /** Rune of Splitting: a staff light finisher's orb, which breaks into smaller bolts where it lands. */
   splits?: boolean;
+  /** Rune of Echoes: a ghost of a bow light finisher's arrow, drawn pale. */
+  echo?: boolean;
+  /** Seconds before it flies: until then it stands still where it was loosed, unseen, hitting nothing. */
+  waits?: number;
   /** Burst only: slow applied to enemies caught in it (seconds). */
   slowTime: number;
   /** Burst damage has been applied. */

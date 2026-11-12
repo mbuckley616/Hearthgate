@@ -5,7 +5,7 @@ import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
 import { damageEnemy, hitstopFor, isTargetable } from './combat';
 import { chainLengthFor, emptyMods, levelFor } from './gear';
-import { spawnArrow, spawnBolt, spawnBurst, spawnRuneBlades } from './projectiles';
+import { echoArrows, spawnArrow, spawnBolt, spawnBurst, spawnRuneBlades } from './projectiles';
 import { hasRune } from './runes';
 import { runeWhip } from './runeWhip';
 import { armFlow, chainEnded, newFlow, onBeat, stepFlow } from './flow';
@@ -235,6 +235,8 @@ function fireAttack(p: PlayerState, state: SimState, colliders: readonly Collide
     }
     // Throwing knives (the builds pass) fall short.
     if (familyOf(p) === 'knives') for (let i = loosed; i < state.projectiles.length; i++) state.projectiles[i].life *= tuning.families.knivesLifeMult;
+    // Rune of Echoes: the light finisher's arrows fly again, ghosts along the same line.
+    if (hasRune(p.mods, 'echo') && isLightFinisher(p)) echoArrows(state, loosed);
   } else if (p.style === 'staff') {
     const loosed = state.projectiles.length;
     const burst = p.attackHit === 2 || p.attackHit === 4;

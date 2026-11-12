@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 188, Rune of Echoes
+
+**What changed**
+
+The bow's first rune (Michael's A, 12 Nov, "Runes for the bow"). A bow-style weapon (the bow, the longbow, throwing knives) with the Rune of Echoes set gives each arrow its light finisher looses a ghost (`echoArrows` in `sim/projectiles.ts`): a copy that waits `runes.echoDelayMs` (150 ms) where the arrow was loosed, unseen and hitting nothing (`ProjectileState.waits`, optional), then flies the same line for `runes.echoDamage` (0.5) of its hit, with a `fire` event so it sounds as it goes. It is a second arrow, so it can hit what the first hit again; a piercing finisher's echo pierces too. `ProjectileView` hides a waiting echo and draws it pale blue and see-through. Rare bows now find it (the found-rune roll draws from a weapon's style's runes). Both numbers on the panel. `runeEcho.test.ts`: only the finisher echoes, none without the rune, a level-1 hero's third step is its finisher, and the echo waits in place for the delay, then flies its line at half damage.
+
+**Learned**
+
+The finisher is the chain's last step, so at level 1 to 3 it is the power shot, not the fan; from level 4 the piercing shot before the backflip. An echo of a piercing shot carries the gold streak's pierce but none of the backflip.
+
+**Next**
+
+The Rune of Embers: every charged shot bursts in a small ring of fire where it stops, leaving Burning with the element states on. Then Michael's A on bow runes is built.
+
 ## 2026-11-12: Session 187, an arena restart keeps who the hero is
 
 **What changed**
