@@ -182,6 +182,20 @@ export function restartRun(state: SimState, world: World): void {
     fresh.maxHp = p.maxHp;
     fresh.hp = p.maxHp;
     fresh.lagGrace = p.lagGrace;
+    // Hearthgate's own parts of who a hero is (none of them the slice's, so absent in the parity test):
+    // the browser sends no loadout after a restart, so whatever is not carried here is gone for the session,
+    // and a fresh mastery count would overwrite the save's at the next run's end (critic, 12 Nov).
+    if (p.hpBase !== undefined) fresh.hpBase = p.hpBase;
+    if (p.look) fresh.look = p.look;
+    if (p.champion) fresh.champion = p.champion;
+    if (p.bagRoom) fresh.bagRoom = p.bagRoom;
+    if (p.spec) fresh.spec = p.spec;
+    if (p.elements) fresh.elements = p.elements;
+    if (p.tree) fresh.tree = p.tree;
+    if (p.mastery) fresh.mastery = p.mastery;
+    if (p.potions !== undefined) fresh.potions = p.potions;
+    if (p.henchman) fresh.henchman = p.henchman;
+    if (p.brain) fresh.brain = p.brain;
     if (tuning.coop.bleedOut) fresh.draughts = Math.round(tuning.coop.draughtsPerFloor);
     fresh.y = groundHeight(world, fresh.x, fresh.z);
     return fresh;

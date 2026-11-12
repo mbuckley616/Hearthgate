@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 187, an arena restart keeps who the hero is
+
+**What changed**
+
+`restartRun` (`shared/src/sim/run.ts`) rebuilt each hero with `createPlayer` and copied back only the slice's fields (style, name, XP, talents, mods, health, lag grace), so an arena restart dropped everything Hearthgate has added to a hero since: specialization, element, tree, combo mastery, champion state, worn look, the bag's room, the belt, and a henchman's flag and brain. The browser sends no loadout after a restart, so the rest of the session played without a specialization, and the first payoff afterwards began a fresh mastery count that the next run's end saved over the real one (the critic's 299 Shatter became 1). Each of those is now carried over when the hero has it; position, state, cooldowns and health still reset. None is the slice's, so the parity hashes are untouched. `shared/src/sim/restart.test.ts`: a specialized hero keeps all of it through a restart, a 299 Shatter count goes to 300 on the next payoff, and a slice hero gains nothing (the first two fail without the fix).
+
+**Learned**
+
+`applyLoadout` is the list of what a hero is; anything added there and not to `restartRun` is lost on F. Floors never restart, so only the arena had it.
+
+**Next**
+
+The builds pass waits on "Runes for the bow" (`decisions.md` Pending). The other open Found-in-play item, late deaths in a crowd, needs a real machine's frame rate.
+
 ## 2026-11-11: Session 186, Rune of Splitting
 
 **What changed**
