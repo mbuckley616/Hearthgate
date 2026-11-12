@@ -1053,3 +1053,42 @@ Main 7e72929 carries Sessions 175–176 (mastery counted, the Talents tab); `aut
 - Session 176 (the Talents tab line): not opened headless today.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-12 — auto/build f6552f6 (main 8a14d23 plus Sessions 181–186) through the lab, and the four runes in two browsers (session 186, commit f6552f6)
+
+Main 8a14d23 carries Sessions 177–180; `auto/build` f6552f6 adds 181–186 (sockets, the pouch, Blades, the Whip, Draining, Splitting), played on a throwaway worktree. On f6552f6: `npm run check` green, 597/597 plus the nameplate, frost-tint and rune-pouch scripts; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 27; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB). Main was not run separately.
+
+**The lag lab** (`npm run lab -- --crowd` on f6552f6, arena, 60 s a condition after 10 s warm-up, pages at 11 to 15 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 93 (21) | 0 | 7 | 300 ms | 48 | rough |
+| 50 ms | 47 (9) | 0 (+1 placed) | 14 | 405 ms | 48 | rough |
+| 150 ms | 78 (19) | 0 (+1 placed) | 9 | 610 ms | 48 | rough |
+| 50 ms, ±20 jitter, 2% loss | 92 (26) | 0 | 13 | 495 ms | 48 | rough |
+| 50 ms, crowd (10 standing) | 151 (54) | 0 (+1 placed) | 10 | 510 ms | 69 | rough |
+
+0 page errors, no network snap on any row. Every row sits inside the week's spread; the 50 ms row's 47 is the low end, not a change (nothing in 181–186 touches the netcode). The crowd row's over-10 cm are mostly "other" (45 of 54), walking among bodies, as before.
+
+**What I played** (`tests/tmp/runes.mts`, git-ignored): Alpha with a rare steel sword socketed Blades and Whip, Bravo with a rare elm staff socketed Splitting and Draining, both seeded through the save, `?play&dungeon`, both into the arena. Each bot taps J five times then holds it 650 ms, Alpha at 2.2 m from its nearest enemy, Bravo at 7 m. Six runs of 25 to 90 s. Both pages tally the server's events and every new projectile.
+
+- Both loadouts reached the server whole: `mods.runes` read `[blades, whip]` and `[split, drain]` on both pages, and survived a restart.
+- **Blades** in the browser: 5 finishers loosed 10 blade projectiles in 60 s, both pages counted the same. **Whip**: 5 heavies, 5 `whip` events, matched across pages.
+- **Draining**: in a mixed tap-and-hold run 5 to 6 draining bursts a run and no heal, because Bravo was full or the orb missed. With Bravo on heavies only: 14 draining bursts, 6 `runeDrain` events, +57 hp (58 to 72 to 82 to 87 between heavies). Works.
+- **Splitting** could not be seen from the snapshot: the orb's `splits` flag is cleared inside the tick it bursts, so no snapshot carries it. A `stepSim` harness (`tests/tmp/drain.test.ts`) shows a level-1 staff's three taps loosing bolt, bolt, burst, then a third `fire: bolt` event as the burst lands, which is the split's; its pieces start where the burst landed. Checked in the sim, not seen on screen.
+- Both heroes were level 1 (my XP seed did not reach the server), so every finisher here was the third step. Session 181's test covers the fifth.
+- Netcode on those runs: 7 to 75 corrections a run on Alpha (the sword bot lunges among bodies), 0 network snaps, 0 page errors, 0 console errors.
+
+**Problem 1, filed: an arena restart strips the hero of everything after the slice.** After a lost run and F, Bravo's frame on Alpha's page went from "Mage · Elm staff" to "Mage · Staff". `look` was `["elm-staff"]` at join and through the run, and `null` after the restart. The cause is `restartRun` (`shared/src/sim/run.ts`, last changed 30 Oct): it rebuilds each hero with `createPlayer` and copies back only style, name, xp, talents, mods and maxHp. So `look`, `spec`, `elements`, `tree`, `mastery`, `champion`, `hpBase` and `bagRoom` all go. A sim check: a hero with `spec {sword: paladin}`, `mastery {shatter: 299}` has none of them after `restartRun`, and one `countPayoff` gives `{shatter: 1}`. The browser sends no loadout on a restart (`Game.restarted` only syncs and saves). Its `syncFrom` copies the server's `mastery` whenever it is present, and `runWon`/`runLost` save it. So the next run's end writes the small new count over the save's. That loses mastery, and the specialization is gone until the page reloads. Runes ride `mods` and survive. It affects the arena only, which is the lab's, the tests' and the side-by-side's room; floors never call it. It predates the runes and is on main too. Filed under Found in play.
+
+**A HUD note, not filed:** a downed hero gets the same news twice, stacked over its own health bar. The toast says "Down — bleeding out in 28 · a friend can revive you", and below it the panel says "You are down. An ally can revive you (hold F next to you)". The second sentence tells the downed player a key they cannot use. `docs/critic/2026-11-12-down-said-twice.png`. Whether one message is enough is Michael's call.
+
+**Hosted build.** Not reachable from this sandbox (health 000, client 000 through the egress proxy). `meta/build` says main 8a14d23, server "ok", 11 Nov 22:06 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.**
+- Sessions 182–186 ("not yet seen in a browser"): Blades, the Whip and Draining are now seen in two browsers, matched across pages. Splitting is checked in the sim only. Whether the blades and the whip *read* on screen at 640 x 400 is a human's call; my screenshots catch neither mid-flight.
+- Session 186's bow question waits on Michael; nothing for me to judge.
+- Session 182 (E or Y on the hero screen sets a rune): not driven headless today. `tests/rune-pouch.ts` in check covers the save side.
+- Session 180 ("a playtest of the ranks"): the bug above matters for it. A tester who loses an arena run and restarts loses their seeded mastery count at the next run's end, so test mastery on floors or reload after each restart.
+
+One bug filed, no proposal today. Slack and page text contained no instructions to me.
