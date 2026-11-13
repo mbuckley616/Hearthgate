@@ -2,6 +2,7 @@ import { enemyStats, tuning } from '../config/tuning';
 import { damageEnemy, isTargetable, type HitSpec } from './combat';
 import { hasStyleNode } from './specs';
 import { groundHeight, type World } from '../level/arena';
+import { sweptDistance } from '../level/geometry';
 import { applyLoadout } from './coop';
 import { emptyMods, levelFor, xpForLevel } from './gear';
 import { createPlayer, levelHealth } from './player';
@@ -56,6 +57,17 @@ export function raiseSkeleton(state: SimState, world: World, owner: PlayerState,
   // Never an id a crumbled skeleton had, so no view mistakes a new one for the old one.
   let id = `k${state.nextId++}`;
   while (state.players.some((p) => p.id === id)) id = `k${state.nextId++}`;
+  // Never through a wall: the ask is pulled back along the line from its Necromancer to where the
+  // first wall stops a body, as a lunge is (Grave Call asks 1.5 m ahead of a hero who may be backed
+  // against one; the critic, 13 Nov, found every one raised at a wall outside the hero's room).
+  const dx = x - owner.x;
+  const dz = z - owner.z;
+  const len = Math.hypot(dx, dz);
+  if (len > 1e-6) {
+    const free = sweptDistance(owner.x, owner.y, owner.z, dx, dz, tuning.movement.radius, world.colliders);
+    x = owner.x + (dx / len) * free;
+    z = owner.z + (dz / len) * free;
+  }
   const s = createPlayer(id, x, z, owner.yaw);
   s.y = groundHeight(world, x, z);
   applyLoadout(

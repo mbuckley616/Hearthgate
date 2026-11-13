@@ -254,6 +254,9 @@ describe('combo mastery', () => {
       p.style = 'staff';
       p.spec = { staff: spec };
       p.mastery = { shatter: count };
+      // In the arena with the payoff, not behind the antechamber's gate: a raise never crosses a wall.
+      p.x = 6;
+      p.z = 1;
       payCombo(s, 'shatter', p.id, 6, 1, 4);
       return s;
     };

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-13: Session 196, skeletons are never raised through a wall
+
+**What changed**
+
+The critic's bug (13 Nov): a Necromancer backed against a wall raised its skeleton on the far side, outside the floor or in the next room. `raiseSkeleton` (`sim/summons.ts`) now pulls every ask back along the line from its Necromancer to where the first wall stops a body (`sweptDistance`, the lunge's own sweep, at a hero's radius). One clamp covers Grave Call, Bone Step, Grasping Dead's pair, Army of the Dead's ring and the rank V twist, since all of them pass through it. In the open nothing changes: the skeleton still rises 1.5 m ahead. Server only, as raising always was; prediction and the parity hashes are untouched. A new test raises sixteen skeletons in the critic's corner of the antechamber, one per direction, and checks that nothing blocks the line to any of them. It fails without the clamp. The mastery twist's test now stands its Necromancer inside the arena: it had paid the combo from the antechamber, behind the closed gate, at a spot the clamp now rightly refuses.
+
+**Learned**
+
+The twist raises the skeleton where the payoff landed, which can be far off (an orb's). The clamp runs from the Necromancer, so a payoff seen past a pillar's edge may rise a little short of its spot. That beats rising inside the pillar.
+
+**Next**
+
+Nothing else is buildable in the current section until the builds-pass playtest (E1i waits on Crypt play). The crowded-fight lag item is a measurement, and any fix to it is netcode for a (Fable) card.
+
 ## 2026-11-13: Session 195, the Necromancer's mastery twist
 
 **What changed**
