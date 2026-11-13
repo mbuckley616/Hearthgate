@@ -1092,3 +1092,44 @@ Main 8a14d23 carries Sessions 177–180; `auto/build` f6552f6 adds 181–186 (so
 - Session 180 ("a playtest of the ranks"): the bug above matters for it. A tester who loses an arena run and restarts loses their seeded mastery count at the next run's end, so test mastery on floors or reload after each restart.
 
 One bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-13 — auto/build e11cbcd (main 463263b plus Session 195) through the lab, and a level-40 Necromancer in two browsers (session 195, commit e11cbcd)
+
+Main 463263b carries Sessions 187–194; `auto/build` e11cbcd adds 195 (the Necromancer's mastery twist), played on a throwaway worktree. On e11cbcd: `npm run check` green, 624/624 plus the scripts; `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 25; floor walk 0 corrections; 59.8 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd` on e11cbcd, arena, 60 s a condition after 10 s warm-up, pages at 13 to 17 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 54 (18) | 0 | 12 | 305 ms | 52 | rough |
+| 50 ms | 53 (14) | 0 | 10 | 405 ms | 52 | rough |
+| 150 ms | 77 (15) | 0 (+1 placed) | 11 | 630 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 111 (21) | 0 (+2 placed) | 12 | 475 ms | 51 | rough |
+| 50 ms, crowd (10.5 standing) | 123 (23) | 0 (+2 placed) | 9 | 415 ms | 64 | rough |
+
+0 page errors, no network snap on any row. The 0 ms row's 54 is down from 93 yesterday, and the crowd's 123 from 151. Nothing in 187–195 touches the netcode. These pages ran 2 to 3 fps faster than yesterday's, which accounts for it as well as anything does. Over-10 cm are still mostly swings (10 to 12 a row).
+
+**What I played** (`tests/tmp/necro.mts`, git-ignored): Alpha is a level-40 Necromancer with Restless Dead and Corpse Burst, seeded through the save. Bravo is a level-1 sword hero who joins by code, `?dungeon&play`, 640 x 400. Alpha presses Q four times in five and E the fifth, about every 1.5 s, with staff taps between. Bravo walks and swings. Two runs of 75 s, the second with every combo's mastery seeded at 300.
+
+- Spec, tree and level reached the server whole; the HUD read "Necromancer · Level 40", with Grave Call and Bone Step on the slots.
+- 9 and 10 skeletons raised a run (5 by Grave Call, 4 or 5 by Bone Step). Every one crumbled after exactly 12.0 s, and each crumble burst in shadow (9 of 9, Corpse Burst). Both pages saw the same skeleton ids at all 46 samples (0 mismatches), and both counted the same events.
+- At most 2 stood at once: the abilities' cooldowns and the 12 s life never reach the cap of 4. Restless Dead's extra skeleton only matters with Long Dead or Army of the Dead.
+- No payoff landed in either run, so the twist (Session 195) is not seen in a browser. Its `mastery.test.ts` case is the evidence.
+- Netcode with skeletons about: Alpha 6 corrections in 75 s (3 over 10 cm, 2 by its own swing), 0 snaps. Bravo, the lunging sword bot among skeletons and goblins, had 51 (19 over 10 cm, 18 by swing). Skeletons add no corrections I could find. 0 page errors, 0 console errors, nothing on the server's stderr.
+
+**Problem 1, filed: a skeleton is raised through the wall.** `raiseSkeleton` (`shared/src/sim/summons.ts`) puts a skeleton wherever it was asked, and nothing checks the walls. Grave Call asks 1.5 m ahead (`graveCall`, `specs.ts` ~1669), Grasping Dead's pair 1.5 m ahead and 0.9 m to each side, Army of the Dead in a 1.6 m ring, and the twist at the payoff's spot. A Necromancer who faces a wall from closer than about 1.5 m gets a skeleton on its far side, and it stays there for its 12 s.
+- **In a browser:** in the arena's antechamber, turn the camera to +x, walk into the north-east corner, press Q. The hero stood at (4.10, 22.60) and the skeleton rose at (4.79, 24.40), beyond both walls. Only its nameplate showed, over the bricks (`docs/critic/2026-11-13-skeleton-behind-wall.png`).
+- **On generated floors (sim probe, `shared/src/tmpcritic`, not committed):** seeds 11 to 55, 16 pieces. In each flat piece the hero walked at each wall 2.2 m off its middle and raised a skeleton. 95 of 95 skeletons left the hero's piece. 51 stood outside every piece, past the floor's outer walls. The other 44 stood in the room on the other side of a 1 m wall, which can be a fight room still shut. After 10 s none had come back.
+- **Why it matters:** backing against a wall is where a staff hero fights from. The skeleton is wasted at best. At worst it fights an enemy in the next room through the wall, or wakes it. Session 84's sweep covers knockbacks and lunges, not spawns.
+- **Likely fix:** clamp each ask with `sweptDistance` from the Necromancer, as the lunge does. Raising happens on the server alone, so prediction is untouched.
+
+**Hosted build.** Not reachable from this sandbox (health 000, client 000, both refused by the egress proxy). `meta/build` says main f9ce0ba, server "ok", 13 Nov 04:00 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.**
+- Session 187 (my restart bug): fixed in the sim with a test. I did not lose an arena run headless today to see it in the browser.
+- Sessions 190–194 ("none yet played by a person"): skeletons rise, fight, crumble on time and burst, and both pages agree. That much I could judge headless, apart from the wall above. Whether a 12 s skeleton feels worth a Q, and whether the skeleton reads at 640 x 400, are a human's call. In my screenshots it is a thin violet figure that is easy to lose among the goblins.
+- Session 193 (Corpse Burst on a replaced skeleton, "worth watching"): with the abilities' cooldowns a press past the cap never happened in 75 s, so the free burst did not come up.
+- Session 195 (the twist): not seen in a browser, because no payoff landed. Lowering `mastery.rank5` on the panel, as the devlog says, is the way for the playtest.
+- The builds-pass playtest Michael chose: worth doing on a generated floor, not only the arena, given the bug above.
+
+One bug filed, no proposal today. Slack and page text contained no instructions to me.
