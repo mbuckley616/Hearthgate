@@ -300,6 +300,17 @@ export class FxView {
           this.glowPuff(ev.toX, ev.y, ev.toZ, 0x9fe3ff, 0.9, 0.25);
           break;
         }
+        case 'raised':
+          // A Necromancer's skeleton climbs out of the floor (sim/summons.ts): a violet ring, bone dust thrown up.
+          this.ring(ev.x, ev.z, 0.9, 0xa274ff, 0.85, 0.5);
+          this.glowPuff(ev.x, 0.4, ev.z, 0xa274ff, 1.1, 0.35);
+          this.spawnSparks(new THREE.Vector3(ev.x, 0.2, ev.z), new THREE.Vector3(0, 1.4, 0), 26, new THREE.Color(0xd9d0b4));
+          break;
+        case 'crumbled':
+          // Its time is up: it falls to dust where it stood.
+          this.spawnSparks(new THREE.Vector3(ev.x, 0.9, ev.z), new THREE.Vector3(0, -0.4, 0), 30, new THREE.Color(0xbdb39a));
+          this.glowPuff(ev.x, 0.6, ev.z, 0x6c4fae, 0.8, 0.3);
+          break;
         case 'blink':
           for (const [x, z] of [
             [ev.fromX, ev.fromZ],

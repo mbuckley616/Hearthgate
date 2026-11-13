@@ -289,3 +289,60 @@ export function buildMage(p: Palette): Outfit {
     })),
   };
 }
+
+/**
+ * A Necromancer's skeleton (the builds pass; `sim/summons.ts`): a summon is a henchman, so it hangs on
+ * the heroes' rig and moves as they do; only its look is its own. A bare ribcage on a spine, a skull
+ * with violet sockets (the shadow's colour), limbs as thin bones with knobbed joints.
+ */
+export function buildSkeleton(p: Palette): Outfit {
+  const pelvis = new THREE.Group();
+  const hip = mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 14, Math.PI).rotateX(Math.PI / 2), p.bone, 0, -0.04, 0);
+  hip.rotation.z = Math.PI;
+  pelvis.add(hip, mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.16, 8), p.boneDark, 0, 0.04, 0));
+
+  const chest = new THREE.Group();
+  chest.add(mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.46, 8), p.boneDark, 0, 0.2, -0.04));
+  // Ribs: open hoops, widest under the shoulders.
+  for (let i = 0; i < 4; i++) {
+    const r = 0.15 - i * 0.012;
+    const rib = mesh(new THREE.TorusGeometry(r, 0.016, 5, 16, Math.PI * 1.6).rotateX(Math.PI / 2), p.bone, 0, 0.34 - i * 0.075, 0);
+    rib.rotation.y = -Math.PI * 0.3 + Math.PI / 2;
+    rib.scale.z = 0.75;
+    chest.add(rib);
+  }
+  chest.add(mesh(new THREE.BoxGeometry(0.44, 0.035, 0.05), p.bone, 0, BODY.shoulder.y - 0.02, -0.01));
+  for (const side of [-1, 1]) chest.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), p.bone, side * BODY.shoulder.x, BODY.shoulder.y - 0.01, 0));
+  chest.add(mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.1, 8), p.boneDark, 0, 0.47, -0.02));
+
+  const head = new THREE.Group();
+  const skull = mesh(new THREE.SphereGeometry(0.11, 14, 10), p.bone, 0, 0.02, 0);
+  skull.scale.set(0.92, 1, 1.05);
+  const jaw = mesh(new THREE.BoxGeometry(0.12, 0.05, 0.1), p.bone, 0, -0.09, 0.03);
+  head.add(skull, jaw);
+  for (const side of [-1, 1]) {
+    head.add(mesh(new THREE.SphereGeometry(0.03, 8, 6), p.slit, side * 0.042, 0.02, 0.085));
+    head.add(mesh(new THREE.SphereGeometry(0.014, 6, 4), p.soul, side * 0.042, 0.02, 0.1));
+  }
+
+  return {
+    pelvis,
+    chest,
+    head,
+    cape: null,
+    skirt: null,
+    accent: 0xa274ff,
+    arms: arms(() => ({
+      upper: mesh(segmentGeo(0.022, 0.026, BODY.upperArm, 6), p.bone),
+      fore: mesh(segmentGeo(0.018, 0.022, BODY.forearm, 6), p.bone),
+      elbow: mesh(new THREE.SphereGeometry(0.035, 8, 6), p.bone),
+      hand: mesh(new THREE.BoxGeometry(0.06, 0.07, 0.05), p.boneDark),
+    })),
+    legs: legs(() => ({
+      thigh: mesh(segmentGeo(0.026, 0.03, BODY.thigh, 6), p.bone),
+      shin: mesh(segmentGeo(0.022, 0.026, BODY.shin, 6), p.bone),
+      knee: mesh(new THREE.SphereGeometry(0.04, 8, 6), p.bone),
+      foot: mesh(new THREE.BoxGeometry(0.08, 0.05, 0.2).translate(0, -0.03, 0.05), p.boneDark),
+    })),
+  };
+}

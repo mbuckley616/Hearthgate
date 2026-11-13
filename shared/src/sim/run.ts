@@ -171,7 +171,8 @@ function spawnGroupFor(state: SimState, world: World, n: number, part: '' | 'Rei
 export function restartRun(state: SimState, world: World): void {
   const level = world.level;
   const yaw = (level.spawn.yawDeg * Math.PI) / 180;
-  state.players = state.players.map((p, i) => {
+  // A summon does not outlive the run it was raised in.
+  state.players = state.players.filter((p) => !p.summon).map((p, i) => {
     const fresh = createPlayer(p.id, level.spawn.x + i * 1.5, level.spawn.z, yaw);
     // Heroes keep who they are (levels, talents, gear); everything else resets.
     fresh.style = p.style;

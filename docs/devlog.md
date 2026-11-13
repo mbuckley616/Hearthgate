@@ -2,6 +2,76 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-12: Session 194, the Necromancer is offered
+
+**What changed**
+
+The Necromancer is `built`, so the Talents tab offers it to a staff hero from level 10 beside the Warlock, the Druid and the Sorcerer, Shadow only, and the server's `readLoadout` takes it with its tree (a tree pick its level has not opened, or another element, is refused). Seen in a browser: `tests/necromancer.e2e.ts` (Playwright, not part of `check`) saves a level-40 staff hero who chose it, wears the starter staff, joins the arena and presses Q; the server's snapshot holds one "Skeleton" whose owner is that player, drawn as bones beside them with "Skeleton · Lv 24" over it (0.6 of 40), the HUD reading "Necromancer · Level 40", Grave Call and Bone Step on the ability slots, no page errors. `summons.test.ts` checks the offer and the server's reading of it; the Druid's offer test now lists four staff specializations. check 623 green, parity identical.
+
+**Learned**
+
+Michael's A on the Necromancer took four sessions as estimated (190 to 194, the look its own). The other nine specializations have a rank V mastery twist (Session 180); the Necromancer has none, so a mastered combo's payoff only adds its 24%.
+
+**Next**
+
+Michael's A on the Necromancer is built, and with it every part of the builds pass's list, none yet played by a person beyond this check. What comes next is asked in `decisions.md` Pending.
+
+## 2026-11-12: Session 193, the Necromancer's tree and Crescendo
+
+**What changed**
+
+The Necromancer's tree, three rows of two at 20, 30 and 40, each strengthening its skeletons, and its Crescendo, all acting in `sim/summons.ts` from the Necromancer's picks (`hasStyleNode`, so a skeleton keeps its Necromancer's tree whatever it holds). Row one: Long Dead (they stand `necro.treeLongLifeS`, 18 s) or Thick Bones (`necro.treeThickBonesMult`, 1.5x health). Row two: Restless Dead (`necro.treeRestlessExtra`, one more may stand, past the usual three) or Grasping Dead (Grave Call raises two, either side of a step ahead). Row three: Corpse Burst (a skeleton crumbling for any reason but its Necromancer leaving bursts in shadow, every enemy within `necro.burstRadiusM`, 2.5 m, taking `necro.burstDamage`, half a Charge's hit, as the Necromancer's staff damage; drawn as a shadow `attune` burst) or Marrow (they fight at the full staff level, `necro.treeMarrowShare`). Army of the Dead, the Crescendo: as many skeletons as may stand, asked in a ring 1.6 m round the Necromancer, raised by the server's step (the old ones crumble to make room). All on the panel. `summons.test.ts`, now 14 cases; check 623 green, parity identical.
+
+**Learned**
+
+Corpse Burst on a replaced skeleton is a choice: Grave Call at the cap crumbles the oldest, so with the node every press past the cap is a free burst where the oldest stood. It reads as the point of the node; worth watching in play.
+
+**Next**
+
+Offering the Necromancer: `built: true`, so the Talents tab lets a staff hero of level 10 choose it and the server takes it; a check that a loadout naming it is read; then the builds pass's list is done.
+
+## 2026-11-12: Session 192, the skeleton's look
+
+**What changed**
+
+A summon is drawn as a skeleton. `buildSkeleton` (`client/src/render/outfits.ts`) is an outfit on the heroes' rig, so it walks, swings and rolls as a hero does: a spine and four open ribs, a collar bone, a skull with a jaw and dark sockets lit violet (the shadow's colour), thin bone limbs with knobbed joints, in two new palette materials (`bone`, `boneDark`) and `soul`. `HeroView` builds it the first time a hero has `summon` (never for anyone else), shows it in place of the style's figure or a worn look, keeps the sword in hand and drops the shield; its swap flash is violet, so it appears in a burst. `FxView`: a `raised` event draws a violet ring with bone dust thrown up, a `crumbled` one a fall of dust and a dim violet puff. `tests/skeleton-look.ts`, run by `npm run check`, builds a `HeroView` in node and counts what is drawn: a hero shows the knight's helm and no bone; a summon shows bones, exactly two violet eyes, the blade and no helm or royal shield. check 617 green plus the new check, parity identical. Not yet seen in a browser: nothing raises one until the Necromancer is offered.
+
+**Learned**
+
+A `HeroView` builds and updates in node with a bare `THREE.Texture` for the palette's environment, so a figure's parts can be checked by material without a browser.
+
+**Next**
+
+The Necromancer's tree and its Crescendo, then offering it on the Talents tab.
+
+## 2026-11-12: Session 191, Grave Call and Bone Step
+
+**What changed**
+
+The Necromancer is the fourth staff specialization (`SpecId` 'necromancer', Shadow), on the Talents tab as "soon" until it is offered. Its Q, Grave Call, is the frost ring in shadow: it hits as the ring does, freezes nothing (it goes through `novaElement`, so the ring's view draws it violet with no new code), and raises a skeleton 1.5 m ahead. Its E, Bone Step, is the Blink, and raises a skeleton where the Necromancer stood. Its signature, Legion, is Session 190's growth: two standing at 25, three at 40, each fighting harder. The abilities only ask (`askSkeleton`, `PlayerState.raise`, optional), in `stepAbility`, so the prediction's hero asks too; `stepSummons`, in `stepSim` and so the server's alone, raises them and clears the ask within the tick, so a summon is never a party member prediction made. `summons.test.ts`, now 8 cases: the ring in shadow hurts, freezes nothing and raises one; the Blink raises one at its start; a Warlock's raises none; prediction's step only asks. check 617 green, parity identical.
+
+**Learned**
+
+The Sorcerer's Nova already carried an element to the ring's view and sound, and froze nothing when it did; Grave Call is the same ring with 'shadow', so it needed no view of its own.
+
+**Next**
+
+The skeleton's look: a bony figure in `HeroView` for a hero with `summon`, a rise and a crumble in `FxView` on the `raised` and `crumbled` events. Then its tree and Crescendo, then offering it.
+
+## 2026-11-12: Session 190, the Necromancer's skeleton
+
+**What changed**
+
+Michael's A on what follows runes (12 Nov, on the control room): the Necromancer, about four sessions. This is the first, the summon itself. A skeleton is a henchman raised in the fight (`sim/summons.ts`, `raiseSkeleton`): a sword henchman named Skeleton, with `PlayerState.summon` (optional) saying whose it is and when it crumbles, so the henchman brain, the fight, the snapshots and the views carry it with nothing new. It stands `necro.skeletonLifeS` (12 s); a Necromancer may have `necro.skeletonsAtStart` (1) standing at the specialization's level 10, one more each `necro.extraSkeletonEveryLevels` (15) staff levels, up to `necro.skeletonMax` (3), and at the cap a new one crumbles the oldest. It fights at `necro.skeletonLevelShare` (0.6) of the staff level (so its hits grow through `hirelings.damagePerLevel`) with `necro.skeletonHealth` (0.5) of a hero's health at that level. `stepSummons` (in `stepSim`, after the revives) crumbles one whose time is up, that has fallen (a summon is never revived) or whose Necromancer has left; `raised` and `crumbled` events. It is not a seat: the party's size (`partyOf`) leaves it out, so a hire and a friend still join; the floor's bank, a room's hand-off of henchmen, a dismissal, the Tavern's count and an arena restart all pass it by; its ids (`k<n>`, from `nextId`) are never reused, so no view mistakes a new one for a crumbled one; it has no party frame. Nothing raises one yet. All on the panel. `summons.test.ts`, 4 cases; check 613 green, parity identical, test:net green.
+
+**Learned**
+
+`restartRun` rebuilds each hero from a fresh `createPlayer` and copies back what it knows, so a summon would have come back from a restart as a permanent henchman without its `summon` flag; it is filtered out first. The arena's antechamber stands a downed hero up before a later step sees it, so the fallen case is tested on the step itself.
+
+**Next**
+
+The Necromancer's Q and E: a fourth staff `SpecId` (Shadow, not yet offered) whose Frost ring and Blink raise skeletons through `raiseSkeleton`, then a skeleton's look in the views, its tree and Crescendo, and offering it.
+
 ## 2026-11-12: Session 189, Rune of Embers
 
 **What changed**

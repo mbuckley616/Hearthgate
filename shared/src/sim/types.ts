@@ -102,6 +102,10 @@ export interface PlayerState {
   /** A henchman (P3): the server plays it (henchman.ts); portals, banking and loot pass it by. */
   henchman?: true;
   brain?: HenchmanBrain;
+  /** A summon (the Necromancer's skeleton, `sim/summons.ts`): a henchman raised in the fight, whose it is and when it crumbles. Never banked, never carried to another room. */
+  summon?: { owner: string; until: number };
+  /** Skeletons a Necromancer's Q or E asked for this tick, where (`askSkeleton`); raised and cleared by `stepSummons`. */
+  raise?: { x: number; z: number }[];
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
   /** Room in the browser's bag for lumber, stone and finds (Michael, 31 Oct, A: sim/bagRoom.ts), from the loadout; absent in the slice. */
@@ -522,6 +526,9 @@ export type SimEvent =
   | { kind: 'bledOut'; playerId: string }
   | { kind: 'playerJoined'; playerId: string; name: string }
   | { kind: 'playerLeft'; playerId: string; name: string }
+  /** A Necromancer raised a skeleton (`sim/summons.ts`); it crumbles when its time is up or it falls. */
+  | { kind: 'raised'; playerId: string; owner: string; x: number; z: number }
+  | { kind: 'crumbled'; playerId: string; x: number; z: number }
   /** Walked over, or handed over when a run ends. On a generated floor it is only carried until banked (P1). */
   | { kind: 'pickup'; playerId: string; item: Item | GearItem; carried?: boolean }
   /** A hero's blow broke a crate, barrel or urn (D4): what it sprayed onto the floor, and whether a potion rolled out. */

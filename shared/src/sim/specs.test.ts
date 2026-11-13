@@ -1195,7 +1195,7 @@ describe("the Druid's Wild Growth", () => {
 
 describe('the Druid is offered (the builds pass)', () => {
   it('from staff level 10, Nature or Earth', () => {
-    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid', 'sorcerer']);
+    expect(specsFor('staff').filter((x) => x.built).map((x) => x.id)).toEqual(['warlock', 'druid', 'sorcerer', 'necromancer']);
     expect(specProblem({ sword: 0, bow: 0, staff: at10 }, { staff: 'druid' })).toBeNull();
     expect(specProblem({ sword: 0, bow: 0, staff: at10 - 1 }, { staff: 'druid' })).not.toBeNull();
     const l = { ...base(0), xp: { sword: 0, bow: 0, staff: at10 } };

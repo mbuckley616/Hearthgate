@@ -5,6 +5,7 @@ import { stepDrops } from './drops';
 import { stepEnemies } from './enemies';
 import { floorWorldNow, initialFloorRun } from './floorRun';
 import { unstickHenchmen } from './henchman';
+import { stepSummons } from './summons';
 import { createPlayer, stepDoors, stepPlayer } from './player';
 import { stepLava } from './lava';
 import { stepTraps } from './traps';
@@ -57,6 +58,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   stepTraps(state, world, dt);
   unstickHenchmen(state, commands);
   stepRevives(state, commands, dt);
+  stepSummons(state, w);
   stepPendingHits(state);
   if (state.brambles) stepBrambles(state);
   if (state.snares) stepSnares(state);

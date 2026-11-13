@@ -702,7 +702,7 @@ export class Game {
       this.updateOverlay();
     } else if (near.building === 'store') this.openStore();
     else if (near.building === 'tavern') {
-      const hired = this.session.view().curr.players.filter((p) => p.henchman).map((p) => p.style);
+      const hired = this.session.view().curr.players.filter((p) => p.henchman && !p.summon).map((p) => p.style);
       this.hire.open(hired, v.view.tiers.tavern, this.profile.data.coin);
       this.talk.clear();
       this.kbm.exitPointerLock();
@@ -933,7 +933,7 @@ export class Game {
     const riteShot = this.rite && this.room instanceof VillageView ? this.room.ceremonyShot(this.rite) : null;
     this.cam.setShot(riteShot ?? (framed ? this.keeperShot(framed) : this.hire.visible ? this.hireShot() : null));
     // Who is with the party (P10): their figure leaves the tavern's row, and the board keeps up.
-    const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman).map((p) => p.style));
+    const hiredKits = new Set<Style>(world.players.filter((p) => p.henchman && !p.summon).map((p) => p.style));
     if (this.room instanceof VillageView) this.room.setHired(hiredKits);
     if (this.hire.visible) this.hire.update([...hiredKits], this.session.village?.view.tiers.tavern ?? 1, this.profile.data.coin);
     this.cam.applyLook(actions.look);
