@@ -1557,7 +1557,8 @@ export function elementalNova(p: PlayerState, hit: HitSpec): void {
  * Shadowstep. The bow's, each from its own kit: the Ranger's seeds brambles where it landed, the
  * Scout's marks every enemy near it, the Assassin's resets Smoke Bomb. The staff's: the Warlock's
  * hexes every enemy near it, the Druid's grows a grove at their feet, the Sorcerer's resets
- * Elemental Step. Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
+ * Elemental Step, the Necromancer's raises a skeleton where it landed (asked, as Grave Call asks, so
+ * only the server's `stepSummons` raises it; a payoff late in the tick raises it the next). Called from `payCombo`, so prediction runs the payer's own as Momentum's cut is run;
  * the server's heal and ground are the truth. Returns whether a twist fired.
  */
 export function masteryTwist(state: SimState, p: PlayerState, x: number, z: number): boolean {
@@ -1634,6 +1635,16 @@ export function masteryTwist(state: SimState, p: PlayerState, x: number, z: numb
       // Elemental Step is the Sorcerer's Blink, the staff's second.
       p.cooldowns.staff[1] = 0;
       return true;
+    case 'necromancer': {
+      const n = Math.round(m.necromancerSkeletons);
+      if (n <= 0 || !isGraveCall(p)) return false;
+      // More than one stand a little apart across the payoff's spot, as Grasping Dead's pair does.
+      for (let i = 0; i < n; i++) {
+        const off = (i - (n - 1) / 2) * 0.9;
+        askSkeleton(p, x + Math.cos(p.yaw) * off, z - Math.sin(p.yaw) * off);
+      }
+      return true;
+    }
     default:
       return false;
   }
