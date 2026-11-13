@@ -7,13 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-12: The builds pass is built; what next (builder, Session 194)
 Your A on the Necromancer is built (Sessions 190 to 194): a fourth staff specialization, Shadow, from level 10. Grave Call (Q) and Bone Step (E) raise skeletons that fight for 12 s, one at level 10, two at 25, three at 40, each fighting at 0.6 of the staff level; a tree (Long Dead or Thick Bones, Restless Dead or Grasping Dead, Corpse Burst or Marrow) and a Crescendo, Army of the Dead. Seen once in a browser by a check, not by a person. With it every part of the builds pass's list is built (ten specializations and trees, five states, mastery, six runes, the roster), almost none of it played.
 - **A.** Pause for a playtest of the builds pass in the Crypt; the builder idles until then. E1i (the Goblin Warrens) waits on Crypt play anyway.
 - **B.** The Necromancer's mastery rank V twist first (a mastered combo's payoff raises a skeleton where it lands; the other nine each have one), one session, then pause as in A. *(recommended: it closes the one gap the Necromancer has against the other nine, then the playtest)*
 - **C.** Start E1i, the Goblin Warrens' roster, now, without the playtest.
+Michael: **B. The Necromancer's mastery rank V twist first, then pause for a playtest** (2026-11-13)
 
-## Answered
 
 ### 2026-11-12: The builds pass, what after runes (builder, Session 189)
 Your A on bow runes is built (Sessions 188 and 189): Echoes (a light finisher's arrow flies again 150 ms later, a pale ghost for half its hit) and Embers (every charged shot bursts where it stops in a 1.75 m ring of fire, leaving Burning). Six runes now, two a style, none yet played in a browser. The builds pass list has one part left: the Necromancer.
