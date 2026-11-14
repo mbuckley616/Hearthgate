@@ -1133,3 +1133,36 @@ Main 463263b carries Sessions 187–194; `auto/build` e11cbcd adds 195 (the Necr
 - The builds-pass playtest Michael chose: worth doing on a generated floor, not only the arena, given the bug above.
 
 One bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-14 — main 44a4f94 through the lab, and a level-40 Necromancer on a generated floor in two browsers (session 196, commit 44a4f94)
+
+Main 44a4f94 carries Sessions 195–196; `auto/build` is not ahead of it. `npm run check` green (625/625 plus the scripts); `npm run test:net` all passed (10 fps: 27 corrections, largest 0.29 m, 4 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after 10 s warm-up, pages at 13 to 17 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 77 (21) | 0 (+1 placed) | 10 | 360 ms | 53 | rough |
+| 50 ms | 50 (12) | 0 | 12 | 415 ms | 52 | rough |
+| 150 ms | 78 (8) | 0 (+1 placed) | 9 | 600 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 124 (35) | 0 | 9 | 480 ms | 51 | rough |
+| 50 ms, crowd (10.5 standing) | 173 (56) | 0 | 8 | 390 ms | 67 | rough |
+
+0 page errors, no network snap on any row. Against yesterday: 0 ms 77 (54), 50 ms 50 (53), 150 ms 78 (77), lossy 124 (111), crowd 173 (123). Nothing in 195–196 touches the netcode or the arena's fight, so I read the spread as run-to-run noise from the bots' seeded schedule meeting different goblins. The crowd row is the one that keeps rising, and its over-10 cm are mostly swings (40 of 56). That fits the backlog's crowded-fight item. Today's 0 ms row is no better than the 50 ms row, so the count is not latency.
+
+**What I played** (`tests/tmp/necrofloor.mts`, git-ignored): Alpha is a level-40 Necromancer with every combo's mastery seeded at 300. Floor 1 of 3, `?floor&seed=23&pieces=16&play`, at 640 x 400. Bravo is a level-1 sword hero who joins by code.
+
+- *The wall fix (Session 196), in a browser.* Alpha walked into each wall and corner of the start room (12 x 12 m) for 16 rounds and pressed Q or E. That made 12 raises. Each `raised` event was checked against the hero's position at that moment, using the shared `sweptDistance` over `worldNow`'s colliders. 0 of 12 were behind a wall. Facing a wall, Grave Call now raises the skeleton 0.18 m ahead, against the wall's face. In the open it is still 1.5 m. Yesterday's antechamber case and 95 of 95 at floor walls had all gone through. Fixed, as far as I can see.
+- *The rank V twist (Session 195), seen for the first time.* I set `mastery.rank5` to 1 on the panel and fought spawned enemies for 75 s. Two Shatter payoffs landed in the same tick, and each raised a skeleton exactly at its spot, 3.2 and 3.4 m from the hero, with nothing blocking the line. The saved count went 300 to 302. 0 page errors.
+- Bone Step raised its skeleton where the hero had stood, 6.95 m back. Each skeleton crumbled about 12 s after rising. Both pages agreed on which skeletons stood at all 16 samples. No server stderr.
+
+**Seen, not filed.** Skeletons follow their Necromancer, and one crumbled at z −0.35, past the start room's north face. It went through the doorway there, not through the wall: the raise was checked and the walk is the hero's own collision. Separately, in the antechamber's corner, the camera pressed to the wall fills most of the frame with bricks while the fight goes on. That is the camera's old behaviour, not new.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000, both refused by the egress proxy. `meta/build` says main 44a4f94, server "ok", 14 Nov 08:05 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.**
+- Session 196 (the wall clamp): judged headless, above. It holds on a generated floor as well as in the arena.
+- Session 195 (the twist, "not seen in a browser"): now seen once, two at once on a double Shatter. Whether a skeleton at the payoff reads as a reward is a human's call.
+- The builds-pass playtest in the Crypt is Michael's. Nothing I found today stands in its way.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
