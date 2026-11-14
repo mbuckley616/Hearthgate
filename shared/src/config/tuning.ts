@@ -1807,6 +1807,8 @@ export const tuning = {
     scoutMarkRadius: 4,
     /** Rank V, the Warlock's twist: a payoff hexes every enemy within this many metres of it. */
     warlockHexRadius: 4,
+    /** Rank V, the Necromancer's twist: a payoff raises this many skeletons where it landed (within the usual cap, the oldest crumbling to make room). */
+    necromancerSkeletons: 1,
   },
 
   /**
@@ -2800,6 +2802,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mastery.rangerBrambleRadius': [0, 6, 0.25],
   'mastery.scoutMarkRadius': [0, 12, 0.5],
   'mastery.warlockHexRadius': [0, 12, 0.5],
+  'mastery.necromancerSkeletons': [0, 3, 1],
   'combos.huntMarkSeconds': [0, 12, 0.5],
   'dodge.cancelAfterMs': [0, 1000, 10],
   'dodge.cancelFloorMs': [0, 500, 10],

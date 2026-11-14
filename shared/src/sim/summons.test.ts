@@ -10,6 +10,7 @@ import { stepPlayer } from './player';
 import { restartRun } from './run';
 import { specCrescendo, specInfo, specProblem, specsFor, treeProblem } from './specs';
 import { readLoadout } from '../net/validate';
+import { sweptDistance } from '../level/geometry';
 import { partyOf, raiseSkeleton, skeletonCap, skeletonLevel, stepSummons, summonsOf } from './summons';
 import { emptyTalents } from './talents';
 import { idleCommand, type PlayerCommand, type SimEvent } from './types';
@@ -63,6 +64,35 @@ describe("the Necromancer's skeletons (summons)", () => {
     for (let i = 0; i < ticks; i++) crumbled ||= host.tick().some((ev) => ev.kind === 'crumbled' && ev.playerId === s.id);
     expect(crumbled).toBe(true);
     expect(host.sim.players.some((p) => p.id === s.id)).toBe(false);
+  });
+
+  it('is never raised through a wall: an ask past one is pulled back to this side (critic, 13 Nov)', () => {
+    const { host, me } = solo(40);
+    const home = { x: me.x, z: me.z, yaw: me.yaw };
+    // The critic's corner of the antechamber: 1.5 m ahead lands beyond both walls.
+    me.x = 4.1;
+    me.z = 22.6;
+    me.yaw = Math.atan2(0.69, 1.8);
+    const r = tuning.movement.radius;
+    for (let i = 0; i < 16; i++) {
+      me.yaw = (i / 16) * Math.PI * 2;
+      const s = raiseSkeleton(host.sim, world, me);
+      const dx = s.x - me.x;
+      const dz = s.z - me.z;
+      const d = Math.hypot(dx, dz);
+      expect(d).toBeLessThanOrEqual(1.5 + 1e-9);
+      // Nothing blocks the line from its Necromancer to it.
+      if (d > 1e-6) expect(sweptDistance(me.x, me.y, me.z, dx, dz, r, world.colliders)).toBeCloseTo(d, 6);
+    }
+    // Facing the corner itself, it rises short of the walls, not at (4.79, 24.40).
+    me.yaw = Math.atan2(0.69, 1.8);
+    const s = raiseSkeleton(host.sim, world, me);
+    expect(Math.hypot(s.x - me.x, s.z - me.z)).toBeLessThan(1.5);
+    // In the open it still rises a full step ahead.
+    Object.assign(me, home);
+    const open = raiseSkeleton(host.sim, world, me);
+    expect(open.x).toBeCloseTo(home.x + Math.sin(home.yaw) * 1.5, 6);
+    expect(open.z).toBeCloseTo(home.z + Math.cos(home.yaw) * 1.5, 6);
   });
 
   it('at the cap the oldest crumbles to make room; a fallen one crumbles at once', () => {

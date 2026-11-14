@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-13: Session 196, skeletons are never raised through a wall
+
+**What changed**
+
+The critic's bug (13 Nov): a Necromancer backed against a wall raised its skeleton on the far side, outside the floor or in the next room. `raiseSkeleton` (`sim/summons.ts`) now pulls every ask back along the line from its Necromancer to where the first wall stops a body (`sweptDistance`, the lunge's own sweep, at a hero's radius). One clamp covers Grave Call, Bone Step, Grasping Dead's pair, Army of the Dead's ring and the rank V twist, since all of them pass through it. In the open nothing changes: the skeleton still rises 1.5 m ahead. Server only, as raising always was; prediction and the parity hashes are untouched. A new test raises sixteen skeletons in the critic's corner of the antechamber, one per direction, and checks that nothing blocks the line to any of them. It fails without the clamp. The mastery twist's test now stands its Necromancer inside the arena: it had paid the combo from the antechamber, behind the closed gate, at a spot the clamp now rightly refuses.
+
+**Learned**
+
+The twist raises the skeleton where the payoff landed, which can be far off (an orb's). The clamp runs from the Necromancer, so a payoff seen past a pillar's edge may rise a little short of its spot. That beats rising inside the pillar.
+
+**Next**
+
+Nothing else is buildable in the current section until the builds-pass playtest (E1i waits on Crypt play). The crowded-fight lag item is a measurement, and any fix to it is netcode for a (Fable) card.
+
+## 2026-11-13: Session 195, the Necromancer's mastery twist
+
+**What changed**
+
+Michael's B (13 Nov): the Necromancer gets its rank V mastery twist, as the other nine have. A payoff of a combo the Necromancer has mastered raises a skeleton where it landed (`masteryTwist` in `sim/specs.ts`, `mastery.necromancerSkeletons`, 1, on the panel 0 to 3, 0 turning it off). It asks as Grave Call asks (`askSkeleton`), so prediction's `payCombo` makes no party member and only the server's `stepSummons` raises it; the usual cap holds, the oldest crumbling to make room (and bursting, with Corpse Burst). A payoff that lands after `stepSummons` in the tick (an orb's, in `stepProjectiles`) raises its skeleton the next tick. A case in `mastery.test.ts` (11 now): rank V asks at the spot and the step raises it there, rank IV and a Warlock ask none, 0 on the panel asks none. check 624 green, parity identical, test:net green. Not seen in a browser (rank V takes 300 payoffs; `mastery.rank5` on the panel is the way to try it).
+
+**Learned**
+
+The raise ask was already the right shape for a payoff: it is optional and unlisted on the wire, so a late ask that rides one snapshot to the browser does nothing there.
+
+**Next**
+
+Michael's B is built: every specialization has its twist. Then, as he chose, a pause for a playtest of the builds pass in the Crypt; the builder has nothing left in the current section until it is played (E1i waits on Crypt play).
+
 ## 2026-11-12: Session 194, the Necromancer is offered
 
 **What changed**

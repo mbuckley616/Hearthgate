@@ -9,6 +9,7 @@ import { emptyMods, xpForLevel } from './gear';
 import { COMBOS, COMBO_NAMES, masteryPayoffMult, masteryRank, readMastery } from './mastery';
 import { emptyTalents } from './talents';
 import type { SimState } from './types';
+import { stepSummons } from './summons';
 import { createSimState } from './world';
 
 // Combo mastery (the builds pass, Michael's A on Soaked, 10 Nov): every payoff a player lands counts
@@ -244,5 +245,39 @@ describe('combo mastery', () => {
     expect(druid.players[0].cooldowns.staff[1]).toBe(4);
     const sorcerer = at('sorcerer');
     expect(sorcerer.players[0].cooldowns.staff[1]).toBe(0);
+  });
+
+  it('rank V gives the Necromancer a skeleton where the payoff landed, raised only by the server’s step', () => {
+    const at = (count: number, spec: 'necromancer' | 'warlock' = 'necromancer'): SimState => {
+      const s = party();
+      const p = s.players[0];
+      p.style = 'staff';
+      p.spec = { staff: spec };
+      p.mastery = { shatter: count };
+      // In the arena with the payoff, not behind the antechamber's gate: a raise never crosses a wall.
+      p.x = 6;
+      p.z = 1;
+      payCombo(s, 'shatter', p.id, 6, 1, 4);
+      return s;
+    };
+    const asked = at(tuning.mastery.rank5);
+    // The payoff only asks, as Grave Call does; prediction runs payCombo too and must make no party member.
+    expect(asked.players[0].raise).toEqual([{ x: 6, z: 4 }]);
+    expect(asked.players.filter((p) => p.summon)).toHaveLength(0);
+    stepSummons(asked, world);
+    const raised = asked.players.filter((p) => p.summon);
+    expect(raised).toHaveLength(1);
+    expect(raised[0]).toMatchObject({ x: 6, z: 4, summon: { owner: 'p1' } });
+    expect(asked.players[0].raise).toBeUndefined();
+    expect(at(tuning.mastery.rank4).players[0].raise).toBeUndefined();
+    expect(at(tuning.mastery.rank5, 'warlock').players[0].raise).toBeUndefined();
+    // Off on the panel at 0.
+    const keep = tuning.mastery.necromancerSkeletons;
+    tuning.mastery.necromancerSkeletons = 0;
+    try {
+      expect(at(tuning.mastery.rank5).players[0].raise).toBeUndefined();
+    } finally {
+      tuning.mastery.necromancerSkeletons = keep;
+    }
   });
 });
