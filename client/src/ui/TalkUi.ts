@@ -39,7 +39,7 @@ export class TalkUi {
     }
     this.shownFor = Math.max(0, this.shownFor - dt);
     this.box.style.display = this.shownFor > 0 ? 'block' : 'none';
-    const hint = near && this.shownFor === 0 ? `F (or A): talk to ${near.name}` : door ? `F (or A): ${door}` : '';
+    const hint = near && this.shownFor === 0 ? `F or Space (or A): talk to ${near.name}` : door ? `F or Space (or A): ${door}` : '';
     if (hint !== this.hinted) {
       this.hinted = hint;
       this.hint.textContent = hint;

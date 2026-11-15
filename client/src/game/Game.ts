@@ -32,7 +32,7 @@ import { VillageView } from '../render/VillageView';
 import { setLookMood } from '../render/look';
 import { SceneRenderer } from '../render/SceneRenderer';
 import { TelegraphView } from '../render/TelegraphView';
-import { rollGear } from '@hearthgate/shared/sim/catalogue';
+import { CATALOGUE, rollGear } from '@hearthgate/shared/sim/catalogue';
 import type { PlayerCommand, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
 import { slotsOpen } from '@hearthgate/shared/sim/coop';
 import { worldNow } from '@hearthgate/shared/sim/world';
@@ -878,6 +878,15 @@ export class Game {
       if (skip || !(this.room instanceof VillageView) || !this.room.ceremonyRunning) this.endRite();
       actions = emptyFrame();
     }
+    // Space (Michael, 15 Nov, A): F while a prompt is showing (a keeper, a door, a revive, the run's end, a menu), else a jump.
+    if (actions.pressed.has('jumpOrUse') || actions.held.has('jumpOrUse')) {
+      const use = this.promptShowing();
+      const pressed = new Set(actions.pressed);
+      const held = new Set(actions.held);
+      if (actions.pressed.has('jumpOrUse')) pressed.add(use ? 'interact' : 'jump');
+      if (actions.held.has('jumpOrUse')) held.add(use ? 'interact' : 'jump');
+      actions = { ...actions, pressed, held };
+    }
     // B is the pad's dodge and its menu-back alike: the press that closes a menu (or the run's summary)
     // must not also reach the hero as a dodge.
     const backing = actions.pressed.has('menuBack') && (this.menuUp() || this.summary.visible);
@@ -1389,6 +1398,21 @@ export class Game {
     return { dodge: false, attack: false, jump: false, swapTo: null, ability1: false, ability2: false, ability3: false, drink: false };
   }
 
+  /**
+   * Whether Space should interact (Michael, 15 Nov, A): a screen or card is up, a hint or prompt says
+   * F (a villager or a door in reach, a downed ally to revive), or the run's end card is showing.
+   */
+  private promptShowing(): boolean {
+    if (this.paused || this.menuUp() || this.summary.visible || this.rite) return true;
+    const me = this.me();
+    if (!me || me.mode === 'down') return false;
+    if (this.villagerInReach(me) || this.doorInReach(me)) return true;
+    const world = this.session.view().curr;
+    if (!this.world.level.village && (world.run.phase === 'won' || world.run.phase === 'lost')) return true;
+    const r = tuning.coop.reviveRadius;
+    return world.players.some((p) => p.id !== me.id && p.mode === 'down' && Math.hypot(p.x - me.x, p.z - me.z) <= r && Math.abs(p.y - me.y) < 1.2);
+  }
+
   /** Whether a screen that takes the keys is up. */
   private menuUp(): boolean {
     return this.equip.visible || this.store.visible || this.bank.visible || this.portalMenu.visible || this.hire.visible || this.keeperCard.visible || this.villageMap.visible;
@@ -1455,11 +1479,27 @@ export class Game {
       return;
     }
     // With the test switch on (combo.swapInFight, Michael 15 Nov) a weapon can change mid-fight, so the screen opens there too.
-    if (actions.pressed.has('inventory') && (between || tuning.combo.swapInFight || this.equip.visible)) {
-      this.equip.toggle();
+    const bag = actions.pressed.has('bag');
+    if ((actions.pressed.has('inventory') || bag) && (between || tuning.combo.swapInFight || this.equip.visible)) {
+      if (bag) this.equip.toggleBag();
+      else this.equip.toggle();
       if (this.equip.visible) this.kbm.exitPointerLock();
       else this.kbm.requestPointerLock();
       this.updateOverlay();
+    }
+    // X (Michael, 15 Nov, A): the next kind of weapon in the bag, where a weapon may change (between fights, or the test switch).
+    if (actions.pressed.has('nextWeapon') && !this.menuUp()) {
+      if (!(between || tuning.combo.swapInFight)) this.hud.toast('<b>One weapon for the fight</b><span>X changes weapon between fights (or with the debug panel\'s Swap style mid-fight)</span>', 'common');
+      else {
+        const p = this.me();
+        if (p) this.profile.syncFrom(p);
+        const id = this.profile.nextWeapon();
+        if (!id) this.hud.toast('<b>No other weapon in the bag</b>', 'common');
+        else {
+          this.applyProfile(false);
+          this.hud.toast(`<b>${CATALOGUE.get(id)?.name ?? id}</b><span>in hand</span>`, 'common');
+        }
+      }
     }
     if (actions.pressed.has('menuBack') && this.equip.visible && this.equip.back()) {
       this.equip.setVisible(false);
@@ -1520,14 +1560,15 @@ export class Game {
           <tr><td>Health potion</td><td>G (or 4) · d-pad left</td></tr>
           <tr><td>Zoom</td><td>mouse wheel · - and = · d-pad up and down</td></tr>
           <tr><td>Lock on</td><td>T · middle click · right stick click (flick to switch)</td></tr>
-          <tr><td>Weapon</td><td>one for the outing: choose it under Tab, outside a fight</td></tr>
+          <tr><td>Weapon</td><td>one for the outing: X takes the next kind from the bag, or choose it under Tab, outside a fight</td></tr>
           <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
           <tr><td>Guard</td><td>hold right click · hold L · LT / L2 (raise it just before a hit to parry)</td></tr>
           <tr><td>Jump</td><td>Space · Y / Triangle</td></tr>
-          <tr><td>Revive an ally</td><td>hold F · hold A / Cross</td></tr>
+          <tr><td>Talk, doors, take a ring home</td><td>F, or Space while the prompt shows · A / Cross</td></tr>
+          <tr><td>Revive an ally</td><td>hold F or Space · hold A / Cross</td></tr>
           <tr><td>Debug panel</td><td>\` (backtick)</td></tr>
           <tr><td>Slow motion</td><td>\\ (backslash)</td></tr>
-          <tr><td>Gear &amp; talents</td><td>Tab · View (between runs); on a pad LB and RB change tab, the d-pad moves, X drops, Y twice resets</td></tr>
+          <tr><td>Gear &amp; talents</td><td>Tab, or B for the bag · View (between runs); on a pad LB and RB change tab, the d-pad moves, X drops, Y twice resets</td></tr>
           <tr><td>Map: the village, or the floor's corner or whole</td><td>M · d-pad right</td></tr>
           <tr><td>Hitboxes</td><td>H</td></tr>
           <tr><td>Release mouse / pause</td><td>Esc · Menu / Start</td></tr>

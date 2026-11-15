@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-15: Session 199, Space at a prompt, B for the bag, X for the next weapon
+
+**What changed**
+
+Michael's A on the controls from the playtest with Nick, all but the Shift and Ctrl swap. Space is its own action (`jumpOrUse`): `Game.promptShowing` decides each frame whether it is F (a villager or a door in reach, a downed ally within revive range, a floor's end card, a menu, the pause card or the run summary up) or a jump; held, it holds F, so a revive or a door takes Space too. F still interacts and the pad is unchanged. B opens the hero screen on the bag and body tab, or closes it from there (`EquipScreen.toggleBag`), where Tab may open it. X takes the next kind of weapon from the bag (`Profile.nextWeapon`): the styles in turn, sword, bow, staff, and within each the catalogue's families (sword, warhammer, mace, axe, daggers, then the bows), the best of a kind as `readyWeapon` picks, never another of the kind in hand. It works where a weapon may change, between fights or with the panel's "Swap style mid-fight" on; mid-fight with the switch off it says so in a toast. The hints say "F or Space", and the controls list has B, X and Space. `tests/controls-keys.ts` (in `npm run check`, 5 checks) and a browser test in `smoke.e2e.ts` (X goes bow then staff, B opens and shuts the bag, Space jumps on the square and opens Wren's card at her table) are green.
+
+**Learned**
+
+Sprint on Ctrl is held while moving, and Ctrl+W closes the tab with no way for a page to stop it; the swap is asked in `decisions.md` before it is built (recommended: Ctrl toggles sprint). No pad button is free in the standard mapping (all sixteen are bound), so X has no pad twin; on a pad the hero screen (View) changes the weapon, mid-fight too with the test switch on (Session 198).
+
+**Next**
+
+The Shift and Ctrl question. Then self-heals only and a slow regen.
+
 ## 2026-11-15: Claude (local), the playtest with Nick filed
 
 **What changed**
