@@ -1454,7 +1454,8 @@ export class Game {
       }
       return;
     }
-    if (actions.pressed.has('inventory') && (between || this.equip.visible)) {
+    // With the test switch on (combo.swapInFight, Michael 15 Nov) a weapon can change mid-fight, so the screen opens there too.
+    if (actions.pressed.has('inventory') && (between || tuning.combo.swapInFight || this.equip.visible)) {
       this.equip.toggle();
       if (this.equip.visible) this.kbm.exitPointerLock();
       else this.kbm.requestPointerLock();

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { tuningEdits } from '../config/edits';
 import { tuning } from '../config/tuning';
+import { HostSession } from '../game/HostSession';
+import { PROTOCOL_VERSION } from '../net/protocol';
+import { readToHost } from '../net/validate';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer } from './coop';
 import { emptyMods } from './gear';
@@ -34,5 +38,18 @@ describe('one weapon set per outing (C3)', () => {
   it('swaps mid-fight as the slice did when the switch is on', () => {
     tuning.combo.swapInFight = true;
     expect(swapIn('wave')).toBe('bow');
+  });
+
+  it('the debug panel\'s switch reaches the server, and every joiner after gets it (Michael, 15 Nov, a test switch)', () => {
+    const host = new HostSession(world, () => {});
+    host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    const tune = readToHost({ k: 'tune', edit: { path: 'combo.swapInFight', value: true } });
+    expect(tune).not.toBeNull();
+    host.onMessage('a', tune!);
+    expect(tuning.combo.swapInFight).toBe(true);
+    expect(tuningEdits()['combo.swapInFight']).toBe(true);
+    expect(swapIn('wave')).toBe('bow');
+    host.onMessage('a', readToHost({ k: 'tune', edit: { path: 'combo.swapInFight', value: false } })!);
+    expect(swapIn('wave')).toBe('sword');
   });
 });

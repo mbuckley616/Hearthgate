@@ -16,6 +16,20 @@ A henchman's leader is whoever is nearest (`sim/henchman.ts`), which only shows 
 
 The producer carries the three questions. The henchman bug and the test switch are the builder's.
 
+## 2026-11-15: Session 198, a test switch to change style mid-fight
+
+**What changed**
+
+Michael's note from the playtest with Nick: "let me swap between attack styles quickly, even mid combat." `combo.swapInFight` was already a server tuning value and sat on the panel deep in the `combo` folder. It now also sits in the Debug folder as "Swap style mid-fight", beside god mode, and goes through the server like the others, so prediction and every joiner after get the same setting. With it on, Tab (View on a pad) opens the hero screen mid-fight too, and a weapon picked there lands at once, as the slice's 1, 2 and 3 did. Off, nothing changes. The panel reaches the hosted build through `HEARTHGATE_DEV`. A new test in `weaponSet.test.ts` sends the panel's `tune` message through validation into a `HostSession`, then checks that the server's tuning, the edits a joiner is sent, and a mid-fight swap all follow it on and back off.
+
+**Learned**
+
+The switch alone did not let anyone swap: the hero screen refused to open while a fight was on, so the weapon could not be picked.
+
+**Next**
+
+The key and pad button that equip the next weapon wait on the controls decision (A suggests X). Then the frame-rate item, which needs a real machine.
+
 ## 2026-11-15: Session 197, henchmen keep to whoever hired them
 
 **What changed**
