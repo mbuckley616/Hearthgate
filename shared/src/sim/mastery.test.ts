@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { readLoadout } from '../net/validate';
@@ -41,6 +41,13 @@ function party(): SimState {
 }
 
 describe('combo mastery', () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   it('ranks I to V come at the panel’s counts', () => {
     const m = tuning.mastery;
     expect(masteryRank(undefined)).toBe(0);

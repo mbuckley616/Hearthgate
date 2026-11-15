@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-15: Session 200, self-heals only and a slow regen out of a fight
+
+**What changed**
+
+Michael's A on healing. `tuning.heal` is a new panel section. With `heal.selfOnly` on, the four heals that reached allies heal their caster alone: the Paladin's Bulwark pulse and its rank V twist heal the Paladin, a Druid's Wild Growth grove heals the Druid who grew it, and Bloom's bolts no longer heal the allies they pass. A Druid's bolt that lands on an enemy heals the Druid `heal.bloomSelf` (1.5%, Rich Bloom doubles it), once a bolt (`bloomSelfHeal`). The Talents text says "heals you". `sim/regen.ts`: once no fight has been on for `heal.regenDelayS` (5 s), every standing hero and henchman regains `heal.regenPerS` (1%) of their health a second, never past full and never while down. A fight starting (a floor's room shutting, the arena's waves) stops it at once and starts the wait again. The state is one optional number, `SimState.calmFor`. The server alone steps it; prediction takes health from the snapshot as before. The parity test turns both off (`selfOnly` false, `regenPerS` 0) and its hashes are unchanged. The six older tests of the ally heals run with the switch off. `regen.test.ts` adds 8 tests: an ally beside each of the four heals gains nothing, the Druid's bolt heals the Druid once, and the regen waits 5 s, stops in a fight and skips the downed. check 637/637, test:net green.
+
+**Learned**
+
+Bloom at its old 4% as lifesteal on every bolt would be about 6% of health a second for a staff's fire rate, so the self-heal has its own smaller number on the panel. Rallying Light (Bulwark's pulse reaches 7 m) does nothing while heals are self-only; the boss and spec pass should give it another job. The arena's antechamber stands a downed hero back up out of a fight, so regen never meets a downed hero there.
+
+**Next**
+
+The Shift and Ctrl question (Session 199) waits on Michael. The graphics cost and the crowd item need a real machine; after that the builder has nothing left until the boss design pass cuts its items.
+
 ## 2026-11-15: Session 199, Space at a prompt, B for the bag, X for the next weapon
 
 **What changed**
