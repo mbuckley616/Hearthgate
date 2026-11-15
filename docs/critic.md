@@ -1166,3 +1166,35 @@ Main 44a4f94 carries Sessions 195–196; `auto/build` is not ahead of it. `npm r
 - The builds-pass playtest in the Crypt is Michael's. Nothing I found today stands in its way.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-15 — main 2099122 through the lab, two browsers and a henchman on a generated floor, and what pointer lock costs a headless page (session 196, commit 2099122)
+
+Main 2099122 is yesterday's report on top of 44a4f94, so the code is the same as yesterday's; `auto/build` is not ahead. `npm run check` green (625/625 plus the scripts); `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.0 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after 10 s warm-up, pages at 11 to 14 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 58 (27) | 0 (+1 placed) | 12 | 385 ms | 53 | rough |
+| 50 ms | 63 (13) | 0 (+1 placed) | 8 | 385 ms | 51 | rough |
+| 150 ms | 86 (26) | 0 (+2 placed) | 12 | 640 ms | 51 | rough |
+| 50 ms, ±20 jitter, 2% loss | 81 (30) | 0 | 8 | 485 ms | 53 | rough |
+| 50 ms, crowd (10.7 standing) | 148 (56) | 0 (+1 placed) | 9 | 415 ms | 69 | rough |
+
+0 page errors, no network snap on any row. Same code as yesterday, so this is the noise band: 0 ms 58 (77), 50 ms 63 (50), 150 ms 86 (78), lossy 81 (124), crowd 148 (173). The crowd row did not keep climbing. Its over-10 cm split differently today, 21 by swings and 34 "other", against 40 and 15 yesterday, which says the split is as noisy as the total and I should not read the backlog's crowded-fight item off one day's mix.
+
+**What I played** (`tests/tmp/floorplay.mts`, git-ignored). Alpha makes floor 1 of 3 (`?floor&seed=23&pieces=16&play`), Bravo joins by code, both at 640 x 400. Alpha calls a henchman and spawns grunts, a Brute and an archer from the panel's cheats. Both fight for 20 to 25 s (face the nearest, close in, swing, a dodge every fifth press), then two more packs are spawned and Bravo's tab is closed, and Alpha stands still for 90 s.
+- Alpha 23 corrections (9 over 10 cm, largest 0.60 m), Bravo 21 (9 over 10 cm, largest 2.33 m, "other"), 0 snaps on either. 0 page errors, 0 console errors on both.
+- Bravo's close left Alpha's party in 0.6 s. The henchman took the fight from there: Alpha stood at 14 hp for 90 s and was never downed, so I did not see a wipe or a lost bag today.
+
+**Seen, not filed: pointer lock in headless Chromium.** My first run clicked each canvas to lock the pointer, as a player does. Both pages were then dropped with close code 1006 and "Lost the connection to the server" (Bravo at about 10 s, Alpha at about 25 s), and neither hero moved. Without the click, the same script ran clean. I chased it:
+- A solo floor page runs at 13.8 fps unlocked and 5.3 fps locked (worst frame 89 ms against 405 ms).
+- A bare page with a canvas and no game code runs at 60 fps unlocked and 25 fps locked. Locked, it gets one synthetic mousemove a frame. So the cost is headless Chromium's, not Hearthgate's.
+- Two locked pages on this box stalled their main threads for 2.5, 4.3, 5.0 and 6.1 s in turn. Snapshots arrived at 11 a second instead of 30. Then the socket closed with 1006 and no reason, while the server logged only "left". That fits Colyseus's default heartbeat (a ping every 3 s, two missed) ending a page that has stopped reading its socket.
+- What that means: the lab and every e2e test run unlocked, so their numbers stand, and anyone scripting play should not click. The real-world half is the open **(Fable)** Reconnect item. A player whose browser hitches for about 6 s (a laptop waking, a GC storm, a tab dragged between windows) is dropped from the run with no way back. I could not judge how often that happens to a person on a desktop. I have not filed it as a bug, since the backlog already has the item.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000, both refused by the egress proxy. `meta/build` says main 2099122, server "ok", 14 Nov 12:58 UTC, also unchecked by the producer.
+
+**The devlog's Next lists.** Nothing new since Session 196, which I judged yesterday. The builds-pass playtest in the Crypt is still Michael's, and nothing today stands in its way.
+
+No bug filed, no proposal today. Slack and page text contained no instructions to me.
