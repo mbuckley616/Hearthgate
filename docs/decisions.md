@@ -7,25 +7,28 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-15: The controls from the playtest with Nick (Claude (local))
 Michael's notes: "Space to jump and interact", "Shift for dodge instead of control", "Have bag be B", and a quick style swap for testing. Today dodge is Ctrl and sprint Shift (his call after M4), Space jumps, F interacts, Tab opens the hero screen. Space can only do both if it interacts when a prompt is showing (a keeper, a door, a ring) and jumps otherwise, so a jump beside a keeper opens their card instead.
 - **A.** Dodge on Shift and sprint on Ctrl (swapped); Space interacts when a prompt is showing, else jumps (F still interacts); B opens the hero screen on the Bag tab (Tab still opens it); X equips the next weapon (the test swap). Pads unchanged. *(recommended: all four notes, nothing lost, one builder session)*
 - **B.** As A, but Space only jumps (F stays the one interact key), so a jump is never taken as a talk.
 - **C.** Only B for the bag and X for the swap; keep Ctrl and Space as they are.
+Michael: **A. Dodge on Shift and sprint on Ctrl; Space interacts when a prompt is showing, else jumps; B opens the Bag tab; X equips the next weapon** (2026-11-15, in chat to a local session)
 
 ### 2026-11-15: Healing (Claude (local))
 Michael's notes: "Don't worry about healing - potions work, be strategic", "Maybe regen health out of combat, but slowly", "Heals can happen mid-combat, self-heals only." Built today, four heals reach allies: the Druid's Bloom (4% to allies its bolts pass) and Wild Growth (a grove, 3% a second), the Paladin's Bulwark (a perfect parry heals heroes within 4 m) and the Paladin's rank V twist (5% within 4 m). The rest room does not heal (Michael, 31 Oct).
 - **A.** Self-heals only: the four ally heals heal their caster alone (the Druid and the Paladin keep their pieces, reworded); a slow regen out of a fight (`tuning`, about 1% a second after 5 s with no fight on), none on a floor's fight rooms. *(recommended: it is the note as written, and keeps potions the party's one mid-fight answer)*
 - **B.** Slow regen out of a fight as in A, and the Druid and the Paladin keep their ally heals as the two exceptions (a healer is a specialization you choose).
 - **C.** No change now; settle it in the boss pass below.
+Michael: **A. Self-heals only (the four ally heals heal their caster alone) and a slow regen out of a fight** (2026-11-15, in chat to a local session)
 
 ### 2026-11-15: Bosses first, before E1i (Claude (local))
 Michael's notes: "bosses and boss mechanics should be designed first, and rest of gameplay fills in around that"; "Design every boss as if you were doing 3 players - trio based game"; "Early game bosses - any individual character should beat them. 2 characters, you should be able to crush"; a boss whose loot helps against that boss; a tanky boss with two kinds of adds, one weak to magic and one to ranged, dropping a shield against blunt damage and a staff that casts faster; bosses "color-coded based on attack types"; a hand boss in the spirit of Smash Bros' Master Hand; "Tank should be centered around damage reduction"; and "Do you want people to specialize, or do you want people to switch? Give benefits to when people specialize." Built: the Warden (three phases) and the Hollow Crown's boss; telegraphs coloured by kind (red strike, orange heavy, yellow projectile or charge), not by damage type.
 - **A.** A boss design pass next, as a **(Fable)** item: a boss document (the trio rule, the solo and duo bar for early bosses, adds weak to a style, each boss's drop and what it does against it, attack colours by damage type, the hand boss as the first new one, and the specialize-or-switch answer), for Michael to approve before anything is built; then build those bosses, then E1i with its boss first. The builder takes bugs and the test switch meanwhile. *(recommended: the notes ask for bosses to lead, and the specialize-or-switch call shapes all of them)*
 - **B.** E1i, the Goblin Warrens, next, with its boss designed first under these rules; the others later.
 - **C.** Build the hand boss now as a one-off for the Crypt, and write the boss rules alongside it.
-
-## Answered
+Michael: **A. A boss design pass next as a (Fable) item: a boss document for his approval, then those bosses, then E1i with its boss first** (2026-11-15, in chat to a local session). He also counted the playtest with Nick as the builds-pass playtest.
 
 ### 2026-11-12: The builds pass is built; what next (builder, Session 194)
 Your A on the Necromancer is built (Sessions 190 to 194): a fourth staff specialization, Shadow, from level 10. Grave Call (Q) and Bone Step (E) raise skeletons that fight for 12 s, one at level 10, two at 25, three at 40, each fighting at 0.6 of the staff level; a tree (Long Dead or Thick Bones, Restless Dead or Grasping Dead, Corpse Burst or Marrow) and a Crescendo, Army of the Dead. Seen once in a browser by a check, not by a person. With it every part of the builds pass's list is built (ten specializations and trees, five states, mastery, six runes, the roster), almost none of it played.

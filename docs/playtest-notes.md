@@ -237,4 +237,6 @@ Design direction (Michael's notes; each needs a call before it is a spec)
 - "When designing bosses - color-coded based on attack types." (Telegraphs are coloured by kind today, E1a: red strike, orange heavy or unblockable, yellow projectile or charge; whether this means by damage type, melee, ranged and magic, is asked.)
 
 Decisions
-- Three questions raised in `decisions.md` Pending (15 Nov): the controls, healing, and a boss-first pass before E1i. The henchman bug is under **Found in play**; the style-swap test switch and the graphics cost are in the current section of the backlog.
+- Three questions raised in `decisions.md` (15 Nov): the controls, healing, and a boss-first pass before E1i. The henchman bug is under **Found in play**; the style-swap test switch and the graphics cost are in the current section of the backlog.
+- **A on all three** (Michael, 15 Nov, in chat): dodge on Shift, sprint on Ctrl, Space interacts at a prompt, B for the bag, X for the next weapon; self-heals only with a slow regen out of a fight; a boss design pass (Fable) before E1i.
+- **This counts as the builds-pass playtest** (Michael, 15 Nov, in chat), so the builder is no longer paused for it.

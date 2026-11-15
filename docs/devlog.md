@@ -14,7 +14,7 @@ A henchman's leader is whoever is nearest (`sim/henchman.ts`), which only shows 
 
 **Next**
 
-The producer carries the three questions. The henchman bug and the test switch are the builder's.
+Michael answered A on all three in chat the same day and counted the evening as the builds-pass playtest; the answers are in `decisions.md` and the items are cut. The builder: the henchman bug, the controls, the test switch, self-heals and regen, the graphics cost. The producer cards the boss design pass for the deep-work session, which comes before E1i.
 
 ## 2026-11-15: Session 198, a test switch to change style mid-fight
 
