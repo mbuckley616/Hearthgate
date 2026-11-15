@@ -167,6 +167,8 @@ export abstract class HostRoom extends Room {
       if (roomId && henchmen.length > 0) rooms.get(roomId)?.welcomeHenchmen(henchmen);
       for (const c of clients) {
         const reservation = await matchMaker.joinById(target, {});
+        // Henchmen keep to whoever hired them (Michael, 15 Nov): the hirer arrives under a new session.
+        rooms.get(target)?.host.renameAwaitedLeader(c.sessionId, reservation.sessionId);
         const msg: ToPeer = { k: "handoff", reservation, level };
         c.send(MSG, msg);
       }
@@ -193,6 +195,7 @@ export abstract class HostRoom extends Room {
       const target = roomId ?? (await matchMaker.createRoom("village", { henchmen })).roomId;
       if (roomId && henchmen.length > 0) rooms.get(roomId)?.welcomeHenchmen(henchmen);
       const reservation = await matchMaker.joinById(target, {});
+      rooms.get(target)?.host.renameAwaitedLeader(client.sessionId, reservation.sessionId);
       const msg: ToPeer = { k: "handoff", reservation, level: "village" };
       client.send(MSG, msg);
       this.log(`sent ${client.sessionId} home to village ${target}`);

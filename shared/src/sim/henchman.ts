@@ -31,6 +31,12 @@ export interface HenchmanBrain {
   quick?: boolean;
   /** The highest level its Tavern lets it reach (P12): XP past it is not earned. */
   cap?: number;
+  /**
+   * The hero who hired it (the sim's player id), whom it keeps to while they stand: Michael's playtest
+   * with Nick (15 Nov) had the hires follow whoever stood nearer. Unset, or that hero down or gone, it
+   * keeps to the nearest.
+   */
+  leader?: string;
   /** Where and when it last started trying to walk, to tell when it is stuck (unstickHenchmen). */
   walkX?: number;
   walkZ?: number;
@@ -52,10 +58,29 @@ export interface HenchmanCard {
   quick?: boolean;
   /** The Tavern's cap on its level (P12). */
   cap?: number;
+  /** Who hired it, as the server's connection to them (a session id), set only by the server as it hands the party on. */
+  leader?: string;
 }
 
 export function henchmanCard(p: PlayerState): HenchmanCard {
   return { name: p.name, style: p.style, xp: p.xp[p.style], ...(p.brain?.quick ? { quick: true } : {}), ...(p.brain?.cap ? { cap: p.brain.cap } : {}) };
+}
+
+/**
+ * Whom a henchman keeps to: the hero who hired it while they stand, else the nearest standing hero
+ * (never another henchman or a summon).
+ */
+export function leaderOf(state: SimState, h: PlayerState): PlayerState | null {
+  // A summon keeps to its Necromancer the same way.
+  const want = h.brain?.leader ?? h.summon?.owner;
+  const hirer = want === undefined ? undefined : state.players.find((p) => p.id === want && !p.henchman && p.mode !== 'down');
+  if (hirer) return hirer;
+  let best: PlayerState | null = null;
+  for (const p of state.players) {
+    if (p.henchman || p.mode === 'down') continue;
+    if (!best || Math.hypot(p.x - h.x, p.z - h.z) < Math.hypot(best.x - h.x, best.z - h.z)) best = p;
+  }
+  return best;
 }
 
 /** Cards from a room's create options (the server's own), each field checked. */
@@ -66,7 +91,8 @@ export function readHenchmanCards(v: unknown): HenchmanCard[] {
     const o = c as Record<string, unknown>;
     if (typeof o.name !== 'string' || !(o.style === 'sword' || o.style === 'bow' || o.style === 'staff') || typeof o.xp !== 'number' || !Number.isFinite(o.xp)) return [];
     const cap = typeof o.cap === 'number' && Number.isInteger(o.cap) && o.cap >= 1 ? { cap: o.cap } : {};
-    return [{ name: o.name.slice(0, 16), style: o.style, xp: Math.max(0, o.xp), ...(o.quick === true ? { quick: true } : {}), ...cap }];
+    const leader = typeof o.leader === 'string' && o.leader.length > 0 && o.leader.length <= 64 ? { leader: o.leader } : {};
+    return [{ name: o.name.slice(0, 16), style: o.style, xp: Math.max(0, o.xp), ...(o.quick === true ? { quick: true } : {}), ...cap, ...leader }];
   });
 }
 
@@ -112,11 +138,7 @@ export function unstickHenchmen(state: SimState, commands: Record<string, Player
     }
     if ((state.time - b.walkSince) * 1000 < c.stuckMs) continue;
     delete b.walkSince;
-    let leader: PlayerState | null = null;
-    for (const p of state.players) {
-      if (p.henchman || p.mode === 'down') continue;
-      if (!leader || Math.hypot(p.x - h.x, p.z - h.z) < Math.hypot(leader.x - h.x, leader.z - h.z)) leader = p;
-    }
+    const leader = leaderOf(state, h);
     if (!leader || Math.hypot(leader.x - h.x, leader.z - h.z) <= c.followDistance + 1) continue;
     // On the player's own spot and height: the spacing steps it apart, and the walls it then meets are theirs.
     h.x = leader.x;
@@ -187,10 +209,8 @@ export function henchmanCommand(state: SimState, h: PlayerState): PlayerCommand 
     }
   }
 
-  // The party it keeps to: the nearest standing player who is not a henchman.
-  const leader = state.players
-    .filter((p) => !p.henchman && p.mode !== 'down')
-    .sort((p, q) => Math.hypot(p.x - h.x, p.z - h.z) - Math.hypot(q.x - h.x, q.z - h.z))[0];
+  // The party it keeps to: its hirer, or the nearest standing player who is not a henchman.
+  const leader = leaderOf(state, h);
 
   // Its enemy: the nearest that it or its leader is close to.
   const near = (e: EnemyState, x: number, z: number) => Math.hypot(e.x - x, e.z - z) <= c.aggroRange;

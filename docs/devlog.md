@@ -16,6 +16,20 @@ A henchman's leader is whoever is nearest (`sim/henchman.ts`), which only shows 
 
 The producer carries the three questions. The henchman bug and the test switch are the builder's.
 
+## 2026-11-15: Session 197, henchmen keep to whoever hired them
+
+**What changed**
+
+The bug from Michael's playtest with Nick (15 Nov): the hires followed the visitor. A henchman's brain kept to the nearest standing player, and so did its unstick teleport. Now `HenchmanBrain.leader` holds the hero who hired it (set by `addHenchman` on a Tavern hire or the debug cheat), and `leaderOf` (`sim/henchman.ts`) returns that hero while they stand. If the hirer is down or gone it falls back to the nearest, as before. A Necromancer's skeleton keeps to its own Necromancer the same way, through `summon.owner`. Player ids are party slots and change from room to room, so a `HenchmanCard` carries its hirer's connection (`leader`, a session id). The room's hand-off renames that connection to the seat it reserves (`renameAwaitedLeader`) before it sends the hand-off, and the next room's `HostSession` sets the brain's leader when that hello lands. This holds even when the visitor arrives first and takes slot p1. Three tests in `henchman.test.ts`: the hirer far and the visitor near; the hirer down, back up, then gone; and a hand-off to a room where the hirer joins second under a new connection, then on to the room after that. Server only. Prediction never steps a henchman, and the arena's parity hashes have no henchmen.
+
+**Learned**
+
+With its hirer down, a henchman's move is a revive, toward the hirer, before following anyone. So the test reads the leader directly, not the move.
+
+**Next**
+
+The test switch for changing style mid-fight (the panel's `combo.swapInFight`; the key waits on the controls decision). Then the frame-rate item, which needs a real machine.
+
 ## 2026-11-13: Session 196, skeletons are never raised through a wall
 
 **What changed**
