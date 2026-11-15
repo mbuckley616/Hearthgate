@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-15: Claude (local), the playtest with Nick filed
+
+**What changed**
+
+Docs only, on `auto/local-playtest-nick`. Michael's notes from playing with his friend Nick on the hosted build are filed in `playtest-notes.md`; a bug under **Found in play** (henchmen keep to the nearest player, not their hirer); two builder items in the current section (a test switch to change style mid-fight, and the cost of regular graphics); three questions in `decisions.md` Pending (the controls, healing, bosses first before E1i).
+
+**Learned**
+
+A henchman's leader is whoever is nearest (`sim/henchman.ts`), which only shows with two real players. Drops are each player's own by design, so nothing can pass gear between friends before Phase 3's trade; a friend was geared for the evening by editing their browser save. Michael's note on self-heals only meets four ally heals the builds pass already built.
+
+**Next**
+
+The producer carries the three questions. The henchman bug and the test switch are the builder's.
+
 ## 2026-11-13: Session 196, skeletons are never raised through a wall
 
 **What changed**
