@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 207, damage types on enemy hits (B3)
+
+**What changed**
+
+`DamageType` (blunt, edge, pierce, magic) is in `sim/types.ts`, with an optional `HeroHit.type` and the same on the `heroHurt` event. Both are set only while `bosses.damageTypes` is on (`typed()` in `combat.ts`), so the parity test turns it off and a pending hit's state stays the slice's (hashes unchanged). Every enemy hit on a hero carries one, from `docs/bosses.md` 1.5. Edge: the skeleton warrior's sword, the Warden's sweep, the Hound's charge (its teeth), and the Hollow King's string and sweep. Blunt: the Brute's and the Warden's slams, the Shieldbearer's bash, and the Barrow Knight's shield rush. Pierce: enemy arrows and the King's thrown crown. Magic: the King's violet circles and any enemy bolt. Nothing in the fight reads the type yet. The HUD has no damage numbers for hits on heroes (only on enemies), so B4's colours will be the first reader. `damageTypes.test.ts` has 6 tests: each of the grunt, archer, Brute, Warden and King fights a hero who never falls, and every hit it lands has the type it should; with the switch off a hit has none. check 653/653, test:net green.
+
+**Learned**
+
+The arena's middle has an obstacle: a Brute created at (0, 0) rises 9 m south and walks into it, and an archer waits for a clear line it may never get there. The test fights on open floor south of the middle and gives the archer its turn.
+
+**Next**
+
+B4, telegraph colours by type, with the orange unblockable rim (Michael's A on the colours).
+
 ## 2026-11-16: Session 206, a boss's attention (B2)
 
 **What changed**

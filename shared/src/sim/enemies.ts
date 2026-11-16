@@ -5,9 +5,9 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 
 /** A floor's brazier as its collider stands (floor.ts). */
 const BRAZIER_RADIUS = 0.45;
-import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched } from './combat';
+import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
-import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
+import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
 import { bossAttackDone, bossTarget } from './attention';
@@ -320,10 +320,10 @@ function heroesInCone(state: SimState, x: number, z: number, yaw: number, r: num
 }
 
 /** The Warden's sweep and slams and the Brute's slam: heavy, and low (M1), along the ground at the enemy's feet. */
-function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: number, fromZ: number, damage: number, push: number): void {
+function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: number, fromZ: number, damage: number, push: number, type: DamageType): void {
   // Tagged only while the switch is on, so the slice's pending hits (and the parity hashes) keep their shape.
   const low = tuning.jump.clearsLow ? { low: e.y } : {};
-  for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, damage), heavy: true, push, fromX, fromZ, enemyId: e.id, ...low });
+  for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, damage), heavy: true, push, fromX, fromZ, enemyId: e.id, ...low, ...typed(type) });
 }
 
 /** Grunt slash: light, in front. */
@@ -336,7 +336,7 @@ function gruntStrike(state: SimState, e: EnemyState, target: PlayerState | null)
   const dz = target.z - e.z;
   if (Math.hypot(dx, dz) > g.reach + tuning.movement.radius) return;
   if (Math.abs(wrapAngle(Math.atan2(dx, dz) - e.yaw)) > (g.arcDeg * DEG) / 2) return;
-  hurtHero(state, target, { damage: hitDamage(e, g.damage), fromX: e.x, fromZ: e.z, enemyId: e.id });
+  hurtHero(state, target, { damage: hitDamage(e, g.damage), fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('edge') });
 }
 
 export interface Intent {
@@ -639,7 +639,7 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
         state.events.push({ kind: 'enemySwing', enemyId: e.id });
         if (!tuning.debug.passiveEnemies) {
           const victims = heroesInCone(state, e.x, e.z, e.yaw, sb.bashReach, sb.bashArcDeg, e.y);
-          for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, sb.bashDamage), heavy: true, push: sb.bashPush, fromX: e.x, fromZ: e.z, enemyId: e.id });
+          for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, sb.bashDamage), heavy: true, push: sb.bashPush, fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('blunt') });
         }
       }
       break;
@@ -739,7 +739,7 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         ? undefined
         : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
       if (hit) {
-        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id });
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt') });
         e.tele.shape = 'none';
         setAi(e, 'recover');
         e.recoverTime = h.recoveryMs / 1000;
@@ -863,7 +863,7 @@ function slamLands(state: SimState, e: EnemyState, damage: number, push: number,
   const t = e.tele;
   state.events.push({ kind: 'enemySlam', enemyId: e.id, x: t.x, z: t.z, radius: t.radius, boss });
   if (tuning.debug.passiveEnemies) return;
-  shove(state, e, heroesInCircle(state, t.x, t.z, t.radius, e.y), t.x, t.z, damage, push);
+  shove(state, e, heroesInCircle(state, t.x, t.z, t.radius, e.y), t.x, t.z, damage, push, 'blunt');
 }
 
 /** The Warden's pace in its phase: the slice's two, or E1g's three (phase 2 adds the dead, phase 3 the speed). */
@@ -996,7 +996,7 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
         state.events.push({ kind: 'enemySwing', enemyId: e.id });
         if (!tuning.debug.passiveEnemies) {
           const t = e.tele;
-          shove(state, e, heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y), e.x, e.z, w.sweepDamage, w.knockbackDealt);
+          shove(state, e, heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y), e.x, e.z, w.sweepDamage, w.knockbackDealt, 'edge');
         }
       }
       break;
@@ -1160,7 +1160,7 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
         if (!tuning.debug.passiveEnemies) {
           const t = e.tele;
           for (const p of heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y)) {
-            hurtHero(state, p, { damage: hitDamage(e, k.stringDamage), push: k.knockbackDealt, fromX: e.x, fromZ: e.z, enemyId: e.id });
+            hurtHero(state, p, { damage: hitDamage(e, k.stringDamage), push: k.knockbackDealt, fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('edge') });
           }
         }
       }
@@ -1210,7 +1210,7 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
         for (const p of heroesInCircle(state, at.x, at.z, k.crownRadius, e.y)) {
           if (c.struck.includes(p.id)) continue;
           c.struck.push(p.id);
-          hurtHero(state, p, { damage: hitDamage(e, k.crownDamage), push: k.crownPush, fromX: at.x - Math.sin(e.tele.yaw), fromZ: at.z - Math.cos(e.tele.yaw), enemyId: e.id });
+          hurtHero(state, p, { damage: hitDamage(e, k.crownDamage), push: k.crownPush, fromX: at.x - Math.sin(e.tele.yaw), fromZ: at.z - Math.cos(e.tele.yaw), enemyId: e.id, ...typed('pierce') });
         }
       }
       if (c.back && c.d <= 0) {
@@ -1230,7 +1230,7 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
           for (const p of state.players) {
             if (tuning.debug.passiveEnemies || p.mode === 'down' || Math.hypot(p.x - c.x, p.z - c.z) > k.circlesRadius) continue;
             if (heroInvulnerable(p) || clearsLow(p, e.y)) continue;
-            hurtHero(state, p, { damage: hitDamage(e, k.circlesDamage), fromX: c.x, fromZ: c.z, enemyId: e.id, late: true });
+            hurtHero(state, p, { damage: hitDamage(e, k.circlesDamage), fromX: c.x, fromZ: c.z, enemyId: e.id, late: true, ...typed('magic') });
             chillHero(state, p);
             caught++;
           }
@@ -1256,7 +1256,7 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
         if (!tuning.debug.passiveEnemies) {
           const t = e.tele;
           for (const p of heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y)) {
-            hurtHero(state, p, { damage: hitDamage(e, k.sweepDamage), push: k.knockbackDealt, fromX: e.x, fromZ: e.z, enemyId: e.id });
+            hurtHero(state, p, { damage: hitDamage(e, k.sweepDamage), push: k.knockbackDealt, fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('edge') });
           }
         }
       }

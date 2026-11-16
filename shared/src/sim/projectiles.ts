@@ -1,7 +1,7 @@
 import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
-import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo, type HitSpec } from './combat';
+import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo, typed, type HitSpec } from './combat';
 import { attuneAfter, attuneHit, bloomHeal, bloomRoot, bloomSelfHeal, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { masteryPayoffMult } from './mastery';
@@ -486,7 +486,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
         const t = segmentHitsCapsule(pr, dir, hit, p.x, p.y, p.z, tuning.movement.radius, tuning.movement.height);
         if (t < Infinity) {
           const shooter = Number(pr.owner.slice(1));
-          const result = hurtHero(state, p, { damage: pr.damage, fromX: pr.x - dir.x * 3, fromZ: pr.z - dir.z * 3, enemyId: shooter, arrow: true });
+          const result = hurtHero(state, p, { damage: pr.damage, fromX: pr.x - dir.x * 3, fromZ: pr.z - dir.z * 3, enemyId: shooter, arrow: true, ...typed(pr.kind === 'bolt' ? 'magic' : 'pierce') });
           if (result === 'parried') reflectArrow(state, pr, p, shooter);
           else pr.life = 0;
           break;

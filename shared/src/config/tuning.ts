@@ -1645,6 +1645,8 @@ export const tuning = {
     attentionWindowS: 4,
     /** Attacks running on one hero before a boss turns to another who stands. */
     attentionRun: 3,
+    /** B3: every enemy hit on a hero carries its damage type (blunt, edge, pierce, magic). Off in the parity test. */
+    damageTypes: true,
   },
 
   /**

@@ -4,7 +4,7 @@ import { championCombo, championDamage, championOpen, championPointsEarned, cham
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
-import type { Combo, EnemyState, HeroHit, PlayerState, SimState } from './types';
+import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { roleOf } from './roles';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
@@ -581,6 +581,14 @@ export function clearsLow(p: PlayerState, ground: number): boolean {
   return tuning.jump.clearsLow && !p.grounded && p.y - ground >= tuning.jump.clearHeight;
 }
 
+/**
+ * A hit's damage type (B3) to spread into a `HeroHit`: nothing with `bosses.damageTypes` off, so a
+ * pending hit's state and the slice's hashes stay as they were.
+ */
+export function typed(type: DamageType): { type?: DamageType } {
+  return tuning.bosses.damageTypes ? { type } : {};
+}
+
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
   if (heroInvulnerable(p)) {
     // A dodge that slips a hit is a perfect one (C2), paid once per dodge.
@@ -687,7 +695,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.flow && heavy && flowArmoured(p)) heavy = false;
   if (p.flow) loseFlowTier(p);
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
-  state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy });
+  state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy, ...(hit.type ? { type: hit.type } : {}) });
   if (p.hp <= 0) knockDown(state, p);
   else if (heavy) {
     p.mode = 'hurt';

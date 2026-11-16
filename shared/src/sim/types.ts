@@ -450,7 +450,7 @@ export interface RunState {
 export type SimEvent =
   | { kind: 'hit'; x: number; y: number; z: number; enemyId: number; attackerId: string; damage: number; heavy: boolean; bonus: boolean; crit: boolean; killed: boolean; dirX: number; dirZ: number; local: boolean }
   | { kind: 'stagger'; enemyId: number; x: number; z: number }
-  | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean }
+  | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean; type?: DamageType }
   | { kind: 'heroDown'; playerId: string }
   /** Through a village door (the server's alone): the sound of it opening, where the hero came out. */
   | { kind: 'door'; playerId: string; x: number; z: number }
@@ -574,8 +574,13 @@ export type SimEvent =
 export type Combo = 'shatter' | 'skewer' | 'detonate' | 'uproot' | 'fan';
 
 /** An enemy attack reaching a hero. */
+/** What a hit on a hero is (B3, `docs/bosses.md` 1.5): blunt and edge melee, pierce ranged, magic magic. */
+export type DamageType = 'blunt' | 'edge' | 'pierce' | 'magic';
+
 export interface HeroHit {
   damage: number;
+  /** Its damage type (B3), set only with `bosses.damageTypes` on; nothing in the fight reads it yet. */
+  type?: DamageType;
   /** Heavy hits interrupt the hero and break a guard. */
   heavy?: boolean;
   /** Metres of shove on a heavy hit. */
