@@ -141,6 +141,16 @@ function addWeaknessMult(state: SimState, e: EnemyState, hit: HitSpec): number |
   return 1;
 }
 
+/** A hero wearing a boss's signature piece against a hit's damage type (B6). */
+function resists(p: PlayerState, hit: HeroHit): boolean {
+  return tuning.bosses.signatureDrops && !!hit.type && !!p.mods.resist?.includes(hit.type);
+}
+
+/** A bane weapon's multiplier on its boss's kind (B6), or 1. */
+function baneMult(hero: PlayerState | undefined, e: EnemyState): number {
+  return hero?.mods.bane === e.kind && tuning.bosses.signatureDrops ? tuning.bosses.baneMult : 1;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -205,7 +215,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
-  const damage = weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -706,6 +716,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   }
   // Worn armour (T5b) takes its share off; the slice's heroes carry none.
   if (p.mods.armour) damage *= 1 - p.mods.armour;
+  // A signature piece against this hit's type (B6), once however many are worn.
+  if (resists(p, hit)) damage *= 1 - tuning.bosses.resist;
   // A Whirlwind's spin (C6) takes a share of the hit and keeps spinning: a risk in a crowd, not a punishment.
   if (spinning(p)) {
     damage *= tuning.abilities.whirlwindDamageTaken;

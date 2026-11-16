@@ -177,7 +177,12 @@ export function abilityRank(p: PlayerState, kind: AbilityKind): number {
 // --- Effects ---
 
 export function attackSpeed(p: PlayerState): number {
-  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p) + (focused(p) ? tuning.abilities.focusSpeed : 0);
+  return 1 + rankOf(p, 'haste') * tuning.talents.hasteSpeedPerRank + flowSpeed(p) + (focused(p) ? tuning.abilities.focusSpeed : 0) + castSpeedBonus(p);
+}
+
+/** A quick-casting signature weapon (B6): its chain and its abilities' windups run faster. */
+export function castSpeedBonus(p: PlayerState): number {
+  return p.mods.castSpeed && tuning.bosses.signatureDrops ? tuning.bosses.castSpeed : 0;
 }
 
 /** Under the focus orb's Focus with a magic weapon in hand: casts come faster and hit harder. */

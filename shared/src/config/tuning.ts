@@ -1653,6 +1653,14 @@ export const tuning = {
     armourTaken: 0.35,
     /** A bow's hit on a warded add lands this much harder; a staff's is turned aside. */
     wardArrowMult: 1.5,
+    /** B6: a boss's signature drops (`resist`, `castSpeed`, `bane` on `Mods`) act. Off in the parity test. */
+    signatureDrops: true,
+    /** What a piece that resists a damage type takes off a hit of that type; two pieces against one type give one. */
+    resist: 0.2,
+    /** How much faster a quick-casting weapon's chain and its abilities' windups run. */
+    castSpeed: 0.15,
+    /** A bane weapon's damage on its boss's kind. */
+    baneMult: 1.25,
   },
 
   /**
@@ -2724,6 +2732,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'bosses.attentionRun': [1, 10, 1],
   'bosses.armourTaken': [0, 1, 0.05],
   'bosses.wardArrowMult': [1, 3, 0.05],
+  'bosses.resist': [0, 0.6, 0.05],
+  'bosses.castSpeed': [0, 0.5, 0.05],
+  'bosses.baneMult': [1, 2, 0.05],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],

@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 210, signature drops' properties (B6, part one)
+
+**What changed**
+
+`docs/bosses.md` 1.4's three properties on `Mods`, behind `bosses.signatureDrops`, which the parity test turns off. Each is set only when worn, and the amounts are the server's, so a loadout names only what is worn. **`resist`** is a list of damage types, each once. `hurtHero` takes `bosses.resist` (0.2) off a hit of a listed type, after worn armour; an untyped hit is never resisted. **`castSpeed`** (a flag) adds `bosses.castSpeed` (0.15) to `attackSpeed`, so the chain runs faster. An ability's windup runs at 1.15 its pace through `abilityClock`, and the rest of the tick past the windup runs at its own pace, so a Charge's dash and a Whirlwind's spin last what they did. **`bane`** is a boss's kind, and `damageEnemy` lands a hero's hits on that kind `bosses.baneMult` (1.25) harder. `readLoadout` refuses a type named twice, an unknown type, anything but `true` for `castSpeed`, and a bane that is not a boss's kind. All three numbers are on the panel. `signatureDrops.test.ts` has 5 tests: 20% off a blunt hit with a blunt resist and nothing off an edge or untyped one; the loadout's checks; the chain at +0.15 and the Charge's 120 ms windup in 7 ticks against 8; the bane at 1.25 on the Warden and 1 on the King; and nothing with the switch off. check 669/669, test:net green.
+
+**Learned**
+
+"Two pieces give one resist" is a rule of the list: a type appears in it once however many pieces name it, so the browser's `wornMods` must fold duplicates, and the server refuses a list that does not. A bane reaches its boss's kind only. "And its adds" needs an add to know its boss, which no enemy does yet. The Gravehand's rings (H2) are the first adds a boss raises as its own, so the rule waits for them.
+
+**Next**
+
+B6, part two: the signature pieces in the catalogue (a material and shape with one property), `wornMods` folding them into `Mods`, and a boss's drop list by job, offering each hero the piece of the job they did most. Its gate: the job's piece is the one offered.
+
 ## 2026-11-16: Session 209, add weaknesses (B5)
 
 **What changed**

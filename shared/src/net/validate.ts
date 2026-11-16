@@ -1,11 +1,12 @@
-import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type EnemyKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
 import { BAG_SIZE, BODY_SLOTS, CATALOGUE, socketsOf, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { readMastery } from '../sim/mastery';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
-import type { PlayerCommand } from '../sim/types';
+import { DAMAGE_TYPES, type DamageType, type PlayerCommand } from '../sim/types';
+import { KIND_ROLE } from '../sim/roles';
 import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, treeProblem, type Element, type SpecElements, type SpecId, type Specs, type SpecTree } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
@@ -134,6 +135,20 @@ export function readLoadout(v: unknown): Loadout | null {
   if (m.armour !== undefined) {
     if (!isNum(m.armour) || m.armour < 0 || m.armour > 0.9) return null;
     mods.armour = m.armour;
+  }
+  // A boss's signature drops (B6): known damage types each once, a flag, a boss's kind.
+  if (m.resist !== undefined) {
+    if (!Array.isArray(m.resist) || m.resist.length === 0 || m.resist.length > DAMAGE_TYPES.length) return null;
+    if (!m.resist.every((t) => DAMAGE_TYPES.includes(t as DamageType)) || new Set(m.resist).size !== m.resist.length) return null;
+    mods.resist = [...(m.resist as DamageType[])];
+  }
+  if (m.castSpeed !== undefined) {
+    if (m.castSpeed !== true) return null;
+    mods.castSpeed = true;
+  }
+  if (m.bane !== undefined) {
+    if (typeof m.bane !== 'string' || !(m.bane in KIND_ROLE) || KIND_ROLE[m.bane as EnemyKind] !== 'boss') return null;
+    mods.bane = m.bane as EnemyKind;
   }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
   // Champion points (T6b): the banked XP must have bought every rank.

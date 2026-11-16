@@ -1,4 +1,5 @@
-import { STYLES, tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { STYLES, tuning, type AmmoKind, type EnemyKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import type { DamageType } from './types';
 import type { RuneKind } from './runes';
 
 /**
@@ -74,6 +75,14 @@ export interface Mods {
   family?: WeaponFamily;
   /** The runes acting in the worn weapon's sockets (the builds pass); absent when none. */
   runes?: RuneKind[];
+  /**
+   * A boss's signature drops (B6, `docs/bosses.md` 1.4), each set only when worn. The amounts are the
+   * server's (`tuning.bosses`), so a loadout names only what is worn: the damage types resisted (each
+   * once, so two pieces against one type give one resist), a weapon that casts faster, a bane's kind.
+   */
+  resist?: DamageType[];
+  castSpeed?: boolean;
+  bane?: EnemyKind;
 }
 
 export function emptyMods(): Mods {

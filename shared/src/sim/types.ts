@@ -576,6 +576,7 @@ export type Combo = 'shatter' | 'skewer' | 'detonate' | 'uproot' | 'fan';
 /** An enemy attack reaching a hero. */
 /** What a hit on a hero is (B3, `docs/bosses.md` 1.5): blunt and edge melee, pierce ranged, magic magic. */
 export type DamageType = 'blunt' | 'edge' | 'pierce' | 'magic';
+export const DAMAGE_TYPES: readonly DamageType[] = ['blunt', 'edge', 'pierce', 'magic'];
 
 export interface HeroHit {
   damage: number;
