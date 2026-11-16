@@ -1321,6 +1321,8 @@ export const tuning = {
 
   /** The Warden: two-phase mini-boss; sweep, slam, and a roar that summons at 50% health (brief). */
   warden: {
+    /** The Sweepbreaker Greaves (W1, a signature drop): a hero wearing them clears a low attack this much lower. */
+    greavesClearLessM: 0.2,
     maxHp: 2000,
     maxPoise: 40,
     radius: 1.0,
@@ -3885,6 +3887,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'brute.spawnMs': [0, 3000, 10],
   'brute.deathMs': [0, 6000, 10],
   'brute.knockbackTaken': [0, 2, 0.01],
+  'warden.greavesClearLessM': [0, 0.5, 0.05],
   'warden.maxHp': [0, 4200, 5],
   'warden.maxPoise': [0, 120, 0.1],
   'warden.radius': [0, 10, 0.1],

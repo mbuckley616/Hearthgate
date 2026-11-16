@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 236, the Warden's signature drops (W1, part one)
+
+**What changed**
+
+The Warden now drops a signature piece to each hero, by job (`SIGNATURES.warden`, `docs/bosses.md` 2.3):
+- **Warden's Tower** (steel kiteshield, the tank's): 20% less blunt, against its slams.
+- **Sweepbreaker Greaves** (hard leather boots, the warded job's): a jump clears a low attack from `warden.greavesClearLessM` (0.2 m, on the panel) lower. This is a new signature property, `lowClear`, read by `clearsLow`. Only boots carry it, and the server checks it on items and loadouts.
+- **Ward-iron Mace** (the boss job's, and anyone's who did no other): 1.25x against the Warden, its bane.
+
+All of it sits behind `bosses.signatureDrops`, which the parity test turns off. The floor-run test now expects the mace beside the Warden's rare. check 740/740 (3 new), test:net green.
+
+**Learned**
+
+The catalogue has no tower shape, so the Tower is a kiteshield, as the Mason's shield is. Until W1's phase 2 adds exist, the Warden has nothing warded, so the greaves are never offered yet. Every hero gets the tower or the mace.
+
+**Next**
+
+- W1, part two: phase 2's raised dead as one of each weakness at trio size (a plated warrior, an archer on the edge, a priest at the back), behind `warden.underRules`. Then the bench against the bar.
+
 ## 2026-11-16: Session 235, the bench's heroes break the Wardstones (M3's gate)
 
 **What changed**

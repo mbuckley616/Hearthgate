@@ -85,6 +85,8 @@ export interface Mods {
   bane?: EnemyKind;
   /** Gloves a grip slips off (H3, the Grave-cloth Wraps): the Gravehand holds them `gravehand.looseGripMs`. */
   looseGrip?: boolean;
+  /** Boots a low attack is cleared in from lower (W1, the Sweepbreaker Greaves): `warden.greavesClearLessM`. */
+  lowClear?: boolean;
 }
 
 export function emptyMods(): Mods {

@@ -154,6 +154,10 @@ export function readLoadout(v: unknown): Loadout | null {
     if (m.looseGrip !== true) return null;
     mods.looseGrip = true;
   }
+  if (m.lowClear !== undefined) {
+    if (m.lowClear !== true) return null;
+    mods.lowClear = true;
+  }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
   // Champion points (T6b): the banked XP must have bought every rank.
   if (v.champion !== undefined) {
@@ -281,6 +285,7 @@ export function readGearItem(v: unknown): GearItem | null {
     else if (s.castSpeed === true && weapon) item.signature = { castSpeed: true };
     else if (typeof s.bane === 'string' && s.bane in KIND_ROLE && KIND_ROLE[s.bane as EnemyKind] === 'boss' && weapon) item.signature = { bane: s.bane as EnemyKind };
     else if (s.looseGrip === true && CATALOGUE.get(item.id)!.slot === 'hands') item.signature = { looseGrip: true };
+    else if (s.lowClear === true && CATALOGUE.get(item.id)!.slot === 'feet') item.signature = { lowClear: true };
     else return null;
   }
   return item;

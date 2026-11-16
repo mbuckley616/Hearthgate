@@ -7,7 +7,7 @@ import type { EnemyState, PlayerState, SimState } from './types';
  * A boss's signature drops by job (B6; `docs/bosses.md` 1.4 and 1.7; Michael's A on specializing, 16
  * Nov): each boss has a list of two or three pieces, each answering one of its jobs, and a hero is
  * offered the piece of the job they did most in that fight. So a specialist farms gear for their
- * specialty. Each boss's list comes with its line (W1, K1, H3, M3): the Gravehand's (H3) and the
+ * specialty. Each boss's list comes with its line (W1, K1, H3, M3): the Gravehand's (H3), the Warden's (W1) and the
  * Ossuary Mason's (M3) are in.
  *
  * The jobs (1.1, 1.6): `tank` takes the boss's close string on a guard, `armoured` and `warded` are
@@ -31,6 +31,14 @@ export const SIGNATURES: Partial<Record<EnemyKind, readonly SignaturePiece[]>> =
     { job: 'tank', id: 'studded-buckler', name: 'Ringward Buckler', signature: { resist: 'blunt' } },
     { job: 'warded', id: 'yew-shortbow', name: 'Knucklebone Bow', signature: { bane: 'gravehand' } },
     { job: 'boss', id: 'linen-gloves', name: 'Grave-cloth Wraps', signature: { looseGrip: true } },
+  ],
+  // The Warden (W1; 2.3): the tank's tower against its slams, boots that clear its low sweep from
+  // lower for the archer who broke the priest's chant, and for the one who fought the Warden itself,
+  // a mace that is its bane. The document's tower is a kiteshield: the catalogue has no tower shape.
+  warden: [
+    { job: 'tank', id: 'steel-kiteshield', name: "Warden's Tower", signature: { resist: 'blunt' } },
+    { job: 'warded', id: 'hardleather-boots', name: 'Sweepbreaker Greaves', signature: { lowClear: true } },
+    { job: 'boss', id: 'iron-mace', name: 'Ward-iron Mace', signature: { bane: 'warden' } },
   ],
   // The Ossuary Mason (M3; 2.2): the tank's shield against its maul, hod and shockwave, and for the
   // mage who broke its Mortar Guards' plate, a staff that casts faster. The document's bone staff is

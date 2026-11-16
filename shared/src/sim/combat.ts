@@ -627,7 +627,9 @@ export function knockDown(state: SimState, p: PlayerState): void {
 
 /** In the air and high enough over a low attack's ground (M1). Henchmen jump too, if they ever do. */
 export function clearsLow(p: PlayerState, ground: number): boolean {
-  return tuning.jump.clearsLow && !p.grounded && p.y - ground >= tuning.jump.clearHeight;
+  // The Sweepbreaker Greaves (W1) clear it from lower, so a jump caught early still carries over.
+  const less = p.mods.lowClear && tuning.bosses.signatureDrops ? tuning.warden.greavesClearLessM : 0;
+  return tuning.jump.clearsLow && !p.grounded && p.y - ground >= Math.max(0, tuning.jump.clearHeight - less);
 }
 
 /**
