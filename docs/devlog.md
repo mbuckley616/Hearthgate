@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 225, the bench's heroes play to their style against adds (H3's gate, part three)
+
+**What changed**
+
+The boss bench's heroes no longer shoot whatever is nearest. An add weak to another style (B5's `weakTo`) is left to a partner of that style while one stands: an archer beside a staff hero leaves the Iron Ring to the staff and stays on the hand and the Silver Ring. A hero with no such partner still takes what is nearest. A first try that left those adds alone with no partner at all made the solo sword ignore the Iron Ring forever, and it lost 10 of 10.
+
+The Gravehand bench (Mossgate Barrow, level 5, ten seeds):
+
+| party | kills | ttk s | wipes | timeouts | phase 3 |
+|---|---|---|---|---|---|
+| solo (sword) | 1/10 | 139 | 9 | 0 | 1/10 |
+| duo (sword, bow) | 9/10 | 138 | 1 | 0 | 10/10 |
+| trio | 10/10 | 53 | 0 | 0 | 10/10 |
+| solo + 3 henchmen | 10/10 | 28 | 0 | 0 | 5/10 |
+
+The Warden's numbers are unchanged, since it has no adds with a weakness. check green.
+
+**Learned**
+
+The henchmen's kills that skip phase 3 are not a bug. A party with three henchmen takes the hand from above 30% to dead inside one resting palm (1.5x for 1.4 s), so it never returns to its chase to roar. H3's first gate (one fight through all three phases) holds in every trio and duo fight.
+
+**Next**
+
+Tune the Gravehand against the bar on the panel; that is H3's last gate. Today:
+- **Solo sword:** dies 9 of 10. It can only hurt the resting palm and a stagger.
+- **Duo:** takes about a solo kill's time, where the bar wants under half.
+- **Trio:** kills in 53 s, where 1.2 wants 2 to 3 minutes.
+
+Likely levers: health (the trio is far too quick), the rest's length and the solo pace. Then **(Michael)** a playtest of it.
+
 ## 2026-11-16: Session 224, the Gravehand no longer shoves a hero through the wall (H3's gate, part two)
 
 **What changed**

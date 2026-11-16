@@ -29,6 +29,7 @@ import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { isTargetable } from '@hearthgate/shared/sim/combat';
 import { bossOf } from '@hearthgate/shared/sim/floorRun';
 import { inTelegraph } from '@hearthgate/shared/sim/henchman';
+import { weakTo } from '@hearthgate/shared/sim/roles';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import { emptyTalents } from '@hearthgate/shared/sim/talents';
 import { idleCommand, type PlayerCommand, type PlayerState, type SimEvent } from '@hearthgate/shared/sim/types';
@@ -107,7 +108,8 @@ interface Mind {
 }
 
 /**
- * A simple player, as gate-party's bots play: everyone on the boss (adds when one is closer), the
+ * A simple player, as gate-party's bots play: everyone on the boss (adds when one is closer, but not
+ * an add weak to another style while a partner of that style stands), the
  * sword in reach and the bow and staff at range, Q and E now and then, a roll away from anything
  * winding up within reach, a potion under a third of health, and the nearest standing friend holds F
  * over a downed one.
@@ -164,7 +166,15 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
 
   const alive = st.enemies.filter(isTargetable);
   if (!alive.length) return cmd;
-  const target = alive.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z) || a.id - b.id)[0];
+  // An add weak to another style is left to a partner of that style when one stands (B5): an archer
+  // does 35% to an Iron Ring and the staff full, so beside a staff the archer stays on the hand and the
+  // Silver Ring. Alone, a hero takes whatever is nearest (Session 225).
+  const partners = new Set(st.players.filter((p) => p.id !== me.id && p.mode !== 'down').map((p) => p.style));
+  const fit = alive.filter((e) => {
+    const weak = weakTo(e.kind);
+    return !weak || weak === m.style || !partners.has(weak);
+  });
+  const target = (fit.length ? fit : alive).sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z) || a.id - b.id)[0];
   const t = toward(target.x, target.z);
   cmd.aimX = t.x;
   cmd.aimZ = t.z;
