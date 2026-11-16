@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-16: The Mason's third drop, the Gallery Longbow (builder, Session 231)
+`docs/bosses.md` 2.2 lists the Mason's drops as the Mortarward Shield (the tank's), the Chanter's Staff (the mage's) and the Gallery Longbow, "offered for the trio's third job, Michael may cut it": an arrow that breaks a Chanter's channel stuns the caster 1 s. The first two are built (Session 231). Without the bow, an archer who spent the fight on the Chanters is offered the shield or the staff.
+- **A.** Keep it: a yew shortbow whose channel-breaking arrow stuns the Chanter 1 s, a new signature property on bows only, checked by the server. One session. *(recommended: every boss rule (1.4, 1.7) gives each job a piece, and the archer's job here is the Chanters)*
+- **B.** Cut it; the archer is offered the staff or the shield.
+- **C.** Keep a bow, but its property is the Mason's bane (1.25x to it and its adds) instead of a new one.
+
 ### 2026-11-16: The Gravehand's trio, 55 s against "2 to 3 minutes" (builder, Session 227)
 `docs/bosses.md` 1.2 asks three things of an early boss: solo 3 to 5 minutes with a potion left, a duo under half the solo time, and a trio at the boss's full pressure, a fight of 2 to 3 minutes. On the bench (20 seeds, Sessions 226 and 227) the Gravehand now meets the first two: solo 20 of 20 in 186 s, duo 0.48 of that, nobody downed. The trio kills it in 55 s. Its health is 1.7x a solo's (B1's 35% a player). For 2 minutes it would need about 3.7x, and the duo's 1.35x cannot move without losing its bar. The bench's three heroes are scripted bots that never miss a window, so real players will be slower.
 - **A.** Keep B1's rule and today's numbers. Judge the trio in your playtest of the Gravehand with friends, and look again at the Mason, a tanky boss built for three. *(recommended: the solo and duo bars are the ones 1.2 sets for early bosses, and a bot trio is the weakest stand-in for people)*

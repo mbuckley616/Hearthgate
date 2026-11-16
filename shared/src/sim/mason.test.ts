@@ -8,6 +8,9 @@ import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { boundMult, masonBound } from './mason';
 import { ADD_WEAKNESS, attackType, roleOf, telegraphTell } from './roles';
+import { SIGNATURES, offerFor, signatureItem } from './signatures';
+import { CATALOGUE, wornMods } from './catalogue';
+import { readGearItem } from '../net/validate';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -337,5 +340,28 @@ describe('the Mason’s phases (M3, part one)', () => {
     expect(swings).toBe(tuning.mason.enragedSteps);
     expect(shockwave).toBe(true);
     expect(q.hp).toBeLessThan(1000);
+  });
+});
+
+describe("the Mason's signature drops (M3)", () => {
+  const list = SIGNATURES.mason!;
+
+  it('offers the shield to the tank and the staff to the mage who broke the Guards', () => {
+    expect(list.map((p) => p.job)).toEqual(['tank', 'armoured']);
+    expect(offerFor(list, { tank: 300, armoured: 100 })?.name).toBe('Mortarward Shield');
+    expect(offerFor(list, { armoured: 200, boss: 400 })?.name).toBe("Chanter's Staff");
+    // Nobody's job on the list: the first piece.
+    expect(offerFor(list, { warded: 90 })?.name).toBe('Mortarward Shield');
+  });
+
+  it('makes each a real item the server takes back, worn in its slot', () => {
+    for (const p of list) expect(readGearItem(signatureItem(p, 'x'))?.signature).toEqual(p.signature);
+    const shield = signatureItem(list[0], 'a');
+    const staff = signatureItem(list[1], 'b');
+    expect(CATALOGUE.get(shield.id)?.slot).toBe('shield');
+    expect(CATALOGUE.get(staff.id)?.slot).toBe('weapon');
+    expect(CATALOGUE.get(staff.id)?.kind).toBe('magic');
+    expect(wornMods({ shield }).resist).toEqual(['blunt']);
+    expect(wornMods({ weapon: staff }).castSpeed).toBe(true);
   });
 });

@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 231, the Mason's signature drops (M3, part two)
+
+**What changed**
+
+The Ossuary Mason drops a signature piece a hero by job (`SIGNATURES.mason`, behind `bosses.signatureDrops`):
+- **Mortarward Shield** (iron kiteshield, 20% less blunt): the tank's, against the maul, the hod and the shockwave.
+- **Chanter's Staff** (staff, its chain and abilities 15% faster): for the mage who broke the Mortar Guards' plate.
+
+The document's staff is bone; the catalogue has no bone, so it is elm, tier 3. The Gallery Longbow (the archer's, for the Chanters) is not in: `docs/bosses.md` leaves it to Michael, asked in `decisions.md` Pending. Until then an archer is offered whichever of the two their other jobs scored, or the shield. check 732/732 (2 new), parity hashes unchanged.
+
+**Learned**
+
+Both properties already existed from B6, so a boss's drops are now a list and a test.
+
+**Next**
+
+- M3 part three: phase 2's bone ridges, then the solo and duo tuning.
+
 ## 2026-11-16: Session 230, the Mason's three phases (M3, part one)
 
 **What changed**
