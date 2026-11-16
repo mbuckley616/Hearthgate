@@ -1,3 +1,4 @@
+import { masonBound } from '@hearthgate/shared/sim/mason';
 import { MODIFIERS } from '@hearthgate/shared/game/portalChoice';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { DUNGEON_TYPES, dungeonTypeOf } from '@hearthgate/shared/level/dungeonTypes';
@@ -172,7 +173,7 @@ export class RunUi {
     if (boss) {
       this.bossFill.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
       this.bossFill.classList.toggle('staggered', boss.ai === 'stagger');
-      this.bossName.textContent = boss.named ?? (boss.kind === 'king' ? 'The Hollow King' : boss.kind === 'gravehand' ? 'The Gravehand' : boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden');
+      this.bossName.textContent = boss.named ?? (boss.kind === 'king' ? 'The Hollow King' : boss.kind === 'gravehand' ? 'The Gravehand' : boss.kind === 'mason' ? (masonBound(sim) ? 'The Ossuary Mason — Bound: break the Wardstones' : 'The Ossuary Mason') : boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden');
     }
     const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';

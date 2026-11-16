@@ -5,7 +5,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 
 /** A floor's brazier as its collider stands (floor.ts). */
 const BRAZIER_RADIUS = 0.45;
-import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
+import { clearsLow, damageEnemy, killEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
 import { gravehandLift, handAloft, letGo, releaseGrip, restSeconds } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
@@ -546,6 +546,8 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
 }
 
 function bruteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  // A Wardstone (M1) is a heavy that only stands.
+  if (e.kind === 'wardstone') return wardstoneBrain(state, world, e);
   const b = tuning.brute;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
@@ -1624,6 +1626,135 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
   return want;
 }
 
+/** The Mason's maul cone (M1): from it, where it faces, a step of its string. */
+function setMaulTele(e: EnemyState): void {
+  const m = tuning.mason;
+  e.tele = { shape: 'cone', x: e.x, z: e.z, radius: m.stringReach, yaw: e.yaw, arcDeg: m.stringArcDeg };
+}
+
+/**
+ * The Ossuary Mason (M1; `docs/bosses.md` 2.2), phase 1. As it wakes it raises its Wardstones round the
+ * hall. It walks at its front hero and swings the maul string (two blockable blunt cones and an
+ * overhead that pushes); a hero farther off gets the hod throw, a skull-load whose rimmed circle
+ * follows them for half its wind-up and then lands. Its Guards and Chanters (M2) and phases (M3) come next.
+ */
+function masonBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const m = tuning.mason;
+  const want: Intent = { x: 0, z: 0 };
+  if (!e.summoned) {
+    e.summoned = true;
+    const n = Math.round(m.wardstones);
+    if (n > 0) raiseFromEdges(state, world, e, n, 'wardstone', m.wardstoneRadius);
+  }
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      if (dist > m.stringRange - 0.6) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      }
+      e.yaw = turnToward(e.yaw, toTarget, m.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0) break;
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      if (!sameLevel) break;
+      const facing = Math.abs(wrapAngle(toTarget - e.yaw)) < 40 * DEG;
+      if (facing && dist <= m.stringRange) {
+        e.attack = 'string';
+        e.chain = 0;
+        setAi(e, 'windup');
+        setMaulTele(e);
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (dist >= m.hodMinRange && dist <= m.hodRange && lineOfSight(world, e, target)) {
+        e.attack = 'hod';
+        setAi(e, 'slamWindup');
+        e.tele = { shape: 'circle', x: target.x, z: target.z, radius: m.hodRadius, yaw: e.yaw, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'windup': {
+      const ms = e.chain ? m.stringNextMs : m.stringTelegraphMs;
+      if (e.aiTime < (ms / 1000) * 0.5) {
+        e.yaw = turnToward(e.yaw, toTarget, m.turnRateDeg * DEG * edt);
+        setMaulTele(e);
+      }
+      if (e.aiTime >= ms / 1000) {
+        setAi(e, 'slash1');
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        if (!tuning.debug.passiveEnemies) {
+          const t = e.tele;
+          // The last of the string comes over the top: heavier, and it pushes.
+          const overhead = (e.chain ?? 0) + 1 >= Math.round(m.stringSteps);
+          for (const p of heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y)) {
+            hurtHero(state, p, { damage: hitDamage(e, overhead ? m.overheadDamage : m.stringDamage), push: overhead ? m.stringPush : m.knockbackDealt * 0.5, fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('blunt') });
+          }
+        }
+      }
+      break;
+    }
+    case 'slash1':
+      want.x = Math.sin(e.yaw) * 0.4;
+      want.z = Math.cos(e.yaw) * 0.4;
+      if (e.aiTime >= m.stringActiveMs / 1000) {
+        if ((e.chain ?? 0) + 1 < Math.round(m.stringSteps)) {
+          e.chain = (e.chain ?? 0) + 1;
+          setAi(e, 'windup');
+          setMaulTele(e);
+          state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+          break;
+        }
+        delete e.chain;
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = m.stringRecoveryMs / 1000;
+      }
+      break;
+    case 'slamWindup': {
+      const s = m.hodTelegraphMs / 1000;
+      // The circle follows its hero for half the wind-up, then the load is in the air and it locks.
+      if (e.aiTime < s * 0.5) {
+        e.tele.x = target.x;
+        e.tele.z = target.z;
+        e.yaw = turnToward(e.yaw, toTarget, m.turnRateDeg * DEG * edt);
+      }
+      if (e.aiTime >= s) {
+        setAi(e, 'slam');
+        const t = e.tele;
+        state.events.push({ kind: 'enemySlam', enemyId: e.id, x: t.x, z: t.z, radius: t.radius, boss: true });
+        if (!tuning.debug.passiveEnemies) {
+          // From above: no `low`, so a jump does not clear it; a dodge out of the circle does.
+          for (const p of heroesInCircle(state, t.x, t.z, t.radius, e.y)) {
+            hurtHero(state, p, { damage: hitDamage(e, m.hodDamage), heavy: true, push: m.hodPush, fromX: t.x, fromZ: t.z, enemyId: e.id, ...typed('blunt') });
+          }
+        }
+      }
+      break;
+    }
+    case 'slam':
+      e.tele.shape = 'none';
+      setAi(e, 'recover');
+      e.recoverTime = m.hodRecoveryMs / 1000;
+      break;
+  }
+  return want;
+}
+
+/** A Wardstone (M1) stands where it was raised and does nothing; it crumbles with its Mason. */
+function wardstoneBrain(state: SimState, _world: World, e: EnemyState): Intent {
+  e.vx = 0;
+  e.vz = 0;
+  if (!state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead')) killEnemy(state, e, 0);
+  return { x: 0, z: 0 };
+}
+
 /**
  * The Wraith (E1d, the caster): keeps its distance as the Priest does, and when a hero is in reach
  * channels a violet circle at their feet. The circle stays where it was cast; as it lands (after the
@@ -1709,6 +1840,7 @@ export function brainFor(kind: EnemyKind): Brain | undefined {
   // Each boss keeps a brain of its own (roles.ts): the Warden's is the role's.
   if (kind === 'king') return kingBrain;
   if (kind === 'gravehand') return gravehandBrain;
+  if (kind === 'mason') return masonBrain;
   return ROLE_BRAINS[roleOf(kind)];
 }
 
@@ -1743,6 +1875,10 @@ function attackCooldown(e: EnemyState): number {
       return tuning.silverRing.cooldownMs / 1000;
     case 'boneRing':
       return tuning.grunt.attackCooldownMs / 1000;
+    case 'mason':
+      return tuning.mason.cooldownMs / 1000;
+    case 'wardstone':
+      return 1;
   }
 }
 

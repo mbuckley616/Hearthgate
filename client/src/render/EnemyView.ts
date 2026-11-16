@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -103,6 +103,15 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   ironRing: { guard: pose(BASE, {}) },
   silverRing: { guard: pose(BASE, {}) },
   boneRing: { guard: pose(BASE, {}) },
+  // The Ossuary Mason (M1): the Brute's maul poses, raised for each swing of the string and for the hod.
+  mason: {
+    guard: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: 45, offHeight: 0.05, offReach: 0.3, lean: 16 }),
+    raise: pose(BASE, { handYaw: -10, handHeight: 0.68, handReach: 0.12, bladeYaw: 180, bladePitch: 70, offYaw: 10, offHeight: 0.66, offReach: 0.14, lean: -10, crouch: 0.04 }),
+    smash: pose(BASE, { handYaw: -5, handHeight: -0.1, handReach: 0.45, bladeYaw: 0, bladePitch: -55, offYaw: 15, offHeight: -0.08, offReach: 0.42, lean: 38, crouch: 0.26 }),
+    hodBack: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: 80, offHeight: 0.6, offReach: 0.12, twist: 30, lean: -6 }),
+    hodThrow: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: -10, offHeight: 0.35, offReach: 0.5, twist: -30, lean: 24 }),
+  },
+  wardstone: { guard: pose(BASE, {}) },
   wraith: {
     guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
     chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
@@ -206,10 +215,12 @@ export class EnemyView {
     this.body.scale.setScalar(SCALE[kind]);
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
-    else if (kind === 'brute') this.buildBrute(mat, mesh);
+    else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
+    if (kind === 'mason') this.dressMason(mat, mesh);
+    if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
     if (kind === 'wraith') {
@@ -532,6 +543,35 @@ export class EnemyView {
     }
     this.ring = ring;
     this.body.add(ring);
+  }
+
+  /**
+   * The Ossuary Mason (M1), a placeholder over the Brute's body: a block of stone on its club for a
+   * maul head and a hod of skulls on its back.
+   */
+  private dressMason(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const stone = mat(0x77736a, { roughness: 0.95 });
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    const wood = mat(0x5a3a22);
+    this.weapon.add(mesh(new THREE.BoxGeometry(0.34, 0.24, 0.24), stone, 0, 0.72, 0));
+    const hod = new THREE.Group();
+    hod.add(mesh(new THREE.BoxGeometry(0.34, 0.3, 0.2), wood, 0, 0, 0));
+    for (let i = 0; i < 3; i++) hod.add(mesh(new THREE.SphereGeometry(0.075, 8, 6), bone, (i - 1) * 0.1, 0.18, 0));
+    hod.position.set(0, 0.28, -0.22);
+    hod.rotation.x = -0.25;
+    this.chest.add(hod);
+  }
+
+  /** A Wardstone (M1): a pillar of grey stone bound with bone bands and a violet glow at its crown. */
+  private buildWardstone(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const stone = mat(0x6e6a62, { roughness: 0.95 });
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    const pillar = new THREE.Group();
+    pillar.add(mesh(new THREE.CylinderGeometry(0.5, 0.62, 2.3, 8), stone, 0, 1.15, 0));
+    for (const y of [0.5, 1.4]) pillar.add(mesh(new THREE.TorusGeometry(0.58, 0.06, 6, 16).rotateX(Math.PI / 2), bone, 0, y, 0));
+    pillar.add(mesh(new THREE.OctahedronGeometry(0.22), glowMaterial(0xa070ff, 0.8), 0, 2.5, 0));
+    this.body.add(pillar);
   }
 
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
@@ -965,6 +1005,24 @@ export class EnemyView {
             return into(P.raise, P.smash, t / (tuning.brute.slamActiveMs / 1000), easeOut);
         }
         break;
+      case 'mason': {
+        const m = tuning.mason;
+        switch (e.ai) {
+          case 'windup': {
+            const ms = e.chain ? m.stringNextMs : m.stringTelegraphMs;
+            into(this.from, P.raise, t / ((ms / 1000) * 0.6));
+            out.handHeight += Math.sin(this.time * 35) * 0.01;
+            return out;
+          }
+          case 'slash1':
+            return into(P.raise, P.smash, t / (m.stringActiveMs / 1000), easeOut);
+          case 'slamWindup':
+            return into(this.from, P.hodBack, t / ((m.hodTelegraphMs / 1000) * 0.6));
+          case 'slam':
+            return into(P.hodBack, P.hodThrow, t / 0.15, easeOut);
+        }
+        break;
+      }
       case 'warden': {
         const w = tuning.warden;
         const scale = e.phase >= 2 ? w.phase2TelegraphScale : 1;
@@ -1015,6 +1073,12 @@ export function windupProgress(e: EnemyState): number {
     if (e.ai === 'sweepWindup') return clamp01(t / (g.sweepTelegraphMs / 1000));
     if (e.ai === 'aim') return clamp01(t / (g.flickTelegraphMs / 1000));
     if (e.ai === 'chargeWindup') return clamp01(t / (g.grabTelegraphMs / 1000));
+    return 0;
+  }
+  if (e.kind === 'mason') {
+    const m = tuning.mason;
+    if (e.ai === 'windup') return clamp01(t / ((e.chain ? m.stringNextMs : m.stringTelegraphMs) / 1000));
+    if (e.ai === 'slamWindup') return clamp01(t / (m.hodTelegraphMs / 1000));
     return 0;
   }
   switch (e.ai) {

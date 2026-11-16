@@ -399,10 +399,11 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
 
 /**
  * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, Mossgate Barrow's
- * Gravehand (H1), the Warden for every other dungeon until its type's roster brings one.
+ * Gravehand (H1), Emberhall's Ossuary Mason (M1), the Warden for every other dungeon until its type's roster brings one.
  */
 export function bossOf(story: string | undefined): EnemyKind {
   if (story === 'mossgate' && tuning.gravehand.enabled) return 'gravehand';
+  if (story === 'emberhall' && tuning.mason.enabled) return 'mason';
   return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
 }
 

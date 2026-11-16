@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 228, the Ossuary Mason, phase one (M1)
+
+**What changed**
+
+Emberhall now ends on the Ossuary Mason (`mason.enabled`; off, the Warden as before). It is `docs/bosses.md` 2.2's tanky boss, tanky by rule rather than by health.
+- **Wardstones.** As it wakes it raises three Wardstones round the hall, `mason.wardstoneRadius` (7 m) from it. While any stands it is **Bound** and takes `mason.boundTaken` (25%) of every hit, any style (`sim/mason.ts`, read in `damageEnemy`). A stone is a new kind, `wardstone`: a heavy whose brain only stands, 260 health, no poise break, no knockback, any style breaks it. Stones left standing crumble when the Mason falls, so the hall clears.
+- **Maul string.** Three blockable blunt cones at the front hero. The third is an overhead: 26 damage against 18, and it pushes.
+- **Hod throw.** For a hero 6 to 16 m away. A rimmed circle follows them for half its 1.2 s wind-up, then locks and lands. A jump does not clear it; a dodge out does.
+
+Also: the boss bar reads "The Ossuary Mason — Bound: break the Wardstones" while it is Bound. Its figure is a placeholder: the Brute's body at 2.15x with a stone maul head and a hod of skulls. A Wardstone is a bone-banded pillar with a violet glow. Its numbers are on the panel. Not yet seen in a browser.
+
+First bench, Emberhall (Hard), level 12, 5 seeds, phase 1 only:
+
+| party | kills | ttk s | x solo | dmg | downs |
+|---|---|---|---|---|---|
+| solo | 5/5 | 588 | 1.00 | 104 | 0.0 |
+| duo | 5/5 | 240 | 0.41 | 83 | 0.0 |
+| trio | 5/5 | 187 | 0.32 | 53 | 0.0 |
+| solo + 3 henchmen | 5/5 | 195 | 0.33 | 23 | 0.0 |
+
+check 720/720 (9 new in `mason.test.ts`), test:net green, parity hashes unchanged.
+
+**Learned**
+
+The Bound rule makes the solo fight long: almost ten minutes, all of phase 1. The document allows that, since a mid boss "is not held to the solo bar's five minutes". M3's gate is a trio under 3 minutes with all three phases; today's phase-1-only trio is already 187 s. So phases 2 and 3 will need the Mason's health down, or the stones' up, once the Chanters (M2) rebuild them.
+
+`--sources` puts a hit on whatever add stands nearest. A maul hit on a hero beside a Wardstone is counted as "wardstone" (5 a fight with henchmen), though a stone never strikes.
+
+**Next**
+
+- M2: the Mortar Guards and Bone Chanters, and the Chanters' rebuild channel on a fallen Wardstone.
+- Waiting on Michael: the Gravehand's trio question and B8.
+
 ## 2026-11-16: Session 227, a lighter Iron Ring for the duo's bar (H3's gate, part five)
 
 **What changed**

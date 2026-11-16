@@ -45,6 +45,9 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   ironRing: 'charger',
   silverRing: 'caster',
   boneRing: 'fodder',
+  mason: 'boss',
+  // Scenery with health (M1): never strikes or moves; heavy, so no Priest raises it and its brain is its own.
+  wardstone: 'heavy',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -61,6 +64,8 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   if (e.kind === 'king') return e.attack === 'circles' ? 'magic' : e.attack === 'crown' || e.attack === 'crownSweep' ? 'projectile' : 'strike';
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
   if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' || e.attack === 'knuckles' ? 'heavy' : 'strike';
+  // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
+  if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }
@@ -92,6 +97,9 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return 'magic';
     case 'boneRing':
       return 'edge';
+    case 'mason':
+    case 'wardstone':
+      return 'blunt';
     case 'priest':
     case 'wraith':
       return 'magic';
@@ -163,6 +171,8 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
     silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
     boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
+    mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
+    wardstone: { name: 'Wardstone', plural: 'Wardstones' },
   },
 };
 

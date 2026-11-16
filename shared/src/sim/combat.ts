@@ -1,5 +1,6 @@
 import { noteBossHit } from './attention';
 import { handAloft, hitOnGrip, palmResting, releaseGrip } from './gravehand';
+import { boundMult } from './mason';
 import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
@@ -224,9 +225,11 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   if (e.grip) hitOnGrip(state, e, hit.attackerId, hit.damage, hit.heavy);
   // Its palm resting on the floor after a slam is the punish window (H1).
   const resting = palmResting(e) ? tuning.gravehand.restDamageTaken : 1;
+  // The Ossuary Mason (M1) is Bound while a Wardstone stands: the party's damage belongs on the stones.
+  const bound = boundMult(state, e);
   // A Silver Ring's ward on the hand (H2) halves what reaches it.
   const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
-  const damage = warded * resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = bound * warded * resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
@@ -492,7 +495,7 @@ function staggerEnemy(state: SimState, e: EnemyState): void {
   state.events.push({ kind: 'stagger', enemyId: e.id, x: e.x, z: e.z });
 }
 
-function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): void {
+export function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): void {
   if (e.grip) releaseGrip(state, e);
   e.hp = 0;
   e.ai = 'dead';

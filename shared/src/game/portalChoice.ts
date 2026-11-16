@@ -111,7 +111,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'Emberhall',
     levels: [7, 12],
     blurb: 'A dwarven hall left to burn out. The fires never quite did, and what moved in likes the warmth.',
-    enemies: ['grunt', 'shieldbearer', 'priest', 'brute'],
+    enemies: ['grunt', 'shieldbearer', 'priest', 'brute', 'mason'],
     type: 'hauntedCrypt',
     rewards: ['body', 'shield', 'ring'],
     run: { seed: 5303, floors: 3, size: 'medium', difficulty: 2, modifier: 'haunted' },

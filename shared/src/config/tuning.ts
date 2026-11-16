@@ -1625,6 +1625,68 @@ export const tuning = {
   },
 
   /**
+   * The Ossuary Mason (M1; `docs/bosses.md` 2.2): a hulking skeleton with a maul that ends Emberhall.
+   * Tanky by rule, not by health: while any of its `wardstones` stand it is Bound and takes
+   * `boundTaken` of every hit, so the party's damage goes into the stones first. Phase 1: the maul
+   * string (`stringSteps` blockable blunt cones at the front hero) and the hod throw (a rimmed circle
+   * where a skull-load lands, at a hero `hodMinRange` or more away). Its adds (M2) and phases (M3) come next.
+   */
+  mason: {
+    /** Emberhall ends on it; off, the Warden does, as before M1. */
+    enabled: true,
+    maxHp: 2600,
+    maxPoise: 50,
+    radius: 0.95,
+    height: 3.2,
+    moveSpeed: 2.4,
+    turnRateDeg: 150,
+    /** Taken of every hit while a Wardstone stands. */
+    boundTaken: 0.25,
+    /** Wardstones raised round the hall as it wakes, `wardstoneRadius` from it. */
+    wardstones: 3,
+    wardstoneRadius: 7,
+    /** The maul string: `stringSteps` cones, the first wound up `stringTelegraphMs`, each next after `stringNextMs`. */
+    stringRange: 3.2,
+    stringReach: 3.6,
+    stringArcDeg: 100,
+    stringSteps: 3,
+    stringTelegraphMs: 800,
+    stringNextMs: 450,
+    stringActiveMs: 180,
+    stringDamage: 18,
+    /** The third swing comes over the top: heavier and pushes. */
+    overheadDamage: 26,
+    stringPush: 2,
+    stringRecoveryMs: 1000,
+    /** The hod throw: a skull-load lands on a circle where its hero stood, `hodRadius` across, after `hodTelegraphMs`. */
+    hodMinRange: 6,
+    hodRange: 16,
+    hodRadius: 2,
+    hodTelegraphMs: 1200,
+    hodDamage: 20,
+    hodPush: 2,
+    hodRecoveryMs: 700,
+    cooldownMs: 1100,
+    knockbackDealt: 2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.05,
+  },
+
+  /** A Wardstone (M1): a pillar of bound bone that holds the Mason Bound. Any style breaks it; it never moves or strikes. */
+  wardstone: {
+    maxHp: 260,
+    maxPoise: 9999,
+    radius: 0.7,
+    height: 2.6,
+    moveSpeed: 0,
+    turnRateDeg: 0,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0,
+  },
+
+  /**
    * Style levels (brief: "Progression taste"): damage dealt with a hero earns
    * that hero XP. Cumulative XP per level; level 3 in one hero should take
    * about one run (a run is roughly 4,000 damage in total).
@@ -3659,6 +3721,18 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gravehand.flickArcDeg': [0, 90, 1],
   'gravehand.sweepChance': [0, 1, 0.05],
   'gravehand.cooldownMs': [0, 5000, 50],
+  'mason.maxHp': [100, 10000, 50],
+  'mason.boundTaken': [0, 1, 0.05],
+  'mason.wardstones': [0, 6, 1],
+  'mason.stringTelegraphMs': [300, 3000, 50],
+  'mason.stringNextMs': [100, 2000, 50],
+  'mason.stringDamage': [0, 80, 1],
+  'mason.overheadDamage': [0, 80, 1],
+  'mason.hodTelegraphMs': [300, 3000, 50],
+  'mason.hodRadius': [0.5, 5, 0.1],
+  'mason.hodDamage': [0, 80, 1],
+  'mason.cooldownMs': [0, 5000, 50],
+  'wardstone.maxHp': [20, 2000, 10],
   'gravehand.phase2At': [0, 1, 0.05],
   'gravehand.wardTaken': [0, 1, 0.05],
   'gravehand.grabChance': [0, 1, 0.05],
@@ -4207,7 +4281,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
