@@ -1,5 +1,6 @@
 import { COMBO_NAMES as COMBO_WORDS, MASTERY_PAYOFF_RANKS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
 import { focusBonus } from '@hearthgate/shared/sim/focus';
+import { heldLine } from '@hearthgate/shared/sim/gravehand';
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
@@ -55,6 +56,9 @@ export class Hud {
   /** Chilled (E1d): a line under the bars while it lasts, with the seconds left. */
   private chill = document.createElement('div');
   private shownChill = -1;
+  /** Held in the Gravehand's grip (H2): how to get out, and the presses on the beat so far. */
+  private held = document.createElement('div');
+  private shownHeld = '';
   private hits = 0;
   private sinceHit = Infinity;
   private hurtFlash = 0;
@@ -84,6 +88,7 @@ export class Hud {
     this.potion.className = 'hud-potion';
     this.focus.className = 'hud-focus';
     this.chill.className = 'hud-chill';
+    this.held.className = 'hud-held';
     this.flow.className = 'hud-flow';
     this.flowFill.className = 'hud-flow-fill';
     this.flowLabel.className = 'hud-flow-label';
@@ -97,7 +102,7 @@ export class Hud {
     xpTrack.className = 'hud-level-track';
     xpTrack.appendChild(this.levelXp);
     this.level.append(this.levelText, xpTrack);
-    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.focus, this.chill);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.focus, this.chill, this.held);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -326,6 +331,13 @@ export class Hud {
       this.shownPotions = potions;
       this.potion.style.display = potions > 0 ? 'block' : 'none';
       this.potion.innerHTML = `Health potion ×${potions} <kbd>G</kbd>`;
+    }
+    // Held (H2): a partner's heavy opens the hand; alone, dodge on the beat, not too fast.
+    const held = heldLine(p);
+    if (held !== this.shownHeld) {
+      this.shownHeld = held;
+      this.held.style.display = held ? 'block' : 'none';
+      this.held.textContent = held;
     }
     // Focus (B7): what staying in one style has earned; a swap loses it, and the line goes with it.
     const bonus = Math.round(focusBonus(p, p.style) * 100);

@@ -83,3 +83,9 @@ export function hitOnGrip(state: SimState, e: EnemyState, attackerId: string, da
   grip.taken += damage;
   if ((heavy && attackerId !== grip.hero) || grip.taken >= tuning.gravehand.grabBreakDamage) letGo(state, e);
 }
+
+/** The corner's line for a held hero (H2): how to get out, and the presses on the beat so far. */
+export function heldLine(p: Pick<PlayerState, 'held'>): string {
+  if (!p.held) return '';
+  return `✊ Held  ·  dodge on the beat to break free  ·  ${p.held.presses}/${Math.round(tuning.gravehand.grabEscapePresses)}`;
+}

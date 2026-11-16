@@ -6,7 +6,7 @@ import { damageEnemy, type HitSpec } from './combat';
 import { brainFor, createEnemy, separateBodies, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
-import { gravehandLift, handAloft, palmResting } from './gravehand';
+import { gravehandLift, handAloft, heldLine, palmResting } from './gravehand';
 import { attackType, roleOf, telegraphTell } from './roles';
 import { emptyTalents } from './talents';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
@@ -271,6 +271,8 @@ describe('the Gravehand, phase 2: the grab (H2)', () => {
     const n = ticksUntil(s, () => h.ai === 'charge');
     expect(Math.abs(n * DT * 1000 - tuning.gravehand.grabTelegraphMs)).toBeLessThanOrEqual(DT * 1000 + 1);
     expect(p.held).toMatchObject({ by: h.id, presses: 0 });
+    expect(heldLine(p)).toBe(`✊ Held  ·  dodge on the beat to break free  ·  0/${tuning.gravehand.grabEscapePresses}`);
+    expect(heldLine({})).toBe('');
     expect(h.grip?.hero).toBe('p1');
     expect(handAloft(h)).toBe(false);
   });
