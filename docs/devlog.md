@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 215, the Gravehand, phase one (H1)
+
+**What changed**
+
+Mossgate Barrow now ends on the Gravehand (`docs/bosses.md` 2.1), behind `gravehand.enabled`. With the switch off, the Warden ends the run as before. It is a new `EnemyKind` in the boss role with a brain of its own (`gravehandBrain`), and its numbers are in `tuning.gravehand` with the feel values on the panel. It floats 3.5 m up and drifts to hang 2.2 m short of its hero. While it floats, a blade passes under it: `damageEnemy` refuses any hit that is not a projectile, a burst or a burn. Heroes walk under it (`separateBodies` skips it). Phase 1 has three gestures:
+- **Palm slam**, blunt, a circle with the orange rim. The circle follows the hero for 55% of its 1.1 s wind-up, then locks, and the hand rises over it. A jump does not clear it (no `low`); a dodge out does. The palm then rests on the floor for 1.4 s, and every hit takes `restDamageTaken` (1.5x) there, a sword's included. That rest is the melee hero's window.
+- **Backhand sweep**, blunt, a 5 m, 120-degree cone along the floor with no rim. It winds up 0.9 s, is low (M1) so a jump clears it, and can be blocked.
+- **Flick**, pierce: three bone shards in a 30-degree yellow fan at a hero 4 to 16 m away, after 0.7 s.
+
+Its height comes from its AI state alone (`sim/gravehand.ts`: `gravehandLift`, `handAloft`, `palmResting`), so the server, a joiner's prediction and the view agree from one snapshot, and no field was added to the wire. The figure is a placeholder hand of bone boxes at cart size, with grave-cloth at the wrist and iron rings on three fingers. It bobs while it floats, drops flat to rest, and turns on its side to sweep (`docs/screenshots/gravehand-h1.png`). Wren's card lists it for Mossgate, and the boss bar names it. `gravehand.test.ts` has 10 tests: the role, brain and tells (the slam rimmed, the sweep blockable, the flick yellow and pierce); Mossgate's boss and the switch; the timing of each tell; the 1.4 s rest after a slam; the jump clearing the sweep and not the slam; a sword missing the floating hand while an arrow lands; the resting palm taking 1.5x; heroes walking under it. check 691/691 (parity unchanged: the arena never makes it), test:net green.
+
+**Learned**
+
+Holding the hand's height in the AI state rather than in a new field keeps it off the wire and lets prediction agree for free. The cost is that the hover is a rule of each state. H2's grab will need its own line in `gravehandLift`.
+
+The figure was seen in a browser (Chromium, rendered alone in three poses). The whole fight on Mossgate's last floor has not been played in one yet. A sword henchman swings at the floating hand and misses until it lands.
+
+**Next**
+
+H2: phase 2's three rings (Iron, Silver and Bone, dressings of today's brains with B5's weaknesses) and the grab with its three ways out. B8 still waits on Michael.
+
 ## 2026-11-16: Session 214, focus through the hand-off and in the corner (B7, part two)
 
 **What changed**

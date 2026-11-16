@@ -91,7 +91,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'Mossgate Barrow',
     levels: [2, 5],
     blurb: 'An old barrow under the hill, its doors split by roots. The dead were buried with their arms, and something wants them back.',
-    enemies: ['grunt', 'archer'],
+    enemies: ['grunt', 'archer', 'gravehand'],
     type: 'hauntedCrypt',
     rewards: ['weapon', 'head', 'shield'],
     run: { seed: 5101, floors: 2, size: 'small', difficulty: 1 },

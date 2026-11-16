@@ -7,6 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
+import { gravehandLift, handAloft } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
@@ -1272,6 +1273,173 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
   return want;
 }
 
+/** The Gravehand's flick (H1): one bone shard along `yaw`, from its fingers at the height it floats. */
+function fireShard(state: SimState, e: EnemyState, yaw: number, targetY: number): void {
+  const g = tuning.gravehand;
+  const from = { x: e.x + Math.sin(yaw) * 0.6, y: e.y + gravehandLift(e), z: e.z + Math.cos(yaw) * 0.6 };
+  const reach = Math.max(1, e.tele.radius);
+  const dy = targetY + 1.1 - from.y;
+  const len = Math.hypot(reach, dy);
+  state.projectiles.push({
+    id: state.nextId++,
+    kind: 'arrow',
+    owner: `e${e.id}`,
+    x: from.x,
+    y: from.y,
+    z: from.z,
+    vx: Math.sin(yaw) * (reach / len) * g.flickSpeed,
+    vy: (dy / len) * g.flickSpeed,
+    vz: Math.cos(yaw) * (reach / len) * g.flickSpeed,
+    age: 0,
+    life: g.flickRange / g.flickSpeed + 0.3,
+    stuck: false,
+    charged: false,
+    radius: 0,
+    damage: hitDamage(e, g.flickDamage),
+    poise: 0,
+    knockback: 0,
+    heavy: false,
+    pierce: 1,
+    hitIds: [],
+    slowTime: 0,
+    resolved: false,
+    targetId: -1,
+    homingLeft: 0,
+    crit: false,
+    hostile: true,
+    style: 'bow',
+    chained: false,
+    marks: false,
+    comboed: false,
+  });
+}
+
+/**
+ * The Gravehand (H1; `docs/bosses.md` 2.1), phase 1: a bone hand floating over the hall, drifting after
+ * its hero. Close in it slams its palm flat on a circle that follows the hero for half the wind-up and
+ * then locks (blunt, the orange rim: a jump does not clear it), and rests there `slamRestMs`; or lies
+ * on its side and sweeps a low cone along the floor (blunt, blockable, jumped). At range it flicks a
+ * fan of bone shards. Its rings and the grab (H2) and the clench (H3) come next.
+ */
+function gravehandBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const g = tuning.gravehand;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const toTarget = Math.atan2(dx, dz);
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      if (dist > g.followM) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      }
+      e.yaw = turnToward(e.yaw, toTarget, g.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0) break;
+      const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+      if (!sameLevel) break;
+      if (dist <= g.sweepRange && nextRandom(state) < g.sweepChance) {
+        e.attack = 'sweep';
+        setAi(e, 'sweepWindup');
+        e.tele = { shape: 'cone', x: e.x, z: e.z, radius: g.sweepRadius, yaw: e.yaw, arcDeg: g.sweepArcDeg };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (dist <= g.slamRange) {
+        e.attack = 'slam';
+        setAi(e, 'slamWindup');
+        e.tele = { shape: 'circle', x: target.x, z: target.z, radius: g.slamRadius, yaw: e.yaw, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (dist >= g.flickMinRange && dist <= g.flickRange && lineOfSight(world, e, target)) {
+        e.attack = 'flick';
+        setAi(e, 'aim');
+        e.tele = { shape: 'cone', x: e.x, z: e.z, radius: Math.min(g.flickRange, dist + 2), yaw: toTarget, arcDeg: g.flickArcDeg };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      }
+      break;
+    }
+    case 'slamWindup': {
+      const ms = g.slamTelegraphMs;
+      if (e.aiTime < (ms / 1000) * g.slamTrackFrac) {
+        e.tele.x = target.x;
+        e.tele.z = target.z;
+      }
+      // It rises over the circle as it winds up, so the palm comes down where the circle is.
+      const cx = e.tele.x - e.x;
+      const cz = e.tele.z - e.z;
+      const cd = Math.hypot(cx, cz);
+      if (cd > 0.15) {
+        want.x = (cx / cd) * Math.min(1.5, cd);
+        want.z = (cz / cd) * Math.min(1.5, cd);
+      }
+      if (e.aiTime >= ms / 1000) {
+        setAi(e, 'slam');
+        const t = e.tele;
+        state.events.push({ kind: 'enemySlam', enemyId: e.id, x: t.x, z: t.z, radius: t.radius, boss: true });
+        if (!tuning.debug.passiveEnemies) {
+          // Flat and from above: no `low`, so a jump does not clear it; a dodge out of the circle does.
+          for (const p of heroesInCircle(state, t.x, t.z, t.radius, e.y)) {
+            hurtHero(state, p, { damage: hitDamage(e, g.slamDamage), heavy: true, push: g.slamPush, fromX: t.x, fromZ: t.z, enemyId: e.id, ...typed('blunt') });
+          }
+        }
+      }
+      break;
+    }
+    case 'slam':
+      if (e.aiTime >= g.slamActiveMs / 1000) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = g.slamRestMs / 1000;
+      }
+      break;
+    case 'sweepWindup':
+      if (e.aiTime < (g.sweepTelegraphMs / 1000) * 0.5) {
+        e.yaw = turnToward(e.yaw, toTarget, g.turnRateDeg * DEG * edt);
+        e.tele.x = e.x;
+        e.tele.z = e.z;
+        e.tele.yaw = e.yaw;
+      }
+      if (e.aiTime >= g.sweepTelegraphMs / 1000) {
+        setAi(e, 'sweep');
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        if (!tuning.debug.passiveEnemies) {
+          const t = e.tele;
+          // Low along the floor (M1): a jump clears it, a shield takes it.
+          shove(state, e, heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y), e.x, e.z, g.sweepDamage, g.sweepPush, 'blunt');
+        }
+      }
+      break;
+    case 'sweep':
+      if (e.aiTime >= g.sweepActiveMs / 1000) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = g.sweepRecoveryMs / 1000;
+      }
+      break;
+    case 'aim': {
+      e.yaw = turnToward(e.yaw, e.tele.yaw, g.turnRateDeg * DEG * edt);
+      if (e.aiTime >= g.flickTelegraphMs / 1000) {
+        const n = Math.max(1, Math.round(g.flickShards));
+        if (!tuning.debug.passiveEnemies) {
+          for (let i = 0; i < n; i++) {
+            const off = n === 1 ? 0 : (i / (n - 1) - 0.5) * g.flickArcDeg * DEG;
+            fireShard(state, e, e.tele.yaw + off, target.y);
+          }
+        }
+        state.events.push({ kind: 'enemyShot', enemyId: e.id });
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = g.flickRecoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
 /**
  * The Wraith (E1d, the caster): keeps its distance as the Priest does, and when a hero is in reach
  * channels a violet circle at their feet. The circle stays where it was cast; as it lands (after the
@@ -1354,6 +1522,7 @@ const ROLE_BRAINS: Partial<Record<EnemyRole, Brain>> = {
 export function brainFor(kind: EnemyKind): Brain | undefined {
   // Each boss keeps a brain of its own (roles.ts): the Warden's is the role's.
   if (kind === 'king') return kingBrain;
+  if (kind === 'gravehand') return gravehandBrain;
   return ROLE_BRAINS[roleOf(kind)];
 }
 
@@ -1380,6 +1549,8 @@ function attackCooldown(e: EnemyState): number {
       return wardenPace(e).cooldownMs / 1000;
     case 'king':
       return kingPace(e).cooldownMs / 1000;
+    case 'gravehand':
+      return tuning.gravehand.cooldownMs / 1000;
   }
 }
 
@@ -1582,6 +1753,8 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
  */
 export function separateBodies(e: EnemyState, p: PlayerState): void {
   if (Math.abs(p.y - e.y) > LEVEL_GAP) return;
+  // The Gravehand floats over the party (H1): heroes walk under it.
+  if (handAloft(e)) return;
   const s = enemyStats(e.kind);
   const dx = e.x - p.x;
   const dz = e.z - p.z;

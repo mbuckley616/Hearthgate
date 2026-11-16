@@ -1,4 +1,5 @@
 import { noteBossHit } from './attention';
+import { handAloft, palmResting } from './gravehand';
 import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
@@ -180,6 +181,8 @@ export function breakChannel(e: EnemyState): void {
 
 export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boolean {
   if (!isTargetable(e)) return false;
+  // The Gravehand (H1) floats over a blade's reach: only arrows, spells and a burn touch it up there.
+  if (handAloft(e) && !hit.projectile && !hit.dot) return false;
   const c = tuning.combat;
   const stats = enemyStats(e.kind);
   const staggered = e.ai === 'stagger';
@@ -217,7 +220,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
-  const damage = baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  // Its palm resting on the floor after a slam is the punish window (H1).
+  const resting = palmResting(e) ? tuning.gravehand.restDamageTaken : 1;
+  const damage = resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
 import { kingPace } from '@hearthgate/shared/sim/enemies';
+import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
   DEG,
@@ -36,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -95,6 +96,10 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
   // The Wraith (E1d) channels with the Priest's raised hands.
+  // The Gravehand's rig is hidden (H1): its hand is posed in update(), so only a guard is needed here.
+  gravehand: {
+    guard: pose(BASE, {}),
+  },
   wraith: {
     guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
     chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
@@ -151,6 +156,9 @@ export class EnemyView {
   private crowned = false;
   /** The Hollow King's crown in flight (G4b), drawn from the root along the line he threw it down. */
   private flying: THREE.Group | null = null;
+  /** The Gravehand (H1): a bone hand of boxes in place of the rig, held at the height the sim says. */
+  private hand: THREE.Group | null = null;
+  private handLift = 0;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
   private hpBack: THREE.Sprite;
@@ -196,6 +204,7 @@ export class EnemyView {
     else if (kind === 'brute') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
+    if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
     if (kind === 'wraith') {
       // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
@@ -440,6 +449,46 @@ export class EnemyView {
    * (whose limbs are made and hidden, so the shared update has something to pose): spine and ribs,
    * four legs, a long skull with the burning eyes, a jaw and a tail.
    */
+  /**
+   * The Gravehand (H1; placeholder): a palm and five fingers of grey bone boxes, wrapped in grave-cloth,
+   * iron rings on three fingers, fingers pointing where it faces. The skeleton's rig is built and hidden
+   * so the shared update has its parts.
+   */
+  private buildGravehand(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const bone = mat(0xbdb3a0, { roughness: 0.85 });
+    const knuckle = mat(0x8a8070, { roughness: 0.9 });
+    const cloth = mat(0x5a5448, { roughness: 1 });
+    const iron = mat(0x4a4c52, { metalness: 0.7, roughness: 0.45 });
+    const hand = new THREE.Group();
+    hand.add(mesh(new THREE.BoxGeometry(1.5, 0.34, 1.3), bone, 0, 0, -0.1));
+    // Grave-cloth round the wrist, trailing behind.
+    hand.add(mesh(new THREE.BoxGeometry(1.0, 0.42, 0.7), cloth, 0, 0.02, -1.0));
+    hand.add(mesh(new THREE.BoxGeometry(0.8, 0.12, 0.9), cloth, 0.1, -0.05, -1.6));
+    const fingers: [number, number][] = [
+      [-0.55, 0.85],
+      [-0.18, 1.0],
+      [0.18, 0.95],
+      [0.55, 0.75],
+    ];
+    fingers.forEach(([x, len], i) => {
+      const a = mesh(new THREE.BoxGeometry(0.26, 0.26, len * 0.55), bone, x, 0, 0.55 + len * 0.275);
+      const b = mesh(new THREE.BoxGeometry(0.22, 0.22, len * 0.45), bone, x, -0.04, 0.55 + len * 0.55 + len * 0.225);
+      hand.add(a, b, mesh(new THREE.BoxGeometry(0.3, 0.3, 0.14), knuckle, x, 0, 0.55));
+      // Iron rings on the first three fingers: the Ringwardens of phase 2 (H2).
+      if (i < 3) {
+        const ring = mesh(new THREE.TorusGeometry(0.17, 0.05, 6, 12), iron, x, 0, 0.55 + len * 0.3);
+        hand.add(ring);
+      }
+    });
+    // The thumb, out to the side and forward.
+    const thumb = mesh(new THREE.BoxGeometry(0.28, 0.28, 0.7), bone, -0.85, -0.02, 0.15);
+    thumb.rotation.y = -0.6;
+    hand.add(thumb);
+    this.hand = hand;
+    this.body.add(hand);
+  }
+
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
     const bone = mat(0xd6c9a8, { roughness: 0.75 });
     const boneDark = mat(0x8f8266, { roughness: 0.8 });
@@ -680,6 +729,19 @@ export class EnemyView {
     // A Wraith hangs in the air and bobs, until it falls.
     this.rig.position.y = rise + (curr.kind === 'wraith' && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
+    if (this.hand) {
+      // The sim says how high the palm hangs; the figure follows quickly, falls fast and bobs while it floats.
+      const lift = gravehandLift(curr);
+      const k = lift < this.handLift ? 22 : 6;
+      this.handLift += (lift - this.handLift) * (1 - Math.exp(-k * dt));
+      const floating = lift > 1;
+      // The body is scaled to cart size; the lift is metres, so it is undone here.
+      this.hand.position.y = (0.2 + this.handLift + (floating ? Math.sin(this.time * 1.8) * 0.12 : 0)) / SCALE.gravehand;
+      // On its side for the backhand sweep, swinging across as it lands; palm down otherwise.
+      const sweeping = curr.attack === 'sweep' && (curr.ai === 'sweepWindup' || curr.ai === 'sweep');
+      const across = curr.ai === 'sweep' ? clamp01(curr.aiTime / (tuning.gravehand.sweepActiveMs / 1000)) : 0;
+      this.hand.rotation.set(curr.ai === 'aim' ? -0.35 : 0, sweeping ? 0.9 - across * 1.8 : 0, sweeping ? Math.PI / 2 : 0);
+    }
 
     this.pelvis.position.y = DIMS.hipHeight - p.crouch;
     this.pelvis.rotation.set(lean * 0.4 * DEG, twist * 0.3 * DEG, 0);
@@ -732,7 +794,7 @@ export class EnemyView {
     });
 
     // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar; a treasure room's crowned guard has no boss bar, so it keeps its own).
-    const hurt = curr.kind !== 'warden' && (!curr.named || curr.guard !== undefined) && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
+    const hurt = curr.kind !== 'warden' && curr.kind !== 'gravehand' && (!curr.named || curr.guard !== undefined) && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
     this.hpBack.visible = this.hpFill.visible = hurt;
     if (hurt) {
       const top = stats.height + 0.3;
@@ -891,6 +953,13 @@ function wardenScale(e: EnemyState): number {
 
 export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
+  if (e.kind === 'gravehand') {
+    const g = tuning.gravehand;
+    if (e.ai === 'slamWindup') return clamp01(t / (g.slamTelegraphMs / 1000));
+    if (e.ai === 'sweepWindup') return clamp01(t / (g.sweepTelegraphMs / 1000));
+    if (e.ai === 'aim') return clamp01(t / (g.flickTelegraphMs / 1000));
+    return 0;
+  }
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));

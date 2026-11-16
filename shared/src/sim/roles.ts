@@ -41,6 +41,7 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   knight: 'elite',
   wraith: 'caster',
   king: 'boss',
+  gravehand: 'boss',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -55,6 +56,8 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   const role = roleOf(e.kind);
   // The Hollow King (G4b): his sword string a strike, his thrown crown yellow.
   if (e.kind === 'king') return e.attack === 'circles' ? 'magic' : e.attack === 'crown' || e.attack === 'crownSweep' ? 'projectile' : 'strike';
+  // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
+  if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' ? 'heavy' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }
@@ -78,6 +81,8 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return e.attack === 'sweep' ? 'edge' : 'blunt';
     case 'king':
       return e.attack === 'circles' ? 'magic' : e.attack === 'crown' ? 'pierce' : 'edge';
+    case 'gravehand':
+      return e.attack === 'flick' ? 'pierce' : 'blunt';
     case 'priest':
     case 'wraith':
       return 'magic';
@@ -145,6 +150,7 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
     wraith: { name: 'Wraith', plural: 'Wraiths' },
     king: { name: 'The Hollow King', plural: 'The Hollow King' },
+    gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
   },
 };
 

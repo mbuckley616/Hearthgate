@@ -1445,6 +1445,66 @@ export const tuning = {
   },
 
   /**
+   * The Gravehand (H1; `docs/bosses.md` 2.1): a floating bone hand that ends Mossgate Barrow. It
+   * hangs `hoverM` up, out of a blade's reach (only arrows and spells touch it there), and drifts
+   * after a hero. Phase 1's gestures: the palm slam (a circle with the orange rim: a jump does not
+   * clear it, a dodge out does), after which the palm rests on the floor `slamRestMs` taking
+   * `restDamageTaken` of every hit; the backhand sweep (a low cone along the ground: jump it or block
+   * it); and the flick (`flickShards` bone shards in a yellow fan at one hero).
+   */
+  gravehand: {
+    /** Mossgate Barrow ends on it; off, the Warden does, as before H1. */
+    enabled: true,
+    maxHp: 2000,
+    maxPoise: 40,
+    radius: 1.1,
+    height: 1.6,
+    moveSpeed: 3.2,
+    turnRateDeg: 160,
+    /** Height of its palm above the floor while it floats: over a blade's reach. */
+    hoverM: 3.5,
+    /** It drifts to hang this far short of its hero. */
+    followM: 2.2,
+    /** Palm slam: picked within `slamRange`, a circle `slamRadius` across where the hero stood, wound up `slamTelegraphMs`. */
+    slamRange: 7,
+    slamRadius: 2.4,
+    slamTelegraphMs: 1100,
+    /** For this share of the wind-up the circle follows its hero; then it locks and the hand drops. */
+    slamTrackFrac: 0.55,
+    slamActiveMs: 200,
+    slamDamage: 26,
+    slamPush: 3,
+    /** The palm rests on the floor after a slam: the punish window. */
+    slamRestMs: 1400,
+    restDamageTaken: 1.5,
+    /** Backhand sweep: a low cone along the ground, `sweepRadius` and `sweepArcDeg`, wound up `sweepTelegraphMs`. */
+    sweepRange: 4.5,
+    sweepRadius: 5,
+    sweepArcDeg: 120,
+    sweepTelegraphMs: 900,
+    sweepActiveMs: 220,
+    sweepDamage: 18,
+    sweepPush: 2.5,
+    sweepRecoveryMs: 700,
+    /** Flick: `flickShards` shards in a fan `flickArcDeg` wide at one hero from `flickMinRange`, wound up `flickTelegraphMs`. */
+    flickMinRange: 4,
+    flickRange: 16,
+    flickShards: 3,
+    flickArcDeg: 30,
+    flickTelegraphMs: 700,
+    flickDamage: 12,
+    flickSpeed: 18,
+    flickRecoveryMs: 500,
+    /** Its picks between slam and sweep when both are in reach. */
+    sweepChance: 0.4,
+    cooldownMs: 900,
+    knockbackDealt: 2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.05,
+  },
+
+  /**
    * Style levels (brief: "Progression taste"): damage dealt with a hero earns
    * that hero XP. Cumulative XP per level; level 3 in one hero should take
    * about one run (a run is roughly 4,000 damage in total).
@@ -3463,6 +3523,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'king.sweepRadius': [2, 14, 0.5],
   'king.sweepArcDeg': [60, 360, 10],
   'king.sweepDamage': [0, 80, 1],
+  'gravehand.maxHp': [100, 8000, 50],
+  'gravehand.hoverM': [1.5, 6, 0.1],
+  'gravehand.slamTelegraphMs': [300, 3000, 50],
+  'gravehand.slamRadius': [0.5, 5, 0.1],
+  'gravehand.slamDamage': [0, 80, 1],
+  'gravehand.slamRestMs': [0, 4000, 50],
+  'gravehand.restDamageTaken': [1, 3, 0.05],
+  'gravehand.sweepTelegraphMs': [300, 3000, 50],
+  'gravehand.sweepRadius': [1, 10, 0.1],
+  'gravehand.sweepDamage': [0, 80, 1],
+  'gravehand.flickTelegraphMs': [200, 2000, 50],
+  'gravehand.flickDamage': [0, 60, 1],
+  'gravehand.flickArcDeg': [0, 90, 1],
+  'gravehand.sweepChance': [0, 1, 0.05],
+  'gravehand.cooldownMs': [0, 5000, 50],
   'wraith.keepDistance': [2, 20, 0.5],
   'wraith.castRange': [2, 30, 0.5],
   'wraith.circleRadius': [0.5, 5, 0.1],
@@ -3989,7 +4064,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
