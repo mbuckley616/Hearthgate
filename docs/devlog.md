@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 226, the bench's heroes roll out of a slam once it locks, and the Gravehand's first tuning (H3's gate, part four)
+
+**What changed**
+
+Most of the lone sword's deaths came from the bench, not the boss. A new `--sources` flag on `npm run bench:bosses` splits the heroes' damage taken by the boss's attack or the add that dealt it. Before the fix it showed the palm slam dealing 216 of the solo hero's 302. The bench's heroes rolled 200 ms into every wind-up. The slam's circle follows its hero for its first 55%, so it followed them out and landed on them every time. They now roll a reaction after a following telegraph locks (the Gravehand's slam and grab, a charger's line), as a player learns to. With today's numbers that alone took the solo sword from 1 of 10 to 9 of 10 kills in 145 s.
+
+Then the tuning, on the panel's values (`--set`, 20 seeds each):
+- `gravehand.maxHp` 2000 to **2300**.
+- `gravehand.slamRestMs` 1400 to **1000**. A lone sword hurts the hand only in its rests, the archer any time, so a shorter rest slows the solo fight more than the duo's.
+
+| party | kills | ttk s | x solo | pots used | downs |
+|---|---|---|---|---|---|
+| solo (sword) | 20/20 | 187 | 1.00 | 1.9 of 3 | 0.0 |
+| duo (sword, bow) | 20/20 | 98 | 0.52 | 1.3 | 0.0 |
+| trio | 20/20 | 56 | 0.30 | 0.1 | 0.0 |
+| solo + 3 henchmen | 20/20 | 31 | 0.17 | 0.0 | 0.0 |
+
+Over the first ten seeds alone the duo is 0.60. The solo pace (`bosses.soloCooldownScale` 2.5 or 3) barely moved anything, and more health makes the duo's share worse (0.69 at 2800). The Warden with the fixed bench (`--set gravehand.enabled=false`): solo 9 of 10 in 87 s, duo 0.59, trio 0.43. check 711/711.
+
+**Learned**
+
+A bench bot that reacts at once is not a careful player. For a telegraph that follows its hero, the right reaction is late. With that fixed the solo bar is met: 3 minutes, a potion left on average, no wipes in 20.
+
+The Iron Ring is now what hurts a lone or paired hero most: 115 of the solo's 186 damage, 80 of the duo's 198. It is armoured, so the sword deals 35%.
+
+**Next**
+
+- **Duo:** 0.52 to 0.60 against "under half". The likely lever is the Iron Ring (its health or its charge) rather than anything on the hand.
+- **Trio:** 56 s against 1.2's 2 to 3 minutes. Health alone cannot meet both this and the duo bar, since a trio's boss has only 1.26x a duo's health. Pressure, not health, is the likely way.
+- Then **(Michael)** a playtest of the Gravehand.
+
 ## 2026-11-16: Session 225, the bench's heroes play to their style against adds (H3's gate, part three)
 
 **What changed**

@@ -1455,7 +1455,7 @@ export const tuning = {
   gravehand: {
     /** Mossgate Barrow ends on it; off, the Warden does, as before H1. */
     enabled: true,
-    maxHp: 2000,
+    maxHp: 2300,
     maxPoise: 40,
     radius: 1.1,
     height: 1.6,
@@ -1480,7 +1480,7 @@ export const tuning = {
     slamDamage: 26,
     slamPush: 3,
     /** The palm rests on the floor after a slam: the punish window. */
-    slamRestMs: 1400,
+    slamRestMs: 1000,
     restDamageTaken: 1.5,
     /** Backhand sweep: a low cone along the ground, `sweepRadius` and `sweepArcDeg`, wound up `sweepTelegraphMs`. */
     sweepRange: 4.5,

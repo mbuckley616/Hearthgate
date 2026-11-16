@@ -13,6 +13,7 @@
  *   npm run bench:bosses -- --story mossgate --seeds 10 --level 4
  *   npm run bench:bosses -- --today                       (the rule every enemy keeps, for comparison)
  *   npm run bench:bosses -- --set bosses.soloCooldownScale=1.6   (a panel value, repeatable)
+ *   npm run bench:bosses -- --sources            (also the heroes' damage taken by attack and add)
  *
  * Writes tests/tmp/bosses.json. A run that is neither a kill nor a wipe in `--minutes` (10) is a timeout.
  */
@@ -32,7 +33,7 @@ import { inTelegraph } from '@hearthgate/shared/sim/henchman';
 import { weakTo } from '@hearthgate/shared/sim/roles';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import { emptyTalents } from '@hearthgate/shared/sim/talents';
-import { idleCommand, type PlayerCommand, type PlayerState, type SimEvent } from '@hearthgate/shared/sim/types';
+import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimEvent } from '@hearthgate/shared/sim/types';
 
 const arg = (name: string, fallback: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -212,8 +213,12 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
     const out = best ?? { x: -away.x, z: -away.z };
     cmd.moveX = out.x;
     cmd.moveZ = out.z;
+    // A telegraph that follows its hero (the Gravehand's slam circle and grab, a charger's line) is
+    // rolled out of once it locks, a reaction after: a player learns to wait, and rolled sooner the
+    // circle follows them out (every slam caught the bench's lone sword until Session 226).
     const at = m.windups.get(threat.id);
-    if (at !== undefined && tick - at >= REACT_TICKS && me.dodgeCharges > 0) {
+    const locked = threat.aiTime >= lockS(threat) + REACT_TICKS / tuning.sim.tickRate;
+    if (at !== undefined && tick - at >= REACT_TICKS && locked && me.dodgeCharges > 0) {
       m.windups.delete(threat.id);
       cmd.dodge = true;
     }
@@ -243,6 +248,8 @@ interface Result {
   downs: number;
   /** The highest phase the boss reached (its roars, E1g and H2); 1 for a boss without phases. */
   phase: number;
+  /** `--sources`: heroes' damage taken by where it came from (the boss's attack or the add's kind, and its type). */
+  sources: Record<string, number>;
 }
 
 function fight(party: Party, seed: number): Result {
@@ -287,6 +294,7 @@ function fight(party: Party, seed: number): Result {
   let bossId = -1;
   let wokeAt = -1;
   let phase = 1;
+  const sources: Record<string, number> = {};
   for (let tick = 0; tick < MAX_TICKS; tick++) {
     for (const m of minds) {
       m.seq++;
@@ -295,6 +303,10 @@ function fight(party: Party, seed: number): Result {
     }
     const events: SimEvent[] = host.tick();
     for (const ev of events) {
+      if (ev.kind === 'heroHurt' && heroes().some((p) => p.id === ev.playerId)) {
+        const key = `${sourceOf(host, bossId, ev.x, ev.z)} ${ev.type ?? '-'}`;
+        sources[key] = (sources[key] ?? 0) + ev.damage;
+      }
       if (ev.kind === 'enemyTelegraph') for (const m of minds) m.windups.set(ev.enemyId, tick);
       if (ev.kind === 'heroDown' && heroes().some((p) => p.id === ev.playerId)) downs++;
       if (ev.kind === 'roar' && ev.phase !== undefined && ev.enemyId === bossId) phase = Math.max(phase, ev.phase);
@@ -312,7 +324,7 @@ function fight(party: Party, seed: number): Result {
     const boss = host.sim.enemies.find((e) => e.id === bossId);
     const seconds = wokeAt >= 0 ? host.sim.time - wokeAt : 0;
     const potionsUsed = potionsAtStart - heroes().reduce((a, p) => a + (p.potions ?? 0), 0);
-    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs, phase };
+    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs, phase, sources };
     if (boss && boss.ai === 'dead') return { outcome: 'kill', ...result };
     if (heroes().every((p: PlayerState) => p.mode === 'down')) return { outcome: 'wipe', ...result };
   }
@@ -326,7 +338,42 @@ function fight(party: Party, seed: number): Result {
     potionsUsed: potionsAtStart - heroes().reduce((a, p) => a + (p.potions ?? 0), 0),
     downs,
     phase,
+    sources,
   };
+}
+
+/** Seconds into its wind-up that an enemy's telegraph stops following its hero (0 for one that never follows). */
+function lockS(e: EnemyState): number {
+  if (e.kind === 'gravehand') {
+    const g = tuning.gravehand;
+    if (e.attack === 'slam') return (g.slamTelegraphMs / 1000) * g.slamTrackFrac;
+    if (e.attack === 'grab') return (g.grabTelegraphMs / 1000) * 0.5;
+    return 0;
+  }
+  const s = enemyStats(e.kind) as { trackFrac?: number; telegraphMs?: number; chargeTelegraphMs?: number };
+  const ms = s.chargeTelegraphMs ?? s.telegraphMs;
+  return s.trackFrac !== undefined && ms !== undefined ? (ms / 1000) * Math.min(1, s.trackFrac) : 0;
+}
+
+/**
+ * Who most likely dealt a hurt at (x, z): an add within 2.5 m that is mid-attack, else the boss's
+ * current attack. A guess (the event carries no enemy), good enough to say which gesture costs a
+ * lone hero their health.
+ */
+function sourceOf(host: HostSession, bossId: number, x: number, z: number): string {
+  let best = '';
+  let bestD = 2.5;
+  for (const e of host.sim.enemies) {
+    if (e.id === bossId || e.ai === 'dead') continue;
+    const d = Math.hypot(e.x - x, e.z - z);
+    if (d < bestD) {
+      bestD = d;
+      best = e.kind;
+    }
+  }
+  if (best) return best;
+  const boss = host.sim.enemies.find((e) => e.id === bossId);
+  return boss ? `boss:${boss.attack || boss.ai}` : 'other';
 }
 
 const median = (a: number[]) => {
@@ -396,6 +443,15 @@ const wipes = rows.map((r) => `${r.party} ${r.results.filter((x) => x.outcome ==
 const timeouts = rows.map((r) => `${r.party} ${r.results.filter((x) => x.outcome === 'timeout').length}`).join(', ');
 console.log(`\nwipes: ${wipes}\ntimeouts: ${timeouts}`);
 console.log(`ttk is the median of kills only; dmg, pots and downs are means over every seed, heroes only (henchmen's not counted);\nend s is the mean fight length, kill, wipe or timeout; left is the boss's mean health at the end;\nphase 3 counts the fights whose boss roared into its third phase.`);
+if (process.argv.includes('--sources')) {
+  console.log('\ndamage taken by source (mean a fight, heroes only):');
+  for (const row of rows) {
+    const sum: Record<string, number> = {};
+    for (const r of row.results) for (const [k, v] of Object.entries(r.sources)) sum[k] = (sum[k] ?? 0) + v;
+    const parts = Object.entries(sum).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v / row.results.length)}`);
+    console.log(`  ${row.party.padEnd(17)}${parts.join(', ')}`);
+  }
+}
 console.log(`1.2's bar: solo 180 to 300 s with a potion left; duo under half the solo time with nobody downed.`);
 
 fs.mkdirSync('tests/tmp', { recursive: true });
