@@ -24,7 +24,7 @@ Six benches (`--set`) found what was killing the lone sword: the Guard phase 2 a
 
 **Next**
 
-- The lone hero now times out with 27% left and nobody downed: it survives but cannot finish within 10 minutes. The Chanter it cannot reach still raises the stones, so the next lever is the stones, solo.
+- The lone hero now times out with 27% left at the bench's 10 minutes, but with 15 (`--minutes 15`) it kills 5 of 5 in a median 657 s, with 1.6 potions used and nobody downed. The document's "a solo hero can win with time" is met. Fewer stones (2) gave 1 kill in 10 minutes but slowed the trio to 255 s, past its gate, and a slower rebuild or a Chanter that stays close did nothing for the solo; none is kept.
 - The duo: 3.6 downs and 5.8 potions, from the hod (424) and the Guards (321).
 
 ## 2026-11-16: Session 232, the Mason's bone ridges (M3, part three)
