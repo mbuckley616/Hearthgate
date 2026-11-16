@@ -9,6 +9,7 @@ import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
 import { composeRoom, roomTier, type Place } from './roomMix';
 import { minibossNames, roleOf } from './roles';
+import { earnFocus } from './focus';
 import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
 import { dungeonTypeOf } from '../level/dungeonTypes';
 import type { EnemyState } from './types';
@@ -317,6 +318,8 @@ export function leaveFloor(state: SimState, world: World, to: 'deeper' | 'villag
     if (!tuning.loop.bankAtRest || !f.rested) bank(state, world, f);
     return;
   }
+  // A floor gone through in one style (B7): focus grows for whoever still holds the style they had.
+  for (const p of state.players) earnFocus(p);
   for (const d of state.drops) {
     if (d.dropped) continue;
     (f.carried[d.owner] ??= []).push(d.item);

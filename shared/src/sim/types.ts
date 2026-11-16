@@ -108,6 +108,8 @@ export interface PlayerState {
   raise?: { x: number; z: number }[];
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
+  /** B7, focus (`sim/focus.ts`): floors of a run gone through in one style, lost on a swap; absent until one is. */
+  styleFocus?: { style: Style; floors: number };
   /** Room in the browser's bag for lumber, stone and finds (Michael, 31 Oct, A: sim/bagRoom.ts), from the loadout; absent in the slice. */
   bagRoom?: BagRoom;
   /** Seconds until another potion can be drunk (D4). */

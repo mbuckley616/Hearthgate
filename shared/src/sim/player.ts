@@ -1,4 +1,5 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { loseFocusOnSwap } from './focus';
 import { galeReady, shadowPass, specCrescendo } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
@@ -433,6 +434,7 @@ export function stepPlayer(
   const mv = tuning.movement;
   const dg = tuning.dodge;
   refreshLevelHealth(p);
+  loseFocusOnSwap(p);
   p.invulnTime = Math.max(0, p.invulnTime - dt);
   if (p.chill !== undefined) {
     p.chill -= dt;

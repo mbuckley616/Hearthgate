@@ -1661,6 +1661,12 @@ export const tuning = {
     castSpeed: 0.15,
     /** A bane weapon's damage on its boss's kind. */
     baneMult: 1.25,
+    /** B7 (Michael's A on specializing): a floor gone through in one style adds damage in it; a swap loses it. Off in the parity test. */
+    focus: true,
+    /** Damage a floor of focus adds to its style. */
+    focusPerFloor: 0.03,
+    /** Floors of focus that count, at most. */
+    focusMaxFloors: 3,
   },
 
   /**
@@ -2735,6 +2741,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'bosses.resist': [0, 0.6, 0.05],
   'bosses.castSpeed': [0, 0.5, 0.05],
   'bosses.baneMult': [1, 2, 0.05],
+  'bosses.focusPerFloor': [0, 0.1, 0.005],
+  'bosses.focusMaxFloors': [1, 5, 1],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],

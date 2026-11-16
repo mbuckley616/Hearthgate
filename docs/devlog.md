@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 213, focus in the sim (B7, part one)
+
+**What changed**
+
+`sim/focus.ts`, behind `bosses.focus`, which the parity test turns off. `PlayerState.styleFocus` (optional, `{ style, floors }`) grows a floor each time a hero takes a deeper ring holding the style they had (`earnFocus`, called from `leaveFloor`). It starts again at one in a new style and stops at `bosses.focusMaxFloors` (3). `focusBonus` adds `bosses.focusPerFloor` (0.03) a floor to that style's damage, inside `styleDamageBonus`, so every hit of the style reads it. `stepPlayer` drops the focus on its first step after the style in hand changes, so every way of swapping is caught, prediction included. Henchmen earn none. Both numbers are on the panel. `focus.test.ts` has 3 tests: 3%, 6%, 9% over three floors and still 9% after a fourth, only in the earned style; a swap loses it on the next step and a floor in the new style starts at one; nothing with the switch off. check 681/681.
+
+**Learned**
+
+Each floor is its own room, and a hero's `PlayerState` is built afresh from the loadout in the next one, so the focus `leaveFloor` grows dies with the old room. Nothing reaches a player until the hand-off carries it. Henchmen and the run's purse already ride `HostRoom.handOff` and `FloorRoom.purses`, and focus needs the same path: the server's own, never the browser's word.
+
+**Next**
+
+B7, part two: carry each hero's `styleFocus` through the hand-off to the next floor's room (server, then `test:net`), and show it in the corner ("Focus +6% sword"), lost on a swap.
+
 ## 2026-11-16: Session 212, job scores and the signature drop (B6, part three)
 
 **What changed**

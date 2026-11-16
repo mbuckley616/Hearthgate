@@ -7,6 +7,7 @@ import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talent
 import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { ADD_WEAKNESS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
+import { focusBonus } from './focus';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -67,7 +68,7 @@ export interface HitSpec {
 export function styleDamageBonus(p: PlayerState, style: Style): number {
   // A henchman has no talents to spend: its level is its build (P12).
   const hench = p.henchman ? tuning.hirelings.damagePerLevel * (levelFor(p.xp[style]) - 1) : 0;
-  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p) + hench;
+  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p) + hench + focusBonus(p, style);
 }
 
 /** Add XP to a hero's style, announcing any level crossed. */
