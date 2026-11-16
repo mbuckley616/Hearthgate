@@ -324,6 +324,30 @@ describe('the Gravehand, phase 2: the grab (H2)', () => {
     expect(p.held).toBeUndefined();
   });
 
+  it('keeps a held hero out of the wall, so the grip letting go leaves them in the room (Session 224)', () => {
+    // The bench saw it in Mossgate's hall: a hero held against the east wall was shoved into it by the
+    // hand's body as it came down, held there unresolved, and put out through its far side, off the
+    // floor, when the grip ran down. The shove still lands for a tick; the hero's own step undoes it.
+    const wall = arena.floorSize / 2;
+    const { s, p, h } = scene(0);
+    Object.assign(p, { x: wall - 0.5, z: 0 });
+    Object.assign(h, { x: wall - 3, z: 0, phase: 2 });
+    tuning.gravehand.grabChance = 1;
+    for (let i = 0; i < 600 && !p.held; i++) stepSim(s, { p1: idleCommand() }, DT, world);
+    for (let k = 0; k < 5; k++) stepSim(s, { p1: idleCommand() }, DT, world);
+    // Through the hold, the grip letting go and the palm's rest after: never more than a tick's shove in.
+    let deepest = -Infinity;
+    for (let k = 0; k < 300; k++) {
+      stepSim(s, { p1: idleCommand() }, DT, world);
+      deepest = Math.max(deepest, p.x + tuning.movement.radius - wall);
+    }
+    expect(h.attack).toBe('grab');
+    expect(p.held).toBeUndefined();
+    expect(deepest).toBeLessThanOrEqual(tuning.gravehand.shoveMaxM + 1e-9);
+    expect(p.x + tuning.movement.radius).toBeLessThan(wall + 1e-6);
+    expect(p.y).toBeCloseTo(0, 5);
+  });
+
   it('lets a solo hero wriggle free with three dodge presses on the beat, and not by mashing', () => {
     const mashed = held();
     for (let i = 0; i < 60; i++) stepSim(mashed.s, { p1: press(i % 4 === 0) }, DT, world);

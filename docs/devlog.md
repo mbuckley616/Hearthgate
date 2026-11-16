@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 224, the Gravehand no longer shoves a hero through the wall (H3's gate, part two)
+
+**What changed**
+
+Session 223's "hand stuck behind a pillar" was something else: the hero had left the hall through its east wall. Traced tick by tick (Mossgate, the bow alone, seed 1):
+1. The hand came down on its hero beside the wall to grab them.
+2. Body separation shoved the hero 85% of a whole body's overlap, into the stone. A held hero skips wall collision, so they stayed there.
+3. When the grip ran out, the resting palm shoved them again.
+4. Their next step found their middle inside the thin wall and resolved them out through its far side. They fell off the floor and walked about under the hall for the rest of the fight. The hand hung at the wall, out of range of everything.
+
+Two fixes:
+- **`separateBodies`:** the Gravehand pushes a hero at most `gravehand.shoveMaxM` (0.15 m, on the panel) a tick, under a hero's 0.4 m radius, and takes the rest of the push itself. It no longer shoves the hero it holds. Every other enemy keeps the slice's expressions to the bit, so the parity hashes are unchanged. A first try that regrouped the multiplication broke them, so that branch stays separate.
+- **`stepPlayer`:** a held hero is still resolved against walls, in case another body pushes them.
+
+`gravehand.test.ts` gains a test: a hero grabbed against the arena's east wall is never more than one tick's shove into it, through the hold, the release and the rest, and ends inside on the floor. It fails without the fix (0.69 m in). check 711/711, test:net green.
+
+The Gravehand bench after the fix:
+
+| party | kills | ttk s | wipes | timeouts | phase 3 |
+|---|---|---|---|---|---|
+| solo | 1/10 | 139 | 9 | 0 | 1/10 |
+| duo | 7/10 | 101 (0.72 of solo) | 3 | 0 | 10/10 |
+| trio | 10/10 | 53 | 0 | 0 | 10/10 |
+| solo + 3 henchmen | 10/10 | 28 | 0 | 0 | 6/10 |
+
+**Learned**
+
+Every timeout in Session 223's table was a hero outside the map. Now the fights end, and the solo sword hero dies instead: it can hurt the hand only in its rests. That is the tuning question for the bar.
+
+**Next**
+
+The clench skipped by a burst through 30% outside the chase. Then the bench's heroes going for the boss rather than an armoured add. Then tune against the bar.
+
 ## 2026-11-16: Session 223, the bench's heroes fight with their own weapons (H3's gate, part one)
 
 **What changed**

@@ -1947,6 +1947,8 @@ export function separateBodies(e: EnemyState, p: PlayerState): void {
   if (Math.abs(p.y - e.y) > LEVEL_GAP) return;
   // The Gravehand floats over the party (H1): heroes walk under it.
   if (handAloft(e)) return;
+  // Nor does it shove the hero in its grip.
+  if (p.held?.by === e.id) return;
   const s = enemyStats(e.kind);
   const dx = e.x - p.x;
   const dz = e.z - p.z;
@@ -1956,6 +1958,18 @@ export function separateBodies(e: EnemyState, p: PlayerState): void {
     // Big enemies shove the hero more than they get shoved.
     const share = roleOf(e.kind) === 'fodder' || roleOf(e.kind) === 'archer' ? 0.7 : 0.15;
     const overlap = min - d;
+    if (e.kind === 'gravehand') {
+      // It comes down on top of its hero (a slam, a grab), a whole body's overlap at once: by a wall,
+      // that shove put the hero's middle into the stone, and their next step resolved them out through
+      // its far side (Session 224). Its push on a hero is kept under their radius a tick, and the hand
+      // takes the rest.
+      const heroPush = Math.min(overlap * (1 - share), tuning.gravehand.shoveMaxM);
+      e.x += (dx / d) * (overlap - heroPush);
+      e.z += (dz / d) * (overlap - heroPush);
+      p.x -= (dx / d) * heroPush;
+      p.z -= (dz / d) * heroPush;
+      return;
+    }
     e.x += (dx / d) * overlap * share;
     e.z += (dz / d) * overlap * share;
     p.x -= (dx / d) * overlap * (1 - share);

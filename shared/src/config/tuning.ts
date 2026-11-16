@@ -1465,6 +1465,11 @@ export const tuning = {
     hoverM: 3.5,
     /** It drifts to hang this far short of its hero. */
     followM: 2.2,
+    /**
+     * Metres a tick its body may shove a hero, under a hero's radius: come down on a hero by a wall,
+     * a bigger shove put their middle into the stone and out its far side (Session 224).
+     */
+    shoveMaxM: 0.15,
     /** Palm slam: picked within `slamRange`, a circle `slamRadius` across where the hero stood, wound up `slamTelegraphMs`. */
     slamRange: 7,
     slamRadius: 2.4,
@@ -3640,6 +3645,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'king.sweepDamage': [0, 80, 1],
   'gravehand.maxHp': [100, 8000, 50],
   'gravehand.hoverM': [1.5, 6, 0.1],
+  'gravehand.shoveMaxM': [0.02, 0.38, 0.01],
   'gravehand.slamTelegraphMs': [300, 3000, 50],
   'gravehand.slamRadius': [0.5, 5, 0.1],
   'gravehand.slamDamage': [0, 80, 1],

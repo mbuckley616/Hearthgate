@@ -496,6 +496,9 @@ export function stepPlayer(
   // Held in the Gravehand's grip (H2): no move, no swing, no roll; dodge presses on the beat get out.
   if (p.held) {
     stepHeld(p, cmd, dt);
+    // Still kept out of the walls: the hand drifts onto its hero and its body pushes them, and a hero
+    // pushed into a wall unresolved was put out through its far side when the grip let go (Session 224).
+    resolveCircle(p, mv.radius, p.y + 0.3, p.y + mv.height, colliders);
     settleVertical(p, world, dt);
     return;
   }
