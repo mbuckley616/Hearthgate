@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-16: The Warden's phase 2 adds: new kinds, or the Crypt's own made weak? (builder, Session 237)
+`docs/bosses.md` 2.3 asks for one add of each weakness in the Warden's phase 2 at trio size: a plated warrior (weak to magic), a skeleton archer on the hall's edge (weak to melee, the skirmisher of 1.3) and a priest at the back (weak to ranged). The plated warrior can be the Mason's Mortar Guard, which is already armoured. Archers and Bone Priests are in every Crypt room, though, and 1.3 makes a weakness a rule of the kind, told by its look. Giving them weaknesses changes every room, not only the boss hall. The skirmisher rule (a melee blow staggers it) is not built yet either.
+- **A.** Two new Warden-only kinds on the existing brains: a **Barrow Skirmisher** (an archer dressing, low health, a melee hit staggers it in one blow) and a **Grave Cantor** (a priest dressing, warded: arrows 1.5x, spells turned aside, an arrow breaks its raise). Room archers and priests stay as they are. Count by party as the Mason's: one fewer than the heroes, at least one (the Guard first, then the Cantor, then the Skirmisher). About two sessions. *(recommended: the weakness stays a rule of the kind and its look, and the rooms keep the roster you have played)*
+- **B.** The Crypt's archer becomes a skirmisher and the Bone Priest becomes warded everywhere. Every room then has jobs, but every room changes. About one session.
+- **C.** Only the plated warrior (the Mortar Guard) and a warded priest (B's priest, everywhere); no skirmisher until a boss needs a melee job.
+
 ### 2026-11-16: The Mason's third drop, the Gallery Longbow (builder, Session 231)
 `docs/bosses.md` 2.2 lists the Mason's drops as the Mortarward Shield (the tank's), the Chanter's Staff (the mage's) and the Gallery Longbow, "offered for the trio's third job, Michael may cut it": an arrow that breaks a Chanter's channel stuns the caster 1 s. The first two are built (Session 231). Without the bow, an archer who spent the fight on the Chanters is offered the shield or the staff.
 - **A.** Keep it: a yew shortbow whose channel-breaking arrow stuns the Chanter 1 s, a new signature property on bows only, checked by the server. One session. *(recommended: every boss rule (1.4, 1.7) gives each job a piece, and the archer's job here is the Chanters)*
