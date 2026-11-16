@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 218, a held hero's corner line (H2)
+
+**What changed**
+
+While the Gravehand holds a hero, the HUD's left corner shows a warning-red line under the belt: "✊ Held · dodge on the beat to break free · 1/3". The count is the presses on the beat so far. It goes as soon as they are out. The words come from `heldLine` in `sim/gravehand.ts`, so the unit test checks them, and the line reads only the hero's own `held`, which prediction already steps. check 700/700.
+
+**Learned**
+
+Session 217's grab had no words for the player caught in it. "Three on the beat, not mashing" is a rule no one guesses, so the corner has to say it and count as they go.
+
+**Next**
+
+The Bone Ring darting at the archer and the mage rather than the nearest hero, then H3: the clench, the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops.
+
 ## 2026-11-16: Session 217, the Gravehand's grab (H2, part two)
 
 **What changed**
