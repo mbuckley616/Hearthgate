@@ -6,7 +6,7 @@ import { damageEnemy, type HitSpec } from './combat';
 import { brainFor, createEnemy, nearestTarget, separateBodies, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
-import { gravehandLift, handAloft, heldLine, palmResting } from './gravehand';
+import { gravehandLift, handAloft, heldLine, palmResting, restSeconds } from './gravehand';
 import { attackType, roleOf, telegraphTell } from './roles';
 import { emptyTalents } from './talents';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
@@ -132,6 +132,16 @@ describe('the jump against the Gravehand (M1)', () => {
     jump(s, p);
     Object.assign(h, { ai: 'sweepWindup', attack: 'sweep', aiTime: 99 });
     h.tele = { shape: 'cone', x: h.x, z: h.z, radius: tuning.gravehand.sweepRadius, yaw: h.yaw, arcDeg: tuning.gravehand.sweepArcDeg };
+    step(s);
+    expect(events(s, 'cleared')).toEqual([expect.objectContaining({ playerId: 'p1' })]);
+    expect(p.hp).toBe(100);
+  });
+
+  it('clears a knuckle of the chain', () => {
+    const { s, p, h } = sceneJump();
+    jump(s, p);
+    Object.assign(h, { ai: 'slamWindup', attack: 'knuckles', chain: 1, aiTime: 99, phase: 3 });
+    h.tele = { shape: 'circle', x: p.x, z: p.z, radius: tuning.gravehand.knuckleRadius, yaw: h.yaw, arcDeg: 360 };
     step(s);
     expect(events(s, 'cleared')).toEqual([expect.objectContaining({ playerId: 'p1' })]);
     expect(p.hp).toBe(100);
@@ -334,5 +344,44 @@ describe('the Bone Ring goes for the back line (H2)', () => {
     expect(nearestTarget(s, bone)?.id).toBe('p2');
     archer.mode = 'down';
     expect(nearestTarget(s, bone)?.id).toBe('p1');
+  });
+});
+
+describe('the Gravehand, phase 3: the clench (H3)', () => {
+  it('roars at phase3At, and only the ring kinds left standing rise again', () => {
+    const { s, h } = scene(9);
+    Object.assign(h, { phase: 2 });
+    const iron = createEnemy(s, world, 'ironRing', 6, 6, 0);
+    const silver = createEnemy(s, world, 'silverRing', -6, 6, 0);
+    Object.assign(iron, { ai: 'chase' });
+    Object.assign(silver, { ai: 'dead', aiTime: 0 });
+    h.hp = h.maxHp * tuning.gravehand.phase3At - 1;
+    ticksUntil(s, () => h.ai === 'roar');
+    expect(events(s, 'roar')).toEqual([expect.objectContaining({ phase: 3, hand: true })]);
+    ticksUntil(s, () => h.phase === 3);
+    expect(s.enemies.filter((e) => e.kind === 'ironRing' && e.ai !== 'dead')).toHaveLength(2);
+    expect(s.enemies.filter((e) => e.kind === 'silverRing' && e.ai !== 'dead')).toHaveLength(0);
+    expect(restSeconds(h)).toBe(tuning.gravehand.phase3RestMs / 1000);
+    expect(restSeconds({ phase: 2 })).toBe(tuning.gravehand.slamRestMs / 1000);
+  });
+
+  it('rolls a knuckle chain: three rimmed circles along the line, the first after knuckleTelegraphMs, each next after knuckleNextMs', () => {
+    const { s, h } = scene(8);
+    Object.assign(h, { phase: 3 });
+    tuning.gravehand.knuckleChance = 1;
+    ticksUntil(s, () => h.attack === 'knuckles');
+    expect(telegraphTell(h, true)).toEqual({ colour: 'strike', type: 'blunt', rim: true });
+    const t0 = { x: h.tele.x, z: h.tele.z };
+    const first = ticksUntil(s, () => events(s, 'enemySlam').length > 0);
+    expect(Math.abs(first * DT * 1000 - tuning.gravehand.knuckleTelegraphMs)).toBeLessThanOrEqual(DT * 1000 + 1);
+    const next = ticksUntil(s, () => events(s, 'enemySlam').length > 1);
+    expect(Math.abs(next * DT * 1000 - tuning.gravehand.slamActiveMs - tuning.gravehand.knuckleNextMs)).toBeLessThanOrEqual(2 * DT * 1000 + 1);
+    ticksUntil(s, () => h.ai === 'recover');
+    const slams = events(s, 'enemySlam') as { x: number; z: number }[];
+    expect(slams).toHaveLength(3);
+    expect(Math.hypot(slams[0].x - t0.x, slams[0].z - t0.z)).toBeLessThan(1e-6);
+    expect(Math.hypot(slams[2].x - slams[1].x, slams[2].z - slams[1].z)).toBeCloseTo(tuning.gravehand.knuckleStepM, 5);
+    // A fist on the floor, not floating: a blade reaches it.
+    expect(handAloft(h)).toBe(false);
   });
 });

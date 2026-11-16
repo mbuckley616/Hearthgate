@@ -7,7 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
-import { gravehandLift, handAloft, letGo, releaseGrip } from './gravehand';
+import { gravehandLift, handAloft, letGo, releaseGrip, restSeconds } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
@@ -1326,10 +1326,12 @@ function wardBrain(state: SimState, _world: World, e: EnemyState, target: Player
   return want;
 }
 
+const RING_KINDS = ['ironRing', 'silverRing', 'boneRing'] as const;
+
 /** The rings a hand twists off (H2): one a hero standing, Iron, then Silver, then Bone. */
 export function ringsFor(state: SimState): EnemyKind[] {
   const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
-  return (['ironRing', 'silverRing', 'boneRing'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
+  return RING_KINDS.slice(0, Math.max(1, Math.min(3, heroes)));
 }
 
 /** The Gravehand's flick (H1): one bone shard along `yaw`, from its fingers at the height it floats. */
@@ -1386,9 +1388,10 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
   if (e.ai === 'roar') {
     if (e.aiTime >= g.roarMs / 1000) {
       // Phase 2 (H2): its rings twist off and fall round it, one a hero, each weak to one style.
-      const rings = ringsFor(state);
-      rings.forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.ringRadius, (i / rings.length) * Math.PI * 2));
-      e.phase = 2;
+      // Phase 3 (H3): a ring kind the party left standing rises once more.
+      const rings = e.phase === 1 ? ringsFor(state) : RING_KINDS.filter((k) => state.enemies.some((o) => o.kind === k && o.ai !== 'dead'));
+      rings.forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.ringRadius, (i / Math.max(1, rings.length)) * Math.PI * 2));
+      e.phase += 1;
       e.summoned = true;
       setAi(e, 'recover');
       e.recoverTime = 0.4;
@@ -1413,16 +1416,24 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
         want.z = gz / gd;
       }
       e.yaw = turnToward(e.yaw, toTarget, g.turnRateDeg * DEG * edt);
-      if (e.phase === 1 && e.hp <= e.maxHp * g.phase2At) {
+      if ((e.phase === 1 && e.hp <= e.maxHp * g.phase2At) || (e.phase === 2 && e.hp <= e.maxHp * g.phase3At)) {
         setAi(e, 'roar');
         e.tele.shape = 'none';
-        state.events.push({ kind: 'roar', enemyId: e.id, phase: 2, hand: true });
+        state.events.push({ kind: 'roar', enemyId: e.id, phase: e.phase + 1, hand: true });
         break;
       }
       if (e.cooldown > 0) break;
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (!sameLevel) break;
-      if (e.phase >= 2 && dist <= g.grabRange && !target.held && nextRandom(state) < g.grabChance) {
+      if (e.phase >= 3 && dist <= g.knuckleRange && nextRandom(state) < g.knuckleChance) {
+        // Phase 3 (H3): the clenched fist rolls a chain of slams along the line to its hero.
+        e.attack = 'knuckles';
+        e.chain = 0;
+        e.yaw = toTarget;
+        setAi(e, 'slamWindup');
+        e.tele = { shape: 'circle', x: e.x + Math.sin(e.yaw) * g.knuckleStepM, z: e.z + Math.cos(e.yaw) * g.knuckleStepM, radius: g.knuckleRadius, yaw: e.yaw, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (e.phase >= 2 && dist <= g.grabRange && !target.held && nextRandom(state) < g.grabChance) {
         // Phase 2 on (H2): it reaches for its hero, a red ring with the orange rim round them.
         e.attack = 'grab';
         setAi(e, 'chargeWindup');
@@ -1447,6 +1458,23 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
       break;
     }
     case 'slamWindup': {
+      if (e.attack === 'knuckles') {
+        // Each knuckle locked on the line from the first; the fist rolls under them.
+        const cx = e.tele.x - e.x;
+        const cz = e.tele.z - e.z;
+        const cd = Math.hypot(cx, cz);
+        if (cd > 0.15) {
+          want.x = (cx / cd) * Math.min(1.5, cd);
+          want.z = (cz / cd) * Math.min(1.5, cd);
+        }
+        if (e.aiTime >= (e.chain ? g.knuckleNextMs : g.knuckleTelegraphMs) / 1000) {
+          setAi(e, 'slam');
+          const t = e.tele;
+          state.events.push({ kind: 'enemySlam', enemyId: e.id, x: t.x, z: t.z, radius: t.radius, boss: true });
+          if (!tuning.debug.passiveEnemies) shove(state, e, heroesInCircle(state, t.x, t.z, t.radius, e.y), t.x, t.z, g.knuckleDamage, g.slamPush, 'blunt');
+        }
+        break;
+      }
       const ms = g.slamTelegraphMs;
       if (e.aiTime < (ms / 1000) * g.slamTrackFrac) {
         e.tele.x = target.x;
@@ -1475,9 +1503,19 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
     }
     case 'slam':
       if (e.aiTime >= g.slamActiveMs / 1000) {
+        if (e.attack === 'knuckles' && (e.chain ?? 0) + 1 < Math.round(g.knuckles)) {
+          e.chain = (e.chain ?? 0) + 1;
+          e.tele.x += Math.sin(e.tele.yaw) * g.knuckleStepM;
+          e.tele.z += Math.cos(e.tele.yaw) * g.knuckleStepM;
+          setAi(e, 'slamWindup');
+          state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+          break;
+        }
+        const knuckles = e.attack === 'knuckles';
+        delete e.chain;
         e.tele.shape = 'none';
         setAi(e, 'recover');
-        e.recoverTime = g.slamRestMs / 1000;
+        e.recoverTime = knuckles ? g.knuckleRecoveryMs / 1000 : restSeconds(e);
       }
       break;
     case 'sweepWindup':
@@ -1530,7 +1568,7 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
           // An empty grasp: its palm hits the floor and rests there.
           e.tele.shape = 'none';
           setAi(e, 'recover');
-          e.recoverTime = g.slamRestMs / 1000;
+          e.recoverTime = restSeconds(e);
           break;
         }
         caught.held = { by: e.id, left: g.grabHoldMs / 1000, presses: 0, since: 99 };

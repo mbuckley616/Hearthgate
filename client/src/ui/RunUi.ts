@@ -221,6 +221,7 @@ export class RunUi {
 /** Each roar names what the Warden's next phase brings (E1g); the slice's one roar calls for help. */
 function roarBanner(phase: number | undefined, king?: true, hand?: true): [string, string] {
   // The Gravehand's (H2): its rings come off, each weak to one style.
+  if (hand && phase === 3) return ['The Gravehand clenches', 'Its knuckles roll toward you: jump them'];
   if (hand) return ['The Gravehand twists off its rings', 'Iron shrugs off blades, Silver wards the hand: shoot it'];
   // The Hollow King's (G4b): each phase's banner names what is new in it.
   if (king && phase === 2) return ['The King calls his knights', 'Barrow Knights rise, and violet circles find every hero'];

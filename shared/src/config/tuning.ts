@@ -1523,6 +1523,24 @@ export const tuning = {
     grabBeatMs: 250,
     /** Untouchable this long after a hero gets out, so the same grip cannot close on them at once. */
     grabFreedInvulnMs: 500,
+    /**
+     * Phase 3 (H3) at `phase3At`: a roar, and it clenches into a fist. Its palm rests `phase3RestMs`
+     * instead of `slamRestMs`, and some turns (`knuckleChance`) roll a knuckle chain: `knuckles`
+     * circles `knuckleRadius` across, each `knuckleStepM` beyond the last along the line to its hero,
+     * the first wound up `knuckleTelegraphMs`, each next `knuckleNextMs`; blunt, low (a jump clears
+     * it), with the orange rim. Every ring kind with an add still standing rises once more.
+     */
+    phase3At: 0.3,
+    phase3RestMs: 900,
+    knuckleChance: 0.4,
+    knuckleRange: 9,
+    knuckles: 3,
+    knuckleRadius: 1.8,
+    knuckleStepM: 2.8,
+    knuckleTelegraphMs: 900,
+    knuckleNextMs: 420,
+    knuckleDamage: 20,
+    knuckleRecoveryMs: 700,
     /** Its picks between slam and sweep when both are in reach. */
     sweepChance: 0.4,
     cooldownMs: 900,
@@ -3639,6 +3657,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gravehand.grabBreakDamage': [0, 300, 5],
   'gravehand.grabEscapePresses': [1, 6, 1],
   'gravehand.grabBeatMs': [0, 1000, 10],
+  'gravehand.phase3At': [0, 1, 0.05],
+  'gravehand.phase3RestMs': [0, 4000, 50],
+  'gravehand.knuckleChance': [0, 1, 0.05],
+  'gravehand.knuckleTelegraphMs': [200, 3000, 50],
+  'gravehand.knuckleNextMs': [100, 2000, 10],
+  'gravehand.knuckleDamage': [0, 80, 1],
   'ironRing.maxHp': [10, 1000, 10],
   'ironRing.chargeSpeed': [2, 20, 0.5],
   'ironRing.chargeDamage': [0, 60, 1],

@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 220, the Gravehand's clench (H3, part one)
+
+**What changed**
+
+At 30% health (`gravehand.phase3At`) the Gravehand roars again (banner: "The Gravehand clenches · Its knuckles roll toward you: jump them") and closes into a fist, drawn as the hand folded short. Three things change:
+- **The rest shortens.** After a slam or an empty grasp its palm now rests `phase3RestMs` (0.9 s) instead of 1.4 s (`restSeconds`), so the punish window tightens.
+- **The knuckle chain.** Some of its turns (`knuckleChance`, 0.4) within 9 m roll its fist toward its hero. That is three 1.8 m circles, each 2.8 m beyond the last on the line it locked as it began: the first wound up 0.9 s, each next 0.42 s after the one before lands. They are blunt and low (M1), so a jump clears each, with the orange rim. The fist rolls along the floor under them, low enough for a blade.
+- **The rings rise again.** Each ring kind with an add still standing from phase 2 rises once more, so leaving an Iron Ring alive means two of them.
+
+Numbers are in `tuning.gravehand`, the main ones on the panel. `gravehand.test.ts` gains 3 tests: the phase 3 roar with only the standing kinds rising and the shorter rest; the chain's three rimmed circles, their timing and spacing, with the fist in a blade's reach; a jump clearing a knuckle. check 704/704 (parity unchanged).
+
+**Learned**
+
+The Warden's rolling slam was already the shape (a `chain` count, the circle stepped along `tele.yaw` between slams), so the knuckles reuse `slamWindup` and `slam` and only their lift and their low hit differ.
+
+**Next**
+
+H3, part two: the shatter flick (each shard splits in two where it lands), and the three signature drops (Ringward Buckler 20% less blunt, Knucklebone Bow its bane, Grave-cloth Wraps letting go of a grab after 1.5 s). Then the bench's solo and duo numbers against the bar.
+
 ## 2026-11-16: Session 219, the Bone Ring goes for the back line (H2)
 
 **What changed**

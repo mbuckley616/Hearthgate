@@ -20,6 +20,8 @@ export function palmResting(e: Pick<EnemyState, 'kind' | 'ai' | 'attack'>): bool
 export function gravehandLift(e: Pick<EnemyState, 'kind' | 'ai' | 'attack' | 'aiTime'>): number {
   const g = tuning.gravehand;
   if (palmResting(e) || e.ai === 'stagger' || e.ai === 'dead') return 0;
+  // The knuckle chain (H3) rolls its fist along the floor.
+  if (e.attack === 'knuckles' && (e.ai === 'slamWindup' || e.ai === 'slam' || e.ai === 'recover')) return 0.4;
   if (e.ai === 'slamWindup') return g.hoverM + 1.2 * Math.min(1, e.aiTime / ((g.slamTelegraphMs / 1000) * g.slamTrackFrac));
   if (e.ai === 'sweepWindup' || e.ai === 'sweep' || (e.ai === 'recover' && e.attack === 'sweep')) return 0.3;
   // Closed round a hero (H2): down at their height, where a partner's blade reaches it.
@@ -70,7 +72,13 @@ export function letGo(state: SimState, e: EnemyState): void {
   e.tele.shape = 'none';
   e.ai = 'recover';
   e.aiTime = 0;
-  e.recoverTime = tuning.gravehand.slamRestMs / 1000;
+  e.recoverTime = restSeconds(e);
+}
+
+/** How long its palm rests after a slam or a grasp: shorter once it has clenched (H3). */
+export function restSeconds(e: Pick<EnemyState, 'phase'>): number {
+  const g = tuning.gravehand;
+  return (e.phase >= 3 ? g.phase3RestMs : g.slamRestMs) / 1000;
 }
 
 /**

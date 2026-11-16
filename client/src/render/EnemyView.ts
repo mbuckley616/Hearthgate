@@ -794,6 +794,8 @@ export class EnemyView {
       // On its side for the backhand sweep, swinging across as it lands; palm down otherwise.
       const sweeping = curr.attack === 'sweep' && (curr.ai === 'sweepWindup' || curr.ai === 'sweep');
       const across = curr.ai === 'sweep' ? clamp01(curr.aiTime / (tuning.gravehand.sweepActiveMs / 1000)) : 0;
+      // Clenched into a fist from phase 3 (H3): the fingers folded under, drawn as the hand drawn short.
+      this.hand.scale.set(1, curr.phase >= 3 ? 1.5 : 1, curr.phase >= 3 ? 0.6 : 1);
       this.hand.rotation.set(curr.ai === 'aim' ? -0.35 : 0, sweeping ? 0.9 - across * 1.8 : 0, sweeping ? Math.PI / 2 : 0);
     }
 
@@ -1009,7 +1011,7 @@ export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
   if (e.kind === 'gravehand') {
     const g = tuning.gravehand;
-    if (e.ai === 'slamWindup') return clamp01(t / (g.slamTelegraphMs / 1000));
+    if (e.ai === 'slamWindup') return clamp01(t / ((e.attack === 'knuckles' ? (e.chain ? g.knuckleNextMs : g.knuckleTelegraphMs) : g.slamTelegraphMs) / 1000));
     if (e.ai === 'sweepWindup') return clamp01(t / (g.sweepTelegraphMs / 1000));
     if (e.ai === 'aim') return clamp01(t / (g.flickTelegraphMs / 1000));
     if (e.ai === 'chargeWindup') return clamp01(t / (g.grabTelegraphMs / 1000));
