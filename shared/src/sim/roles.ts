@@ -1,5 +1,6 @@
 import type { EnemyKind } from '../config/tuning';
 import { DEFAULT_DUNGEON_TYPE, type DungeonType } from '../level/dungeonTypes';
+import type { DamageType } from './types';
 
 /**
  * Enemy roles (E1a; Michael, 29 Oct, decisions.md "E1, the enemy design pass"; the design doc's Enemy
@@ -56,6 +57,52 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   if (e.kind === 'king') return e.attack === 'circles' ? 'magic' : e.attack === 'crown' || e.attack === 'crownSweep' ? 'projectile' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
+}
+
+/**
+ * The damage type of the blow an enemy is winding up (B3's types, read before the hit lands), the same
+ * as the `HeroHit.type` it will carry: `damageTypes.test.ts` lands each one.
+ */
+export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
+  switch (e.kind) {
+    case 'grunt':
+    case 'hound':
+      return 'edge';
+    case 'archer':
+      return 'pierce';
+    case 'brute':
+    case 'shieldbearer':
+    case 'knight':
+      return 'blunt';
+    case 'warden':
+      return e.attack === 'sweep' ? 'edge' : 'blunt';
+    case 'king':
+      return e.attack === 'circles' ? 'magic' : e.attack === 'crown' ? 'pierce' : 'edge';
+    case 'priest':
+    case 'wraith':
+      return 'magic';
+  }
+}
+
+/** What a telegraph shows: a hue, the type it was read from (when it was), and the unblockable rim. */
+export interface Tell {
+  colour: TelegraphColour;
+  type?: DamageType;
+  rim: boolean;
+}
+
+/**
+ * B4 (Michael's A on the boss document, 16 Nov; `docs/bosses.md` 1.5): with damage types on, the hue
+ * says the type (melee red, ranged yellow, magic violet) and orange leaves the fill for a rim that
+ * says "do not block this: dodge or jump", on what was orange before (slams, heavies, an armoured
+ * enemy's blow) and the King's crown sweep. With them off it is E1a's colour, no rim.
+ */
+export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: number }, byType: boolean): Tell {
+  const before = telegraphColour(e);
+  if (!byType) return { colour: before, rim: false };
+  const type = attackType(e);
+  const colour: TelegraphColour = type === 'pierce' ? 'projectile' : type === 'magic' ? 'magic' : 'strike';
+  return { colour, type, rim: before === 'heavy' || (e.kind === 'king' && e.attack === 'crownSweep') };
 }
 
 /** What a kind is called in a dungeon type, one and many. */

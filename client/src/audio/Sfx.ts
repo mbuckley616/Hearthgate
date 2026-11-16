@@ -1,7 +1,7 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { entryOf, type GearItem } from '@hearthgate/shared/sim/catalogue';
 import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
-import { telegraphColour, type TelegraphColour } from '@hearthgate/shared/sim/roles';
+import { telegraphTell, type Tell } from '@hearthgate/shared/sim/roles';
 
 /**
  * Our own sound, synthesised with Web Audio (no recordings; Michael's call in
@@ -114,9 +114,9 @@ export class Sfx {
           this.door(ev.playerId === localId ? 1 : 0.4);
           break;
         case 'enemyTelegraph': {
-          // A sound a colour (E1a), so a tell is heard as well as seen: the enemy as the drawn world has it.
+          // A sound a colour (E1a; by type with B4's rim), so a tell is heard as well as seen: the enemy as the drawn world has it.
           const e = world?.enemies.find((en) => en.id === ev.enemyId);
-          this.tell(e ? telegraphColour(e) : 'strike');
+          this.tell(e ? telegraphTell(e, tuning.bosses.damageTypes) : { colour: 'strike', rim: false });
           break;
         }
         case 'enemySwing':
@@ -553,16 +553,27 @@ export class Sfx {
     this.tone('sawtooth', 120, 180, 0.3, 0.12, 0.05);
   }
 
-  /** A telegraph's sound by its colour: the slice's growl for a strike, lower and longer for a heavy, a rising whistle for a projectile or charge, a shimmer for magic. */
-  private tell(colour: TelegraphColour): void {
-    if (colour === 'strike') this.growl();
-    else if (colour === 'heavy') {
-      this.tone('sawtooth', 70, 110, 0.5, 0.16, 0.08);
-      this.rumble(0.2);
-    } else if (colour === 'projectile') this.tone('triangle', 600, 1300, 0.28, 0.09, 0.02);
+  /**
+   * A telegraph's sound by its colour: the slice's growl for a strike (with types on, a blunt blow's
+   * growl a fifth lower than an edge's), lower and longer for a heavy, a rising whistle for a projectile
+   * or charge, a shimmer for magic. B4's rim adds the heavy's low rumble under whatever the type says.
+   */
+  private tell(t: Tell): void {
+    const { colour } = t;
+    if (colour === 'strike') {
+      if (t.type === 'blunt') this.tone('sawtooth', 80, 120, 0.32, 0.12, 0.05);
+      else this.growl();
+    } else if (colour === 'heavy') this.heavyTell();
+    else if (colour === 'projectile') this.tone('triangle', 600, 1300, 0.28, 0.09, 0.02);
     else {
       this.tone('sine', 900, 1400, 0.45, 0.08, 0.1);
       this.tone('sine', 1350, 2100, 0.45, 0.05, 0.12);
     }
+    if (t.rim) this.heavyTell();
+  }
+
+  private heavyTell(): void {
+    this.tone('sawtooth', 70, 110, 0.5, 0.16, 0.08);
+    this.rumble(0.2);
   }
 }

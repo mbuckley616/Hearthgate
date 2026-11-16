@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 208, telegraph colours by damage type (B4)
+
+**What changed**
+
+Michael's A on the colour question (`docs/bosses.md` 1.5). `attackType` and `telegraphTell` in `sim/roles.ts` read the blow an enemy is winding up. With `bosses.damageTypes` on, the hue says the type: melee (blunt and edge) red, pierce yellow, magic violet. Orange leaves the fill and becomes a rim on the outline, pulsing slowly (5 rad/s, full swing) against the fill's quick flicker. It goes on everything that was orange before (the Brute's and the Warden's slams, the Barrow Knight's blows, any enemy armoured after a stagger) and on the King's crown sweep, as the document gives it. A line has no outline, so a rimmed lane (the Knight's rush) gets a wider orange lane beneath it. What changes for a player: a Hound's charge is red, not yellow (teeth are melee); slams are red with an orange rim; the King's crown sweep is red with a rim. `Sfx` follows the tell: a blunt blow growls a fifth lower than an edge's, and a rim adds the heavy's low rumble under its type's sound. With the switch off, E1a's colours come back unchanged. It is view-only, so the fight and the parity hashes are untouched. `damageTypes.test.ts` gains 7 tests. For the grunt, archer, Brute, Warden and King, every blow that lands has the type its telegraph showed. The colours and rims by kind are checked with the switch on, and E1a's with it off. check 660/660.
+
+The colourblind check, by sum against a dark floor (0x262420, contrast ratio): red 4.3, violet 4.3, yellow 10.7, orange rim 6.6. Under deuteranopia red 5.3 and rim 7.3; under protanopia red 2.9 and rim 5.4. So the rim stays brighter than the red fill it sits on for every eye, and its slow pulse separates it from the fill as well.
+
+**Learned**
+
+Two calls the document left open. The rim marks what was orange before, not what `hurtHero` actually lets through: a parry still turns a heavy, and the Warden's sweep is a heavy in the sim but red and unrimmed by the document (W1 reworks it to blockable). The Shieldbearer's bash breaks a guard but was never orange, so it carries no rim. B8's guard stance is the place to make the rim and the guard agree.
+
+**Next**
+
+The gate's screenshot per role in the debug room was not taken: headless Chromium runs software GL at a few fps here. The critic's browsers or Michael's eye can do it. Then B5, add weaknesses.
+
 ## 2026-11-16: Session 207, damage types on enemy hits (B3)
 
 **What changed**
