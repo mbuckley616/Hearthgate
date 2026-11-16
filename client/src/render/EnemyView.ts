@@ -1032,6 +1032,9 @@ export class EnemyView {
             return into(this.from, P.hodBack, t / ((m.hodTelegraphMs / 1000) * 0.6));
           case 'slam':
             return into(P.hodBack, P.hodThrow, t / 0.15, easeOut);
+          case 'chant':
+          case 'roar':
+            return into(this.from, P.raise, t / 0.35);
         }
         break;
       }
@@ -1091,6 +1094,7 @@ export function windupProgress(e: EnemyState): number {
     const m = tuning.mason;
     if (e.ai === 'windup') return clamp01(t / ((e.chain ? m.stringNextMs : m.stringTelegraphMs) / 1000));
     if (e.ai === 'slamWindup') return clamp01(t / (m.hodTelegraphMs / 1000));
+    if (e.ai === 'chant') return clamp01(t / (m.groutChannelMs / 1000));
     return 0;
   }
   switch (e.ai) {

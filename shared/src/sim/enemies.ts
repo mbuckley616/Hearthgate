@@ -7,6 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { clearsLow, damageEnemy, killEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
+import { masonBinds } from './mason';
 import { gravehandLift, handAloft, letGo, releaseGrip, restSeconds } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
@@ -1626,10 +1627,21 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
   return want;
 }
 
-/** The Mason's maul cone (M1): from it, where it faces, a step of its string. */
+/** Swings in the Mason's string: one more once it has enraged (M3). */
+function maulSteps(e: EnemyState): number {
+  return Math.round(e.phase >= 3 ? tuning.mason.enragedSteps : tuning.mason.stringSteps);
+}
+
+/** The last of an enraged string (M3): a slam whose shockwave rolls round it. */
+function maulShockwave(e: EnemyState): boolean {
+  return e.phase >= 3 && (e.chain ?? 0) + 1 >= maulSteps(e);
+}
+
+/** The Mason's maul cone (M1): from it, where it faces, a step of its string; enraged, the last is the shockwave's circle. */
 function setMaulTele(e: EnemyState): void {
   const m = tuning.mason;
-  e.tele = { shape: 'cone', x: e.x, z: e.z, radius: m.stringReach, yaw: e.yaw, arcDeg: m.stringArcDeg };
+  if (maulShockwave(e)) e.tele = { shape: 'circle', x: e.x, z: e.z, radius: m.shockwaveRadius, yaw: e.yaw, arcDeg: 360 };
+  else e.tele = { shape: 'cone', x: e.x, z: e.z, radius: m.stringReach, yaw: e.yaw, arcDeg: m.stringArcDeg };
 }
 
 /**
@@ -1651,6 +1663,20 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
     if (guards > 0) raiseFromEdges(state, world, e, guards, 'mortarGuard', m.guardRadius, Math.PI / Math.max(1, n));
     if (chanters > 0) raiseFromEdges(state, world, e, chanters, 'chanter', m.chanterRadius, Math.PI / Math.max(1, n) + Math.PI / 2);
   }
+  if (e.circles && e.ai !== 'chant') delete e.circles;
+  if (e.ai === 'roar') {
+    if (e.aiTime >= m.roarMs / 1000) {
+      // Phase 2 (M3): more Guards. Phase 3: the stones go out (wardstoneBrain, as it is no longer bound to them).
+      if (e.phase === 1) {
+        const guards = masonAdds(state, m.phase2Guards);
+        if (guards > 0) raiseFromEdges(state, world, e, guards, 'mortarGuard', m.guardRadius, Math.PI / 3);
+      }
+      e.phase = Math.min(3, e.phase + 1);
+      setAi(e, 'recover');
+      e.recoverTime = 0.4;
+    }
+    return want;
+  }
   if (!target) return want;
   const dx = target.x - e.x;
   const dz = target.z - e.z;
@@ -1662,6 +1688,14 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
       const gx = goal.x - e.x;
       const gz = goal.z - e.z;
       const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const at = e.phase === 1 ? m.phase2At : e.phase === 2 ? m.phase3At : -1;
+      if (e.hp <= e.maxHp * at) {
+        setAi(e, 'roar');
+        e.tele.shape = 'none';
+        delete e.chain;
+        state.events.push({ kind: 'roar', enemyId: e.id, phase: e.phase + 1, mason: true });
+        break;
+      }
       if (dist > m.stringRange - 0.6) {
         want.x = gx / gd;
         want.z = gz / gd;
@@ -1671,7 +1705,16 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (!sameLevel) break;
       const facing = Math.abs(wrapAngle(toTarget - e.yaw)) < 40 * DEG;
-      if (facing && dist <= m.stringRange) {
+      const standing = state.players.filter((p) => p.mode !== 'down' && Math.hypot(p.x - e.x, p.z - e.z) <= m.groutRange && Math.abs(p.y - e.y) < LEVEL_GAP);
+      if (e.phase >= 2 && standing.length > 0 && nextRandom(state) < m.groutChance) {
+        // Grout (M3): a violet circle under every hero at once, as the King's, in its own colour of mortar.
+        e.attack = 'grout';
+        delete e.chain;
+        e.circles = standing.map((p) => ({ x: p.x, z: p.z }));
+        setAi(e, 'chant');
+        e.tele = { shape: 'circle', x: e.circles[0].x, z: e.circles[0].z, radius: m.groutRadius, yaw: 0, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (facing && dist <= m.stringRange) {
         e.attack = 'string';
         e.chain = 0;
         setAi(e, 'windup');
@@ -1697,9 +1740,15 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
         if (!tuning.debug.passiveEnemies) {
           const t = e.tele;
           // The last of the string comes over the top: heavier, and it pushes.
-          const overhead = (e.chain ?? 0) + 1 >= Math.round(m.stringSteps);
-          for (const p of heroesInCone(state, t.x, t.z, t.yaw, t.radius, t.arcDeg, e.y)) {
+          const overhead = (e.chain ?? 0) + 1 >= maulSteps(e);
+          const struck = heroesInCone(state, e.x, e.z, e.yaw, m.stringReach, m.stringArcDeg, e.y);
+          for (const p of struck) {
             hurtHero(state, p, { damage: hitDamage(e, overhead ? m.overheadDamage : m.stringDamage), push: overhead ? m.stringPush : m.knockbackDealt * 0.5, fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('blunt') });
+          }
+          // Enraged (M3), the slam's shockwave rolls out along the floor: low, so a jump clears it.
+          if (maulShockwave(e)) {
+            const rolled = heroesInCircle(state, t.x, t.z, t.radius, e.y).filter((p) => !struck.includes(p));
+            shove(state, e, rolled, e.x, e.z, m.shockwaveDamage, m.shockwavePush, 'blunt');
           }
         }
       }
@@ -1709,7 +1758,7 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
       want.x = Math.sin(e.yaw) * 0.4;
       want.z = Math.cos(e.yaw) * 0.4;
       if (e.aiTime >= m.stringActiveMs / 1000) {
-        if ((e.chain ?? 0) + 1 < Math.round(m.stringSteps)) {
+        if ((e.chain ?? 0) + 1 < maulSteps(e)) {
           e.chain = (e.chain ?? 0) + 1;
           setAi(e, 'windup');
           setMaulTele(e);
@@ -1747,6 +1796,26 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
       e.tele.shape = 'none';
       setAi(e, 'recover');
       e.recoverTime = m.hodRecoveryMs / 1000;
+      break;
+    case 'chant':
+      // The grout lands after the channel and the lag grace, as the King's circles do.
+      if (e.aiTime >= m.groutChannelMs / 1000 + tuning.coop.lagGraceMs / 1000) {
+        for (const c of e.circles ?? []) {
+          let caught = 0;
+          for (const p of state.players) {
+            if (tuning.debug.passiveEnemies || p.mode === 'down' || Math.hypot(p.x - c.x, p.z - c.z) > m.groutRadius) continue;
+            if (heroInvulnerable(p) || clearsLow(p, e.y)) continue;
+            hurtHero(state, p, { damage: hitDamage(e, m.groutDamage), fromX: c.x, fromZ: c.z, enemyId: e.id, late: true, ...typed('magic') });
+            chillHero(state, p);
+            caught++;
+          }
+          state.events.push({ kind: 'circleLanded', enemyId: e.id, x: c.x, z: c.z, caught });
+        }
+        delete e.circles;
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = m.groutRecoveryMs / 1000;
+      }
       break;
   }
   return want;
@@ -1786,7 +1855,7 @@ function fallenStone(state: SimState, e: EnemyState): EnemyState | null {
 function chanterBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const c = tuning.chanter;
   const want: Intent = { x: 0, z: 0 };
-  const mason = state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead');
+  const mason = masonBinds(state);
   if (e.ai === 'chant') {
     const stone = state.enemies.find((o) => o.kind === 'wardstone' && o.ai === 'dead' && Math.hypot(o.x - e.tele.x, o.z - e.tele.z) < 0.1);
     if (!mason || !stone) {
@@ -1844,7 +1913,8 @@ function chanterBrain(state: SimState, world: World, e: EnemyState, target: Play
 function wardstoneBrain(state: SimState, _world: World, e: EnemyState): Intent {
   e.vx = 0;
   e.vz = 0;
-  if (!state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead')) killEnemy(state, e, 0);
+  // Its Mason fallen, or enraged past needing it (M3): it goes out for good.
+  if (!masonBinds(state)) killEnemy(state, e, 0);
   return { x: 0, z: 0 };
 }
 
@@ -2172,7 +2242,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     state.events.push({ kind: 'enemyRose', enemyId: e.id, x: e.x, z: e.z });
   }
   // A fallen Wardstone lies where it fell while its Mason stands, for a Chanter to raise (M2).
-  const mason = state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead');
+  const mason = masonBinds(state);
   state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e) && !raisable(state, e) && !(mason && e.kind === 'wardstone')));
 }
 

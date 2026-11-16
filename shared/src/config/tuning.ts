@@ -1674,6 +1674,31 @@ export const tuning = {
     hodDamage: 20,
     hodPush: 2,
     hodRecoveryMs: 700,
+    /**
+     * Phase 2 at `phase2At` (M3): a roar raises `phase2Guards` more Mortar Guards (as many as the heroes
+     * allow, as M2's), and from then on some of its turns (`groutChance`) put a violet circle of grout
+     * under every hero within `groutRange`, landing after `groutChannelMs` (and the lag grace) for
+     * `groutDamage` and a Chill.
+     */
+    phase2At: 0.6,
+    phase3At: 0.3,
+    roarMs: 1600,
+    phase2Guards: 2,
+    groutChance: 0.35,
+    groutRange: 18,
+    groutRadius: 1.8,
+    groutChannelMs: 1400,
+    groutDamage: 10,
+    groutRecoveryMs: 700,
+    /**
+     * Phase 3 at `phase3At`: the Wardstones go out for good (never Bound again, none raised), and it
+     * enrages: its string runs `enragedSteps` swings, and the last lands as a slam whose shockwave
+     * rolls `shockwaveRadius` round it, low (jump it), for `shockwaveDamage`.
+     */
+    enragedSteps: 4,
+    shockwaveRadius: 5.5,
+    shockwaveDamage: 16,
+    shockwavePush: 2.5,
     cooldownMs: 1100,
     knockbackDealt: 2,
     spawnMs: 1500,
@@ -3776,6 +3801,14 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.hodRadius': [0.5, 5, 0.1],
   'mason.hodDamage': [0, 80, 1],
   'mason.cooldownMs': [0, 5000, 50],
+  'mason.phase2At': [0, 1, 0.05],
+  'mason.phase3At': [0, 1, 0.05],
+  'mason.groutChance': [0, 1, 0.05],
+  'mason.groutDamage': [0, 60, 1],
+  'mason.groutChannelMs': [300, 4000, 50],
+  'mason.enragedSteps': [3, 6, 1],
+  'mason.shockwaveRadius': [1, 10, 0.1],
+  'mason.shockwaveDamage': [0, 60, 1],
   'wardstone.maxHp': [20, 2000, 10],
   'mason.guards': [0, 4, 1],
   'mason.chanters': [0, 4, 1],

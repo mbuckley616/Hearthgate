@@ -68,7 +68,7 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
   if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' || e.attack === 'knuckles' ? 'heavy' : 'strike';
   // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
-  if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : 'strike';
+  if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : e.attack === 'grout' ? 'magic' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }
@@ -101,6 +101,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'boneRing':
       return 'edge';
     case 'mason':
+      return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':
     case 'mortarGuard':
       return 'blunt';

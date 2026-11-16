@@ -269,3 +269,73 @@ describe('the Mason’s adds (M2)', () => {
     expect(stone.ai).toBe('dead');
   });
 });
+
+describe('the Mason’s phases (M3, part one)', () => {
+  function roared(phase: 2 | 3): { s: SimState; p: PlayerState; m: EnemyState } {
+    Object.assign(tuning.mason, { guards: 0, chanters: 0 });
+    const sc = scene(20);
+    stepEnemies(sc.s, DT, world);
+    sc.m.hp = sc.m.maxHp * (phase === 2 ? tuning.mason.phase2At : tuning.mason.phase3At) - 1;
+    if (phase === 3) sc.m.phase = 2;
+    ticksUntil(sc.s, () => sc.m.phase === phase);
+    return sc;
+  }
+
+  it('roars at phase2At and raises more Mortar Guards, as many as the heroes allow', () => {
+    const { s, m } = roared(2);
+    expect(m.phase).toBe(2);
+    expect(events(s, 'roar')).toEqual([{ kind: 'roar', enemyId: m.id, phase: 2, mason: true }]);
+    // One hero: one Guard more (M2's rule).
+    expect(s.enemies.filter((e) => e.kind === 'mortarGuard')).toHaveLength(1);
+    expect(masonBound(s)).toBe(true);
+  });
+
+  it('pools grout under every hero from phase 2: it lands after the channel and Chills whoever stayed', () => {
+    const { s, p, m } = roared(2);
+    tuning.mason.groutChance = 1;
+    Object.assign(p, { x: m.x, z: m.z + 10 });
+    ticksUntil(s, () => m.ai === 'chant');
+    expect(m.attack).toBe('grout');
+    expect(telegraphTell({ kind: 'mason', attack: 'grout' }, true).colour).toBe('magic');
+    expect(attackType({ kind: 'mason', attack: 'grout' })).toBe('magic');
+    expect(m.circles).toEqual([{ x: p.x, z: p.z }]);
+    const n = ticksUntil(s, () => events(s, 'circleLanded').length > 0);
+    expect(Math.abs(n * DT * 1000 - tuning.mason.groutChannelMs - tuning.coop.lagGraceMs)).toBeLessThanOrEqual(2 * DT * 1000 + 1);
+    expect(p.hp).toBeLessThan(1000);
+    expect(p.chill).toBeGreaterThan(0);
+  });
+
+  it('puts the stones out for good at phase3At: never Bound again, and no Chanter raises them', () => {
+    const { s, m } = roared(3);
+    for (let i = 0; i < 5; i++) stepEnemies(s, DT, world);
+    expect(stones(s).every((e) => e.ai === 'dead')).toBe(true);
+    expect(masonBound(s)).toBe(false);
+    expect(events(s, 'roar').at(-1)).toEqual({ kind: 'roar', enemyId: m.id, phase: 3, mason: true });
+    const ch = createEnemy(s, world, 'chanter', m.x + 6, m.z, 0);
+    Object.assign(ch, { ai: 'chase', aiTime: 0, cooldown: 0 });
+    for (let i = 0; i < 600; i++) stepEnemies(s, DT, world);
+    expect(ch.ai).not.toBe('chant');
+    expect(masonBound(s)).toBe(false);
+  });
+
+  it('enraged, swings enragedSteps, and the last rolls a shockwave round it that reaches a hero behind it', () => {
+    tuning.mason.groutChance = 0;
+    const { s, p, m } = roared(3);
+    Object.assign(p, { x: m.x + Math.sin(m.yaw) * 2, z: m.z + Math.cos(m.yaw) * 2 });
+    ticksUntil(s, () => m.ai === 'windup' && m.attack === 'string');
+    // A partner out of the maul's cone, behind it, inside the shockwave's reach.
+    const q = addPlayer(s, world, 'p2', loadout, false);
+    Object.assign(q, { mode: 'move', invulnTime: 0, lagGrace: 0, hp: 1000, maxHp: 1000 });
+    let swings = 0;
+    let shockwave = false;
+    ticksUntil(s, () => {
+      Object.assign(q, { x: m.x - Math.sin(m.yaw) * 3.5, z: m.z - Math.cos(m.yaw) * 3.5, y: m.y });
+      if (m.ai === 'windup' && m.tele.shape === 'circle') shockwave = true;
+      swings = events(s, 'enemySwing').filter((ev) => 'enemyId' in ev && ev.enemyId === m.id).length;
+      return m.ai === 'slash1' && swings === tuning.mason.enragedSteps;
+    });
+    expect(swings).toBe(tuning.mason.enragedSteps);
+    expect(shockwave).toBe(true);
+    expect(q.hp).toBeLessThan(1000);
+  });
+});

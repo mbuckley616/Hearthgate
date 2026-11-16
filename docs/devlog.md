@@ -2,6 +2,35 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 230, the Mason's three phases (M3, part one)
+
+**What changed**
+
+- **Phase 2, at 60%.** The Mason roars and raises up to two more Mortar Guards, by M2's count. From then on, some of its turns (`mason.groutChance`, 0.35) pool **grout**: a violet circle under every hero within 18 m, as the King's circles. It lands after 1.4 s and the lag grace, for 10 magic damage and a Chill. The doc's 2 s Slow is Chill's own length, 3 s; Chill has no per-source length.
+- **Phase 3, at 30%.** It roars again. The Wardstones go out for good: it is never Bound again and no Chanter raises them. It enrages:
+  - its string runs four swings (`enragedSteps`);
+  - the last swing is a slam whose circle (`shockwaveRadius` 5.5 m) is telegraphed round it. The maul's cone takes the overhead's damage; anyone else in the circle takes a low blunt shockwave (16), which a jump clears.
+- **Banners:** "The Mason calls its Guards" and "The Mason enrages". The roar event carries `mason`.
+
+Bench, Emberhall, level 12, 5 seeds:
+
+| party | kills | ttk s | dmg | pots | downs | phase 3 |
+|---|---|---|---|---|---|---|
+| solo (sword) | 0/5 (timeouts, 36% left) | - | 219 | 1.4 | 0.0 | 1/5 |
+| duo (sword, bow) | 4/5 | 496 | 1105 | 5.8 | 3.6 | 4/5 |
+| trio | 5/5 | 154 | 295 | 0.6 | 0.0 | 5/5 |
+| solo + 3 henchmen | 2/5 | 288 | 199 | 1.4 | 0.0 | 2/5 |
+
+check 730/730 (4 new), test:net green, parity hashes unchanged.
+
+**Learned**
+
+The trio half of M3's gate holds already: every trio fight goes through all three phases in under 3 minutes. The pairs and the lone hero are what is left to tune, and the bench's sword cannot reach a Chanter that keeps its distance.
+
+**Next**
+
+- M3 part two: phase 2's bone ridges (short walls from its slams that split the hall); its drops, the Mortarward Shield and Chanter's Staff (the Gallery Longbow is Michael's to keep or cut); then the tuning, solo and duo first.
+
 ## 2026-11-16: Session 229, the Mason's Guards and Chanters (M2)
 
 **What changed**
