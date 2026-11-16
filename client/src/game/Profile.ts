@@ -4,6 +4,7 @@ import { tuning, type Style } from '@hearthgate/shared/config/tuning';
 import {
   BAG_SIZE,
   CATALOGUE,
+  SHAPES,
   STYLE_KIND,
   entryOf,
   fromSliceItem,
@@ -552,6 +553,38 @@ export class Profile {
     if (best < 0) return false;
     this.wear(best);
     return true;
+  }
+
+  /**
+   * X (Michael, 15 Nov, A): take the next kind of weapon in the bag into the hand, through the
+   * styles in turn (sword, bow, staff) and each style's families in the catalogue's order, the best
+   * of that kind (as `readyWeapon` picks). The kind in hand is skipped, so X always changes the
+   * weapon when the bag holds another kind. The id of the weapon now in hand, or null if none.
+   */
+  nextWeapon(): string | null {
+    const order = (['sword', 'bow', 'staff'] as Style[]).flatMap((s) => SHAPES.filter((sh) => sh.slot === 'weapon' && sh.style === s).map((sh) => sh.id));
+    const best = new Map<string, number>();
+    const score = (i: number) => {
+      const item = this.data.bag[i]!;
+      return entryOf(item).tier * 2 + (item.rarity === 'rare' ? 1 : 0);
+    };
+    this.data.bag.forEach((item, i) => {
+      if (!item) return;
+      const e = entryOf(item);
+      if (e.slot !== 'weapon') return;
+      const was = best.get(e.shape.id);
+      if (was === undefined || score(i) > score(was)) best.set(e.shape.id, i);
+    });
+    const hand = this.data.worn.weapon;
+    const from = hand ? order.indexOf(entryOf(hand).shape.id) : -1;
+    for (let k = 1; k <= order.length; k++) {
+      const shape = order[(from + k + order.length) % order.length];
+      const at = best.get(shape);
+      if (at === undefined || (hand && entryOf(hand).shape.id === shape)) continue;
+      this.wear(at);
+      return this.data.worn.weapon!.id;
+    }
+    return null;
   }
 
   /** Styles a weapon is carried for, in hand or in the bag. */

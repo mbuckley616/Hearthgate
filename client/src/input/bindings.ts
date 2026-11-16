@@ -5,9 +5,10 @@ import type { ButtonAction } from './actions';
  * use the pseudo-codes below. Matches the control table in docs/brief.md.
  */
 export const keyboardBindings: Record<ButtonAction, string[]> = {
-  // Michael's call after M4: dodge on Ctrl, jump on Space (the brief had Space as dodge).
+  // Michael's call after M4: dodge on Ctrl (the brief had Space as dodge). Space is `jumpOrUse`
+  // (Michael, 15 Nov, A): a jump, or F while a prompt is showing.
   dodge: ['ControlLeft'],
-  jump: ['Space'],
+  jump: [],
   sprint: ['ShiftLeft'],
   // J and L (and the arrows below) are Hearthgate's keyboard-only keys (decision 10A, CLAUDE.md rule 4).
   attack: ['Mouse0', 'KeyJ'],
@@ -38,6 +39,9 @@ export const keyboardBindings: Record<ButtonAction, string[]> = {
   slowMo: ['Backslash'],
   hitboxes: ['KeyH'],
   inventory: ['Tab'],
+  bag: ['KeyB'],
+  nextWeapon: ['KeyX'],
+  jumpOrUse: ['Space'],
   // The minimap: the corner or the whole floor (T4).
   map: ['KeyM'],
   zoomIn: ['WheelUp', 'Equal'],

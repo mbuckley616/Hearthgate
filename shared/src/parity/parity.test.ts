@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true, states: true, mastery: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true, states: true, mastery: true, selfOnly: true, regen: 0 };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -44,6 +44,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.threePhases = tuning.warden.threePhases;
     kept.states = tuning.combos.elementStates;
     kept.mastery = tuning.mastery.enabled;
+    kept.selfOnly = tuning.heal.selfOnly;
+    kept.regen = tuning.heal.regenPerS;
     tuning.coop.bleedOut = false;
     // The slice's roll tail and its i-frames ending with it (D9 shortened one and kept the other).
     tuning.dodge.cancelAfterMs = 240;
@@ -76,6 +78,9 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.combos.elementStates = false;
     // It counts no payoffs (combo mastery).
     tuning.mastery.enabled = false;
+    // It heals as it always did, and never out of a fight (Michael, 15 Nov, A).
+    tuning.heal.selfOnly = false;
+    tuning.heal.regenPerS = 0;
   });
   afterAll(() => {
     tuning.coop.bleedOut = kept.bleedOut;
@@ -96,6 +101,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.warden.threePhases = kept.threePhases;
     tuning.combos.elementStates = kept.states;
     tuning.mastery.enabled = kept.mastery;
+    tuning.heal.selfOnly = kept.selfOnly;
+    tuning.heal.regenPerS = kept.regen;
   });
 
   for (const sc of SCENARIOS) {

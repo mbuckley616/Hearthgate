@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { readLoadout } from '../net/validate';
@@ -72,6 +72,13 @@ describe("a specialization's tree", () => {
 });
 
 describe("the Paladin's tree", () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   it('Long Grudge: the taunt lasts treeTauntSeconds', () => {
     const plain = scene(20);
     const e = awake(plain.s, 0, 6);
@@ -463,6 +470,13 @@ describe("the Warlock's tree", () => {
 });
 
 describe("the Druid's tree", () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   const druid = (level: number, tree?: string[]) => scene(level, tree, 'druid');
   const bolt = { kind: 'bolt', style: 'staff', owner: 'p1' } as unknown as ProjectileState;
 

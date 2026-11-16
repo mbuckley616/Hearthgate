@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 203, the boss document approved and cut into the backlog (Fable)
+
+**What changed**
+- Michael answered all three of Session 202's questions on the control room at 15:56 UTC: A on the boss document (approve as written, the builder starts at the bench), A on the colours (hue by damage type, orange as a pulsing "cannot be blocked" rim), A on specialize or switch (jobs per phase, drops by job, focus up to +9%). The three entries moved to `decisions.md` Answered with his `Michael:` lines.
+- `docs/bosses.md` now says it is approved and states his choices where it had recommendations; B4 and B7 lose their "only if" conditions.
+- `docs/backlog.md`: the **(Fable)** boss pass is checked, and section 3's cut is under E1 as nineteen lines, B0 to B7, (design) B8, H1 to H3 with a **(Michael)** playtest, M1 to M3 (the Mason), W1 and K1, then E1i with Grubnose. Each names its switch and its gate.
+- Merged origin/main (Sessions 199 and 200, the critic's run): devlog and backlog conflicts resolved keeping both sides.
+
+**Learned**
+- The cut's "M1" to "M3" for the Mason share a name with M1, the jump clearing low attacks (CLAUDE.md); the backlog lines say "the Ossuary Mason" so the builder does not confuse them.
+
+**Next**
+- The builder takes B0, the boss bench, then B1 to B7; B8 needs its question asked first. The Gravehand (H1 to H3) follows, then Michael's playtest of it.
+
 ## 2026-11-16: Session 202, the boss design pass (Fable, the document)
 
 **What changed**
@@ -14,6 +28,33 @@ Newest entry first. One entry per session: what changed, what was learned, what 
 
 **Next**
 - Michael's three answers. On A, the builder starts the cut at B0 (the bench), then B1 to B7, then the Gravehand's three sessions. This card waits until then; its PR opens when the answers are written.
+## 2026-11-15: Session 200, self-heals only and a slow regen out of a fight
+
+**What changed**
+
+Michael's A on healing. `tuning.heal` is a new panel section. With `heal.selfOnly` on, the four heals that reached allies heal their caster alone: the Paladin's Bulwark pulse and its rank V twist heal the Paladin, a Druid's Wild Growth grove heals the Druid who grew it, and Bloom's bolts no longer heal the allies they pass. A Druid's bolt that lands on an enemy heals the Druid `heal.bloomSelf` (1.5%, Rich Bloom doubles it), once a bolt (`bloomSelfHeal`). The Talents text says "heals you". `sim/regen.ts`: once no fight has been on for `heal.regenDelayS` (5 s), every standing hero and henchman regains `heal.regenPerS` (1%) of their health a second, never past full and never while down. A fight starting (a floor's room shutting, the arena's waves) stops it at once and starts the wait again. The state is one optional number, `SimState.calmFor`. The server alone steps it; prediction takes health from the snapshot as before. The parity test turns both off (`selfOnly` false, `regenPerS` 0) and its hashes are unchanged. The six older tests of the ally heals run with the switch off. `regen.test.ts` adds 8 tests: an ally beside each of the four heals gains nothing, the Druid's bolt heals the Druid once, and the regen waits 5 s, stops in a fight and skips the downed. check 637/637, test:net green.
+
+**Learned**
+
+Bloom at its old 4% as lifesteal on every bolt would be about 6% of health a second for a staff's fire rate, so the self-heal has its own smaller number on the panel. Rallying Light (Bulwark's pulse reaches 7 m) does nothing while heals are self-only; the boss and spec pass should give it another job. The arena's antechamber stands a downed hero back up out of a fight, so regen never meets a downed hero there.
+
+**Next**
+
+The Shift and Ctrl question (Session 199) waits on Michael. The graphics cost and the crowd item need a real machine; after that the builder has nothing left until the boss design pass cuts its items.
+
+## 2026-11-15: Session 199, Space at a prompt, B for the bag, X for the next weapon
+
+**What changed**
+
+Michael's A on the controls from the playtest with Nick, all but the Shift and Ctrl swap. Space is its own action (`jumpOrUse`): `Game.promptShowing` decides each frame whether it is F (a villager or a door in reach, a downed ally within revive range, a floor's end card, a menu, the pause card or the run summary up) or a jump; held, it holds F, so a revive or a door takes Space too. F still interacts and the pad is unchanged. B opens the hero screen on the bag and body tab, or closes it from there (`EquipScreen.toggleBag`), where Tab may open it. X takes the next kind of weapon from the bag (`Profile.nextWeapon`): the styles in turn, sword, bow, staff, and within each the catalogue's families (sword, warhammer, mace, axe, daggers, then the bows), the best of a kind as `readyWeapon` picks, never another of the kind in hand. It works where a weapon may change, between fights or with the panel's "Swap style mid-fight" on; mid-fight with the switch off it says so in a toast. The hints say "F or Space", and the controls list has B, X and Space. `tests/controls-keys.ts` (in `npm run check`, 5 checks) and a browser test in `smoke.e2e.ts` (X goes bow then staff, B opens and shuts the bag, Space jumps on the square and opens Wren's card at her table) are green.
+
+**Learned**
+
+Sprint on Ctrl is held while moving, and Ctrl+W closes the tab with no way for a page to stop it; the swap is asked in `decisions.md` before it is built (recommended: Ctrl toggles sprint). No pad button is free in the standard mapping (all sixteen are bound), so X has no pad twin; on a pad the hero screen (View) changes the weapon, mid-fight too with the test switch on (Session 198).
+
+**Next**
+
+The Shift and Ctrl question. Then self-heals only and a slow regen.
 
 ## 2026-11-15: Claude (local), the playtest with Nick filed
 
@@ -28,6 +69,34 @@ A henchman's leader is whoever is nearest (`sim/henchman.ts`), which only shows 
 **Next**
 
 Michael answered A on all three in chat the same day and counted the evening as the builds-pass playtest; the answers are in `decisions.md` and the items are cut. The builder: the henchman bug, the controls, the test switch, self-heals and regen, the graphics cost. The producer cards the boss design pass for the deep-work session, which comes before E1i.
+
+## 2026-11-15: Session 198, a test switch to change style mid-fight
+
+**What changed**
+
+Michael's note from the playtest with Nick: "let me swap between attack styles quickly, even mid combat." `combo.swapInFight` was already a server tuning value and sat on the panel deep in the `combo` folder. It now also sits in the Debug folder as "Swap style mid-fight", beside god mode, and goes through the server like the others, so prediction and every joiner after get the same setting. With it on, Tab (View on a pad) opens the hero screen mid-fight too, and a weapon picked there lands at once, as the slice's 1, 2 and 3 did. Off, nothing changes. The panel (backquote) and its `tune` edits work in every build, the hosted one included; only the cheat buttons need a dev server. A new test in `weaponSet.test.ts` sends the panel's `tune` message through validation into a `HostSession`, then checks that the server's tuning, the edits a joiner is sent, and a mid-fight swap all follow it on and back off.
+
+**Learned**
+
+The switch alone did not let anyone swap: the hero screen refused to open while a fight was on, so the weapon could not be picked.
+
+**Next**
+
+The key and pad button that equip the next weapon wait on the controls decision (A suggests X). Then the frame-rate item, which needs a real machine.
+
+## 2026-11-15: Session 197, henchmen keep to whoever hired them
+
+**What changed**
+
+The bug from Michael's playtest with Nick (15 Nov): the hires followed the visitor. A henchman's brain kept to the nearest standing player, and so did its unstick teleport. Now `HenchmanBrain.leader` holds the hero who hired it (set by `addHenchman` on a Tavern hire or the debug cheat), and `leaderOf` (`sim/henchman.ts`) returns that hero while they stand. If the hirer is down or gone it falls back to the nearest, as before. A Necromancer's skeleton keeps to its own Necromancer the same way, through `summon.owner`. Player ids are party slots and change from room to room, so a `HenchmanCard` carries its hirer's connection (`leader`, a session id). The room's hand-off renames that connection to the seat it reserves (`renameAwaitedLeader`) before it sends the hand-off, and the next room's `HostSession` sets the brain's leader when that hello lands. This holds even when the visitor arrives first and takes slot p1. Three tests in `henchman.test.ts`: the hirer far and the visitor near; the hirer down, back up, then gone; and a hand-off to a room where the hirer joins second under a new connection, then on to the room after that. Server only. Prediction never steps a henchman, and the arena's parity hashes have no henchmen.
+
+**Learned**
+
+With its hirer down, a henchman's move is a revive, toward the hirer, before following anyone. So the test reads the leader directly, not the move.
+
+**Next**
+
+The test switch for changing style mid-fight (the panel's `combo.swapInFight`; the key waits on the controls decision). Then the frame-rate item, which needs a real machine.
 
 ## 2026-11-13: Session 196, skeletons are never raised through a wall
 

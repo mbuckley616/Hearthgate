@@ -1,3 +1,4 @@
+import { stepRegen } from './regen';
 import { fadeConsecrated, stepBrambles, stepGroves, stepSnares, stepTrails } from './specs';
 import { groundHeight, type LevelDef, type World } from '../level/arena';
 import { stepPendingHits, stepRevives } from './coop';
@@ -68,6 +69,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   stepProjectiles(state, dt, w.colliders, world.level.dungeon?.smashable);
   stepRun(state, dt, w);
   stepDrops(state, dt);
+  stepRegen(state, dt);
   if (state.consecrated) fadeConsecrated(state);
   state.tick++;
   state.time += dt;

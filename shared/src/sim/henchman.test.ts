@@ -9,7 +9,7 @@ import { readToHost } from '../net/validate';
 import { spawnDrop } from './drops';
 import { createEnemy } from './enemies';
 import { emptyMods } from './gear';
-import { henchmanCommand, inTelegraph, readHenchmanCards } from './henchman';
+import { henchmanCommand, inTelegraph, leaderOf, readHenchmanCards } from './henchman';
 import { emptyTalents } from './talents';
 import type { SimEvent } from './types';
 
@@ -238,5 +238,60 @@ describe('the bow and staff henchmen (P6)', () => {
     for (let i = 0; i < 60 * 60; i++) events.push(...host.tick());
     const combos = events.filter((e) => e.kind === 'combo' && hench.some((h) => h.id === e.playerId));
     expect(combos.length).toBeGreaterThan(0);
+  });
+});
+
+describe('a henchman keeps to whoever hired it (Michael, 15 Nov, the playtest with Nick)', () => {
+  /** Two players in the arena's antechamber, the hirer `a` with a hire; the visitor `b` stands nearer it. */
+  function twoPlayers() {
+    const host = new HostSession(world, () => {}, true);
+    host.onMessage('a', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    host.onMessage('b', { k: 'hello', version: PROTOCOL_VERSION, loadout: { ...loadout, name: 'visitor' } });
+    const [hirer, visitor] = host.sim.players;
+    const h = host.addHenchman(hirer)!;
+    hirer.x = 0;
+    hirer.z = -14;
+    visitor.x = 0;
+    visitor.z = 8;
+    h.x = 0;
+    h.z = 4;
+    return { host, hirer, visitor, h };
+  }
+
+  it('walks to its hirer though the visitor stands nearer', () => {
+    const { host, hirer, h } = twoPlayers();
+    expect(h.brain?.leader).toBe(hirer.id);
+    const cmd = henchmanCommand(host.sim, h);
+    // Toward the hirer (-z), not the visitor (+z).
+    expect(cmd.moveZ).toBeLessThan(-0.5);
+  });
+
+  it('keeps to the nearest while its hirer is down or gone, and goes back to its hirer after', () => {
+    const { host, hirer, visitor, h } = twoPlayers();
+    // (Its move while the hirer is down is a revive, so the leader is read directly.)
+    hirer.mode = 'down';
+    expect(leaderOf(host.sim, h)).toBe(visitor);
+    hirer.mode = 'move';
+    expect(leaderOf(host.sim, h)).toBe(hirer);
+    host.onPeerLeft('a');
+    expect(leaderOf(host.sim, h)).toBe(visitor);
+  });
+
+  it('still keeps to its hirer in the next room, though the hirer arrives under a new connection and second', () => {
+    const { host, hirer } = twoPlayers();
+    expect(hirer.id).toBe(host.sim.players[0].id);
+    const cards = host.takeHenchmen();
+    expect(cards[0].leader).toBe('a');
+    // The next room: the cards ride its options, then the room renames the hirer's seat and both join, visitor first.
+    const next = new HostSession(world, () => {}, true);
+    next.receiveHenchmen(readHenchmanCards(JSON.parse(JSON.stringify(cards))));
+    next.renameAwaitedLeader('a', 'a2');
+    next.onMessage('b2', { k: 'hello', version: PROTOCOL_VERSION, loadout: { ...loadout, name: 'visitor' } });
+    next.onMessage('a2', { k: 'hello', version: PROTOCOL_VERSION, loadout });
+    const h = next.sim.players.find((p) => p.henchman)!;
+    const hirer2 = next.sim.players.find((p) => !p.henchman && p.name === 'p')!;
+    expect(h.brain?.leader).toBe(hirer2.id);
+    // And on through the room after that.
+    expect(next.takeHenchmen()[0].leader).toBe('a2');
   });
 });

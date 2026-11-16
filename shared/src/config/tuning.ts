@@ -1609,6 +1609,21 @@ export const tuning = {
   },
 
   /**
+   * Healing (Michael, 15 Nov, A: "Heals can happen mid-combat, self-heals only"; "Maybe regen health
+   * out of combat, but slowly"). Potions stay the party's one answer for each other mid-fight.
+   */
+  heal: {
+    /** The Druid's Bloom and Wild Growth, the Paladin's Bulwark and its rank V twist heal their caster alone. Off in the parity test. */
+    selfOnly: true,
+    /** With `selfOnly`, a Druid's bolt that lands heals the Druid this share of their health, once a bolt (Rich Bloom doubles it). */
+    bloomSelf: 0.015,
+    /** Out of a fight a standing hero regains this share of their health a second (0 turns it off, as the parity test does). */
+    regenPerS: 0.01,
+    /** Seconds with no fight on before the regen starts. */
+    regenDelayS: 5,
+  },
+
+  /**
    * Drop-in co-op (brief: "Co-op"). The host runs the fight; every other
    * player predicts their own hero and sees the rest slightly in the past.
    */
@@ -2662,6 +2677,9 @@ export type Tuning = typeof tuning;
 
 /** Slider ranges for the debug panel: "section.key" -> [min, max, step]. */
 export const tuningRanges: Record<string, [number, number, number]> = {
+  'heal.bloomSelf': [0, 0.1, 0.005],
+  'heal.regenPerS': [0, 0.05, 0.001],
+  'heal.regenDelayS': [0, 30, 0.5],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],
