@@ -16,6 +16,19 @@ Playwright's `keyboard.press` waits for each key to be handled, a frame apiece o
 
 The graphics cost and the crowd item still need a real machine; then the builder waits on Michael's three answers on the boss document.
 
+## 2026-11-16: Session 202, the boss design pass (Fable, the document)
+
+**What changed**
+- `docs/bosses.md`, the boss document for Michael's approval (his A, 15 Nov). Section 1, the rules: designed for three with a job per style each phase; the early bar (solo in 3 to 5 minutes at Normal with no henchmen, a duo in under half that); adds weak to one style (armoured to magic, warded to ranged, skirmisher to melee); one signature drop a player that helps against its own boss (resist a type, cast faster, a bane); damage types blunt, edge, pierce, magic; a tank's blockable string every phase; specializing rewarded by jobs and drops. Section 2, five bosses in build order: the Gravehand (Mossgate Barrow), the Ossuary Mason (Emberhall, Michael's tanky boss), the Warden and the Hollow King under the rules, Chief Grubnose and his Pig (the Warrens, E1i). Section 3, the cut: a bench first (B0), seven rule lines, three sessions a new boss, every line behind a switch the parity test turns off.
+- Three questions under `## Pending` in `decisions.md`: approve the document; colour by damage type (A recommended: hue by type, orange as an "unblockable" rim); specialize or switch (A recommended: jobs, drops by job, and a small focus bonus). Nothing in `shared/`, `server/` or `client/` changed.
+
+**Learned**
+- A boss's health grows only with party size, `1 + (players - 1) x run.extraPlayerHealth` (0.6) in `createEnemy`, and `state.players` counts henchmen in full. Against linear damage that makes the time to kill solo 1.00, duo 0.80, trio 0.73: two players barely beat one, missing Michael's "crush". At 0.35 a player it is 1.00, 0.68, 0.57. A hero with three henchmen fights a 2.8x boss with four bodies splitting its attention, which is the Warden bullying of 2 Nov; henchmen at half weight make it 1.5x.
+- No enemy hit has a type and no enemy takes more or less from a style today; `HeroHit` and `damageEnemy` are the two places both go.
+
+**Next**
+- Michael's three answers. On A, the builder starts the cut at B0 (the bench), then B1 to B7, then the Gravehand's three sessions. This card waits until then; its PR opens when the answers are written.
+
 ## 2026-11-16: Session 201, dodge on Shift and a toggled sprint on Ctrl or a double W
 
 **What changed**

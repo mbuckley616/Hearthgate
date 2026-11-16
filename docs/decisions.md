@@ -7,6 +7,24 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-16: The boss document: approve it? (Fable, Session 202)
+`docs/bosses.md` is the boss design pass (Michael, 15 Nov, A): the rules every boss follows (designed for three; an early boss beaten solo in 3 to 5 minutes and by two in under half that; adds weak to one style each; a signature drop a player that helps against its own boss; damage types blunt, edge, pierce and magic; a tank's string in every phase; jobs that reward specializing), then five bosses in build order: **the Gravehand** (a floating bone hand for Mossgate Barrow: palm slams you dodge, a sweep you jump, a grab a partner frees you from, its three rings as adds), **the Ossuary Mason** (Emberhall: takes 25% while its Wardstones stand; Mortar Guards weak to magic, Bone Chanters weak to ranged rebuild the stones; drops a shield against blunt and a staff that casts 15% faster), the Warden and the Hollow King under the rules, and **Chief Grubnose and his Pig** for the Goblin Warrens (E1i). One number it changes for every boss: today a boss's health grows 60% a player and henchmen count in full, so two heroes kill it only 20% faster than one and a hero with three henchmen fights a 2.8x boss with four bodies; it proposes 35% a player with henchmen at half. Section 3 cuts it into about twenty builder lines, each with its gate, the bench (B0) first, everything behind switches the parity test turns off.
+- **A.** Approve as written; the builder starts the cut at B0 (the bench), then the rules, then the Gravehand. *(recommended: the hand boss is early and solo-shaped, so it proves the rules on the boss Michael asked for first)*
+- **B.** Approve with changes: name them (a boss, a name, a drop, the order, the numbers).
+- **C.** Rework the rules first (section 1) before any boss is cut.
+
+### 2026-11-16: Boss telegraphs: colour by damage type? (Fable, Session 202)
+Today a telegraph's colour says what the attack does (E1a): red a strike, orange heavy or unblockable, yellow a projectile or a charge, violet magic. Michael's note asks for colour by attack type. They differ in three places: a charge is melee but yellow, a slam melee but orange, and an armoured enemy's every swing turns orange.
+- **A.** Hue by type (red melee, yellow ranged, violet magic) and orange becomes a rim with a slow pulse on any shape that cannot be blocked: dodge or jump it. A slam is a red circle with an orange rim. *(recommended: the type is what a player's gear answers, the rim keeps the "do not block" read)*
+- **B.** Keep today's colours and add a small type icon at the shape's edge.
+- **C.** Hue by type only; heavy and unblockable are told by size and sound alone.
+
+### 2026-11-16: Specialize or switch: what bosses reward (Fable, Session 202)
+Michael: "Do you want people to specialize, or do you want people to switch? Give benefits to when people specialize." Today the weapon set is one per outing (C3) and a specialization reshapes its style from level 10.
+- **A.** Jobs, not checks, plus focus: each boss phase has a melee, a ranged and a magic job, done fastest by the matching style and fastest of all by its specialization; a boss's signature drop goes to the job a hero did; and staying in one style through a run earns +3% damage a floor, up to +9%, lost on a swap, shown in the corner. *(recommended: rewards specializing without locking a solo hero out of any job)*
+- **B.** As A without focus: the jobs and the drops only.
+- **C.** Switching is the skill: the weapon set may change mid-fight for everyone (the test switch made a rule) and bosses reward one hero covering all three jobs.
+
 ## Answered
 
 ### 2026-11-15: Sprint on Ctrl would close the tab (builder, Session 199)
