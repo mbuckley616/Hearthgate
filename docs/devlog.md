@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 204, the boss bench (B0)
+
+**What changed**
+
+Michael's A on the boss document (control room, 16 Nov), with his A's on the colours and on specialize-or-switch. The document's branch (`auto/fable-boss-design-pass`, docs only) is merged into `auto/build` so the cut sits beside the code, and the backlog carries section 3's lines under the current section. B0: `npm run bench:bosses` (`tests/bosses.ts`) steps a `HostSession` headless, as `snapshot-size.ts` does, with scripted heroes sending numbered commands through the input slots: one sword hero, sword and bow, sword, bow and staff, then one sword hero with three henchmen, each on Mossgate Barrow's last floor (its story seed, Normal) against the Warden, over ten seeds of the sim's rng. A hero closes to its range, attacks every other tick, presses Q and E now and then, drinks under a third of health, holds F over a downed friend, and rolls out of a telegraph it stands in after 200 ms, toward a clear landing nearest where it wants to fight and never through a body; out of one, it does not step into one. It prints the boss's health and time to kill against 1.2's "today", damage taken, potions, downs, fight length and the boss's health left, and writes `tests/tmp/bosses.json`. It fails if a party's boss health is not 1.2's multiplier or a boss never wakes. 25 s for all forty fights.
+
+Ten seeds, level 5: solo kills 4 of 10 (median 101 s) and wipes 6 with the Warden at 18% on average; duo 10 of 10 in 79 s (0.78 of solo, 1.2 predicts 0.80); trio 9 of 10 in 67 s (0.67, predicted 0.73); one hero with three henchmen 10 of 10 in 47 s (0.47, predicted 0.70) taking 17 damage on average. check 637/637.
+
+**Learned**
+
+The duo and trio match 1.2's "today" from health alone. The henchman party beats its prediction because the Warden's attention is split four ways: the hero barely gets hit, which is the bullying the document describes. Solo misses the bar both ways: when it wins, it wins in under two minutes, and most runs it does not win. B1's tuning has to slow a solo fight and make it safer, not only cut a duo's health. The bot's first versions lost every solo fight for the bot's own reasons. The attack cadence was keyed to a number that grew with the tick, so it never swung. Rolling straight back from a Warden sweep stops at 5.7 m, inside a 5.2 m cone with the hero's radius. Rolling toward the punish spot ran into the Warden's body. A hero placed exactly on the boss's spawn point turns NaN in the first steps (`separateBodies` guards zero, so it is elsewhere); walking in never lands there to the bit, so the bench stands the party 5 m off the middle.
+
+**Next**
+
+B1, party scaling for bosses, tuned on this bench.
+
 ## 2026-11-16: Session 203, a double W counts on a slow page
 
 **What changed**
