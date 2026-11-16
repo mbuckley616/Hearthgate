@@ -178,9 +178,12 @@ export function nearestTarget(state: SimState, e: EnemyState): PlayerState | nul
     const chosen = bossTarget(state, e, open);
     if (chosen !== undefined) return chosen;
   }
+  // The Bone Ring (H2) is the skirmisher: it darts past the blade for the archer and the mage.
+  const backline = e.kind === 'boneRing' && state.players.some((p) => p.mode !== 'down' && !isHidden(state, p) && p.style !== 'sword');
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {
+    if (backline && p.style === 'sword') continue;
     // An Assassin in their Smoke Bomb's cloud is lost to every enemy (the builds pass).
     if (p.mode === 'down' || isHidden(state, p)) continue;
     const d = Math.hypot(p.x - e.x, p.z - e.z);

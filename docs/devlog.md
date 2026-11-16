@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 219, the Bone Ring goes for the back line (H2)
+
+**What changed**
+
+The Bone Ring is the skirmisher (`docs/bosses.md` 2.1: "darts at the archer and the mage"). `nearestTarget` now passes over any hero holding a sword while a hero with a bow or staff stands and can be seen, then takes the nearest of those. With no one else standing it takes the blade. So the melee hero's job is to catch it on its way past, and one blow staggers it. A taunt still holds it first. `gravehand.test.ts` gains a test: a sword hero nearer and an archer farther, the ring takes the archer, then the sword once the archer is down. check 701/701.
+
+**Learned**
+
+Targeting by style already has what it needs in `PlayerState.style`, so a kind's preference is one line in `nearestTarget`, and the token cap still keeps it to two on the archer.
+
+**Next**
+
+H3: the clench (phase 3 at 30%, a 0.9 s rest), the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops (Ringward Buckler, Knucklebone Bow, Grave-cloth Wraps), then the bench's solo and duo numbers against the bar.
+
 ## 2026-11-16: Session 218, a held hero's corner line (H2)
 
 **What changed**

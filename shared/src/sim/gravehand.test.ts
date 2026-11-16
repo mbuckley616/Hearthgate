@@ -3,7 +3,7 @@ import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer, type Loadout } from './coop';
 import { damageEnemy, type HitSpec } from './combat';
-import { brainFor, createEnemy, separateBodies, stepEnemies } from './enemies';
+import { brainFor, createEnemy, nearestTarget, separateBodies, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { gravehandLift, handAloft, heldLine, palmResting } from './gravehand';
@@ -319,5 +319,20 @@ describe('the Gravehand, phase 2: the grab (H2)', () => {
     for (let i = 0; i < beat * 3 && p.held; i++) stepSim(s, { p1: press(i % beat === 0) }, DT, world);
     expect(p.held).toBeUndefined();
     expect(p.invulnTime).toBeGreaterThan(0);
+  });
+});
+
+describe('the Bone Ring goes for the back line (H2)', () => {
+  it('passes the nearer blade for the archer or the mage, and takes the blade when there is no one else', () => {
+    const { s, p } = scene(4);
+    const bone = createEnemy(s, world, 'boneRing', 0, 6, 0);
+    Object.assign(bone, { x: 0, z: 6, ai: 'chase' });
+    expect(nearestTarget(s, bone)?.id).toBe('p1');
+    const archer = addPlayer(s, world, 'p2', loadout, false);
+    Object.assign(archer, { x: 0, z: 14, style: 'bow' });
+    expect(p.style).toBe('sword');
+    expect(nearestTarget(s, bone)?.id).toBe('p2');
+    archer.mode = 'down';
+    expect(nearestTarget(s, bone)?.id).toBe('p1');
   });
 });
