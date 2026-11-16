@@ -7,14 +7,15 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-15: Sprint on Ctrl would close the tab (builder, Session 199)
 Your A on the controls swaps dodge to Shift and sprint to Ctrl. Sprint is held while moving, so sprinting forward is Ctrl+W, which closes the browser tab, and no web page can block it (the game can only ask "Leave site?", which drops the mouse mid-fight). Today's Ctrl dodge has the same hole, but only for a tap. Session 199 built the rest of the A (Space interacts at a prompt, B the bag, X the next weapon) and left Shift and Ctrl as they are until you choose.
 - **A.** Dodge on Shift; Ctrl toggles sprint (tap once to run, it stops when you stop moving), so Ctrl is never held with W. *(recommended: your Shift dodge, and Ctrl+W can no longer happen from either key)*
 - **B.** Dodge on Shift; sprint held on Left Alt (Alt+D and Alt+F can still reach the browser's menus on some systems).
 - **C.** Dodge on Shift and sprint held on Ctrl as you chose, with the "Leave site?" guard as the only safety.
 - **D.** Keep dodge on Ctrl and sprint on Shift (no change).
-
-## Answered
+Michael: **A. Dodge on Shift; Ctrl toggles sprint** — Can we make Sprint a double-press on W? So two rapid W taps triggers sprint on? Or would that not mesh well with the controller setup? (2026-11-15)
 
 ### 2026-11-15: The controls from the playtest with Nick (Claude (local))
 Michael's notes: "Space to jump and interact", "Shift for dodge instead of control", "Have bag be B", and a quick style swap for testing. Today dodge is Ctrl and sprint Shift (his call after M4), Space jumps, F interacts, Tab opens the hero screen. Space can only do both if it interacts when a prompt is showing (a keeper, a door, a ring) and jumps otherwise, so a jump beside a keeper opens their card instead.
