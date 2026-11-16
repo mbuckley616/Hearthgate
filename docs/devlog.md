@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 222, the shatter flick (H3, part three)
+
+**What changed**
+
+Once the Gravehand has clenched (phase 3), its flick shatters. Each shard that meets a wall or runs out its flight without striking a hero splits into two pieces there. The pieces fan `shatterSplitDeg` (35 degrees) either side of its line and fly `shatterFlightS` (0.4 s) more. A sidestep that only just cleared the shard can meet a piece, so the dodge must be wide. Pieces never split again, and a shard that strikes a hero (or is parried back) does not split. A shard carries an optional `ProjectileState.shatters`, so the wire's lists are unchanged. `stepProjectiles` splits it in the hostile branch (`shatterShard`). Before the clench the flick is whole. `gravehand.test.ts` gains 3 tests: three shards landing make six pieces, fanned and never splitting again; a shard that strikes a hero does not split; no shatter before phase 3. check 710/710 (parity unchanged), test:net green.
+
+**Learned**
+
+Short-lived pieces from an early shard can expire and leave the list before the last shard lands. The test has to collect them as they come rather than count them at the end.
+
+**Next**
+
+The Gravehand's three phases and its drops are built. Left of H3 is its gate: one bench fight that shows all three phases, and the bench's solo and duo numbers against the bar (`npm run bench:bosses` with the Gravehand on Mossgate). After that comes **(Michael)** a playtest of it, solo and with a friend, so the fight is felt in a browser before M1.
+
 ## 2026-11-16: Session 221, the Gravehand's signature drops (H3, part two)
 
 **What changed**

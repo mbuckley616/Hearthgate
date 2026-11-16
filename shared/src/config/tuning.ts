@@ -1525,6 +1525,9 @@ export const tuning = {
     grabFreedInvulnMs: 500,
     /** The Grave-cloth Wraps (H3, a signature drop): a hero wearing them is held only this long. */
     looseGripMs: 1500,
+    /** Phase 3's shatter flick (H3): each shard that lands splits into two, `shatterSplitDeg` either side, flying `shatterFlightS` more. */
+    shatterSplitDeg: 35,
+    shatterFlightS: 0.4,
     /**
      * Phase 3 (H3) at `phase3At`: a roar, and it clenches into a fist. Its palm rests `phase3RestMs`
      * instead of `slamRestMs`, and some turns (`knuckleChance`) roll a knuckle chain: `knuckles`

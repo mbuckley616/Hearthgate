@@ -406,6 +406,21 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
   if (pr.kind === 'bolt' && !pr.chained) chainBolt(state, pr, e);
 }
 
+/** Two pieces of a shatter flick's shard (H3), fanned from where it stopped, flying a short way on. */
+function shatterShard(state: SimState, pr: ProjectileState, dir: { x: number; z: number }): void {
+  const g = tuning.gravehand;
+  const speed = Math.max(1, Math.hypot(pr.vx, pr.vz));
+  const yaw = Math.atan2(dir.x, dir.z);
+  for (const side of [-1, 1]) {
+    const a = yaw + side * g.shatterSplitDeg * (Math.PI / 180);
+    // Back off the wall a little, so the piece does not start inside it.
+    state.projectiles.push({ ...pr, id: state.nextId++, x: pr.x - dir.x * 0.3, z: pr.z - dir.z * 0.3, vx: Math.sin(a) * speed, vy: 0, vz: Math.cos(a) * speed, age: 0, life: g.shatterFlightS, hitIds: [], shatters: undefined });
+  }
+  const last = state.projectiles[state.projectiles.length - 1];
+  delete last.shatters;
+  delete state.projectiles[state.projectiles.length - 2].shatters;
+}
+
 export function stepProjectiles(state: SimState, dt: number, colliders: readonly Collider[], props?: readonly PropInfo[]): void {
   for (const pr of state.projectiles) {
     // An echo waiting to fly is nowhere yet; it sounds as it goes.
@@ -481,10 +496,12 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
     // Enemy arrows hit heroes (dodge i-frames let them pass), and nothing else.
     if (pr.hostile) {
       const hit = Math.min(dist, wall);
+      let struck = false;
       for (const p of state.players) {
         if (heroInvulnerable(p)) continue;
         const t = segmentHitsCapsule(pr, dir, hit, p.x, p.y, p.z, tuning.movement.radius, tuning.movement.height);
         if (t < Infinity) {
+          struck = true;
           const shooter = Number(pr.owner.slice(1));
           const result = hurtHero(state, p, { damage: pr.damage, fromX: pr.x - dir.x * 3, fromZ: pr.z - dir.z * 3, enemyId: shooter, arrow: true, ...typed(pr.kind === 'bolt' ? 'magic' : 'pierce') });
           if (result === 'parried') reflectArrow(state, pr, p, shooter);
@@ -492,11 +509,15 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
           break;
         }
       }
-      if (pr.life <= 0 || !pr.hostile) continue;
-      pr.x += dir.x * hit;
-      pr.y += dir.y * hit;
-      pr.z += dir.z * hit;
-      if (wall < dist) pr.life = 0;
+      if (!pr.hostile) continue;
+      if (!struck && pr.life > 0) {
+        pr.x += dir.x * hit;
+        pr.y += dir.y * hit;
+        pr.z += dir.z * hit;
+        if (wall < dist) pr.life = 0;
+      }
+      // The shatter flick (H3): a shard that met a wall or ran its flight out splits in two there.
+      if (!struck && pr.life <= 0 && pr.shatters) shatterShard(state, pr, dir);
       continue;
     }
 

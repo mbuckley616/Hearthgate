@@ -10,6 +10,7 @@ import { gravehandLift, handAloft, heldLine, palmResting, restSeconds } from './
 import { attackType, roleOf, telegraphTell } from './roles';
 import { SIGNATURES, offerFor, signatureItem } from './signatures';
 import { CATALOGUE, wornMods } from './catalogue';
+import { stepProjectiles } from './projectiles';
 import { readGearItem, readLoadout } from '../net/validate';
 import { emptyTalents } from './talents';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
@@ -424,5 +425,46 @@ describe("the Gravehand's signature drops (H3)", () => {
     tuning.gravehand.grabChance = 1;
     ticksUntil(s, () => h.ai === 'charge');
     expect(p.held?.left).toBeCloseTo(tuning.gravehand.looseGripMs / 1000, 1);
+  });
+});
+
+describe('the Gravehand, phase 3: the shatter flick (H3)', () => {
+  it('splits each shard that lands into two, fanned either side, and those never split again', () => {
+    const { s, p, h } = scene(14);
+    Object.assign(h, { phase: 3 });
+    tuning.gravehand.knuckleChance = 0;
+    p.invulnTime = 99;
+    ticksUntil(s, () => s.projectiles.length > 0);
+    expect(s.projectiles.every((pr) => pr.shatters)).toBe(true);
+    const first = s.projectiles.map((pr) => pr.id);
+    // Pieces of an early shard can run out and go before the last shard lands: collect them as they come.
+    const seen = new Map<number, (typeof s.projectiles)[number]>();
+    for (let i = 0; i < 120 && s.projectiles.some((pr) => first.includes(pr.id) && pr.life > 0); i++) {
+      stepProjectiles(s, DT, world.colliders);
+      for (const pr of s.projectiles) if (!first.includes(pr.id) && !seen.has(pr.id)) seen.set(pr.id, { ...pr });
+    }
+    const pieces = [...seen.values()];
+    expect(pieces).toHaveLength(6);
+    expect(pieces.every((pr) => !pr.shatters && pr.hostile)).toBe(true);
+    const yaws = pieces.slice(0, 2).map((pr) => Math.atan2(pr.vx, pr.vz));
+    expect(Math.abs(yaws[0] - yaws[1])).toBeCloseTo((2 * tuning.gravehand.shatterSplitDeg * Math.PI) / 180, 3);
+  });
+
+  it('does not split a shard that strikes a hero', () => {
+    const { s, h } = scene(9);
+    Object.assign(h, { phase: 3 });
+    tuning.gravehand.knuckleChance = 0;
+    tuning.gravehand.grabChance = 0;
+    tuning.gravehand.flickArcDeg = 0;
+    ticksUntil(s, () => s.projectiles.length > 0);
+    const n = s.projectiles.length;
+    for (let i = 0; i < 120 && s.projectiles.some((pr) => pr.life > 0); i++) stepProjectiles(s, DT, world.colliders);
+    expect(s.projectiles).toHaveLength(n);
+  });
+
+  it('flicks whole shards before the clench', () => {
+    const { s } = scene(14);
+    ticksUntil(s, () => s.projectiles.length > 0);
+    expect(s.projectiles.some((pr) => pr.shatters)).toBe(false);
   });
 });

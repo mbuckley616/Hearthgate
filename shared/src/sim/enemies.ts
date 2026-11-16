@@ -1372,6 +1372,8 @@ function fireShard(state: SimState, e: EnemyState, yaw: number, targetY: number)
     chained: false,
     marks: false,
     comboed: false,
+    // Clenched (H3), its flick shatters: each shard splits in two where it lands.
+    ...(e.phase >= 3 ? { shatters: true as const } : {}),
   });
 }
 
