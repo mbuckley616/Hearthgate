@@ -320,6 +320,7 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
     let lastSpawn = 0;
     let aliveSum = 0;
     let turns = 0;
+    let toggleA = false;
     while (Date.now() < end) {
       const phase = (await info(a)).phase;
       if (phase === "won" || phase === "lost") {
@@ -358,12 +359,15 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
           else if (r < 0.5) keys.push("KeyA");
           if (rng() < 0.5) keys.push(rng() < 0.5 ? "KeyW" : "KeyS");
         }
-        if (keys.length > 0 && rng() < 0.3) keys.push("ShiftLeft");
+        // Sprint is a toggle on Ctrl since 16 Nov (Michael, A): a tap flips it, and stopping ends it.
+        if (keys.length > 0 && rng() < 0.3) toggleA = true;
       }
       await setKeys(a, keys);
+      if (toggleA) await a.keyboard.press("ControlLeft");
+      toggleA = false;
       const act = rng();
       if (act < 0.3) await a.keyboard.press("KeyJ");
-      else if (act < 0.38) await a.keyboard.press("ControlLeft");
+      else if (act < 0.38) await a.keyboard.press("ShiftLeft");
       else if (act < 0.46) await a.keyboard.press("Space");
       else if (act < 0.5) await a.keyboard.press(rng() < 0.5 ? "KeyQ" : "KeyE");
       else if (act < 0.53) await a.keyboard.press(["Digit1", "Digit2", "Digit3"][Math.floor(rng() * 3)]);
@@ -378,7 +382,14 @@ async function runCondition(ba: Browser, bb: Browser, c: Condition, port: number
         await b.evaluate(`window.__probe.aim(${target.x}, ${target.z})`);
         const d = Math.hypot(target.x - bme.x, target.z - bme.z);
         if (down) await setKeys(b, d < 1.2 ? ["KeyF"] : ["KeyW"]);
-        else if (d > 2) await setKeys(b, d > 6 ? ["KeyW", "ShiftLeft"] : ["KeyW"]);
+        else if (d > 2) {
+          // Far off, two W taps start the toggled sprint (it ends when Bravo stops to swing).
+          if (d > 6) {
+            await setKeys(b, []);
+            for (let i = 0; i < 2; i++) await b.keyboard.press("KeyW");
+          }
+          await setKeys(b, ["KeyW"]);
+        }
         else {
           await setKeys(b, []);
           for (let i = 0; i < 3; i++) await b.keyboard.press("KeyJ");

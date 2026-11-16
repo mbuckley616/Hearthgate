@@ -5,11 +5,13 @@ import type { ButtonAction } from './actions';
  * use the pseudo-codes below. Matches the control table in docs/brief.md.
  */
 export const keyboardBindings: Record<ButtonAction, string[]> = {
-  // Michael's call after M4: dodge on Ctrl (the brief had Space as dodge). Space is `jumpOrUse`
-  // (Michael, 15 Nov, A): a jump, or F while a prompt is showing.
-  dodge: ['ControlLeft'],
+  // Dodge on Shift (Michael, 15 Nov, A; it was Ctrl after M4). Space is `jumpOrUse`: a jump, or F
+  // while a prompt is showing. Sprint is not held on the keyboard: Ctrl or a double W toggles it
+  // (`sprintToggle`, Michael, 16 Nov, A), since a held Ctrl with W closes the tab.
+  dodge: ['ShiftLeft'],
   jump: [],
-  sprint: ['ShiftLeft'],
+  sprint: [],
+  sprintToggle: ['ControlLeft'],
   // J and L (and the arrows below) are Hearthgate's keyboard-only keys (decision 10A, CLAUDE.md rule 4).
   attack: ['Mouse0', 'KeyJ'],
   // Not in the brief's table; added with the guard after M4.
