@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 216, the Gravehand's rings (H2, part one)
+
+**What changed**
+
+At 60% health (`gravehand.phase2At`) the Gravehand roars (a `roar` event with `hand`; the banner reads "The Gravehand twists off its rings"). It then twists off one ring per hero, henchmen not counted: Iron first, then Silver, then Bone. The rings land evenly round it, 7 m out where the walls allow. They are three new kinds, each a dressing of a role's brain, with B5's weaknesses on the kind (`ADD_WEAKNESS`, the first kinds to have one):
+- **Iron Ring** (`ironRing`, charger, armoured, so the mage's job): the Hound's rush over its own numbers (`rushOf`). It is slower (7 m/s over 8 m after a 1 s line), blunt, and takes 35% from blade and bow. Drawn as a plated iron wheel that rolls.
+- **Silver Ring** (`silverRing`, caster, warded, so the archer's job): `casterBrain` hands it to `wardBrain`. It keeps 9 m from its hero and channels a violet circle on the hand for 6 s at a time. While any Silver Ring channels, the hand takes `gravehand.wardTaken` (0.5) of every hit. Any hit that lands breaks the channel. A spell is turned aside and an arrow hits 1.5x, so the arrow is the answer. Drawn as a floating silver ring with a violet halo that spins faster while it wards.
+- **Bone Ring** (`boneRing`, fodder, the skirmisher, so the melee hero's job): the skeleton warrior's cut on a small, quick body (5.5 m/s) with 1 poise, so one blow staggers it. Drawn as a small spiked bone ring.
+
+All numbers are in `tuning.ironRing`, `silverRing` and `boneRing`, the main ones on the panel. `gravehand.test.ts` gains 4 tests: one ring for a solo hero and three for a trio, spread round the hand; henchmen do not count; the ward halves the hand's damage, holds against a spell and breaks on an arrow; Iron's plate against a sword and Bone's stagger in one blow. check 695/695 (parity unchanged).
+
+**Learned**
+
+The roles test asks that every kind of one role step through the same brain. So the Silver Ring's ward is a branch inside the caster's brain rather than a brain of its own, as the Hollow King's knights ride the elite's.
+
+**Next**
+
+H2, part two: the grab. It is a red ring with an orange rim round the hero who hit the hand most lately. That hero is held 3 s and squeezed, and gets out three ways: a partner's heavy, 40 damage to the hand, or three on-the-beat dodge presses alone. Holding a hero touches `stepPlayer`, so prediction agrees. The Bone Ring darting at the archer and the mage rather than the nearest hero is left for then too.
+
 ## 2026-11-16: Session 215, the Gravehand, phase one (H1)
 
 **What changed**

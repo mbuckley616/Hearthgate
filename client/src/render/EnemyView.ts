@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -100,6 +100,9 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   gravehand: {
     guard: pose(BASE, {}),
   },
+  ironRing: { guard: pose(BASE, {}) },
+  silverRing: { guard: pose(BASE, {}) },
+  boneRing: { guard: pose(BASE, {}) },
   wraith: {
     guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
     chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
@@ -158,6 +161,8 @@ export class EnemyView {
   private flying: THREE.Group | null = null;
   /** The Gravehand (H1): a bone hand of boxes in place of the rig, held at the height the sim says. */
   private hand: THREE.Group | null = null;
+  /** The Gravehand's rings (H2): one torus in place of the rig, rolled or spun in update(). */
+  private ring: THREE.Group | null = null;
   private handLift = 0;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
@@ -205,6 +210,7 @@ export class EnemyView {
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
+    if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
     if (kind === 'wraith') {
       // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
@@ -489,6 +495,45 @@ export class EnemyView {
     this.body.add(hand);
   }
 
+  /**
+   * A ring off the Gravehand's fingers (H2; placeholder): Iron stands on its edge to roll, plated and
+   * dull grey (armoured); Silver floats flat and glows violet (warded); Bone is small and spiked.
+   */
+  private buildRing(kind: 'ironRing' | 'silverRing' | 'boneRing', mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const ring = new THREE.Group();
+    const spin = new THREE.Group();
+    ring.add(spin);
+    if (kind === 'ironRing') {
+      const iron = mat(0x55585e, { metalness: 0.75, roughness: 0.5 });
+      spin.add(mesh(new THREE.TorusGeometry(0.5, 0.14, 8, 20), iron));
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const plate = mesh(new THREE.BoxGeometry(0.22, 0.22, 0.34), iron, Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0);
+        plate.rotation.z = a;
+        spin.add(plate);
+      }
+      ring.position.y = 0.66;
+    } else if (kind === 'silverRing') {
+      spin.add(mesh(new THREE.TorusGeometry(0.42, 0.07, 8, 24), mat(0xd8dde6, { metalness: 0.9, roughness: 0.25, emissive: 0x2a1a44 })));
+      spin.add(mesh(new THREE.TorusGeometry(0.6, 0.02, 6, 32), glowMaterial(0xa070ff, 0.5)));
+      spin.rotation.x = Math.PI / 2;
+      ring.position.y = 1.6;
+    } else {
+      const bone = mat(0xd6c9a8, { roughness: 0.8 });
+      spin.add(mesh(new THREE.TorusGeometry(0.26, 0.07, 6, 14), bone));
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const spike = mesh(new THREE.ConeGeometry(0.05, 0.18, 5), bone, Math.cos(a) * 0.36, Math.sin(a) * 0.36, 0);
+        spike.rotation.z = a - Math.PI / 2;
+        spin.add(spike);
+      }
+      ring.position.y = 0.4;
+    }
+    this.ring = ring;
+    this.body.add(ring);
+  }
+
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
     const bone = mat(0xd6c9a8, { roughness: 0.75 });
     const boneDark = mat(0x8f8266, { roughness: 0.8 });
@@ -729,6 +774,15 @@ export class EnemyView {
     // A Wraith hangs in the air and bobs, until it falls.
     this.rig.position.y = rise + (curr.kind === 'wraith' && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
+    if (this.ring) {
+      // Iron rolls with its speed; Silver turns slowly and bobs, faster while it wards; Bone whirls.
+      const spin = this.ring.children[0];
+      if (curr.kind === 'ironRing') spin.rotation.x += (dt * Math.hypot(curr.vx, curr.vz)) / 0.6 + (curr.ai === 'charge' ? dt * 10 : 0);
+      else if (curr.kind === 'silverRing') {
+        spin.rotation.z += dt * (curr.ai === 'chant' ? 4 : 0.8);
+        this.ring.position.y = 1.6 + Math.sin(this.time * 2) * 0.1;
+      } else spin.rotation.y += dt * 9;
+    }
     if (this.hand) {
       // The sim says how high the palm hangs; the figure follows quickly, falls fast and bobs while it floats.
       const lift = gravehandLift(curr);

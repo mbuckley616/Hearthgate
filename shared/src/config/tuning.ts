@@ -1495,6 +1495,15 @@ export const tuning = {
     flickDamage: 12,
     flickSpeed: 18,
     flickRecoveryMs: 500,
+    /**
+     * Phase 2 (H2) at `phase2At` of its health: a roar of `roarMs`, and it twists its rings off, one a
+     * hero (at most three: Iron, then Silver, then Bone), dropping `ringRadius` round it. While a
+     * Silver Ring channels its ward, the hand takes `wardTaken` of every hit.
+     */
+    phase2At: 0.6,
+    roarMs: 1600,
+    ringRadius: 7,
+    wardTaken: 0.5,
     /** Its picks between slam and sweep when both are in reach. */
     sweepChance: 0.4,
     cooldownMs: 900,
@@ -1502,6 +1511,70 @@ export const tuning = {
     spawnMs: 1500,
     deathMs: 3000,
     knockbackTaken: 0.05,
+  },
+
+  /**
+   * The Gravehand's rings (H2; `docs/bosses.md` 2.1), its phase-2 adds, one of each weakness. The Iron
+   * Ring (armoured: the mage's) rolls at a hero, a slow charger's line, blunt; numbers over the
+   * Hound's.
+   */
+  ironRing: {
+    maxHp: 220,
+    maxPoise: 30,
+    radius: 0.6,
+    height: 1.3,
+    moveSpeed: 2.4,
+    turnRateDeg: 200,
+    chargeRange: 8,
+    chargeMinRange: 2,
+    telegraphMs: 1000,
+    trackFrac: 0.6,
+    chargeSpeed: 7,
+    chargeLength: 8,
+    chargeDamage: 16,
+    chargePush: 3,
+    wallStunMs: 1600,
+    recoveryMs: 900,
+    cooldownMs: 2000,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.3,
+  },
+
+  /**
+   * The Silver Ring (H2; warded: the archer's): floats `keepDistance` from the party and channels a
+   * violet ward on the hand for `wardMs` at a time; any hit that lands breaks it, and its ward turns a
+   * spell aside, so an arrow is the answer.
+   */
+  silverRing: {
+    maxHp: 90,
+    maxPoise: 10,
+    radius: 0.45,
+    height: 2.2,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 9,
+    wardMs: 6000,
+    cooldownMs: 1500,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * The Bone Ring (H2; the skirmisher: the melee hero's): small and quick, a skeleton warrior's cut on
+   * a body with almost no poise, so one blow staggers it.
+   */
+  boneRing: {
+    maxHp: 60,
+    maxPoise: 1,
+    radius: 0.35,
+    height: 0.8,
+    moveSpeed: 5.5,
+    turnRateDeg: 400,
+    spawnMs: 700,
+    deathMs: 1200,
+    knockbackTaken: 1.2,
   },
 
   /**
@@ -3538,6 +3611,15 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gravehand.flickArcDeg': [0, 90, 1],
   'gravehand.sweepChance': [0, 1, 0.05],
   'gravehand.cooldownMs': [0, 5000, 50],
+  'gravehand.phase2At': [0, 1, 0.05],
+  'gravehand.wardTaken': [0, 1, 0.05],
+  'ironRing.maxHp': [10, 1000, 10],
+  'ironRing.chargeSpeed': [2, 20, 0.5],
+  'ironRing.chargeDamage': [0, 60, 1],
+  'silverRing.maxHp': [10, 600, 10],
+  'silverRing.wardMs': [500, 15000, 250],
+  'boneRing.maxHp': [10, 400, 10],
+  'boneRing.moveSpeed': [1, 10, 0.25],
   'wraith.keepDistance': [2, 20, 0.5],
   'wraith.castRange': [2, 30, 0.5],
   'wraith.circleRadius': [0.5, 5, 0.1],
@@ -4064,7 +4146,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

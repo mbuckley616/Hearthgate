@@ -42,6 +42,9 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   wraith: 'caster',
   king: 'boss',
   gravehand: 'boss',
+  ironRing: 'charger',
+  silverRing: 'caster',
+  boneRing: 'fodder',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -83,6 +86,12 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return e.attack === 'circles' ? 'magic' : e.attack === 'crown' ? 'pierce' : 'edge';
     case 'gravehand':
       return e.attack === 'flick' ? 'pierce' : 'blunt';
+    case 'ironRing':
+      return 'blunt';
+    case 'silverRing':
+      return 'magic';
+    case 'boneRing':
+      return 'edge';
     case 'priest':
     case 'wraith':
       return 'magic';
@@ -113,12 +122,12 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
 /**
  * An add's weakness (B5; `docs/bosses.md` 1.3): armoured takes a share of melee and ranged and all of
  * magic, so the mage's; warded turns a spell aside and takes arrows harder, so the archer's. A rule of
- * the kind, as its dressing is. No kind today has one: the Ossuary Mason's Mortar Guards and Bone
- * Chanters (M2) are the first. Mutable so a test can lend a kind a weakness.
+ * the kind, as its dressing is. The Gravehand's Iron and Silver Rings (H2) are the first; the Ossuary
+ * Mason's Mortar Guards and Bone Chanters (M2) come next. Mutable so a test can lend a kind a weakness.
  */
 export type AddWeakness = 'armoured' | 'warded';
 
-export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = {};
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded' };
 
 const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
 
@@ -151,6 +160,9 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     wraith: { name: 'Wraith', plural: 'Wraiths' },
     king: { name: 'The Hollow King', plural: 'The Hollow King' },
     gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
+    ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
+    silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
+    boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
   },
 };
 

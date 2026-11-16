@@ -181,3 +181,68 @@ describe('where the Gravehand can be hit (H1)', () => {
     expect(p.z).toBeGreaterThan(2.3);
   });
 });
+
+describe('the Gravehand, phase 2: its rings (H2)', () => {
+  function heroes(s: SimState, n: number): void {
+    for (let i = 2; i <= n; i++) Object.assign(addPlayer(s, world, `p${i}`, loadout, false), { x: i, z: 9 });
+  }
+
+  it('roars at phase2At and twists off a ring a hero, Iron first, round it', () => {
+    for (const [n, kinds] of [
+      [1, ['ironRing']],
+      [3, ['ironRing', 'silverRing', 'boneRing']],
+    ] as const) {
+      const { s, h } = scene(9);
+      heroes(s, n);
+      h.hp = h.maxHp * tuning.gravehand.phase2At - 1;
+      ticksUntil(s, () => h.ai === 'roar');
+      expect(events(s, 'roar')).toEqual([expect.objectContaining({ phase: 2, hand: true })]);
+      ticksUntil(s, () => h.phase === 2);
+      expect(s.enemies.filter((e) => e !== h).map((e) => e.kind)).toEqual(kinds);
+      for (const r of s.enemies.filter((e) => e !== h)) expect(Math.hypot(r.x - h.x, r.z - h.z)).toBeGreaterThan(2);
+    }
+  });
+
+  it('counts heroes, not henchmen, for its rings', () => {
+    const { s, h } = scene(9);
+    heroes(s, 2);
+    Object.assign(s.players[1], { henchman: true });
+    h.hp = h.maxHp * tuning.gravehand.phase2At - 1;
+    ticksUntil(s, () => h.phase === 2);
+    expect(s.enemies.filter((e) => e !== h).map((e) => e.kind)).toEqual(['ironRing']);
+  });
+
+  it("takes wardTaken of a hit while a Silver Ring channels its ward, and an arrow breaks the channel", () => {
+    const { s, p, h } = scene(9);
+    const r = createEnemy(s, world, 'silverRing', 8, 8, 0);
+    Object.assign(r, { ai: 'chase', aiTime: 0, cooldown: 0 });
+    stepEnemies(s, DT, world);
+    expect(r.ai).toBe('chant');
+    expect(r.tele.shape).toBe('circle');
+    damageEnemy(s, h, hit(p.id, h, true));
+    const warded = h.maxHp - h.hp;
+    // A spell is turned aside by the ring's ward: the channel holds.
+    expect(damageEnemy(s, r, { ...hit(p.id, r, true), style: 'staff' })).toBe(true);
+    expect(r.ai).toBe('chant');
+    expect(r.hp).toBe(r.maxHp);
+    // An arrow lands and breaks it, and the hand takes full damage again.
+    damageEnemy(s, r, hit(p.id, r, true));
+    expect(r.ai).toBe('recover');
+    const before = h.hp;
+    Object.assign(h, { lastHitAt: -1, hitstop: 0 });
+    damageEnemy(s, h, hit(p.id, h, true));
+    expect(warded).toBeCloseTo((before - h.hp) * tuning.gravehand.wardTaken, 5);
+  });
+
+  it('gives the Iron Ring plate against blades, and the Bone Ring no poise against one', () => {
+    const { s, p } = scene(9);
+    const iron = createEnemy(s, world, 'ironRing', 6, 6, 0);
+    const bone = createEnemy(s, world, 'boneRing', -6, 6, 0);
+    for (const e of [iron, bone]) Object.assign(e, { ai: 'chase', aiTime: 0 });
+    damageEnemy(s, iron, hit(p.id, iron, false));
+    expect(iron.maxHp - iron.hp).toBeCloseTo(10 * tuning.bosses.armourTaken, 5);
+    damageEnemy(s, bone, { ...hit(p.id, bone, false), poise: 5 });
+    expect(bone.ai).toBe('stagger');
+    expect(attackType({ kind: 'ironRing', attack: '' })).toBe('blunt');
+  });
+});

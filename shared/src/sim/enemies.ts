@@ -661,6 +661,7 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
 /** A rush's numbers: the Hound's, or the Barrow Knight's (E1f). */
 function rushOf(e: EnemyState) {
   const k = tuning.knight;
+  if (e.kind === 'ironRing') return { ...tuning.hound, ...tuning.ironRing };
   return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
 }
 
@@ -882,9 +883,9 @@ function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldown
  * E1g's second phase: skeletons rise from the hall's edges, evenly round the Warden, each as far out
  * as `raiseRadius` allows before a wall (and in sight of the Warden, so never in the next room).
  */
-function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number, kind: EnemyKind = 'grunt', radius = tuning.warden.raiseRadius): void {
+function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number, kind: EnemyKind = 'grunt', radius = tuning.warden.raiseRadius, turn = 0): void {
   const r = enemyStats(kind).radius;
-  const start = Math.atan2(-e.x, -e.z);
+  const start = Math.atan2(-e.x, -e.z) + turn;
   for (let i = 0; i < n; i++) {
     const a = start + (i / Math.max(1, n)) * Math.PI * 2;
     const ux = Math.sin(a);
@@ -1273,6 +1274,61 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
   return want;
 }
 
+/**
+ * The Silver Ring (H2; `docs/bosses.md` 2.1): keeps its distance from the party as a Wraith does, in
+ * sight of its hand, and channels a violet ward on it for `wardMs`: while it chants, the hand takes
+ * `gravehand.wardTaken` of every hit. Any hit that lands on the ring breaks the channel (`breakChannel`),
+ * and its ward turns a spell aside (B5), so the archer's arrow is the answer.
+ */
+function wardBrain(state: SimState, _world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const r = tuning.silverRing;
+  const want: Intent = { x: 0, z: 0 };
+  const hand = state.enemies.find((o) => o.kind === 'gravehand' && o.ai !== 'dead');
+  if (!hand) {
+    if (e.ai === 'chant') {
+      e.tele.shape = 'none';
+      setAi(e, 'recover');
+      e.recoverTime = 0.3;
+    }
+    return want;
+  }
+  if (target) {
+    const dx = target.x - e.x;
+    const dz = target.z - e.z;
+    const dist = Math.max(Math.hypot(dx, dz), 1e-3);
+    if (dist < r.keepDistance) {
+      want.x = -dx / dist;
+      want.z = -dz / dist;
+    }
+  }
+  e.yaw = turnToward(e.yaw, Math.atan2(hand.x - e.x, hand.z - e.z), r.turnRateDeg * DEG * edt);
+  switch (e.ai) {
+    case 'chase':
+      if (e.cooldown > 0) break;
+      setAi(e, 'chant');
+      e.tele = { shape: 'circle', x: hand.x, z: hand.z, radius: enemyStats('gravehand').radius + 0.6, yaw: 0, arcDeg: 360 };
+      state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      break;
+    case 'chant':
+      // The ward rides on the hand wherever it drifts.
+      e.tele.x = hand.x;
+      e.tele.z = hand.z;
+      if (e.aiTime >= r.wardMs / 1000) {
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = 0.4;
+      }
+      break;
+  }
+  return want;
+}
+
+/** The rings a hand twists off (H2): one a hero standing, Iron, then Silver, then Bone. */
+export function ringsFor(state: SimState): EnemyKind[] {
+  const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
+  return (['ironRing', 'silverRing', 'boneRing'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
+}
+
 /** The Gravehand's flick (H1): one bone shard along `yaw`, from its fingers at the height it floats. */
 function fireShard(state: SimState, e: EnemyState, yaw: number, targetY: number): void {
   const g = tuning.gravehand;
@@ -1324,6 +1380,18 @@ function fireShard(state: SimState, e: EnemyState, yaw: number, targetY: number)
 function gravehandBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const g = tuning.gravehand;
   const want: Intent = { x: 0, z: 0 };
+  if (e.ai === 'roar') {
+    if (e.aiTime >= g.roarMs / 1000) {
+      // Phase 2 (H2): its rings twist off and fall round it, one a hero, each weak to one style.
+      const rings = ringsFor(state);
+      rings.forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.ringRadius, (i / rings.length) * Math.PI * 2));
+      e.phase = 2;
+      e.summoned = true;
+      setAi(e, 'recover');
+      e.recoverTime = 0.4;
+    }
+    return want;
+  }
   if (!target) return want;
   const dx = target.x - e.x;
   const dz = target.z - e.z;
@@ -1340,6 +1408,12 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
         want.z = gz / gd;
       }
       e.yaw = turnToward(e.yaw, toTarget, g.turnRateDeg * DEG * edt);
+      if (e.phase === 1 && e.hp <= e.maxHp * g.phase2At) {
+        setAi(e, 'roar');
+        e.tele.shape = 'none';
+        state.events.push({ kind: 'roar', enemyId: e.id, phase: 2, hand: true });
+        break;
+      }
       if (e.cooldown > 0) break;
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (!sameLevel) break;
@@ -1447,6 +1521,8 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
  * stands in it is Chilled. Any hit breaks the channel (`breakChannel`, from damageEnemy).
  */
 function casterBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  // The Silver Ring (H2) is a caster whose channel wards its hand instead of a circle under a hero.
+  if (e.kind === 'silverRing') return wardBrain(state, world, e, target, edt);
   const w = tuning.wraith;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
@@ -1551,6 +1627,12 @@ function attackCooldown(e: EnemyState): number {
       return kingPace(e).cooldownMs / 1000;
     case 'gravehand':
       return tuning.gravehand.cooldownMs / 1000;
+    case 'ironRing':
+      return tuning.ironRing.cooldownMs / 1000;
+    case 'silverRing':
+      return tuning.silverRing.cooldownMs / 1000;
+    case 'boneRing':
+      return tuning.grunt.attackCooldownMs / 1000;
   }
 }
 

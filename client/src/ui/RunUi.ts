@@ -100,7 +100,7 @@ export class RunUi {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'Final wave' : `Wave ${ev.wave} of ${FINAL_WAVE}`, ev.title);
       else if (ev.kind === 'waveCleared' && ev.wave < FINAL_WAVE) this.showBanner('Wave cleared', `Catch your breath  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
-      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king));
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -119,7 +119,7 @@ export class RunUi {
         const head = tuning.loop.bankAtRest ? 'Your finds are banked' : heal > 0 ? `+${heal}% health  ·  nothing is banked yet` : 'A way out  ·  nothing is banked yet';
         this.showBanner(head, `Gold ring home banks the run  ·  violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more, all of it at stake`);
       }
-      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king));
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -219,7 +219,9 @@ export class RunUi {
 }
 
 /** Each roar names what the Warden's next phase brings (E1g); the slice's one roar calls for help. */
-function roarBanner(phase: number | undefined, king?: true): [string, string] {
+function roarBanner(phase: number | undefined, king?: true, hand?: true): [string, string] {
+  // The Gravehand's (H2): its rings come off, each weak to one style.
+  if (hand) return ['The Gravehand twists off its rings', 'Iron shrugs off blades, Silver wards the hand: shoot it'];
   // The Hollow King's (G4b): each phase's banner names what is new in it.
   if (king && phase === 2) return ['The King calls his knights', 'Barrow Knights rise, and violet circles find every hero'];
   if (king) return ['The hall goes dark', 'The King is faster, and his crown sweeps wide'];

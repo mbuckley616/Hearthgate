@@ -512,7 +512,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true; /** The Gravehand's (H2). */ hand?: true }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }

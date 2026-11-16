@@ -222,7 +222,9 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
   // Its palm resting on the floor after a slam is the punish window (H1).
   const resting = palmResting(e) ? tuning.gravehand.restDamageTaken : 1;
-  const damage = resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  // A Silver Ring's ward on the hand (H2) halves what reaches it.
+  const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
+  const damage = warded * resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
