@@ -670,6 +670,8 @@ export interface SimState {
    * shut. The village room sets it from the save; absent everywhere else.
    */
   plots?: string[];
+  /** Seconds since a fight was last on, for the slow regen (`tuning.heal`); absent in the slice and while one is on. */
+  calmFor?: number;
 }
 
 /**

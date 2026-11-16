@@ -65,7 +65,7 @@ export const SPECS: readonly SpecInfo[] = [
     elements: ['holy'],
     q: ['Shield Rush', 'Charge taunts the enemy it hits: it turns on you for 3 s.'],
     e: ['Consecrate', 'Whirlwind leaves a holy ring; allies inside take 15% less damage.'],
-    sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals allies within 4 m.'],
+    sig: ['Bulwark', 'Your guard holds against heavy hits. A perfect parry heals you.'],
     built: true,
     tree: [
       [
@@ -247,12 +247,12 @@ export const SPECS: readonly SpecInfo[] = [
     element: 'nature',
     elements: ['nature', 'earth'],
     q: ['Thorn Ring', 'Frost ring becomes thorns that root.'],
-    e: ['Wild Growth', 'Blink leaves a healing grove for 4 s.'],
-    sig: ['Bloom', 'Your bolts heal allies they pass through, and root enemies they hit at Flow II and up.'],
+    e: ['Wild Growth', 'Blink leaves a grove for 4 s that heals you while you stand in it.'],
+    sig: ['Bloom', 'Your bolts heal you a little as they land, and root enemies they hit at Flow II and up.'],
     built: true,
     tree: [
       [
-        { id: 'rich-bloom', name: 'Rich Bloom', text: 'Your bolts heal allies they pass 8%.' },
+        { id: 'rich-bloom', name: 'Rich Bloom', text: 'Your bolts heal you twice as much.' },
         { id: 'strangling-thorns', name: 'Strangling Thorns', text: 'Thorn Ring holds for 3.5 s.' },
       ],
       [
@@ -656,6 +656,8 @@ export function holyPulse(state: SimState, p: PlayerState): void {
   const reach = hasNode(p, 'rallying-light') ? s.treeRallyingRadius : s.bulwarkRadius;
   const heal = s.bulwarkHeal * (hasNode(p, 'oath-of-mercy') ? s.treeMercyMult : 1);
   for (const o of state.players) {
+    // Self-heals only (Michael, 15 Nov, A): the pulse heals the Paladin alone.
+    if (tuning.heal.selfOnly && o !== p) continue;
     if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > reach) continue;
     const before = o.hp;
     o.hp = Math.min(o.maxHp, o.hp + o.maxHp * heal);
@@ -916,6 +918,7 @@ export function shadowSwap(state: SimState, p: PlayerState, blinkDistance: numbe
 
 /** Whether this bolt is a Druid's, whose flight heals the allies it passes through (Bloom). */
 export function isBloomBolt(state: SimState, pr: ProjectileState): boolean {
+  if (tuning.heal.selfOnly) return false;
   if (pr.kind !== 'bolt' || pr.style !== 'staff' || pr.hostile || tuning.specs.bloomHeal <= 0) return false;
   return state.players.find((p) => p.id === pr.owner)?.spec?.staff === 'druid';
 }
@@ -934,6 +937,23 @@ export function bloomHeal(state: SimState, pr: ProjectileState, ally: PlayerStat
   if (healed <= 0) return;
   ally.hp += healed;
   state.events.push({ kind: 'bloom', playerId: pr.owner, healedId: ally.id, x: ally.x, y: ally.y, z: ally.z, healed });
+}
+
+/**
+ * Bloom with self-heals only (Michael, 15 Nov, A): a Druid's bolt that lands on an enemy heals the
+ * Druid `heal.bloomSelf` of their health, once a bolt (Rich Bloom twice that), instead of the allies
+ * it passes. Projectiles are the server's, so the heal is too.
+ */
+export function bloomSelfHeal(state: SimState, owner: PlayerState | undefined, pr: ProjectileState): void {
+  const h = tuning.heal;
+  if (!h.selfOnly || h.bloomSelf <= 0 || !owner || owner.spec?.staff !== 'druid' || pr.kind !== 'bolt' || pr.style !== 'staff' || pr.hostile) return;
+  if (owner.mode === 'down' || owner.hp <= 0 || pr.healedIds?.includes(owner.id)) return;
+  (pr.healedIds ??= []).push(owner.id);
+  const share = hasStyleNode(owner, 'staff', 'rich-bloom') ? h.bloomSelf * 2 : h.bloomSelf;
+  const healed = Math.min(owner.maxHp - owner.hp, owner.maxHp * share);
+  if (healed <= 0) return;
+  owner.hp += healed;
+  state.events.push({ kind: 'bloom', playerId: owner.id, healedId: owner.id, x: owner.x, y: owner.y, z: owner.z, healed });
 }
 
 /**
@@ -1422,6 +1442,8 @@ export function stepGroves(state: SimState, dt: number): void {
     // Groves do not add up: the best one a hero stands in heals them, Lifespring's twice as fast.
     let mult = 0;
     for (const g of live) {
+      // Self-heals only: a grove heals the Druid who grew it.
+      if (tuning.heal.selfOnly && g.by !== o.id) continue;
       if (Math.abs(o.y - g.y) >= 1.2 || Math.hypot(o.x - g.x, o.z - g.z) > g.radius) continue;
       const druid = state.players.find((d) => d.id === g.by);
       mult = Math.max(mult, druid && hasStyleNode(druid, 'staff', 'lifespring') ? tuning.specs.treeGroveHealMult : 1);
@@ -1552,7 +1574,7 @@ export function elementalNova(p: PlayerState, hit: HitSpec): void {
 
 /**
  * Rank V of a combo's mastery (Michael's A, 10 Nov): the payer's specialization in the style they hold
- * gives each payoff of that combo a twist. The sword's three: the Paladin's heals the party a little,
+ * gives each payoff of that combo a twist. The sword's three: the Paladin's heals the Paladin a little (self-heals only, Michael 15 Nov),
  * the Spellblade's leaves a patch of their element's ground where it landed, the Rogue's resets
  * Shadowstep. The bow's, each from its own kit: the Ranger's seeds brambles where it landed, the
  * Scout's marks every enemy near it, the Assassin's resets Smoke Bomb. The staff's: the Warlock's
@@ -1568,6 +1590,7 @@ export function masteryTwist(state: SimState, p: PlayerState, x: number, z: numb
       if (m.paladinHeal <= 0) return false;
       let healed = 0;
       for (const o of state.players) {
+        if (tuning.heal.selfOnly && o !== p) continue;
         if (o.mode === 'down' || o.hp <= 0 || Math.hypot(o.x - p.x, o.z - p.z) > tuning.specs.bulwarkRadius) continue;
         const before = o.hp;
         o.hp = Math.min(o.maxHp, o.hp + o.maxHp * m.paladinHeal);

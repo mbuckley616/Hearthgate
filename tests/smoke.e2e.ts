@@ -529,6 +529,40 @@ async function steer(page: Page, to: "exit" | "home") {
   }
 }
 
+test("the controls (Michael, 15 Nov, A): X takes the next weapon, B opens the bag, Space jumps, and talks at a prompt", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  await page.goto("/?play");
+  await page.evaluate(() => localStorage.clear());
+  await open(page, "play", errors);
+  const me = () => page.evaluate(() => (window as unknown as { game: any }).game.me() as { style: string; y: number; mode: string });
+  await expect.poll(async () => (await me()).style).toBe("sword");
+  // A new hero's bag holds a shortbow and a staff: X goes bow, then staff, then sword.
+  await page.keyboard.press("KeyX");
+  await expect.poll(async () => (await me()).style).toBe("bow");
+  await page.keyboard.press("KeyX");
+  await expect.poll(async () => (await me()).style).toBe("staff");
+  await page.keyboard.press("KeyB");
+  await expect(page.locator(".gear-grid")).toBeVisible();
+  await page.keyboard.press("KeyB");
+  await expect(page.locator(".gear-grid")).toBeHidden();
+  // On the open square Space jumps.
+  let top = 0;
+  await expect
+    .poll(async () => {
+      await page.keyboard.press("Space");
+      for (let i = 0; i < 6; i++) top = Math.max(top, (await me()).y);
+      return top;
+    }, { timeout: 10_000 })
+    .toBeGreaterThan(0.2);
+  // At Wren's table the hint says F, and Space opens her card instead of jumping.
+  await intoShrine(page);
+  await expect(page.locator(".talk-hint")).toContainText("Space");
+  await page.keyboard.press("Space");
+  await expect(page.locator(".keeper-card")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("a new village is Wren's portal and three plots: the keeper waits outside and offers only the build", async ({ page }) => {
   const errors: string[] = [];
   await page.goto("/?play");

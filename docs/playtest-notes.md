@@ -202,3 +202,41 @@ Other notes
 Decisions
 - **Gate: passed** (Michael, 2 Nov 2026, in chat): "Pass; bugs first." Phase 2 is closed. The skeleton in the wall and the D-pad come first, then E1, the Crypt roster.
 - Bosses and Brutes get armour after a stagger; henchmen stay as strong but are harder to get; difficulty makes enemies hit harder (decisions.md, 2 Nov).
+
+## 2026-11-15: Michael (host) and his friend Nick (visiting his village) on the hosted build (main 836cf8e or near it)
+
+Michael's notes, given in chat to a local session (`auto/local-playtest-nick`) and filed by it, his wording kept. Not a gate playtest: two people in one village and its runs, Nick on a fresh character. Before it Nick was given gear by editing his browser save (a console snippet: Yew bow, crossbow, staff, wand and tome, 2,000 coin), since a fresh character has only the starter Ash bow and staff.
+Ping (HUD): not recorded
+Corrections (HUD, after 5 minutes): not recorded
+Session length: not recorded
+Connection types: not recorded
+
+Gate questions: not asked (no gate is open; the builder waits on "a playtest of the builds pass in the Crypt", and whether this evening counts as that is for Michael).
+
+Controls and settings
+- "Space to jump and interact." (Space jumps today; F interacts.)
+- "Shift for dodge instead of control." (Dodge on Ctrl and sprint on Shift were Michael's call after M4.)
+- "Have bag be B." (Tab opens the hero screen.)
+- "Esc and settings, retro CRT is better performance, but worse graphics - nick liked regular graphics but performance hit was noticeable."
+- "For testing - to experience breadth of game, let me swap between attack styles quickly, even mid combat." (C3 holds a weapon change until the fight ends, `combo.swapInFight` false.)
+
+Bugs and gaps
+- "Henchmen follow the visiting player instead of me." Confirmed in code: a henchman keeps to the nearest standing player who is not a henchman (`HenchmanBrain`, `sim/henchman.ts`), never to the one who hired it.
+- "Drops don't show for other players on server - can't share gear." As built: loot is each player's own (`spawnDrop`, `sim/drops.ts`, "Loot is each player's own"), and there is no way to hand an item over until Phase 3's trade. "Trading system?"
+
+Design direction (Michael's notes; each needs a call before it is a spec)
+- "One core concept - Idea of bossing drop loot makes killing that boss easier (i.e. spine from Scurrius, Yama drops something that is good against him)."
+- "Boss idea - Boss has 2 different types of adds - one weak to mage, one to range, and boss is very tanky. Boss drops a shield that reduces blunt damage, drops a staff that reduces casting time, etc."
+- "Also - bosses and boss mechanics should be designed first, and rest of gameplay fills in around that."
+- "Design every boss as if you were doing 3 players - trio based game."
+- "Early game bosses - any individual character should beat them. 2 characters, you should be able to crush."
+- "Do you want people to specialize, or do you want people to switch? Give benefits to when people specialize."
+- "Don't worry about healing - potions work, be strategic." "Maybe regen health out of combat, but slowly." "Heals can happen mid-combat, self-heals only." (Built today: the Druid's Bloom and Wild Growth and the Paladin's Bulwark and rank V twist heal allies; the rest room does not heal, Michael 31 Oct.)
+- "Tank should be centered around damage reduction."
+- "'Master Hand' boss inspired by Smash Bros." (A floating-hand boss in that spirit, not a copy of it.)
+- "When designing bosses - color-coded based on attack types." (Telegraphs are coloured by kind today, E1a: red strike, orange heavy or unblockable, yellow projectile or charge; whether this means by damage type, melee, ranged and magic, is asked.)
+
+Decisions
+- Three questions raised in `decisions.md` (15 Nov): the controls, healing, and a boss-first pass before E1i. The henchman bug is under **Found in play**; the style-swap test switch and the graphics cost are in the current section of the backlog.
+- **A on all three** (Michael, 15 Nov, in chat): dodge on Shift, sprint on Ctrl, Space interacts at a prompt, B for the bag, X for the next weapon; self-heals only with a slow regen out of a fight; a boss design pass (Fable) before E1i.
+- **This counts as the builds-pass playtest** (Michael, 15 Nov, in chat), so the builder is no longer paused for it.

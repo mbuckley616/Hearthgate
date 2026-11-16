@@ -2,7 +2,7 @@ import { enemyStats, tuning, type ComboHit } from '../config/tuning';
 import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { comboWindow, damageEnemy, heroInvulnerable, hurtHero, isTargetable, payCombo, type HitSpec } from './combat';
-import { attuneAfter, attuneHit, bloomHeal, bloomRoot, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
+import { attuneAfter, attuneHit, bloomHeal, bloomRoot, bloomSelfHeal, deadeye, isBloomBolt, scoutMark, stormChain, thornshot, venomVolley } from './specs';
 import { propOnPath, smashCircle, smashProp } from './smash';
 import { masteryPayoffMult } from './mastery';
 import { abilityRank } from './talents';
@@ -398,7 +398,11 @@ function hitWithProjectile(state: SimState, pr: ProjectileState, e: EnemyState, 
     if (hero?.champion) e.detonateBy = hero.id;
   }
   if (!skewer) pr.pierce--;
-  if (pr.kind === 'bolt') bloomRoot(state, state.players.find((p) => p.id === pr.owner), pr, e);
+  if (pr.kind === 'bolt') {
+    const druid = state.players.find((p) => p.id === pr.owner);
+    bloomRoot(state, druid, pr, e);
+    bloomSelfHeal(state, druid, pr);
+  }
   if (pr.kind === 'bolt' && !pr.chained) chainBolt(state, pr, e);
 }
 

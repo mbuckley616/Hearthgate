@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { abilityTiming, tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { readLoadout } from '../net/validate';
@@ -299,6 +299,13 @@ describe("the Paladin's Consecrate", () => {
 });
 
 describe("the Paladin's Bulwark", () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   /** A hero with their guard up facing +z, past the parry window unless `parry`. */
   function guarding(p: PlayerState, parry: boolean): void {
     Object.assign(p, { mode: 'guard', yaw: 0, parryOpen: parry, guardTime: parry ? 0 : 2, invulnerable: false, invulnTime: 0, lagGrace: 0 });
@@ -1070,6 +1077,13 @@ describe('the Warlock is offered (the builds pass)', () => {
 });
 
 describe("the Druid's Bloom", () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   /** A staff hero, a Druid or not, casts one bolt down the arena through a hurt friend at the grunt. */
   function bolt(druid: boolean, flowV = 0) {
     const sc = scene(false);
@@ -1139,6 +1153,13 @@ describe("the Druid's Thorn Ring", () => {
 });
 
 describe("the Druid's Wild Growth", () => {
+  // These check the ally heals kept behind `heal.selfOnly` (Michael, 15 Nov, A, made them self-heals).
+  beforeAll(() => {
+    tuning.heal.selfOnly = false;
+  });
+  afterAll(() => {
+    tuning.heal.selfOnly = true;
+  });
   /** A staff hero, a Druid or not, Blinks forward from the arena's middle. */
   function blink(druid: boolean) {
     const sc = scene(false);
