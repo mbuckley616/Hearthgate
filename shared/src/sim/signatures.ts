@@ -7,7 +7,7 @@ import type { EnemyState, PlayerState, SimState } from './types';
  * A boss's signature drops by job (B6; `docs/bosses.md` 1.4 and 1.7; Michael's A on specializing, 16
  * Nov): each boss has a list of two or three pieces, each answering one of its jobs, and a hero is
  * offered the piece of the job they did most in that fight. So a specialist farms gear for their
- * specialty. Each boss's list comes with its line (W1, K1, H3, M3); none is filled yet.
+ * specialty. Each boss's list comes with its line (W1, K1, H3, M3): the Gravehand's is in (H3).
  *
  * The jobs (1.1, 1.6): `tank` takes the boss's close string on a guard, `armoured` and `warded` are
  * damage to those adds (1.3), and `boss` is damage to the boss itself, the job a bane answers.
@@ -22,7 +22,16 @@ export interface SignaturePiece {
   signature: Signature;
 }
 
-export const SIGNATURES: Partial<Record<EnemyKind, readonly SignaturePiece[]>> = {};
+export const SIGNATURES: Partial<Record<EnemyKind, readonly SignaturePiece[]>> = {
+  // The Gravehand (H3; `docs/bosses.md` 2.1): the tank's buckler against its slams, sweep and knuckles;
+  // the archer's bow, its bane, for the hero who broke the Silver Ring's ward; and for the one it
+  // went after most, the wraps its grip slips off.
+  gravehand: [
+    { job: 'tank', id: 'studded-buckler', name: 'Ringward Buckler', signature: { resist: 'blunt' } },
+    { job: 'warded', id: 'yew-shortbow', name: 'Knucklebone Bow', signature: { bane: 'gravehand' } },
+    { job: 'boss', id: 'linen-gloves', name: 'Grave-cloth Wraps', signature: { looseGrip: true } },
+  ],
+};
 
 /** What a hero did in a boss fight, by job: damage blocked for `tank`, damage dealt for the rest. */
 export type JobScores = Partial<Record<Job, number>>;

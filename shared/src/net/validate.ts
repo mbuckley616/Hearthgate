@@ -150,6 +150,10 @@ export function readLoadout(v: unknown): Loadout | null {
     if (typeof m.bane !== 'string' || !(m.bane in KIND_ROLE) || KIND_ROLE[m.bane as EnemyKind] !== 'boss') return null;
     mods.bane = m.bane as EnemyKind;
   }
+  if (m.looseGrip !== undefined) {
+    if (m.looseGrip !== true) return null;
+    mods.looseGrip = true;
+  }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
   // Champion points (T6b): the banked XP must have bought every rank.
   if (v.champion !== undefined) {
@@ -276,6 +280,7 @@ export function readGearItem(v: unknown): GearItem | null {
     if (s.resist !== undefined && DAMAGE_TYPES.includes(s.resist as DamageType)) item.signature = { resist: s.resist as DamageType };
     else if (s.castSpeed === true && weapon) item.signature = { castSpeed: true };
     else if (typeof s.bane === 'string' && s.bane in KIND_ROLE && KIND_ROLE[s.bane as EnemyKind] === 'boss' && weapon) item.signature = { bane: s.bane as EnemyKind };
+    else if (s.looseGrip === true && CATALOGUE.get(item.id)!.slot === 'hands') item.signature = { looseGrip: true };
     else return null;
   }
   return item;

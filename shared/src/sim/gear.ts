@@ -83,6 +83,8 @@ export interface Mods {
   resist?: DamageType[];
   castSpeed?: boolean;
   bane?: EnemyKind;
+  /** Gloves a grip slips off (H3, the Grave-cloth Wraps): the Gravehand holds them `gravehand.looseGripMs`. */
+  looseGrip?: boolean;
 }
 
 export function emptyMods(): Mods {

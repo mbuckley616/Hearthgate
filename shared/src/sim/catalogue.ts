@@ -212,6 +212,8 @@ export interface Signature {
   resist?: DamageType;
   castSpeed?: true;
   bane?: EnemyKind;
+  /** The Gravehand's Grave-cloth Wraps (H3), on gloves: its grip lets go after `gravehand.looseGripMs`. */
+  looseGrip?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -327,6 +329,7 @@ export function wornMods(worn: Worn): Mods {
     if (sig?.resist && !(m.resist ??= []).includes(sig.resist)) m.resist.push(sig.resist);
     if (slot === 'weapon' && sig?.castSpeed) m.castSpeed = true;
     if (slot === 'weapon' && sig?.bane) m.bane = sig.bane;
+    if (slot === 'hands' && sig?.looseGrip) m.looseGrip = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

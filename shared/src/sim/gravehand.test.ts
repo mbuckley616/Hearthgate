@@ -8,6 +8,9 @@ import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { gravehandLift, handAloft, heldLine, palmResting, restSeconds } from './gravehand';
 import { attackType, roleOf, telegraphTell } from './roles';
+import { SIGNATURES, offerFor, signatureItem } from './signatures';
+import { CATALOGUE, wornMods } from './catalogue';
+import { readGearItem, readLoadout } from '../net/validate';
 import { emptyTalents } from './talents';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimState } from './types';
 import { createSimState, stepSim } from './world';
@@ -383,5 +386,43 @@ describe('the Gravehand, phase 3: the clench (H3)', () => {
     expect(Math.hypot(slams[2].x - slams[1].x, slams[2].z - slams[1].z)).toBeCloseTo(tuning.gravehand.knuckleStepM, 5);
     // A fist on the floor, not floating: a blade reaches it.
     expect(handAloft(h)).toBe(false);
+  });
+});
+
+describe("the Gravehand's signature drops (H3)", () => {
+  const list = SIGNATURES.gravehand!;
+  const piece = (name: string) => list.find((p) => p.name === name)!;
+
+  it('offers the buckler to the tank, its bane to the archer who broke the ward, and the wraps to anyone else', () => {
+    expect(list.map((p) => p.job)).toEqual(['tank', 'warded', 'boss']);
+    expect(offerFor(list, { tank: 300, boss: 100 })?.name).toBe('Ringward Buckler');
+    expect(offerFor(list, { warded: 80, boss: 40 })?.name).toBe('Knucklebone Bow');
+    expect(offerFor(list, {})?.name).toBe('Grave-cloth Wraps');
+  });
+
+  it('makes each a real item the server takes back, worn in its slot', () => {
+    for (const p of list) expect(readGearItem(signatureItem(p, 'x'))?.signature).toEqual(p.signature);
+    const buckler = signatureItem(piece('Ringward Buckler'), 'a');
+    const bow = signatureItem(piece('Knucklebone Bow'), 'b');
+    const wraps = signatureItem(piece('Grave-cloth Wraps'), 'c');
+    expect(CATALOGUE.get(buckler.id)?.slot).toBe('shield');
+    // The bow takes two hands, so the buckler is worn without it.
+    expect(wornMods({ shield: buckler, hands: wraps }).resist).toEqual(['blunt']);
+    expect(wornMods({ weapon: bow }).bane).toBe('gravehand');
+    expect(wornMods({ hands: wraps }).looseGrip).toBe(true);
+    expect(wornMods({ weapon: bow }).looseGrip).toBeUndefined();
+    // A loose grip only from gloves, and only as a flag.
+    expect(readGearItem({ ...buckler, signature: { looseGrip: true } })).toBeNull();
+    expect(readLoadout({ ...loadout, mods: { ...emptyMods(), looseGrip: true } })?.mods.looseGrip).toBe(true);
+    expect(readLoadout({ ...loadout, mods: { ...emptyMods(), looseGrip: 'yes' } })).toBeNull();
+  });
+
+  it('holds a hero in the wraps only looseGripMs', () => {
+    const { s, p, h } = scene(6);
+    p.mods.looseGrip = true;
+    h.phase = 2;
+    tuning.gravehand.grabChance = 1;
+    ticksUntil(s, () => h.ai === 'charge');
+    expect(p.held?.left).toBeCloseTo(tuning.gravehand.looseGripMs / 1000, 1);
   });
 });

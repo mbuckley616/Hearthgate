@@ -1523,6 +1523,8 @@ export const tuning = {
     grabBeatMs: 250,
     /** Untouchable this long after a hero gets out, so the same grip cannot close on them at once. */
     grabFreedInvulnMs: 500,
+    /** The Grave-cloth Wraps (H3, a signature drop): a hero wearing them is held only this long. */
+    looseGripMs: 1500,
     /**
      * Phase 3 (H3) at `phase3At`: a roar, and it clenches into a fist. Its palm rests `phase3RestMs`
      * instead of `slamRestMs`, and some turns (`knuckleChance`) roll a knuckle chain: `knuckles`

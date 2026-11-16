@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 221, the Gravehand's signature drops (H3, part two)
+
+**What changed**
+
+The Gravehand is the first boss with a signature list (`SIGNATURES.gravehand`). When it falls, each hero is offered the piece for the job they did most (B6):
+- **Ringward Buckler** (`tank`, a studded buckler): 20% less blunt damage, which covers its slams, sweep and knuckles.
+- **Knucklebone Bow** (`warded`, a yew shortbow): 1.25x against the Gravehand, its bane. It goes to the hero who did the most to the warded Silver Ring.
+- **Grave-cloth Wraps** (`boss`, linen gloves): its grip lets go after 1.5 s (`gravehand.looseGripMs`) instead of 3. It goes to whoever dealt the boss the most, which is who it grabs, or to a hero who scored in no job.
+
+The wraps needed a fourth property, `Signature.looseGrip`. It is folded by `wornMods` only from the hands slot into `Mods.looseGrip`, accepted by `readLoadout` only as `true`, and by `readGearItem` only on gloves. The grab reads it while `bosses.signatureDrops` is on. The design doc puts the buckler in iron, but a buckler is hide, so it is studded leather. `gravehand.test.ts` gains 3 tests: the offer by job; each piece through the server's item check and worn in its slot, with a loose grip refused on a shield and as anything but `true`; a hero in the wraps held 1.5 s. check 707/707, test:net green.
+
+**Learned**
+
+The design doc pairs the bow's bane with "the Gravehand and its rings", but a bane today is one kind. The rings stay outside it until an add knows its boss (B6's note).
+
+**Next**
+
+H3, part three: the shatter flick (phase 3's flick, each shard splitting in two where it lands), then the bench's solo and duo numbers against the bar, then **(Michael)** a playtest of the Gravehand.
+
 ## 2026-11-16: Session 220, the Gravehand's clench (H3, part one)
 
 **What changed**

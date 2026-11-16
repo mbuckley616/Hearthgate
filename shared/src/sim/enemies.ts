@@ -1571,7 +1571,9 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
           e.recoverTime = restSeconds(e);
           break;
         }
-        caught.held = { by: e.id, left: g.grabHoldMs / 1000, presses: 0, since: 99 };
+        // The Grave-cloth Wraps (H3) slip its grip sooner.
+        const hold = caught.mods.looseGrip && tuning.bosses.signatureDrops ? g.looseGripMs : g.grabHoldMs;
+        caught.held = { by: e.id, left: hold / 1000, presses: 0, since: 99 };
         e.grip = { hero: caught.id, taken: 0, squeeze: g.squeezeEveryMs / 1000 };
         e.tele.shape = 'none';
         setAi(e, 'charge');
