@@ -32,6 +32,12 @@ Tune the Gravehand against the bar on the panel; that is H3's last gate. Today:
 
 Likely levers: health (the trio is far too quick), the rest's length and the solo pace. Then **(Michael)** a playtest of it.
 
+A first sweep (6 seeds, `--set`), for the next run:
+- **Solo sword:** dies in about 100 s whatever the health or rest, after about 300 damage and all 3 potions. Its lever is the hand's damage on a lone hero, or the bench's dodging, not the hand's health.
+- **`maxHp` 4000:** trio 86 s, duo 3 of 6 in 260 s.
+- **`slamRestMs` 2400:** duo 6 of 6 at 0.73 of solo, trio 47 s.
+- **Both together:** trio 104 s, duo 2 of 6.
+
 ## 2026-11-16: Session 224, the Gravehand no longer shoves a hero through the wall (H3's gate, part two)
 
 **What changed**
