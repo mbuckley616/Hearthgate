@@ -2,6 +2,32 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 234, the bench's heroes wait for the hod to lock (M3's tuning, part two)
+
+**What changed**
+
+The boss bench's heroes now treat the Mason's hod throw like the Gravehand's slam (`lockS` in `tests/bosses.ts`). Its circle follows its hero for half the wind-up, then locks. Until now the bench rolled at once, so the circle followed every early roll and the hod landed anyway. A player learns to wait, and the bench now waits too. Nothing in the game changed.
+
+Bench, Emberhall, level 12, 10 seeds, 15 minutes:
+
+| party | kills | ttk s | x solo | dmg | pots | downs |
+|---|---|---|---|---|---|---|
+| solo (sword) | 10/10 | 652 | 1.00 | 224 | 1.6 | 0.0 |
+| duo | 10/10 | 501 | 0.77 | 680 | 4.5 | 0.3 |
+| trio | 10/10 | 276 | 0.42 | 325 | 1.1 | 0.0 |
+| solo + 3 henchmen | 10/10 | 347 | 0.53 | 74 | 0.2 | 0.0 |
+
+On 5 seeds and 10 minutes: duo 5/5 in 351 s with nobody downed (was 3/5, 3.6 downs), and the duo's hod damage fell from 424 to 183. Mossgate's Gravehand (5 seeds, level 4) is unchanged: solo 183 s, duo 0.60, trio 48 s.
+
+**Learned**
+
+Session 230's 158 s trio leaned on the bench's broken dodge: heroes the hod followed out took the hit and kept attacking. Dodging it properly costs the trio time, and its median is now 276 s, past M3's gate of under 3 minutes. Every fight of every party now reaches phase 3.
+
+**Next**
+
+- M3's trio: back under 3 minutes without losing the solo's win. Look at where the trio's time goes first (stones, Guards, the Mason's own health), then the lever.
+- The duo is at 0.77 of the solo's time. The mid boss is not held to 1.2's half, but it should be closer.
+
 ## 2026-11-16: Session 233, no second Guard for a lone hero (M3's tuning, part one)
 
 **What changed**

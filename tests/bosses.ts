@@ -350,6 +350,8 @@ function lockS(e: EnemyState): number {
     if (e.attack === 'grab') return (g.grabTelegraphMs / 1000) * 0.5;
     return 0;
   }
+  // The Mason's hod circle follows its hero for half the wind-up, then locks (M1).
+  if (e.kind === 'mason') return e.attack === 'hod' ? (tuning.mason.hodTelegraphMs / 1000) * 0.5 : 0;
   const s = enemyStats(e.kind) as { trackFrac?: number; telegraphMs?: number; chargeTelegraphMs?: number };
   const ms = s.chargeTelegraphMs ?? s.telegraphMs;
   return s.trackFrac !== undefined && ms !== undefined ? (ms / 1000) * Math.min(1, s.trackFrac) : 0;
