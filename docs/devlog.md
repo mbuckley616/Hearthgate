@@ -2,6 +2,31 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 233, no second Guard for a lone hero (M3's tuning, part one)
+
+**What changed**
+
+Phase 2's extra Mortar Guards are now one fewer than the heroes, with no floor of one: none for a lone hero, one for a duo, two for a trio (`masonAdds`'s new `least`). The whole fight's adds keep M2's rule of at least one of each. A duo and a trio meet exactly what they met before.
+
+Bench, Emberhall, level 12, 5 seeds, with the ridges (Session 232's in brackets):
+
+| party | kills | dmg | downs | phase 3 | left at the end |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5: 0 wipes, 5 timeouts (3 wipes, 2 timeouts) | 207 (404) | 0.0 (0.6) | 3/5 (0/5) | 27% (43%) |
+| duo | 3/5, 520 s, unchanged | 1075 | 3.6 | 4/5 | 8% |
+| trio | 5/5, 158 s, unchanged | 294 | 0.0 | 5/5 | 0% |
+
+check 737/737 (1 new), parity hashes unchanged.
+
+**Learned**
+
+Six benches (`--set`) found what was killing the lone sword: the Guard phase 2 adds, with a ridge at its back. Fewer stones (2), a slower rebuild (10 s) and weaker Guards (90 health) each left it stuck at about 45%. With no phase 2 Guard (`mason.phase2Guards=0`) it stops wiping. Without the ridges (`mason.maxRidges=0`) the bench matches Session 230 exactly. The duo's runs are noisy across 5 seeds (2 to 5 kills on the same build).
+
+**Next**
+
+- The lone hero now times out with 27% left and nobody downed: it survives but cannot finish within 10 minutes. The Chanter it cannot reach still raises the stones, so the next lever is the stones, solo.
+- The duo: 3.6 downs and 5.8 potions, from the hod (424) and the Guards (321).
+
 ## 2026-11-16: Session 232, the Mason's bone ridges (M3, part three)
 
 **What changed**

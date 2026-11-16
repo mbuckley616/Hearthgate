@@ -285,13 +285,25 @@ describe('the Mason’s phases (M3, part one)', () => {
     return sc;
   }
 
-  it('roars at phase2At and raises more Mortar Guards, as many as the heroes allow', () => {
+  it('roars at phase2At', () => {
     const { s, m } = roared(2);
     expect(m.phase).toBe(2);
     expect(events(s, 'roar')).toEqual([{ kind: 'roar', enemyId: m.id, phase: 2, mason: true }]);
-    // One hero: one Guard more (M2's rule).
-    expect(s.enemies.filter((e) => e.kind === 'mortarGuard')).toHaveLength(1);
+    // One hero: no Guard more; phase 2's are one fewer than the heroes with no floor of one.
+    expect(s.enemies.filter((e) => e.kind === 'mortarGuard')).toHaveLength(0);
     expect(masonBound(s)).toBe(true);
+  });
+
+  it('raises one fewer Guard than the heroes at phase 2: none alone, one for two, two for three', () => {
+    for (const [heroes, want] of [[1, 0], [2, 1], [3, 2], [4, 2]] as const) {
+      Object.assign(tuning.mason, { guards: 0, chanters: 0 });
+      const { s, m } = scene(20);
+      for (let i = 2; i <= heroes; i++) addPlayer(s, world, `p${i}`, loadout, false);
+      stepEnemies(s, DT, world);
+      m.hp = m.maxHp * tuning.mason.phase2At - 1;
+      ticksUntil(s, () => m.phase === 2);
+      expect(s.enemies.filter((e) => e.kind === 'mortarGuard' && e.ai !== 'dead')).toHaveLength(want);
+    }
   });
 
   it('pools grout under every hero from phase 2: it lands after the channel and Chills whoever stayed', () => {

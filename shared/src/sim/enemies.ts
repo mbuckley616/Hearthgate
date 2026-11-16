@@ -1668,7 +1668,9 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
     if (e.aiTime >= m.roarMs / 1000) {
       // Phase 2 (M3): more Guards. Phase 3: the stones go out (wardstoneBrain, as it is no longer bound to them).
       if (e.phase === 1) {
-        const guards = masonAdds(state, m.phase2Guards);
+        // One fewer than the heroes with no floor of one: a lone hero, cut off behind the ridges, met a
+        // second Guard as the wall it could not pass (Session 233's bench), so phase 2 brings it none.
+        const guards = masonAdds(state, m.phase2Guards, 0);
         if (guards > 0) raiseFromEdges(state, world, e, guards, 'mortarGuard', m.guardRadius, Math.PI / 3);
       }
       e.phase = Math.min(3, e.phase + 1);
@@ -1826,12 +1828,12 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
-/** How many of an add the Mason raises (M2): up to `n`, one fewer than the heroes standing, one at least. */
-export function masonAdds(state: SimState, n: number): number {
+/** How many of an add the Mason raises (M2): up to `n`, one fewer than the heroes standing, `least` at least. */
+export function masonAdds(state: SimState, n: number, least = 1): number {
   const want = Math.round(n);
   if (want <= 0) return 0;
   const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
-  return Math.max(1, Math.min(want, heroes - 1));
+  return Math.max(least, Math.min(want, heroes - 1));
 }
 
 /** A fallen Wardstone no other Chanter is already raising, nearest `e` first; null when every stone stands. */

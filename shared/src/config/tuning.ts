@@ -1675,8 +1675,8 @@ export const tuning = {
     hodPush: 2,
     hodRecoveryMs: 700,
     /**
-     * Phase 2 at `phase2At` (M3): a roar raises `phase2Guards` more Mortar Guards (as many as the heroes
-     * allow, as M2's), and from then on some of its turns (`groutChance`) put a violet circle of grout
+     * Phase 2 at `phase2At` (M3): a roar raises `phase2Guards` more Mortar Guards (one fewer than the
+     * heroes, as M2's, but none for a lone hero), and from then on some of its turns (`groutChance`) put a violet circle of grout
      * under every hero within `groutRange`, landing after `groutChannelMs` (and the lag grace) for
      * `groutDamage` and a Chill.
      */
