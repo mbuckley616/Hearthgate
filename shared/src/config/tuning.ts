@@ -1384,6 +1384,13 @@ export const tuning = {
   king: {
     /** He ends the Hollow Crown's run; off, the Warden does, as before G4b. */
     hollowCrown: true,
+    /**
+     * K1 (`docs/bosses.md` 2.4): phase 2's roar also raises `crownbearers` Crownbearers, and while one
+     * channels his thrown crown comes back to his hand ready to be thrown again at once. Off in the
+     * parity test.
+     */
+    underRules: true,
+    crownbearers: 1,
     maxHp: 2400,
     maxPoise: 40,
     radius: 0.8,
@@ -1751,6 +1758,27 @@ export const tuning = {
     rebuildMs: 5000,
     rebuildHpFrac: 1,
     cooldownMs: 1500,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * A Crownbearer (K1): a Wraith's body, warded (arrows 1.5x, spells turned aside): the archer's job.
+   * It keeps `keepDistance` from the heroes and, while its King stands, channels a violet circle at
+   * its own feet for `channelMs`, then rests `cooldownMs`. While it channels the King's crown returns
+   * to his hand ready to throw. Any hit that lands breaks the channel.
+   */
+  crownbearer: {
+    maxHp: 90,
+    maxPoise: 12,
+    radius: 0.4,
+    height: 2.1,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 10,
+    channelMs: 6000,
+    cooldownMs: 2000,
     spawnMs: 900,
     deathMs: 1400,
     knockbackTaken: 0.6,
@@ -3834,6 +3862,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.chanters': [0, 4, 1],
   'mortarGuard.maxHp': [20, 1000, 10],
   'chanter.maxHp': [20, 1000, 10],
+  'crownbearer.maxHp': [20, 1000, 10],
+  'crownbearer.channelMs': [500, 15000, 100],
+  'crownbearer.cooldownMs': [0, 10000, 100],
+  'king.crownbearers': [0, 3, 1],
   'chanter.rebuildMs': [500, 15000, 100],
   'chanter.rebuildHpFrac': [0.1, 1, 0.05],
   'gravehand.phase2At': [0, 1, 0.05],
@@ -4385,7 +4417,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

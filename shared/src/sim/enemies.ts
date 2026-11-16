@@ -1091,6 +1091,8 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
     if (e.aiTime >= k.roarMs / 1000) {
       // Phase 2's roar raises his knights round the hall; phase 3's dims it and quickens him.
       if (e.phase === 1) raiseFromEdges(state, world, e, Math.round(k.knights), 'knight', k.raiseRadius);
+      // K1: and a Crownbearer, between the Knights, for the archer.
+      if (e.phase === 1 && k.underRules && k.crownbearers > 0) raiseFromEdges(state, world, e, Math.round(k.crownbearers), 'crownbearer', k.raiseRadius, Math.PI / 2);
       e.phase = Math.min(3, e.phase + 1);
       e.summoned = true;
       setAi(e, 'recover');
@@ -1225,7 +1227,9 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
         delete e.crown;
         e.tele.shape = 'none';
         setAi(e, 'recover');
-        e.recoverTime = k.crownRecoveryMs / 1000;
+        // K1: a Crownbearer channelling puts it back in his hand ready to throw, no rest and no cooldown.
+        const ready = crownbearerChanting(state);
+        e.recoverTime = ready ? 0 : k.crownRecoveryMs / 1000;
       }
       break;
     }
@@ -1836,6 +1840,46 @@ export function masonAdds(state: SimState, n: number, least = 1): number {
   return Math.max(least, Math.min(want, heroes - 1));
 }
 
+/** A Crownbearer channelling (K1), so the King's crown comes back ready to throw. */
+export function crownbearerChanting(state: Pick<SimState, 'enemies'>): boolean {
+  return tuning.king.underRules && state.enemies.some((o) => o.kind === 'crownbearer' && o.ai === 'chant');
+}
+
+/**
+ * A Crownbearer (K1; `docs/bosses.md` 2.4): keeps its distance from the heroes and, while its King
+ * stands, channels a violet circle at its own feet; while it does, the King's crown comes back to his
+ * hand ready to be thrown again (`kingBrain`). Any hit breaks the channel (`breakChannel`); its ward
+ * turns a spell aside, so the archer's arrow is the answer.
+ */
+function crownbearerBrain(state: SimState, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const c = tuning.crownbearer;
+  const want: Intent = { x: 0, z: 0 };
+  const king = state.enemies.some((o) => o.kind === 'king' && o.ai !== 'dead');
+  if (e.ai === 'chant') {
+    if (!king || e.aiTime >= c.channelMs / 1000) {
+      e.tele.shape = 'none';
+      setAi(e, 'recover');
+      e.recoverTime = c.cooldownMs / 1000;
+    }
+    return want;
+  }
+  if (target) {
+    const dx = target.x - e.x;
+    const dz = target.z - e.z;
+    const dist = Math.max(Math.hypot(dx, dz), 1e-3);
+    e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), c.turnRateDeg * DEG * edt);
+    if (dist < c.keepDistance) {
+      want.x = -dx / dist;
+      want.z = -dz / dist;
+    }
+  }
+  if (!king || e.ai !== 'chase' || e.cooldown > 0) return want;
+  setAi(e, 'chant');
+  e.tele = { shape: 'circle', x: e.x, z: e.z, radius: c.radius + 0.6, yaw: 0, arcDeg: 360 };
+  state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+  return want;
+}
+
 /** A fallen Wardstone no other Chanter is already raising, nearest `e` first; null when every stone stands. */
 function fallenStone(state: SimState, e: EnemyState): EnemyState | null {
   let best: EnemyState | null = null;
@@ -1936,6 +1980,7 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
   if (e.kind === 'silverRing') return wardBrain(state, world, e, target, edt);
   // The Bone Chanter (M2) channels on a fallen Wardstone instead.
   if (e.kind === 'chanter') return chanterBrain(state, world, e, target, edt);
+  if (e.kind === 'crownbearer') return crownbearerBrain(state, e, target, edt);
   const w = tuning.wraith;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
@@ -2053,6 +2098,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.shieldbearer.attackCooldownMs / 1000;
     case 'chanter':
       return tuning.chanter.cooldownMs / 1000;
+    case 'crownbearer':
+      return tuning.crownbearer.cooldownMs / 1000;
     case 'wardstone':
       return 1;
   }
@@ -2184,7 +2231,9 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         const pace = bossPace(state, e.kind);
         if (e.aiTime >= e.recoverTime * pace) {
           e.hasToken = false;
-          e.cooldown = attackCooldown(e) * pace;
+          // The King's crown, back in his hand while a Crownbearer channels (K1), is ready at once.
+          const ready = e.kind === 'king' && e.attack === 'crown' && crownbearerChanting(state);
+          e.cooldown = ready ? 0 : attackCooldown(e) * pace;
           bossAttackDone(e);
           setAi(e, 'chase');
         }

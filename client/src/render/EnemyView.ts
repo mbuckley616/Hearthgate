@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -119,6 +119,10 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
   },
   chanter: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
+  },  // The King's (K1): a Wraith's chant, a crown held up.
+  crownbearer: {
     guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
     chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
   },
@@ -232,8 +236,12 @@ export class EnemyView {
     if (kind === 'mason') this.dressMason(mat, mesh);
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
-    if (kind === 'priest' || kind === 'wraith' || kind === 'chanter') this.dressPriest(mat, mesh);
-    if (kind === 'wraith' || kind === 'chanter') {
+    if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer') this.dressPriest(mat, mesh);
+    if (kind === 'crownbearer') {
+      // A thin gold circlet over the hood: it carries the King's crown back, and reads as his.
+      this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 16).rotateX(Math.PI / 2), mat(0xd8b25a, { metalness: 0.8, roughness: 0.3, emissive: 0x3a2a08 }), 0, 0.12, 0));
+    }
+    if (kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer') {
       // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
       for (const l of Object.values(this.legs)) for (const o of [l.thigh, l.shin, l.knee, l.foot]) o.visible = false;
     }
@@ -822,7 +830,7 @@ export class EnemyView {
       }
     } else this.flew = false;
     // A Wraith hangs in the air and bobs, until it falls.
-    this.rig.position.y = rise + ((curr.kind === 'wraith' || curr.kind === 'chanter') && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
+    this.rig.position.y = rise + ((curr.kind === 'wraith' || curr.kind === 'chanter' || curr.kind === 'crownbearer') && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
     if (this.ring) {
       // Iron rolls with its speed; Silver turns slowly and bobs, faster while it wards; Bone whirls.
@@ -955,6 +963,7 @@ export class EnemyView {
       case 'priest':
       case 'wraith':
       case 'chanter':
+      case 'crownbearer':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
       case 'king': {
@@ -1111,6 +1120,7 @@ export function windupProgress(e: EnemyState): number {
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));
+      if (e.kind === 'crownbearer') return clamp01(t / (tuning.crownbearer.channelMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;

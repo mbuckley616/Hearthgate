@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 238, the Crownbearer (K1, part two)
+
+**What changed**
+
+The Hollow King's 60% roar now raises a **Crownbearer** with his two Barrow Knights (`king.underRules`, `king.crownbearers` 1; the parity test turns the switch off).
+- **Who it is:** a Wraith's body with a thin gold circlet over the hood, floating. It is a caster, warded (B5): arrows hit it 1.5x and a spell is turned aside, so it is the archer's job.
+- **What it does:** it keeps 10 m from the heroes. While its King stands it channels a violet circle at its own feet for 6 s, then rests 2 s (`crownbearer.*`, on the panel). Any landing hit breaks the channel.
+- **The crown:** while it channels, the King's crown comes home ready to throw. When the crown returns he skips the 0.6 s rest and his cooldown, so a far hero meets throw after throw until the archer breaks the channel.
+
+check 747/747 (4 new: the kind, its rise with the rules on and off, the channel and the arrow, the crown's return), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The return needed no new state. The King's recover after the crown reads `crownbearerChanting` as it ends, so nothing new rides the wire. The Crownbearer's job makes the Hollow Circlet (Session 237) offerable.
+
+**Next**
+
+- K1, part three: the Crown-catcher Buckler, the tank's piece, with a perfect parry of the thrown crown sending it back.
+- W1's adds wait on `decisions.md` Pending.
+
 ## 2026-11-16: Session 237, the King's first two drops (K1, part one), and the Warden's adds asked
 
 **What changed**
