@@ -369,7 +369,7 @@ export class Game {
     );
     // Following a join link skips the title; so does ?play (the tests and the lag lab).
     if (join || params.has('play')) this.title.setVisible(false);
-    // Ctrl is dodge, and browsers never let a page block Ctrl+W: ask before leaving mid-play.
+    // Browsers never let a page block Ctrl+W (Ctrl toggles sprint): ask before leaving mid-play.
     window.addEventListener('beforeunload', (e) => {
       if (!this.kbm.pointerLocked) return;
       e.preventDefault();
@@ -1552,7 +1552,7 @@ export class Game {
     el.innerHTML = `
         <table>
           <tr><td>Move</td><td>WASD · left stick</td></tr>
-          <tr><td>Sprint</td><td>hold Shift · left stick click</td></tr>
+          <tr><td>Sprint</td><td>Ctrl or double-tap W (ends when you stop) · left stick click</td></tr>
           <tr><td>Walk</td><td>light stick tilt</td></tr>
           <tr><td>Camera</td><td>mouse · arrow keys · right stick</td></tr>
           <tr><td>Attack</td><td>left click · J · RT / R2 (chains up to 5 hits); hold for a heavy, longer to charge it</td></tr>
@@ -1561,7 +1561,7 @@ export class Game {
           <tr><td>Zoom</td><td>mouse wheel · - and = · d-pad up and down</td></tr>
           <tr><td>Lock on</td><td>T · middle click · right stick click (flick to switch)</td></tr>
           <tr><td>Weapon</td><td>one for the outing: X takes the next kind from the bag, or choose it under Tab, outside a fight</td></tr>
-          <tr><td>Dodge</td><td>Ctrl · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
+          <tr><td>Dodge</td><td>Shift · B / Circle (no direction = backstep; interrupts attacks)</td></tr>
           <tr><td>Guard</td><td>hold right click · hold L · LT / L2 (raise it just before a hit to parry)</td></tr>
           <tr><td>Jump</td><td>Space · Y / Triangle</td></tr>
           <tr><td>Talk, doors, take a ring home</td><td>F, or Space while the prompt shows · A / Cross</td></tr>

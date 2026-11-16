@@ -2552,6 +2552,10 @@ export const tuning = {
     lookStickCurve: 2.0,
     /** A board's reset (E or RB on the talents or champion screen) takes a second press inside this window (Michael, 30 Oct). */
     resetConfirmSec: 2,
+    /** Two W presses this close start the keyboard's sprint (Michael, 16 Nov, A and his note). */
+    sprintDoubleTapMs: 300,
+    /** The keyboard's sprint ends after this long with no move key held, so changing keys does not end it. */
+    sprintStopGraceMs: 150,
   },
 
   /**
@@ -3670,6 +3674,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'input.stickDeadzone': [0, 0.5, 0.01],
   'input.lookStickCurve': [1, 4, 0.1],
   'input.resetConfirmSec': [0.5, 5, 0.1],
+  'input.sprintDoubleTapMs': [100, 600, 10],
+  'input.sprintStopGraceMs': [0, 600, 10],
 
   'look.exposure': [0.2, 3, 0.01],
   'look.kingDim': [0, 0.9, 0.05],
