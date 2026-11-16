@@ -12,20 +12,32 @@ export class SprintToggle {
   private stillMs = 0;
   /** Moved since it went on: Ctrl tapped while standing waits for the first step instead of ending. */
   private ran = false;
+  /** A double tap seen between frames, taken by the next `step`. */
+  private doubled = false;
 
-  /** One frame: `toggle` is Ctrl's press, `forward` W's press, `moving` whether a move key is held. */
-  step(toggle: boolean, forward: boolean, moving: boolean, nowMs: number, dtMs: number): boolean {
+  /**
+   * W went down, stamped with the key event's own time (`KeyboardEvent.timeStamp`), not the frame's. At 5 to
+   * 10 fps two taps can land inside one frame, and a frame's clock reads a 250 ms gap as anything up to two
+   * frames longer, so a double tap judged per frame went missing below about 15 fps (the critic, 16 Nov).
+   */
+  forwardDown(atMs: number): void {
+    if (atMs - this.lastForwardMs <= tuning.input.sprintDoubleTapMs) {
+      this.doubled = true;
+      this.lastForwardMs = -Infinity;
+    } else this.lastForwardMs = atMs;
+  }
+
+  /** One frame: `toggle` is Ctrl's press, `moving` whether a move key is held. */
+  step(toggle: boolean, moving: boolean, dtMs: number): boolean {
     const t = tuning.input;
     if (toggle) {
       this.on = !this.on;
       this.ran = false;
     }
-    if (forward) {
-      if (nowMs - this.lastForwardMs <= t.sprintDoubleTapMs) {
-        this.on = true;
-        this.ran = false;
-        this.lastForwardMs = -Infinity;
-      } else this.lastForwardMs = nowMs;
+    if (this.doubled) {
+      this.doubled = false;
+      this.on = true;
+      this.ran = false;
     }
     if (moving) {
       this.stillMs = 0;
@@ -41,6 +53,7 @@ export class SprintToggle {
     this.on = false;
     this.stillMs = 0;
     this.ran = false;
+    this.doubled = false;
     this.lastForwardMs = -Infinity;
   }
 }

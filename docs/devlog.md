@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 203, a double W counts on a slow page
+
+**What changed**
+
+The critic's bug (16 Nov): two W taps missed sprint below about 15 fps. A frame's presses were a set stamped with the frame's own clock, so two taps inside one frame were one, and a 250 ms gap could read as over 300 ms. Now `KeyboardMouseSource` hands each fresh W keydown to `SprintToggle.forwardDown` with the event's `timeStamp`, which judges the double tap there; the next frame's `step` turns sprint on. Ctrl's toggle and the stop grace are unchanged. `tests/controls-keys.ts` adds the critic's gaps at 5 fps (0, 40, 80, 150 and 250 ms start it, in one frame or across two; past the window does not). `tests/sprint-tap.e2e.ts` holds a real page at about 3 fps and sends the keys through CDP with a keyboard's own times: 0 to 250 ms start sprint and 450 ms does not; the same test on the old code started it at none of them.
+
+**Learned**
+
+Playwright's `keyboard.press` waits for each key to be handled, a frame apiece on a slow page, so it cannot show this bug or its fix; CDP's `Input.dispatchKeyEvent` with a `timestamp`, sent together, queues them as a player's fingers do. Chromium carries that time through to `KeyboardEvent.timeStamp`.
+
+**Next**
+
+The graphics cost and the crowd item still need a real machine; then the builder waits on Michael's three answers on the boss document.
+
 ## 2026-11-16: Session 201, dodge on Shift and a toggled sprint on Ctrl or a double W
 
 **What changed**

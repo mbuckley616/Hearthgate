@@ -64,8 +64,7 @@ export class KeyboardMouseSource implements InputSource {
       if (codes.some((c) => this.pressed.has(c))) frame.pressed.add(action);
     }
     const toggled = keyboardBindings.sprintToggle.some((c) => this.pressed.has(c));
-    const forward = keyboardMove.forward.some((c) => this.pressed.has(c));
-    if (this.sprint.step(toggled, forward, len > 0, performance.now(), dt * 1000)) frame.held.add('sprint');
+    if (this.sprint.step(toggled, len > 0, dt * 1000)) frame.held.add('sprint');
   }
 
   endFrame(): void {
@@ -88,7 +87,11 @@ export class KeyboardMouseSource implements InputSource {
     // Ctrl toggles sprint: while playing, stop the Ctrl shortcuts a page is allowed to stop (save, bookmark,
     // find...). Ctrl+W / T / N can't be stopped by any page; Game asks before leaving instead.
     if (this.pointerLocked && e.ctrlKey) e.preventDefault();
-    if (!this.held.has(e.code)) this.pressed.add(e.code);
+    if (!this.held.has(e.code)) {
+      this.pressed.add(e.code);
+      // Each W counted as it happens: a frame's presses are a set, so two taps inside one slow frame were one.
+      if (!e.repeat && keyboardMove.forward.includes(e.code)) this.sprint.forwardDown(e.timeStamp);
+    }
     this.held.add(e.code);
   };
 
