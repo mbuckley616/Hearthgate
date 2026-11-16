@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-16: The Gravehand's trio, 55 s against "2 to 3 minutes" (builder, Session 227)
+`docs/bosses.md` 1.2 asks three things of an early boss: solo 3 to 5 minutes with a potion left, a duo under half the solo time, and a trio at the boss's full pressure, a fight of 2 to 3 minutes. On the bench (20 seeds, Sessions 226 and 227) the Gravehand now meets the first two: solo 20 of 20 in 186 s, duo 0.48 of that, nobody downed. The trio kills it in 55 s. Its health is 1.7x a solo's (B1's 35% a player). For 2 minutes it would need about 3.7x, and the duo's 1.35x cannot move without losing its bar. The bench's three heroes are scripted bots that never miss a window, so real players will be slower.
+- **A.** Keep B1's rule and today's numbers. Judge the trio in your playtest of the Gravehand with friends, and look again at the Mason, a tanky boss built for three. *(recommended: the solo and duo bars are the ones 1.2 sets for early bosses, and a bot trio is the weakest stand-in for people)*
+- **B.** Bosses grow faster past two heroes: a new `bosses.extraHealthPastTwo` (about 2.0 per hero past the second), so a trio's boss has about 3.4x a solo's health and the duo's bar is kept. All bosses, behind B1's switch.
+- **C.** More pressure at three instead of health: with three heroes standing, the hand attacks about 30% more often and drops a second ring of each kind. The Gravehand only.
+
 ### 2026-11-16: B8, the tank's guard stance and the Paladin's reduction (builder, Session 214)
 `docs/bosses.md` 1.6 asks for a tank built on damage reduction: a held stance that takes about half of blunt and edge hits from the front, is not broken by a heavy (pushed back instead), and lets the tank walk slowly; and a short reduction for the Paladin. Today any hero's guard already takes light hits down to 15% (`guard.blockDamageFrac`). A heavy breaks it at 50% with a long stumble, except under the Paladin's Bulwark. A guarding hero cannot move. The section's open call is whether the stance is a new control or today's guard changed.
 - **A.** Today's guard becomes the stance with a shield in the off-hand: you walk at half speed while guarding, and a heavy pushes you back at 50% instead of breaking the guard. Without a shield, guard stays as it is. The Paladin's Bulwark adds 30% less damage taken for 3 s after it fires. No new key; numbers on the panel. *(recommended: it is the block players already know, made the tank's tool by the shield they choose, and it adds no key to learn)*
