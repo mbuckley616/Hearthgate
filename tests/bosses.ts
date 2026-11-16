@@ -29,6 +29,7 @@ import { lookOf, wornMods, type Worn } from '@hearthgate/shared/sim/catalogue';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { isTargetable } from '@hearthgate/shared/sim/combat';
 import { bossOf } from '@hearthgate/shared/sim/floorRun';
+import { masonBound } from '@hearthgate/shared/sim/mason';
 import { inTelegraph } from '@hearthgate/shared/sim/henchman';
 import { weakTo } from '@hearthgate/shared/sim/roles';
 import { levelFor } from '@hearthgate/shared/sim/gear';
@@ -175,7 +176,14 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
     const weak = weakTo(e.kind);
     return !weak || weak === m.style || !partners.has(weak);
   });
-  const target = (fit.length ? fit : alive).sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z) || a.id - b.id)[0];
+  // The Mason's bar says "Bound: break the Wardstones" (M1), and a player reads it: while it is Bound
+  // the heroes go for the stones, and a channel rebuilding one is broken by whoever's job it is (the
+  // archer's, or anyone's with no archer standing), since a Bound Mason takes a quarter (Session 235).
+  const nearest = (list: EnemyState[]) => list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z) || a.id - b.id)[0];
+  const bound = masonBound(st);
+  const chanting = bound ? fit.filter((e) => e.kind === 'chanter' && e.ai === 'chant') : [];
+  const stones = bound ? fit.filter((e) => e.kind === 'wardstone') : [];
+  const target = nearest(chanting.length ? chanting : stones.length ? stones : fit.length ? fit : alive);
   const t = toward(target.x, target.z);
   cmd.aimX = t.x;
   cmd.aimZ = t.z;
@@ -250,6 +258,9 @@ interface Result {
   phase: number;
   /** `--sources`: heroes' damage taken by where it came from (the boss's attack or the add's kind, and its type). */
   sources: Record<string, number>;
+  /** `--phases`: seconds after waking that each phase's roar came (index 0 is phase 2), and seconds the boss spent Bound (M1). */
+  phaseAt: number[];
+  boundS: number;
 }
 
 function fight(party: Party, seed: number): Result {
@@ -294,6 +305,8 @@ function fight(party: Party, seed: number): Result {
   let bossId = -1;
   let wokeAt = -1;
   let phase = 1;
+  const phaseAt: number[] = [];
+  let boundTicks = 0;
   const sources: Record<string, number> = {};
   for (let tick = 0; tick < MAX_TICKS; tick++) {
     for (const m of minds) {
@@ -309,8 +322,12 @@ function fight(party: Party, seed: number): Result {
       }
       if (ev.kind === 'enemyTelegraph') for (const m of minds) m.windups.set(ev.enemyId, tick);
       if (ev.kind === 'heroDown' && heroes().some((p) => p.id === ev.playerId)) downs++;
-      if (ev.kind === 'roar' && ev.phase !== undefined && ev.enemyId === bossId) phase = Math.max(phase, ev.phase);
+      if (ev.kind === 'roar' && ev.phase !== undefined && ev.enemyId === bossId) {
+        if (ev.phase > phase) phaseAt[ev.phase - 2] = wokeAt >= 0 ? host.sim.time - wokeAt : 0;
+        phase = Math.max(phase, ev.phase);
+      }
     }
+    if (bossId >= 0 && masonBound(host.sim)) boundTicks++;
     for (const p of heroes()) {
       const was = hpWas.get(p.id) ?? p.hp;
       if (p.hp < was) damageTaken += was - p.hp;
@@ -324,7 +341,7 @@ function fight(party: Party, seed: number): Result {
     const boss = host.sim.enemies.find((e) => e.id === bossId);
     const seconds = wokeAt >= 0 ? host.sim.time - wokeAt : 0;
     const potionsUsed = potionsAtStart - heroes().reduce((a, p) => a + (p.potions ?? 0), 0);
-    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs, phase, sources };
+    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs, phase, sources, phaseAt, boundS: boundTicks / tuning.sim.tickRate };
     if (boss && boss.ai === 'dead') return { outcome: 'kill', ...result };
     if (heroes().every((p: PlayerState) => p.mode === 'down')) return { outcome: 'wipe', ...result };
   }
@@ -339,6 +356,8 @@ function fight(party: Party, seed: number): Result {
     downs,
     phase,
     sources,
+    phaseAt,
+    boundS: boundTicks / tuning.sim.tickRate,
   };
 }
 
@@ -452,6 +471,19 @@ if (process.argv.includes('--sources')) {
     for (const r of row.results) for (const [k, v] of Object.entries(r.sources)) sum[k] = (sum[k] ?? 0) + v;
     const parts = Object.entries(sum).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v / row.results.length)}`);
     console.log(`  ${row.party.padEnd(17)}${parts.join(', ')}`);
+  }
+}
+if (process.argv.includes('--phases')) {
+  // Where a kill's time goes: phase 1 (to the 60% roar), phase 2 (to the 30% roar), phase 3 (to the fall), and the Bound share.
+  console.log('\ntime by phase, kills only (median s): phase 1, phase 2, phase 3, Bound');
+  for (const row of rows) {
+    const kills = row.results.filter((r) => r.outcome === 'kill' && r.phaseAt.length >= 2);
+    if (!kills.length) continue;
+    const p1 = median(kills.map((r) => r.phaseAt[0]));
+    const p2 = median(kills.map((r) => r.phaseAt[1] - r.phaseAt[0]));
+    const p3 = median(kills.map((r) => r.seconds - r.phaseAt[1]));
+    const bound = median(kills.map((r) => r.boundS));
+    console.log(`  ${row.party.padEnd(17)}${pad(p1.toFixed(0), 6)}${pad(p2.toFixed(0), 6)}${pad(p3.toFixed(0), 6)}${pad(bound.toFixed(0), 6)}`);
   }
 }
 console.log(`1.2's bar: solo 180 to 300 s with a potion left; duo under half the solo time with nobody downed.`);

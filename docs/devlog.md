@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 235, the bench's heroes break the Wardstones (M3's gate)
+
+**What changed**
+
+The boss bench's heroes now read the Mason's bar, "Bound: break the Wardstones", as a player does (`tests/bosses.ts`). While it is Bound they go for the stones. A Chanter channelling a stone back up is broken by whoever's job it is: the archer, or anyone when no archer stands. Before, every hero hit whatever was nearest, mostly the Mason at a quarter damage, and the Mason stood Bound for 271 of the trio's 292 s. `--phases` now prints each kill's seconds per phase and the seconds it spent Bound. Nothing in the game changed.
+
+Bench, Emberhall, level 12, 10 seeds, 15 minutes (Session 234's in brackets):
+
+| party | kills | ttk s | x solo | dmg | pots | downs | Bound s |
+|---|---|---|---|---|---|---|---|
+| solo (sword) | 10/10 | 342 (652) | 1.00 | 247 | 1.5 | 0.0 | 121 |
+| duo | 9/10, 1 wipe | 198 (501) | 0.58 (0.77) | 309 | 1.3 | 0.2 | 40 |
+| trio | 10/10 | 122 (276) | 0.36 | 11 | 0.0 | 0.0 | 60 |
+| solo + 3 henchmen | 9/10, 1 wipe | 546 (347) | 1.60 | 178 | 1.0 | 0.1 | 303 |
+
+Every fight of every party reached phase 3. The trio's phases: 92 s, 16 s, 14 s. Mossgate's Gravehand (5 seeds, level 4) is unchanged: solo 183 s, duo 0.60, trio 48 s. check 737/737.
+
+**Learned**
+
+The trio's slow kill was the bench, not the Mason. M3's gate (one bench fight with all three phases, a trio under 3 minutes) is met at 122 s. The lone sword's kill halved, to 342 s. That is a mid boss, which 1.2's 3 to 5 minutes does not bind. The trio now takes almost no damage (11 a fight), so the Mason is easy for three at the low end of 1.2's 2 to 3 minutes. The henchmen do not break the stones: their brain hits the nearest enemy, and a hero with three henchmen now takes 1.6x the solo time, with the Mason Bound for 303 s.
+
+**Next**
+
+- W1 and K1, the Warden and the King under the rules.
+- To raise if Michael asks for it: henchmen that break a Bound boss's stones. It is not on the backlog.
+- The Gallery Longbow waits on its question in `decisions.md` Pending.
+
 ## 2026-11-16: Session 234, the bench's heroes wait for the hod to lock (M3's tuning, part two)
 
 **What changed**
