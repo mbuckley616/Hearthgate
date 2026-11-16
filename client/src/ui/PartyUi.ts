@@ -183,8 +183,8 @@ export class PartyUi {
         const who = esc(near.name || 'your ally');
         const out = near.bleed !== undefined && near.bleed <= 0;
         const left = me.draughts ?? 0;
-        if (!out) text = `Hold F (or A) to revive ${who}`;
-        else if (left > 0) text = `Hold F (or A) to use your Revive Draught on ${who} (${left} left)`;
+        if (!out) text = `Hold F or Space (or A) to revive ${who}`;
+        else if (left > 0) text = `Hold F or Space (or A) to use your Revive Draught on ${who} (${left} left)`;
         else text = `${who} is out until the room is cleared, and you have no Revive Draught`;
         progress = near.reviveProgress;
       }

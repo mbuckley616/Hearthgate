@@ -53,6 +53,12 @@ interface Remote {
 export class HostSession {
   sim: SimState;
   private remotes = new Map<string, Remote>();
+  /**
+   * Henchmen whose hirer has yet to arrive in this room, by henchman id: the hirer's connection.
+   * A party handed on arrives henchmen first (they ride the room's options), so the brain's `leader`
+   * is set as that connection's hello lands.
+   */
+  private awaitedLeaders = new Map<string, string>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
   /** Seconds the whole party has stood in one open ring (T3), and which ring (the rest room has two, T4). */
@@ -122,11 +128,17 @@ export class HostSession {
       if (partyOf(this.sim).length >= tuning.coop.maxPlayers) {
         const hench = [...this.sim.players].reverse().find((p) => p.henchman && !p.summon);
         if (!hench) return send({ k: 'refused', reason: 'The party is full' });
-        this.between(() => removePlayer(this.sim, hench.id));
+        this.between(() => this.dropHenchman(hench.id));
       }
       const id = this.freeId();
       this.between(() => addPlayer(this.sim, this.world, id, msg.loadout, true));
       this.remotes.set(peer, { id, slots: createSlots(slotConfig()) });
+      for (const [hid, lead] of this.awaitedLeaders) {
+        if (lead !== peer) continue;
+        const h = this.sim.players.find((p) => p.id === hid);
+        if (h?.brain) h.brain.leader = id;
+        this.awaitedLeaders.delete(hid);
+      }
       // A generated floor's browsers build it from its spec (T4); the layout never travels.
       send({ k: 'welcome', id, floor: this.world.level.dungeon?.def.spec });
       send({ k: 'tuning', edits: tuningEdits() });
@@ -270,6 +282,14 @@ export class HostSession {
     refreshLevelHealth(h);
     h.hp = h.maxHp;
     if (card?.quick || card?.cap) h.brain = { threat: -1, seenAt: 0, answered: -1, guardUntil: -1, ...(card.quick ? { quick: true } : {}), ...(card.cap ? { cap: card.cap } : {}) };
+    // A hire keeps to the hero who hired it (Michael, 15 Nov); one arriving with its party waits for its hirer's hello.
+    if (!card?.name && beside) (h.brain ??= { threat: -1, seenAt: 0, answered: -1, guardUntil: -1 }).leader = beside.id;
+    if (card?.leader) {
+      h.brain ??= { threat: -1, seenAt: 0, answered: -1, guardUntil: -1 };
+      const here = this.remotes.get(card.leader);
+      if (here) h.brain.leader = here.id;
+      else this.awaitedLeaders.set(h.id, card.leader);
+    }
     return h;
   }
 
@@ -290,10 +310,37 @@ export class HostSession {
   takeHenchmen(): HenchmanCard[] {
     // A summon stays behind and crumbles with the room (its Necromancer has gone): only hires travel.
     const hench = this.sim.players.filter((p) => p.henchman && !p.summon);
-    this.between(() => {
-      for (const h of hench) removePlayer(this.sim, h.id);
+    const cards = hench.map((h) => {
+      const card = henchmanCard(h);
+      const lead = this.leaderPeer(h);
+      return lead === undefined ? card : { ...card, leader: lead };
     });
-    return hench.map(henchmanCard);
+    this.between(() => {
+      for (const h of hench) this.dropHenchman(h.id);
+    });
+    return cards;
+  }
+
+  /** A henchman leaves the room: its id may be the next hire's, so nothing it awaited stays behind. */
+  private dropHenchman(id: string): void {
+    removePlayer(this.sim, id);
+    this.awaitedLeaders.delete(id);
+  }
+
+  /** The connection a henchman's hirer plays through here, or the one it still awaits. */
+  private leaderPeer(h: PlayerState): string | undefined {
+    const waiting = this.awaitedLeaders.get(h.id);
+    if (waiting !== undefined) return waiting;
+    for (const [peer, r] of this.remotes) if (r.id === h.brain?.leader) return peer;
+    return undefined;
+  }
+
+  /**
+   * A connection here will reach this room as another (a party handed on, P10): the henchmen that
+   * await it await the new one. The room calls this before it sends the hand-off.
+   */
+  renameAwaitedLeader(from: string, to: string): void {
+    for (const [hid, lead] of this.awaitedLeaders) if (lead === from) this.awaitedLeaders.set(hid, to);
   }
 
   /** Henchmen arriving with their party from another room (P10). */
@@ -306,7 +353,7 @@ export class HostSession {
   /** A henchman let go (P10), by kit. */
   dismissHenchman(kit: Style): boolean {
     const h = this.sim.players.find((p) => p.henchman && !p.summon && p.style === kit);
-    if (h) this.between(() => removePlayer(this.sim, h.id));
+    if (h) this.between(() => this.dropHenchman(h.id));
     return !!h;
   }
 

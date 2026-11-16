@@ -34,6 +34,12 @@ export const BUTTON_ACTIONS = [
   'slowMo',
   'hitboxes',
   'inventory',
+  // B opens the hero screen on its Bag tab (Michael, 15 Nov, A).
+  'bag',
+  // X takes the next kind of weapon in the bag into the hand (Michael, 15 Nov, A; the test switch's key).
+  'nextWeapon',
+  // Space (Michael, 15 Nov, A): interact while a prompt is showing, otherwise jump. Game decides which.
+  'jumpOrUse',
   'map',
   // The camera's distance: the wheel, - and =, the d-pad off the hero screen.
   'zoomIn',

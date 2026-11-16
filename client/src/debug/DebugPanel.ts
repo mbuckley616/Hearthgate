@@ -37,6 +37,8 @@ export class DebugPanel {
     tools.add(tuning.debug, 'enemiesEnabled').name('Grunt waves').onChange(sent('enemiesEnabled'));
     tools.add(tuning.debug, 'passiveEnemies').name('Grunts never swing').onChange(sent('passiveEnemies'));
     tools.add(tuning.debug, 'godMode').name('God mode').onChange(sent('godMode'));
+    // For testing the breadth of the styles (Michael, 15 Nov): the hero screen's weapon lands mid-fight, as the slice's did.
+    tools.add(tuning.combo, 'swapInFight').name('Swap style mid-fight').listen().onChange((v: boolean) => this.onEdit('combo.swapInFight', v));
     for (const label of Object.keys(actions)) tools.add(actions, label);
     tools.add({ copy: () => this.copyTuning() }, 'copy').name('Copy tuning to clipboard');
     tools.add({ reset: () => this.reset() }, 'reset').name('Reset to tuning.ts values');

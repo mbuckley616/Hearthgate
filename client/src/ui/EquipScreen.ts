@@ -141,6 +141,13 @@ export class EquipScreen {
     this.setVisible(!this.visible);
   }
 
+  /** B (Michael, 15 Nov, A): open on the bag and body tab, or close the screen if it is already showing there. */
+  toggleBag(): void {
+    if (this.visible && this.tab === 'gear') return this.setVisible(false);
+    if (!this.visible) this.setVisible(true);
+    if (this.tab !== 'gear') this.setTab('gear');
+  }
+
   /**
    * Keys and pad while the screen is up (Game hands it the frame's actions and keeps the hero
    * still): move to choose, interact to pick up and put down, attack to wear or take off, ability 1 to drop, the style keys for tabs.
