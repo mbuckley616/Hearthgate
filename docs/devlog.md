@@ -2,6 +2,42 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 223, the bench's heroes fight with their own weapons (H3's gate, part one)
+
+**What changed**
+
+The boss bench (`tests/bosses.ts`) now counts how many fights reach the boss's third phase, from its roars (a "phase 3" column). It fails when a boss with three phases (the Gravehand, the King, or the Warden with `warden.threePhases`) never reaches it in any fight.
+
+It also had a bug that every earlier bench run shared. The heroes are placed straight into the boss hall, where the fight is already on, and a swap is refused once a fight is on (C3). So the bow and staff heroes fought the whole fight with the sword they joined holding. Each hero now starts with their own style in hand.
+
+The Gravehand on Mossgate Barrow, level 5, ten seeds:
+
+| party | kills | ttk s | wipes | timeouts | boss left | phase 3 |
+|---|---|---|---|---|---|---|
+| solo (sword) | 0/10 | - | 6 | 4 | 46% | 0/10 |
+| duo (sword, bow) | 2/10 | 113 | 0 | 8 | 36% | 3/10 |
+| trio (sword, bow, staff) | 9/10 | 51 | 0 | 1 | 1% | 10/10 |
+| solo + 3 henchmen | 10/10 | 29 | 0 | 0 | 0% | 6/10 |
+
+The first half of H3's gate is met: the trio's fights all show all three phases. The bar is not met.
+
+The Warden, run again with the bench fixed (`--set gravehand.enabled=false`): solo 9/10 in 88 s, duo 0.58 of the solo time (0.78 before the fix), trio 0.43, solo with henchmen 0.31. The duo's bar of under half is closer than B1 and B2 recorded, but still not met.
+
+**Learned**
+
+Per-tick accounting of the boss's lost health by its state shows where the damage comes from. A lone sword hurts the Gravehand only in its rest after a slam and in a stagger, as designed. The bow and staff tell two different stories:
+- **The staff alone** kills it in 55 s.
+- **The bow alone** times out with 61% left. In one traced fight, the hand sat at 275 health for the last 30 s. It hung in its chase at a pillar: more than `slamRange` from the kiting archer and with no line of sight for its flick, it neither closed in nor attacked. Meanwhile the bench's archer shot the nearest enemy, an Iron Ring that takes 35% from arrows.
+- **The henchmen's kills** skip the clench in 4 of 10. The roar is checked only in the chase, so a burst that takes the hand past 30% while it slams or rests, and kills it before its next chase, never sees phase 3.
+
+**Next**
+
+The rest of H3's gate, in order:
+1. The hand stuck behind a pillar: it should drift round to its hero, or flick or slam anyway.
+2. The clench is missed when a burst takes the hand past 30%.
+3. The bench's heroes go for the boss rather than an add they are weak against.
+4. Tune against the bar on the panel. Today a solo sword can only hurt the resting palm.
+
 ## 2026-11-16: Session 222, the shatter flick (H3, part three)
 
 **What changed**

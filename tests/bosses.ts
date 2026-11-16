@@ -231,6 +231,8 @@ interface Result {
   damageTaken: number;
   potionsUsed: number;
   downs: number;
+  /** The highest phase the boss reached (its roars, E1g and H2); 1 for a boss without phases. */
+  phase: number;
 }
 
 function fight(party: Party, seed: number): Result {
@@ -254,6 +256,13 @@ function fight(party: Party, seed: number): Result {
   const hall = level.dungeon!.pieces[level.dungeon!.def.exit];
   if (hall.kind !== 'boss') throw new Error('the last floor does not end in a boss hall');
   const mid = openMiddle(hall);
+  // Each hero walks in with their style in hand. A swap is refused once the hall's fight is on (C3),
+  // and placed straight into the hall, the bow and staff heroes would fight it with the sword they
+  // joined holding (as every bench before H3 did, Session 223).
+  minds.forEach((m) => {
+    const p = host.sim.players.find((q) => q.id === m.id)!;
+    p.style = m.style;
+  });
   host.sim.players.forEach((p, i) => {
     p.x = mid.x + (i % 2) * 1.2;
     p.z = mid.z + 5 + Math.floor(i / 2) * 1.2;
@@ -267,6 +276,7 @@ function fight(party: Party, seed: number): Result {
   let downs = 0;
   let bossId = -1;
   let wokeAt = -1;
+  let phase = 1;
   for (let tick = 0; tick < MAX_TICKS; tick++) {
     for (const m of minds) {
       m.seq++;
@@ -277,6 +287,7 @@ function fight(party: Party, seed: number): Result {
     for (const ev of events) {
       if (ev.kind === 'enemyTelegraph') for (const m of minds) m.windups.set(ev.enemyId, tick);
       if (ev.kind === 'heroDown' && heroes().some((p) => p.id === ev.playerId)) downs++;
+      if (ev.kind === 'roar' && ev.phase !== undefined && ev.enemyId === bossId) phase = Math.max(phase, ev.phase);
     }
     for (const p of heroes()) {
       const was = hpWas.get(p.id) ?? p.hp;
@@ -291,7 +302,7 @@ function fight(party: Party, seed: number): Result {
     const boss = host.sim.enemies.find((e) => e.id === bossId);
     const seconds = wokeAt >= 0 ? host.sim.time - wokeAt : 0;
     const potionsUsed = potionsAtStart - heroes().reduce((a, p) => a + (p.potions ?? 0), 0);
-    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs };
+    const result = { seconds, bossHp: boss?.maxHp ?? 0, bossLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : 1, damageTaken: Math.round(damageTaken), potionsUsed, downs, phase };
     if (boss && boss.ai === 'dead') return { outcome: 'kill', ...result };
     if (heroes().every((p: PlayerState) => p.mode === 'down')) return { outcome: 'wipe', ...result };
   }
@@ -304,6 +315,7 @@ function fight(party: Party, seed: number): Result {
     damageTaken: Math.round(damageTaken),
     potionsUsed: potionsAtStart - heroes().reduce((a, p) => a + (p.potions ?? 0), 0),
     downs,
+    phase,
   };
 }
 
@@ -353,7 +365,7 @@ for (const party of PARTIES) {
 const soloHp = median(rows[0].results.map((r) => r.bossHp));
 const soloKill = median(rows[0].results.filter((r) => r.outcome === 'kill').map((r) => r.seconds));
 const pad = (s: string | number, n: number) => String(s).padStart(n);
-console.log(`${'party'.padEnd(17)}${pad('boss hp', 8)}${pad('x solo', 7)}${pad('pred.', 7)}${pad('kills', 7)}${pad('ttk s', 8)}${pad('x solo', 8)}${pad('pred.', 7)}${pad('dmg', 7)}${pad('pots', 6)}${pad('downs', 7)}${pad('end s', 7)}${pad('left', 6)}`);
+console.log(`${'party'.padEnd(17)}${pad('boss hp', 8)}${pad('x solo', 7)}${pad('pred.', 7)}${pad('kills', 7)}${pad('ttk s', 8)}${pad('x solo', 8)}${pad('pred.', 7)}${pad('dmg', 7)}${pad('pots', 6)}${pad('downs', 7)}${pad('end s', 7)}${pad('left', 6)}${pad('phase 3', 9)}`);
 for (const row of rows) {
   const kills = row.results.filter((r) => r.outcome === 'kill');
   const hp = median(row.results.map((r) => r.bossHp));
@@ -366,13 +378,14 @@ for (const row of rows) {
       `${pad(Number.isFinite(ttk) && Number.isFinite(soloKill) ? (ttk / soloKill).toFixed(2) : '-', 8)}${pad(predTtk.toFixed(2), 7)}` +
       `${pad(Math.round(mean(row.results.map((r) => r.damageTaken))), 7)}${pad(mean(row.results.map((r) => r.potionsUsed)).toFixed(1), 6)}` +
       `${pad(mean(row.results.map((r) => r.downs)).toFixed(1), 7)}${pad(mean(row.results.map((r) => r.seconds)).toFixed(0), 7)}` +
-      `${pad(`${Math.round(mean(row.results.map((r) => r.bossLeft)) * 100)}%`, 6)}`,
+      `${pad(`${Math.round(mean(row.results.map((r) => r.bossLeft)) * 100)}%`, 6)}` +
+      `${pad(`${row.results.filter((r) => r.phase >= 3).length}/${row.results.length}`, 9)}`,
   );
 }
 const wipes = rows.map((r) => `${r.party} ${r.results.filter((x) => x.outcome === 'wipe').length}`).join(', ');
 const timeouts = rows.map((r) => `${r.party} ${r.results.filter((x) => x.outcome === 'timeout').length}`).join(', ');
 console.log(`\nwipes: ${wipes}\ntimeouts: ${timeouts}`);
-console.log(`ttk is the median of kills only; dmg, pots and downs are means over every seed, heroes only (henchmen's not counted);\nend s is the mean fight length, kill, wipe or timeout; left is the boss's mean health at the end.`);
+console.log(`ttk is the median of kills only; dmg, pots and downs are means over every seed, heroes only (henchmen's not counted);\nend s is the mean fight length, kill, wipe or timeout; left is the boss's mean health at the end;\nphase 3 counts the fights whose boss roared into its third phase.`);
 console.log(`1.2's bar: solo 180 to 300 s with a potion left; duo under half the solo time with nobody downed.`);
 
 fs.mkdirSync('tests/tmp', { recursive: true });
@@ -390,5 +403,11 @@ for (const row of rows) {
     console.error(`FAIL: ${row.party}: the boss never woke in some runs`);
     ok = false;
   }
+}
+// H3's gate: a boss with three phases shows all three in at least one fight of the bench.
+const threePhased = boss === 'gravehand' || boss === 'king' || (boss === 'warden' && tuning.warden.threePhases);
+if (threePhased && !rows.some((row) => row.results.some((r) => r.phase >= 3))) {
+  console.error(`FAIL: no fight reached the ${boss}'s third phase`);
+  ok = false;
 }
 process.exit(ok ? 0 : 1);
