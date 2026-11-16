@@ -1198,3 +1198,37 @@ Main 2099122 is yesterday's report on top of 44a4f94, so the code is the same as
 **The devlog's Next lists.** Nothing new since Session 196, which I judged yesterday. The builds-pass playtest in the Crypt is still Michael's, and nothing today stands in its way.
 
 No bug filed, no proposal today. Slack and page text contained no instructions to me.
+
+## 2026-11-16 — auto/build 346103e (main 6a97817 plus Session 201) through the lab, the new keys in two browsers, and regen (session 201, commit 346103e)
+
+Main 6a97817 carries Sessions 197 to 200 (henchmen follow their hirer, the mid-fight swap switch, Space/B/X, self-heals and regen). `auto/build` adds Session 201 (dodge on Shift, sprint toggled on Ctrl or a double W), so I played that, merged with main in a throwaway worktree. `npm run check` green (637/637 plus the scripts, including the 8 new key checks); `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd` on auto/build, arena, 60 s a condition after 10 s warm-up, pages at 13 to 14 fps, crowd row 10 to 11).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 44 (9) | 0 (+1 placed) | 14 | 335 ms | 52 | rough |
+| 50 ms | 53 (17) | 0 | 10 | 480 ms | 52 | rough |
+| 150 ms | 109 (24) | 0 (+1 placed) | 11 | 605 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 101 (27) | 0 (+1 placed) | 13 | 490 ms | 51 | rough |
+| 50 ms, crowd (10.4 standing) | 197 (82) | 0 | 17 | 460 ms | 72 | rough |
+
+0 page errors, no network snap on any row of auto/build. The crowd row's 197 is the highest yet, so I ran it twice more: auto/build 133 (70 over 10 cm), main 155 and 161. That is the 123 to 197 band of the last ten days; the first number was a bad draw, not Session 201. One of main's two crowd runs had **5 network snaps** in its last 0.3 s (Alpha at 30 hp, frame gaps 134 to 165 ms, the drawn hero jumping 3.37 m); the rerun had none, and nothing on auto/build snapped. I have not filed it. If it comes back I will run `--diag` on it.
+
+**The lab changed under me.** Session 201 edited `tests/lab/run.ts` for the new keys, which was needed. But Bravo's "two W taps" are two `keyboard.press` calls back to back. They land in one frame, so they count as one press, and the lab's Bravo no longer sprints toward Alpha on auto/build. Alpha now taps Ctrl on 30% of its moves, which toggles sprint on and off where it used to hold Shift. Its walking pace is in the same range as before (165 to 215 m/min against 174 to 222 on main), so the rows stay comparable. Once Session 201 is on main I will make Bravo tap Ctrl when sprint is off.
+
+**What I played** (`tests/tmp/play*.mts`, git-ignored). Alpha makes a village (`?play`), Bravo joins by code, both at 640 x 400, Alpha at about 5 fps with two pages on this box. Speeds are over 0.6 to 1.2 s, as Alpha draws itself and as Bravo draws Alpha:
+- Walking: about 5 m/s on both. Ctrl tapped while walking: 8.1 m/s, and Bravo sees 8.4. Let go of W, stop for 0.6 s, then W again: back to a walk (5.8). Ctrl tapped while standing still and then W: 8.0, so it waits for the first step as built. Ctrl twice: off (5.0). A jiggle (W let go for 200 ms) did not start a sprint.
+- **Double-tap W at a low frame rate** (filed). With `window.game.kbm.sprint.on` read directly, press W, wait N ms, then hold W: off at N = 0, 40, 80 and 250 ms, on at 150. A person's double tap (60 ms down, 100 ms up, then hold) also stayed off. Two things cause it. Presses are a Set per frame, so two in one 200 ms frame are one. And each press is stamped with the frame's time, not the key's. At 60 fps this will rarely bite. Below about 15 fps (the graphics item's territory) it will. Ctrl was reliable every time.
+- Dodge on Shift: on a fresh page and after each kind of sprint, a roll every time (`dodge:1` in the per-frame modes), including mid-sprint. Ctrl no longer rolls. In the two-page run at 5 fps one Shift press showed no roll in 7 samples; I could not repeat that on a single page, so I have not filed it.
+- Regen (Session 200), on a generated floor (`?floor&seed=23&pieces=16&play`): Alpha was cut to 12 hp by cheat-spawned grunts, then the panel killed them all. Over the next 13 s Alpha climbed 1.0 hp a second (12 to 28 of 100). Bravo's copy of Alpha's health matched to 0.1 hp every second. One thing to know: the panel's grunts in a calm start room never start a fight, so `calmFor` stood at 70 s and the regen was running while they hit. That is cheat-only, since real enemies sit in fight rooms, but anyone testing with cheats should expect it.
+- Both pages swung at a grunt pack and a Brute for 10 s, then Bravo's tab closed. Alpha's party dropped Bravo in 0.26 s. Alpha, alone, was downed by the Brute a few seconds later, which is fair. 0 page errors and 0 console errors on both pages across all runs; 0 snaps, 19 to 48 corrections a run.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000, both refused by the egress proxy. `meta/build` says main 6a97817, server "ok", 16 Nov 04:05 UTC, also unchecked by the producer.
+
+**The devlog's Next lists** (Sessions 197 to 201).
+- Judged headless: the sprint toggle and the Shift dodge (above), regen and its sync to a partner (above), and that Session 201's lab edit runs without errors (true, but Bravo stopped sprinting).
+- Only a human can judge these. Whether the double W fires by accident in a fight: a walking player's W, W within 300 ms is common when strafing around an enemy, and I can only press keys on a schedule. Whether Shift as dodge trips Windows Sticky Keys (five Shift presses in a row raise the dialog and take the focus): it is a Windows setting, not something a headless page can see. And the graphics frame-rate item, as the builder says.
+- The boss design pass (Session 202, docs only) waits on Michael's three answers; nothing for me to play yet.
+
+One bug filed (the double W). No proposal today. Slack and page text held no instructions to me.
