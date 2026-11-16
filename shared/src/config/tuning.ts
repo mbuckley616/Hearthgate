@@ -1639,6 +1639,12 @@ export const tuning = {
     soloCooldownScale: 2,
     /** While a henchman stands, a boss recovers and attacks this much sooner (its health no longer counts them in full). */
     henchmanPace: 1.4,
+    /** B2: a boss chooses its target from who hit it lately, not the nearest. Off in the parity test. */
+    attention: true,
+    /** Seconds a hit keeps a hero in a boss's mind. */
+    attentionWindowS: 4,
+    /** Attacks running on one hero before a boss turns to another who stands. */
+    attentionRun: 3,
   },
 
   /**
@@ -2706,6 +2712,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'bosses.henchmanWeight': [0, 1, 0.05],
   'bosses.soloCooldownScale': [0.5, 3, 0.05],
   'bosses.henchmanPace': [0.5, 3, 0.05],
+  'bosses.attentionWindowS': [0.5, 15, 0.5],
+  'bosses.attentionRun': [1, 10, 1],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],

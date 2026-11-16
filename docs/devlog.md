@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 206, a boss's attention (B2)
+
+**What changed**
+
+`sim/attention.ts`, behind `bosses.attention`, which the parity test turns off (hashes unchanged). A boss (the Warden, the Hollow King) chooses its target between attacks, not every tick. It picks from the heroes and henchmen who hit it in the last `bosses.attentionWindowS` (4 s), nearest first, or from everyone standing when nobody has. It stays on its focus until `bosses.attentionRun` (3) attacks have run on it. Then it turns to the nearest other hero who hit it lately, or the nearest other one standing. With one standing it never turns. A Paladin's taunt still holds it first. `damageEnemy` notes each hit (`noteBossHit`), and the shared `recover` step counts each attack done. The memory is an optional `EnemyState.attn`, so the wire needs nothing new and prediction never sees it. `nearestTarget` is exported for the tests. `attention.test.ts` has 6 tests: two heroes hitting are taken three and three, a target is kept through an attack, a bow hero hitting alone draws it, one standing hero keeps it, a taunt holds it, and with the switch off it is the nearest as before.
+
+The bench, ten seeds: duo heroes take 170 damage against 184 under B1 alone, and the trio's 114 against 90 is now shared across three. Kill times are unchanged within a second (duo 67 s, trio 54 s). check 647/647, test:net green.
+
+**Learned**
+
+Attention spreads the hits but does not speed a duo's kill: the duo is 0.77 of the solo time, against a bar of under half. Linear damage on 1.35 times the health gives 0.68 at best. A duo under half the solo time needs a solo fight longer than its hero's damage allows (W1's health) or a party that does more than add its damage (B5's weaknesses and the jobs). The henchman party's hero still takes nothing, because three henchmen hitting keep the boss's attention among four bodies.
+
+**Next**
+
+B3, damage types on every enemy's hit.
+
 ## 2026-11-16: Session 205, party scaling for bosses (B1)
 
 **What changed**

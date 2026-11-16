@@ -322,6 +322,8 @@ export interface EnemyState {
   hitMult?: number;
   /** A Paladin's Shield Rush holds it to them until this sim time (the builds pass). The server's alone. */
   taunt?: { by: string; until: number };
+  /** A boss's attention (B2): who hit it when (sim time), its focus, attacks on it running, and whether it chooses afresh. The server's alone. */
+  attn?: { hitAt: Record<string, number>; focus?: string; runs: number; pick: boolean };
   /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
   rootUntil?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */

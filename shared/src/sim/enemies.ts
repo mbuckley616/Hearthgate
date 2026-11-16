@@ -10,6 +10,7 @@ import { chillHero } from './chill';
 import type { EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
+import { bossAttackDone, bossTarget } from './attention';
 import { difficultyMult } from '../game/portalChoice';
 
 const DEG = Math.PI / 180;
@@ -165,10 +166,17 @@ export function spawnGroup(state: SimState, world: World): void {
   }
 }
 
-function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
+export function nearestTarget(state: SimState, e: EnemyState): PlayerState | null {
   // A Paladin's taunt holds it to them, nearer heroes or not (the builds pass).
   const held = e.taunt ? tauntedBy(state, e) : null;
   if (held) return held;
+  if (tuning.bosses.attention && roleOf(e.kind) === 'boss') {
+    const open = state.players
+      .filter((p) => p.mode !== 'down' && !isHidden(state, p))
+      .sort((p, q) => Math.hypot(p.x - e.x, p.z - e.z) - Math.hypot(q.x - e.x, q.z - e.z));
+    const chosen = bossTarget(state, e, open);
+    if (chosen !== undefined) return chosen;
+  }
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {
@@ -1501,6 +1509,7 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
         if (e.aiTime >= e.recoverTime * pace) {
           e.hasToken = false;
           e.cooldown = attackCooldown(e) * pace;
+          bossAttackDone(e);
           setAi(e, 'chase');
         }
         break;

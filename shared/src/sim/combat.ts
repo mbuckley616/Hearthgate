@@ -1,3 +1,4 @@
+import { noteBossHit } from './attention';
 import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
@@ -153,6 +154,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const stats = enemyStats(e.kind);
   const staggered = e.ai === 'stagger';
   const hero = state.players.find((p) => p.id === hit.attackerId);
+  if (hero) noteBossHit(state, e, hero);
   const bonus = hero && hit.style ? styleDamageBonus(hero, hit.style) : 0;
   const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) + championPoise(hero) : 0;
   // Shatter: a melee finisher on a slowed or frozen enemy (brief: cross-style combos).
