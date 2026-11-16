@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 212, job scores and the signature drop (B6, part three)
+
+**What changed**
+
+B6 is whole. A floor counts what each hero did by job in `FloorRunState.jobs`, through `noteJob` in `signatures.ts`, heroes only and while `bosses.signatureDrops` is on. `damageEnemy` counts damage to a boss as `boss` and damage to an armoured or warded add by its weakness (`jobFor`), as far as the hit went, so an overkill counts only what was left. `hurtHero` counts a boss's blow taken on a guard (parried, blocked or broken through) as `tank`. When a boss room clears, `bossDrops` lays each hero their offered piece at the middle of the boss's rares (`signatureDrops`), owned by that hero alone and banked or lost as any find is. A boss with no list drops none, which is every boss until W1, K1, H3 and M3. `signatures.test.ts` gains 4 tests: the boss's and an armoured add's damage counted, the overkill left out; a boss's blow on a guard counted as the tank's; two heroes each given their own job's piece; and nothing for a boss with no list or with the switch off. check 678/678, test:net green.
+
+**Learned**
+
+Prediction runs `damageEnemy` against the snapshot's copy, so the counts it writes there are thrown away with the next snapshot, and only the server's count drops anything. `hurtHero` holds a hit for the lag grace before judging it, so a test of the guard has to clear `lagGrace` first.
+
+**Next**
+
+B7, focus: +3% damage a floor in one style, up to +9%, shown in the corner, lost on a swap.
+
 ## 2026-11-16: Session 211, signature pieces and the offer by job (B6, part two)
 
 **What changed**

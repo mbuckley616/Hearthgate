@@ -6,6 +6,7 @@ import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
 import { ADD_WEAKNESS, roleOf } from './roles';
+import { jobFor, noteJob } from './signatures';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -216,6 +217,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
   const damage = baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
+  noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -680,6 +683,9 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
   if (p.mode === 'guard' && guardCovers(p, hit.fromX, hit.fromZ)) {
+    // The tank's job (B6): a boss's blow taken on the guard, parried or blocked or broken through.
+    const from = hit.enemyId !== undefined ? state.enemies.find((e) => e.id === hit.enemyId) : undefined;
+    if (from && roleOf(from.kind) === 'boss') noteJob(state, p, 'tank', hit.damage);
     if (p.parryOpen && p.guardTime * 1000 <= parryWindowMs(p)) {
       parry(state, p, hit);
       return 'parried';

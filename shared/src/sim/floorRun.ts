@@ -8,7 +8,8 @@ import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
 import { composeRoom, roomTier, type Place } from './roomMix';
-import { minibossNames } from './roles';
+import { minibossNames, roleOf } from './roles';
+import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
 import { dungeonTypeOf } from '../level/dungeonTypes';
 import type { EnemyState } from './types';
 import { difficultyMult } from '../game/portalChoice';
@@ -65,6 +66,8 @@ export interface FloorRunState {
   fallen?: number[];
   /** Treasure rooms (G5's C) whose guard has risen, by id: it rises once. */
   guarded?: number[];
+  /** What each hero did on this floor by job (B6), for a boss's signature drop: absent until someone does one. */
+  jobs?: Record<string, JobScores>;
 }
 
 /** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
@@ -247,6 +250,25 @@ function bossDrops(state: SimState, world: World, x: number, z: number): void {
     const a = (k / n) * Math.PI * 2 + 0.4;
     const r = n > 1 ? 1.6 : 0;
     spawnDrop(state, world, x + Math.cos(a) * r, z + Math.sin(a) * r, true, depthMult(world), Math.round(tuning.loop.bossDropMinTier));
+  }
+  signatureDrops(state, world, x, z);
+}
+
+/**
+ * A boss's signature piece (B6), one a hero, the piece of the job they did most (`offerFor`), laid
+ * at the middle of the boss's drops (the rares stand round it), each only its owner's.
+ */
+export function signatureDrops(state: SimState, world: World, x: number, z: number): void {
+  if (!tuning.bosses.signatureDrops || !tuning.gear.catalogue) return;
+  const boss = state.enemies.find((e) => roleOf(e.kind) === 'boss');
+  const list = boss ? SIGNATURES[boss.kind] : undefined;
+  if (!list?.length) return;
+  for (const p of state.players) {
+    if (p.henchman) continue;
+    const piece = offerFor(list, state.floor?.jobs?.[p.id] ?? {});
+    if (!piece) continue;
+    state.drops.push({ id: state.nextId++, owner: p.id, x, y: groundHeight(world, x, z), z, age: 0, item: signatureItem(piece, '') });
+    state.events.push({ kind: 'dropSpawned', owner: p.id, x, z, rarity: 'rare' });
   }
 }
 

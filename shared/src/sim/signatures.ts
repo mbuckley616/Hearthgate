@@ -1,5 +1,7 @@
-import type { EnemyKind } from '../config/tuning';
+import { tuning, type EnemyKind } from '../config/tuning';
 import type { GearItem, Signature } from './catalogue';
+import { ADD_WEAKNESS, roleOf } from './roles';
+import type { EnemyState, PlayerState, SimState } from './types';
 
 /**
  * A boss's signature drops by job (B6; `docs/bosses.md` 1.4 and 1.7; Michael's A on specializing, 16
@@ -47,4 +49,22 @@ export function offerFor(list: readonly SignaturePiece[], scores: JobScores): Si
 /** The piece as an item someone owns: a named rare with its one property, no perk or bonus. */
 export function signatureItem(piece: SignaturePiece, uid: string): GearItem {
   return { uid, id: piece.id, rarity: 'rare', perk: null, bonus: null, name: piece.name, signature: { ...piece.signature } };
+}
+
+/** The job a hit on `e` does: the boss itself, or an add by its weakness; null for anything else. */
+export function jobFor(e: EnemyState): Job | null {
+  if (roleOf(e.kind) === 'boss') return 'boss';
+  const w = ADD_WEAKNESS[e.kind];
+  return w ?? null;
+}
+
+/**
+ * Count `amount` toward a hero's `job` on this floor (part three): damage dealt for a boss or an add,
+ * a boss's blow taken on a guard for the tank. Heroes only; a floor only, where a boss can drop.
+ */
+export function noteJob(state: SimState, hero: PlayerState | undefined, job: Job | null, amount: number): void {
+  const f = state.floor;
+  if (!f || !hero || hero.henchman || !job || !(amount > 0) || !tuning.bosses.signatureDrops) return;
+  const mine = ((f.jobs ??= {})[hero.id] ??= {});
+  mine[job] = (mine[job] ?? 0) + amount;
 }

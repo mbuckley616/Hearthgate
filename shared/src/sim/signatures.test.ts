@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { tuning } from '../config/tuning';
+import { arena, buildWorld } from '../level/arena';
 import { readGearItem } from '../net/validate';
 import { CATALOGUE, wornMods, type GearItem } from './catalogue';
-import { offerFor, signatureItem, type SignaturePiece } from './signatures';
+import { damageEnemy, hurtHero } from './combat';
+import { addPlayer, type Loadout } from './coop';
+import { createEnemy } from './enemies';
+import { signatureDrops, type FloorRunState } from './floorRun';
+import { emptyMods } from './gear';
+import { ADD_WEAKNESS } from './roles';
+import { SIGNATURES, offerFor, signatureItem, type SignaturePiece } from './signatures';
+import { emptyTalents } from './talents';
+import type { EnemyState, PlayerState, SimState } from './types';
+import { createSimState } from './world';
 
 // B6, part two (docs/bosses.md 1.4 and 1.7): signature pieces as items, folded into Mods, and the
 // piece offered by the job a hero did. The list here stands in for a boss's (W1's Warden gives its own).
@@ -54,5 +65,68 @@ describe('signature pieces by job (B6)', () => {
     expect(readGearItem({ ...shield, signature: { resist: 'blunt', castSpeed: true } })).toBeNull();
     expect(readGearItem({ ...shield, signature: { resist: 'fire' } })).toBeNull();
     expect(readGearItem({ ...signatureItem(LIST[2], 'x'), signature: { bane: 'grunt' } })).toBeNull();
+  });
+});
+
+describe('job scores and the signature drop (B6, part three)', () => {
+  const world = buildWorld(arena);
+  const loadout: Loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+  const floorState = (): FloorRunState => ({ room: -1, cleared: [], fights: 0, rested: false, carried: {}, broken: [], found: { lumber: 0, stone: 0, coin: 0 }, potions: [] });
+  afterEach(() => {
+    delete SIGNATURES.warden;
+    delete ADD_WEAKNESS.grunt;
+  });
+
+  function party(): { s: SimState; a: PlayerState; b: PlayerState; boss: EnemyState } {
+    const s = createSimState(arena, [], world);
+    s.floor = floorState();
+    const a = addPlayer(s, world, 'a', loadout, false);
+    const b = addPlayer(s, world, 'b', loadout, false);
+    const boss = createEnemy(s, world, 'warden', 0, -9, 0);
+    Object.assign(boss, { ai: 'chase', hp: 1e5, maxHp: 1e5, poise: 1e9 });
+    return { s, a, b, boss };
+  }
+  const blow = (id: string, e: EnemyState, damage: number) => ({ attackerId: id, damage, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: e.x, y: 1, z: e.z, style: 'staff' as const });
+
+  it('counts damage to the boss and to an armoured add, as far as it went', () => {
+    const { s, a, boss } = party();
+    ADD_WEAKNESS.grunt = 'armoured';
+    const add = createEnemy(s, world, 'grunt', 4, -9, 0);
+    Object.assign(add, { ai: 'chase', hp: 5, maxHp: 50 });
+    damageEnemy(s, boss, blow(a.id, boss, 10));
+    damageEnemy(s, add, blow(a.id, add, 40));
+    const jobs = s.floor!.jobs![a.id];
+    expect(jobs.boss).toBeGreaterThan(0);
+    // The add had 5 health left: the job counts the 5, not the overkill.
+    expect(jobs.armoured).toBeCloseTo(5, 6);
+  });
+
+  it('counts a boss’s blow taken on a guard as the tank’s', () => {
+    const { s, a, boss } = party();
+    Object.assign(a, { mode: 'guard', yaw: Math.atan2(boss.x - a.x, boss.z - a.z), parryOpen: false, guardTime: 1, lagGrace: 0, invulnerable: false, invulnTime: 0 });
+    hurtHero(s, a, { damage: 30, fromX: boss.x, fromZ: boss.z, enemyId: boss.id });
+    expect(s.floor!.jobs![a.id].tank).toBe(30);
+  });
+
+  it('drops each hero the piece of their job, theirs alone', () => {
+    const { s, a, b } = party();
+    SIGNATURES.warden = LIST;
+    s.floor!.jobs = { a: { tank: 200, boss: 50 }, b: { boss: 300 } };
+    signatureDrops(s, world, 0, -9);
+    const mine = (id: string) => s.drops.filter((d) => d.owner === id).map((d) => (d.item as GearItem).name);
+    expect(mine(a.id)).toEqual(['Test Tower']);
+    expect(mine(b.id)).toEqual(['Test Mace']);
+  });
+
+  it('drops nothing for a boss with no list, or with the switch off', () => {
+    const { s } = party();
+    signatureDrops(s, world, 0, -9);
+    expect(s.drops).toHaveLength(0);
+    SIGNATURES.warden = LIST;
+    const was = tuning.bosses.signatureDrops;
+    tuning.bosses.signatureDrops = false;
+    signatureDrops(s, world, 0, -9);
+    tuning.bosses.signatureDrops = was;
+    expect(s.drops).toHaveLength(0);
   });
 });
