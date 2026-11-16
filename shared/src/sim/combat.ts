@@ -150,9 +150,15 @@ function resists(p: PlayerState, hit: HeroHit): boolean {
   return tuning.bosses.signatureDrops && !!hit.type && !!p.mods.resist?.includes(hit.type);
 }
 
-/** A bane weapon's multiplier on its boss's kind (B6), or 1. */
-function baneMult(hero: PlayerState | undefined, e: EnemyState): number {
-  return hero?.mods.bane === e.kind && tuning.bosses.signatureDrops ? tuning.bosses.baneMult : 1;
+/**
+ * A bane weapon's multiplier on its boss's kind (B6), or 1. The King's (Kingsbane, K1) is a bane to
+ * his Knights too, while he is on the floor: the ones he raised and the ones that guard his hall.
+ */
+function baneMult(state: SimState, hero: PlayerState | undefined, e: EnemyState): number {
+  const bane = hero?.mods.bane;
+  if (!bane || !tuning.bosses.signatureDrops) return 1;
+  const his = bane === 'king' && e.kind === 'knight' && state.enemies.some((o) => o.kind === 'king');
+  return bane === e.kind || his ? tuning.bosses.baneMult : 1;
 }
 
 export function isTargetable(e: EnemyState): boolean {
@@ -229,7 +235,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const bound = boundMult(state, e);
   // A Silver Ring's ward on the hand (H2) halves what reaches it.
   const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
-  const damage = bound * warded * resting * baneMult(hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = bound * warded * resting * baneMult(state, hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;

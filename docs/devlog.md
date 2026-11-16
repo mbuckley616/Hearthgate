@@ -2,6 +2,25 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 237, the King's first two drops (K1, part one), and the Warden's adds asked
+
+**What changed**
+
+- The Hollow King now drops a signature piece by job (`SIGNATURES.king`, `docs/bosses.md` 2.4). The **Hollow Circlet** (a silk hat, 20% less magic, against his violet circles) goes to the warded job, the archer who will break the Crownbearer's channel. **Kingsbane** (a steel sword, 1.25x) goes to the boss job and to anyone with no other. Kingsbane is a bane to the King and to a Barrow Knight while a King is on the floor (`baneMult` now takes the state). A Knight in a room of an earlier floor takes no more from it. Behind `bosses.signatureDrops`.
+- W1's phase 2 adds are asked in `decisions.md` Pending, A recommended. The approved document makes a weakness a rule of the kind, told by its look, but archers and Bone Priests are in every Crypt room. The choice is between two Warden-only kinds (a Barrow Skirmisher and a Grave Cantor) and making the Crypt's own weak everywhere.
+
+check 743/743 (3 new), test:net green, parity hashes unchanged.
+
+**Learned**
+
+Until the Crownbearer exists the King has nothing warded, so every hero is offered Kingsbane. The Crown-catcher Buckler needs a parry of the thrown crown, which does not exist: the crown is a line the King throws down, not a projectile a guard meets.
+
+**Next**
+
+- K1, part two: the Crownbearer (warded, a Wraith dressing), whose channel brings the crown back to the King's hand after a throw. Its gate is unit tests of the return.
+- K1, part three: the Crown-catcher Buckler and its parry of the crown.
+- W1's adds wait on the answer.
+
 ## 2026-11-16: Session 236, the Warden's signature drops (W1, part one)
 
 **What changed**
