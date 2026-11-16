@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 205, party scaling for bosses (B1)
+
+**What changed**
+
+`tuning.bosses` is a new panel section, behind `bosses.partyScaling`, which the parity test turns off (hashes unchanged). A boss (role `boss`: the Warden and the Hollow King) grows `bosses.extraPlayerHealth` (0.35) a player instead of 0.6, and a henchman counts `bosses.henchmanWeight` (0.5) of a player. `bossPace` in `enemies.ts` scales a boss's recovery and its next cooldown in the shared `recover` step: `bosses.soloCooldownScale` (2) longer with one hero standing and no henchman, and `bosses.henchmanPace` (1.4) shorter while a henchman stands. Every other enemy is unchanged. `bossScaling.test.ts` has 4 tests (health by party, the switch and other kinds, the pace, and a Warden's recovery held twice as long against one hero). The bench gained `--today` (the old rule) and `--set section.key=value`.
+
+The bench, ten seeds, level 5, old rule against new: solo kills 4 of 10 against 9 of 10, a potion left in 6 of them (the bar's "most tries"), with 287 damage taken against 186. Duo kills in 79 s against 68 s. Trio 67 s against 52 s. One hero with three henchmen fights a boss of 2.80 against 1.52 and kills in 47 s against 28 s.
+
+**Learned**
+
+`soloCooldownScale` was set from the bench, not from the document's 1.3. At 1.3 the solo hero won 5 of 10, at 1.6 9 of 10 with half a potion left, and at 2 9 of 10 with a potion left in 6. A solo kill takes about 90 s whatever the pace, because the hero's own damage bounds it. Two parts of 1.2's bar are out of B1's reach. The 3 to 5 minutes needs about twice the Warden's health, and that is W1's to set for the Warden, as each new boss sets its own. A duo under half the solo time needs B2's attention, because a duo's ratio stays at 0.78 when the solo hero survives more. The henchman party still takes almost no damage with the boss at 1.4 times the pace, because the boss spreads its attacks over four bodies. That is B2's job as well.
+
+**Next**
+
+B2, attention: a boss targets who hit it lately, never one hero more than three attacks running.
+
 ## 2026-11-16: Session 204, the boss bench (B0)
 
 **What changed**

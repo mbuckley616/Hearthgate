@@ -1624,6 +1624,24 @@ export const tuning = {
   },
 
   /**
+   * Bosses under the boss document's rules (`docs/bosses.md` 1.2, B1; Michael's A, 16 Nov): a duo
+   * should kill a boss in under half a solo hero's time, and a hero with three henchmen should not
+   * meet a boss of four. Every other enemy keeps `run.extraPlayerHealth`.
+   */
+  bosses: {
+    /** Off in the parity test, which keeps the slice's 0.6 a player for its Warden. */
+    partyScaling: true,
+    /** A boss's extra health for each player past the first. */
+    extraPlayerHealth: 0.35,
+    /** What a henchman counts as, of a player, for a boss's health. */
+    henchmanWeight: 0.5,
+    /** With one hero standing and no henchman, a boss's recoveries and cooldowns are this much longer. */
+    soloCooldownScale: 2,
+    /** While a henchman stands, a boss recovers and attacks this much sooner (its health no longer counts them in full). */
+    henchmanPace: 1.4,
+  },
+
+  /**
    * Drop-in co-op (brief: "Co-op"). The host runs the fight; every other
    * player predicts their own hero and sees the rest slightly in the past.
    */
@@ -2684,6 +2702,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'heal.bloomSelf': [0, 0.1, 0.005],
   'heal.regenPerS': [0, 0.05, 0.001],
   'heal.regenDelayS': [0, 30, 0.5],
+  'bosses.extraPlayerHealth': [0, 1, 0.05],
+  'bosses.henchmanWeight': [0, 1, 0.05],
+  'bosses.soloCooldownScale': [0.5, 3, 0.05],
+  'bosses.henchmanPace': [0.5, 3, 0.05],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],

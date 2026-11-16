@@ -39,8 +39,28 @@ function setAi(e: EnemyState, ai: EnemyAi): void {
 }
 
 /** Party scaling (brief: each extra player adds 60% enemy health). */
-function healthScale(state: SimState): number {
+function healthScale(state: SimState, kind: EnemyKind): number {
+  const b = tuning.bosses;
+  if (b.partyScaling && roleOf(kind) === 'boss') {
+    // docs/bosses.md 1.2: less a player, and a henchman counts a part of one.
+    const henchmen = state.players.filter((p) => p.henchman).length;
+    const party = state.players.length - henchmen + henchmen * b.henchmanWeight;
+    return 1 + Math.max(0, party - 1) * b.extraPlayerHealth;
+  }
   return 1 + Math.max(0, state.players.length - 1) * tuning.run.extraPlayerHealth;
+}
+
+/**
+ * How much longer a boss's recoveries and cooldowns run (docs/bosses.md 1.2): longer against one hero
+ * alone, so a solo fight is slower on the boss's side too, and shorter while a henchman stands, since
+ * its health counts them at a part. 1 for every other enemy and with `bosses.partyScaling` off.
+ */
+export function bossPace(state: SimState, kind: EnemyKind): number {
+  const b = tuning.bosses;
+  if (!b.partyScaling || roleOf(kind) !== 'boss') return 1;
+  const standing = state.players.filter((p) => p.mode !== 'down');
+  if (standing.some((p) => p.henchman)) return 1 / Math.max(0.1, b.henchmanPace);
+  return standing.length === 1 ? b.soloCooldownScale : 1;
 }
 
 /** A harder portal's enemies have more health and hit harder (G3): the difficulty's mult, floors only. */
@@ -86,7 +106,7 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
   }
   resolveCircle(pos, s.radius, (onLedge ? world.level.ledge.height : 0) + 0.3, s.height, world.colliders);
   const hard = difficultyScale(world);
-  const maxHp = s.maxHp * healthScale(state) * hard;
+  const maxHp = s.maxHp * healthScale(state, kind) * hard;
   const e: EnemyState = {
     id: state.nextId++,
     kind,
@@ -1476,13 +1496,15 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
           setAi(e, 'chase');
         }
         break;
-      case 'recover':
-        if (e.aiTime >= e.recoverTime) {
+      case 'recover': {
+        const pace = bossPace(state, e.kind);
+        if (e.aiTime >= e.recoverTime * pace) {
           e.hasToken = false;
-          e.cooldown = attackCooldown(e);
+          e.cooldown = attackCooldown(e) * pace;
           setAi(e, 'chase');
         }
         break;
+      }
       default:
         want = brainFor(e.kind)!(state, world, e, target, edt);
     }

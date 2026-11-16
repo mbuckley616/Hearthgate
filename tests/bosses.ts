@@ -11,6 +11,8 @@
  *
  *   npm run bench:bosses                         (the Warden, Mossgate Barrow's last floor)
  *   npm run bench:bosses -- --story mossgate --seeds 10 --level 4
+ *   npm run bench:bosses -- --today                       (the rule every enemy keeps, for comparison)
+ *   npm run bench:bosses -- --set bosses.soloCooldownScale=1.6   (a panel value, repeatable)
  *
  * Writes tests/tmp/bosses.json. A run that is neither a kill nor a wipe in `--minutes` (10) is a timeout.
  */
@@ -313,9 +315,30 @@ const median = (a: number[]) => {
 const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
 
 tuning.debug.godMode = false;
+// `--today` measures the rule every enemy keeps (0.6 a player, henchmen in full) in place of B1's.
+if (process.argv.includes('--today')) tuning.bosses.partyScaling = false;
+// `--set section.key=value` (repeatable) tries a panel value without editing tuning.ts.
+process.argv.forEach((a, i) => {
+  if (a !== '--set') return;
+  const [path, raw] = (process.argv[i + 1] ?? '').split('=');
+  const [section, key] = path.split('.');
+  const sec = (tuning as unknown as Record<string, Record<string, unknown>>)[section];
+  if (!sec || !(key in sec)) throw new Error(`no tuning value ${path}`);
+  sec[key] = raw === 'true' ? true : raw === 'false' ? false : Number(raw);
+});
+const B = tuning.bosses;
+/** 1.2's health multiplier for a party, by whichever rule is on. */
+const predictHp = (heroes: number, henchmen: number) =>
+  B.partyScaling
+    ? 1 + Math.max(0, heroes + henchmen * B.henchmanWeight - 1) * B.extraPlayerHealth
+    : 1 + (heroes + henchmen - 1) * tuning.run.extraPlayerHealth;
 const boss = bossOf(story.id);
 console.log(`The boss bench: ${boss} in ${story.name}'s last floor (difficulty ${story.run.difficulty}), heroes at level ${LEVEL}, ${SEEDS} seeds`);
-console.log(`health scaling today: 1 + (players - 1) x run.extraPlayerHealth (${tuning.run.extraPlayerHealth}), henchmen counted in full\n`);
+console.log(
+  B.partyScaling
+    ? `boss health (B1): 1 + (heroes + henchmen x ${B.henchmanWeight} - 1) x ${B.extraPlayerHealth}; pace x${B.soloCooldownScale} solo, /${B.henchmanPace} with henchmen\n`
+    : `boss health today: 1 + (players - 1) x run.extraPlayerHealth (${tuning.run.extraPlayerHealth}), henchmen counted in full\n`,
+);
 
 const rows: { party: string; players: number; predictedHp: number; results: Result[] }[] = [];
 for (const party of PARTIES) {
@@ -323,7 +346,7 @@ for (const party of PARTIES) {
   const results: Result[] = [];
   for (let seed = 1; seed <= SEEDS; seed++) results.push(fight(party, seed));
   const players = party.heroes.length + party.henchmen.length;
-  rows.push({ party: party.name, players, predictedHp: 1 + (players - 1) * tuning.run.extraPlayerHealth, results });
+  rows.push({ party: party.name, players, predictedHp: predictHp(party.heroes.length, party.henchmen.length), results });
   if (process.env.VERBOSE) console.log(`  ${party.name}: ${((performance.now() - t0) / 1000).toFixed(1)} s of wall time`);
 }
 
@@ -335,7 +358,7 @@ for (const row of rows) {
   const kills = row.results.filter((r) => r.outcome === 'kill');
   const hp = median(row.results.map((r) => r.bossHp));
   const ttk = median(kills.map((r) => r.seconds));
-  // 1.2's "today": a party's damage grows about linearly with its heroes, so time to kill goes as health / players.
+  // 1.2: a party's damage grows about linearly with its members, so time to kill goes as health / players.
   const predTtk = row.predictedHp / row.players;
   console.log(
     `${row.party.padEnd(17)}${pad(Math.round(hp), 8)}${pad((hp / soloHp).toFixed(2), 7)}${pad(row.predictedHp.toFixed(2), 7)}` +
