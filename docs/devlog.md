@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 217, the Gravehand's grab (H2, part two)
+
+**What changed**
+
+H2 is whole. From phase 2, some of the hand's turns (`gravehand.grabChance`, 0.35) reach for its hero within 8 m. The tell is a 1.6 m ring round them, edge, red with the orange rim. It follows them for half of its 1 s wind-up, then locks. As it closes, it takes the nearest hero still in the ring. Henchmen, summons and a hero in a roll's i-frames slip it. An empty grasp drops the palm to rest on the floor (1.4 s at 1.5x).
+
+A caught hero carries `PlayerState.held` (optional, so nothing new in the wire's lists). `stepPlayer` steps it through `stepHeld`: no move, no swing, no roll. Prediction runs the same code, so a held hero's own browser agrees. The hand comes down to them, low enough for a blade (`gravehandLift` 1 m), and squeezes 5 every second (edge) for up to 3 s. There are three ways out:
+- **A partner's heavy** on the hand opens it at once (`hitOnGrip`, from `damageEnemy`).
+- **`grabBreakDamage` (40)** dealt to it while it holds.
+- **Alone, three dodge presses on the beat**: each must come at least `grabBeatMs` (250 ms) after the last, and a press sooner starts the count again, so mashing does not work.
+
+Whichever way the hero gets out, they are untouchable for 0.5 s, and the palm rests where it held them, at 1.5x. A stagger, a freeze or the hand's fall drops its hero too (`releaseGrip`). Numbers are in `tuning.gravehand`, the main ones on the panel. `gravehand.test.ts` gains 5 tests: the reach, its timing and the hold; held still and squeezed until the grip runs down, then the rest; a partner's heavy; 40 damage and not 20; three presses on the beat free a solo hero and mashing every 67 ms does not. check 700/700 (parity unchanged), test:net green.
+
+**Learned**
+
+A state that stops a hero has to live where prediction steps it, or every held tick is a correction. So the hold is the hero's own field, as Chill is, and the server-only part is just the hand setting and clearing it.
+
+**Next**
+
+The HUD says nothing to a held hero yet: a corner line ("Held: dodge on the beat to break free", with the count) wants a session. The Bone Ring still takes the nearest hero rather than darting at the archer and the mage. Then H3: the clench, the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops.
+
 ## 2026-11-16: Session 216, the Gravehand's rings (H2, part one)
 
 **What changed**

@@ -7,7 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { clearsLow, damageEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
-import { gravehandLift, handAloft } from './gravehand';
+import { gravehandLift, handAloft, letGo, releaseGrip } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
@@ -1399,6 +1399,8 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
   const toTarget = Math.atan2(dx, dz);
   switch (e.ai) {
     case 'chase': {
+      // A grip left from before a stagger or a freeze lets go now.
+      if (e.grip) releaseGrip(state, e);
       const goal = navGoal(world, e, target);
       const gx = goal.x - e.x;
       const gz = goal.z - e.z;
@@ -1417,7 +1419,13 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
       if (e.cooldown > 0) break;
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (!sameLevel) break;
-      if (dist <= g.sweepRange && nextRandom(state) < g.sweepChance) {
+      if (e.phase >= 2 && dist <= g.grabRange && !target.held && nextRandom(state) < g.grabChance) {
+        // Phase 2 on (H2): it reaches for its hero, a red ring with the orange rim round them.
+        e.attack = 'grab';
+        setAi(e, 'chargeWindup');
+        e.tele = { shape: 'circle', x: target.x, z: target.z, radius: g.grabRadius, yaw: 0, arcDeg: 360 };
+        state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      } else if (dist <= g.sweepRange && nextRandom(state) < g.sweepChance) {
         e.attack = 'sweep';
         setAi(e, 'sweepWindup');
         e.tele = { shape: 'cone', x: e.x, z: e.z, radius: g.sweepRadius, yaw: e.yaw, arcDeg: g.sweepArcDeg };
@@ -1493,6 +1501,63 @@ function gravehandBrain(state: SimState, world: World, e: EnemyState, target: Pl
         e.recoverTime = g.sweepRecoveryMs / 1000;
       }
       break;
+    case 'chargeWindup': {
+      if (e.aiTime < (g.grabTelegraphMs / 1000) * 0.5) {
+        e.tele.x = target.x;
+        e.tele.z = target.z;
+      }
+      const cx = e.tele.x - e.x;
+      const cz = e.tele.z - e.z;
+      const cd = Math.hypot(cx, cz);
+      if (cd > 0.15) {
+        want.x = (cx / cd) * Math.min(1.5, cd);
+        want.z = (cz / cd) * Math.min(1.5, cd);
+      }
+      if (e.aiTime >= g.grabTelegraphMs / 1000) {
+        state.events.push({ kind: 'enemySwing', enemyId: e.id });
+        // The nearest hero in the ring it closes on; a roll's i-frames slip it, and the lag grace
+        // is the dodge's: judged as the hand closes, as a slam is.
+        const t = e.tele;
+        const caught = tuning.debug.passiveEnemies
+          ? undefined
+          : heroesInCircle(state, t.x, t.z, t.radius, e.y)
+              .filter((p) => !p.held && !p.henchman && !p.summon && !heroInvulnerable(p))
+              .sort((a, b) => Math.hypot(a.x - t.x, a.z - t.z) - Math.hypot(b.x - t.x, b.z - t.z))[0];
+        if (!caught) {
+          // An empty grasp: its palm hits the floor and rests there.
+          e.tele.shape = 'none';
+          setAi(e, 'recover');
+          e.recoverTime = g.slamRestMs / 1000;
+          break;
+        }
+        caught.held = { by: e.id, left: g.grabHoldMs / 1000, presses: 0, since: 99 };
+        e.grip = { hero: caught.id, taken: 0, squeeze: g.squeezeEveryMs / 1000 };
+        e.tele.shape = 'none';
+        setAi(e, 'charge');
+      }
+      break;
+    }
+    case 'charge': {
+      // Holding (H2): it hangs on its hero and squeezes, until they get out or the grip runs down.
+      const held = e.grip ? state.players.find((p) => p.id === e.grip!.hero) : undefined;
+      if (!e.grip || !held || held.held?.by !== e.id || held.mode === 'down') {
+        letGo(state, e);
+        break;
+      }
+      const hx = held.x - e.x;
+      const hz = held.z - e.z;
+      const hd = Math.hypot(hx, hz);
+      if (hd > 0.1) {
+        want.x = (hx / hd) * Math.min(1.5, hd);
+        want.z = (hz / hd) * Math.min(1.5, hd);
+      }
+      e.grip.squeeze -= edt;
+      if (e.grip.squeeze <= 0) {
+        e.grip.squeeze += g.squeezeEveryMs / 1000;
+        if (!tuning.debug.passiveEnemies) hurtHero(state, held, { damage: hitDamage(e, g.squeezeDamage), fromX: e.x, fromZ: e.z, enemyId: e.id, ...typed('edge') });
+      }
+      break;
+    }
     case 'aim': {
       e.yaw = turnToward(e.yaw, e.tele.yaw, g.turnRateDeg * DEG * edt);
       if (e.aiTime >= g.flickTelegraphMs / 1000) {

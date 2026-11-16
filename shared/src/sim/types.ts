@@ -126,6 +126,12 @@ export interface PlayerState {
    * stepPlayer, so prediction runs it down the same way. Absent when not chilled.
    */
   chill?: number;
+  /**
+   * Held in the Gravehand's grip (H2): which hand, seconds left, dodge presses on the beat so far and
+   * seconds since the last. Stepped in stepPlayer (no move, no swing), so prediction agrees; set and
+   * cleared by the hand on the server. Absent when free.
+   */
+  held?: { by: number; left: number; presses: number; since: number };
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -307,6 +313,8 @@ export interface EnemyState {
   crown?: { d: number; length: number; back: boolean; struck: string[] };
   /** The Hollow King's violet circles (G4b, phase 2): one under each hero standing as he cast. */
   circles?: { x: number; z: number }[];
+  /** The Gravehand's grip (H2): the hero it holds, what it has taken since it closed, and the next squeeze (s). */
+  grip?: { hero: string; taken: number; squeeze: number };
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;

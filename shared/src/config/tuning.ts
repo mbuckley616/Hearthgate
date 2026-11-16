@@ -1504,6 +1504,25 @@ export const tuning = {
     roarMs: 1600,
     ringRadius: 7,
     wardTaken: 0.5,
+    /**
+     * The grab (H2), phase 2 on: a red ring with the orange rim round its hero within `grabRange`,
+     * following them for half of `grabTelegraphMs`, then locked. Caught, a hero is held `grabHoldMs`,
+     * squeezed `squeezeDamage` each `squeezeEveryMs`. It lets go to a partner's heavy, to
+     * `grabBreakDamage` dealt to it, or to `grabEscapePresses` dodge presses each at least
+     * `grabBeatMs` after the last (a press sooner starts the count again: mashing does not work).
+     */
+    grabChance: 0.35,
+    grabRange: 8,
+    grabRadius: 1.6,
+    grabTelegraphMs: 1000,
+    grabHoldMs: 3000,
+    squeezeDamage: 5,
+    squeezeEveryMs: 1000,
+    grabBreakDamage: 40,
+    grabEscapePresses: 3,
+    grabBeatMs: 250,
+    /** Untouchable this long after a hero gets out, so the same grip cannot close on them at once. */
+    grabFreedInvulnMs: 500,
     /** Its picks between slam and sweep when both are in reach. */
     sweepChance: 0.4,
     cooldownMs: 900,
@@ -3613,6 +3632,13 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'gravehand.cooldownMs': [0, 5000, 50],
   'gravehand.phase2At': [0, 1, 0.05],
   'gravehand.wardTaken': [0, 1, 0.05],
+  'gravehand.grabChance': [0, 1, 0.05],
+  'gravehand.grabTelegraphMs': [300, 3000, 50],
+  'gravehand.grabHoldMs': [500, 8000, 100],
+  'gravehand.squeezeDamage': [0, 40, 1],
+  'gravehand.grabBreakDamage': [0, 300, 5],
+  'gravehand.grabEscapePresses': [1, 6, 1],
+  'gravehand.grabBeatMs': [0, 1000, 10],
   'ironRing.maxHp': [10, 1000, 10],
   'ironRing.chargeSpeed': [2, 20, 0.5],
   'ironRing.chargeDamage': [0, 60, 1],

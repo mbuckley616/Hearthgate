@@ -60,7 +60,7 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Hollow King (G4b): his sword string a strike, his thrown crown yellow.
   if (e.kind === 'king') return e.attack === 'circles' ? 'magic' : e.attack === 'crown' || e.attack === 'crownSweep' ? 'projectile' : 'strike';
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
-  if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' ? 'heavy' : 'strike';
+  if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' ? 'heavy' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
 }
@@ -85,7 +85,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'king':
       return e.attack === 'circles' ? 'magic' : e.attack === 'crown' ? 'pierce' : 'edge';
     case 'gravehand':
-      return e.attack === 'flick' ? 'pierce' : 'blunt';
+      return e.attack === 'flick' ? 'pierce' : e.attack === 'grab' ? 'edge' : 'blunt';
     case 'ironRing':
       return 'blunt';
     case 'silverRing':

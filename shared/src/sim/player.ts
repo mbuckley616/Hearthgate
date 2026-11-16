@@ -1,4 +1,5 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { stepHeld } from './gravehand';
 import { loseFocusOnSwap } from './focus';
 import { galeReady, shadowPass, specCrescendo } from './specs';
 import { groundHeight, type World } from '../level/arena';
@@ -489,6 +490,13 @@ export function stepPlayer(
     resolveCircle(p, mv.radius, p.y + 0.3, p.y + mv.height, colliders);
     settleVertical(p, world, dt);
     if (p.hurtTime <= 0) p.mode = 'move';
+    return;
+  }
+
+  // Held in the Gravehand's grip (H2): no move, no swing, no roll; dodge presses on the beat get out.
+  if (p.held) {
+    stepHeld(p, cmd, dt);
+    settleVertical(p, world, dt);
     return;
   }
 

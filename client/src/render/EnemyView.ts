@@ -1012,6 +1012,7 @@ export function windupProgress(e: EnemyState): number {
     if (e.ai === 'slamWindup') return clamp01(t / (g.slamTelegraphMs / 1000));
     if (e.ai === 'sweepWindup') return clamp01(t / (g.sweepTelegraphMs / 1000));
     if (e.ai === 'aim') return clamp01(t / (g.flickTelegraphMs / 1000));
+    if (e.ai === 'chargeWindup') return clamp01(t / (g.grabTelegraphMs / 1000));
     return 0;
   }
   switch (e.ai) {

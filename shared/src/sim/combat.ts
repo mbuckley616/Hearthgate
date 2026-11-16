@@ -1,5 +1,5 @@
 import { noteBossHit } from './attention';
-import { handAloft, palmResting } from './gravehand';
+import { handAloft, hitOnGrip, palmResting, releaseGrip } from './gravehand';
 import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
@@ -220,6 +220,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
+  // A partner's heavy, or enough damage, opens the Gravehand's grip (H2).
+  if (e.grip) hitOnGrip(state, e, hit.attackerId, hit.damage, hit.heavy);
   // Its palm resting on the floor after a slam is the punish window (H1).
   const resting = palmResting(e) ? tuning.gravehand.restDamageTaken : 1;
   // A Silver Ring's ward on the hand (H2) halves what reaches it.
@@ -480,6 +482,8 @@ function shatterAround(state: SimState, e: EnemyState, hit: HitSpec): void {
 
 /** Poise broken (or parried): open for the stagger window. */
 function staggerEnemy(state: SimState, e: EnemyState): void {
+  // A staggered Gravehand drops whoever it held (H2).
+  if (e.grip) releaseGrip(state, e);
   e.poise = 0;
   e.ai = 'stagger';
   e.aiTime = 0;
@@ -489,6 +493,7 @@ function staggerEnemy(state: SimState, e: EnemyState): void {
 }
 
 function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): void {
+  if (e.grip) releaseGrip(state, e);
   e.hp = 0;
   e.ai = 'dead';
   e.aiTime = 0;

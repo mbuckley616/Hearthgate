@@ -246,3 +246,76 @@ describe('the Gravehand, phase 2: its rings (H2)', () => {
     expect(attackType({ kind: 'ironRing', attack: '' })).toBe('blunt');
   });
 });
+
+describe('the Gravehand, phase 2: the grab (H2)', () => {
+  /** A hand in phase 2 holding p1 (or about to reach for them), with a partner p2 beside. */
+  function held(): { s: SimState; p: PlayerState; q: PlayerState; h: EnemyState } {
+    const { s, p, h } = scene(6);
+    const q = addPlayer(s, world, 'p2', loadout, false);
+    Object.assign(q, { x: 3, z: 9, hp: 1000, maxHp: 1000 });
+    h.phase = 2;
+    tuning.gravehand.grabChance = 1;
+    ticksUntil(s, () => h.ai === 'charge');
+    return { s, p, q, h };
+  }
+  const press = (dodge: boolean): PlayerCommand => ({ ...idleCommand(), dodge, moveX: 1 });
+
+  it('reaches for its hero in a rimmed ring, then holds them: down where a blade reaches it', () => {
+    const { s, p, h } = scene(6);
+    h.phase = 2;
+    tuning.gravehand.grabChance = 1;
+    ticksUntil(s, () => h.ai === 'chargeWindup');
+    expect(h.attack).toBe('grab');
+    expect(h.tele.shape).toBe('circle');
+    expect(telegraphTell(h, true)).toEqual({ colour: 'strike', type: 'edge', rim: true });
+    const n = ticksUntil(s, () => h.ai === 'charge');
+    expect(Math.abs(n * DT * 1000 - tuning.gravehand.grabTelegraphMs)).toBeLessThanOrEqual(DT * 1000 + 1);
+    expect(p.held).toMatchObject({ by: h.id, presses: 0 });
+    expect(h.grip?.hero).toBe('p1');
+    expect(handAloft(h)).toBe(false);
+  });
+
+  it('holds its hero still and squeezes them, and lets go when the grip runs down', () => {
+    const { s, p, h } = held();
+    const x = p.x;
+    const hp = p.hp;
+    for (let i = 0; i < 90; i++) stepSim(s, { p1: press(false) }, DT, world);
+    expect(p.x).toBe(x);
+    expect(p.held).toBeDefined();
+    for (let i = 0; i < 200 && p.held; i++) stepSim(s, { p1: press(false) }, DT, world);
+    expect(p.held).toBeUndefined();
+    expect(p.hp).toBeLessThan(hp);
+    stepSim(s, { p1: idleCommand() }, DT, world);
+    expect(h.grip).toBeUndefined();
+    expect(palmResting(h)).toBe(true);
+  });
+
+  it("drops a held hero to a partner's heavy, and rests its palm there", () => {
+    const { s, p, q, h } = held();
+    damageEnemy(s, h, { ...hit(q.id, h, false), heavy: true });
+    expect(p.held).toBeUndefined();
+    expect(h.grip).toBeUndefined();
+    expect(palmResting(h)).toBe(true);
+  });
+
+  it('drops a held hero after grabBreakDamage dealt to it, not before', () => {
+    const { s, p, q, h } = held();
+    const half = { ...hit(q.id, h, true), damage: tuning.gravehand.grabBreakDamage / 2 };
+    damageEnemy(s, h, half);
+    expect(p.held).toBeDefined();
+    Object.assign(h, { hitstop: 0 });
+    damageEnemy(s, h, half);
+    expect(p.held).toBeUndefined();
+  });
+
+  it('lets a solo hero wriggle free with three dodge presses on the beat, and not by mashing', () => {
+    const mashed = held();
+    for (let i = 0; i < 60; i++) stepSim(mashed.s, { p1: press(i % 4 === 0) }, DT, world);
+    expect(mashed.p.held).toBeDefined();
+    const { s, p } = held();
+    const beat = Math.ceil(tuning.gravehand.grabBeatMs / 1000 / DT) + 1;
+    for (let i = 0; i < beat * 3 && p.held; i++) stepSim(s, { p1: press(i % beat === 0) }, DT, world);
+    expect(p.held).toBeUndefined();
+    expect(p.invulnTime).toBeGreaterThan(0);
+  });
+});
