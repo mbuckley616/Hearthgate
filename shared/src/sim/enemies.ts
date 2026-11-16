@@ -213,7 +213,7 @@ function tokenHolders(state: SimState): number {
  * Where to walk to reach the target: straight at it on the same level,
  * otherwise via the nearest ramp (bottom then top, or the reverse).
  */
-function navGoal(world: World, e: EnemyState, target: PlayerState): { x: number; z: number } {
+function navGoal(world: World, e: EnemyState, target: Pick<PlayerState, 'x' | 'y' | 'z'>): { x: number; z: number } {
   if (world.level.dungeon) return floorGoal(world, e, target);
   if (Math.abs(target.y - e.y) < LEVEL_GAP) return { x: target.x, z: target.z };
   const paths = rampPaths(world.level);
@@ -237,7 +237,7 @@ function navGoal(world: World, e: EnemyState, target: PlayerState): { x: number;
  * point on the way through the doorways (walkRoute). With the doors open (D8) a hero can leave a room,
  * and an enemy walking straight at them only pressed into the wall between.
  */
-function floorGoal(world: World, e: EnemyState, target: PlayerState): { x: number; z: number } {
+function floorGoal(world: World, e: EnemyState, target: Pick<PlayerState, 'x' | 'y' | 'z'>): { x: number; z: number } {
   const layout = world.level.dungeon!;
   const from = pieceAt(layout, e.x, e.z);
   const to = pieceAt(layout, target.x, target.z);
@@ -300,7 +300,7 @@ function segmentNearRect(r: { minX: number; maxX: number; minZ: number; maxZ: nu
 }
 
 /** Can the enemy see the hero (walls, pillars and the ledge block the view)? */
-function lineOfSight(world: World, e: EnemyState, p: PlayerState): boolean {
+function lineOfSight(world: World, e: EnemyState, p: Pick<PlayerState, 'x' | 'y' | 'z'>): boolean {
   const from = { x: e.x, y: e.y + 1.3, z: e.z };
   const dx = p.x - e.x;
   const dy = p.y + 1.1 - from.y;
@@ -1645,6 +1645,11 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
     e.summoned = true;
     const n = Math.round(m.wardstones);
     if (n > 0) raiseFromEdges(state, world, e, n, 'wardstone', m.wardstoneRadius);
+    // Its adds (M2): the Guards between the party and the stones, the Chanters farther out, set between the stones.
+    const guards = masonAdds(state, m.guards);
+    const chanters = masonAdds(state, m.chanters);
+    if (guards > 0) raiseFromEdges(state, world, e, guards, 'mortarGuard', m.guardRadius, Math.PI / Math.max(1, n));
+    if (chanters > 0) raiseFromEdges(state, world, e, chanters, 'chanter', m.chanterRadius, Math.PI / Math.max(1, n) + Math.PI / 2);
   }
   if (!target) return want;
   const dx = target.x - e.x;
@@ -1747,6 +1752,94 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
+/** How many of an add the Mason raises (M2): up to `n`, one fewer than the heroes standing, one at least. */
+export function masonAdds(state: SimState, n: number): number {
+  const want = Math.round(n);
+  if (want <= 0) return 0;
+  const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
+  return Math.max(1, Math.min(want, heroes - 1));
+}
+
+/** A fallen Wardstone no other Chanter is already raising, nearest `e` first; null when every stone stands. */
+function fallenStone(state: SimState, e: EnemyState): EnemyState | null {
+  let best: EnemyState | null = null;
+  let bestD = Infinity;
+  for (const o of state.enemies) {
+    if (o.kind !== 'wardstone' || o.ai !== 'dead') continue;
+    if (state.enemies.some((c) => c !== e && c.kind === 'chanter' && c.ai === 'chant' && Math.hypot(c.tele.x - o.x, c.tele.z - o.z) < 0.1)) continue;
+    const d = Math.hypot(o.x - e.x, o.z - e.z);
+    if (d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return best;
+}
+
+/**
+ * A Bone Chanter (M2; `docs/bosses.md` 2.2): keeps its distance from the heroes, and when a Wardstone
+ * has fallen walks within `chanter.rebuildRange` of it and channels a violet circle on it; at the end
+ * of `rebuildMs` the stone stands again. Any hit that lands breaks the channel (`breakChannel`); its
+ * ward turns a spell aside, so the archer's arrow is the answer. The stone it raises is the fallen one
+ * under its circle, so nothing new rides the wire.
+ */
+function chanterBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const c = tuning.chanter;
+  const want: Intent = { x: 0, z: 0 };
+  const mason = state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead');
+  if (e.ai === 'chant') {
+    const stone = state.enemies.find((o) => o.kind === 'wardstone' && o.ai === 'dead' && Math.hypot(o.x - e.tele.x, o.z - e.tele.z) < 0.1);
+    if (!mason || !stone) {
+      e.tele.shape = 'none';
+      setAi(e, 'recover');
+      e.recoverTime = 0.3;
+      return want;
+    }
+    e.yaw = turnToward(e.yaw, Math.atan2(stone.x - e.x, stone.z - e.z), c.turnRateDeg * DEG * edt);
+    if (e.aiTime >= c.rebuildMs / 1000) {
+      // Stood back up: it rises as it was raised, and holds the Mason Bound again.
+      stone.hp = stone.maxHp * c.rebuildHpFrac;
+      stone.poise = enemyStats('wardstone').maxPoise;
+      setAi(stone, 'spawn');
+      state.events.push({ kind: 'enemyRose', enemyId: stone.id, x: stone.x, z: stone.z });
+      e.tele.shape = 'none';
+      setAi(e, 'recover');
+      e.recoverTime = 0.5;
+    }
+    return want;
+  }
+  if (target) {
+    const dx = target.x - e.x;
+    const dz = target.z - e.z;
+    const dist = Math.max(Math.hypot(dx, dz), 1e-3);
+    if (dist < c.keepDistance) {
+      want.x = -dx / dist;
+      want.z = -dz / dist;
+    }
+  }
+  const stone = mason && e.ai === 'chase' ? fallenStone(state, e) : null;
+  if (!stone) return want;
+  const sx = stone.x - e.x;
+  const sz = stone.z - e.z;
+  const sd = Math.max(Math.hypot(sx, sz), 1e-3);
+  if (sd > c.rebuildRange || !lineOfSight(world, e, stone)) {
+    // Out of reach of the stone: walk to it, whatever the heroes are doing.
+    const goal = navGoal(world, e, stone);
+    const gx = goal.x - e.x;
+    const gz = goal.z - e.z;
+    const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+    want.x = gx / gd;
+    want.z = gz / gd;
+    return want;
+  }
+  e.yaw = turnToward(e.yaw, Math.atan2(sx, sz), c.turnRateDeg * DEG * edt);
+  if (e.cooldown > 0) return want;
+  setAi(e, 'chant');
+  e.tele = { shape: 'circle', x: stone.x, z: stone.z, radius: enemyStats('wardstone').radius + 0.5, yaw: 0, arcDeg: 360 };
+  state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+  return { x: 0, z: 0 };
+}
+
 /** A Wardstone (M1) stands where it was raised and does nothing; it crumbles with its Mason. */
 function wardstoneBrain(state: SimState, _world: World, e: EnemyState): Intent {
   e.vx = 0;
@@ -1764,6 +1857,8 @@ function wardstoneBrain(state: SimState, _world: World, e: EnemyState): Intent {
 function casterBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   // The Silver Ring (H2) is a caster whose channel wards its hand instead of a circle under a hero.
   if (e.kind === 'silverRing') return wardBrain(state, world, e, target, edt);
+  // The Bone Chanter (M2) channels on a fallen Wardstone instead.
+  if (e.kind === 'chanter') return chanterBrain(state, world, e, target, edt);
   const w = tuning.wraith;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
@@ -1877,6 +1972,10 @@ function attackCooldown(e: EnemyState): number {
       return tuning.grunt.attackCooldownMs / 1000;
     case 'mason':
       return tuning.mason.cooldownMs / 1000;
+    case 'mortarGuard':
+      return tuning.shieldbearer.attackCooldownMs / 1000;
+    case 'chanter':
+      return tuning.chanter.cooldownMs / 1000;
     case 'wardstone':
       return 1;
   }
@@ -1896,7 +1995,8 @@ export function raisable(state: SimState, e: EnemyState): boolean {
 
 /** Haunted (P8): a fallen enemy that has not yet got up, and will. The Warden falls once. */
 export function willRise(state: SimState, e: EnemyState): boolean {
-  return state.floor?.modifier === 'haunted' && e.ai === 'dead' && !e.risen && roleOf(e.kind) !== 'boss';
+  // A Wardstone is scenery (M1): only a Chanter stands it up again (M2).
+  return state.floor?.modifier === 'haunted' && e.ai === 'dead' && !e.risen && roleOf(e.kind) !== 'boss' && e.kind !== 'wardstone';
 }
 
 export function stepEnemies(state: SimState, dt: number, world: World): void {
@@ -2071,7 +2171,9 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
     setAi(e, 'spawn');
     state.events.push({ kind: 'enemyRose', enemyId: e.id, x: e.x, z: e.z });
   }
-  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e) && !raisable(state, e)));
+  // A fallen Wardstone lies where it fell while its Mason stands, for a Chanter to raise (M2).
+  const mason = state.enemies.some((o) => o.kind === 'mason' && o.ai !== 'dead');
+  state.enemies = state.enemies.filter((e) => !(e.ai === 'dead' && e.aiTime >= enemyStats(e.kind).deathMs / 1000 && !willRise(state, e) && !raisable(state, e) && !(mason && e.kind === 'wardstone')));
 }
 
 /**

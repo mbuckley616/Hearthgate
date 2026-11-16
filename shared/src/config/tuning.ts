@@ -1645,6 +1645,14 @@ export const tuning = {
     /** Wardstones raised round the hall as it wakes, `wardstoneRadius` from it. */
     wardstones: 3,
     wardstoneRadius: 7,
+    /**
+     * Its adds (M2), raised with the stones: `guards` Mortar Guards near it and `chanters` Bone Chanters
+     * at `chanterRadius`, each up to one fewer than the heroes standing (one at least), so a trio meets two.
+     */
+    guards: 2,
+    chanters: 2,
+    guardRadius: 4,
+    chanterRadius: 11,
     /** The maul string: `stringSteps` cones, the first wound up `stringTelegraphMs`, each next after `stringNextMs`. */
     stringRange: 3.2,
     stringReach: 3.6,
@@ -1671,6 +1679,42 @@ export const tuning = {
     spawnMs: 1500,
     deathMs: 3000,
     knockbackTaken: 0.05,
+  },
+
+  /** A Mortar Guard (M2): a plated Shieldbearer (its shield, bash and turn are `shieldbearer`'s), armoured: the mage's job. */
+  mortarGuard: {
+    maxHp: 150,
+    maxPoise: 30,
+    radius: 0.5,
+    height: 2,
+    moveSpeed: 2.2,
+    turnRateDeg: 140,
+    spawnMs: 900,
+    deathMs: 1500,
+    knockbackTaken: 0.3,
+  },
+
+  /**
+   * A Bone Chanter (M2): a Wraith's body, warded (arrows 1.5x, spells turned aside): the archer's job.
+   * It keeps `keepDistance` from the heroes; when a Wardstone has fallen it walks within
+   * `rebuildRange` and channels a violet circle on it for `rebuildMs`, which stands it back up at
+   * `rebuildHpFrac` of its health. Any hit that lands breaks the channel.
+   */
+  chanter: {
+    maxHp: 80,
+    maxPoise: 12,
+    radius: 0.4,
+    height: 2.1,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 9,
+    rebuildRange: 14,
+    rebuildMs: 5000,
+    rebuildHpFrac: 1,
+    cooldownMs: 1500,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
   },
 
   /** A Wardstone (M1): a pillar of bound bone that holds the Mason Bound. Any style breaks it; it never moves or strikes. */
@@ -3733,6 +3777,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.hodDamage': [0, 80, 1],
   'mason.cooldownMs': [0, 5000, 50],
   'wardstone.maxHp': [20, 2000, 10],
+  'mason.guards': [0, 4, 1],
+  'mason.chanters': [0, 4, 1],
+  'mortarGuard.maxHp': [20, 1000, 10],
+  'chanter.maxHp': [20, 1000, 10],
+  'chanter.rebuildMs': [500, 15000, 100],
+  'chanter.rebuildHpFrac': [0.1, 1, 0.05],
   'gravehand.phase2At': [0, 1, 0.05],
   'gravehand.wardTaken': [0, 1, 0.05],
   'gravehand.grabChance': [0, 1, 0.05],
@@ -4281,7 +4331,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

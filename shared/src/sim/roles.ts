@@ -48,6 +48,9 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   mason: 'boss',
   // Scenery with health (M1): never strikes or moves; heavy, so no Priest raises it and its brain is its own.
   wardstone: 'heavy',
+  // The Mason's adds (M2): a plated Shieldbearer and a Wraith that rebuilds stones.
+  mortarGuard: 'shield',
+  chanter: 'caster',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -99,7 +102,10 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return 'edge';
     case 'mason':
     case 'wardstone':
+    case 'mortarGuard':
       return 'blunt';
+    case 'chanter':
+      return 'magic';
     case 'priest':
     case 'wraith':
       return 'magic';
@@ -135,7 +141,7 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
  */
 export type AddWeakness = 'armoured' | 'warded';
 
-export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded' };
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded' };
 
 const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
 
@@ -173,6 +179,8 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
     mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
     wardstone: { name: 'Wardstone', plural: 'Wardstones' },
+    mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
+    chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
   },
 };
 

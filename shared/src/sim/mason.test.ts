@@ -3,11 +3,11 @@ import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer, type Loadout } from './coop';
 import { damageEnemy, type HitSpec } from './combat';
-import { brainFor, createEnemy, stepEnemies } from './enemies';
+import { brainFor, createEnemy, masonAdds, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { boundMult, masonBound } from './mason';
-import { attackType, roleOf, telegraphTell } from './roles';
+import { ADD_WEAKNESS, attackType, roleOf, telegraphTell } from './roles';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -69,7 +69,7 @@ describe('the Ossuary Mason (M1)', () => {
     const { s } = scene(20);
     stepEnemies(s, DT, world);
     expect(stones(s)).toHaveLength(tuning.mason.wardstones);
-    expect(events(s, 'enemyRose')).toHaveLength(tuning.mason.wardstones);
+    expect(events(s, 'enemyRose').filter((ev) => 'enemyId' in ev && stones(s).some((st) => st.id === ev.enemyId))).toHaveLength(tuning.mason.wardstones);
     for (let i = 0; i < 30; i++) stepEnemies(s, DT, world);
     expect(stones(s)).toHaveLength(tuning.mason.wardstones);
   });
@@ -113,6 +113,11 @@ describe('the Ossuary Mason (M1)', () => {
     const at = { x: st.x, z: st.z };
     for (let i = 0; i < 120; i++) stepEnemies(s, DT, world);
     expect(Math.hypot(st.x - at.x, st.z - at.z)).toBeLessThan(1e-6);
+    // A fallen stone lies there while the Mason stands, past its death time, for a Chanter.
+    st.ai = 'chase';
+    damageEnemy(s, st, { ...hit(st), damage: 10000 });
+    for (let i = 0; i < 240; i++) stepEnemies(s, DT, world);
+    expect(s.enemies).toContain(st);
     m.hp = 0;
     m.ai = 'dead';
     ticksUntil(s, () => stones(s).every((e) => e.ai === 'dead'), 120);
@@ -120,7 +125,7 @@ describe('the Ossuary Mason (M1)', () => {
   });
 
   it('swings a string of stringSteps cones at its front hero, the last an overhead', () => {
-    tuning.mason.wardstones = 0;
+    Object.assign(tuning.mason, { wardstones: 0, guards: 0, chanters: 0 });
     const { s, p, m } = scene(4.5);
     ticksUntil(s, () => m.ai === 'windup');
     expect(m.attack).toBe('string');
@@ -141,12 +146,13 @@ describe('the Ossuary Mason (M1)', () => {
       return m.ai === 'recover';
     });
     expect(swings).toBe(tuning.mason.stringSteps);
+    expect(s.enemies).toHaveLength(1);
     expect(taken).toHaveLength(tuning.mason.stringSteps);
     expect(taken[taken.length - 1]).toBeGreaterThan(taken[0]);
   });
 
   it('throws its hod at a far hero: the circle follows them half the wind-up, then lands where it locked', () => {
-    tuning.mason.wardstones = 0;
+    Object.assign(tuning.mason, { wardstones: 0, guards: 0, chanters: 0 });
     const { s, p, m } = scene(12);
     ticksUntil(s, () => m.ai === 'slamWindup');
     expect(m.attack).toBe('hod');
@@ -161,11 +167,105 @@ describe('the Ossuary Mason (M1)', () => {
   });
 
   it('lands its hod on a hero who stays in the circle', () => {
-    tuning.mason.wardstones = 0;
+    Object.assign(tuning.mason, { wardstones: 0, guards: 0, chanters: 0 });
     const { s, p, m } = scene(12);
     ticksUntil(s, () => m.ai === 'slamWindup');
     const n = ticksUntil(s, () => events(s, 'enemySlam').length > 0);
     expect(Math.abs(n * DT * 1000 - tuning.mason.hodTelegraphMs)).toBeLessThanOrEqual(2 * DT * 1000 + 1);
     expect(p.hp).toBeLessThan(1000);
+  });
+});
+
+describe('the Mason’s adds (M2)', () => {
+  const keptC = { ...tuning.chanter };
+  afterEach(() => Object.assign(tuning.chanter, keptC));
+
+  function party(n: number): SimState {
+    const { s } = scene(20);
+    for (let i = 1; i < n; i++) {
+      const q = addPlayer(s, world, `p${i + 1}`, loadout, false);
+      Object.assign(q, { x: i, z: 20 });
+    }
+    return s;
+  }
+  const kinds = (s: SimState, k: string) => s.enemies.filter((e) => e.kind === k);
+
+  it('raises one fewer of each add than the heroes, one at least, up to two', () => {
+    expect(masonAdds(party(1), 2)).toBe(1);
+    expect(masonAdds(party(2), 2)).toBe(1);
+    expect(masonAdds(party(3), 2)).toBe(2);
+    expect(masonAdds(party(4), 2)).toBe(2);
+    expect(masonAdds(party(3), 0)).toBe(0);
+    const s = party(3);
+    stepEnemies(s, DT, world);
+    expect(kinds(s, 'mortarGuard')).toHaveLength(2);
+    expect(kinds(s, 'chanter')).toHaveLength(2);
+  });
+
+  it('makes the Guard armoured (a shield’s brain) and the Chanter warded (a caster’s)', () => {
+    expect(roleOf('mortarGuard')).toBe('shield');
+    expect(roleOf('chanter')).toBe('caster');
+    expect(ADD_WEAKNESS.mortarGuard).toBe('armoured');
+    expect(ADD_WEAKNESS.chanter).toBe('warded');
+  });
+
+  /** A Mason with one stone, fallen, and one Chanter in reach of it. */
+  function fallen(): { s: SimState; stone: EnemyState; ch: EnemyState } {
+    tuning.mason.wardstones = 1;
+    tuning.mason.guards = 0;
+    tuning.mason.chanters = 0;
+    const { s, m } = scene(20);
+    stepEnemies(s, DT, world);
+    const stone = stones(s)[0];
+    stone.ai = 'chase';
+    damageEnemy(s, stone, { ...hit(stone), damage: 10000 });
+    expect(stone.ai).toBe('dead');
+    const ch = createEnemy(s, world, 'chanter', m.x - 6, m.z, 0);
+    Object.assign(ch, { x: stone.x + 4, z: stone.z, ai: 'chase', aiTime: 0, cooldown: 0 });
+    return { s, stone, ch };
+  }
+
+  it('stands a fallen Wardstone back up after rebuildMs of channel, and the Mason is Bound again', () => {
+    const { s, stone, ch } = fallen();
+    expect(masonBound(s)).toBe(false);
+    ticksUntil(s, () => ch.ai === 'chant', 120);
+    expect(ch.ai).toBe('chant');
+    expect(Math.hypot(ch.tele.x - stone.x, ch.tele.z - stone.z)).toBeLessThan(0.01);
+    const n = ticksUntil(s, () => stone.ai !== 'dead', 900);
+    expect(Math.abs(n * DT * 1000 - tuning.chanter.rebuildMs)).toBeLessThanOrEqual(2 * DT * 1000 + 1);
+    expect(stone.hp).toBeCloseTo(stone.maxHp * tuning.chanter.rebuildHpFrac, 5);
+    expect(masonBound(s)).toBe(true);
+  });
+
+  it('breaks the channel on an arrow (the gate), and the stone stays down', () => {
+    const { s, stone, ch } = fallen();
+    ticksUntil(s, () => ch.ai === 'chant', 120);
+    ticksUntil(s, () => ch.aiTime >= 2, 300);
+    const hp = ch.hp;
+    damageEnemy(s, ch, hit(ch, 'bow'));
+    expect(ch.ai).not.toBe('chant');
+    // Warded: an arrow lands at wardArrowMult.
+    expect(hp - ch.hp).toBeCloseTo(10 * tuning.bosses.wardArrowMult, 5);
+    for (let i = 0; i < 60; i++) stepEnemies(s, DT, world);
+    expect(stone.ai).toBe('dead');
+  });
+
+  it('turns a spell aside and keeps channelling', () => {
+    const { s, ch } = fallen();
+    ticksUntil(s, () => ch.ai === 'chant', 120);
+    const hp = ch.hp;
+    damageEnemy(s, ch, hit(ch, 'staff'));
+    expect(ch.hp).toBe(hp);
+    expect(ch.ai).toBe('chant');
+  });
+
+  it('raises nothing once the Mason has fallen', () => {
+    const { s, stone, ch } = fallen();
+    const m = s.enemies.find((e) => e.kind === 'mason')!;
+    m.hp = 0;
+    m.ai = 'dead';
+    for (let i = 0; i < 600; i++) stepEnemies(s, DT, world);
+    expect(ch.ai).not.toBe('chant');
+    expect(stone.ai).toBe('dead');
   });
 });

@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 229, the Mason's Guards and Chanters (M2)
+
+**What changed**
+
+The Ossuary Mason raises its two kinds of adds with its Wardstones. Of each it raises one fewer than the heroes standing, at least one and at most two (`mason.guards`, `mason.chanters`), so a trio meets two of each.
+- **Mortar Guard** (`mortarGuard`): a plated Shieldbearer, with the Shieldbearer's shield, bash and slow turn. It is armoured (B5): blades and arrows deal it 35%, a staff full damage. It stands 4 m out, between the party and the stones.
+- **Bone Chanter** (`chanter`): a Wraith's body that keeps 9 m from the heroes. It is warded: arrows deal 1.5x, and a spell is turned aside. When a Wardstone falls, it walks within 14 m of it and channels a violet circle on it. After `chanter.rebuildMs` (5 s) the stone stands again at full health, and the Mason is Bound again. Any hit that lands breaks the channel, and its ward means that hit is an arrow or a blade, not a spell. Two Chanters never raise the same stone. Once the Mason falls, none is raised.
+
+A fallen stone now lies where it fell while the Mason stands, instead of being cleared after its death time, so there is something to raise. Haunted (Emberhall's modifier) no longer raises a Wardstone on its own; only a Chanter does. Figures: the Guard is the Shieldbearer's, tall shield and helm; the Chanter is the Wraith's. Numbers are on the panel. Not yet seen in a browser.
+
+Bench, Emberhall, level 12, 5 seeds, phase 1 only:
+
+| party | kills | ttk s | dmg | pots | downs |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5 (5 timeouts at 600 s, 28% left) | - | 226 | 1.6 | 0.0 |
+| duo (sword, bow) | 5/5 | 451 | 837 | 5.4 | 1.4 |
+| trio | 5/5 | 144 | 198 | 0.2 | 0.0 |
+| solo + 3 henchmen | 2/5 | 239 | 107 | 0.4 | 0.0 |
+
+check 726/726 (6 new in `mason.test.ts`), parity hashes unchanged.
+
+**Learned**
+
+The trio is the fight this boss is built for, and it works: the archer takes the Chanters, the staff the Guards, the sword the stones and the Mason, 144 s. The solo sword cannot finish it. Its Chanter flees out of a blade's reach and stands the stones back up, so the Mason stays Bound. A player would corner it, and the bench's bot does not. A mid boss is not held to the solo bar, but it must be beatable alone. The duo bleeds on the hod: 435 a fight, with the archer far off by design.
+
+**Next**
+
+- M3: phase 2's bone ridges and grout, phase 3's enrage and shockwave, the drops; and the tuning against its gate (trio under 3 minutes, all three phases).
+- The solo case for M3's tuning: a Chanter that stops fleeing when cornered, a longer rebuild solo, or fewer stones solo.
+- Waiting on Michael: the Gravehand's trio question and B8.
+
 ## 2026-11-16: Session 228, the Ossuary Mason, phase one (M1)
 
 **What changed**
