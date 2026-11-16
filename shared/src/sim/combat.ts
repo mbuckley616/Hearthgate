@@ -5,7 +5,7 @@ import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
-import { roleOf } from './roles';
+import { ADD_WEAKNESS, roleOf } from './roles';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -123,6 +123,24 @@ function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerS
   return true;
 }
 
+/**
+ * An add's weakness (B5): the multiplier a hit takes, or null for a spell a ward turns aside (a deflect
+ * spark, and the channel goes on). A hit with no style (a launched body, a trap) passes untouched.
+ */
+function addWeaknessMult(state: SimState, e: EnemyState, hit: HitSpec): number | null {
+  if (!tuning.bosses.addWeakness || !hit.style) return 1;
+  const w = ADD_WEAKNESS[e.kind];
+  if (w === 'armoured') return hit.style === 'staff' ? 1 : tuning.bosses.armourTaken;
+  if (w === 'warded') {
+    if (hit.style === 'bow') return tuning.bosses.wardArrowMult;
+    if (hit.style === 'staff') {
+      if (!hit.dot) state.events.push({ kind: 'guarded', enemyId: e.id, x: hit.x, y: hit.y, z: hit.z });
+      return null;
+    }
+  }
+  return 1;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -171,6 +189,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
   const shadow = hero ? shadowStrike(state, hero, hit) : 1;
   if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
+  const weakness = addWeaknessMult(state, e, hit);
+  if (weakness === null) return true;
   // Riposte (the parrying dagger): the first blow after a parried hit crits, if it comes in time.
   const riposte = hero ? riposteStrike(state, hero, hit) : 1;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
@@ -185,7 +205,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
-  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);

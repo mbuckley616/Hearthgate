@@ -1,4 +1,4 @@
-import type { EnemyKind } from '../config/tuning';
+import type { EnemyKind, Style } from '../config/tuning';
 import { DEFAULT_DUNGEON_TYPE, type DungeonType } from '../level/dungeonTypes';
 import type { DamageType } from './types';
 
@@ -103,6 +103,24 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
   const type = attackType(e);
   const colour: TelegraphColour = type === 'pierce' ? 'projectile' : type === 'magic' ? 'magic' : 'strike';
   return { colour, type, rim: before === 'heavy' || (e.kind === 'king' && e.attack === 'crownSweep') };
+}
+
+/**
+ * An add's weakness (B5; `docs/bosses.md` 1.3): armoured takes a share of melee and ranged and all of
+ * magic, so the mage's; warded turns a spell aside and takes arrows harder, so the archer's. A rule of
+ * the kind, as its dressing is. No kind today has one: the Ossuary Mason's Mortar Guards and Bone
+ * Chanters (M2) are the first. Mutable so a test can lend a kind a weakness.
+ */
+export type AddWeakness = 'armoured' | 'warded';
+
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = {};
+
+const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
+
+/** The style a kind's adds are weak to, if any. */
+export function weakTo(kind: EnemyKind): Style | undefined {
+  const w = ADD_WEAKNESS[kind];
+  return w ? WEAK_STYLE[w] : undefined;
 }
 
 /** What a kind is called in a dungeon type, one and many. */

@@ -1647,6 +1647,12 @@ export const tuning = {
     attentionRun: 3,
     /** B3: every enemy hit on a hero carries its damage type (blunt, edge, pierce, magic). Off in the parity test. */
     damageTypes: true,
+    /** B5: an add's weakness (armoured, warded) by its kind's `ADD_WEAKNESS` in `roles.ts`. Off in the parity test. */
+    addWeakness: true,
+    /** What an armoured add takes of a sword's or a bow's hit; a staff's ignores the plate. */
+    armourTaken: 0.35,
+    /** A bow's hit on a warded add lands this much harder; a staff's is turned aside. */
+    wardArrowMult: 1.5,
   },
 
   /**
@@ -2716,6 +2722,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'bosses.henchmanPace': [0.5, 3, 0.05],
   'bosses.attentionWindowS': [0.5, 15, 0.5],
   'bosses.attentionRun': [1, 10, 1],
+  'bosses.armourTaken': [0, 1, 0.05],
+  'bosses.wardArrowMult': [1, 3, 0.05],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],

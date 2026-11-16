@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 209, add weaknesses (B5)
+
+**What changed**
+
+`docs/bosses.md` 1.3's two rules, behind `bosses.addWeakness`, which the parity test turns off. A kind's weakness is data: `ADD_WEAKNESS` in `roles.ts` (armoured or warded), and `weakTo(kind)` gives the style that answers it. **Armoured** takes `bosses.armourTaken` (0.35) of a sword's or a bow's hit, and all of a staff's. **Warded** takes a bow's hit `bosses.wardArrowMult` (1.5) times as hard. A staff's hit is turned aside: no damage, a deflect spark (the Shieldbearer's `guarded` event, so its spark and sound), and a channel goes on. A sword hits it at its own weight and breaks a channel as any hit does. A hit with no style (a launched body, a trap) passes untouched. `addWeaknessMult` in `combat.ts` applies both rules, after a shield's guard and before the channel breaks. No kind has a weakness yet. M2's Mortar Guards and Bone Chanters are the first, so no fight changes today. Both numbers are on the panel. `addWeakness.test.ts` has 4 tests, lending a skeleton warrior plate and a Wraith a ward: armoured takes 35% from a sword and a bow and full from a staff, an arrow breaks a warded channel at 1.5x, a spell is turned aside with a spark and the channel kept, and nothing changes with the switch off. check 664/664.
+
+**Learned**
+
+The Wraith's channel already broke on any hit (E1d), so a ward needs only to keep a spell from landing. A deflected spell returns before `breakChannel`, and that is the whole rule. The document's "dull grey rim" look for an armoured add belongs with its dressing in M2, since no kind wears plate yet.
+
+**Next**
+
+B6, signature drops: `resist`, `castSpeed` and `bane` on `Mods`, `hurtHero` reading `resist` by `HeroHit.type`.
+
 ## 2026-11-16: Session 208, telegraph colours by damage type (B4)
 
 **What changed**
