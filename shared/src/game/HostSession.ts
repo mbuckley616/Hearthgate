@@ -59,6 +59,8 @@ export class HostSession {
    * is set as that connection's hello lands.
    */
   private awaitedLeaders = new Map<string, string>();
+  /** Focus (B7) a connection brings from the floor before, by its session here: set on its hello. */
+  private awaitedFocus = new Map<string, NonNullable<PlayerState['styleFocus']>>();
   /** Events since the last snapshot, for joiners. */
   private outbox: SimEvent[] = [];
   /** Seconds the whole party has stood in one open ring (T3), and which ring (the rest room has two, T4). */
@@ -133,6 +135,13 @@ export class HostSession {
       const id = this.freeId();
       this.between(() => addPlayer(this.sim, this.world, id, msg.loadout, true));
       this.remotes.set(peer, { id, slots: createSlots(slotConfig()) });
+      const focus = this.awaitedFocus.get(peer);
+      if (focus) {
+        this.awaitedFocus.delete(peer);
+        // The server's own count from the floor before; a swap on the way in loses it on the first step.
+        const me = this.sim.players.find((p) => p.id === id);
+        if (me) me.styleFocus = { ...focus };
+      }
       for (const [hid, lead] of this.awaitedLeaders) {
         if (lead !== peer) continue;
         const h = this.sim.players.find((p) => p.id === hid);
@@ -341,6 +350,18 @@ export class HostSession {
    */
   renameAwaitedLeader(from: string, to: string): void {
     for (const [hid, lead] of this.awaitedLeaders) if (lead === from) this.awaitedLeaders.set(hid, to);
+  }
+
+  /** A player's focus here (B7), by connection: what the next floor's room awaits for them. */
+  focusOf(peer: string): PlayerState['styleFocus'] {
+    const r = this.remotes.get(peer);
+    const f = r ? this.sim.players.find((p) => p.id === r.id)?.styleFocus : undefined;
+    return f ? { ...f } : undefined;
+  }
+
+  /** A connection arriving from the floor before brings its focus (B7): the room calls this before the hand-off. */
+  awaitFocus(peer: string, focus: NonNullable<PlayerState['styleFocus']>): void {
+    this.awaitedFocus.set(peer, { ...focus });
   }
 
   /** Henchmen arriving with their party from another room (P10). */

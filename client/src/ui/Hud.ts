@@ -1,4 +1,5 @@
 import { COMBO_NAMES as COMBO_WORDS, MASTERY_PAYOFF_RANKS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
+import { focusBonus } from '@hearthgate/shared/sim/focus';
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
@@ -7,6 +8,9 @@ import { flowTier } from '@hearthgate/shared/sim/flow';
 import { ICONS, iconUrl } from './pixelArt';
 import { abilityTitle, heroTitle } from '@hearthgate/shared/sim/specs';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
+
+/** A style's word on the focus line (B7). */
+const STYLE_WORD: Record<Style, string> = { sword: 'sword', bow: 'bow', staff: 'staff' };
 
 const TOAST_MS = 4200;
 
@@ -45,6 +49,9 @@ export class Hud {
   /** Health potions on the belt and the key that drinks one (D4). */
   private potion = document.createElement('div');
   private shownPotions = -1;
+  /** Focus (B7): a line under the belt while a run's floors have been one style's. */
+  private focus = document.createElement('div');
+  private shownFocus = '';
   /** Chilled (E1d): a line under the bars while it lasts, with the seconds left. */
   private chill = document.createElement('div');
   private shownChill = -1;
@@ -75,6 +82,7 @@ export class Hud {
     bars.className = 'hud-bars';
     this.draught.className = 'hud-draught';
     this.potion.className = 'hud-potion';
+    this.focus.className = 'hud-focus';
     this.chill.className = 'hud-chill';
     this.flow.className = 'hud-flow';
     this.flowFill.className = 'hud-flow-fill';
@@ -89,7 +97,7 @@ export class Hud {
     xpTrack.className = 'hud-level-track';
     xpTrack.appendChild(this.levelXp);
     this.level.append(this.levelText, xpTrack);
-    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.chill);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.focus, this.chill);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -318,6 +326,14 @@ export class Hud {
       this.shownPotions = potions;
       this.potion.style.display = potions > 0 ? 'block' : 'none';
       this.potion.innerHTML = `Health potion ×${potions} <kbd>G</kbd>`;
+    }
+    // Focus (B7): what staying in one style has earned; a swap loses it, and the line goes with it.
+    const bonus = Math.round(focusBonus(p, p.style) * 100);
+    const focus = bonus > 0 ? `Focus +${bonus}% ${STYLE_WORD[p.style]}  ·  lost on a swap` : '';
+    if (focus !== this.shownFocus) {
+      this.shownFocus = focus;
+      this.focus.style.display = focus ? 'block' : 'none';
+      this.focus.textContent = focus;
     }
   }
 

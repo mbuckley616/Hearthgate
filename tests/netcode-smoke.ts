@@ -223,6 +223,10 @@ async function main() {
     await Promise.all([va.takeHandoff(), vb.takeHandoff()]);
     const spec2 = va.floor;
     check(va.kind === "floor" && va.code === vb.code && spec2?.floor === 2 && spec2.seed !== spec1!.seed, "the deeper ring takes both onto floor 2, a different floor", JSON.stringify(spec2));
+    // Focus (B7): a floor gone through in one style rides the hand-off onto the next floor's room.
+    await va.until(() => va.me()?.styleFocus !== undefined, 2000, "Vale's focus on floor 2");
+    const focus = va.me()?.styleFocus;
+    check(focus?.floors === 1 && focus.style === va.me()!.style, "a floor gone through in one style carries a floor of focus onto the next", JSON.stringify(focus));
     const floor2 = floorLevel(spec2!).dungeon!;
     const fights2 = await walkFloor(va, vb, floor2);
     check(fights1 + fights2 > 0, "fight rooms on the way shut behind the party and open once cleared", `${fights1} + ${fights2} rooms`);

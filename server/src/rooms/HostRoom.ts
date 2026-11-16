@@ -169,6 +169,9 @@ export abstract class HostRoom extends Room {
         const reservation = await matchMaker.joinById(target, {});
         // Henchmen keep to whoever hired them (Michael, 15 Nov): the hirer arrives under a new session.
         rooms.get(target)?.host.renameAwaitedLeader(c.sessionId, reservation.sessionId);
+        // Focus (B7) goes on down a run's floors and ends with the run.
+        const focus = level === "floor" ? this.host.focusOf(c.sessionId) : undefined;
+        if (focus) rooms.get(target)?.host.awaitFocus(reservation.sessionId, focus);
         const msg: ToPeer = { k: "handoff", reservation, level };
         c.send(MSG, msg);
       }

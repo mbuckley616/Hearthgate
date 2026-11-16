@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 214, focus through the hand-off and in the corner (B7, part two)
+
+**What changed**
+
+B7 is whole. When the party takes a deeper ring, `HostRoom.handOff` asks the old room's `HostSession.focusOf` for each player's focus. It hands that to the new floor's session with `awaitFocus`, under the seat it reserved, beside `renameAwaitedLeader`. The new session sets the focus on the player as their hello lands. It is the server's own count and never the browser's word. A ring home carries none, so focus ends with the run. A swap on the way in loses it on the first step. The HUD's left corner shows a gold line under the potion belt while focus counts, "Focus +6% sword · lost on a swap". It goes when a swap clears it. `tests/netcode-smoke.ts` checks that a party walking floor 1 to the deeper ring arrives on floor 2 with `{ style: 'sword', floors: 1 }`. check 681/681, test:net green.
+
+**Learned**
+
+The hand-off already had the shape for this. A room tells the next room's session what a reserved seat brings before the browser even leaves, as the hirer's henchmen do, so carrying a player's state needs no new message and nothing from the client.
+
+**Next**
+
+B8 is a **(design)** item: the tank's guard stance and the Paladin's reduction, to be asked first. Then H1, the Gravehand.
+
 ## 2026-11-16: Session 213, focus in the sim (B7, part one)
 
 **What changed**
