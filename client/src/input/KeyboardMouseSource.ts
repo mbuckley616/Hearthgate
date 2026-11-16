@@ -1,6 +1,7 @@
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { BUTTON_ACTIONS, type ActionFrame, type InputSource } from './actions';
 import { keyboardBindings, keyboardLook, keyboardMove } from './bindings';
+import { SprintToggle } from './sprintToggle';
 
 const DEG = Math.PI / 180;
 
@@ -10,11 +11,15 @@ export class KeyboardMouseSource implements InputSource {
   private pressed = new Set<string>();
   private mouseDX = 0;
   private mouseDY = 0;
+  private readonly sprint = new SprintToggle();
 
   constructor(private readonly target: HTMLElement) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    window.addEventListener('blur', () => this.held.clear());
+    window.addEventListener('blur', () => {
+      this.held.clear();
+      this.sprint.reset();
+    });
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('mousedown', this.onMouseDown);
     document.addEventListener('mouseup', this.onMouseUp);
@@ -58,6 +63,9 @@ export class KeyboardMouseSource implements InputSource {
       if (codes.some((c) => this.held.has(c))) frame.held.add(action);
       if (codes.some((c) => this.pressed.has(c))) frame.pressed.add(action);
     }
+    const toggled = keyboardBindings.sprintToggle.some((c) => this.pressed.has(c));
+    const forward = keyboardMove.forward.some((c) => this.pressed.has(c));
+    if (this.sprint.step(toggled, forward, len > 0, performance.now(), dt * 1000)) frame.held.add('sprint');
   }
 
   endFrame(): void {
@@ -77,8 +85,8 @@ export class KeyboardMouseSource implements InputSource {
   private onKeyDown = (e: KeyboardEvent) => {
     if (this.isTypingInField(e)) return;
     if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
-    // Ctrl is dodge: while playing, stop the Ctrl shortcuts a page is allowed to stop (save, bookmark, find...).
-    // Ctrl+W / T / N can't be stopped by any page; Game asks before leaving instead.
+    // Ctrl toggles sprint: while playing, stop the Ctrl shortcuts a page is allowed to stop (save, bookmark,
+    // find...). Ctrl+W / T / N can't be stopped by any page; Game asks before leaving instead.
     if (this.pointerLocked && e.ctrlKey) e.preventDefault();
     if (!this.held.has(e.code)) this.pressed.add(e.code);
     this.held.add(e.code);

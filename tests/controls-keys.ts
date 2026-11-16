@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { gamepadBindings, keyboardBindings } from '../client/src/input/bindings';
 import { BUTTON_ACTIONS } from '../client/src/input/actions';
 import { Profile } from '../client/src/game/Profile';
+import { SprintToggle } from '../client/src/input/sprintToggle';
+import { tuning } from '../shared/src/config/tuning';
 
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
@@ -24,6 +26,43 @@ assert.deepEqual(gamepadBindings.jump, [3]);
 assert.deepEqual(gamepadBindings.interact, [0]);
 assert.equal(gamepadBindings.bag, undefined);
 ok('the pad plays as before: Y jumps, A interacts');
+
+// Dodge on Shift, sprint a toggle on Ctrl and a double W (Michael, 16 Nov, A and his note).
+assert.deepEqual(keysOf('ShiftLeft'), ['dodge']);
+assert.deepEqual(keysOf('ControlLeft'), ['sprintToggle']);
+assert.deepEqual(keyboardBindings.sprint, []);
+assert.deepEqual(gamepadBindings.sprint, [10]);
+assert.deepEqual(gamepadBindings.dodge, [1]);
+ok('Shift dodges and Ctrl toggles sprint; no key is held to sprint, and the pad still holds its stick click');
+{
+  const F = 1000 / 60;
+  const s = new SprintToggle();
+  let now = 0;
+  const frame = (toggle: boolean, forward: boolean, moving: boolean) => s.step(toggle, forward, moving, (now += F), F);
+  assert.equal(frame(true, false, false), true);
+  for (let i = 0; i < 30; i++) assert.equal(frame(false, false, false), true);
+  ok('Ctrl tapped while standing waits for the first step');
+  for (let i = 0; i < 30; i++) assert.equal(frame(false, false, true), true);
+  assert.equal(frame(false, false, false), true);
+  ok('a frame between letting go of one key and pressing the next keeps it');
+  for (let i = 0; i < Math.ceil(tuning.input.sprintStopGraceMs / F) + 1; i++) frame(false, false, false);
+  assert.equal(s.on, false);
+  ok('stopping ends it');
+  frame(true, false, true);
+  assert.equal(frame(true, false, true), false);
+  ok('Ctrl again ends it while moving');
+  s.reset();
+  now = 0;
+  frame(false, true, true);
+  frame(false, false, false);
+  assert.equal(frame(false, true, true), true);
+  ok('two W taps inside the window start it');
+  s.reset();
+  frame(false, true, true);
+  for (let i = 0; i < Math.ceil(tuning.input.sprintDoubleTapMs / F) + 2; i++) frame(false, false, i < 5);
+  assert.equal(frame(false, true, true), false);
+  ok('two W taps further apart do not');
+}
 
 const item = (uid: string, id: string, rarity: 'common' | 'rare' = 'common') => ({ uid, id, rarity, perk: null, bonus: null });
 const p = new Profile();

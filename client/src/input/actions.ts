@@ -6,6 +6,8 @@ export const BUTTON_ACTIONS = [
   'dodge',
   'jump',
   'sprint',
+  // The keyboard's sprint, a toggle (Michael, 16 Nov, A): Ctrl, with a double W beside it.
+  'sprintToggle',
   'attack',
   'block',
   'ability1',

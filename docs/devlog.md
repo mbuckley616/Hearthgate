@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 201, dodge on Shift and a toggled sprint on Ctrl or a double W
+
+**What changed**
+
+Michael's A on "Sprint on Ctrl would close the tab" (control room, 16 Nov), with his note: "Can we make Sprint a double-press on W?" Dodge is Shift. Sprint on the keyboard is no longer held: Ctrl toggles it, and two W presses within `input.sprintDoubleTapMs` (300 ms) start it. It ends once the keyboard has moved and then had no move key held for `input.sprintStopGraceMs` (150 ms), so the frame between letting go of A and pressing D does not end it, and a Ctrl tapped while standing waits for the first step. Both numbers are on the panel (`input` is a browser-only section). The toggle is `client/src/input/sprintToggle.ts`, stepped by `KeyboardMouseSource`, which adds the held `sprint` action the command already reads, so nothing on the server or in prediction changed. The pad is unchanged: dodge on B, sprint held on the left stick click. A double tap on a pad's stick would need a forward flick read from an analogue stick, which is easy to set off by accident, so the pad keeps its button. The controls list says "Shift" for dodge and "Ctrl or double-tap W (ends when you stop)" for sprint. `tests/controls-keys.ts` has 8 new checks (the bindings, and the toggle's tap, grace, stop, second Ctrl and double tap in and out of its window). The lag lab's bots dodge on Shift and sprint by Ctrl's toggle (Alpha) or a double W (Bravo); a 30 s run had no errors. check 637/637 and the key checks green.
+
+**Learned**
+
+Ctrl+W can still close the tab if a player presses W while Ctrl is down, but a tap no longer overlaps a held W, and the "Leave site?" guard stays for that case.
+
+**Next**
+
+The graphics cost and the crowd item need a real machine; after that the builder waits on the boss design pass.
+
 ## 2026-11-15: Session 200, self-heals only and a slow regen out of a fight
 
 **What changed**
