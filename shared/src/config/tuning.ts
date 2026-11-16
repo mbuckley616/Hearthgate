@@ -1691,6 +1691,18 @@ export const tuning = {
     groutDamage: 10,
     groutRecoveryMs: 700,
     /**
+     * Phase 2's bone ridges: each overhead raises a short wall (`ridgeLengthM` by `ridgeThickM`,
+     * `ridgeHeightM` tall, over a jump and an arrow) across its swing, `ridgeAheadM` past the maul's
+     * reach, so it splits the hall behind the hero it struck. It stands `ridgeLifeMs`; at most
+     * `maxRidges` stand at once (the oldest crumbles), and all of them crumble when the Mason falls.
+     */
+    ridgeLengthM: 5,
+    ridgeThickM: 0.8,
+    ridgeHeightM: 2.2,
+    ridgeAheadM: 1.5,
+    ridgeLifeMs: 12000,
+    maxRidges: 3,
+    /**
      * Phase 3 at `phase3At`: the Wardstones go out for good (never Bound again, none raised), and it
      * enrages: its string runs `enragedSteps` swings, and the last lands as a slam whose shockwave
      * rolls `shockwaveRadius` round it, low (jump it), for `shockwaveDamage`.
@@ -3806,6 +3818,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.groutChance': [0, 1, 0.05],
   'mason.groutDamage': [0, 60, 1],
   'mason.groutChannelMs': [300, 4000, 50],
+  'mason.ridgeLengthM': [0, 12, 0.5],
+  'mason.ridgeThickM': [0.2, 2, 0.1],
+  'mason.ridgeHeightM': [0.5, 4, 0.1],
+  'mason.ridgeAheadM': [0, 6, 0.1],
+  'mason.ridgeLifeMs': [0, 30000, 500],
+  'mason.maxRidges': [0, 6, 1],
   'mason.enragedSteps': [3, 6, 1],
   'mason.shockwaveRadius': [1, 10, 0.1],
   'mason.shockwaveDamage': [0, 60, 1],

@@ -6,14 +6,15 @@ import { damageEnemy, type HitSpec } from './combat';
 import { brainFor, createEnemy, masonAdds, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
-import { boundMult, masonBound } from './mason';
+import { boundMult, masonBound, raiseRidge, ridgeCollider, stepRidges } from './mason';
+import { resolveCircle, segmentTouches } from '../level/geometry';
 import { ADD_WEAKNESS, attackType, roleOf, telegraphTell } from './roles';
 import { SIGNATURES, offerFor, signatureItem } from './signatures';
 import { CATALOGUE, wornMods } from './catalogue';
 import { readGearItem } from '../net/validate';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
-import { createSimState } from './world';
+import { createSimState, worldNow } from './world';
 
 // M1, the Ossuary Mason (docs/bosses.md 2.2): tanky by rule, not by health. Bound while a Wardstone
 // stands, it takes 25% of every hit; its maul string and hod throw.
@@ -340,6 +341,67 @@ describe('the Mason’s phases (M3, part one)', () => {
     expect(swings).toBe(tuning.mason.enragedSteps);
     expect(shockwave).toBe(true);
     expect(q.hp).toBeLessThan(1000);
+  });
+});
+
+describe("the Mason's bone ridges (M3, phase 2)", () => {
+  function phase(n: 1 | 2): { s: SimState; p: PlayerState; m: EnemyState } {
+    Object.assign(tuning.mason, { guards: 0, chanters: 0, wardstones: 0, groutChance: 0 });
+    const sc = scene(4);
+    sc.m.phase = n;
+    return sc;
+  }
+  const strings = (s: SimState, m: EnemyState) => {
+    // Through the whole string: every swing and the recovery after it.
+    ticksUntil(s, () => m.ai === 'windup' && m.attack === 'string');
+    ticksUntil(s, () => m.ai === 'recover');
+  };
+
+  it('raises a ridge with the overhead in phase 2, across the swing and past the maul, behind the hero struck', () => {
+    const { s, p, m } = phase(2);
+    strings(s, m);
+    expect(s.ridges).toHaveLength(1);
+    const r = s.ridges![0];
+    expect(events(s, 'ridgeRaised')).toHaveLength(1);
+    // The Mason faces +z at the hero: the ridge runs along x, farther out than the hero.
+    expect(r.alongX).toBe(true);
+    // From where it stood as the overhead landed; it has stepped on a little since.
+    expect(Math.hypot(r.x - m.x, r.z - m.z)).toBeCloseTo(tuning.mason.stringReach + tuning.mason.ridgeAheadM, 0);
+    expect(r.z - m.z).toBeGreaterThan(p.z - m.z - 0.5);
+    expect(r.until).toBeCloseTo(s.time + tuning.mason.ridgeLifeMs / 1000, 3);
+  });
+
+  it('raises none in phase 1', () => {
+    const { s, m } = phase(1);
+    strings(s, m);
+    expect(s.ridges).toBeUndefined();
+  });
+
+  it('is a wall to everyone while it stands: a hero is pushed out of it, and an arrow through it is stopped', () => {
+    const { s, m } = phase(2);
+    const r = raiseRidge(s, m)!;
+    const cols = worldNow(world, s).colliders;
+    expect(cols.some((c) => c.id === `ridge-${r.id}`)).toBe(true);
+    const at = resolveCircle({ x: r.x, z: r.z }, 0.4, 0, 1.8, cols);
+    expect(Math.abs(at.z - r.z)).toBeGreaterThanOrEqual(tuning.mason.ridgeThickM / 2 + 0.4 - 1e-6);
+    // An arrow at chest height, across it.
+    expect(segmentTouches({ x: r.x, y: 1.3, z: r.z - 3 }, { x: r.x, y: 1.3, z: r.z + 3 }, 0.05, ridgeCollider(r))).toBe(true);
+    // Taller than a jump clears.
+    expect(tuning.mason.ridgeHeightM).toBeGreaterThan(2);
+  });
+
+  it('keeps at most maxRidges, crumbles each after ridgeLifeMs, and every one when the Mason falls', () => {
+    const { s, m } = phase(2);
+    for (let i = 0; i < tuning.mason.maxRidges + 2; i++) raiseRidge(s, m);
+    expect(s.ridges).toHaveLength(tuning.mason.maxRidges);
+    s.time += tuning.mason.ridgeLifeMs / 1000 + 0.01;
+    stepRidges(s);
+    expect(s.ridges).toBeUndefined();
+    raiseRidge(s, m);
+    m.ai = 'dead';
+    stepRidges(s);
+    expect(s.ridges).toBeUndefined();
+    expect(worldNow(world, s).colliders).toBe(worldNow(world, createSimState(arena, [], world)).colliders);
   });
 });
 

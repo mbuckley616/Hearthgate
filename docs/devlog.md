@@ -2,6 +2,38 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 232, the Mason's bone ridges (M3, part three)
+
+**What changed**
+
+In phase 2 each overhead of the Mason's string now raises a **bone ridge** (`SimState.ridges`, `sim/mason.ts`): a short wall, 5 m by 0.8 m and 2.2 m tall.
+- **Where:** across the swing, 1.5 m past the maul's reach, so it lies behind the hero it struck and splits the hall.
+- **Shape:** snapped to the hall's axes, since walls are boxes.
+- **Life:** it stands 12 s, at most three at once (the oldest crumbles first), and all of them crumble when the Mason falls.
+- **What it blocks:** `worldNow` adds it to the colliders, so heroes, enemies, arrows and line of sight all meet it. Prediction and the server meet the same wall, and a hero caught where one rises is pushed out of it.
+- **Too tall to jump:** it is taller than a jump, so the archer has to walk round to see a Chanter again.
+- **Look:** `RidgeView` draws mortar with five bone ribs. It heaves up in a quarter second and sinks over its last half second.
+- **Panel:** every size is under `mason.ridge*` and `mason.maxRidges`.
+
+Bench, Emberhall, level 12, 5 seeds (Session 230's in brackets):
+
+| party | kills | ttk s | dmg | downs | phase 3 |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5: 3 wipes, 2 timeouts (5 timeouts) | - | 404 (219) | 0.6 | 0/5 |
+| duo | 3/5 (4/5) | 520 (496) | 1075 | 3.6 | 4/5 |
+| trio | 5/5 | 158 (154) | 294 | 0.0 | 5/5 |
+| solo + 3 henchmen | 2/5 | 287 | 219 | 0.4 | 2/5 |
+
+check 736/736 (4 new), test:net green, parity hashes unchanged (the arena never raises a ridge). Not yet seen in a browser.
+
+**Learned**
+
+The ridges cost the lone sword most: a hero cut off behind one takes the hod throws instead of the maul. The trio does not notice them. The solo and duo tuning should start from the lone hero, with the ridge sizes as one of the levers.
+
+**Next**
+
+- M3's last part: the solo and duo tuning, the lone hero first (a Chanter that stops fleeing when cornered, a longer rebuild solo, or fewer stones solo).
+
 ## 2026-11-16: Session 231, the Mason's signature drops (M3, part two)
 
 **What changed**

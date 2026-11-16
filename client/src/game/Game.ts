@@ -21,6 +21,7 @@ import { Nameplate } from '../render/Nameplate';
 import { TrapView } from '../render/TrapView';
 import { TrailView } from '../render/TrailView';
 import { SpectralBladesView } from '../render/SpectralBladesView';
+import { RidgeView } from '../render/RidgeView';
 import { ConsecrateView } from '../render/ConsecrateView';
 import { ProjectileView } from '../render/ProjectileView';
 import { Palette } from '../render/props';
@@ -171,6 +172,8 @@ export class Game {
   private snares = new ConsecrateView();
   /** A Druid's Wild Growth groves, likewise. */
   private groves = new ConsecrateView();
+  /** The Ossuary Mason's bone ridges (M3). */
+  private ridges = new RidgeView();
   /** A Spellblade's Blazing Charge trails. */
   private trails = new TrailView();
   /** A spinning Spellblade's spectral blades. */
@@ -256,6 +259,7 @@ export class Game {
       this.brambles.group,
       this.snares.group,
       this.groves.group,
+      this.ridges.group,
       this.trails.group,
       this.spectral.group,
       this.fx.group,
@@ -1029,6 +1033,7 @@ export class Game {
     this.brambles.update(world.brambles, world.time);
     this.snares.update(world.snares, world.time);
     this.groves.update(world.groves, world.time);
+    this.ridges.update(world.ridges, world.time);
     this.trails.update(world.trails, world.time);
     this.spectral.update(world.players, world.time);
     this.syncVillage();

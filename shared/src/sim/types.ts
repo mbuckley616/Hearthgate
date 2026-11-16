@@ -493,6 +493,7 @@ export type SimEvent =
   | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
+  | { kind: 'ridgeRaised'; enemyId: number; x: number; z: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
   | { kind: 'tileCracked'; x: number; z: number }
   | { kind: 'tileFell'; x: number; z: number; caught: number; put: string[] }
@@ -685,6 +686,8 @@ export interface SimState {
   groves?: BrambleGround[];
   /** A Spellblade's Blazing Charge trails (the builds pass), one a Spellblade; absent in the slice. */
   trails?: TrailGround[];
+  /** The Ossuary Mason's bone ridges (M3, phase 2): short walls its overheads raise; absent in the slice. */
+  ridges?: BoneRidge[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.
@@ -692,6 +695,20 @@ export interface SimState {
   plots?: string[];
   /** Seconds since a fight was last on, for the slow regen (`tuning.heal`); absent in the slice and while one is on. */
   calmFor?: number;
+}
+
+/**
+ * A bone ridge (M3): a short wall the Mason's phase 2 overhead raises across its swing, `half` long
+ * each way from its centre along x (`alongX`) or z, standing until `until` (sim seconds).
+ */
+export interface BoneRidge {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  alongX: boolean;
+  half: number;
+  until: number;
 }
 
 /**

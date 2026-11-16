@@ -7,7 +7,7 @@ import { pieceAt, walkRoute, type PieceInfo } from '../level/floor';
 const BRAZIER_RADIUS = 0.45;
 import { clearsLow, damageEnemy, killEnemy, heroInvulnerable, hurtHero, nextRandom, stepLaunched, typed } from './combat';
 import { chillHero } from './chill';
-import { masonBinds } from './mason';
+import { masonBinds, raiseRidge } from './mason';
 import { gravehandLift, handAloft, letGo, releaseGrip, restSeconds } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
 import { roleOf, type EnemyRole } from './roles';
@@ -1750,6 +1750,11 @@ function masonBrain(state: SimState, world: World, e: EnemyState, target: Player
             const rolled = heroesInCircle(state, t.x, t.z, t.radius, e.y).filter((p) => !struck.includes(p));
             shove(state, e, rolled, e.x, e.z, m.shockwaveDamage, m.shockwavePush, 'blunt');
           }
+        }
+        // Phase 2 (M3): the overhead mortars the floor, a ridge of bone rising across its swing.
+        if (e.phase === 2 && (e.chain ?? 0) + 1 >= maulSteps(e)) {
+          const ridge = raiseRidge(state, e);
+          if (ridge) state.events.push({ kind: 'ridgeRaised', enemyId: e.id, x: ridge.x, z: ridge.z });
         }
       }
       break;
