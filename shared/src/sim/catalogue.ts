@@ -1,4 +1,5 @@
-import { tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { tuning, type AmmoKind, type EnemyKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import type { DamageType } from './types';
 import { RUNES, RUNE_KINDS, activeRunes, socketCount, type RuneKind } from './runes';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
@@ -199,6 +200,18 @@ export interface GearItem {
   name?: string;
   /** Runes set in a weapon's sockets (the builds pass), in socket order; absent when none. */
   runes?: RuneKind[];
+  /** A boss's signature piece (B6): its one boss-shaped property; absent on everything else. */
+  signature?: Signature;
+}
+
+/**
+ * A signature piece's property (B6, `docs/bosses.md` 1.4), exactly one: a damage type it resists (any
+ * slot), or, on a weapon, a faster cast or a bane to one boss's kind. The amounts are `tuning.bosses`'.
+ */
+export interface Signature {
+  resist?: DamageType;
+  castSpeed?: true;
+  bane?: EnemyKind;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -309,6 +322,11 @@ export function wornMods(worn: Worn): Mods {
       else if (b.kind === 'dodgeRecharge') m.dodgeRecharge += b.value;
     }
     if (item.perk && !m.perks.includes(item.perk)) m.perks.push(item.perk);
+    // A boss's signature piece (B6): a type resisted once however many pieces name it; a weapon's cast or bane.
+    const sig = item.signature;
+    if (sig?.resist && !(m.resist ??= []).includes(sig.resist)) m.resist.push(sig.resist);
+    if (slot === 'weapon' && sig?.castSpeed) m.castSpeed = true;
+    if (slot === 'weapon' && sig?.bane) m.bane = sig.bane;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

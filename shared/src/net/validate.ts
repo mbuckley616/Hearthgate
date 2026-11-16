@@ -268,6 +268,16 @@ export function readGearItem(v: unknown): GearItem | null {
     if (!Array.isArray(r) || r.length === 0 || r.length > socketsOf(item) || !r.every(isRuneKind) || new Set(r).size !== r.length) return null;
     item.runes = [...r];
   }
+  // A boss's signature piece (B6): one property, a cast or a bane only on a weapon.
+  if (v.signature !== undefined) {
+    const s = v.signature;
+    if (!isObj(s) || Object.keys(s).length !== 1) return null;
+    const weapon = CATALOGUE.get(item.id)!.slot === 'weapon';
+    if (s.resist !== undefined && DAMAGE_TYPES.includes(s.resist as DamageType)) item.signature = { resist: s.resist as DamageType };
+    else if (s.castSpeed === true && weapon) item.signature = { castSpeed: true };
+    else if (typeof s.bane === 'string' && s.bane in KIND_ROLE && KIND_ROLE[s.bane as EnemyKind] === 'boss' && weapon) item.signature = { bane: s.bane as EnemyKind };
+    else return null;
+  }
   return item;
 }
 

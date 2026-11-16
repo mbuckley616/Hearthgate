@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 211, signature pieces and the offer by job (B6, part two)
+
+**What changed**
+
+A signature piece is now an item. `GearItem.signature` holds its one property: a damage type it resists in any slot, or `castSpeed` or a `bane` on a weapon. `wornMods` folds the pieces into Session 210's `Mods`. A type is listed once however many pieces name it, so two pieces against blunt give one resist. A cast or a bane counts only from the weapon in hand. `readGearItem` (the server's check on a bag item in a sale or the stash) refuses a piece with more than one property, an unknown type, a cast or a bane off a weapon, and a bane on a kind that is no boss. The browser's save keeps the field as it keeps runes. `sim/signatures.ts` holds the drop lists by job. `SIGNATURES` is a boss's list of pieces, each with a job (`tank`, `armoured`, `warded`, `boss`) and a catalogue item. `offerFor` gives a hero the piece of the job they scored most in, with the list's order breaking a tie and the `boss` piece for a hero who scored in none. `signatureItem` makes the piece a named rare. No boss has a list yet, because W1, K1, H3 and M3 each bring their own. `signatures.test.ts` has 5 tests: the gate's "the job's piece is the one offered", two blunt pieces giving one resist, a cast and a bane only from the weapon, and a piece through the server's check with forged ones refused. check 674/674, test:net green.
+
+**Learned**
+
+The document names jobs by what a hero does ("the most damage to that add kind, or the most of the tank's string blocked"). A bane answers the boss itself, so it needed a fourth job, `boss`, which also catches a hero who did none of the others.
+
+**Next**
+
+B6, part three: count each hero's job scores through a boss fight (damage blocked from the boss, damage to armoured and warded adds and to the boss) and drop each hero their offered piece beside `bossDrops` on the fall, owned as finds are.
+
 ## 2026-11-16: Session 210, signature drops' properties (B6, part one)
 
 **What changed**
