@@ -1566,7 +1566,7 @@ export const tuning = {
    * Hound's.
    */
   ironRing: {
-    maxHp: 220,
+    maxHp: 170,
     maxPoise: 30,
     radius: 0.6,
     height: 1.3,

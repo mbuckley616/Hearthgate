@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-16: Session 227, a lighter Iron Ring for the duo's bar (H3's gate, part five)
+
+**What changed**
+
+`ironRing.maxHp` 220 to **170**. Session 226's `--sources` showed the Iron Ring dealing the most damage to a lone or paired hero: 115 of the solo's 186, 80 of the duo's 198. It is armoured, so the sword deals it 35% and the bow too. Killed sooner, it charges fewer times. This helps the duo more than the solo, because the duo's archer stays on the hand meanwhile.
+
+Sweep on 20 seeds, against Session 226's numbers:
+
+| change | solo ttk s | solo pots | duo x solo | duo downs |
+|---|---|---|---|---|
+| none (226) | 187 | 1.9 | 0.52 | 0.0 |
+| `ironRing.maxHp` 150 | 182 | 1.4 | 0.48 | 0.0 |
+| `ironRing.maxHp` **170** | 186 | 1.8 | **0.48** | 0.0 |
+| `ironRing.chargeDamage` 10 | 187 | 1.3 | 0.52 | 0.1 |
+| `ironRing.cooldownMs` 3000 | 201 | 2.3 | 0.46 | 0.0 (one solo wipe) |
+| ring 150, hand 2400 | 188 | 1.5 | 0.49 | 0.0 |
+
+At 170, all 20 solo fights are kills, with no wipes. Over the first ten seeds alone the duo is 0.55 and the solo 184 s: the duo's median moves by about 0.07 between halves of the seeds. The trio is 55 s; the henchmen 32 s. check 711/711.
+
+**Learned**
+
+The duo's bar sits on the edge of the bench's noise. Twenty seeds is the least that says anything about it, and ten can mislead.
+
+**Next**
+
+- **Trio:** 55 s against 1.2's 2 to 3 minutes. Health cannot fix it without breaking the duo's bar, so it is pressure: more of the hand's attacks or the rings' at three. That may be a design call.
+- Then **(Michael)** a playtest of the Gravehand.
+
 ## 2026-11-16: Session 226, the bench's heroes roll out of a slam once it locks, and the Gravehand's first tuning (H3's gate, part four)
 
 **What changed**
