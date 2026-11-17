@@ -469,6 +469,8 @@ export type SimEvent =
   | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
   /** A jump cleared a low attack (M1): the server's alone, as every hit on a hero is. */
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
+  /** The Hollow King's crown sent back by a parry on the Crown-catcher Buckler (K1). */
+  | { kind: 'crownCaught'; playerId: string; enemyId: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
@@ -606,6 +608,8 @@ export interface HeroHit {
   enemyId?: number;
   /** An enemy arrow: a parry sends one back. */
   arrow?: boolean;
+  /** The Hollow King's thrown crown (K1): a parry on the Crown-catcher Buckler sends it back at him. */
+  crown?: boolean;
   /** Already waited out the remote player's lag grace. */
   late?: boolean;
   /**

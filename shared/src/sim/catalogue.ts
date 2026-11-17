@@ -216,6 +216,8 @@ export interface Signature {
   looseGrip?: true;
   /** The Warden's Sweepbreaker Greaves (W1), on boots: a jump clears a low attack `warden.greavesClearLessM` lower. */
   lowClear?: true;
+  /** The Hollow King's Crown-catcher Buckler (K1), on an off-hand: a parry of his thrown crown sends it back. */
+  crownCatch?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -333,6 +335,7 @@ export function wornMods(worn: Worn): Mods {
     if (slot === 'weapon' && sig?.bane) m.bane = sig.bane;
     if (slot === 'hands' && sig?.looseGrip) m.looseGrip = true;
     if (slot === 'feet' && sig?.lowClear) m.lowClear = true;
+    if (slot === 'shield' && sig?.crownCatch) m.crownCatch = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

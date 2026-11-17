@@ -173,6 +173,8 @@ export class Hud {
       }
       if (ev.kind === 'heroHurt' && ev.playerId === localId) this.hurtFlash = 1;
       if (ev.kind === 'parry' && ev.playerId === localId) this.guardPop('Parry', 'parry');
+      // The Crown-catcher Buckler (K1): it follows its parry in the same batch, so it takes the line.
+      if (ev.kind === 'crownCaught' && ev.playerId === localId) this.guardPop('Crown sent back', 'parry');
       // A jump over a low attack (M1) says so, so a player learns which attacks a jump clears.
       if (ev.kind === 'cleared' && ev.playerId === localId) this.guardPop('Cleared', 'cleared');
       // A string move (C1) names itself, so the strings can be learned by playing.

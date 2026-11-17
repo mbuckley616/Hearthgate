@@ -87,6 +87,8 @@ export interface Mods {
   looseGrip?: boolean;
   /** Boots a low attack is cleared in from lower (W1, the Sweepbreaker Greaves): `warden.greavesClearLessM`. */
   lowClear?: boolean;
+  /** An off-hand that sends the Hollow King's crown back on a parry (K1, the Crown-catcher Buckler). */
+  crownCatch?: boolean;
 }
 
 export function emptyMods(): Mods {

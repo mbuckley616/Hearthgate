@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 239, the Crown-catcher Buckler (K1, part three)
+
+**What changed**
+
+The Hollow King's third signature drop, the tank's: the **Crown-catcher Buckler** (a studded buckler, `SIGNATURES.king`, `docs/bosses.md` 2.4). Behind `bosses.signatureDrops`, which the parity test turns off.
+- **What it does:** a parry of his thrown crown, on any parry (a guard's window, the buckler's deflect, the dagger's riposte), sends it back at him. It strikes him for `king.crownCatchMult` (3) times what it would have dealt and takes `king.crownCatchPoise` (15) off his poise, on top of a parry's own. A crown still flying out turns for home from where it was met. Both numbers are on the panel.
+- **How:** the crown's hit is marked `HeroHit.crown`, so the pending hit (after the lag grace) and the direct hit both reach `parry()`, which calls `catchCrown`. The server decides it; prediction never does.
+- **Where it shows:** a new `crownCaught` event, and the corner says "Crown sent back" instead of "Parry".
+- **Checks:** `Signature.crownCatch` is taken only on a shield-slot item, and `Mods.crownCatch` only as `true`. The tank is offered it by the job score they already earn by taking his blows on a guard.
+
+check 750/750 (3 new in `crownCatch.test.ts`; `kingDrops.test.ts` now expects three pieces), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The parry already had everything it needed: the enemy that dealt the hit, and both the immediate and the lag-grace paths. One flag on the hit was enough. The crown was never a projectile, and it did not need to become one.
+
+**Next**
+
+- K1's drops are whole. Left of W1 and K1: the bench against the bar, and W1's phase 2 adds, which wait on `decisions.md` Pending.
+
 ## 2026-11-16: Session 238, the Crownbearer (K1, part two)
 
 **What changed**

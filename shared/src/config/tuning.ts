@@ -1391,6 +1391,12 @@ export const tuning = {
      */
     underRules: true,
     crownbearers: 1,
+    /**
+     * The Crown-catcher Buckler (K1, a signature drop): a parry of the thrown crown sends it back at
+     * him for `crownCatchMult` of what it would have dealt, and `crownCatchPoise` off his poise.
+     */
+    crownCatchMult: 3,
+    crownCatchPoise: 15,
     maxHp: 2400,
     maxPoise: 40,
     radius: 0.8,
@@ -3802,6 +3808,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'king.crownTelegraphMs': [100, 3000, 50],
   'king.crownSpeed': [2, 40, 0.5],
   'king.crownDamage': [0, 80, 1],
+  'king.crownCatchMult': [0, 10, 0.1],
+  'king.crownCatchPoise': [0, 60, 1],
   'king.cooldownMs': [0, 5000, 50],
   'king.phase2At': [0, 1, 0.05],
   'king.phase3At': [0, 1, 0.05],

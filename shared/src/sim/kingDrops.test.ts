@@ -34,8 +34,9 @@ function dealt(kind: EnemyKind, bane?: EnemyKind, others: EnemyKind[] = []): num
 }
 
 describe("the Hollow King's signature drops (K1)", () => {
-  it('offers the circlet to the archer who broke the channel and Kingsbane to anyone else', () => {
-    expect(list.map((p) => p.job)).toEqual(['warded', 'boss']);
+  it('offers the buckler to the tank, the circlet to the archer who broke the channel and Kingsbane to anyone else', () => {
+    expect(list.map((p) => p.job)).toEqual(['tank', 'warded', 'boss']);
+    expect(offerFor(list, { tank: 200, boss: 40 })?.name).toBe('Crown-catcher Buckler');
     expect(offerFor(list, { warded: 80, boss: 40 })?.name).toBe('Hollow Circlet');
     expect(offerFor(list, { boss: 40 })?.name).toBe('Kingsbane');
     expect(offerFor(list, {})?.name).toBe('Kingsbane');
@@ -43,8 +44,8 @@ describe("the Hollow King's signature drops (K1)", () => {
 
   it('makes each a real item the server takes back, worn in its slot', () => {
     for (const p of list) expect(readGearItem(signatureItem(p, 'x'))?.signature).toEqual(p.signature);
-    const circlet = signatureItem(list[0], 'a');
-    const sword = signatureItem(list[1], 'b');
+    const circlet = signatureItem(list[1], 'a');
+    const sword = signatureItem(list[2], 'b');
     expect(CATALOGUE.get(circlet.id)?.slot).toBe('head');
     expect(CATALOGUE.get(sword.id)?.slot).toBe('weapon');
     expect(wornMods({ head: circlet }).resist).toEqual(['magic']);

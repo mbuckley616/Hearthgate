@@ -1220,7 +1220,9 @@ function kingBrain(state: SimState, world: World, e: EnemyState, target: PlayerS
         for (const p of heroesInCircle(state, at.x, at.z, k.crownRadius, e.y)) {
           if (c.struck.includes(p.id)) continue;
           c.struck.push(p.id);
-          hurtHero(state, p, { damage: hitDamage(e, k.crownDamage), push: k.crownPush, fromX: at.x - Math.sin(e.tele.yaw), fromZ: at.z - Math.cos(e.tele.yaw), enemyId: e.id, ...typed('pierce') });
+          // K1: marked as the crown only with signature drops on, so a pending hit's state stays as it was.
+          const crown = tuning.bosses.signatureDrops ? { crown: true } : {};
+          hurtHero(state, p, { damage: hitDamage(e, k.crownDamage), push: k.crownPush, fromX: at.x - Math.sin(e.tele.yaw), fromZ: at.z - Math.cos(e.tele.yaw), enemyId: e.id, ...typed('pierce'), ...crown });
         }
       }
       if (c.back && c.d <= 0) {

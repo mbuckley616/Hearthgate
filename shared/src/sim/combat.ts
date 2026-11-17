@@ -610,6 +610,39 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   const fz = Math.cos(p.yaw);
   state.events.push({ kind: 'parry', playerId: p.id, x: p.x + fx * 0.6, y: p.y + 1.2, z: p.z + fz * 0.6, enemyId: e ? e.id : -1 });
   holyPulse(state, p);
+  if (e && hit.crown) catchCrown(state, p, e, hit);
+}
+
+/**
+ * The Crown-catcher Buckler (K1, `docs/bosses.md` 2.4): a parry of the Hollow King's thrown crown sends
+ * it back at him, the tank's answer to a crown that comes again and again while a Crownbearer
+ * channels. It strikes him as hard as it would have struck the hero, `king.crownCatchMult` times, and
+ * a crown still flying out turns home from where it was met. Decided where the parry is, on the server.
+ */
+function catchCrown(state: SimState, p: PlayerState, king: EnemyState, hit: HeroHit): void {
+  const k = tuning.king;
+  if (!p.mods.crownCatch || !tuning.bosses.signatureDrops) return;
+  if (king.crown && !king.crown.back) {
+    king.crown.back = true;
+    king.crown.struck = [];
+  }
+  const dx = king.x - p.x;
+  const dz = king.z - p.z;
+  const d = Math.hypot(dx, dz) || 1;
+  state.events.push({ kind: 'crownCaught', playerId: p.id, enemyId: king.id });
+  damageEnemy(state, king, {
+    attackerId: p.id,
+    damage: hit.damage * k.crownCatchMult,
+    poise: k.crownCatchPoise,
+    knockback: 0,
+    heavy: false,
+    dirX: dx / d,
+    dirZ: dz / d,
+    x: king.x,
+    y: king.y + 2.2,
+    z: king.z,
+    projectile: true,
+  });
 }
 
 /**
