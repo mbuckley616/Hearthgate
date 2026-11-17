@@ -7,49 +7,57 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+## Answered
+
 ### 2026-11-16: The Warden's phase 2 adds: new kinds, or the Crypt's own made weak? (builder, Session 237)
 `docs/bosses.md` 2.3 asks for one add of each weakness in the Warden's phase 2 at trio size: a plated warrior (weak to magic), a skeleton archer on the hall's edge (weak to melee, the skirmisher of 1.3) and a priest at the back (weak to ranged). The plated warrior can be the Mason's Mortar Guard, which is already armoured. Archers and Bone Priests are in every Crypt room, though, and 1.3 makes a weakness a rule of the kind, told by its look. Giving them weaknesses changes every room, not only the boss hall. The skirmisher rule (a melee blow staggers it) is not built yet either.
 - **A.** Two new Warden-only kinds on the existing brains: a **Barrow Skirmisher** (an archer dressing, low health, a melee hit staggers it in one blow) and a **Grave Cantor** (a priest dressing, warded: arrows 1.5x, spells turned aside, an arrow breaks its raise). Room archers and priests stay as they are. Count by party as the Mason's: one fewer than the heroes, at least one (the Guard first, then the Cantor, then the Skirmisher). About two sessions. *(recommended: the weakness stays a rule of the kind and its look, and the rooms keep the roster you have played)*
 - **B.** The Crypt's archer becomes a skirmisher and the Bone Priest becomes warded everywhere. Every room then has jobs, but every room changes. About one session.
 - **C.** Only the plated warrior (the Mortar Guard) and a warded priest (B's priest, everywhere); no skirmisher until a boss needs a melee job.
+Michael: **A. Two new Warden-only kinds** (control room, 17 Nov). (2026-11-17)
 
 ### 2026-11-16: The Mason's third drop, the Gallery Longbow (builder, Session 231)
 `docs/bosses.md` 2.2 lists the Mason's drops as the Mortarward Shield (the tank's), the Chanter's Staff (the mage's) and the Gallery Longbow, "offered for the trio's third job, Michael may cut it": an arrow that breaks a Chanter's channel stuns the caster 1 s. The first two are built (Session 231). Without the bow, an archer who spent the fight on the Chanters is offered the shield or the staff.
 - **A.** Keep it: a yew shortbow whose channel-breaking arrow stuns the Chanter 1 s, a new signature property on bows only, checked by the server. One session. *(recommended: every boss rule (1.4, 1.7) gives each job a piece, and the archer's job here is the Chanters)*
 - **B.** Cut it; the archer is offered the staff or the shield.
 - **C.** Keep a bow, but its property is the Mason's bane (1.25x to it and its adds) instead of a new one.
+Michael: **A. Keep it: its arrow stuns a Chanter 1 s** (control room, 17 Nov). (2026-11-17)
 
 ### 2026-11-16: The Gravehand's trio, 55 s against "2 to 3 minutes" (builder, Session 227)
 `docs/bosses.md` 1.2 asks three things of an early boss: solo 3 to 5 minutes with a potion left, a duo under half the solo time, and a trio at the boss's full pressure, a fight of 2 to 3 minutes. On the bench (20 seeds, Sessions 226 and 227) the Gravehand now meets the first two: solo 20 of 20 in 186 s, duo 0.48 of that, nobody downed. The trio kills it in 55 s. Its health is 1.7x a solo's (B1's 35% a player). For 2 minutes it would need about 3.7x, and the duo's 1.35x cannot move without losing its bar. The bench's three heroes are scripted bots that never miss a window, so real players will be slower.
 - **A.** Keep B1's rule and today's numbers. Judge the trio in your playtest of the Gravehand with friends, and look again at the Mason, a tanky boss built for three. *(recommended: the solo and duo bars are the ones 1.2 sets for early bosses, and a bot trio is the weakest stand-in for people)*
 - **B.** Bosses grow faster past two heroes: a new `bosses.extraHealthPastTwo` (about 2.0 per hero past the second), so a trio's boss has about 3.4x a solo's health and the duo's bar is kept. All bosses, behind B1's switch.
 - **C.** More pressure at three instead of health: with three heroes standing, the hand attacks about 30% more often and drops a second ring of each kind. The Gravehand only.
+Michael: **A. Keep today's numbers; judge the trio in a playtest** (control room, 17 Nov). (2026-11-17)
 
 ### 2026-11-16: B8, the tank's guard stance and the Paladin's reduction (builder, Session 214)
 `docs/bosses.md` 1.6 asks for a tank built on damage reduction: a held stance that takes about half of blunt and edge hits from the front, is not broken by a heavy (pushed back instead), and lets the tank walk slowly; and a short reduction for the Paladin. Today any hero's guard already takes light hits down to 15% (`guard.blockDamageFrac`). A heavy breaks it at 50% with a long stumble, except under the Paladin's Bulwark. A guarding hero cannot move. The section's open call is whether the stance is a new control or today's guard changed.
 - **A.** Today's guard becomes the stance with a shield in the off-hand: you walk at half speed while guarding, and a heavy pushes you back at 50% instead of breaking the guard. Without a shield, guard stays as it is. The Paladin's Bulwark adds 30% less damage taken for 3 s after it fires. No new key; numbers on the panel. *(recommended: it is the block players already know, made the tank's tool by the shield they choose, and it adds no key to learn)*
 - **B.** A separate stance on its own key (hold; a pad shoulder), shield only: half damage from the front, slow walk, no parry. Guard stays as today for everyone.
 - **C.** The stance is the Paladin's alone (its specialization's signature); other shield users keep today's guard.
+Michael: **A. Guard with a shield becomes the stance** (control room, 17 Nov). (2026-11-17)
+
 
 ### 2026-11-16: The boss document: approve it? (Fable, Session 202)
 `docs/bosses.md` is the boss design pass (Michael, 15 Nov, A): the rules every boss follows (designed for three; an early boss beaten solo in 3 to 5 minutes and by two in under half that; adds weak to one style each; a signature drop a player that helps against its own boss; damage types blunt, edge, pierce and magic; a tank's string in every phase; jobs that reward specializing), then five bosses in build order: **the Gravehand** (a floating bone hand for Mossgate Barrow: palm slams you dodge, a sweep you jump, a grab a partner frees you from, its three rings as adds), **the Ossuary Mason** (Emberhall: takes 25% while its Wardstones stand; Mortar Guards weak to magic, Bone Chanters weak to ranged rebuild the stones; drops a shield against blunt and a staff that casts 15% faster), the Warden and the Hollow King under the rules, and **Chief Grubnose and his Pig** for the Goblin Warrens (E1i). One number it changes for every boss: today a boss's health grows 60% a player and henchmen count in full, so two heroes kill it only 20% faster than one and a hero with three henchmen fights a 2.8x boss with four bodies; it proposes 35% a player with henchmen at half. Section 3 cuts it into about twenty builder lines, each with its gate, the bench (B0) first, everything behind switches the parity test turns off.
 - **A.** Approve as written; the builder starts the cut at B0 (the bench), then the rules, then the Gravehand. *(recommended: the hand boss is early and solo-shaped, so it proves the rules on the boss Michael asked for first)*
 - **B.** Approve with changes: name them (a boss, a name, a drop, the order, the numbers).
 - **C.** Rework the rules first (section 1) before any boss is cut.
+Michael: **A. Approve as written; the builder starts the cut at B0 (the bench), then the rules, then the Gravehand** (2026-11-16, on the control room)
 
 ### 2026-11-16: Boss telegraphs: colour by damage type? (Fable, Session 202)
 Today a telegraph's colour says what the attack does (E1a): red a strike, orange heavy or unblockable, yellow a projectile or a charge, violet magic. Michael's note asks for colour by attack type. They differ in three places: a charge is melee but yellow, a slam melee but orange, and an armoured enemy's every swing turns orange.
 - **A.** Hue by type (red melee, yellow ranged, violet magic) and orange becomes a rim with a slow pulse on any shape that cannot be blocked: dodge or jump it. A slam is a red circle with an orange rim. *(recommended: the type is what a player's gear answers, the rim keeps the "do not block" read)*
 - **B.** Keep today's colours and add a small type icon at the shape's edge.
 - **C.** Hue by type only; heavy and unblockable are told by size and sound alone.
+Michael: **A. Hue by type (red melee, yellow ranged, violet magic); orange becomes a slow-pulsing rim on anything that cannot be blocked** (2026-11-16, on the control room)
 
 ### 2026-11-16: Specialize or switch: what bosses reward (Fable, Session 202)
 Michael: "Do you want people to specialize, or do you want people to switch? Give benefits to when people specialize." Today the weapon set is one per outing (C3) and a specialization reshapes its style from level 10.
 - **A.** Jobs, not checks, plus focus: each boss phase has a melee, a ranged and a magic job, done fastest by the matching style and fastest of all by its specialization; a boss's signature drop goes to the job a hero did; and staying in one style through a run earns +3% damage a floor, up to +9%, lost on a swap, shown in the corner. *(recommended: rewards specializing without locking a solo hero out of any job)*
 - **B.** As A without focus: the jobs and the drops only.
 - **C.** Switching is the skill: the weapon set may change mid-fight for everyone (the test switch made a rule) and bosses reward one hero covering all three jobs.
-
-## Answered
+Michael: **A. Jobs per phase, signature drops by the job a hero did, and focus: +3% damage a floor in one style, up to +9%, lost on a swap** (2026-11-16, on the control room)
 
 ### 2026-11-15: Sprint on Ctrl would close the tab (builder, Session 199)
 Your A on the controls swaps dodge to Shift and sprint to Ctrl. Sprint is held while moving, so sprinting forward is Ctrl+W, which closes the browser tab, and no web page can block it (the game can only ask "Leave site?", which drops the mouse mid-fight). Today's Ctrl dodge has the same hole, but only for a tap. Session 199 built the rest of the A (Space interacts at a prompt, B the bag, X the next weapon) and left Shift and Ctrl as they are until you choose.
