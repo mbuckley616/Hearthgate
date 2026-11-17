@@ -1,11 +1,12 @@
-import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { FAMILY_STYLE, OFFHAND_ABILITY, STYLES, tuning, type EnemyKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
 import type { Loadout } from '../sim/coop';
 import { emptyMods, type Perk, type StatKind } from '../sim/gear';
 import { BAG_SIZE, BODY_SLOTS, CATALOGUE, socketsOf, type GearItem } from '../sim/catalogue';
 import { TALENT_IDS, boardProblem, type TalentRanks } from '../sim/talents';
 import { readMastery } from '../sim/mastery';
 import { CHAMPION_IDS, SLOTTED_IDS, championProblem, type ChampionRanks, type ChampionState, type SlottedId } from '../sim/champion';
-import type { PlayerCommand } from '../sim/types';
+import { DAMAGE_TYPES, type DamageType, type PlayerCommand } from '../sim/types';
+import { KIND_ROLE } from '../sim/roles';
 import { ELEMENT_IDS, SPEC_IDS, elementProblem, specProblem, treeProblem, type Element, type SpecElements, type SpecId, type Specs, type SpecTree } from '../sim/specs';
 import { checkHandDungeon, readDungeon } from '../level/handmade';
 import { BUILDINGS, readVillageSave, type BuildingId } from '../game/villageSave';
@@ -135,6 +136,32 @@ export function readLoadout(v: unknown): Loadout | null {
     if (!isNum(m.armour) || m.armour < 0 || m.armour > 0.9) return null;
     mods.armour = m.armour;
   }
+  // A boss's signature drops (B6): known damage types each once, a flag, a boss's kind.
+  if (m.resist !== undefined) {
+    if (!Array.isArray(m.resist) || m.resist.length === 0 || m.resist.length > DAMAGE_TYPES.length) return null;
+    if (!m.resist.every((t) => DAMAGE_TYPES.includes(t as DamageType)) || new Set(m.resist).size !== m.resist.length) return null;
+    mods.resist = [...(m.resist as DamageType[])];
+  }
+  if (m.castSpeed !== undefined) {
+    if (m.castSpeed !== true) return null;
+    mods.castSpeed = true;
+  }
+  if (m.bane !== undefined) {
+    if (typeof m.bane !== 'string' || !(m.bane in KIND_ROLE) || KIND_ROLE[m.bane as EnemyKind] !== 'boss') return null;
+    mods.bane = m.bane as EnemyKind;
+  }
+  if (m.looseGrip !== undefined) {
+    if (m.looseGrip !== true) return null;
+    mods.looseGrip = true;
+  }
+  if (m.lowClear !== undefined) {
+    if (m.lowClear !== true) return null;
+    mods.lowClear = true;
+  }
+  if (m.crownCatch !== undefined) {
+    if (m.crownCatch !== true) return null;
+    mods.crownCatch = true;
+  }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
   // Champion points (T6b): the banked XP must have bought every rank.
   if (v.champion !== undefined) {
@@ -252,6 +279,19 @@ export function readGearItem(v: unknown): GearItem | null {
     const r = v.runes;
     if (!Array.isArray(r) || r.length === 0 || r.length > socketsOf(item) || !r.every(isRuneKind) || new Set(r).size !== r.length) return null;
     item.runes = [...r];
+  }
+  // A boss's signature piece (B6): one property, a cast or a bane only on a weapon.
+  if (v.signature !== undefined) {
+    const s = v.signature;
+    if (!isObj(s) || Object.keys(s).length !== 1) return null;
+    const weapon = CATALOGUE.get(item.id)!.slot === 'weapon';
+    if (s.resist !== undefined && DAMAGE_TYPES.includes(s.resist as DamageType)) item.signature = { resist: s.resist as DamageType };
+    else if (s.castSpeed === true && weapon) item.signature = { castSpeed: true };
+    else if (typeof s.bane === 'string' && s.bane in KIND_ROLE && KIND_ROLE[s.bane as EnemyKind] === 'boss' && weapon) item.signature = { bane: s.bane as EnemyKind };
+    else if (s.looseGrip === true && CATALOGUE.get(item.id)!.slot === 'hands') item.signature = { looseGrip: true };
+    else if (s.lowClear === true && CATALOGUE.get(item.id)!.slot === 'feet') item.signature = { lowClear: true };
+    else if (s.crownCatch === true && CATALOGUE.get(item.id)!.slot === 'shield') item.signature = { crownCatch: true };
+    else return null;
   }
   return item;
 }

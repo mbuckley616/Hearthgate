@@ -108,6 +108,8 @@ export interface PlayerState {
   raise?: { x: number; z: number }[];
   /** Health potions on the hero's belt (D4), up to loop.potionMax; absent in the slice. */
   potions?: number;
+  /** B7, focus (`sim/focus.ts`): floors of a run gone through in one style, lost on a swap; absent until one is. */
+  styleFocus?: { style: Style; floors: number };
   /** Room in the browser's bag for lumber, stone and finds (Michael, 31 Oct, A: sim/bagRoom.ts), from the loadout; absent in the slice. */
   bagRoom?: BagRoom;
   /** Seconds until another potion can be drunk (D4). */
@@ -124,6 +126,12 @@ export interface PlayerState {
    * stepPlayer, so prediction runs it down the same way. Absent when not chilled.
    */
   chill?: number;
+  /**
+   * Held in the Gravehand's grip (H2): which hand, seconds left, dodge presses on the beat so far and
+   * seconds since the last. Stepped in stepPlayer (no move, no swing), so prediction agrees; set and
+   * cleared by the hand on the server. Absent when free.
+   */
+  held?: { by: number; left: number; presses: number; since: number };
   hp: number;
   /** Seconds frozen by hitstop. */
   hitstop: number;
@@ -305,6 +313,8 @@ export interface EnemyState {
   crown?: { d: number; length: number; back: boolean; struck: string[] };
   /** The Hollow King's violet circles (G4b, phase 2): one under each hero standing as he cast. */
   circles?: { x: number; z: number }[];
+  /** The Gravehand's grip (H2): the hero it holds, what it has taken since it closed, and the next squeeze (s). */
+  grip?: { hero: string; taken: number; squeeze: number };
   /** Cross-style combo windows: sim time each setup lasts until (-1 = none). */
   shatterUntil: number;
   skewerUntil: number;
@@ -322,6 +332,8 @@ export interface EnemyState {
   hitMult?: number;
   /** A Paladin's Shield Rush holds it to them until this sim time (the builds pass). The server's alone. */
   taunt?: { by: string; until: number };
+  /** A boss's attention (B2): who hit it when (sim time), its focus, attacks on it running, and whether it chooses afresh. The server's alone. */
+  attn?: { hitAt: Record<string, number>; focus?: string; runs: number; pick: boolean };
   /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
   rootUntil?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
@@ -378,6 +390,8 @@ export interface ProjectileState {
   echo?: boolean;
   /** Rune of Embers: a charged shot that bursts in a ring of fire where it stops. */
   embers?: boolean;
+  /** The Gravehand's shatter flick (H3): a shard that splits in two where it lands, unless it hits a hero. */
+  shatters?: true;
   /** Seconds before it flies: until then it stands still where it was loosed, unseen, hitting nothing. */
   waits?: number;
   /** Burst only: slow applied to enemies caught in it (seconds). */
@@ -448,13 +462,15 @@ export interface RunState {
 export type SimEvent =
   | { kind: 'hit'; x: number; y: number; z: number; enemyId: number; attackerId: string; damage: number; heavy: boolean; bonus: boolean; crit: boolean; killed: boolean; dirX: number; dirZ: number; local: boolean }
   | { kind: 'stagger'; enemyId: number; x: number; z: number }
-  | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean }
+  | { kind: 'heroHurt'; playerId: string; damage: number; x: number; z: number; heavy: boolean; type?: DamageType }
   | { kind: 'heroDown'; playerId: string }
   /** Through a village door (the server's alone): the sound of it opening, where the hero came out. */
   | { kind: 'door'; playerId: string; x: number; z: number }
   | { kind: 'parry'; playerId: string; x: number; y: number; z: number; enemyId: number }
   /** A jump cleared a low attack (M1): the server's alone, as every hit on a hero is. */
   | { kind: 'cleared'; playerId: string; x: number; y: number; z: number; ground: number }
+  /** The Hollow King's crown sent back by a parry on the Crown-catcher Buckler (K1). */
+  | { kind: 'crownCaught'; playerId: string; enemyId: number }
   /** A hero was Chilled (E1d): the frost tint and the corner's icon start from the state, this is for the sound. */
   | { kind: 'chilled'; playerId: string; x: number; z: number }
   | { kind: 'rooted'; playerId: string; enemyId: number; x: number; z: number }
@@ -479,6 +495,7 @@ export type SimEvent =
   | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
+  | { kind: 'ridgeRaised'; enemyId: number; x: number; z: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
   | { kind: 'tileCracked'; x: number; z: number }
   | { kind: 'tileFell'; x: number; z: number; caught: number; put: string[] }
@@ -508,7 +525,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true; /** The Gravehand's (H2). */ hand?: true; /** The Ossuary Mason's (M3). */ mason?: true }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }
@@ -572,8 +589,14 @@ export type SimEvent =
 export type Combo = 'shatter' | 'skewer' | 'detonate' | 'uproot' | 'fan';
 
 /** An enemy attack reaching a hero. */
+/** What a hit on a hero is (B3, `docs/bosses.md` 1.5): blunt and edge melee, pierce ranged, magic magic. */
+export type DamageType = 'blunt' | 'edge' | 'pierce' | 'magic';
+export const DAMAGE_TYPES: readonly DamageType[] = ['blunt', 'edge', 'pierce', 'magic'];
+
 export interface HeroHit {
   damage: number;
+  /** Its damage type (B3), set only with `bosses.damageTypes` on; nothing in the fight reads it yet. */
+  type?: DamageType;
   /** Heavy hits interrupt the hero and break a guard. */
   heavy?: boolean;
   /** Metres of shove on a heavy hit. */
@@ -585,6 +608,8 @@ export interface HeroHit {
   enemyId?: number;
   /** An enemy arrow: a parry sends one back. */
   arrow?: boolean;
+  /** The Hollow King's thrown crown (K1): a parry on the Crown-catcher Buckler sends it back at him. */
+  crown?: boolean;
   /** Already waited out the remote player's lag grace. */
   late?: boolean;
   /**
@@ -665,6 +690,8 @@ export interface SimState {
   groves?: BrambleGround[];
   /** A Spellblade's Blazing Charge trails (the builds pass), one a Spellblade; absent in the slice. */
   trails?: TrailGround[];
+  /** The Ossuary Mason's bone ridges (M3, phase 2): short walls its overheads raise; absent in the slice. */
+  ridges?: BoneRidge[];
   /**
    * The village's buildings still an empty plot (Michael, 31 Oct, A), by id: their front doors stay
    * shut. The village room sets it from the save; absent everywhere else.
@@ -672,6 +699,20 @@ export interface SimState {
   plots?: string[];
   /** Seconds since a fight was last on, for the slow regen (`tuning.heal`); absent in the slice and while one is on. */
   calmFor?: number;
+}
+
+/**
+ * A bone ridge (M3): a short wall the Mason's phase 2 overhead raises across its swing, `half` long
+ * each way from its centre along x (`alongX`) or z, standing until `until` (sim seconds).
+ */
+export interface BoneRidge {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  alongX: boolean;
+  half: number;
+  until: number;
 }
 
 /**

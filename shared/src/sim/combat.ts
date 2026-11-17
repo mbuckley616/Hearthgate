@@ -1,10 +1,15 @@
+import { noteBossHit } from './attention';
+import { handAloft, hitOnGrip, palmResting, releaseGrip } from './gravehand';
+import { boundMult } from './mason';
 import { abilityTiming, enemyStats, tuning, type Style, type WeaponFamily } from '../config/tuning';
 import { championCombo, championDamage, championOpen, championPointsEarned, championPoise, slotted } from './champion';
 import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
-import type { Combo, EnemyState, HeroHit, PlayerState, SimState } from './types';
-import { roleOf } from './roles';
+import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
+import { ADD_WEAKNESS, roleOf } from './roles';
+import { jobFor, noteJob } from './signatures';
+import { focusBonus } from './focus';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -65,7 +70,7 @@ export interface HitSpec {
 export function styleDamageBonus(p: PlayerState, style: Style): number {
   // A henchman has no talents to spend: its level is its build (P12).
   const hench = p.henchman ? tuning.hirelings.damagePerLevel * (levelFor(p.xp[style]) - 1) : 0;
-  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p) + hench;
+  return (levelFor(p.xp[style]) >= 4 ? tuning.progression.level4DamageBonus : 0) + p.mods.damage[style] + talentDamage(p, style) + championDamage(p) + hench + focusBonus(p, style);
 }
 
 /** Add XP to a hero's style, announcing any level crossed. */
@@ -122,6 +127,40 @@ function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerS
   return true;
 }
 
+/**
+ * An add's weakness (B5): the multiplier a hit takes, or null for a spell a ward turns aside (a deflect
+ * spark, and the channel goes on). A hit with no style (a launched body, a trap) passes untouched.
+ */
+function addWeaknessMult(state: SimState, e: EnemyState, hit: HitSpec): number | null {
+  if (!tuning.bosses.addWeakness || !hit.style) return 1;
+  const w = ADD_WEAKNESS[e.kind];
+  if (w === 'armoured') return hit.style === 'staff' ? 1 : tuning.bosses.armourTaken;
+  if (w === 'warded') {
+    if (hit.style === 'bow') return tuning.bosses.wardArrowMult;
+    if (hit.style === 'staff') {
+      if (!hit.dot) state.events.push({ kind: 'guarded', enemyId: e.id, x: hit.x, y: hit.y, z: hit.z });
+      return null;
+    }
+  }
+  return 1;
+}
+
+/** A hero wearing a boss's signature piece against a hit's damage type (B6). */
+function resists(p: PlayerState, hit: HeroHit): boolean {
+  return tuning.bosses.signatureDrops && !!hit.type && !!p.mods.resist?.includes(hit.type);
+}
+
+/**
+ * A bane weapon's multiplier on its boss's kind (B6), or 1. The King's (Kingsbane, K1) is a bane to
+ * his Knights too, while he is on the floor: the ones he raised and the ones that guard his hall.
+ */
+function baneMult(state: SimState, hero: PlayerState | undefined, e: EnemyState): number {
+  const bane = hero?.mods.bane;
+  if (!bane || !tuning.bosses.signatureDrops) return 1;
+  const his = bane === 'king' && e.kind === 'knight' && state.enemies.some((o) => o.kind === 'king');
+  return bane === e.kind || his ? tuning.bosses.baneMult : 1;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -149,10 +188,13 @@ export function breakChannel(e: EnemyState): void {
 
 export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boolean {
   if (!isTargetable(e)) return false;
+  // The Gravehand (H1) floats over a blade's reach: only arrows, spells and a burn touch it up there.
+  if (handAloft(e) && !hit.projectile && !hit.dot) return false;
   const c = tuning.combat;
   const stats = enemyStats(e.kind);
   const staggered = e.ai === 'stagger';
   const hero = state.players.find((p) => p.id === hit.attackerId);
+  if (hero) noteBossHit(state, e, hero);
   const bonus = hero && hit.style ? styleDamageBonus(hero, hit.style) : 0;
   const poiseBonus = hero && hit.style ? hero.mods.poise[hit.style] + talentPoise(hero, hit.style) + championPoise(hero) : 0;
   // Shatter: a melee finisher on a slowed or frozen enemy (brief: cross-style combos).
@@ -169,6 +211,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // From the shadows (the Rogue's signature): a primed hit crits and comes from behind, past a shield.
   const shadow = hero ? shadowStrike(state, hero, hit) : 1;
   if (shadow === 1 && shieldTakes(state, e, hit, hero)) return true;
+  const weakness = addWeaknessMult(state, e, hit);
+  if (weakness === null) return true;
   // Riposte (the parrying dagger): the first blow after a parried hit crits, if it comes in time.
   const riposte = hero ? riposteStrike(state, hero, hit) : 1;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
@@ -183,7 +227,17 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const focus = hero && !hit.dot && hit.style === 'staff' && focused(hero) ? tuning.abilities.focusDamageMult : 1;
   // Combo mastery (Michael's A, 10 Nov): the payer's rank in this payoff's combo, read before it counts.
   const mastery = shatter ? masteryPayoffMult(hero, 'shatter') : uproot ? masteryPayoffMult(hero, 'uproot') : 1;
-  const damage = focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  // A partner's heavy, or enough damage, opens the Gravehand's grip (H2).
+  if (e.grip) hitOnGrip(state, e, hit.attackerId, hit.damage, hit.heavy);
+  // Its palm resting on the floor after a slam is the punish window (H1).
+  const resting = palmResting(e) ? tuning.gravehand.restDamageTaken : 1;
+  // The Ossuary Mason (M1) is Bound while a Wardstone stands: the party's damage belongs on the stones.
+  const bound = boundMult(state, e);
+  // A Silver Ring's ward on the hand (H2) halves what reaches it.
+  const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
+  const damage = bound * warded * resting * baneMult(state, hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
+  noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
   e.lastHitAt = state.time;
   warlockHex(state, e, hero, hit, Math.min(damage, damage + e.hp), e.hex !== undefined);
@@ -437,6 +491,8 @@ function shatterAround(state: SimState, e: EnemyState, hit: HitSpec): void {
 
 /** Poise broken (or parried): open for the stagger window. */
 function staggerEnemy(state: SimState, e: EnemyState): void {
+  // A staggered Gravehand drops whoever it held (H2).
+  if (e.grip) releaseGrip(state, e);
   e.poise = 0;
   e.ai = 'stagger';
   e.aiTime = 0;
@@ -445,7 +501,8 @@ function staggerEnemy(state: SimState, e: EnemyState): void {
   state.events.push({ kind: 'stagger', enemyId: e.id, x: e.x, z: e.z });
 }
 
-function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): void {
+export function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: number): void {
+  if (e.grip) releaseGrip(state, e);
   e.hp = 0;
   e.ai = 'dead';
   e.aiTime = 0;
@@ -553,6 +610,39 @@ function parry(state: SimState, p: PlayerState, hit: HeroHit): void {
   const fz = Math.cos(p.yaw);
   state.events.push({ kind: 'parry', playerId: p.id, x: p.x + fx * 0.6, y: p.y + 1.2, z: p.z + fz * 0.6, enemyId: e ? e.id : -1 });
   holyPulse(state, p);
+  if (e && hit.crown) catchCrown(state, p, e, hit);
+}
+
+/**
+ * The Crown-catcher Buckler (K1, `docs/bosses.md` 2.4): a parry of the Hollow King's thrown crown sends
+ * it back at him, the tank's answer to a crown that comes again and again while a Crownbearer
+ * channels. It strikes him as hard as it would have struck the hero, `king.crownCatchMult` times, and
+ * a crown still flying out turns home from where it was met. Decided where the parry is, on the server.
+ */
+function catchCrown(state: SimState, p: PlayerState, king: EnemyState, hit: HeroHit): void {
+  const k = tuning.king;
+  if (!p.mods.crownCatch || !tuning.bosses.signatureDrops) return;
+  if (king.crown && !king.crown.back) {
+    king.crown.back = true;
+    king.crown.struck = [];
+  }
+  const dx = king.x - p.x;
+  const dz = king.z - p.z;
+  const d = Math.hypot(dx, dz) || 1;
+  state.events.push({ kind: 'crownCaught', playerId: p.id, enemyId: king.id });
+  damageEnemy(state, king, {
+    attackerId: p.id,
+    damage: hit.damage * k.crownCatchMult,
+    poise: k.crownCatchPoise,
+    knockback: 0,
+    heavy: false,
+    dirX: dx / d,
+    dirZ: dz / d,
+    x: king.x,
+    y: king.y + 2.2,
+    z: king.z,
+    projectile: true,
+  });
 }
 
 /**
@@ -576,7 +666,17 @@ export function knockDown(state: SimState, p: PlayerState): void {
 
 /** In the air and high enough over a low attack's ground (M1). Henchmen jump too, if they ever do. */
 export function clearsLow(p: PlayerState, ground: number): boolean {
-  return tuning.jump.clearsLow && !p.grounded && p.y - ground >= tuning.jump.clearHeight;
+  // The Sweepbreaker Greaves (W1) clear it from lower, so a jump caught early still carries over.
+  const less = p.mods.lowClear && tuning.bosses.signatureDrops ? tuning.warden.greavesClearLessM : 0;
+  return tuning.jump.clearsLow && !p.grounded && p.y - ground >= Math.max(0, tuning.jump.clearHeight - less);
+}
+
+/**
+ * A hit's damage type (B3) to spread into a `HeroHit`: nothing with `bosses.damageTypes` off, so a
+ * pending hit's state and the slice's hashes stay as they were.
+ */
+export function typed(type: DamageType): { type?: DamageType } {
+  return tuning.bosses.damageTypes ? { type } : {};
 }
 
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
@@ -640,6 +740,9 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
   if (p.mode === 'guard' && guardCovers(p, hit.fromX, hit.fromZ)) {
+    // The tank's job (B6): a boss's blow taken on the guard, parried or blocked or broken through.
+    const from = hit.enemyId !== undefined ? state.enemies.find((e) => e.id === hit.enemyId) : undefined;
+    if (from && roleOf(from.kind) === 'boss') noteJob(state, p, 'tank', hit.damage);
     if (p.parryOpen && p.guardTime * 1000 <= parryWindowMs(p)) {
       parry(state, p, hit);
       return 'parried';
@@ -676,6 +779,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   }
   // Worn armour (T5b) takes its share off; the slice's heroes carry none.
   if (p.mods.armour) damage *= 1 - p.mods.armour;
+  // A signature piece against this hit's type (B6), once however many are worn.
+  if (resists(p, hit)) damage *= 1 - tuning.bosses.resist;
   // A Whirlwind's spin (C6) takes a share of the hit and keeps spinning: a risk in a crowd, not a punishment.
   if (spinning(p)) {
     damage *= tuning.abilities.whirlwindDamageTaken;
@@ -685,7 +790,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   if (p.flow && heavy && flowArmoured(p)) heavy = false;
   if (p.flow) loseFlowTier(p);
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
-  state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy });
+  state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy, ...(hit.type ? { type: hit.type } : {}) });
   if (p.hp <= 0) knockDown(state, p);
   else if (heavy) {
     p.mode = 'hurt';

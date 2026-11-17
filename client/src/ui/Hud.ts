@@ -1,4 +1,6 @@
 import { COMBO_NAMES as COMBO_WORDS, MASTERY_PAYOFF_RANKS, MASTERY_ROMAN as ROMAN, masteryThresholds } from '@hearthgate/shared/sim/mastery';
+import { focusBonus } from '@hearthgate/shared/sim/focus';
+import { heldLine } from '@hearthgate/shared/sim/gravehand';
 import { ABILITIES, ABILITY_NAMES, OFFHAND_ABILITY, STRING_MOVES, abilityTiming, tuning, type Style } from '@hearthgate/shared/config/tuning';
 import { levelUnlock, levelFor, levelProgress } from '@hearthgate/shared/sim/gear';
 import { gearLine, nameOf as itemNameOf } from './gearText';
@@ -7,6 +9,9 @@ import { flowTier } from '@hearthgate/shared/sim/flow';
 import { ICONS, iconUrl } from './pixelArt';
 import { abilityTitle, heroTitle } from '@hearthgate/shared/sim/specs';
 import type { Combo, PlayerState, SimEvent, SimState } from '@hearthgate/shared/sim/types';
+
+/** A style's word on the focus line (B7). */
+const STYLE_WORD: Record<Style, string> = { sword: 'sword', bow: 'bow', staff: 'staff' };
 
 const TOAST_MS = 4200;
 
@@ -45,9 +50,15 @@ export class Hud {
   /** Health potions on the belt and the key that drinks one (D4). */
   private potion = document.createElement('div');
   private shownPotions = -1;
+  /** Focus (B7): a line under the belt while a run's floors have been one style's. */
+  private focus = document.createElement('div');
+  private shownFocus = '';
   /** Chilled (E1d): a line under the bars while it lasts, with the seconds left. */
   private chill = document.createElement('div');
   private shownChill = -1;
+  /** Held in the Gravehand's grip (H2): how to get out, and the presses on the beat so far. */
+  private held = document.createElement('div');
+  private shownHeld = '';
   private hits = 0;
   private sinceHit = Infinity;
   private hurtFlash = 0;
@@ -75,7 +86,9 @@ export class Hud {
     bars.className = 'hud-bars';
     this.draught.className = 'hud-draught';
     this.potion.className = 'hud-potion';
+    this.focus.className = 'hud-focus';
     this.chill.className = 'hud-chill';
+    this.held.className = 'hud-held';
     this.flow.className = 'hud-flow';
     this.flowFill.className = 'hud-flow-fill';
     this.flowLabel.className = 'hud-flow-label';
@@ -89,7 +102,7 @@ export class Hud {
     xpTrack.className = 'hud-level-track';
     xpTrack.appendChild(this.levelXp);
     this.level.append(this.levelText, xpTrack);
-    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.chill);
+    bars.append(this.level, hp, this.flow, this.pips, this.draught, this.potion, this.focus, this.chill, this.held);
     this.root.append(this.portrait, bars);
 
     this.combo.className = 'hud-combo';
@@ -160,6 +173,8 @@ export class Hud {
       }
       if (ev.kind === 'heroHurt' && ev.playerId === localId) this.hurtFlash = 1;
       if (ev.kind === 'parry' && ev.playerId === localId) this.guardPop('Parry', 'parry');
+      // The Crown-catcher Buckler (K1): it follows its parry in the same batch, so it takes the line.
+      if (ev.kind === 'crownCaught' && ev.playerId === localId) this.guardPop('Crown sent back', 'parry');
       // A jump over a low attack (M1) says so, so a player learns which attacks a jump clears.
       if (ev.kind === 'cleared' && ev.playerId === localId) this.guardPop('Cleared', 'cleared');
       // A string move (C1) names itself, so the strings can be learned by playing.
@@ -318,6 +333,21 @@ export class Hud {
       this.shownPotions = potions;
       this.potion.style.display = potions > 0 ? 'block' : 'none';
       this.potion.innerHTML = `Health potion ×${potions} <kbd>G</kbd>`;
+    }
+    // Held (H2): a partner's heavy opens the hand; alone, dodge on the beat, not too fast.
+    const held = heldLine(p);
+    if (held !== this.shownHeld) {
+      this.shownHeld = held;
+      this.held.style.display = held ? 'block' : 'none';
+      this.held.textContent = held;
+    }
+    // Focus (B7): what staying in one style has earned; a swap loses it, and the line goes with it.
+    const bonus = Math.round(focusBonus(p, p.style) * 100);
+    const focus = bonus > 0 ? `Focus +${bonus}% ${STYLE_WORD[p.style]}  ·  lost on a swap` : '';
+    if (focus !== this.shownFocus) {
+      this.shownFocus = focus;
+      this.focus.style.display = focus ? 'block' : 'none';
+      this.focus.textContent = focus;
     }
   }
 

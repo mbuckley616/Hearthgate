@@ -46,9 +46,9 @@ describe('the Hollow King (G4b)', () => {
     expect(telegraphColour({ kind: 'king', attack: 'crown' })).toBe('projectile');
   });
 
-  it('ends the Hollow Crown, and only it; the Warden ends every other run', () => {
+  it('ends the Hollow Crown, and only it; the Warden ends every other run but Mossgate', () => {
     expect(bossOf('hollow-crown')).toBe('king');
-    expect(bossOf('mossgate')).toBe('warden');
+    expect(bossOf('mossgate')).toBe('gravehand');
     expect(bossOf(undefined)).toBe('warden');
     tuning.king.hollowCrown = false;
     expect(bossOf('hollow-crown')).toBe('warden');

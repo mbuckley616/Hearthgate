@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
 import { kingPace } from '@hearthgate/shared/sim/enemies';
+import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
   DEG,
@@ -36,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -95,6 +96,36 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
   // The Wraith (E1d) channels with the Priest's raised hands.
+  // The Gravehand's rig is hidden (H1): its hand is posed in update(), so only a guard is needed here.
+  gravehand: {
+    guard: pose(BASE, {}),
+  },
+  ironRing: { guard: pose(BASE, {}) },
+  silverRing: { guard: pose(BASE, {}) },
+  boneRing: { guard: pose(BASE, {}) },
+  // The Ossuary Mason (M1): the Brute's maul poses, raised for each swing of the string and for the hod.
+  mason: {
+    guard: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: 45, offHeight: 0.05, offReach: 0.3, lean: 16 }),
+    raise: pose(BASE, { handYaw: -10, handHeight: 0.68, handReach: 0.12, bladeYaw: 180, bladePitch: 70, offYaw: 10, offHeight: 0.66, offReach: 0.14, lean: -10, crouch: 0.04 }),
+    smash: pose(BASE, { handYaw: -5, handHeight: -0.1, handReach: 0.45, bladeYaw: 0, bladePitch: -55, offYaw: 15, offHeight: -0.08, offReach: 0.42, lean: 38, crouch: 0.26 }),
+    hodBack: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: 80, offHeight: 0.6, offReach: 0.12, twist: 30, lean: -6 }),
+    hodThrow: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: -10, offHeight: 0.35, offReach: 0.5, twist: -30, lean: 24 }),
+  },
+  wardstone: { guard: pose(BASE, {}) },
+  // The Mason's adds (M2): a plated Shieldbearer and a Wraith's chant.
+  mortarGuard: {
+    guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
+    windup: pose(BASE, { handYaw: -60, handHeight: 0.1, handReach: 0.18, bladeYaw: 20, bladePitch: 50, offYaw: 35, offHeight: 0.1, offReach: 0.2, twist: -30, lean: 4, crouch: 0.14 }),
+    slash1: pose(BASE, { handYaw: -40, handHeight: 0.05, handReach: 0.2, bladeYaw: 20, bladePitch: 50, offYaw: -5, offHeight: 0.12, offReach: 0.55, twist: 25, lean: 30, crouch: 0.12 }),
+  },
+  chanter: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
+  },  // The King's (K1): a Wraith's chant, a crown held up.
+  crownbearer: {
+    guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
+    chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
+  },
   wraith: {
     guard: pose(BASE, { handYaw: -20, handHeight: 0.1, handReach: 0.3, bladeYaw: 0, bladePitch: 0, offYaw: 40, offHeight: 0, offReach: 0.25, lean: 6 }),
     chant: pose(BASE, { handYaw: -15, handHeight: 0.55, handReach: 0.35, bladeYaw: 0, bladePitch: 10, offYaw: 20, offHeight: 0.5, offReach: 0.4, twist: 0, lean: -6, crouch: 0 }),
@@ -151,6 +182,11 @@ export class EnemyView {
   private crowned = false;
   /** The Hollow King's crown in flight (G4b), drawn from the root along the line he threw it down. */
   private flying: THREE.Group | null = null;
+  /** The Gravehand (H1): a bone hand of boxes in place of the rig, held at the height the sim says. */
+  private hand: THREE.Group | null = null;
+  /** The Gravehand's rings (H2): one torus in place of the rig, rolled or spun in update(). */
+  private ring: THREE.Group | null = null;
+  private handLift = 0;
   private ice: THREE.Mesh;
   private mark: THREE.Mesh;
   private hpBack: THREE.Sprite;
@@ -193,11 +229,19 @@ export class EnemyView {
     this.body.scale.setScalar(SCALE[kind]);
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
-    else if (kind === 'brute') this.buildBrute(mat, mesh);
+    else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
-    if (kind === 'priest' || kind === 'wraith') this.dressPriest(mat, mesh);
-    if (kind === 'wraith') {
+    if (kind === 'gravehand') this.buildGravehand(mat, mesh);
+    if (kind === 'mason') this.dressMason(mat, mesh);
+    if (kind === 'wardstone') this.buildWardstone(mat, mesh);
+    if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
+    if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer') this.dressPriest(mat, mesh);
+    if (kind === 'crownbearer') {
+      // A thin gold circlet over the hood: it carries the King's crown back, and reads as his.
+      this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 16).rotateX(Math.PI / 2), mat(0xd8b25a, { metalness: 0.8, roughness: 0.3, emissive: 0x3a2a08 }), 0, 0.12, 0));
+    }
+    if (kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer') {
       // It floats (E1d): no legs under the robe; update() holds the robe off the floor.
       for (const l of Object.values(this.legs)) for (const o of [l.thigh, l.shin, l.knee, l.foot]) o.visible = false;
     }
@@ -209,7 +253,7 @@ export class EnemyView {
         this.head.add(mesh(new THREE.ConeGeometry(0.025, 0.12, 5), fire, Math.cos(a) * 0.11, 0.17, Math.sin(a) * 0.11));
       }
     }
-    if ((kind === 'shieldbearer' || kind === 'knight') && this.shield) {
+    if ((kind === 'shieldbearer' || kind === 'knight' || kind === 'mortarGuard') && this.shield) {
       // A tall shield that covers it from shin to skull, and a rusted helm: read as "not from the front".
       this.shield.scale.set(1.5, 2.4, 1);
       this.head.add(mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x6a5a4e, { metalness: 0.6, roughness: 0.6 }), 0, 0.03, 0));
@@ -440,6 +484,114 @@ export class EnemyView {
    * (whose limbs are made and hidden, so the shared update has something to pose): spine and ribs,
    * four legs, a long skull with the burning eyes, a jaw and a tail.
    */
+  /**
+   * The Gravehand (H1; placeholder): a palm and five fingers of grey bone boxes, wrapped in grave-cloth,
+   * iron rings on three fingers, fingers pointing where it faces. The skeleton's rig is built and hidden
+   * so the shared update has its parts.
+   */
+  private buildGravehand(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const bone = mat(0xbdb3a0, { roughness: 0.85 });
+    const knuckle = mat(0x8a8070, { roughness: 0.9 });
+    const cloth = mat(0x5a5448, { roughness: 1 });
+    const iron = mat(0x4a4c52, { metalness: 0.7, roughness: 0.45 });
+    const hand = new THREE.Group();
+    hand.add(mesh(new THREE.BoxGeometry(1.5, 0.34, 1.3), bone, 0, 0, -0.1));
+    // Grave-cloth round the wrist, trailing behind.
+    hand.add(mesh(new THREE.BoxGeometry(1.0, 0.42, 0.7), cloth, 0, 0.02, -1.0));
+    hand.add(mesh(new THREE.BoxGeometry(0.8, 0.12, 0.9), cloth, 0.1, -0.05, -1.6));
+    const fingers: [number, number][] = [
+      [-0.55, 0.85],
+      [-0.18, 1.0],
+      [0.18, 0.95],
+      [0.55, 0.75],
+    ];
+    fingers.forEach(([x, len], i) => {
+      const a = mesh(new THREE.BoxGeometry(0.26, 0.26, len * 0.55), bone, x, 0, 0.55 + len * 0.275);
+      const b = mesh(new THREE.BoxGeometry(0.22, 0.22, len * 0.45), bone, x, -0.04, 0.55 + len * 0.55 + len * 0.225);
+      hand.add(a, b, mesh(new THREE.BoxGeometry(0.3, 0.3, 0.14), knuckle, x, 0, 0.55));
+      // Iron rings on the first three fingers: the Ringwardens of phase 2 (H2).
+      if (i < 3) {
+        const ring = mesh(new THREE.TorusGeometry(0.17, 0.05, 6, 12), iron, x, 0, 0.55 + len * 0.3);
+        hand.add(ring);
+      }
+    });
+    // The thumb, out to the side and forward.
+    const thumb = mesh(new THREE.BoxGeometry(0.28, 0.28, 0.7), bone, -0.85, -0.02, 0.15);
+    thumb.rotation.y = -0.6;
+    hand.add(thumb);
+    this.hand = hand;
+    this.body.add(hand);
+  }
+
+  /**
+   * A ring off the Gravehand's fingers (H2; placeholder): Iron stands on its edge to roll, plated and
+   * dull grey (armoured); Silver floats flat and glows violet (warded); Bone is small and spiked.
+   */
+  private buildRing(kind: 'ironRing' | 'silverRing' | 'boneRing', mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const ring = new THREE.Group();
+    const spin = new THREE.Group();
+    ring.add(spin);
+    if (kind === 'ironRing') {
+      const iron = mat(0x55585e, { metalness: 0.75, roughness: 0.5 });
+      spin.add(mesh(new THREE.TorusGeometry(0.5, 0.14, 8, 20), iron));
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const plate = mesh(new THREE.BoxGeometry(0.22, 0.22, 0.34), iron, Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0);
+        plate.rotation.z = a;
+        spin.add(plate);
+      }
+      ring.position.y = 0.66;
+    } else if (kind === 'silverRing') {
+      spin.add(mesh(new THREE.TorusGeometry(0.42, 0.07, 8, 24), mat(0xd8dde6, { metalness: 0.9, roughness: 0.25, emissive: 0x2a1a44 })));
+      spin.add(mesh(new THREE.TorusGeometry(0.6, 0.02, 6, 32), glowMaterial(0xa070ff, 0.5)));
+      spin.rotation.x = Math.PI / 2;
+      ring.position.y = 1.6;
+    } else {
+      const bone = mat(0xd6c9a8, { roughness: 0.8 });
+      spin.add(mesh(new THREE.TorusGeometry(0.26, 0.07, 6, 14), bone));
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const spike = mesh(new THREE.ConeGeometry(0.05, 0.18, 5), bone, Math.cos(a) * 0.36, Math.sin(a) * 0.36, 0);
+        spike.rotation.z = a - Math.PI / 2;
+        spin.add(spike);
+      }
+      ring.position.y = 0.4;
+    }
+    this.ring = ring;
+    this.body.add(ring);
+  }
+
+  /**
+   * The Ossuary Mason (M1), a placeholder over the Brute's body: a block of stone on its club for a
+   * maul head and a hod of skulls on its back.
+   */
+  private dressMason(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const stone = mat(0x77736a, { roughness: 0.95 });
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    const wood = mat(0x5a3a22);
+    this.weapon.add(mesh(new THREE.BoxGeometry(0.34, 0.24, 0.24), stone, 0, 0.72, 0));
+    const hod = new THREE.Group();
+    hod.add(mesh(new THREE.BoxGeometry(0.34, 0.3, 0.2), wood, 0, 0, 0));
+    for (let i = 0; i < 3; i++) hod.add(mesh(new THREE.SphereGeometry(0.075, 8, 6), bone, (i - 1) * 0.1, 0.18, 0));
+    hod.position.set(0, 0.28, -0.22);
+    hod.rotation.x = -0.25;
+    this.chest.add(hod);
+  }
+
+  /** A Wardstone (M1): a pillar of grey stone bound with bone bands and a violet glow at its crown. */
+  private buildWardstone(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const stone = mat(0x6e6a62, { roughness: 0.95 });
+    const bone = mat(0xd6c9a8, { roughness: 0.75 });
+    const pillar = new THREE.Group();
+    pillar.add(mesh(new THREE.CylinderGeometry(0.5, 0.62, 2.3, 8), stone, 0, 1.15, 0));
+    for (const y of [0.5, 1.4]) pillar.add(mesh(new THREE.TorusGeometry(0.58, 0.06, 6, 16).rotateX(Math.PI / 2), bone, 0, y, 0));
+    pillar.add(mesh(new THREE.OctahedronGeometry(0.22), glowMaterial(0xa070ff, 0.8), 0, 2.5, 0));
+    this.body.add(pillar);
+  }
+
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
     const bone = mat(0xd6c9a8, { roughness: 0.75 });
     const boneDark = mat(0x8f8266, { roughness: 0.8 });
@@ -678,8 +830,32 @@ export class EnemyView {
       }
     } else this.flew = false;
     // A Wraith hangs in the air and bobs, until it falls.
-    this.rig.position.y = rise + (curr.kind === 'wraith' && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
+    this.rig.position.y = rise + ((curr.kind === 'wraith' || curr.kind === 'chanter' || curr.kind === 'crownbearer') && curr.ai !== 'dead' ? 0.35 + Math.sin(this.time * 2.2) * 0.06 : 0);
     this.body.rotation.x = (curr.kind === 'warden' ? 1 : -1) * topple * Math.PI * 0.48;
+    if (this.ring) {
+      // Iron rolls with its speed; Silver turns slowly and bobs, faster while it wards; Bone whirls.
+      const spin = this.ring.children[0];
+      if (curr.kind === 'ironRing') spin.rotation.x += (dt * Math.hypot(curr.vx, curr.vz)) / 0.6 + (curr.ai === 'charge' ? dt * 10 : 0);
+      else if (curr.kind === 'silverRing') {
+        spin.rotation.z += dt * (curr.ai === 'chant' ? 4 : 0.8);
+        this.ring.position.y = 1.6 + Math.sin(this.time * 2) * 0.1;
+      } else spin.rotation.y += dt * 9;
+    }
+    if (this.hand) {
+      // The sim says how high the palm hangs; the figure follows quickly, falls fast and bobs while it floats.
+      const lift = gravehandLift(curr);
+      const k = lift < this.handLift ? 22 : 6;
+      this.handLift += (lift - this.handLift) * (1 - Math.exp(-k * dt));
+      const floating = lift > 1;
+      // The body is scaled to cart size; the lift is metres, so it is undone here.
+      this.hand.position.y = (0.2 + this.handLift + (floating ? Math.sin(this.time * 1.8) * 0.12 : 0)) / SCALE.gravehand;
+      // On its side for the backhand sweep, swinging across as it lands; palm down otherwise.
+      const sweeping = curr.attack === 'sweep' && (curr.ai === 'sweepWindup' || curr.ai === 'sweep');
+      const across = curr.ai === 'sweep' ? clamp01(curr.aiTime / (tuning.gravehand.sweepActiveMs / 1000)) : 0;
+      // Clenched into a fist from phase 3 (H3): the fingers folded under, drawn as the hand drawn short.
+      this.hand.scale.set(1, curr.phase >= 3 ? 1.5 : 1, curr.phase >= 3 ? 0.6 : 1);
+      this.hand.rotation.set(curr.ai === 'aim' ? -0.35 : 0, sweeping ? 0.9 - across * 1.8 : 0, sweeping ? Math.PI / 2 : 0);
+    }
 
     this.pelvis.position.y = DIMS.hipHeight - p.crouch;
     this.pelvis.rotation.set(lean * 0.4 * DEG, twist * 0.3 * DEG, 0);
@@ -732,7 +908,7 @@ export class EnemyView {
     });
 
     // Health bar (not for the boss, nor a mini-boss: theirs is the boss bar; a treasure room's crowned guard has no boss bar, so it keeps its own).
-    const hurt = curr.kind !== 'warden' && (!curr.named || curr.guard !== undefined) && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
+    const hurt = curr.kind !== 'warden' && curr.kind !== 'gravehand' && (!curr.named || curr.guard !== undefined) && curr.hp < curr.maxHp && curr.ai !== 'dead' && curr.ai !== 'spawn';
     this.hpBack.visible = this.hpFill.visible = hurt;
     if (hurt) {
       const top = stats.height + 0.3;
@@ -786,6 +962,8 @@ export class EnemyView {
         break;
       case 'priest':
       case 'wraith':
+      case 'chanter':
+      case 'crownbearer':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
         break;
       case 'king': {
@@ -813,6 +991,7 @@ export class EnemyView {
         break;
       }
       case 'shieldbearer':
+      case 'mortarGuard':
       case 'knight': {
         const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
         switch (e.ai) {
@@ -847,6 +1026,27 @@ export class EnemyView {
             return into(P.raise, P.smash, t / (tuning.brute.slamActiveMs / 1000), easeOut);
         }
         break;
+      case 'mason': {
+        const m = tuning.mason;
+        switch (e.ai) {
+          case 'windup': {
+            const ms = e.chain ? m.stringNextMs : m.stringTelegraphMs;
+            into(this.from, P.raise, t / ((ms / 1000) * 0.6));
+            out.handHeight += Math.sin(this.time * 35) * 0.01;
+            return out;
+          }
+          case 'slash1':
+            return into(P.raise, P.smash, t / (m.stringActiveMs / 1000), easeOut);
+          case 'slamWindup':
+            return into(this.from, P.hodBack, t / ((m.hodTelegraphMs / 1000) * 0.6));
+          case 'slam':
+            return into(P.hodBack, P.hodThrow, t / 0.15, easeOut);
+          case 'chant':
+          case 'roar':
+            return into(this.from, P.raise, t / 0.35);
+        }
+        break;
+      }
       case 'warden': {
         const w = tuning.warden;
         const scale = e.phase >= 2 ? w.phase2TelegraphScale : 1;
@@ -891,10 +1091,25 @@ function wardenScale(e: EnemyState): number {
 
 export function windupProgress(e: EnemyState): number {
   const t = e.aiTime;
+  if (e.kind === 'gravehand') {
+    const g = tuning.gravehand;
+    if (e.ai === 'slamWindup') return clamp01(t / ((e.attack === 'knuckles' ? (e.chain ? g.knuckleNextMs : g.knuckleTelegraphMs) : g.slamTelegraphMs) / 1000));
+    if (e.ai === 'sweepWindup') return clamp01(t / (g.sweepTelegraphMs / 1000));
+    if (e.ai === 'aim') return clamp01(t / (g.flickTelegraphMs / 1000));
+    if (e.ai === 'chargeWindup') return clamp01(t / (g.grabTelegraphMs / 1000));
+    return 0;
+  }
+  if (e.kind === 'mason') {
+    const m = tuning.mason;
+    if (e.ai === 'windup') return clamp01(t / ((e.chain ? m.stringNextMs : m.stringTelegraphMs) / 1000));
+    if (e.ai === 'slamWindup') return clamp01(t / (m.hodTelegraphMs / 1000));
+    if (e.ai === 'chant') return clamp01(t / (m.groutChannelMs / 1000));
+    return 0;
+  }
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / (tuning.archer.aimMs / 1000));
     case 'slamWindup':
@@ -904,6 +1119,8 @@ export function windupProgress(e: EnemyState): number {
       return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
+      if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));
+      if (e.kind === 'crownbearer') return clamp01(t / (tuning.crownbearer.channelMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;

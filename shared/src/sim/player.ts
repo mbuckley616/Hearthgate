@@ -1,4 +1,6 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
+import { stepHeld } from './gravehand';
+import { loseFocusOnSwap } from './focus';
 import { galeReady, shadowPass, specCrescendo } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
@@ -433,6 +435,7 @@ export function stepPlayer(
   const mv = tuning.movement;
   const dg = tuning.dodge;
   refreshLevelHealth(p);
+  loseFocusOnSwap(p);
   p.invulnTime = Math.max(0, p.invulnTime - dt);
   if (p.chill !== undefined) {
     p.chill -= dt;
@@ -487,6 +490,16 @@ export function stepPlayer(
     resolveCircle(p, mv.radius, p.y + 0.3, p.y + mv.height, colliders);
     settleVertical(p, world, dt);
     if (p.hurtTime <= 0) p.mode = 'move';
+    return;
+  }
+
+  // Held in the Gravehand's grip (H2): no move, no swing, no roll; dodge presses on the beat get out.
+  if (p.held) {
+    stepHeld(p, cmd, dt);
+    // Still kept out of the walls: the hand drifts onto its hero and its body pushes them, and a hero
+    // pushed into a wall unresolved was put out through its far side when the grip let go (Session 224).
+    resolveCircle(p, mv.radius, p.y + 0.3, p.y + mv.height, colliders);
+    settleVertical(p, world, dt);
     return;
   }
 

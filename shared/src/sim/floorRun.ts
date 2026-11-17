@@ -8,7 +8,9 @@ import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
 import { composeRoom, roomTier, type Place } from './roomMix';
-import { minibossNames } from './roles';
+import { minibossNames, roleOf } from './roles';
+import { earnFocus } from './focus';
+import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
 import { dungeonTypeOf } from '../level/dungeonTypes';
 import type { EnemyState } from './types';
 import { difficultyMult } from '../game/portalChoice';
@@ -65,6 +67,8 @@ export interface FloorRunState {
   fallen?: number[];
   /** Treasure rooms (G5's C) whose guard has risen, by id: it rises once. */
   guarded?: number[];
+  /** What each hero did on this floor by job (B6), for a boss's signature drop: absent until someone does one. */
+  jobs?: Record<string, JobScores>;
 }
 
 /** A run's unbanked pay: the party's, each player paid the coin, the village the lumber and stone. */
@@ -248,6 +252,25 @@ function bossDrops(state: SimState, world: World, x: number, z: number): void {
     const r = n > 1 ? 1.6 : 0;
     spawnDrop(state, world, x + Math.cos(a) * r, z + Math.sin(a) * r, true, depthMult(world), Math.round(tuning.loop.bossDropMinTier));
   }
+  signatureDrops(state, world, x, z);
+}
+
+/**
+ * A boss's signature piece (B6), one a hero, the piece of the job they did most (`offerFor`), laid
+ * at the middle of the boss's drops (the rares stand round it), each only its owner's.
+ */
+export function signatureDrops(state: SimState, world: World, x: number, z: number): void {
+  if (!tuning.bosses.signatureDrops || !tuning.gear.catalogue) return;
+  const boss = state.enemies.find((e) => roleOf(e.kind) === 'boss');
+  const list = boss ? SIGNATURES[boss.kind] : undefined;
+  if (!list?.length) return;
+  for (const p of state.players) {
+    if (p.henchman) continue;
+    const piece = offerFor(list, state.floor?.jobs?.[p.id] ?? {});
+    if (!piece) continue;
+    state.drops.push({ id: state.nextId++, owner: p.id, x, y: groundHeight(world, x, z), z, age: 0, item: signatureItem(piece, '') });
+    state.events.push({ kind: 'dropSpawned', owner: p.id, x, z, rarity: 'rare' });
+  }
 }
 
 /** What a floor pays over the first: depthBonus more for each floor deeper (P1). */
@@ -295,6 +318,8 @@ export function leaveFloor(state: SimState, world: World, to: 'deeper' | 'villag
     if (!tuning.loop.bankAtRest || !f.rested) bank(state, world, f);
     return;
   }
+  // A floor gone through in one style (B7): focus grows for whoever still holds the style they had.
+  for (const p of state.players) earnFocus(p);
   for (const d of state.drops) {
     if (d.dropped) continue;
     (f.carried[d.owner] ??= []).push(d.item);
@@ -373,10 +398,12 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
 }
 
 /**
- * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, the Warden for every
- * other dungeon until its type's roster brings one.
+ * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, Mossgate Barrow's
+ * Gravehand (H1), Emberhall's Ossuary Mason (M1), the Warden for every other dungeon until its type's roster brings one.
  */
 export function bossOf(story: string | undefined): EnemyKind {
+  if (story === 'mossgate' && tuning.gravehand.enabled) return 'gravehand';
+  if (story === 'emberhall' && tuning.mason.enabled) return 'mason';
   return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
 }
 

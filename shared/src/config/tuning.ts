@@ -1321,6 +1321,8 @@ export const tuning = {
 
   /** The Warden: two-phase mini-boss; sweep, slam, and a roar that summons at 50% health (brief). */
   warden: {
+    /** The Sweepbreaker Greaves (W1, a signature drop): a hero wearing them clears a low attack this much lower. */
+    greavesClearLessM: 0.2,
     maxHp: 2000,
     maxPoise: 40,
     radius: 1.0,
@@ -1382,6 +1384,19 @@ export const tuning = {
   king: {
     /** He ends the Hollow Crown's run; off, the Warden does, as before G4b. */
     hollowCrown: true,
+    /**
+     * K1 (`docs/bosses.md` 2.4): phase 2's roar also raises `crownbearers` Crownbearers, and while one
+     * channels his thrown crown comes back to his hand ready to be thrown again at once. Off in the
+     * parity test.
+     */
+    underRules: true,
+    crownbearers: 1,
+    /**
+     * The Crown-catcher Buckler (K1, a signature drop): a parry of the thrown crown sends it back at
+     * him for `crownCatchMult` of what it would have dealt, and `crownCatchPoise` off his poise.
+     */
+    crownCatchMult: 3,
+    crownCatchPoise: 15,
     maxHp: 2400,
     maxPoise: 40,
     radius: 0.8,
@@ -1442,6 +1457,350 @@ export const tuning = {
     spawnMs: 1500,
     deathMs: 3000,
     knockbackTaken: 0.15,
+  },
+
+  /**
+   * The Gravehand (H1; `docs/bosses.md` 2.1): a floating bone hand that ends Mossgate Barrow. It
+   * hangs `hoverM` up, out of a blade's reach (only arrows and spells touch it there), and drifts
+   * after a hero. Phase 1's gestures: the palm slam (a circle with the orange rim: a jump does not
+   * clear it, a dodge out does), after which the palm rests on the floor `slamRestMs` taking
+   * `restDamageTaken` of every hit; the backhand sweep (a low cone along the ground: jump it or block
+   * it); and the flick (`flickShards` bone shards in a yellow fan at one hero).
+   */
+  gravehand: {
+    /** Mossgate Barrow ends on it; off, the Warden does, as before H1. */
+    enabled: true,
+    maxHp: 2300,
+    maxPoise: 40,
+    radius: 1.1,
+    height: 1.6,
+    moveSpeed: 3.2,
+    turnRateDeg: 160,
+    /** Height of its palm above the floor while it floats: over a blade's reach. */
+    hoverM: 3.5,
+    /** It drifts to hang this far short of its hero. */
+    followM: 2.2,
+    /**
+     * Metres a tick its body may shove a hero, under a hero's radius: come down on a hero by a wall,
+     * a bigger shove put their middle into the stone and out its far side (Session 224).
+     */
+    shoveMaxM: 0.15,
+    /** Palm slam: picked within `slamRange`, a circle `slamRadius` across where the hero stood, wound up `slamTelegraphMs`. */
+    slamRange: 7,
+    slamRadius: 2.4,
+    slamTelegraphMs: 1100,
+    /** For this share of the wind-up the circle follows its hero; then it locks and the hand drops. */
+    slamTrackFrac: 0.55,
+    slamActiveMs: 200,
+    slamDamage: 26,
+    slamPush: 3,
+    /** The palm rests on the floor after a slam: the punish window. */
+    slamRestMs: 1000,
+    restDamageTaken: 1.5,
+    /** Backhand sweep: a low cone along the ground, `sweepRadius` and `sweepArcDeg`, wound up `sweepTelegraphMs`. */
+    sweepRange: 4.5,
+    sweepRadius: 5,
+    sweepArcDeg: 120,
+    sweepTelegraphMs: 900,
+    sweepActiveMs: 220,
+    sweepDamage: 18,
+    sweepPush: 2.5,
+    sweepRecoveryMs: 700,
+    /** Flick: `flickShards` shards in a fan `flickArcDeg` wide at one hero from `flickMinRange`, wound up `flickTelegraphMs`. */
+    flickMinRange: 4,
+    flickRange: 16,
+    flickShards: 3,
+    flickArcDeg: 30,
+    flickTelegraphMs: 700,
+    flickDamage: 12,
+    flickSpeed: 18,
+    flickRecoveryMs: 500,
+    /**
+     * Phase 2 (H2) at `phase2At` of its health: a roar of `roarMs`, and it twists its rings off, one a
+     * hero (at most three: Iron, then Silver, then Bone), dropping `ringRadius` round it. While a
+     * Silver Ring channels its ward, the hand takes `wardTaken` of every hit.
+     */
+    phase2At: 0.6,
+    roarMs: 1600,
+    ringRadius: 7,
+    wardTaken: 0.5,
+    /**
+     * The grab (H2), phase 2 on: a red ring with the orange rim round its hero within `grabRange`,
+     * following them for half of `grabTelegraphMs`, then locked. Caught, a hero is held `grabHoldMs`,
+     * squeezed `squeezeDamage` each `squeezeEveryMs`. It lets go to a partner's heavy, to
+     * `grabBreakDamage` dealt to it, or to `grabEscapePresses` dodge presses each at least
+     * `grabBeatMs` after the last (a press sooner starts the count again: mashing does not work).
+     */
+    grabChance: 0.35,
+    grabRange: 8,
+    grabRadius: 1.6,
+    grabTelegraphMs: 1000,
+    grabHoldMs: 3000,
+    squeezeDamage: 5,
+    squeezeEveryMs: 1000,
+    grabBreakDamage: 40,
+    grabEscapePresses: 3,
+    grabBeatMs: 250,
+    /** Untouchable this long after a hero gets out, so the same grip cannot close on them at once. */
+    grabFreedInvulnMs: 500,
+    /** The Grave-cloth Wraps (H3, a signature drop): a hero wearing them is held only this long. */
+    looseGripMs: 1500,
+    /** Phase 3's shatter flick (H3): each shard that lands splits into two, `shatterSplitDeg` either side, flying `shatterFlightS` more. */
+    shatterSplitDeg: 35,
+    shatterFlightS: 0.4,
+    /**
+     * Phase 3 (H3) at `phase3At`: a roar, and it clenches into a fist. Its palm rests `phase3RestMs`
+     * instead of `slamRestMs`, and some turns (`knuckleChance`) roll a knuckle chain: `knuckles`
+     * circles `knuckleRadius` across, each `knuckleStepM` beyond the last along the line to its hero,
+     * the first wound up `knuckleTelegraphMs`, each next `knuckleNextMs`; blunt, low (a jump clears
+     * it), with the orange rim. Every ring kind with an add still standing rises once more.
+     */
+    phase3At: 0.3,
+    phase3RestMs: 900,
+    knuckleChance: 0.4,
+    knuckleRange: 9,
+    knuckles: 3,
+    knuckleRadius: 1.8,
+    knuckleStepM: 2.8,
+    knuckleTelegraphMs: 900,
+    knuckleNextMs: 420,
+    knuckleDamage: 20,
+    knuckleRecoveryMs: 700,
+    /** Its picks between slam and sweep when both are in reach. */
+    sweepChance: 0.4,
+    cooldownMs: 900,
+    knockbackDealt: 2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.05,
+  },
+
+  /**
+   * The Gravehand's rings (H2; `docs/bosses.md` 2.1), its phase-2 adds, one of each weakness. The Iron
+   * Ring (armoured: the mage's) rolls at a hero, a slow charger's line, blunt; numbers over the
+   * Hound's.
+   */
+  ironRing: {
+    maxHp: 170,
+    maxPoise: 30,
+    radius: 0.6,
+    height: 1.3,
+    moveSpeed: 2.4,
+    turnRateDeg: 200,
+    chargeRange: 8,
+    chargeMinRange: 2,
+    telegraphMs: 1000,
+    trackFrac: 0.6,
+    chargeSpeed: 7,
+    chargeLength: 8,
+    chargeDamage: 16,
+    chargePush: 3,
+    wallStunMs: 1600,
+    recoveryMs: 900,
+    cooldownMs: 2000,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.3,
+  },
+
+  /**
+   * The Silver Ring (H2; warded: the archer's): floats `keepDistance` from the party and channels a
+   * violet ward on the hand for `wardMs` at a time; any hit that lands breaks it, and its ward turns a
+   * spell aside, so an arrow is the answer.
+   */
+  silverRing: {
+    maxHp: 90,
+    maxPoise: 10,
+    radius: 0.45,
+    height: 2.2,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 9,
+    wardMs: 6000,
+    cooldownMs: 1500,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * The Bone Ring (H2; the skirmisher: the melee hero's): small and quick, a skeleton warrior's cut on
+   * a body with almost no poise, so one blow staggers it.
+   */
+  boneRing: {
+    maxHp: 60,
+    maxPoise: 1,
+    radius: 0.35,
+    height: 0.8,
+    moveSpeed: 5.5,
+    turnRateDeg: 400,
+    spawnMs: 700,
+    deathMs: 1200,
+    knockbackTaken: 1.2,
+  },
+
+  /**
+   * The Ossuary Mason (M1; `docs/bosses.md` 2.2): a hulking skeleton with a maul that ends Emberhall.
+   * Tanky by rule, not by health: while any of its `wardstones` stand it is Bound and takes
+   * `boundTaken` of every hit, so the party's damage goes into the stones first. Phase 1: the maul
+   * string (`stringSteps` blockable blunt cones at the front hero) and the hod throw (a rimmed circle
+   * where a skull-load lands, at a hero `hodMinRange` or more away). Its adds (M2) and phases (M3) come next.
+   */
+  mason: {
+    /** Emberhall ends on it; off, the Warden does, as before M1. */
+    enabled: true,
+    maxHp: 2600,
+    maxPoise: 50,
+    radius: 0.95,
+    height: 3.2,
+    moveSpeed: 2.4,
+    turnRateDeg: 150,
+    /** Taken of every hit while a Wardstone stands. */
+    boundTaken: 0.25,
+    /** Wardstones raised round the hall as it wakes, `wardstoneRadius` from it. */
+    wardstones: 3,
+    wardstoneRadius: 7,
+    /**
+     * Its adds (M2), raised with the stones: `guards` Mortar Guards near it and `chanters` Bone Chanters
+     * at `chanterRadius`, each up to one fewer than the heroes standing (one at least), so a trio meets two.
+     */
+    guards: 2,
+    chanters: 2,
+    guardRadius: 4,
+    chanterRadius: 11,
+    /** The maul string: `stringSteps` cones, the first wound up `stringTelegraphMs`, each next after `stringNextMs`. */
+    stringRange: 3.2,
+    stringReach: 3.6,
+    stringArcDeg: 100,
+    stringSteps: 3,
+    stringTelegraphMs: 800,
+    stringNextMs: 450,
+    stringActiveMs: 180,
+    stringDamage: 18,
+    /** The third swing comes over the top: heavier and pushes. */
+    overheadDamage: 26,
+    stringPush: 2,
+    stringRecoveryMs: 1000,
+    /** The hod throw: a skull-load lands on a circle where its hero stood, `hodRadius` across, after `hodTelegraphMs`. */
+    hodMinRange: 6,
+    hodRange: 16,
+    hodRadius: 2,
+    hodTelegraphMs: 1200,
+    hodDamage: 20,
+    hodPush: 2,
+    hodRecoveryMs: 700,
+    /**
+     * Phase 2 at `phase2At` (M3): a roar raises `phase2Guards` more Mortar Guards (one fewer than the
+     * heroes, as M2's, but none for a lone hero), and from then on some of its turns (`groutChance`) put a violet circle of grout
+     * under every hero within `groutRange`, landing after `groutChannelMs` (and the lag grace) for
+     * `groutDamage` and a Chill.
+     */
+    phase2At: 0.6,
+    phase3At: 0.3,
+    roarMs: 1600,
+    phase2Guards: 2,
+    groutChance: 0.35,
+    groutRange: 18,
+    groutRadius: 1.8,
+    groutChannelMs: 1400,
+    groutDamage: 10,
+    groutRecoveryMs: 700,
+    /**
+     * Phase 2's bone ridges: each overhead raises a short wall (`ridgeLengthM` by `ridgeThickM`,
+     * `ridgeHeightM` tall, over a jump and an arrow) across its swing, `ridgeAheadM` past the maul's
+     * reach, so it splits the hall behind the hero it struck. It stands `ridgeLifeMs`; at most
+     * `maxRidges` stand at once (the oldest crumbles), and all of them crumble when the Mason falls.
+     */
+    ridgeLengthM: 5,
+    ridgeThickM: 0.8,
+    ridgeHeightM: 2.2,
+    ridgeAheadM: 1.5,
+    ridgeLifeMs: 12000,
+    maxRidges: 3,
+    /**
+     * Phase 3 at `phase3At`: the Wardstones go out for good (never Bound again, none raised), and it
+     * enrages: its string runs `enragedSteps` swings, and the last lands as a slam whose shockwave
+     * rolls `shockwaveRadius` round it, low (jump it), for `shockwaveDamage`.
+     */
+    enragedSteps: 4,
+    shockwaveRadius: 5.5,
+    shockwaveDamage: 16,
+    shockwavePush: 2.5,
+    cooldownMs: 1100,
+    knockbackDealt: 2,
+    spawnMs: 1500,
+    deathMs: 3000,
+    knockbackTaken: 0.05,
+  },
+
+  /** A Mortar Guard (M2): a plated Shieldbearer (its shield, bash and turn are `shieldbearer`'s), armoured: the mage's job. */
+  mortarGuard: {
+    maxHp: 150,
+    maxPoise: 30,
+    radius: 0.5,
+    height: 2,
+    moveSpeed: 2.2,
+    turnRateDeg: 140,
+    spawnMs: 900,
+    deathMs: 1500,
+    knockbackTaken: 0.3,
+  },
+
+  /**
+   * A Bone Chanter (M2): a Wraith's body, warded (arrows 1.5x, spells turned aside): the archer's job.
+   * It keeps `keepDistance` from the heroes; when a Wardstone has fallen it walks within
+   * `rebuildRange` and channels a violet circle on it for `rebuildMs`, which stands it back up at
+   * `rebuildHpFrac` of its health. Any hit that lands breaks the channel.
+   */
+  chanter: {
+    maxHp: 80,
+    maxPoise: 12,
+    radius: 0.4,
+    height: 2.1,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 9,
+    rebuildRange: 14,
+    rebuildMs: 5000,
+    rebuildHpFrac: 1,
+    cooldownMs: 1500,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * A Crownbearer (K1): a Wraith's body, warded (arrows 1.5x, spells turned aside): the archer's job.
+   * It keeps `keepDistance` from the heroes and, while its King stands, channels a violet circle at
+   * its own feet for `channelMs`, then rests `cooldownMs`. While it channels the King's crown returns
+   * to his hand ready to throw. Any hit that lands breaks the channel.
+   */
+  crownbearer: {
+    maxHp: 90,
+    maxPoise: 12,
+    radius: 0.4,
+    height: 2.1,
+    moveSpeed: 3,
+    turnRateDeg: 240,
+    keepDistance: 10,
+    channelMs: 6000,
+    cooldownMs: 2000,
+    spawnMs: 900,
+    deathMs: 1400,
+    knockbackTaken: 0.6,
+  },
+
+  /** A Wardstone (M1): a pillar of bound bone that holds the Mason Bound. Any style breaks it; it never moves or strikes. */
+  wardstone: {
+    maxHp: 260,
+    maxPoise: 9999,
+    radius: 0.7,
+    height: 2.6,
+    moveSpeed: 0,
+    turnRateDeg: 0,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0,
   },
 
   /**
@@ -1621,6 +1980,52 @@ export const tuning = {
     regenPerS: 0.01,
     /** Seconds with no fight on before the regen starts. */
     regenDelayS: 5,
+  },
+
+  /**
+   * Bosses under the boss document's rules (`docs/bosses.md` 1.2, B1; Michael's A, 16 Nov): a duo
+   * should kill a boss in under half a solo hero's time, and a hero with three henchmen should not
+   * meet a boss of four. Every other enemy keeps `run.extraPlayerHealth`.
+   */
+  bosses: {
+    /** Off in the parity test, which keeps the slice's 0.6 a player for its Warden. */
+    partyScaling: true,
+    /** A boss's extra health for each player past the first. */
+    extraPlayerHealth: 0.35,
+    /** What a henchman counts as, of a player, for a boss's health. */
+    henchmanWeight: 0.5,
+    /** With one hero standing and no henchman, a boss's recoveries and cooldowns are this much longer. */
+    soloCooldownScale: 2,
+    /** While a henchman stands, a boss recovers and attacks this much sooner (its health no longer counts them in full). */
+    henchmanPace: 1.4,
+    /** B2: a boss chooses its target from who hit it lately, not the nearest. Off in the parity test. */
+    attention: true,
+    /** Seconds a hit keeps a hero in a boss's mind. */
+    attentionWindowS: 4,
+    /** Attacks running on one hero before a boss turns to another who stands. */
+    attentionRun: 3,
+    /** B3: every enemy hit on a hero carries its damage type (blunt, edge, pierce, magic). Off in the parity test. */
+    damageTypes: true,
+    /** B5: an add's weakness (armoured, warded) by its kind's `ADD_WEAKNESS` in `roles.ts`. Off in the parity test. */
+    addWeakness: true,
+    /** What an armoured add takes of a sword's or a bow's hit; a staff's ignores the plate. */
+    armourTaken: 0.35,
+    /** A bow's hit on a warded add lands this much harder; a staff's is turned aside. */
+    wardArrowMult: 1.5,
+    /** B6: a boss's signature drops (`resist`, `castSpeed`, `bane` on `Mods`) act. Off in the parity test. */
+    signatureDrops: true,
+    /** What a piece that resists a damage type takes off a hit of that type; two pieces against one type give one. */
+    resist: 0.2,
+    /** How much faster a quick-casting weapon's chain and its abilities' windups run. */
+    castSpeed: 0.15,
+    /** A bane weapon's damage on its boss's kind. */
+    baneMult: 1.25,
+    /** B7 (Michael's A on specializing): a floor gone through in one style adds damage in it; a swap loses it. Off in the parity test. */
+    focus: true,
+    /** Damage a floor of focus adds to its style. */
+    focusPerFloor: 0.03,
+    /** Floors of focus that count, at most. */
+    focusMaxFloors: 3,
   },
 
   /**
@@ -2684,6 +3089,19 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'heal.bloomSelf': [0, 0.1, 0.005],
   'heal.regenPerS': [0, 0.05, 0.001],
   'heal.regenDelayS': [0, 30, 0.5],
+  'bosses.extraPlayerHealth': [0, 1, 0.05],
+  'bosses.henchmanWeight': [0, 1, 0.05],
+  'bosses.soloCooldownScale': [0.5, 3, 0.05],
+  'bosses.henchmanPace': [0.5, 3, 0.05],
+  'bosses.attentionWindowS': [0.5, 15, 0.5],
+  'bosses.attentionRun': [1, 10, 1],
+  'bosses.armourTaken': [0, 1, 0.05],
+  'bosses.wardArrowMult': [1, 3, 0.05],
+  'bosses.resist': [0, 0.6, 0.05],
+  'bosses.castSpeed': [0, 0.5, 0.05],
+  'bosses.baneMult': [1, 2, 0.05],
+  'bosses.focusPerFloor': [0, 0.1, 0.005],
+  'bosses.focusMaxFloors': [1, 5, 1],
   'sim.tickRate': [20, 120, 1],
 
   'coop.bleedOutMs': [5000, 90000, 1000],
@@ -3390,6 +3808,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'king.crownTelegraphMs': [100, 3000, 50],
   'king.crownSpeed': [2, 40, 0.5],
   'king.crownDamage': [0, 80, 1],
+  'king.crownCatchMult': [0, 10, 0.1],
+  'king.crownCatchPoise': [0, 60, 1],
   'king.cooldownMs': [0, 5000, 50],
   'king.phase2At': [0, 1, 0.05],
   'king.phase3At': [0, 1, 0.05],
@@ -3404,6 +3824,80 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'king.sweepRadius': [2, 14, 0.5],
   'king.sweepArcDeg': [60, 360, 10],
   'king.sweepDamage': [0, 80, 1],
+  'gravehand.maxHp': [100, 8000, 50],
+  'gravehand.hoverM': [1.5, 6, 0.1],
+  'gravehand.shoveMaxM': [0.02, 0.38, 0.01],
+  'gravehand.slamTelegraphMs': [300, 3000, 50],
+  'gravehand.slamRadius': [0.5, 5, 0.1],
+  'gravehand.slamDamage': [0, 80, 1],
+  'gravehand.slamRestMs': [0, 4000, 50],
+  'gravehand.restDamageTaken': [1, 3, 0.05],
+  'gravehand.sweepTelegraphMs': [300, 3000, 50],
+  'gravehand.sweepRadius': [1, 10, 0.1],
+  'gravehand.sweepDamage': [0, 80, 1],
+  'gravehand.flickTelegraphMs': [200, 2000, 50],
+  'gravehand.flickDamage': [0, 60, 1],
+  'gravehand.flickArcDeg': [0, 90, 1],
+  'gravehand.sweepChance': [0, 1, 0.05],
+  'gravehand.cooldownMs': [0, 5000, 50],
+  'mason.maxHp': [100, 10000, 50],
+  'mason.boundTaken': [0, 1, 0.05],
+  'mason.wardstones': [0, 6, 1],
+  'mason.stringTelegraphMs': [300, 3000, 50],
+  'mason.stringNextMs': [100, 2000, 50],
+  'mason.stringDamage': [0, 80, 1],
+  'mason.overheadDamage': [0, 80, 1],
+  'mason.hodTelegraphMs': [300, 3000, 50],
+  'mason.hodRadius': [0.5, 5, 0.1],
+  'mason.hodDamage': [0, 80, 1],
+  'mason.cooldownMs': [0, 5000, 50],
+  'mason.phase2At': [0, 1, 0.05],
+  'mason.phase3At': [0, 1, 0.05],
+  'mason.groutChance': [0, 1, 0.05],
+  'mason.groutDamage': [0, 60, 1],
+  'mason.groutChannelMs': [300, 4000, 50],
+  'mason.ridgeLengthM': [0, 12, 0.5],
+  'mason.ridgeThickM': [0.2, 2, 0.1],
+  'mason.ridgeHeightM': [0.5, 4, 0.1],
+  'mason.ridgeAheadM': [0, 6, 0.1],
+  'mason.ridgeLifeMs': [0, 30000, 500],
+  'mason.maxRidges': [0, 6, 1],
+  'mason.enragedSteps': [3, 6, 1],
+  'mason.shockwaveRadius': [1, 10, 0.1],
+  'mason.shockwaveDamage': [0, 60, 1],
+  'wardstone.maxHp': [20, 2000, 10],
+  'mason.guards': [0, 4, 1],
+  'mason.chanters': [0, 4, 1],
+  'mortarGuard.maxHp': [20, 1000, 10],
+  'chanter.maxHp': [20, 1000, 10],
+  'crownbearer.maxHp': [20, 1000, 10],
+  'crownbearer.channelMs': [500, 15000, 100],
+  'crownbearer.cooldownMs': [0, 10000, 100],
+  'king.crownbearers': [0, 3, 1],
+  'chanter.rebuildMs': [500, 15000, 100],
+  'chanter.rebuildHpFrac': [0.1, 1, 0.05],
+  'gravehand.phase2At': [0, 1, 0.05],
+  'gravehand.wardTaken': [0, 1, 0.05],
+  'gravehand.grabChance': [0, 1, 0.05],
+  'gravehand.grabTelegraphMs': [300, 3000, 50],
+  'gravehand.grabHoldMs': [500, 8000, 100],
+  'gravehand.squeezeDamage': [0, 40, 1],
+  'gravehand.grabBreakDamage': [0, 300, 5],
+  'gravehand.grabEscapePresses': [1, 6, 1],
+  'gravehand.grabBeatMs': [0, 1000, 10],
+  'gravehand.phase3At': [0, 1, 0.05],
+  'gravehand.phase3RestMs': [0, 4000, 50],
+  'gravehand.knuckleChance': [0, 1, 0.05],
+  'gravehand.knuckleTelegraphMs': [200, 3000, 50],
+  'gravehand.knuckleNextMs': [100, 2000, 10],
+  'gravehand.knuckleDamage': [0, 80, 1],
+  'ironRing.maxHp': [10, 1000, 10],
+  'ironRing.chargeSpeed': [2, 20, 0.5],
+  'ironRing.chargeDamage': [0, 60, 1],
+  'silverRing.maxHp': [10, 600, 10],
+  'silverRing.wardMs': [500, 15000, 250],
+  'boneRing.maxHp': [10, 400, 10],
+  'boneRing.moveSpeed': [1, 10, 0.25],
   'wraith.keepDistance': [2, 20, 0.5],
   'wraith.castRange': [2, 30, 0.5],
   'wraith.circleRadius': [0.5, 5, 0.1],
@@ -3433,6 +3927,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'brute.spawnMs': [0, 3000, 10],
   'brute.deathMs': [0, 6000, 10],
   'brute.knockbackTaken': [0, 2, 0.01],
+  'warden.greavesClearLessM': [0, 0.5, 0.05],
   'warden.maxHp': [0, 4200, 5],
   'warden.maxPoise': [0, 120, 0.1],
   'warden.radius': [0, 10, 0.1],
@@ -3930,7 +4425,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

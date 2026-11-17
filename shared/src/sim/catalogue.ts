@@ -1,4 +1,5 @@
-import { tuning, type AmmoKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import { tuning, type AmmoKind, type EnemyKind, type OffhandKind, type Style, type WeaponFamily } from '../config/tuning';
+import type { DamageType } from './types';
 import { RUNES, RUNE_KINDS, activeRunes, socketCount, type RuneKind } from './runes';
 import { emptyMods, type Item, type Mods, type Perk, type Rarity, type StatKind } from './gear';
 
@@ -199,6 +200,24 @@ export interface GearItem {
   name?: string;
   /** Runes set in a weapon's sockets (the builds pass), in socket order; absent when none. */
   runes?: RuneKind[];
+  /** A boss's signature piece (B6): its one boss-shaped property; absent on everything else. */
+  signature?: Signature;
+}
+
+/**
+ * A signature piece's property (B6, `docs/bosses.md` 1.4), exactly one: a damage type it resists (any
+ * slot), or, on a weapon, a faster cast or a bane to one boss's kind. The amounts are `tuning.bosses`'.
+ */
+export interface Signature {
+  resist?: DamageType;
+  castSpeed?: true;
+  bane?: EnemyKind;
+  /** The Gravehand's Grave-cloth Wraps (H3), on gloves: its grip lets go after `gravehand.looseGripMs`. */
+  looseGrip?: true;
+  /** The Warden's Sweepbreaker Greaves (W1), on boots: a jump clears a low attack `warden.greavesClearLessM` lower. */
+  lowClear?: true;
+  /** The Hollow King's Crown-catcher Buckler (K1), on an off-hand: a parry of his thrown crown sends it back. */
+  crownCatch?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -309,6 +328,14 @@ export function wornMods(worn: Worn): Mods {
       else if (b.kind === 'dodgeRecharge') m.dodgeRecharge += b.value;
     }
     if (item.perk && !m.perks.includes(item.perk)) m.perks.push(item.perk);
+    // A boss's signature piece (B6): a type resisted once however many pieces name it; a weapon's cast or bane.
+    const sig = item.signature;
+    if (sig?.resist && !(m.resist ??= []).includes(sig.resist)) m.resist.push(sig.resist);
+    if (slot === 'weapon' && sig?.castSpeed) m.castSpeed = true;
+    if (slot === 'weapon' && sig?.bane) m.bane = sig.bane;
+    if (slot === 'hands' && sig?.looseGrip) m.looseGrip = true;
+    if (slot === 'feet' && sig?.lowClear) m.lowClear = true;
+    if (slot === 'shield' && sig?.crownCatch) m.crownCatch = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

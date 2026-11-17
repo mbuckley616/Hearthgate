@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { groundHeight, type World } from '@hearthgate/shared/level/arena';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
-import { telegraphColour, type TelegraphColour } from '@hearthgate/shared/sim/roles';
+import { tuning } from '@hearthgate/shared/config/tuning';
+import { telegraphTell, type TelegraphColour } from '@hearthgate/shared/sim/roles';
 import { windupProgress } from './EnemyView';
 
 /** A ground lane's width, in unit beams: about a body wide. */
@@ -19,6 +20,10 @@ const COLOURS: Record<TelegraphColour, number> = {
   projectile: 0xffd23a,
   magic: 0xb05cff,
 };
+/** B4's unblockable rim: the old heavy orange, on the outline alone, pulsing slower than a tell. */
+const RIM = COLOURS.heavy;
+/** A rimmed lane's border: this much wider than its fill, drawn beneath it. */
+const RIM_LANE = 1.35;
 
 interface Marker {
   shape: string;
@@ -69,10 +74,14 @@ export class TelegraphView {
         this.group.add(m.group);
       }
       const progress = windupProgress(e);
-      const colour = COLOURS[telegraphColour(e)];
+      const tell = telegraphTell(e, tuning.bosses.damageTypes);
+      const colour = COLOURS[tell.colour];
+      const rimColour = tell.rim ? RIM : colour;
       (m.fill.material as THREE.MeshBasicMaterial).color.setHex(colour);
-      (m.outline.material as THREE.MeshBasicMaterial).color.setHex(colour);
+      (m.outline.material as THREE.MeshBasicMaterial).color.setHex(rimColour);
+      // A rim pulses slowly and fully, so it reads as its own signal over the fill's quick flicker.
       const pulse = 0.85 + 0.15 * Math.sin(time * 14);
+      const rimPulse = tell.rim ? 0.7 + 0.3 * Math.sin(time * 5) : pulse;
       if (t.shape === 'line') {
         // Aim line from the archer's bow to where the shot will go; it brightens as it fires. A body's
         // own line (a Shieldbearer's bash, a Hound's rush, E1b and E1c) is a lane along the ground instead.
@@ -85,15 +94,21 @@ export class TelegraphView {
         if (lane) m.fill.scale.set(LANE_WIDTH * (0.6 + progress * 0.4), 0.3, len);
         else m.fill.scale.set(1 + progress * 1.5, 1 + progress * 1.5, len);
         (m.fill.material as THREE.MeshBasicMaterial).opacity = (0.25 + progress * 0.65) * pulse;
-        m.outline.visible = false;
+        // A line has no outline; a rimmed one (a Barrow Knight's rush) gets a wider orange lane beneath.
+        m.outline.visible = tell.rim;
+        if (tell.rim) {
+          m.outline.scale.set(lane ? LANE_WIDTH * RIM_LANE : 2.5 + progress * 1.5, lane ? 0.2 : 2.5 + progress * 1.5, len);
+          (m.outline.material as THREE.MeshBasicMaterial).opacity = 0.55 * rimPulse;
+        }
         continue;
       }
       const y = groundHeight(this.world, t.x, t.z) + 0.05;
       m.group.position.set(t.x, y, t.z);
       m.group.rotation.y = t.shape === 'cone' ? t.yaw - Math.PI / 2 : 0;
+      m.outline.visible = true;
       m.outline.scale.setScalar(t.radius);
       m.fill.scale.setScalar(t.radius * Math.max(0.02, progress));
-      (m.outline.material as THREE.MeshBasicMaterial).opacity = 0.75 * pulse;
+      (m.outline.material as THREE.MeshBasicMaterial).opacity = (tell.rim ? 0.95 : 0.75) * rimPulse;
       (m.fill.material as THREE.MeshBasicMaterial).opacity = 0.18 + progress * 0.3;
       // The Hollow King's circles (G4b): one under each hero; the first is his telegraph, the rest drawn alike.
       const extra = e.circles ?? [];
@@ -107,11 +122,11 @@ export class TelegraphView {
           this.group.add(c.group);
         }
         (c.fill.material as THREE.MeshBasicMaterial).color.setHex(colour);
-        (c.outline.material as THREE.MeshBasicMaterial).color.setHex(colour);
+        (c.outline.material as THREE.MeshBasicMaterial).color.setHex(rimColour);
         c.group.position.set(extra[i].x, groundHeight(this.world, extra[i].x, extra[i].z) + 0.05, extra[i].z);
         c.outline.scale.setScalar(t.radius);
         c.fill.scale.setScalar(t.radius * Math.max(0.02, progress));
-        (c.outline.material as THREE.MeshBasicMaterial).opacity = 0.75 * pulse;
+        (c.outline.material as THREE.MeshBasicMaterial).opacity = (tell.rim ? 0.95 : 0.75) * rimPulse;
         (c.fill.material as THREE.MeshBasicMaterial).opacity = 0.18 + progress * 0.3;
       }
     }

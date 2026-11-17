@@ -165,8 +165,11 @@ describe('a generated floor’s run (T4)', () => {
     expect(insidePiece(boss, rings[0].x, rings[0].z)).toBe(true);
     const r = f.host.sim.run;
     expect(Math.hypot(rings[0].x - r.dropX, rings[0].z - r.dropZ)).toBeGreaterThan(tuning.loop.homeRingOffset - 3);
-    // The Warden's special drops: one each at Normal, of a better material than the rooms give.
-    const mine = f.host.sim.drops.filter((d) => d.owner === f.host.sim.players[0].id);
+    // The Warden's special drops: one each at Normal, of a better material than the rooms give, beside
+    // its signature piece (W1), the mace of its bane for a hero who did no other job.
+    const all = f.host.sim.drops.filter((d) => d.owner === f.host.sim.players[0].id);
+    expect(all.filter((d) => (d.item as GearItem).signature).map((d) => (d.item as GearItem).name)).toEqual(['Ward-iron Mace']);
+    const mine = all.filter((d) => !(d.item as GearItem).signature);
     expect(mine).toHaveLength(1);
     expect(mine[0].item.rarity).toBe('rare');
     expect(CATALOGUE.get((mine[0].item as GearItem).id)!.tier).toBeGreaterThanOrEqual(tuning.loop.bossDropMinTier);

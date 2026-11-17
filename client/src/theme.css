@@ -802,6 +802,24 @@ body.on-title .run-banner {
   text-shadow: 0 1px 0 #000;
 }
 
+/* Focus (B7): one style through a run's floors, gold, under the belt. */
+.hud-focus {
+  display: none;
+  margin-top: 6px;
+  font: 600 11px/1 ui-monospace, Consolas, monospace;
+  color: #f2c75c;
+  text-shadow: 0 1px 0 #000;
+}
+
+/* Held in the Gravehand's grip (H2): warning red, under the belt. */
+.hud-held {
+  display: none;
+  margin-top: 6px;
+  font: 600 11px/1 ui-monospace, Consolas, monospace;
+  color: #ff8a6a;
+  text-shadow: 0 1px 0 #000;
+}
+
 /* Chilled (E1d): frost blue, under the belt. */
 .hud-chill {
   display: none;

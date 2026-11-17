@@ -3,7 +3,7 @@ import type { PropInfo } from '../level/floor';
 import { sphereCast, type Collider } from '../level/geometry';
 import { damageEnemy, hitstopFor, isTargetable, type HitSpec } from './combat';
 import { levelFor } from './gear';
-import { abilityRank, cooldownMult } from './talents';
+import { abilityRank, castSpeedBonus, cooldownMult } from './talents';
 import { spawnArrow } from './projectiles';
 import { smashArc, smashCircle } from './smash';
 import { askSkeleton, graveCall, bladeStorm, blazingTrail, elementalStep, spectralBlades, brambleRain, consecrate, curseRing, elementalNova, novaElement, galeStep, isCurseRing, isThornRing, shadowSwap, thornRing, smokeBomb, snareTrap, fanOfKnives, shadowstep, taunt, wildGrowth } from './specs';
@@ -44,6 +44,17 @@ export function startAbility(state: SimState, p: PlayerState, slot: 0 | 1 | 2, c
   state.events.push({ kind: 'ability', playerId: p.id, ability: kind, x: p.x, z: p.z, yaw: p.yaw });
 }
 
+/**
+ * An ability's time after a tick: a quick-casting weapon (B6) runs the windup faster, and the rest of
+ * the tick past the windup at its own pace, so a dash or a spin lasts what it always did.
+ */
+function abilityClock(p: PlayerState, t0: number, dt: number, windup: number): number {
+  const fast = 1 + castSpeedBonus(p);
+  if (fast === 1 || t0 >= windup) return t0 + dt;
+  const sped = t0 + dt * fast;
+  return sped <= windup ? sped : windup + (dt - (windup - t0) / fast);
+}
+
 /** Advance the current ability one tick. Returns true when it has finished. */
 export function stepAbility(
   state: SimState,
@@ -59,7 +70,7 @@ export function stepAbility(
   const tl = tuning.talents;
   const rank = abilityRank(p, kind);
   const t0 = p.abilityTime;
-  p.abilityTime += dt;
+  p.abilityTime = abilityClock(p, t0, dt, timing.windup);
   const t = p.abilityTime;
   const fx = Math.sin(p.yaw);
   const fz = Math.cos(p.yaw);

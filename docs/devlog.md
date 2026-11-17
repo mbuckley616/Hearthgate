@@ -2,6 +2,800 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 240, the Warden on the bench (W1's gate, measured)
+
+**What changed**
+
+The boss bench's heroes now wait for the Warden's slam circle to lock before they roll (`lockS` in `tests/bosses.ts`; `wardenPace` is exported for it).
+- **Why:** the circle turns with its hero for 0.4 of the wind-up, at the phase's pace. The bench hero had been rolling while the circle still followed, so the slam landed anyway. This is the bug Sessions 226 and 234 fixed for the Gravehand's slam and the Mason's hod.
+- **What still follows:** a rolling slam's first circle locks the same way; the far slam and a chain's later circles never follow.
+- Nothing in the game changed.
+
+Saltmarsh's Warden, 10 seeds, heroes at level 8:
+
+| Warden health | solo | duo | trio |
+|---|---|---|---|
+| 2000 (today) | 10 of 10 in 86 s, 0.8 potions, 139 damage (was 9 of 10, 177 damage) | 0.61 | 37 s |
+| 4200 | 8 of 10 in 172 s, 2.5 potions | 0.57 | 69 s |
+| 4600 | 6 of 10 in 190 s | 0.56 | 74 s |
+
+check 750/750.
+
+**Learned**
+
+Health alone cannot meet 1.2's bar for the Warden. The bar asks for a solo kill in 3 to 5 minutes with a potion left, and a duo in under half that. At 4200 health the slam alone deals 230 of the lone hero's 290 damage. The duo ratio barely moves with health: 0.61 at 2000, 0.57 at 4200. So the solo needs less slam pressure (a Warden-only lone-hero pace, or slam damage under `warden.underRules`) as well as more health. Phase 2's adds will also move both numbers, so tuning now would be redone.
+
+**Next**
+
+- W1's phase 2 adds, waiting on `decisions.md` Pending. Then the tuning, behind `warden.underRules`.
+- Nothing else in the current section is open to the builder. B8, the Gallery Longbow and the Gravehand's trio wait on answers. The graphics cost and the crowd items need a real machine.
+
+## 2026-11-17: Session 239, the Crown-catcher Buckler (K1, part three)
+
+**What changed**
+
+The Hollow King's third signature drop, the tank's: the **Crown-catcher Buckler** (a studded buckler, `SIGNATURES.king`, `docs/bosses.md` 2.4). Behind `bosses.signatureDrops`, which the parity test turns off.
+- **What it does:** a parry of his thrown crown, on any parry (a guard's window, the buckler's deflect, the dagger's riposte), sends it back at him. It strikes him for `king.crownCatchMult` (3) times what it would have dealt and takes `king.crownCatchPoise` (15) off his poise, on top of a parry's own. A crown still flying out turns for home from where it was met. Both numbers are on the panel.
+- **How:** the crown's hit is marked `HeroHit.crown`, so the pending hit (after the lag grace) and the direct hit both reach `parry()`, which calls `catchCrown`. The server decides it; prediction never does.
+- **Where it shows:** a new `crownCaught` event, and the corner says "Crown sent back" instead of "Parry".
+- **Checks:** `Signature.crownCatch` is taken only on a shield-slot item, and `Mods.crownCatch` only as `true`. The tank is offered it by the job score they already earn by taking his blows on a guard.
+
+check 750/750 (3 new in `crownCatch.test.ts`; `kingDrops.test.ts` now expects three pieces), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The parry already had everything it needed: the enemy that dealt the hit, and both the immediate and the lag-grace paths. One flag on the hit was enough. The crown was never a projectile, and it did not need to become one.
+
+**Next**
+
+- K1's drops are whole. Left of W1 and K1: the bench against the bar, and W1's phase 2 adds, which wait on `decisions.md` Pending.
+
+## 2026-11-16: Session 238, the Crownbearer (K1, part two)
+
+**What changed**
+
+The Hollow King's 60% roar now raises a **Crownbearer** with his two Barrow Knights (`king.underRules`, `king.crownbearers` 1; the parity test turns the switch off).
+- **Who it is:** a Wraith's body with a thin gold circlet over the hood, floating. It is a caster, warded (B5): arrows hit it 1.5x and a spell is turned aside, so it is the archer's job.
+- **What it does:** it keeps 10 m from the heroes. While its King stands it channels a violet circle at its own feet for 6 s, then rests 2 s (`crownbearer.*`, on the panel). Any landing hit breaks the channel.
+- **The crown:** while it channels, the King's crown comes home ready to throw. When the crown returns he skips the 0.6 s rest and his cooldown, so a far hero meets throw after throw until the archer breaks the channel.
+
+check 747/747 (4 new: the kind, its rise with the rules on and off, the channel and the arrow, the crown's return), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The return needed no new state. The King's recover after the crown reads `crownbearerChanting` as it ends, so nothing new rides the wire. The Crownbearer's job makes the Hollow Circlet (Session 237) offerable.
+
+**Next**
+
+- K1, part three: the Crown-catcher Buckler, the tank's piece, with a perfect parry of the thrown crown sending it back.
+- W1's adds wait on `decisions.md` Pending.
+
+## 2026-11-16: Session 237, the King's first two drops (K1, part one), and the Warden's adds asked
+
+**What changed**
+
+- The Hollow King now drops a signature piece by job (`SIGNATURES.king`, `docs/bosses.md` 2.4). The **Hollow Circlet** (a silk hat, 20% less magic, against his violet circles) goes to the warded job, the archer who will break the Crownbearer's channel. **Kingsbane** (a steel sword, 1.25x) goes to the boss job and to anyone with no other. Kingsbane is a bane to the King and to a Barrow Knight while a King is on the floor (`baneMult` now takes the state). A Knight in a room of an earlier floor takes no more from it. Behind `bosses.signatureDrops`.
+- W1's phase 2 adds are asked in `decisions.md` Pending, A recommended. The approved document makes a weakness a rule of the kind, told by its look, but archers and Bone Priests are in every Crypt room. The choice is between two Warden-only kinds (a Barrow Skirmisher and a Grave Cantor) and making the Crypt's own weak everywhere.
+
+check 743/743 (3 new), test:net green, parity hashes unchanged.
+
+**Learned**
+
+Until the Crownbearer exists the King has nothing warded, so every hero is offered Kingsbane. The Crown-catcher Buckler needs a parry of the thrown crown, which does not exist: the crown is a line the King throws down, not a projectile a guard meets.
+
+**Next**
+
+- K1, part two: the Crownbearer (warded, a Wraith dressing), whose channel brings the crown back to the King's hand after a throw. Its gate is unit tests of the return.
+- K1, part three: the Crown-catcher Buckler and its parry of the crown.
+- W1's adds wait on the answer.
+
+## 2026-11-16: Session 236, the Warden's signature drops (W1, part one)
+
+**What changed**
+
+The Warden now drops a signature piece to each hero, by job (`SIGNATURES.warden`, `docs/bosses.md` 2.3):
+- **Warden's Tower** (steel kiteshield, the tank's): 20% less blunt, against its slams.
+- **Sweepbreaker Greaves** (hard leather boots, the warded job's): a jump clears a low attack from `warden.greavesClearLessM` (0.2 m, on the panel) lower. This is a new signature property, `lowClear`, read by `clearsLow`. Only boots carry it, and the server checks it on items and loadouts.
+- **Ward-iron Mace** (the boss job's, and anyone's who did no other): 1.25x against the Warden, its bane.
+
+All of it sits behind `bosses.signatureDrops`, which the parity test turns off. The floor-run test now expects the mace beside the Warden's rare. check 740/740 (3 new), test:net green.
+
+**Learned**
+
+The catalogue has no tower shape, so the Tower is a kiteshield, as the Mason's shield is. Until W1's phase 2 adds exist, the Warden has nothing warded, so the greaves are never offered yet. Every hero gets the tower or the mace.
+
+**Next**
+
+- W1, part two: phase 2's raised dead as one of each weakness at trio size (a plated warrior, an archer on the edge, a priest at the back), behind `warden.underRules`. Then the bench against the bar.
+
+## 2026-11-16: Session 235, the bench's heroes break the Wardstones (M3's gate)
+
+**What changed**
+
+The boss bench's heroes now read the Mason's bar, "Bound: break the Wardstones", as a player does (`tests/bosses.ts`). While it is Bound they go for the stones. A Chanter channelling a stone back up is broken by whoever's job it is: the archer, or anyone when no archer stands. Before, every hero hit whatever was nearest, mostly the Mason at a quarter damage, and the Mason stood Bound for 271 of the trio's 292 s. `--phases` now prints each kill's seconds per phase and the seconds it spent Bound. Nothing in the game changed.
+
+Bench, Emberhall, level 12, 10 seeds, 15 minutes (Session 234's in brackets):
+
+| party | kills | ttk s | x solo | dmg | pots | downs | Bound s |
+|---|---|---|---|---|---|---|---|
+| solo (sword) | 10/10 | 342 (652) | 1.00 | 247 | 1.5 | 0.0 | 121 |
+| duo | 9/10, 1 wipe | 198 (501) | 0.58 (0.77) | 309 | 1.3 | 0.2 | 40 |
+| trio | 10/10 | 122 (276) | 0.36 | 11 | 0.0 | 0.0 | 60 |
+| solo + 3 henchmen | 9/10, 1 wipe | 546 (347) | 1.60 | 178 | 1.0 | 0.1 | 303 |
+
+Every fight of every party reached phase 3. The trio's phases: 92 s, 16 s, 14 s. Mossgate's Gravehand (5 seeds, level 4) is unchanged: solo 183 s, duo 0.60, trio 48 s. check 737/737.
+
+**Learned**
+
+The trio's slow kill was the bench, not the Mason. M3's gate (one bench fight with all three phases, a trio under 3 minutes) is met at 122 s. The lone sword's kill halved, to 342 s. That is a mid boss, which 1.2's 3 to 5 minutes does not bind. The trio now takes almost no damage (11 a fight), so the Mason is easy for three at the low end of 1.2's 2 to 3 minutes. The henchmen do not break the stones: their brain hits the nearest enemy, and a hero with three henchmen now takes 1.6x the solo time, with the Mason Bound for 303 s.
+
+**Next**
+
+- W1 and K1, the Warden and the King under the rules.
+- To raise if Michael asks for it: henchmen that break a Bound boss's stones. It is not on the backlog.
+- The Gallery Longbow waits on its question in `decisions.md` Pending.
+
+## 2026-11-16: Session 234, the bench's heroes wait for the hod to lock (M3's tuning, part two)
+
+**What changed**
+
+The boss bench's heroes now treat the Mason's hod throw like the Gravehand's slam (`lockS` in `tests/bosses.ts`). Its circle follows its hero for half the wind-up, then locks. Until now the bench rolled at once, so the circle followed every early roll and the hod landed anyway. A player learns to wait, and the bench now waits too. Nothing in the game changed.
+
+Bench, Emberhall, level 12, 10 seeds, 15 minutes:
+
+| party | kills | ttk s | x solo | dmg | pots | downs |
+|---|---|---|---|---|---|---|
+| solo (sword) | 10/10 | 652 | 1.00 | 224 | 1.6 | 0.0 |
+| duo | 10/10 | 501 | 0.77 | 680 | 4.5 | 0.3 |
+| trio | 10/10 | 276 | 0.42 | 325 | 1.1 | 0.0 |
+| solo + 3 henchmen | 10/10 | 347 | 0.53 | 74 | 0.2 | 0.0 |
+
+On 5 seeds and 10 minutes: duo 5/5 in 351 s with nobody downed (was 3/5, 3.6 downs), and the duo's hod damage fell from 424 to 183. Mossgate's Gravehand (5 seeds, level 4) is unchanged: solo 183 s, duo 0.60, trio 48 s.
+
+**Learned**
+
+Session 230's 158 s trio leaned on the bench's broken dodge: heroes the hod followed out took the hit and kept attacking. Dodging it properly costs the trio time, and its median is now 276 s, past M3's gate of under 3 minutes. Every fight of every party now reaches phase 3.
+
+**Next**
+
+- M3's trio: back under 3 minutes without losing the solo's win. Look at where the trio's time goes first (stones, Guards, the Mason's own health), then the lever.
+- The duo is at 0.77 of the solo's time. The mid boss is not held to 1.2's half, but it should be closer.
+
+## 2026-11-16: Session 233, no second Guard for a lone hero (M3's tuning, part one)
+
+**What changed**
+
+Phase 2's extra Mortar Guards are now one fewer than the heroes, with no floor of one: none for a lone hero, one for a duo, two for a trio (`masonAdds`'s new `least`). The whole fight's adds keep M2's rule of at least one of each. A duo and a trio meet exactly what they met before.
+
+Bench, Emberhall, level 12, 5 seeds, with the ridges (Session 232's in brackets):
+
+| party | kills | dmg | downs | phase 3 | left at the end |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5: 0 wipes, 5 timeouts (3 wipes, 2 timeouts) | 207 (404) | 0.0 (0.6) | 3/5 (0/5) | 27% (43%) |
+| duo | 3/5, 520 s, unchanged | 1075 | 3.6 | 4/5 | 8% |
+| trio | 5/5, 158 s, unchanged | 294 | 0.0 | 5/5 | 0% |
+
+check 737/737 (1 new), parity hashes unchanged.
+
+**Learned**
+
+Six benches (`--set`) found what was killing the lone sword: the Guard phase 2 adds, with a ridge at its back. Fewer stones (2), a slower rebuild (10 s) and weaker Guards (90 health) each left it stuck at about 45%. With no phase 2 Guard (`mason.phase2Guards=0`) it stops wiping. Without the ridges (`mason.maxRidges=0`) the bench matches Session 230 exactly. The duo's runs are noisy across 5 seeds (2 to 5 kills on the same build).
+
+**Next**
+
+- The lone hero now times out with 27% left at the bench's 10 minutes, but with 15 (`--minutes 15`) it kills 5 of 5 in a median 657 s, with 1.6 potions used and nobody downed. The document's "a solo hero can win with time" is met. Fewer stones (2) gave 1 kill in 10 minutes but slowed the trio to 255 s, past its gate, and a slower rebuild or a Chanter that stays close did nothing for the solo; none is kept.
+- The duo: 3.6 downs and 5.8 potions, from the hod (424) and the Guards (321).
+
+## 2026-11-16: Session 232, the Mason's bone ridges (M3, part three)
+
+**What changed**
+
+In phase 2 each overhead of the Mason's string now raises a **bone ridge** (`SimState.ridges`, `sim/mason.ts`): a short wall, 5 m by 0.8 m and 2.2 m tall.
+- **Where:** across the swing, 1.5 m past the maul's reach, so it lies behind the hero it struck and splits the hall.
+- **Shape:** snapped to the hall's axes, since walls are boxes.
+- **Life:** it stands 12 s, at most three at once (the oldest crumbles first), and all of them crumble when the Mason falls.
+- **What it blocks:** `worldNow` adds it to the colliders, so heroes, enemies, arrows and line of sight all meet it. Prediction and the server meet the same wall, and a hero caught where one rises is pushed out of it.
+- **Too tall to jump:** it is taller than a jump, so the archer has to walk round to see a Chanter again.
+- **Look:** `RidgeView` draws mortar with five bone ribs. It heaves up in a quarter second and sinks over its last half second.
+- **Panel:** every size is under `mason.ridge*` and `mason.maxRidges`.
+
+Bench, Emberhall, level 12, 5 seeds (Session 230's in brackets):
+
+| party | kills | ttk s | dmg | downs | phase 3 |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5: 3 wipes, 2 timeouts (5 timeouts) | - | 404 (219) | 0.6 | 0/5 |
+| duo | 3/5 (4/5) | 520 (496) | 1075 | 3.6 | 4/5 |
+| trio | 5/5 | 158 (154) | 294 | 0.0 | 5/5 |
+| solo + 3 henchmen | 2/5 | 287 | 219 | 0.4 | 2/5 |
+
+check 736/736 (4 new), test:net green, parity hashes unchanged (the arena never raises a ridge). Not yet seen in a browser.
+
+**Learned**
+
+The ridges cost the lone sword most: a hero cut off behind one takes the hod throws instead of the maul. The trio does not notice them. The solo and duo tuning should start from the lone hero, with the ridge sizes as one of the levers.
+
+**Next**
+
+- M3's last part: the solo and duo tuning, the lone hero first (a Chanter that stops fleeing when cornered, a longer rebuild solo, or fewer stones solo).
+
+## 2026-11-16: Session 231, the Mason's signature drops (M3, part two)
+
+**What changed**
+
+The Ossuary Mason drops a signature piece a hero by job (`SIGNATURES.mason`, behind `bosses.signatureDrops`):
+- **Mortarward Shield** (iron kiteshield, 20% less blunt): the tank's, against the maul, the hod and the shockwave.
+- **Chanter's Staff** (staff, its chain and abilities 15% faster): for the mage who broke the Mortar Guards' plate.
+
+The document's staff is bone; the catalogue has no bone, so it is elm, tier 3. The Gallery Longbow (the archer's, for the Chanters) is not in: `docs/bosses.md` leaves it to Michael, asked in `decisions.md` Pending. Until then an archer is offered whichever of the two their other jobs scored, or the shield. check 732/732 (2 new), parity hashes unchanged.
+
+**Learned**
+
+Both properties already existed from B6, so a boss's drops are now a list and a test.
+
+**Next**
+
+- M3 part three: phase 2's bone ridges, then the solo and duo tuning.
+
+## 2026-11-16: Session 230, the Mason's three phases (M3, part one)
+
+**What changed**
+
+- **Phase 2, at 60%.** The Mason roars and raises up to two more Mortar Guards, by M2's count. From then on, some of its turns (`mason.groutChance`, 0.35) pool **grout**: a violet circle under every hero within 18 m, as the King's circles. It lands after 1.4 s and the lag grace, for 10 magic damage and a Chill. The doc's 2 s Slow is Chill's own length, 3 s; Chill has no per-source length.
+- **Phase 3, at 30%.** It roars again. The Wardstones go out for good: it is never Bound again and no Chanter raises them. It enrages:
+  - its string runs four swings (`enragedSteps`);
+  - the last swing is a slam whose circle (`shockwaveRadius` 5.5 m) is telegraphed round it. The maul's cone takes the overhead's damage; anyone else in the circle takes a low blunt shockwave (16), which a jump clears.
+- **Banners:** "The Mason calls its Guards" and "The Mason enrages". The roar event carries `mason`.
+
+Bench, Emberhall, level 12, 5 seeds:
+
+| party | kills | ttk s | dmg | pots | downs | phase 3 |
+|---|---|---|---|---|---|---|
+| solo (sword) | 0/5 (timeouts, 36% left) | - | 219 | 1.4 | 0.0 | 1/5 |
+| duo (sword, bow) | 4/5 | 496 | 1105 | 5.8 | 3.6 | 4/5 |
+| trio | 5/5 | 154 | 295 | 0.6 | 0.0 | 5/5 |
+| solo + 3 henchmen | 2/5 | 288 | 199 | 1.4 | 0.0 | 2/5 |
+
+check 730/730 (4 new), test:net green, parity hashes unchanged.
+
+**Learned**
+
+The trio half of M3's gate holds already: every trio fight goes through all three phases in under 3 minutes. The pairs and the lone hero are what is left to tune, and the bench's sword cannot reach a Chanter that keeps its distance.
+
+**Next**
+
+- M3 part two: phase 2's bone ridges (short walls from its slams that split the hall); its drops, the Mortarward Shield and Chanter's Staff (the Gallery Longbow is Michael's to keep or cut); then the tuning, solo and duo first.
+
+## 2026-11-16: Session 229, the Mason's Guards and Chanters (M2)
+
+**What changed**
+
+The Ossuary Mason raises its two kinds of adds with its Wardstones. Of each it raises one fewer than the heroes standing, at least one and at most two (`mason.guards`, `mason.chanters`), so a trio meets two of each.
+- **Mortar Guard** (`mortarGuard`): a plated Shieldbearer, with the Shieldbearer's shield, bash and slow turn. It is armoured (B5): blades and arrows deal it 35%, a staff full damage. It stands 4 m out, between the party and the stones.
+- **Bone Chanter** (`chanter`): a Wraith's body that keeps 9 m from the heroes. It is warded: arrows deal 1.5x, and a spell is turned aside. When a Wardstone falls, it walks within 14 m of it and channels a violet circle on it. After `chanter.rebuildMs` (5 s) the stone stands again at full health, and the Mason is Bound again. Any hit that lands breaks the channel, and its ward means that hit is an arrow or a blade, not a spell. Two Chanters never raise the same stone. Once the Mason falls, none is raised.
+
+A fallen stone now lies where it fell while the Mason stands, instead of being cleared after its death time, so there is something to raise. Haunted (Emberhall's modifier) no longer raises a Wardstone on its own; only a Chanter does. Figures: the Guard is the Shieldbearer's, tall shield and helm; the Chanter is the Wraith's. Numbers are on the panel. Not yet seen in a browser.
+
+Bench, Emberhall, level 12, 5 seeds, phase 1 only:
+
+| party | kills | ttk s | dmg | pots | downs |
+|---|---|---|---|---|---|
+| solo (sword) | 0/5 (5 timeouts at 600 s, 28% left) | - | 226 | 1.6 | 0.0 |
+| duo (sword, bow) | 5/5 | 451 | 837 | 5.4 | 1.4 |
+| trio | 5/5 | 144 | 198 | 0.2 | 0.0 |
+| solo + 3 henchmen | 2/5 | 239 | 107 | 0.4 | 0.0 |
+
+check 726/726 (6 new in `mason.test.ts`), parity hashes unchanged.
+
+**Learned**
+
+The trio is the fight this boss is built for, and it works: the archer takes the Chanters, the staff the Guards, the sword the stones and the Mason, 144 s. The solo sword cannot finish it. Its Chanter flees out of a blade's reach and stands the stones back up, so the Mason stays Bound. A player would corner it, and the bench's bot does not. A mid boss is not held to the solo bar, but it must be beatable alone. The duo bleeds on the hod: 435 a fight, with the archer far off by design.
+
+**Next**
+
+- M3: phase 2's bone ridges and grout, phase 3's enrage and shockwave, the drops; and the tuning against its gate (trio under 3 minutes, all three phases).
+- The solo case for M3's tuning: a Chanter that stops fleeing when cornered, a longer rebuild solo, or fewer stones solo.
+- Waiting on Michael: the Gravehand's trio question and B8.
+
+## 2026-11-16: Session 228, the Ossuary Mason, phase one (M1)
+
+**What changed**
+
+Emberhall now ends on the Ossuary Mason (`mason.enabled`; off, the Warden as before). It is `docs/bosses.md` 2.2's tanky boss, tanky by rule rather than by health.
+- **Wardstones.** As it wakes it raises three Wardstones round the hall, `mason.wardstoneRadius` (7 m) from it. While any stands it is **Bound** and takes `mason.boundTaken` (25%) of every hit, any style (`sim/mason.ts`, read in `damageEnemy`). A stone is a new kind, `wardstone`: a heavy whose brain only stands, 260 health, no poise break, no knockback, any style breaks it. Stones left standing crumble when the Mason falls, so the hall clears.
+- **Maul string.** Three blockable blunt cones at the front hero. The third is an overhead: 26 damage against 18, and it pushes.
+- **Hod throw.** For a hero 6 to 16 m away. A rimmed circle follows them for half its 1.2 s wind-up, then locks and lands. A jump does not clear it; a dodge out does.
+
+Also: the boss bar reads "The Ossuary Mason — Bound: break the Wardstones" while it is Bound. Its figure is a placeholder: the Brute's body at 2.15x with a stone maul head and a hod of skulls. A Wardstone is a bone-banded pillar with a violet glow. Its numbers are on the panel. Not yet seen in a browser.
+
+First bench, Emberhall (Hard), level 12, 5 seeds, phase 1 only:
+
+| party | kills | ttk s | x solo | dmg | downs |
+|---|---|---|---|---|---|
+| solo | 5/5 | 588 | 1.00 | 104 | 0.0 |
+| duo | 5/5 | 240 | 0.41 | 83 | 0.0 |
+| trio | 5/5 | 187 | 0.32 | 53 | 0.0 |
+| solo + 3 henchmen | 5/5 | 195 | 0.33 | 23 | 0.0 |
+
+check 720/720 (9 new in `mason.test.ts`), test:net green, parity hashes unchanged.
+
+**Learned**
+
+The Bound rule makes the solo fight long: almost ten minutes, all of phase 1. The document allows that, since a mid boss "is not held to the solo bar's five minutes". M3's gate is a trio under 3 minutes with all three phases; today's phase-1-only trio is already 187 s. So phases 2 and 3 will need the Mason's health down, or the stones' up, once the Chanters (M2) rebuild them.
+
+`--sources` puts a hit on whatever add stands nearest. A maul hit on a hero beside a Wardstone is counted as "wardstone" (5 a fight with henchmen), though a stone never strikes.
+
+**Next**
+
+- M2: the Mortar Guards and Bone Chanters, and the Chanters' rebuild channel on a fallen Wardstone.
+- Waiting on Michael: the Gravehand's trio question and B8.
+
+## 2026-11-16: Session 227, a lighter Iron Ring for the duo's bar (H3's gate, part five)
+
+**What changed**
+
+`ironRing.maxHp` 220 to **170**. Session 226's `--sources` showed the Iron Ring dealing the most damage to a lone or paired hero: 115 of the solo's 186, 80 of the duo's 198. It is armoured, so the sword deals it 35% and the bow too. Killed sooner, it charges fewer times. This helps the duo more than the solo, because the duo's archer stays on the hand meanwhile.
+
+Sweep on 20 seeds, against Session 226's numbers:
+
+| change | solo ttk s | solo pots | duo x solo | duo downs |
+|---|---|---|---|---|
+| none (226) | 187 | 1.9 | 0.52 | 0.0 |
+| `ironRing.maxHp` 150 | 182 | 1.4 | 0.48 | 0.0 |
+| `ironRing.maxHp` **170** | 186 | 1.8 | **0.48** | 0.0 |
+| `ironRing.chargeDamage` 10 | 187 | 1.3 | 0.52 | 0.1 |
+| `ironRing.cooldownMs` 3000 | 201 | 2.3 | 0.46 | 0.0 (one solo wipe) |
+| ring 150, hand 2400 | 188 | 1.5 | 0.49 | 0.0 |
+
+At 170, all 20 solo fights are kills, with no wipes. Over the first ten seeds alone the duo is 0.55 and the solo 184 s: the duo's median moves by about 0.07 between halves of the seeds. The trio is 55 s; the henchmen 32 s. check 711/711.
+
+**Learned**
+
+The duo's bar sits on the edge of the bench's noise. Twenty seeds is the least that says anything about it, and ten can mislead.
+
+**Next**
+
+- **Trio:** 55 s against 1.2's 2 to 3 minutes. Health cannot fix it without breaking the duo's bar, so it is pressure: more of the hand's attacks or the rings' at three. That may be a design call.
+- Then **(Michael)** a playtest of the Gravehand.
+
+## 2026-11-16: Session 226, the bench's heroes roll out of a slam once it locks, and the Gravehand's first tuning (H3's gate, part four)
+
+**What changed**
+
+Most of the lone sword's deaths came from the bench, not the boss. A new `--sources` flag on `npm run bench:bosses` splits the heroes' damage taken by the boss's attack or the add that dealt it. Before the fix it showed the palm slam dealing 216 of the solo hero's 302. The bench's heroes rolled 200 ms into every wind-up. The slam's circle follows its hero for its first 55%, so it followed them out and landed on them every time. They now roll a reaction after a following telegraph locks (the Gravehand's slam and grab, a charger's line), as a player learns to. With today's numbers that alone took the solo sword from 1 of 10 to 9 of 10 kills in 145 s.
+
+Then the tuning, on the panel's values (`--set`, 20 seeds each):
+- `gravehand.maxHp` 2000 to **2300**.
+- `gravehand.slamRestMs` 1400 to **1000**. A lone sword hurts the hand only in its rests, the archer any time, so a shorter rest slows the solo fight more than the duo's.
+
+| party | kills | ttk s | x solo | pots used | downs |
+|---|---|---|---|---|---|
+| solo (sword) | 20/20 | 187 | 1.00 | 1.9 of 3 | 0.0 |
+| duo (sword, bow) | 20/20 | 98 | 0.52 | 1.3 | 0.0 |
+| trio | 20/20 | 56 | 0.30 | 0.1 | 0.0 |
+| solo + 3 henchmen | 20/20 | 31 | 0.17 | 0.0 | 0.0 |
+
+Over the first ten seeds alone the duo is 0.60. The solo pace (`bosses.soloCooldownScale` 2.5 or 3) barely moved anything, and more health makes the duo's share worse (0.69 at 2800). The Warden with the fixed bench (`--set gravehand.enabled=false`): solo 9 of 10 in 87 s, duo 0.59, trio 0.43. check 711/711.
+
+**Learned**
+
+A bench bot that reacts at once is not a careful player. For a telegraph that follows its hero, the right reaction is late. With that fixed the solo bar is met: 3 minutes, a potion left on average, no wipes in 20.
+
+The Iron Ring is now what hurts a lone or paired hero most: 115 of the solo's 186 damage, 80 of the duo's 198. It is armoured, so the sword deals 35%.
+
+**Next**
+
+- **Duo:** 0.52 to 0.60 against "under half". The likely lever is the Iron Ring (its health or its charge) rather than anything on the hand.
+- **Trio:** 56 s against 1.2's 2 to 3 minutes. Health alone cannot meet both this and the duo bar, since a trio's boss has only 1.26x a duo's health. Pressure, not health, is the likely way.
+- Then **(Michael)** a playtest of the Gravehand.
+
+## 2026-11-16: Session 225, the bench's heroes play to their style against adds (H3's gate, part three)
+
+**What changed**
+
+The boss bench's heroes no longer shoot whatever is nearest. An add weak to another style (B5's `weakTo`) is left to a partner of that style while one stands: an archer beside a staff hero leaves the Iron Ring to the staff and stays on the hand and the Silver Ring. A hero with no such partner still takes what is nearest. A first try that left those adds alone with no partner at all made the solo sword ignore the Iron Ring forever, and it lost 10 of 10.
+
+The Gravehand bench (Mossgate Barrow, level 5, ten seeds):
+
+| party | kills | ttk s | wipes | timeouts | phase 3 |
+|---|---|---|---|---|---|
+| solo (sword) | 1/10 | 139 | 9 | 0 | 1/10 |
+| duo (sword, bow) | 9/10 | 138 | 1 | 0 | 10/10 |
+| trio | 10/10 | 53 | 0 | 0 | 10/10 |
+| solo + 3 henchmen | 10/10 | 28 | 0 | 0 | 5/10 |
+
+The Warden's numbers are unchanged, since it has no adds with a weakness. check green.
+
+**Learned**
+
+The henchmen's kills that skip phase 3 are not a bug. A party with three henchmen takes the hand from above 30% to dead inside one resting palm (1.5x for 1.4 s), so it never returns to its chase to roar. H3's first gate (one fight through all three phases) holds in every trio and duo fight.
+
+**Next**
+
+Tune the Gravehand against the bar on the panel; that is H3's last gate. Today:
+- **Solo sword:** dies 9 of 10. It can only hurt the resting palm and a stagger.
+- **Duo:** takes about a solo kill's time, where the bar wants under half.
+- **Trio:** kills in 53 s, where 1.2 wants 2 to 3 minutes.
+
+Likely levers: health (the trio is far too quick), the rest's length and the solo pace. Then **(Michael)** a playtest of it.
+
+A first sweep (6 seeds, `--set`), for the next run:
+- **Solo sword:** dies in about 100 s whatever the health or rest, after about 300 damage and all 3 potions. Its lever is the hand's damage on a lone hero, or the bench's dodging, not the hand's health.
+- **`maxHp` 4000:** trio 86 s, duo 3 of 6 in 260 s.
+- **`slamRestMs` 2400:** duo 6 of 6 at 0.73 of solo, trio 47 s.
+- **Both together:** trio 104 s, duo 2 of 6.
+
+## 2026-11-16: Session 224, the Gravehand no longer shoves a hero through the wall (H3's gate, part two)
+
+**What changed**
+
+Session 223's "hand stuck behind a pillar" was something else: the hero had left the hall through its east wall. Traced tick by tick (Mossgate, the bow alone, seed 1):
+1. The hand came down on its hero beside the wall to grab them.
+2. Body separation shoved the hero 85% of a whole body's overlap, into the stone. A held hero skips wall collision, so they stayed there.
+3. When the grip ran out, the resting palm shoved them again.
+4. Their next step found their middle inside the thin wall and resolved them out through its far side. They fell off the floor and walked about under the hall for the rest of the fight. The hand hung at the wall, out of range of everything.
+
+Two fixes:
+- **`separateBodies`:** the Gravehand pushes a hero at most `gravehand.shoveMaxM` (0.15 m, on the panel) a tick, under a hero's 0.4 m radius, and takes the rest of the push itself. It no longer shoves the hero it holds. Every other enemy keeps the slice's expressions to the bit, so the parity hashes are unchanged. A first try that regrouped the multiplication broke them, so that branch stays separate.
+- **`stepPlayer`:** a held hero is still resolved against walls, in case another body pushes them.
+
+`gravehand.test.ts` gains a test: a hero grabbed against the arena's east wall is never more than one tick's shove into it, through the hold, the release and the rest, and ends inside on the floor. It fails without the fix (0.69 m in). check 711/711, test:net green.
+
+The Gravehand bench after the fix:
+
+| party | kills | ttk s | wipes | timeouts | phase 3 |
+|---|---|---|---|---|---|
+| solo | 1/10 | 139 | 9 | 0 | 1/10 |
+| duo | 7/10 | 101 (0.72 of solo) | 3 | 0 | 10/10 |
+| trio | 10/10 | 53 | 0 | 0 | 10/10 |
+| solo + 3 henchmen | 10/10 | 28 | 0 | 0 | 6/10 |
+
+**Learned**
+
+Every timeout in Session 223's table was a hero outside the map. Now the fights end, and the solo sword hero dies instead: it can hurt the hand only in its rests. That is the tuning question for the bar.
+
+**Next**
+
+The clench skipped by a burst through 30% outside the chase. Then the bench's heroes going for the boss rather than an armoured add. Then tune against the bar.
+
+## 2026-11-16: Session 223, the bench's heroes fight with their own weapons (H3's gate, part one)
+
+**What changed**
+
+The boss bench (`tests/bosses.ts`) now counts how many fights reach the boss's third phase, from its roars (a "phase 3" column). It fails when a boss with three phases (the Gravehand, the King, or the Warden with `warden.threePhases`) never reaches it in any fight.
+
+It also had a bug that every earlier bench run shared. The heroes are placed straight into the boss hall, where the fight is already on, and a swap is refused once a fight is on (C3). So the bow and staff heroes fought the whole fight with the sword they joined holding. Each hero now starts with their own style in hand.
+
+The Gravehand on Mossgate Barrow, level 5, ten seeds:
+
+| party | kills | ttk s | wipes | timeouts | boss left | phase 3 |
+|---|---|---|---|---|---|---|
+| solo (sword) | 0/10 | - | 6 | 4 | 46% | 0/10 |
+| duo (sword, bow) | 2/10 | 113 | 0 | 8 | 36% | 3/10 |
+| trio (sword, bow, staff) | 9/10 | 51 | 0 | 1 | 1% | 10/10 |
+| solo + 3 henchmen | 10/10 | 29 | 0 | 0 | 0% | 6/10 |
+
+The first half of H3's gate is met: the trio's fights all show all three phases. The bar is not met.
+
+The Warden, run again with the bench fixed (`--set gravehand.enabled=false`): solo 9/10 in 88 s, duo 0.58 of the solo time (0.78 before the fix), trio 0.43, solo with henchmen 0.31. The duo's bar of under half is closer than B1 and B2 recorded, but still not met.
+
+**Learned**
+
+Per-tick accounting of the boss's lost health by its state shows where the damage comes from. A lone sword hurts the Gravehand only in its rest after a slam and in a stagger, as designed. The bow and staff tell two different stories:
+- **The staff alone** kills it in 55 s.
+- **The bow alone** times out with 61% left. In one traced fight, the hand sat at 275 health for the last 30 s. It hung in its chase at a pillar: more than `slamRange` from the kiting archer and with no line of sight for its flick, it neither closed in nor attacked. Meanwhile the bench's archer shot the nearest enemy, an Iron Ring that takes 35% from arrows.
+- **The henchmen's kills** skip the clench in 4 of 10. The roar is checked only in the chase, so a burst that takes the hand past 30% while it slams or rests, and kills it before its next chase, never sees phase 3.
+
+**Next**
+
+The rest of H3's gate, in order:
+1. The hand stuck behind a pillar: it should drift round to its hero, or flick or slam anyway.
+2. The clench is missed when a burst takes the hand past 30%.
+3. The bench's heroes go for the boss rather than an add they are weak against.
+4. Tune against the bar on the panel. Today a solo sword can only hurt the resting palm.
+
+## 2026-11-16: Session 222, the shatter flick (H3, part three)
+
+**What changed**
+
+Once the Gravehand has clenched (phase 3), its flick shatters. Each shard that meets a wall or runs out its flight without striking a hero splits into two pieces there. The pieces fan `shatterSplitDeg` (35 degrees) either side of its line and fly `shatterFlightS` (0.4 s) more. A sidestep that only just cleared the shard can meet a piece, so the dodge must be wide. Pieces never split again, and a shard that strikes a hero (or is parried back) does not split. A shard carries an optional `ProjectileState.shatters`, so the wire's lists are unchanged. `stepProjectiles` splits it in the hostile branch (`shatterShard`). Before the clench the flick is whole. `gravehand.test.ts` gains 3 tests: three shards landing make six pieces, fanned and never splitting again; a shard that strikes a hero does not split; no shatter before phase 3. check 710/710 (parity unchanged), test:net green.
+
+**Learned**
+
+Short-lived pieces from an early shard can expire and leave the list before the last shard lands. The test has to collect them as they come rather than count them at the end.
+
+**Next**
+
+The Gravehand's three phases and its drops are built. Left of H3 is its gate: one bench fight that shows all three phases, and the bench's solo and duo numbers against the bar (`npm run bench:bosses` with the Gravehand on Mossgate). After that comes **(Michael)** a playtest of it, solo and with a friend, so the fight is felt in a browser before M1.
+
+## 2026-11-16: Session 221, the Gravehand's signature drops (H3, part two)
+
+**What changed**
+
+The Gravehand is the first boss with a signature list (`SIGNATURES.gravehand`). When it falls, each hero is offered the piece for the job they did most (B6):
+- **Ringward Buckler** (`tank`, a studded buckler): 20% less blunt damage, which covers its slams, sweep and knuckles.
+- **Knucklebone Bow** (`warded`, a yew shortbow): 1.25x against the Gravehand, its bane. It goes to the hero who did the most to the warded Silver Ring.
+- **Grave-cloth Wraps** (`boss`, linen gloves): its grip lets go after 1.5 s (`gravehand.looseGripMs`) instead of 3. It goes to whoever dealt the boss the most, which is who it grabs, or to a hero who scored in no job.
+
+The wraps needed a fourth property, `Signature.looseGrip`. It is folded by `wornMods` only from the hands slot into `Mods.looseGrip`, accepted by `readLoadout` only as `true`, and by `readGearItem` only on gloves. The grab reads it while `bosses.signatureDrops` is on. The design doc puts the buckler in iron, but a buckler is hide, so it is studded leather. `gravehand.test.ts` gains 3 tests: the offer by job; each piece through the server's item check and worn in its slot, with a loose grip refused on a shield and as anything but `true`; a hero in the wraps held 1.5 s. check 707/707, test:net green.
+
+**Learned**
+
+The design doc pairs the bow's bane with "the Gravehand and its rings", but a bane today is one kind. The rings stay outside it until an add knows its boss (B6's note).
+
+**Next**
+
+H3, part three: the shatter flick (phase 3's flick, each shard splitting in two where it lands), then the bench's solo and duo numbers against the bar, then **(Michael)** a playtest of the Gravehand.
+
+## 2026-11-16: Session 220, the Gravehand's clench (H3, part one)
+
+**What changed**
+
+At 30% health (`gravehand.phase3At`) the Gravehand roars again (banner: "The Gravehand clenches · Its knuckles roll toward you: jump them") and closes into a fist, drawn as the hand folded short. Three things change:
+- **The rest shortens.** After a slam or an empty grasp its palm now rests `phase3RestMs` (0.9 s) instead of 1.4 s (`restSeconds`), so the punish window tightens.
+- **The knuckle chain.** Some of its turns (`knuckleChance`, 0.4) within 9 m roll its fist toward its hero. That is three 1.8 m circles, each 2.8 m beyond the last on the line it locked as it began: the first wound up 0.9 s, each next 0.42 s after the one before lands. They are blunt and low (M1), so a jump clears each, with the orange rim. The fist rolls along the floor under them, low enough for a blade.
+- **The rings rise again.** Each ring kind with an add still standing from phase 2 rises once more, so leaving an Iron Ring alive means two of them.
+
+Numbers are in `tuning.gravehand`, the main ones on the panel. `gravehand.test.ts` gains 3 tests: the phase 3 roar with only the standing kinds rising and the shorter rest; the chain's three rimmed circles, their timing and spacing, with the fist in a blade's reach; a jump clearing a knuckle. check 704/704 (parity unchanged).
+
+**Learned**
+
+The Warden's rolling slam was already the shape (a `chain` count, the circle stepped along `tele.yaw` between slams), so the knuckles reuse `slamWindup` and `slam` and only their lift and their low hit differ.
+
+**Next**
+
+H3, part two: the shatter flick (each shard splits in two where it lands), and the three signature drops (Ringward Buckler 20% less blunt, Knucklebone Bow its bane, Grave-cloth Wraps letting go of a grab after 1.5 s). Then the bench's solo and duo numbers against the bar.
+
+## 2026-11-16: Session 219, the Bone Ring goes for the back line (H2)
+
+**What changed**
+
+The Bone Ring is the skirmisher (`docs/bosses.md` 2.1: "darts at the archer and the mage"). `nearestTarget` now passes over any hero holding a sword while a hero with a bow or staff stands and can be seen, then takes the nearest of those. With no one else standing it takes the blade. So the melee hero's job is to catch it on its way past, and one blow staggers it. A taunt still holds it first. `gravehand.test.ts` gains a test: a sword hero nearer and an archer farther, the ring takes the archer, then the sword once the archer is down. check 701/701.
+
+**Learned**
+
+Targeting by style already has what it needs in `PlayerState.style`, so a kind's preference is one line in `nearestTarget`, and the token cap still keeps it to two on the archer.
+
+**Next**
+
+H3: the clench (phase 3 at 30%, a 0.9 s rest), the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops (Ringward Buckler, Knucklebone Bow, Grave-cloth Wraps), then the bench's solo and duo numbers against the bar.
+
+## 2026-11-16: Session 218, a held hero's corner line (H2)
+
+**What changed**
+
+While the Gravehand holds a hero, the HUD's left corner shows a warning-red line under the belt: "✊ Held · dodge on the beat to break free · 1/3". The count is the presses on the beat so far. It goes as soon as they are out. The words come from `heldLine` in `sim/gravehand.ts`, so the unit test checks them, and the line reads only the hero's own `held`, which prediction already steps. check 700/700.
+
+**Learned**
+
+Session 217's grab had no words for the player caught in it. "Three on the beat, not mashing" is a rule no one guesses, so the corner has to say it and count as they go.
+
+**Next**
+
+The Bone Ring darting at the archer and the mage rather than the nearest hero, then H3: the clench, the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops.
+
+## 2026-11-16: Session 217, the Gravehand's grab (H2, part two)
+
+**What changed**
+
+H2 is whole. From phase 2, some of the hand's turns (`gravehand.grabChance`, 0.35) reach for its hero within 8 m. The tell is a 1.6 m ring round them, edge, red with the orange rim. It follows them for half of its 1 s wind-up, then locks. As it closes, it takes the nearest hero still in the ring. Henchmen, summons and a hero in a roll's i-frames slip it. An empty grasp drops the palm to rest on the floor (1.4 s at 1.5x).
+
+A caught hero carries `PlayerState.held` (optional, so nothing new in the wire's lists). `stepPlayer` steps it through `stepHeld`: no move, no swing, no roll. Prediction runs the same code, so a held hero's own browser agrees. The hand comes down to them, low enough for a blade (`gravehandLift` 1 m), and squeezes 5 every second (edge) for up to 3 s. There are three ways out:
+- **A partner's heavy** on the hand opens it at once (`hitOnGrip`, from `damageEnemy`).
+- **`grabBreakDamage` (40)** dealt to it while it holds.
+- **Alone, three dodge presses on the beat**: each must come at least `grabBeatMs` (250 ms) after the last, and a press sooner starts the count again, so mashing does not work.
+
+Whichever way the hero gets out, they are untouchable for 0.5 s, and the palm rests where it held them, at 1.5x. A stagger, a freeze or the hand's fall drops its hero too (`releaseGrip`). Numbers are in `tuning.gravehand`, the main ones on the panel. `gravehand.test.ts` gains 5 tests: the reach, its timing and the hold; held still and squeezed until the grip runs down, then the rest; a partner's heavy; 40 damage and not 20; three presses on the beat free a solo hero and mashing every 67 ms does not. check 700/700 (parity unchanged), test:net green.
+
+**Learned**
+
+A state that stops a hero has to live where prediction steps it, or every held tick is a correction. So the hold is the hero's own field, as Chill is, and the server-only part is just the hand setting and clearing it.
+
+**Next**
+
+The HUD says nothing to a held hero yet: a corner line ("Held: dodge on the beat to break free", with the count) wants a session. The Bone Ring still takes the nearest hero rather than darting at the archer and the mage. Then H3: the clench, the knuckle chain, the shatter flick, the rings' second rise, and the three signature drops.
+
+## 2026-11-16: Session 216, the Gravehand's rings (H2, part one)
+
+**What changed**
+
+At 60% health (`gravehand.phase2At`) the Gravehand roars (a `roar` event with `hand`; the banner reads "The Gravehand twists off its rings"). It then twists off one ring per hero, henchmen not counted: Iron first, then Silver, then Bone. The rings land evenly round it, 7 m out where the walls allow. They are three new kinds, each a dressing of a role's brain, with B5's weaknesses on the kind (`ADD_WEAKNESS`, the first kinds to have one):
+- **Iron Ring** (`ironRing`, charger, armoured, so the mage's job): the Hound's rush over its own numbers (`rushOf`). It is slower (7 m/s over 8 m after a 1 s line), blunt, and takes 35% from blade and bow. Drawn as a plated iron wheel that rolls.
+- **Silver Ring** (`silverRing`, caster, warded, so the archer's job): `casterBrain` hands it to `wardBrain`. It keeps 9 m from its hero and channels a violet circle on the hand for 6 s at a time. While any Silver Ring channels, the hand takes `gravehand.wardTaken` (0.5) of every hit. Any hit that lands breaks the channel. A spell is turned aside and an arrow hits 1.5x, so the arrow is the answer. Drawn as a floating silver ring with a violet halo that spins faster while it wards.
+- **Bone Ring** (`boneRing`, fodder, the skirmisher, so the melee hero's job): the skeleton warrior's cut on a small, quick body (5.5 m/s) with 1 poise, so one blow staggers it. Drawn as a small spiked bone ring.
+
+All numbers are in `tuning.ironRing`, `silverRing` and `boneRing`, the main ones on the panel. `gravehand.test.ts` gains 4 tests: one ring for a solo hero and three for a trio, spread round the hand; henchmen do not count; the ward halves the hand's damage, holds against a spell and breaks on an arrow; Iron's plate against a sword and Bone's stagger in one blow. check 695/695 (parity unchanged).
+
+**Learned**
+
+The roles test asks that every kind of one role step through the same brain. So the Silver Ring's ward is a branch inside the caster's brain rather than a brain of its own, as the Hollow King's knights ride the elite's.
+
+**Next**
+
+H2, part two: the grab. It is a red ring with an orange rim round the hero who hit the hand most lately. That hero is held 3 s and squeezed, and gets out three ways: a partner's heavy, 40 damage to the hand, or three on-the-beat dodge presses alone. Holding a hero touches `stepPlayer`, so prediction agrees. The Bone Ring darting at the archer and the mage rather than the nearest hero is left for then too.
+
+## 2026-11-16: Session 215, the Gravehand, phase one (H1)
+
+**What changed**
+
+Mossgate Barrow now ends on the Gravehand (`docs/bosses.md` 2.1), behind `gravehand.enabled`. With the switch off, the Warden ends the run as before. It is a new `EnemyKind` in the boss role with a brain of its own (`gravehandBrain`), and its numbers are in `tuning.gravehand` with the feel values on the panel. It floats 3.5 m up and drifts to hang 2.2 m short of its hero. While it floats, a blade passes under it: `damageEnemy` refuses any hit that is not a projectile, a burst or a burn. Heroes walk under it (`separateBodies` skips it). Phase 1 has three gestures:
+- **Palm slam**, blunt, a circle with the orange rim. The circle follows the hero for 55% of its 1.1 s wind-up, then locks, and the hand rises over it. A jump does not clear it (no `low`); a dodge out does. The palm then rests on the floor for 1.4 s, and every hit takes `restDamageTaken` (1.5x) there, a sword's included. That rest is the melee hero's window.
+- **Backhand sweep**, blunt, a 5 m, 120-degree cone along the floor with no rim. It winds up 0.9 s, is low (M1) so a jump clears it, and can be blocked.
+- **Flick**, pierce: three bone shards in a 30-degree yellow fan at a hero 4 to 16 m away, after 0.7 s.
+
+Its height comes from its AI state alone (`sim/gravehand.ts`: `gravehandLift`, `handAloft`, `palmResting`), so the server, a joiner's prediction and the view agree from one snapshot, and no field was added to the wire. The figure is a placeholder hand of bone boxes at cart size, with grave-cloth at the wrist and iron rings on three fingers. It bobs while it floats, drops flat to rest, and turns on its side to sweep (`docs/screenshots/gravehand-h1.png`). Wren's card lists it for Mossgate, and the boss bar names it. `gravehand.test.ts` has 10 tests: the role, brain and tells (the slam rimmed, the sweep blockable, the flick yellow and pierce); Mossgate's boss and the switch; the timing of each tell; the 1.4 s rest after a slam; the jump clearing the sweep and not the slam; a sword missing the floating hand while an arrow lands; the resting palm taking 1.5x; heroes walking under it. check 691/691 (parity unchanged: the arena never makes it), test:net green.
+
+**Learned**
+
+Holding the hand's height in the AI state rather than in a new field keeps it off the wire and lets prediction agree for free. The cost is that the hover is a rule of each state. H2's grab will need its own line in `gravehandLift`.
+
+The figure was seen in a browser (Chromium, rendered alone in three poses). The whole fight on Mossgate's last floor has not been played in one yet. A sword henchman swings at the floating hand and misses until it lands.
+
+**Next**
+
+H2: phase 2's three rings (Iron, Silver and Bone, dressings of today's brains with B5's weaknesses) and the grab with its three ways out. B8 still waits on Michael.
+
+## 2026-11-16: Session 214, focus through the hand-off and in the corner (B7, part two)
+
+**What changed**
+
+B7 is whole. When the party takes a deeper ring, `HostRoom.handOff` asks the old room's `HostSession.focusOf` for each player's focus. It hands that to the new floor's session with `awaitFocus`, under the seat it reserved, beside `renameAwaitedLeader`. The new session sets the focus on the player as their hello lands. It is the server's own count and never the browser's word. A ring home carries none, so focus ends with the run. A swap on the way in loses it on the first step. The HUD's left corner shows a gold line under the potion belt while focus counts, "Focus +6% sword · lost on a swap". It goes when a swap clears it. `tests/netcode-smoke.ts` checks that a party walking floor 1 to the deeper ring arrives on floor 2 with `{ style: 'sword', floors: 1 }`. check 681/681, test:net green.
+
+**Learned**
+
+The hand-off already had the shape for this. A room tells the next room's session what a reserved seat brings before the browser even leaves, as the hirer's henchmen do, so carrying a player's state needs no new message and nothing from the client.
+
+**Next**
+
+B8 is a **(design)** item: the tank's guard stance and the Paladin's reduction, to be asked first. Then H1, the Gravehand.
+
+## 2026-11-16: Session 213, focus in the sim (B7, part one)
+
+**What changed**
+
+`sim/focus.ts`, behind `bosses.focus`, which the parity test turns off. `PlayerState.styleFocus` (optional, `{ style, floors }`) grows a floor each time a hero takes a deeper ring holding the style they had (`earnFocus`, called from `leaveFloor`). It starts again at one in a new style and stops at `bosses.focusMaxFloors` (3). `focusBonus` adds `bosses.focusPerFloor` (0.03) a floor to that style's damage, inside `styleDamageBonus`, so every hit of the style reads it. `stepPlayer` drops the focus on its first step after the style in hand changes, so every way of swapping is caught, prediction included. Henchmen earn none. Both numbers are on the panel. `focus.test.ts` has 3 tests: 3%, 6%, 9% over three floors and still 9% after a fourth, only in the earned style; a swap loses it on the next step and a floor in the new style starts at one; nothing with the switch off. check 681/681.
+
+**Learned**
+
+Each floor is its own room, and a hero's `PlayerState` is built afresh from the loadout in the next one, so the focus `leaveFloor` grows dies with the old room. Nothing reaches a player until the hand-off carries it. Henchmen and the run's purse already ride `HostRoom.handOff` and `FloorRoom.purses`, and focus needs the same path: the server's own, never the browser's word.
+
+**Next**
+
+B7, part two: carry each hero's `styleFocus` through the hand-off to the next floor's room (server, then `test:net`), and show it in the corner ("Focus +6% sword"), lost on a swap.
+
+## 2026-11-16: Session 212, job scores and the signature drop (B6, part three)
+
+**What changed**
+
+B6 is whole. A floor counts what each hero did by job in `FloorRunState.jobs`, through `noteJob` in `signatures.ts`, heroes only and while `bosses.signatureDrops` is on. `damageEnemy` counts damage to a boss as `boss` and damage to an armoured or warded add by its weakness (`jobFor`), as far as the hit went, so an overkill counts only what was left. `hurtHero` counts a boss's blow taken on a guard (parried, blocked or broken through) as `tank`. When a boss room clears, `bossDrops` lays each hero their offered piece at the middle of the boss's rares (`signatureDrops`), owned by that hero alone and banked or lost as any find is. A boss with no list drops none, which is every boss until W1, K1, H3 and M3. `signatures.test.ts` gains 4 tests: the boss's and an armoured add's damage counted, the overkill left out; a boss's blow on a guard counted as the tank's; two heroes each given their own job's piece; and nothing for a boss with no list or with the switch off. check 678/678, test:net green.
+
+**Learned**
+
+Prediction runs `damageEnemy` against the snapshot's copy, so the counts it writes there are thrown away with the next snapshot, and only the server's count drops anything. `hurtHero` holds a hit for the lag grace before judging it, so a test of the guard has to clear `lagGrace` first.
+
+**Next**
+
+B7, focus: +3% damage a floor in one style, up to +9%, shown in the corner, lost on a swap.
+
+## 2026-11-16: Session 211, signature pieces and the offer by job (B6, part two)
+
+**What changed**
+
+A signature piece is now an item. `GearItem.signature` holds its one property: a damage type it resists in any slot, or `castSpeed` or a `bane` on a weapon. `wornMods` folds the pieces into Session 210's `Mods`. A type is listed once however many pieces name it, so two pieces against blunt give one resist. A cast or a bane counts only from the weapon in hand. `readGearItem` (the server's check on a bag item in a sale or the stash) refuses a piece with more than one property, an unknown type, a cast or a bane off a weapon, and a bane on a kind that is no boss. The browser's save keeps the field as it keeps runes. `sim/signatures.ts` holds the drop lists by job. `SIGNATURES` is a boss's list of pieces, each with a job (`tank`, `armoured`, `warded`, `boss`) and a catalogue item. `offerFor` gives a hero the piece of the job they scored most in, with the list's order breaking a tie and the `boss` piece for a hero who scored in none. `signatureItem` makes the piece a named rare. No boss has a list yet, because W1, K1, H3 and M3 each bring their own. `signatures.test.ts` has 5 tests: the gate's "the job's piece is the one offered", two blunt pieces giving one resist, a cast and a bane only from the weapon, and a piece through the server's check with forged ones refused. check 674/674, test:net green.
+
+**Learned**
+
+The document names jobs by what a hero does ("the most damage to that add kind, or the most of the tank's string blocked"). A bane answers the boss itself, so it needed a fourth job, `boss`, which also catches a hero who did none of the others.
+
+**Next**
+
+B6, part three: count each hero's job scores through a boss fight (damage blocked from the boss, damage to armoured and warded adds and to the boss) and drop each hero their offered piece beside `bossDrops` on the fall, owned as finds are.
+
+## 2026-11-16: Session 210, signature drops' properties (B6, part one)
+
+**What changed**
+
+`docs/bosses.md` 1.4's three properties on `Mods`, behind `bosses.signatureDrops`, which the parity test turns off. Each is set only when worn, and the amounts are the server's, so a loadout names only what is worn. **`resist`** is a list of damage types, each once. `hurtHero` takes `bosses.resist` (0.2) off a hit of a listed type, after worn armour; an untyped hit is never resisted. **`castSpeed`** (a flag) adds `bosses.castSpeed` (0.15) to `attackSpeed`, so the chain runs faster. An ability's windup runs at 1.15 its pace through `abilityClock`, and the rest of the tick past the windup runs at its own pace, so a Charge's dash and a Whirlwind's spin last what they did. **`bane`** is a boss's kind, and `damageEnemy` lands a hero's hits on that kind `bosses.baneMult` (1.25) harder. `readLoadout` refuses a type named twice, an unknown type, anything but `true` for `castSpeed`, and a bane that is not a boss's kind. All three numbers are on the panel. `signatureDrops.test.ts` has 5 tests: 20% off a blunt hit with a blunt resist and nothing off an edge or untyped one; the loadout's checks; the chain at +0.15 and the Charge's 120 ms windup in 7 ticks against 8; the bane at 1.25 on the Warden and 1 on the King; and nothing with the switch off. check 669/669, test:net green.
+
+**Learned**
+
+"Two pieces give one resist" is a rule of the list: a type appears in it once however many pieces name it, so the browser's `wornMods` must fold duplicates, and the server refuses a list that does not. A bane reaches its boss's kind only. "And its adds" needs an add to know its boss, which no enemy does yet. The Gravehand's rings (H2) are the first adds a boss raises as its own, so the rule waits for them.
+
+**Next**
+
+B6, part two: the signature pieces in the catalogue (a material and shape with one property), `wornMods` folding them into `Mods`, and a boss's drop list by job, offering each hero the piece of the job they did most. Its gate: the job's piece is the one offered.
+
+## 2026-11-16: Session 209, add weaknesses (B5)
+
+**What changed**
+
+`docs/bosses.md` 1.3's two rules, behind `bosses.addWeakness`, which the parity test turns off. A kind's weakness is data: `ADD_WEAKNESS` in `roles.ts` (armoured or warded), and `weakTo(kind)` gives the style that answers it. **Armoured** takes `bosses.armourTaken` (0.35) of a sword's or a bow's hit, and all of a staff's. **Warded** takes a bow's hit `bosses.wardArrowMult` (1.5) times as hard. A staff's hit is turned aside: no damage, a deflect spark (the Shieldbearer's `guarded` event, so its spark and sound), and a channel goes on. A sword hits it at its own weight and breaks a channel as any hit does. A hit with no style (a launched body, a trap) passes untouched. `addWeaknessMult` in `combat.ts` applies both rules, after a shield's guard and before the channel breaks. No kind has a weakness yet. M2's Mortar Guards and Bone Chanters are the first, so no fight changes today. Both numbers are on the panel. `addWeakness.test.ts` has 4 tests, lending a skeleton warrior plate and a Wraith a ward: armoured takes 35% from a sword and a bow and full from a staff, an arrow breaks a warded channel at 1.5x, a spell is turned aside with a spark and the channel kept, and nothing changes with the switch off. check 664/664.
+
+**Learned**
+
+The Wraith's channel already broke on any hit (E1d), so a ward needs only to keep a spell from landing. A deflected spell returns before `breakChannel`, and that is the whole rule. The document's "dull grey rim" look for an armoured add belongs with its dressing in M2, since no kind wears plate yet.
+
+**Next**
+
+B6, signature drops: `resist`, `castSpeed` and `bane` on `Mods`, `hurtHero` reading `resist` by `HeroHit.type`.
+
+## 2026-11-16: Session 208, telegraph colours by damage type (B4)
+
+**What changed**
+
+Michael's A on the colour question (`docs/bosses.md` 1.5). `attackType` and `telegraphTell` in `sim/roles.ts` read the blow an enemy is winding up. With `bosses.damageTypes` on, the hue says the type: melee (blunt and edge) red, pierce yellow, magic violet. Orange leaves the fill and becomes a rim on the outline, pulsing slowly (5 rad/s, full swing) against the fill's quick flicker. It goes on everything that was orange before (the Brute's and the Warden's slams, the Barrow Knight's blows, any enemy armoured after a stagger) and on the King's crown sweep, as the document gives it. A line has no outline, so a rimmed lane (the Knight's rush) gets a wider orange lane beneath it. What changes for a player: a Hound's charge is red, not yellow (teeth are melee); slams are red with an orange rim; the King's crown sweep is red with a rim. `Sfx` follows the tell: a blunt blow growls a fifth lower than an edge's, and a rim adds the heavy's low rumble under its type's sound. With the switch off, E1a's colours come back unchanged. It is view-only, so the fight and the parity hashes are untouched. `damageTypes.test.ts` gains 7 tests. For the grunt, archer, Brute, Warden and King, every blow that lands has the type its telegraph showed. The colours and rims by kind are checked with the switch on, and E1a's with it off. check 660/660.
+
+The colourblind check, by sum against a dark floor (0x262420, contrast ratio): red 4.3, violet 4.3, yellow 10.7, orange rim 6.6. Under deuteranopia red 5.3 and rim 7.3; under protanopia red 2.9 and rim 5.4. So the rim stays brighter than the red fill it sits on for every eye, and its slow pulse separates it from the fill as well.
+
+**Learned**
+
+Two calls the document left open. The rim marks what was orange before, not what `hurtHero` actually lets through: a parry still turns a heavy, and the Warden's sweep is a heavy in the sim but red and unrimmed by the document (W1 reworks it to blockable). The Shieldbearer's bash breaks a guard but was never orange, so it carries no rim. B8's guard stance is the place to make the rim and the guard agree.
+
+**Next**
+
+The gate's screenshot per role in the debug room was not taken: headless Chromium runs software GL at a few fps here. The critic's browsers or Michael's eye can do it. Then B5, add weaknesses.
+
+## 2026-11-16: Session 207, damage types on enemy hits (B3)
+
+**What changed**
+
+`DamageType` (blunt, edge, pierce, magic) is in `sim/types.ts`, with an optional `HeroHit.type` and the same on the `heroHurt` event. Both are set only while `bosses.damageTypes` is on (`typed()` in `combat.ts`), so the parity test turns it off and a pending hit's state stays the slice's (hashes unchanged). Every enemy hit on a hero carries one, from `docs/bosses.md` 1.5. Edge: the skeleton warrior's sword, the Warden's sweep, the Hound's charge (its teeth), and the Hollow King's string and sweep. Blunt: the Brute's and the Warden's slams, the Shieldbearer's bash, and the Barrow Knight's shield rush. Pierce: enemy arrows and the King's thrown crown. Magic: the King's violet circles and any enemy bolt. Nothing in the fight reads the type yet. The HUD has no damage numbers for hits on heroes (only on enemies), so B4's colours will be the first reader. `damageTypes.test.ts` has 6 tests: each of the grunt, archer, Brute, Warden and King fights a hero who never falls, and every hit it lands has the type it should; with the switch off a hit has none. check 653/653, test:net green.
+
+**Learned**
+
+The arena's middle has an obstacle: a Brute created at (0, 0) rises 9 m south and walks into it, and an archer waits for a clear line it may never get there. The test fights on open floor south of the middle and gives the archer its turn.
+
+**Next**
+
+B4, telegraph colours by type, with the orange unblockable rim (Michael's A on the colours).
+
+## 2026-11-16: Session 206, a boss's attention (B2)
+
+**What changed**
+
+`sim/attention.ts`, behind `bosses.attention`, which the parity test turns off (hashes unchanged). A boss (the Warden, the Hollow King) chooses its target between attacks, not every tick. It picks from the heroes and henchmen who hit it in the last `bosses.attentionWindowS` (4 s), nearest first, or from everyone standing when nobody has. It stays on its focus until `bosses.attentionRun` (3) attacks have run on it. Then it turns to the nearest other hero who hit it lately, or the nearest other one standing. With one standing it never turns. A Paladin's taunt still holds it first. `damageEnemy` notes each hit (`noteBossHit`), and the shared `recover` step counts each attack done. The memory is an optional `EnemyState.attn`, so the wire needs nothing new and prediction never sees it. `nearestTarget` is exported for the tests. `attention.test.ts` has 6 tests: two heroes hitting are taken three and three, a target is kept through an attack, a bow hero hitting alone draws it, one standing hero keeps it, a taunt holds it, and with the switch off it is the nearest as before.
+
+The bench, ten seeds: duo heroes take 170 damage against 184 under B1 alone, and the trio's 114 against 90 is now shared across three. Kill times are unchanged within a second (duo 67 s, trio 54 s). check 647/647, test:net green.
+
+**Learned**
+
+Attention spreads the hits but does not speed a duo's kill: the duo is 0.77 of the solo time, against a bar of under half. Linear damage on 1.35 times the health gives 0.68 at best. A duo under half the solo time needs a solo fight longer than its hero's damage allows (W1's health) or a party that does more than add its damage (B5's weaknesses and the jobs). The henchman party's hero still takes nothing, because three henchmen hitting keep the boss's attention among four bodies.
+
+**Next**
+
+B3, damage types on every enemy's hit.
+
+## 2026-11-16: Session 205, party scaling for bosses (B1)
+
+**What changed**
+
+`tuning.bosses` is a new panel section, behind `bosses.partyScaling`, which the parity test turns off (hashes unchanged). A boss (role `boss`: the Warden and the Hollow King) grows `bosses.extraPlayerHealth` (0.35) a player instead of 0.6, and a henchman counts `bosses.henchmanWeight` (0.5) of a player. `bossPace` in `enemies.ts` scales a boss's recovery and its next cooldown in the shared `recover` step: `bosses.soloCooldownScale` (2) longer with one hero standing and no henchman, and `bosses.henchmanPace` (1.4) shorter while a henchman stands. Every other enemy is unchanged. `bossScaling.test.ts` has 4 tests (health by party, the switch and other kinds, the pace, and a Warden's recovery held twice as long against one hero). The bench gained `--today` (the old rule) and `--set section.key=value`.
+
+The bench, ten seeds, level 5, old rule against new: solo kills 4 of 10 against 9 of 10, a potion left in 6 of them (the bar's "most tries"), with 287 damage taken against 186. Duo kills in 79 s against 68 s. Trio 67 s against 52 s. One hero with three henchmen fights a boss of 2.80 against 1.52 and kills in 47 s against 28 s.
+
+**Learned**
+
+`soloCooldownScale` was set from the bench, not from the document's 1.3. At 1.3 the solo hero won 5 of 10, at 1.6 9 of 10 with half a potion left, and at 2 9 of 10 with a potion left in 6. A solo kill takes about 90 s whatever the pace, because the hero's own damage bounds it. Two parts of 1.2's bar are out of B1's reach. The 3 to 5 minutes needs about twice the Warden's health, and that is W1's to set for the Warden, as each new boss sets its own. A duo under half the solo time needs B2's attention, because a duo's ratio stays at 0.78 when the solo hero survives more. The henchman party still takes almost no damage with the boss at 1.4 times the pace, because the boss spreads its attacks over four bodies. That is B2's job as well.
+
+**Next**
+
+B2, attention: a boss targets who hit it lately, never one hero more than three attacks running.
+
+## 2026-11-16: Session 204, the boss bench (B0)
+
+**What changed**
+
+Michael's A on the boss document (control room, 16 Nov), with his A's on the colours and on specialize-or-switch. The document's branch (`auto/fable-boss-design-pass`, docs only) is merged into `auto/build` so the cut sits beside the code, and the backlog carries section 3's lines under the current section. B0: `npm run bench:bosses` (`tests/bosses.ts`) steps a `HostSession` headless, as `snapshot-size.ts` does, with scripted heroes sending numbered commands through the input slots: one sword hero, sword and bow, sword, bow and staff, then one sword hero with three henchmen, each on Mossgate Barrow's last floor (its story seed, Normal) against the Warden, over ten seeds of the sim's rng. A hero closes to its range, attacks every other tick, presses Q and E now and then, drinks under a third of health, holds F over a downed friend, and rolls out of a telegraph it stands in after 200 ms, toward a clear landing nearest where it wants to fight and never through a body; out of one, it does not step into one. It prints the boss's health and time to kill against 1.2's "today", damage taken, potions, downs, fight length and the boss's health left, and writes `tests/tmp/bosses.json`. It fails if a party's boss health is not 1.2's multiplier or a boss never wakes. 25 s for all forty fights.
+
+Ten seeds, level 5: solo kills 4 of 10 (median 101 s) and wipes 6 with the Warden at 18% on average; duo 10 of 10 in 79 s (0.78 of solo, 1.2 predicts 0.80); trio 9 of 10 in 67 s (0.67, predicted 0.73); one hero with three henchmen 10 of 10 in 47 s (0.47, predicted 0.70) taking 17 damage on average. check 637/637.
+
+**Learned**
+
+The duo and trio match 1.2's "today" from health alone. The henchman party beats its prediction because the Warden's attention is split four ways: the hero barely gets hit, which is the bullying the document describes. Solo misses the bar both ways: when it wins, it wins in under two minutes, and most runs it does not win. B1's tuning has to slow a solo fight and make it safer, not only cut a duo's health. The bot's first versions lost every solo fight for the bot's own reasons. The attack cadence was keyed to a number that grew with the tick, so it never swung. Rolling straight back from a Warden sweep stops at 5.7 m, inside a 5.2 m cone with the hero's radius. Rolling toward the punish spot ran into the Warden's body. A hero placed exactly on the boss's spawn point turns NaN in the first steps (`separateBodies` guards zero, so it is elsewhere); walking in never lands there to the bit, so the bench stands the party 5 m off the middle.
+
+**Next**
+
+B1, party scaling for bosses, tuned on this bench.
+
 ## 2026-11-16: Session 203, a double W counts on a slow page
 
 **What changed**
@@ -15,6 +809,19 @@ Playwright's `keyboard.press` waits for each key to be handled, a frame apiece o
 **Next**
 
 The graphics cost and the crowd item still need a real machine; then the builder waits on Michael's three answers on the boss document.
+
+## 2026-11-16: Session 202, the boss design pass (Fable, the document)
+
+**What changed**
+- `docs/bosses.md`, the boss document for Michael's approval (his A, 15 Nov). Section 1, the rules: designed for three with a job per style each phase; the early bar (solo in 3 to 5 minutes at Normal with no henchmen, a duo in under half that); adds weak to one style (armoured to magic, warded to ranged, skirmisher to melee); one signature drop a player that helps against its own boss (resist a type, cast faster, a bane); damage types blunt, edge, pierce, magic; a tank's blockable string every phase; specializing rewarded by jobs and drops. Section 2, five bosses in build order: the Gravehand (Mossgate Barrow), the Ossuary Mason (Emberhall, Michael's tanky boss), the Warden and the Hollow King under the rules, Chief Grubnose and his Pig (the Warrens, E1i). Section 3, the cut: a bench first (B0), seven rule lines, three sessions a new boss, every line behind a switch the parity test turns off.
+- Three questions under `## Pending` in `decisions.md`: approve the document; colour by damage type (A recommended: hue by type, orange as an "unblockable" rim); specialize or switch (A recommended: jobs, drops by job, and a small focus bonus). Nothing in `shared/`, `server/` or `client/` changed.
+
+**Learned**
+- A boss's health grows only with party size, `1 + (players - 1) x run.extraPlayerHealth` (0.6) in `createEnemy`, and `state.players` counts henchmen in full. Against linear damage that makes the time to kill solo 1.00, duo 0.80, trio 0.73: two players barely beat one, missing Michael's "crush". At 0.35 a player it is 1.00, 0.68, 0.57. A hero with three henchmen fights a 2.8x boss with four bodies splitting its attention, which is the Warden bullying of 2 Nov; henchmen at half weight make it 1.5x.
+- No enemy hit has a type and no enemy takes more or less from a style today; `HeroHit` and `damageEnemy` are the two places both go.
+
+**Next**
+- Michael's three answers. On A, the builder starts the cut at B0 (the bench), then B1 to B7, then the Gravehand's three sessions. This card waits until then; its PR opens when the answers are written.
 
 ## 2026-11-16: Session 201, dodge on Shift and a toggled sprint on Ctrl or a double W
 

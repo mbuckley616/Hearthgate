@@ -10,6 +10,7 @@ import { stepSummons } from './summons';
 import { createPlayer, stepDoors, stepPlayer } from './player';
 import { stepLava } from './lava';
 import { stepTraps } from './traps';
+import { stepRidges, withRidges } from './mason';
 import { stepProjectiles } from './projectiles';
 import { initialRun, stepRun } from './run';
 import { idleCommand, type PlayerCommand, type SimState } from './types';
@@ -42,9 +43,9 @@ export function createSimState(level: LevelDef, playerIds: string[], world: Worl
 
 /** The world as it blocks this tick: the arena's gate while it is down, or a floor's fight room shut. */
 export function worldNow(world: World, state: SimState): World {
-  if (world.level.dungeon) return floorWorldNow(world, state);
-  // The antechamber gate only blocks while it's down.
-  return state.run.gateClosed ? world : { ...world, colliders: world.collidersOpen };
+  const w = world.level.dungeon ? floorWorldNow(world, state) : state.run.gateClosed ? world : { ...world, colliders: world.collidersOpen };
+  // The Mason's bone ridges (M3) are walls to everyone while they stand: the server, prediction, arrows.
+  return state.ridges?.length ? { ...w, colliders: withRidges(w.colliders, state) } : w;
 }
 
 /** Advance the simulation by one fixed step. Commands are keyed by player id. */
@@ -65,6 +66,7 @@ export function stepSim(state: SimState, commands: Record<string, PlayerCommand>
   if (state.snares) stepSnares(state);
   if (state.groves) stepGroves(state, dt);
   if (state.trails) stepTrails(state);
+  if (state.ridges) stepRidges(state);
   stepEnemies(state, dt, w);
   stepProjectiles(state, dt, w.colliders, world.level.dungeon?.smashable);
   stepRun(state, dt, w);
