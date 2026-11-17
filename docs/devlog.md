@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 246, E1i's roster asked
+
+**What changed**
+
+Docs only. Every Crypt boss line of the boss pass's cut is built (W1 waits only on the duo question), so E1i, the Goblin Warrens' roster, is next, and it is a (design) line. Asked in `decisions.md` Pending:
+- **The roster**, the same in every option: Cutter, Slinger, Pot-lid Goblin, War Pig, Shaman, Pack Leader (a war cry that quickens its pack), Cave Ogre and a Goblin Chieftain, each a new kind on today's brains, so the Crypt's rooms are untouched.
+- **The twist:** A, Pilfer (a Cutter's hit snatches carried finds, the thief runs, killing it drops them back; recommended); B, Poison from the Shaman; C, the Pack Leader's cry alone.
+
+**Learned**
+
+Chill is still the only state a hero can carry (`sim/chill.ts`). Whatever the Warrens' twist is, it is the second, so a corner line and an icon come with it.
+
+**Next**
+
+- On Michael's answer: the Warrens' kinds one a session, then G1b to G3b (Grubnose and his Pig). W1 waits on the duo answer; the graphics item and the crowd need a real machine.
+
 ## 2026-11-17: Session 245, the Warden tuned to the solo bar (W1)
 
 **What changed**
