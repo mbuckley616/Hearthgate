@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 247, a heavy hit's throw eases instead of snapping
+
+**What changed**
+
+The critic's bug: a Warden slam that lands on a hero showed on that hero's screen as a 3 to 4.6 m teleport, even at 0 ms, and counted as a snap. It happened 7 times in 2 fights.
+
+The cause: the server throws the hero (the slice's `knockbackDealt` 2.8 m, at 21 to 25 m/s). Prediction only learns of the throw a snapshot later, so the whole throw arrives as one correction, past `SNAP_M`.
+
+The fix follows the tile's fall (Session 115) and the mispredicted swing (Session 171):
+- **Detecting it:** `thrownBy(events, id)` in `game/Session.ts` is true when the snapshot carries a heavy `heroHurt` for our hero.
+- **Easing it:** for half a second of server time after one, `ClientSession` eases a correction up to `thrownEaseM()` instead of snapping. That is the snap limit, plus the longest throw any enemy deals (`longestKnockbackM()`, read from every tuning group's `knockbackDealt`, so a panel edit moves it too), plus half a second of sprinting: 9.3 m today.
+- **Unchanged:** a light hit never widens the limit. Browser only; the fight and the parity hashes are unchanged.
+
+`thrownEase.test.ts`: the server throws a sprinting hero back against the sprint with the Warden's push, the browser sprints on for 300 ms, and they part by 2.81 m. That is past the 2.5 m snap limit and inside the 9.3 m eased one. check 765/765, test:net green.
+
+**Learned**
+
+Every server-only move of our own hero (a fall, a throw, a swing decided differently) wants the same treatment: an event names it, and the limit widens briefly. Anything the server moves that prediction cannot step is a candidate.
+
+**Next**
+
+- The critic's rerun should show 0 snaps on the Warden's slam. Nothing else in E1 is open to the builder: the Warrens' twist and the Warden's duo wait on Michael, and the graphics cost and the crowd need a real machine.
+
 ## 2026-11-17: Session 246, E1i's roster asked
 
 **What changed**
