@@ -776,7 +776,8 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
  * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
  */
 function leaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const pr = tuning.priest;
+  // A Grave Cantor (W1) is a Priest with its own numbers.
+  const pr = e.kind === 'cantor' ? tuning.cantor : tuning.priest;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -906,6 +907,21 @@ function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number,
   }
 }
 
+/**
+ * W1's phase 2 (Michael's A, 17 Nov): adds weak to a style instead of the raised dead, one fewer than
+ * the heroes and at least one (`masonAdds`'s count), the Guard first, then the Cantor at the back.
+ */
+export const WARDEN_ADDS: readonly EnemyKind[] = ['mortarGuard', 'cantor'];
+
+function raiseWardenAdds(state: SimState, world: World, e: EnemyState): void {
+  const n = Math.min(masonAdds(state, tuning.warden.adds), WARDEN_ADDS.length);
+  for (let i = 0; i < n; i++) {
+    const kind = WARDEN_ADDS[i];
+    // The Guard rises between the Warden and the party; the Cantor across the hall from it.
+    raiseFromEdges(state, world, e, 1, kind, kind === 'cantor' ? tuning.warden.raiseRadius : Math.min(4, tuning.warden.raiseRadius), i * Math.PI);
+  }
+}
+
 function wardenBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const w = tuning.warden;
   const want: Intent = { x: 0, z: 0 };
@@ -915,7 +931,10 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       const n = Math.round(w.summonCount) + Math.max(0, state.players.length - 1);
       if (w.threePhases) {
         // E1g: the first roar raises the dead round the hall; the second only quickens it.
-        if (e.phase === 1) raiseFromEdges(state, world, e, n);
+        if (e.phase === 1) {
+          if (w.underRules) raiseWardenAdds(state, world, e);
+          else raiseFromEdges(state, world, e, n);
+        }
         e.phase = Math.min(3, e.phase + 1);
       } else {
         // Summon at the end of the roar, then the fight gets faster.
@@ -2078,6 +2097,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.hound.cooldownMs / 1000;
     case 'priest':
       return tuning.priest.raiseEveryMs / 1000;
+    case 'cantor':
+      return tuning.cantor.raiseEveryMs / 1000;
     case 'knight':
       return tuning.knight.attackCooldownMs / 1000;
     case 'wraith':

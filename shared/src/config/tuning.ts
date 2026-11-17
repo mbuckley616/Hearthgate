@@ -1362,6 +1362,14 @@ export const tuning = {
     roarMs: 1600,
     summonCount: 3,
     /**
+     * W1 (`docs/bosses.md` 2.3; Michael, 17 Nov, A on its adds): phase 2's roar raises adds weak to a
+     * style instead of the raised dead, one fewer than the heroes and at least one, in the order a Mortar
+     * Guard (magic's), a Grave Cantor (the archer's), then a Barrow Skirmisher (the blade's). `adds` is
+     * the most it raises. Off in the parity test.
+     */
+    underRules: true,
+    adds: 3,
+    /**
      * E1g, three phases: at `phase2At` of its health it roars and raises the dead from the hall's edges;
      * at `phase3At` it roars again and fights faster, with a rolling slam of `chainSlams` circles.
      * The slice's Warden has one roar at half health and two phases, so the parity test turns it off.
@@ -1798,6 +1806,29 @@ export const tuning = {
     spawnMs: 900,
     deathMs: 1400,
     knockbackTaken: 0.6,
+  },
+
+  /**
+   * A Grave Cantor (W1, Michael's A, 17 Nov): a Bone Priest's dressing for the Warden's hall, warded
+   * (arrows 1.5x, spells turned aside): the archer's job. It raises the fallen as the Priest does, on
+   * the Priest's brain with its own numbers, and an arrow or a stagger breaks the chant.
+   */
+  cantor: {
+    maxHp: 80,
+    maxPoise: 6,
+    radius: 0.4,
+    height: 1.75,
+    moveSpeed: 2.5,
+    turnRateDeg: 300,
+    keepDistance: 10,
+    raiseRange: 14,
+    raiseEveryMs: 5000,
+    chantMs: 2500,
+    raiseHp: 0.5,
+    recoveryMs: 500,
+    spawnMs: 900,
+    deathMs: 1600,
+    knockbackTaken: 0.8,
   },
 
   /** A Wardstone (M1): a pillar of bound bone that holds the Mason Bound. Any style breaks it; it never moves or strikes. */
@@ -3888,6 +3919,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.chanters': [0, 4, 1],
   'mortarGuard.maxHp': [20, 1000, 10],
   'chanter.maxHp': [20, 1000, 10],
+  'cantor.maxHp': [20, 1000, 10],
+  'cantor.chantMs': [500, 10000, 100],
+  'cantor.raiseEveryMs': [500, 15000, 100],
+  'warden.adds': [0, 3, 1],
   'crownbearer.maxHp': [20, 1000, 10],
   'crownbearer.channelMs': [500, 15000, 100],
   'crownbearer.cooldownMs': [0, 10000, 100],
@@ -4443,7 +4478,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

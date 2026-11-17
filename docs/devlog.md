@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 242, the Grave Cantor (W1's phase 2 adds, part one)
+
+**What changed**
+
+Michael's A on the Warden's phase 2 adds (control room, 17 Nov). Behind a new `warden.underRules`, which the parity test turns off.
+- **The roar:** under the rules, the Warden's 60% roar raises adds weak to a style instead of the raised dead. Count: one fewer than the heroes, at least one (the Mason's count, `masonAdds`), at most `warden.adds` (3). Order: a Mortar Guard (magic's job), then a Grave Cantor (the archer's). The Barrow Skirmisher comes next session and fills the third place.
+- **The Grave Cantor** (`cantor`): a Bone Priest's dressing on the Priest's brain, with its own numbers (`tuning.cantor`: 80 health, keeps 10 m off, a 2.5 s chant every 5 s). It is warded (arrows 1.5x, spells turned aside) and wears a pale ward-ring behind its hood. It raises the fallen as the Priest does, so a downed Guard stands again unless the Cantor is dealt with. An arrow or bolt breaks the chant; a blade's light blow does not, only a stagger.
+- `wardenPhases.test.ts` now tests E1g's raised dead with the rules off.
+
+Saltmarsh, 10 seeds, level 8:
+
+| party | before (Session 240) | now |
+|---|---|---|
+| solo | 86 s, 0.8 potions | 115 s, 1.1 potions, 148 damage |
+| duo | 0.61 of solo | 0.52 |
+| trio | 37 s | 33 s |
+
+check 757/757 (3 new in `wardenAdds.test.ts`), parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The adds already move the bench toward 1.2's bar before any health change. A lone hero now meets one armoured Guard, not three quick skeletons, so the fight is longer for the right reason.
+
+**Next**
+
+- W1's adds, part two: the Barrow Skirmisher (an archer dressing, low health, a melee blow staggers it), third in the order. Then the tuning to the bar.
+
 ## 2026-11-17: Session 241, the tank's stance (B8)
 
 **What changed**
