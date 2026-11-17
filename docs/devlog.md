@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 240, the Warden on the bench (W1's gate, measured)
+
+**What changed**
+
+The boss bench's heroes now wait for the Warden's slam circle to lock before they roll (`lockS` in `tests/bosses.ts`; `wardenPace` is exported for it).
+- **Why:** the circle turns with its hero for 0.4 of the wind-up, at the phase's pace. The bench hero had been rolling while the circle still followed, so the slam landed anyway. This is the bug Sessions 226 and 234 fixed for the Gravehand's slam and the Mason's hod.
+- **What still follows:** a rolling slam's first circle locks the same way; the far slam and a chain's later circles never follow.
+- Nothing in the game changed.
+
+Saltmarsh's Warden, 10 seeds, heroes at level 8:
+
+| Warden health | solo | duo | trio |
+|---|---|---|---|
+| 2000 (today) | 10 of 10 in 86 s, 0.8 potions, 139 damage (was 9 of 10, 177 damage) | 0.61 | 37 s |
+| 4200 | 8 of 10 in 172 s, 2.5 potions | 0.57 | 69 s |
+| 4600 | 6 of 10 in 190 s | 0.56 | 74 s |
+
+check 750/750.
+
+**Learned**
+
+Health alone cannot meet 1.2's bar for the Warden. The bar asks for a solo kill in 3 to 5 minutes with a potion left, and a duo in under half that. At 4200 health the slam alone deals 230 of the lone hero's 290 damage. The duo ratio barely moves with health: 0.61 at 2000, 0.57 at 4200. So the solo needs less slam pressure (a Warden-only lone-hero pace, or slam damage under `warden.underRules`) as well as more health. Phase 2's adds will also move both numbers, so tuning now would be redone.
+
+**Next**
+
+- W1's phase 2 adds, waiting on `decisions.md` Pending. Then the tuning, behind `warden.underRules`.
+- Nothing else in the current section is open to the builder. B8, the Gallery Longbow and the Gravehand's trio wait on answers. The graphics cost and the crowd items need a real machine.
+
 ## 2026-11-17: Session 239, the Crown-catcher Buckler (K1, part three)
 
 **What changed**

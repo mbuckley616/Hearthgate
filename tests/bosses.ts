@@ -29,6 +29,7 @@ import { lookOf, wornMods, type Worn } from '@hearthgate/shared/sim/catalogue';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { isTargetable } from '@hearthgate/shared/sim/combat';
 import { bossOf } from '@hearthgate/shared/sim/floorRun';
+import { wardenPace } from '@hearthgate/shared/sim/enemies';
 import { masonBound } from '@hearthgate/shared/sim/mason';
 import { inTelegraph } from '@hearthgate/shared/sim/henchman';
 import { weakTo } from '@hearthgate/shared/sim/roles';
@@ -368,6 +369,12 @@ function lockS(e: EnemyState): number {
     if (e.attack === 'slam') return (g.slamTelegraphMs / 1000) * g.slamTrackFrac;
     if (e.attack === 'grab') return (g.grabTelegraphMs / 1000) * 0.5;
     return 0;
+  }
+  // The Warden's slam circle (and a rolling slam's first) turns with its hero for 0.4 of the wind-up,
+  // at its phase's pace; its far slam and a chain's later circles never follow.
+  if (e.kind === 'warden') {
+    const follows = e.attack === 'slam' || (e.attack === 'chainSlam' && !e.chain);
+    return follows ? (tuning.warden.slamTelegraphMs / 1000) * wardenPace(e).teleScale * 0.4 : 0;
   }
   // The Mason's hod circle follows its hero for half the wind-up, then locks (M1).
   if (e.kind === 'mason') return e.attack === 'hod' ? (tuning.mason.hodTelegraphMs / 1000) * 0.5 : 0;

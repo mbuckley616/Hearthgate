@@ -875,7 +875,7 @@ function slamLands(state: SimState, e: EnemyState, damage: number, push: number,
 }
 
 /** The Warden's pace in its phase: the slice's two, or E1g's three (phase 2 adds the dead, phase 3 the speed). */
-function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldownMs: number } {
+export function wardenPace(e: EnemyState): { teleScale: number; speed: number; cooldownMs: number } {
   const w = tuning.warden;
   if (w.threePhases) {
     if (e.phase >= 3) return { teleScale: w.phase3TelegraphScale, speed: w.phase3SpeedScale, cooldownMs: w.phase3CooldownMs };
