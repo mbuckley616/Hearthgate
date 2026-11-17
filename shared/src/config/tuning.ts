@@ -103,6 +103,16 @@ export const tuning = {
     reflectDamageMult: 2,
     /** Guard can be raised in the middle of an attack (like the dodge). */
     cancelsAttacks: true,
+    /**
+     * B8, the tank's stance (Michael, 17 Nov, A; `docs/bosses.md` 1.6): with a shield or a buckler in
+     * the off-hand the guard is the stance. It walks at `stanceMoveFrac` of run speed, and a heavy it
+     * meets is not a break: `stanceHeavyDamageFrac` gets through and it pushes the hero back
+     * `stancePushM`, guard still up. No new key. Off in the parity test.
+     */
+    shieldStance: true,
+    stanceMoveFrac: 0.5,
+    stanceHeavyDamageFrac: 0.5,
+    stancePushM: 1.2,
   },
 
   /** Not in the brief's control table; added at Michael's request after M0. */
@@ -2568,6 +2578,9 @@ export const tuning = {
     bulwarkHolds: true,
     bulwarkRadius: 4,
     bulwarkHeal: 0.06,
+    /** B8 (Michael, 17 Nov, A): after Bulwark's pulse fires, the Paladin takes this much less damage for `bulwarkReductionMs`. */
+    bulwarkReduction: 0.3,
+    bulwarkReductionMs: 3000,
     /** The Paladin's tree (Michael's A, 8 Nov): Long Grudge's taunt, Hallowed Ground's ring width, Sanctuary's ring time, Rallying Light's pulse reach, Oath of Mercy's heal multiple, Wide Rush's reach about the enemy hit. */
     treeTauntSeconds: 5,
     treeHallowedRadiusMult: 1.5,
@@ -3255,6 +3268,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'guard.guardBreakMs': [0, 2000, 10],
   'guard.blockPushM': [0, 3, 0.05],
   'guard.parryHitstopMs': [0, 400, 5],
+  'guard.stanceMoveFrac': [0, 1, 0.05],
+  'guard.stanceHeavyDamageFrac': [0, 1, 0.05],
+  'guard.stancePushM': [0, 4, 0.05],
   'guard.parryWardenPoise': [0, 30, 0.5],
   'guard.reflectDamageMult': [0, 5, 0.1],
 
@@ -3562,6 +3578,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.consecrateDamageTaken': [0, 1, 0.05],
   'specs.bulwarkRadius': [0, 10, 0.5],
   'specs.bulwarkHeal': [0, 0.5, 0.01],
+  'specs.bulwarkReduction': [0, 1, 0.05],
+  'specs.bulwarkReductionMs': [0, 10000, 100],
   'specs.bladeStormRadius': [0, 12, 0.5],
   'specs.bladeStormPull': [0, 12, 0.5],
   'specs.bladeStormHold': [0, 4, 0.1],

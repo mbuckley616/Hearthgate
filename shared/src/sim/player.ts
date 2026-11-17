@@ -1,7 +1,7 @@
 import { FAMILY_ANIM, abilityTiming, enemyStats, stringAnim, stringMoveFor, tuning } from '../config/tuning';
 import { stepHeld } from './gravehand';
 import { loseFocusOnSwap } from './focus';
-import { galeReady, shadowPass, specCrescendo } from './specs';
+import { galeReady, inStance, shadowPass, specCrescendo } from './specs';
 import { groundHeight, type World } from '../level/arena';
 import { resolveCircle, sweptDistance, type Collider } from '../level/geometry';
 import { abilityReady, freeAim, pickSoftTarget, startAbility, stepAbility, targetingRange } from './abilities';
@@ -740,7 +740,7 @@ export function stepPlayer(
   } else if (p.mode === 'guard') {
     // Slow strafe behind the guard, still facing the camera.
     p.guardTime += dt;
-    steer(p, cmd, moveMag, mv.runSpeed * tuning.guard.moveSpeedFrac * moveSpeedMult(p), dt, false);
+    steer(p, cmd, moveMag, mv.runSpeed * (inStance(p) ? tuning.guard.stanceMoveFrac : tuning.guard.moveSpeedFrac) * moveSpeedMult(p), dt, false);
     if (Math.hypot(cmd.aimX, cmd.aimZ) > 0.01) p.yaw = turnToward(p.yaw, Math.atan2(cmd.aimX, cmd.aimZ), mv.faceTurnRateDeg * DEG * dt);
   } else {
     const run = moveMag >= mv.runThreshold;

@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 241, the tank's stance (B8)
+
+**What changed**
+
+Michael's A on B8 (control room, 17 Nov; `docs/bosses.md` 1.6): with a shield in the off-hand, today's guard is the tank's stance. No new key.
+- **The walk:** a guard behind a shield or a buckler walks at `guard.stanceMoveFrac` (0.5) of run speed, against 0.45 without one. Prediction reads the same off-hand from the hero's mods, so it walks the server's speed.
+- **The heavy:** a heavy that meets the stance no longer breaks it. Half gets through (`guard.stanceHeavyDamageFrac`) and the tank is driven back (`guard.stancePushM`, 1.2), guard still up. Without a shield, a heavy breaks the guard as before.
+- **The Paladin:** Bulwark's pulse (a perfect parry) now also gives the Paladin 30% less damage taken for 3 s (`specs.bulwarkReduction`, `bulwarkReductionMs`; `PlayerState.bulwarkUntil`, optional).
+- Behind `guard.shieldStance`, which the parity test turns off. All numbers are on the panel.
+- **Why the buckler counts:** the tank's signature drops include the Ringward and Crown-catcher Bucklers, so a tank carrying one should have the stance.
+
+check 754/754 (4 new in `stance.test.ts`), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The guard already walked, at 0.45 of run speed; the decision's "cannot move" was wrong. So the stance's walk is a small change, and the heavy is what makes it a different tool.
+
+**Next**
+
+- The Warden's phase 2 adds (Michael's A, 17 Nov): the Barrow Skirmisher and the Grave Cantor, about two sessions. Then the Gallery Longbow (his A).
+
 ## 2026-11-17: Session 240, the Warden on the bench (W1's gate, measured)
 
 **What changed**

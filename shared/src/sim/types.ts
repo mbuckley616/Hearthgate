@@ -194,6 +194,8 @@ export interface PlayerState {
   shadowUntil?: number;
   /** The parrying dagger's Riposte parried a hit: the next blow before this sim time crits. Absent otherwise. */
   riposteUntil?: number;
+  /** Bulwark's pulse fired (B8): the Paladin takes `specs.bulwarkReduction` less damage until this sim time. Absent otherwise. */
+  bulwarkUntil?: number;
   /** The focus orb's Focus: seconds left of faster, harder casts. Absent otherwise. */
   focusTime?: number;
   /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */

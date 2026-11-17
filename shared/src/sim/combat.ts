@@ -11,7 +11,7 @@ import { ADD_WEAKNESS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
 import { focusBonus } from './focus';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
-import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
+import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, inStance, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -736,6 +736,11 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   const dirZ = d > 1e-3 ? dz / d : -Math.cos(p.yaw);
   // A Paladin's consecrated ground (the builds pass) takes its share off before the guard does.
   let damage = hit.damage * damageTakenMult(p) * consecratedMult(state, p);
+  // Bulwark's reduction (B8): a Paladin's few seconds after a perfect parry.
+  if (p.bulwarkUntil !== undefined) {
+    if (p.bulwarkUntil > state.time) damage *= 1 - tuning.specs.bulwarkReduction;
+    else delete p.bulwarkUntil;
+  }
   let heavy = !!hit.heavy;
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
@@ -751,11 +756,14 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fx = Math.sin(p.yaw);
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
-    if (heavy && guardHoldsHeavy(p)) {
+    const stance = inStance(p);
+    if (heavy && (guardHoldsHeavy(p) || stance)) {
       // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
-      damage *= g.heavyBlockDamageFrac;
-      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
-      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      // A shield's stance (B8) holds too, but the heavy drives the tank back a step.
+      damage *= stance ? g.stanceHeavyDamageFrac : g.heavyBlockDamageFrac;
+      const pushM = stance ? Math.max(g.stancePushM, g.blockPushM) : g.blockPushM;
+      p.vx = dirX * pushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * pushM * tuning.combat.knockbackFriction;
       state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
       p.hp = Math.max(0, p.hp - damage);
       if (p.hp > 0) return 'blocked';
