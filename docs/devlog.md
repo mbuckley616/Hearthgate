@@ -2,6 +2,38 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 245, the Warden tuned to the solo bar (W1)
+
+**What changed**
+
+Under `warden.underRules` (off in the parity test, so the slice's Warden is untouched):
+- **Health:** the Warden has `rulesHpMult` (2.1) of `maxHp`, applied in `createEnemy`. That is 4200 for a lone hero.
+- **Slams:** a slam deals `rulesSlamDamage` (20, not 32). This covers the near, far and rolling slams, which share `slamLands`.
+- Both numbers are on the panel.
+
+Saltmarsh, 20 seeds, level 8:
+
+| party | Session 242 | now |
+|---|---|---|
+| solo | 115 s, 1.1 potions | 18 of 20 in 207 s, 2.2 of 3 potions, 244 damage (slam 150) |
+| duo | 0.52 | 0.59, 0.3 potions, nobody downed |
+| trio | 33 s | 64 s |
+| solo with three henchmen | | 48 s |
+
+Probes on 10 seeds, health and slam: 3000/32 gave solo 156 s; 3600/32 gave 174 s with 2.6 potions (the slam 203 of 265 damage); 4600/16 gave 225 s but 8 of 10 kills.
+
+check 762/762 (1 new in `wardenAdds.test.ts`), parity hashes unchanged.
+
+**Learned**
+
+The solo bar wanted health and a lighter slam together. Health alone runs the lone hero out of potions before the fight is long enough.
+
+The duo ratio sits at 0.57 to 0.64 whatever the health. The duo's boss is 1.35x, but the pair deals only about 2.3x the lone hero's damage, because the lone hero is attacked half as often and so swings more. Asked in `decisions.md` Pending (A recommended: judge it in a playtest).
+
+**Next**
+
+- The duo question waits on Michael. Otherwise W1 and K1 are built. What is left for the builder in E1 needs a real machine (graphics cost, the crowd) or Michael (B8's feel, the Gravehand's playtest).
+
 ## 2026-11-17: Session 244, the Gallery Longbow (the Mason's third drop)
 
 **What changed**

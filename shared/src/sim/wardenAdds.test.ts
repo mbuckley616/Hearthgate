@@ -115,4 +115,12 @@ describe("the Warden's phase 2 adds (W1)", () => {
     };
     expect(away('skirmisher')).toBeGreaterThan(away('archer') + 0.5);
   });
+
+  it("under the rules its health is rulesHpMult of the slice's, and the slice's with them off", () => {
+    tuning.warden.underRules = true;
+    const on = scene(1).w.maxHp;
+    tuning.warden.underRules = false;
+    const off = scene(1).w.maxHp;
+    expect(on / off).toBeCloseTo(tuning.warden.rulesHpMult, 5);
+  });
 });

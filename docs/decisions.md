@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-17: The Warden's duo, 0.59 of the solo time against "under half" (builder, Session 245)
+`docs/bosses.md` 1.2 asks an early boss for a solo kill in 3 to 5 minutes with a potion left, and a duo in under half that. Under the rules (Session 245: 2.1x health, slams 20 instead of 32, the phase 2 adds) the Warden meets the solo bar on Saltmarsh's bench: 20 seeds, solo 18 of 20 in 207 s with 2.2 of 3 potions used. The duo takes 0.59 of that, and health does not move it (0.57 to 0.64 from 2000 to 4600). The duo's boss has 1.35x a solo's health (B1's 35% a player) but a pair deals only about 2.3x a lone hero's damage, because the lone hero is attacked half as often and so swings more.
+- **A.** Keep today's numbers and judge the duo in your playtest of the Warden with a friend, as with the Gravehand's trio. *(recommended: the solo bar is met, and the bench's bots are the weakest stand-in for two people)*
+- **B.** The Warden's health grows 15% a player instead of 35% (Warden only, under its rules); the duo comes to about 0.50 and a trio gets faster too (64 s today).
+- **C.** The Warden attacks a lone hero more often (its solo pace x1.5 instead of x2), so the solo fight is slower and harder; it costs the solo bar's potion.
+
 ## Answered
 
 ### 2026-11-16: The Warden's phase 2 adds: new kinds, or the Crypt's own made weak? (builder, Session 237)

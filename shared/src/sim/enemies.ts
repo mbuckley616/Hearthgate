@@ -109,7 +109,9 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
   }
   resolveCircle(pos, s.radius, (onLedge ? world.level.ledge.height : 0) + 0.3, s.height, world.colliders);
   const hard = difficultyScale(world);
-  const maxHp = s.maxHp * healthScale(state, kind) * hard;
+  // W1: the Warden under the rules is tuned to 1.2's bar apart from the slice's own.
+  const rules = kind === 'warden' && tuning.warden.underRules ? tuning.warden.rulesHpMult : 1;
+  const maxHp = s.maxHp * healthScale(state, kind) * hard * rules;
   const e: EnemyState = {
     id: state.nextId++,
     kind,
@@ -1048,7 +1050,7 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       // A rolling slam's later circles are locked to the first's line and come quicker.
       if (e.aiTime >= (e.chain ? w.chainTelegraphMs : w.slamTelegraphMs * teleScale) / 1000) {
         setAi(e, 'slam');
-        slamLands(state, e, w.slamDamage, w.knockbackDealt, true);
+        slamLands(state, e, w.underRules ? w.rulesSlamDamage : w.slamDamage, w.knockbackDealt, true);
       }
       break;
     case 'slam':

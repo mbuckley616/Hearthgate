@@ -1395,6 +1395,13 @@ export const tuning = {
     underRules: true,
     adds: 3,
     /**
+     * W1's tuning to 1.2's bar (Session 245, Saltmarsh's bench): under the rules its health is
+     * `rulesHpMult` of `maxHp` and a slam (the far and rolling ones too) deals `rulesSlamDamage`, so a
+     * lone hero's fight is longer without the slam deciding it.
+     */
+    rulesHpMult: 2.1,
+    rulesSlamDamage: 20,
+    /**
      * E1g, three phases: at `phase2At` of its health it roars and raises the dead from the hall's edges;
      * at `phase3At` it roars again and fights faster, with a rolling slam of `chainSlams` circles.
      * The slice's Warden has one roar at half health and two phases, so the parity test turns it off.
@@ -3953,6 +3960,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'cantor.chantMs': [500, 10000, 100],
   'cantor.raiseEveryMs': [500, 15000, 100],
   'warden.adds': [0, 3, 1],
+  'warden.rulesHpMult': [0.5, 4, 0.05],
+  'warden.rulesSlamDamage': [0, 80, 1],
   'crownbearer.maxHp': [20, 1000, 10],
   'crownbearer.channelMs': [500, 15000, 100],
   'crownbearer.cooldownMs': [0, 10000, 100],
