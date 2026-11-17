@@ -1,6 +1,6 @@
 # Bosses
 
-The boss document (Session 202, the deep-work session's boss design pass; Michael's A, 15 Nov, `decisions.md` "Bosses first, before E1i"). It is a proposal until Michael approves it in `decisions.md` ("The boss document: approve it?"). Nothing here is built. Where it changes what exists, it says what the code does today.
+The boss document (Session 202, the deep-work session's boss design pass; Michael's A, 15 Nov, `decisions.md` "Bosses first, before E1i"). Michael approved it as written on 16 Nov (A on all three questions in `decisions.md` Answered: the document, colour by damage type, specialize or switch); section 3 is in `backlog.md` under E1 as the builder's lines. Nothing here is built yet. Where it changes what exists, it says what the code does today.
 
 Michael's notes it answers (playtest with Nick, 15 Nov): bosses come first and the rest of the game fills in around them; every boss is designed for three; an early boss is beaten by any one hero and crushed by two; a boss's loot helps against that boss; a tanky boss with two kinds of adds, one weak to magic and one to ranged, dropping a shield against blunt damage and a staff that casts faster; attacks colour-coded by type; a floating-hand boss in the spirit of Smash Bros' Master Hand; a tank built on damage reduction; specializing rewarded over switching. And his calls that bound it: self-heals only, a slow regen out of a fight (15 Nov, A), so no boss may assume a healer; bosses and Brutes armoured after a stagger (G1, 2 Nov), so a party cannot hold a boss down by spamming.
 
@@ -57,7 +57,7 @@ Every hit a boss or add deals gets a **damage type**: **blunt** (fists, slams, m
 
 **Colour.** Today's telegraphs are coloured by what the attack does (E1a, `telegraphColour`): red a strike, orange heavy or unblockable, yellow a projectile or a charge, violet magic or a state. Michael asked for colour by attack type. The two disagree in three places: a charge is melee but yellow; a slam is melee but orange; an armoured enemy's swing turns orange whatever it is.
 
-**Recommendation (asked as its own question in `decisions.md`, A):** the hue says the type, and orange becomes a **rim** that says "cannot be blocked or parried: dodge or jump".
+**Michael chose A (16 Nov):** the hue says the type, and orange becomes a **rim** that says "cannot be blocked or parried: dodge or jump".
 
 | Type | Hue | Today |
 | --- | --- | --- |
@@ -81,7 +81,7 @@ The shapes keep meaning what they mean (a cone a swing, a circle a slam or a lan
 
 "Do you want people to specialize, or do you want people to switch? Give benefits to when people specialize." Today the weapon set is one per outing (C3, `combo.swapInFight` off), a specialization is chosen at 10 and reshapes a style, and combo mastery ranks a payer's combos. A test switch is coming that lets Michael swap mid-fight (backlog, 15 Nov), for testing only.
 
-**Recommendation (asked as its own question, A): jobs, not checks.** Bosses reward specializing by what each phase asks, not by locking anyone out:
+**Michael chose A (16 Nov): jobs, not checks, plus focus.** Bosses reward specializing by what each phase asks, not by locking anyone out:
 
 - Each phase's three jobs (1.1) are done fastest by the matching style and fastest of all by a hero specialized in it: a specialization's signature mechanic is the tool for its job (the Paladin's taunt for the tank's string, a Ranger's or Scout's interrupt for the warded add, a Sorcerer's or Warlock's armour-piercing for the armoured add). Any hero can do any job, at about half the speed.
 - **A boss's signature drops go to the job a hero did** (the drop list is per job, 1.4, and a hero is offered the piece of the job they did most in that fight: the most damage to that add kind, or the most of the tank's string blocked). So a specialist farms gear for their specialty.
@@ -175,10 +175,10 @@ One line a builder session unless marked. Each line's gate is its test; anything
 - **B1, party scaling for bosses** (`bosses.partyScaling`): `bosses.extraPlayerHealth` (0.35), henchmen at `bosses.henchmanWeight` (0.5), the solo cooldown scale. Gate: on the bench, the Warden's solo and duo numbers meet 1.2's bar (tune on the panel, record the numbers in the commit).
 - **B2, attention** (`bosses.attention`): a boss's target from who hit it lately and who taunted it, never one hero more than three attacks running while another stands. Gate: a unit test, two heroes hitting, the boss alternates; a taunt overrides.
 - **B3, damage types on hits** (`bosses.damageTypes`): `HeroHit.type` (blunt, edge, pierce, magic) on every enemy's hit, filled in from its attack; nothing reads it yet but the HUD's damage numbers. Gate: unit tests that each enemy's attack carries its type. Parity-safe on its own (the field is optional and read by nothing in the arena).
-- **B4, the colours by type** (only if Michael answers A or B to the colour question): `telegraphColour` by type, the orange rim on unblockable shapes in `TelegraphView`, `Sfx` by type. Gate: each enemy's telegraph seen in the debug room in its new hue (a screenshot per role in the commit), the colourblind check against the background.
+- **B4, the colours by type** (Michael, 16 Nov, A): `telegraphColour` by type, the orange rim on unblockable shapes in `TelegraphView`, `Sfx` by type. Gate: each enemy's telegraph seen in the debug room in its new hue (a screenshot per role in the commit), the colourblind check against the background.
 - **B5, add weaknesses** (`bosses.addWeakness`): `weakTo` on a kind, the armoured and warded rules (1.3) in `damageEnemy`. Gate: unit tests: an armoured add takes 35% from a sword, full from a staff; a warded add's channel breaks on an arrow and turns a spell aside.
 - **B6, signature drops** (`bosses.signatureDrops`): `resist`, `castSpeed` and `bane` on `Mods`, `hurtHero` reading `resist` by `HeroHit.type`, a boss's drop list by job. Gate: unit tests: 20% off a blunt hit with a blunt resist, nothing off an edge one; two pieces give one resist; the job's piece is the one offered.
-- **B7, focus** (only if Michael answers A to the specializing question; `bosses.focus`): +3% a floor in one style, up to +9%, shown in the corner, lost on a swap. Gate: a unit test over three floors and a swap.
+- **B7, focus** (Michael, 16 Nov, A; `bosses.focus`): +3% a floor in one style, up to +9%, shown in the corner, lost on a swap. Gate: a unit test over three floors and a swap.
 - **(design) B8, the tank's guard stance and the Paladin's reduction** (1.6): asked first, since it changes how a shield plays.
 
 **The Gravehand** (behind `gravehand.enabled`; the boss is a new `EnemyKind`, which the arena never rolls)

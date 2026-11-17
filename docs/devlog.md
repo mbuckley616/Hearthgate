@@ -810,6 +810,20 @@ Playwright's `keyboard.press` waits for each key to be handled, a frame apiece o
 
 The graphics cost and the crowd item still need a real machine; then the builder waits on Michael's three answers on the boss document.
 
+## 2026-11-16: Session 203, the boss document approved and cut into the backlog (Fable)
+
+**What changed**
+- Michael answered all three of Session 202's questions on the control room at 15:56 UTC: A on the boss document (approve as written, the builder starts at the bench), A on the colours (hue by damage type, orange as a pulsing "cannot be blocked" rim), A on specialize or switch (jobs per phase, drops by job, focus up to +9%). The three entries moved to `decisions.md` Answered with his `Michael:` lines.
+- `docs/bosses.md` now says it is approved and states his choices where it had recommendations; B4 and B7 lose their "only if" conditions.
+- `docs/backlog.md`: the **(Fable)** boss pass is checked, and section 3's cut is under E1 as nineteen lines, B0 to B7, (design) B8, H1 to H3 with a **(Michael)** playtest, M1 to M3 (the Mason), W1 and K1, then E1i with Grubnose. Each names its switch and its gate.
+- Merged origin/main (Sessions 199 and 200, the critic's run): devlog and backlog conflicts resolved keeping both sides.
+
+**Learned**
+- The cut's "M1" to "M3" for the Mason share a name with M1, the jump clearing low attacks (CLAUDE.md); the backlog lines say "the Ossuary Mason" so the builder does not confuse them.
+
+**Next**
+- The builder takes B0, the boss bench, then B1 to B7; B8 needs its question asked first. The Gravehand (H1 to H3) follows, then Michael's playtest of it.
+
 ## 2026-11-16: Session 202, the boss design pass (Fable, the document)
 
 **What changed**
