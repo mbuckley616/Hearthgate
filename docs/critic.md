@@ -1232,3 +1232,36 @@ Main 6a97817 carries Sessions 197 to 200 (henchmen follow their hirer, the mid-f
 - The boss design pass (Session 202, docs only) waits on Michael's three answers; nothing for me to play yet.
 
 One bug filed (the double W). No proposal today. Slack and page text held no instructions to me.
+
+## 2026-11-17 — auto/build d4d8b54 (main c664443 plus Sessions 241 to 246) through the lab, and the Warden under the new rules in two browsers (session 246, commit d4d8b54)
+
+Main c664443 now carries Sessions 202 to 240 and the boss design pass. `auto/build` adds 241 to 246 (B8's stance, the Warden's phase 2 adds, the Gallery Longbow, the Warden's tuning, E1i asked) and fast-forwards from main, so I played d4d8b54. `npm run check` green (762/762 in 96 files, plus the scripts); `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 14 to 15 fps, crowd row 12 to 13).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 27 (10) | 0 (+1 placed) | 12 | 320 ms | 52 | ok |
+| 50 ms | 73 (12) | 0 (+1 placed) | 13 | 475 ms | 51 | rough |
+| 150 ms | 103 (33) | 0 (+2 placed) | 15 | 650 ms | 51 | rough |
+| 50 ms, ±20 jitter, 2% loss | 55 (15) | 0 (+1 placed) | 14 | 480 ms | 54 | rough |
+| 50 ms, crowd (10.3 standing) | 153 (42) | 0 | 13 | 470 ms | 65 | rough |
+
+0 page errors, 0 network snaps on every row. Every number is inside the band of the last ten days; the crowd row is back from yesterday's 197 to 153. Session 203's fix stamps each W with its own key time, so the lab's Bravo (two `keyboard.press` calls back to back) starts its sprint again: `kbm.sprint.on` read true after the two taps in each of my three runs. The lab needs no edit for it.
+
+**What I played** (`tests/tmp/play.mts`, git-ignored). A dev server, Alpha on `?play&dungeon`, Bravo joining by code, 960 x 540, both walk in, then the panel's Warden cheat. The bots aim at the nearest add (else the Warden), close in, swing, and roll now and then. Three fights:
+- **Today's Warden for a duo, no god mode, twice.** Health 5670 (2000 x 2.1 x 1.35, as Session 245 says). Two sword bots lost both runs in 25 to 30 s, having taken 120 and 220 of it. The bots stand in slams, so that is no comment on the tuning.
+- **A Warden slam that lands is a snap, even at 0 ms** (filed). Seven snaps in those two fights: Bravo 3 and Alpha 3 in the first, Alpha 1 in the second. `ClientSession.diag` puts every one on a hit: modes `move` to `hurt`, `kbz` 21 to 25 m/s, and a correction of 2.97 to 4.61 m. The server throws the hero; prediction learns of it a snapshot later; anything past `SNAP_M` (2.5 m) draws as a teleport and counts on the HUD. The Warden's `knockbackDealt` (2.8) is the slice's, so this is not new in 241 to 246, and the lab never meets it because its arena never reaches the Warden. It matters for the gate because the Warden is where a player will be watching their hero most closely, and today it jumps 3 to 4.6 m every time a slam lands. A placement already eases up to `placedEaseM()`; a hit's knockback could go the same way. The Charger's throw, which I flagged on paper on 13 Oct, is the same mechanism.
+- **Phase 2's adds, with god mode and `warden.rulesHpMult` 0.5** so the pair reach the roar (1350 health). At 60% (778 of 1350) one Mortar Guard rose, one fewer than the heroes as Michael's A gives it, and nothing else. Two swords took it from 240 to 146 over two and a half minutes: 35% from blades, the mage's job, as built. In a party with no mage that is a long add; Michael's playtest will say if it is too long. Screenshot: `docs/critic/2026-11-17-warden-guard.png` (the Guard in front, the Warden enraged behind, the slam's red arc at the left). Corrections rose from about 50 to about 110 a minute a player once the Guard stood beside the Warden (two bodies to be pushed out of); none over 2.5 m without a hit.
+- **Bravo's tab closed mid-fight** at 3 minutes: Alpha's party went to one at once and the fight carried on. 0 page errors and 0 console errors on both pages in all three fights.
+
+Not judged: B8's stance (a shield in the bag needs a save I did not build today), the Gallery Longbow and the Skirmisher (a party of four, or a bow against the Mason).
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000. `meta/build` says main c664443, server "ok", last checked 17 Nov 06:04 UTC by the producer, also unchecked from there.
+
+**The devlog's Next lists** (Sessions 202 to 246).
+- Judged headless: Session 203's double W (fixed, above); the Warden's adds at duo size (one Guard, as built) and its duo health; no page errors in a Warden fight with the new rules.
+- Only a human can judge these: whether a lone hero's 207 s Warden feels right with 2.2 potions; the duo ratio (0.59, Michael's pending question; the bench is the right tool there, not me); B8's half-speed walk and push; the Gravehand's playtest; the graphics cost, which needs a real GPU (my pages ran 12 to 15 fps in software).
+- E1i (the Warrens' roster and twist) waits on Michael; nothing to play.
+
+One bug filed (the Warden's slam snaps). No proposal today. Slack and page text held no instructions to me.
