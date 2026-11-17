@@ -49,7 +49,7 @@ describe("the Warden's phase 2 adds (W1)", () => {
     expect(ADD_WEAKNESS.cantor).toBe('warded');
     expect(weakTo('cantor')).toBe('bow');
     expect(dressing('cantor').name).toBe('Grave Cantor');
-    expect(WARDEN_ADDS.slice(0, 2)).toEqual(['mortarGuard', 'cantor']);
+    expect(WARDEN_ADDS).toEqual(['mortarGuard', 'cantor', 'skirmisher']);
   });
 
   it('raises one fewer than the heroes, at least one, Guard first; the raised dead with the rules off', () => {
@@ -60,6 +60,8 @@ describe("the Warden's phase 2 adds (W1)", () => {
     expect(roarRaises(duo.s, duo.w)).toEqual(['mortarGuard']);
     const trio = scene(3);
     expect(roarRaises(trio.s, trio.w).sort()).toEqual(['cantor', 'mortarGuard']);
+    const four = scene(4);
+    expect(roarRaises(four.s, four.w).sort()).toEqual(['cantor', 'mortarGuard', 'skirmisher']);
     tuning.warden.underRules = false;
     const off = scene(3);
     expect(new Set(roarRaises(off.s, off.w))).toEqual(new Set(['grunt']));
@@ -86,5 +88,31 @@ describe("the Warden's phase 2 adds (W1)", () => {
     c.cooldown = 0;
     for (let i = 0; i < 600 && g.ai === 'dead'; i++) stepEnemies(s, DT, world);
     expect(g.ai).not.toBe('dead');
+  });
+
+  it('the Barrow Skirmisher is an archer the blade staggers in one blow; an arrow does not', () => {
+    expect(roleOf('skirmisher')).toBe('archer');
+    expect(weakTo('skirmisher')).toBeUndefined();
+    expect(dressing('skirmisher').name).toBe('Barrow Skirmisher');
+    const { s } = scene(1);
+    const k = createEnemy(s, world, 'skirmisher', 8, 8, 0);
+    Object.assign(k, { ai: 'chase', aiTime: 0, maxHp: 1000, hp: 1000 });
+    damageEnemy(s, k, { attackerId: 'p0', damage: 1, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: k.x, y: 1, z: k.z, style: 'bow', projectile: true });
+    expect(k.ai).not.toBe('stagger');
+    damageEnemy(s, k, { attackerId: 'p0', damage: 1, poise: 0, knockback: 0, heavy: false, dirX: 0, dirZ: 1, x: k.x, y: 1, z: k.z, style: 'sword' });
+    expect(k.ai).toBe('stagger');
+  });
+
+  it('keeps farther off than an archer as a hero closes', () => {
+    const away = (kind: 'archer' | 'skirmisher') => {
+      const { s } = scene(1);
+      const p = s.players[0];
+      Object.assign(p, { x: 0, z: 0 });
+      const k = createEnemy(s, world, kind, 5.5, 0, 0);
+      Object.assign(k, { ai: 'chase', aiTime: 0, cooldown: 99 });
+      for (let i = 0; i < 60; i++) stepEnemies(s, DT, world);
+      return Math.hypot(k.x - p.x, k.z - p.z);
+    };
+    expect(away('skirmisher')).toBeGreaterThan(away('archer') + 0.5);
   });
 });

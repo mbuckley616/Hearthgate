@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 243, the Barrow Skirmisher (W1's phase 2 adds, part two)
+
+**What changed**
+
+The second of Michael's two Warden-only kinds, and the third place in the Warden's add order (`WARDEN_ADDS`: Guard, Cantor, Skirmisher).
+- **The Barrow Skirmisher** (`skirmisher`): a Skeleton Archer's dressing on the archer's brain with its own numbers (`tuning.skirmisher`). It is light (32 health) and quick (3.6 m/s against 2.4). It backs off from 6.5 m, not 4.5, and aims and looses a little faster. A red rag round its brow marks it as the blade's job.
+- **Its rule:** any melee blow from a hero that lands staggers it (`damageEnemy`), so a blade that closes on it ends its shooting. Arrows and spells hurt it but do not stagger it unless they break its poise.
+- **When it rises:** one fewer add than the heroes, so the Skirmisher only rises for a party of four. A trio still meets the Guard and the Cantor, as Michael's A gave the count.
+
+check 759/759 (2 new in `wardenAdds.test.ts`), parity hashes unchanged. Not yet seen in a browser. The bench runs at most three heroes, so its numbers don't change.
+
+**Learned**
+
+`bosses.md` 2.3 asks for one of each at trio size. Michael's count gives the trio two. If a trio should meet the Skirmisher too, the count is one line in `raiseWardenAdds`. The playtest of the Warden will show whether it is missed.
+
+**Next**
+
+- W1's tuning to 1.2's bar under `warden.underRules`: solo is at 115 s with 1.1 potions, against 180 to 300 s with a potion left. Lever: health together with the lone hero's slam.
+- The Gallery Longbow (Michael's A, 17 Nov): a channel-breaking arrow stuns a Bone Chanter 1 s.
+
 ## 2026-11-17: Session 242, the Grave Cantor (W1's phase 2 adds, part one)
 
 **What changed**

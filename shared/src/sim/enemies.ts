@@ -427,8 +427,13 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
+/** An archer's numbers: a Barrow Skirmisher (W1) is an archer with its own. */
+function archerNumbers(e: EnemyState): typeof tuning.archer {
+  return e.kind === 'skirmisher' ? tuning.skirmisher : tuning.archer;
+}
+
 function archerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -484,7 +489,7 @@ function archerBrain(state: SimState, world: World, e: EnemyState, target: Playe
  * doorways; too close it backs straight away; otherwise it holds, drifting a little across the line.
  */
 function floorArcher(world: World, e: EnemyState, target: PlayerState, dist: number, want: Intent): void {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const dx = target.x - e.x;
   const dz = target.z - e.z;
   const d = Math.max(dist, 1e-3);
@@ -505,7 +510,7 @@ function floorArcher(world: World, e: EnemyState, target: PlayerState, dist: num
 }
 
 function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): void {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const from = { x: e.x + Math.sin(e.yaw) * 0.4, y: e.y + 1.3, z: e.z + Math.cos(e.yaw) * 0.4 };
   const to = { x: e.tele.x, y: target.y + 1.1, z: e.tele.z };
   const dx = to.x - from.x;
@@ -909,16 +914,17 @@ function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number,
 
 /**
  * W1's phase 2 (Michael's A, 17 Nov): adds weak to a style instead of the raised dead, one fewer than
- * the heroes and at least one (`masonAdds`'s count), the Guard first, then the Cantor at the back.
+ * the heroes and at least one (`masonAdds`'s count): the Guard first, the Cantor at the back, then a
+ * Skirmisher off to the side.
  */
-export const WARDEN_ADDS: readonly EnemyKind[] = ['mortarGuard', 'cantor'];
+export const WARDEN_ADDS: readonly EnemyKind[] = ['mortarGuard', 'cantor', 'skirmisher'];
 
 function raiseWardenAdds(state: SimState, world: World, e: EnemyState): void {
   const n = Math.min(masonAdds(state, tuning.warden.adds), WARDEN_ADDS.length);
   for (let i = 0; i < n; i++) {
     const kind = WARDEN_ADDS[i];
-    // The Guard rises between the Warden and the party; the Cantor across the hall from it.
-    raiseFromEdges(state, world, e, 1, kind, kind === 'cantor' ? tuning.warden.raiseRadius : Math.min(4, tuning.warden.raiseRadius), i * Math.PI);
+    // The Guard rises near the Warden; the Cantor across the hall from it; the Skirmisher to one side.
+    raiseFromEdges(state, world, e, 1, kind, kind === 'mortarGuard' ? Math.min(4, tuning.warden.raiseRadius) : tuning.warden.raiseRadius, [0, Math.PI, Math.PI / 2][i] ?? 0);
   }
 }
 
@@ -2089,6 +2095,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.grunt.attackCooldownMs / 1000;
     case 'archer':
       return tuning.archer.cooldownMs / 1000;
+    case 'skirmisher':
+      return tuning.skirmisher.cooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':

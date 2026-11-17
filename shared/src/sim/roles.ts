@@ -55,6 +55,8 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   crownbearer: 'caster',
   // The Warden's (W1): a Bone Priest for its hall, warded.
   cantor: 'leader',
+  // And a Skeleton Archer that the blade staggers in one blow.
+  skirmisher: 'archer',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -87,6 +89,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'hound':
       return 'edge';
     case 'archer':
+    case 'skirmisher':
       return 'pierce';
     case 'brute':
     case 'shieldbearer':
@@ -190,6 +193,7 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
     crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
     cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
+    skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
   },
 };
 

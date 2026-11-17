@@ -313,6 +313,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     push = 0;
   } else if (!staggered) {
     e.poise -= hit.poise * (1 + poiseBonus);
+    // A Barrow Skirmisher (W1) is the blade's job: any melee blow that lands staggers it.
+    if (e.kind === 'skirmisher' && hero && !hit.projectile && !hit.dot) e.poise = 0;
     // A roar is a commitment: it can't be staggered out of (poise still drains).
     if (e.poise <= 0 && e.ai !== 'roar') {
       staggerEnemy(state, e);

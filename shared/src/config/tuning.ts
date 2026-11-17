@@ -1123,6 +1123,31 @@ export const tuning = {
     knockbackTaken: 1,
   },
 
+  /**
+   * A Barrow Skirmisher (W1, Michael's A, 17 Nov): a Skeleton Archer's dressing for the Warden's hall,
+   * the blade's job (1.3's skirmisher): quick, light, keeping farther off than an archer, and any melee
+   * blow that lands staggers it. Same brain as the archer, its own numbers.
+   */
+  skirmisher: {
+    maxHp: 32,
+    maxPoise: 4,
+    radius: 0.4,
+    height: 1.55,
+    moveSpeed: 3.6,
+    turnRateDeg: 420,
+    aimMs: 700,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 400,
+    cooldownMs: 2200,
+    arrowSpeed: 24,
+    damage: 7,
+    fleeDistance: 6.5,
+    floorRange: 16,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 1.2,
+  },
+
   /** Brute: tanky, high poise; telegraphed overhead slam (brief: 1,000 ms ground circle). */
   /**
    * The Skeleton Shieldbearer (E1b, the shield role): a front arc that blocks swings and arrows, a
@@ -3920,6 +3945,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mortarGuard.maxHp': [20, 1000, 10],
   'chanter.maxHp': [20, 1000, 10],
   'cantor.maxHp': [20, 1000, 10],
+  'skirmisher.maxHp': [10, 500, 2],
+  'skirmisher.moveSpeed': [0, 8, 0.1],
+  'skirmisher.fleeDistance': [0, 15, 0.5],
   'cantor.chantMs': [500, 10000, 100],
   'cantor.raiseEveryMs': [500, 15000, 100],
   'warden.adds': [0, 3, 1],
@@ -4478,7 +4506,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

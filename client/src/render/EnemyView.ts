@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -141,6 +141,12 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     aim: pose(BASE, { handYaw: -24, handHeight: 0.42, handReach: 0.1, bladeYaw: 38, bladePitch: 84, offYaw: 35, offHeight: 0.36, offReach: 0.52, twist: -40, lean: 4, draw: 1 }),
     loose: pose(BASE, { handYaw: -70, handHeight: 0.44, handReach: 0.14, bladeYaw: 38, bladePitch: 84, offYaw: 35, offHeight: 0.36, offReach: 0.52, twist: -40, lean: 4, draw: 0 }),
   },
+  // The Warden's Barrow Skirmisher (W1): the archer's draw.
+  skirmisher: {
+    guard: pose(BASE, { handYaw: -30, handHeight: 0.05, handReach: 0.26, bladeYaw: 70, bladePitch: 65, offYaw: 55, offHeight: -0.02, offReach: 0.3, lean: 12 }),
+    aim: pose(BASE, { handYaw: -24, handHeight: 0.42, handReach: 0.1, bladeYaw: 38, bladePitch: 84, offYaw: 35, offHeight: 0.36, offReach: 0.52, twist: -40, lean: 4, draw: 1 }),
+    loose: pose(BASE, { handYaw: -70, handHeight: 0.44, handReach: 0.14, bladeYaw: 38, bladePitch: 84, offYaw: 35, offHeight: 0.36, offReach: 0.52, twist: -40, lean: 4, draw: 0 }),
+  },
   // Club over the shoulder; overhead with both hands; smashed into the floor.
   brute: {
     guard: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: 45, offHeight: 0.05, offReach: 0.3, lean: 16 }),
@@ -236,12 +242,16 @@ export class EnemyView {
     if (kind === 'warden') this.buildWarden(mat, mesh);
     else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
     else if (kind === 'hound') this.buildHound(mat, mesh);
-    else this.buildSkeleton(mat, mesh, kind === 'archer', palette);
+    else this.buildSkeleton(mat, mesh, kind === 'archer' || kind === 'skirmisher', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'mason') this.dressMason(mat, mesh);
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
+    if (kind === 'skirmisher') {
+      // The blade's (B5's colour for melee): a red rag knotted round the brow, light and quick.
+      this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.03, 6, 16).rotateX(Math.PI / 2), mat(0xb02a22, { roughness: 1 }), 0, 0.05, 0));
+    }
     if (kind === 'cantor') {
       // Warded (B5), so the archer's: a pale ward-ring stands behind its hood, the Silver Ring's colour.
       this.head.add(mesh(new THREE.TorusGeometry(0.24, 0.02, 6, 20), new THREE.MeshBasicMaterial({ color: 0xcfe6ff, toneMapped: false }), 0, 0.08, -0.14));
@@ -771,7 +781,7 @@ export class EnemyView {
     // Hit reaction: white flash, and a flinch on light enemies (a small rock on big ones).
     if (curr.lastHitAt !== this.lastHitAt) {
       this.lastHitAt = curr.lastHitAt;
-      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' ? 1 : 0.25;
+      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' ? 1 : 0.25;
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
@@ -1018,6 +1028,7 @@ export class EnemyView {
         break;
       }
       case 'archer':
+      case 'skirmisher':
         switch (e.ai) {
           case 'aim':
             return into(this.from, P.aim, t / 0.3);
@@ -1121,7 +1132,7 @@ export function windupProgress(e: EnemyState): number {
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
-      return clamp01(t / (tuning.archer.aimMs / 1000));
+      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
