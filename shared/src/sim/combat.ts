@@ -178,7 +178,7 @@ function clearTelegraph(e: EnemyState): void {
  * knockback or flinch, hitstop and the hit event. Returns false if it couldn't be hit.
  */
 /** A hit on a channelling Wraith breaks the channel (E1d: ranged beats magic). */
-export function breakChannel(e: EnemyState, hit?: HitSpec): void {
+export function breakChannel(e: EnemyState, hit?: HitSpec, hero?: PlayerState): void {
   // A Grave Cantor's raise (W1) is the archer's to break: an arrow or a spell's bolt, not a blade.
   if (e.kind === 'cantor' && e.ai === 'chant' && hit?.projectile) {
     e.tele.shape = 'none';
@@ -193,6 +193,10 @@ export function breakChannel(e: EnemyState, hit?: HitSpec): void {
   e.ai = 'recover';
   e.aiTime = 0;
   e.recoverTime = tuning.wraith.brokenMs / 1000;
+  // The Gallery Longbow (the Mason's signature bow): its arrow that breaks a rebuild stuns the Chanter.
+  if (e.kind === 'chanter' && hit?.projectile && hit.style === 'bow' && hero?.mods.channelStun && tuning.bosses.signatureDrops) {
+    e.recoverTime = Math.max(e.recoverTime, tuning.chanter.galleryStunMs / 1000);
+  }
 }
 
 export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boolean {
@@ -225,7 +229,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // Riposte (the parrying dagger): the first blow after a parried hit crits, if it comes in time.
   const riposte = hero ? riposteStrike(state, hero, hit) : 1;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
-  breakChannel(e, hit);
+  breakChannel(e, hit, hero);
   // Marked (the Scout's signature): a party hit on a Scout's mark lands harder and feeds their Flow.
   const marked = markedMult(state, e, hero, hit.dot);
   // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.

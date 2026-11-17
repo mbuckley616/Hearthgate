@@ -421,11 +421,12 @@ describe("the Mason's signature drops (M3)", () => {
   const list = SIGNATURES.mason!;
 
   it('offers the shield to the tank and the staff to the mage who broke the Guards', () => {
-    expect(list.map((p) => p.job)).toEqual(['tank', 'armoured']);
+    expect(list.map((p) => p.job)).toEqual(['tank', 'armoured', 'warded']);
     expect(offerFor(list, { tank: 300, armoured: 100 })?.name).toBe('Mortarward Shield');
     expect(offerFor(list, { armoured: 200, boss: 400 })?.name).toBe("Chanter's Staff");
+    expect(offerFor(list, { warded: 90 })?.name).toBe('Gallery Longbow');
     // Nobody's job on the list: the first piece.
-    expect(offerFor(list, { warded: 90 })?.name).toBe('Mortarward Shield');
+    expect(offerFor(list, { boss: 90 })?.name).toBe('Mortarward Shield');
   });
 
   it('makes each a real item the server takes back, worn in its slot', () => {

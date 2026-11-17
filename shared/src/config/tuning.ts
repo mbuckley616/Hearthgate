@@ -1807,6 +1807,8 @@ export const tuning = {
     rebuildMs: 5000,
     rebuildHpFrac: 1,
     cooldownMs: 1500,
+    /** The Gallery Longbow (the Mason's signature bow, Michael's A, 17 Nov): an arrow of it that breaks a rebuild stuns the Chanter this long. */
+    galleryStunMs: 1000,
     spawnMs: 900,
     deathMs: 1400,
     knockbackTaken: 0.6,
@@ -3956,6 +3958,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'crownbearer.cooldownMs': [0, 10000, 100],
   'king.crownbearers': [0, 3, 1],
   'chanter.rebuildMs': [500, 15000, 100],
+  'chanter.galleryStunMs': [0, 5000, 50],
   'chanter.rebuildHpFrac': [0.1, 1, 0.05],
   'gravehand.phase2At': [0, 1, 0.05],
   'gravehand.wardTaken': [0, 1, 0.05],

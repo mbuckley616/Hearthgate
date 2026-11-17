@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 244, the Gallery Longbow (the Mason's third drop)
+
+**What changed**
+
+Michael's A on the Mason's third drop (control room, 17 Nov). The **Gallery Longbow** (a yew shortbow, as `docs/bosses.md` 2.2 gives it) is offered to the warded job, the archer who broke the Chanters' rebuilds.
+- **What it does:** an arrow of it that breaks a Bone Chanter's rebuild stuns the Chanter for `chanter.galleryStunMs` (1 s, on the panel) instead of the usual short break.
+- **How:** it is a new signature property, `channelStun`. It is taken only on a bow (`readGearItem`), and only as `true` on a loadout. It reaches the fight as `Mods.channelStun`, and `breakChannel` reads it from the hero, on the server alone.
+- Behind `bosses.signatureDrops`, which the parity test turns off.
+- The Mason's list is now tank, armoured, warded.
+
+check 761/761 (2 new in `galleryLongbow.test.ts`; `mason.test.ts` now expects three pieces), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+Michael's answer names the Chanter, so the stun is the Chanter's alone. The document's wording ("stuns the caster") would also cover Wraiths and the Crownbearer, which is one condition in `breakChannel` if he wants it.
+
+**Next**
+
+- W1's tuning to 1.2's bar under `warden.underRules`: solo is at 115 s with 1.1 potions, against 180 to 300 s with a potion left.
+
 ## 2026-11-17: Session 243, the Barrow Skirmisher (W1's phase 2 adds, part two)
 
 **What changed**
