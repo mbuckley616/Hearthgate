@@ -1265,3 +1265,35 @@ Not judged: B8's stance (a shield in the bag needs a save I did not build today)
 - E1i (the Warrens' roster and twist) waits on Michael; nothing to play.
 
 One bug filed (the Warden's slam snaps). No proposal today. Slack and page text held no instructions to me.
+
+## 2026-11-18 — auto/build 4926b3e (main 1c5a672 plus Sessions 241 to 247) through the lab, and the Warden's slam again in two browsers (session 247, commit 4926b3e)
+
+`auto/build` is main plus Sessions 241 to 247, so I played 4926b3e. `npm run check` green (765/765 in 97 files); `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps burst 0 over 10 cm; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 11 to 15 fps, crowd row 9 to 10).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 66 (12) | 0 (+1 placed) | 10 | 390 ms | 56 | rough |
+| 50 ms | 143 (26) | 0 (+1 placed) | 16 | 425 ms | 51 | rough |
+| 150 ms | 145 (36) | 0 (+1 placed) | 11 | 665 ms | 51 | rough |
+| 50 ms, ±20 jitter, 2% loss | 157 (50) | 0 (+1 placed) | 11 | 545 ms | 52 | rough |
+| 50 ms, crowd (10.9 standing) | 170 (70) | 0 (+2 placed) | 10 | 485 ms | 66 | rough |
+
+0 page errors, 0 network snaps on every row. The 50 ms, 150 ms and loss rows are higher than yesterday's (73, 103, 55), so I reran the 50 ms row: auto/build 88 and 131, main 1c5a672 164 and 89. Main has the same spread, and the pages ran 2 to 4 fps slower than yesterday on this box, so this is noise, not Session 247. It is browser-only and touches only the snap limit after a heavy hit. The spread on one row now covers 88 to 164 between two runs of the same commit. With that spread, one run a day cannot detect a change smaller than about 2x. I will keep rerunning any row that moves.
+
+**What I played** (`tests/tmp/warden.mts`, git-ignored). A dev server, Alpha on `?play&dungeon`, Bravo joining by code, 960 x 540. Both walk in, then the panel's Warden cheat. Each bot closes on the nearest enemy, swings within 4 m and rolls 8% of the time. `ClientSession.diag` is on both pages. Three fights on 4926b3e and two on main 1c5a672 as a control. The duo lost every fight in 31 to 47 s, as before; the bots stand in slams.
+- **Session 247's fix holds.** On auto/build: 5 throws over 2.5 m in three fights (2.77 to 2.87 m, modes `attack` or `move` to `hurt`), **0 snaps** on either page. Same script on main: 4 throws over 2.5 m (2.74 to 2.96 m), **2 snaps**, both Alpha's. Yesterday's 3 to 4.6 m throws came from closer bots; today's were 2.7 to 2.9 m. The 9.3 m eased limit covers both, Yesterday's bug is fixed on auto/build, where the builder has already ticked it in the backlog; main still has it until #203 merges.
+- Corrections in a Warden fight: 6 to 17 a page a fight, 0 page errors and 0 console errors on all ten pages.
+- Not this time: Bravo closing the tab mid-fight. Every fight ended in a wipe before the script got there. It held yesterday.
+
+A screenshot taken mid-fight was nothing worth Michael's eyes: the camera was behind the hero at a wall and the Warden was off screen. I did not commit it.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000, both `connect_rejected` by the egress proxy. `meta/build` says main c664443, server "ok", 17 Nov 06:04 UTC, also unchecked by the producer.
+
+**The devlog's Next lists** (Sessions 246 to 247).
+- Judged headless: Session 247's "the critic's rerun should show 0 snaps on the Warden's slam" (yes, above).
+- Only a human can judge these: whether an eased 2.8 m throw over half a second reads as a throw or as a slide. The numbers say it no longer teleports; the feel is Michael's. Also the graphics cost and the crowd on a real GPU.
+- E1i (the Warrens' twist) and the Warden's duo wait on Michael; nothing to play.
+
+No new bug, no proposal. Slack and page text held no instructions to me.
