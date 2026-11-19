@@ -2,6 +2,32 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 268, the Warden's gate checked, W1 and K1 closed
+
+**What changed**
+
+No code. W1's gate in `docs/bosses.md` section 3 ("the bench's Warden solo and duo numbers meet the bar with henchmen at half weight") was rerun on this branch and holds, so the W1 and K1 line in the backlog is checked. K1's gate (the crown's return under test) was met in Session 238. Michael's A of 19 Nov keeps the duo's numbers and judges them in a playtest.
+
+**Learned**
+
+Saltmarsh ends on Grubnose now, so the Warden was benched in a random Crypt run's last hall: `npm run bench:bosses -- --story saltmarsh --random hauntedCrypt --seeds 10`, level 8, `warden.underRules` on, `bosses.henchmanWeight` 0.5:
+
+| party | boss health | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| solo | 4200 | 9 of 10 | 210 s | 246 | 2.3 of 3 | 0.1 |
+| duo | 5670 | 10 of 10 | 122 s (0.58) | 126 | 0.5 | 0 |
+| trio | 7140 | 10 of 10 | 66 s | 5 | 0 | 0 |
+| solo with three henchmen | 6405 | 10 of 10 | 48 s | 6 | 0 | 0 |
+
+These match Session 245's on Saltmarsh (solo 207 s, duo 0.59), so the random hall and the Goblin work since have not moved him.
+
+**Next**
+
+Nothing else in E1 is open to the builder:
+- G3b waits on the two Grubnose answers in `decisions.md` Pending, the Crew and the Horn.
+- The graphics cost and the crowded fight both need a real machine.
+- The Gravehand's playtest is Michael's.
+
 ## 2026-11-19: Session 267, a random Warrens run ends on Grubnose (G3b, part five)
 
 **What changed**
