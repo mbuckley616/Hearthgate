@@ -2,6 +2,41 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 267, a random Warrens run ends on Grubnose (G3b, part five)
+
+**What changed**
+
+`bossOf` now takes the floor's dungeon type as well as its story. A random run of the Goblin Warrens' type ends on Chief Grubnose and his Pig, as `docs/bosses.md` (approved 16 Nov) says: "Random runs end on the Warden until a type's roster has a boss, then on that type's." A random Crypt run, and a run from a browser that sends no type, still ends on the Warden. A story dungeon keeps the boss written for it, whatever its type. With `grubnose.enabled` off, a random Warrens run ends on the Warden again.
+
+Nobody can choose a random Warrens run yet: the type stays shut on Wren's Random tab until G3b's tuning is done.
+
+`npm run bench:bosses -- --story saltmarsh --random goblinWarrens` benches the boss in the last hall of a random run of that type (three medium floors at the story's difficulty, seed 1) instead of the story's own hall.
+
+`grubnose.test.ts` adds a case: random Warrens to Grubnose, random Crypt and untyped to the Warden, a story keeping its boss under another type, and the switch.
+
+check 810/810, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Grubnose has nothing tied to Saltmarsh's hall. His Pig's charges, the horn's adds and the loot pile all take their places from the boss room he wakes in. In a random Warrens hall, 5 seeds at level 8:
+
+| party | kills | median time to kill | damage taken | phase 3 |
+|---|---|---|---|---|
+| solo | 4 of 5 | 86 s | 127 | 5 of 5 |
+| duo | 5 of 5 | 62 s (0.72) | 181 | 5 of 5 |
+| trio | 5 of 5 | 37 s | 38 | 5 of 5 |
+| solo with three henchmen | 5 of 5 | 22 s | 6 | 5 of 5 |
+
+These sit close to Saltmarsh's (solo 104 s, duo 0.59), so tuning him on Saltmarsh will carry to random runs.
+
+**Next**
+
+Left of G3b, both waiting on answers in `decisions.md` Pending:
+- the Crew's question, then the health to the bar (about 4000 for the solo);
+- the Horn.
+
+Then the Warrens open on Wren's Random tab, where a run now ends on Grubnose.
+
 ## 2026-11-19: Session 266, Grubnose against the bar, measured (G3b, part four)
 
 **What changed**

@@ -259,4 +259,21 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(plan.type).toBe('goblinWarrens');
     for (let f = 1; f <= plan.floors; f++) expect(floorSpecFor(plan, f).type).toBe('goblinWarrens');
   });
+
+  it("a random Warrens run ends on Grubnose, a random Crypt run on the Warden, a story on its own (docs/bosses.md 3)", () => {
+    const random = (type?: 'goblinWarrens' | 'hauntedCrypt') =>
+      planChoice([], 7, { kind: 'random', floors: 3, size: 'small', difficulty: 1, modifier: null, ...(type ? { type } : {}) });
+    const last = (plan: ReturnType<typeof random>) => floorSpecFor(plan, plan.floors);
+    const warrens = last(random('goblinWarrens'));
+    expect(bossOf(warrens.story, warrens.type)).toBe('grubnose');
+    const crypt = last(random('hauntedCrypt'));
+    expect(bossOf(crypt.story, crypt.type)).toBe('warden');
+    const old = last(random());
+    expect(bossOf(old.story, old.type)).toBe('warden');
+    // A story keeps the boss written for it, whatever its type.
+    expect(bossOf('old-cellar', 'goblinWarrens')).toBe('warden');
+    expect(bossOf('mossgate', 'goblinWarrens')).toBe('gravehand');
+    tuning.grubnose.enabled = false;
+    expect(bossOf(warrens.story, warrens.type)).toBe('warden');
+  });
 });

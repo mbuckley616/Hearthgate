@@ -11,7 +11,7 @@ import { composeRoom, roomTier, type Place } from './roomMix';
 import { minibossNames, roleOf, roomKindIn } from './roles';
 import { earnFocus } from './focus';
 import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
-import { dungeonTypeOf } from '../level/dungeonTypes';
+import { dungeonTypeOf, type DungeonType } from '../level/dungeonTypes';
 import type { EnemyState } from './types';
 import { difficultyMult } from '../game/portalChoice';
 import type { GearItem } from './catalogue';
@@ -399,13 +399,17 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
 
 /**
  * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, Mossgate Barrow's
- * Gravehand (H1), Emberhall's Ossuary Mason (M1), the Warden for every other dungeon until its type's roster brings one.
+ * Gravehand (H1), Emberhall's Ossuary Mason (M1). Any other run ends on its type's boss once that
+ * roster has one (docs/bosses.md 3: the Warrens' Grubnose), and on the Warden until then.
  */
-export function bossOf(story: string | undefined): EnemyKind {
+export function bossOf(story: string | undefined, type?: DungeonType): EnemyKind {
   if (story === 'mossgate' && tuning.gravehand.enabled) return 'gravehand';
   if (story === 'saltmarsh' && tuning.grubnose.enabled) return 'grubnose';
   if (story === 'emberhall' && tuning.mason.enabled) return 'mason';
-  return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
+  if (story === 'hollow-crown' && tuning.king.hollowCrown) return 'king';
+  // A story dungeon keeps the boss written for it: only a random run takes its type's.
+  if (story === undefined && type === 'goblinWarrens' && tuning.grubnose.enabled) return 'grubnose';
+  return 'warden';
 }
 
 function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
@@ -420,7 +424,7 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const boss = room.kind === 'boss';
   if (boss) {
     const c = { x: (room.inner.minX + room.inner.maxX) / 2, z: (room.inner.minZ + room.inner.maxZ) / 2 };
-    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story), c.x, c.z, 0);
+    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story, world.level.dungeon!.def.spec.type), c.x, c.z, 0);
     r.bossId = e.id;
     r.waveSize = 1;
   } else {

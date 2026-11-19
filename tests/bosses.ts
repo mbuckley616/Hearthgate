@@ -14,6 +14,8 @@
  *   npm run bench:bosses -- --today                       (the rule every enemy keeps, for comparison)
  *   npm run bench:bosses -- --set bosses.soloCooldownScale=1.6   (a panel value, repeatable)
  *   npm run bench:bosses -- --sources            (also the heroes' damage taken by attack and add)
+ *   npm run bench:bosses -- --story saltmarsh --random goblinWarrens   (a random run of that type, three
+ *                                                 medium floors at the story's difficulty, seed 1: its own hall)
  *
  * Writes tests/tmp/bosses.json. A run that is neither a kill nor a wipe in `--minutes` (10) is a timeout.
  */
@@ -29,6 +31,7 @@ import { lookOf, wornMods, type Worn } from '@hearthgate/shared/sim/catalogue';
 import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { isTargetable } from '@hearthgate/shared/sim/combat';
 import { bossOf } from '@hearthgate/shared/sim/floorRun';
+import { isDungeonType } from '@hearthgate/shared/level/dungeonTypes';
 import { wardenPace } from '@hearthgate/shared/sim/enemies';
 import { masonBound } from '@hearthgate/shared/sim/mason';
 import { inTelegraph } from '@hearthgate/shared/sim/henchman';
@@ -47,6 +50,13 @@ const story = STORY.find((s) => s.id === STORY_ID);
 if (!story) throw new Error(`no story dungeon "${STORY_ID}" (${STORY.map((s) => s.id).join(', ')})`);
 // "One hero at their style's level for that dungeon": the top of its guide by default.
 const LEVEL = Number(arg('level', String(story.levels[1])));
+// `--random <type>`: the last floor of a random run of that dungeon type in place of the story's own.
+const RANDOM = arg('random', '');
+if (RANDOM && !isDungeonType(RANDOM)) throw new Error(`no dungeon type "${RANDOM}"`);
+const runPlan = () =>
+  RANDOM && isDungeonType(RANDOM)
+    ? planChoice([], 1, { kind: 'random', floors: 3, size: 'medium', difficulty: story!.run.difficulty, modifier: null, type: RANDOM })
+    : planChoice([], 1, { kind: 'story', id: story!.id });
 const MAX_TICKS = Math.round(Number(arg('minutes', '10')) * 60 * tuning.sim.tickRate);
 
 function xpFor(level: number): number {
@@ -268,7 +278,7 @@ interface Result {
 }
 
 function fight(party: Party, seed: number): Result {
-  const plan = planChoice([], 1, { kind: 'story', id: story!.id });
+  const plan = runPlan();
   const spec = floorSpecFor(plan, plan.floors);
   const level = floorLevel(spec);
   const world = buildWorld(level);
@@ -432,8 +442,9 @@ const predictHp = (heroes: number, henchmen: number) =>
   B.partyScaling
     ? 1 + Math.max(0, heroes + henchmen * B.henchmanWeight - 1) * B.extraPlayerHealth
     : 1 + (heroes + henchmen - 1) * tuning.run.extraPlayerHealth;
-const boss = bossOf(story.id);
-console.log(`The boss bench: ${boss} in ${story.name}'s last floor (difficulty ${story.run.difficulty}), heroes at level ${LEVEL}, ${SEEDS} seeds`);
+const lastSpec = floorSpecFor(runPlan(), runPlan().floors);
+const boss = bossOf(lastSpec.story, lastSpec.type);
+console.log(`The boss bench: ${boss} in ${RANDOM ? `a random ${RANDOM} run` : story.name}'s last floor (difficulty ${story.run.difficulty}), heroes at level ${LEVEL}, ${SEEDS} seeds`);
 console.log(
   B.partyScaling
     ? `boss health (B1): 1 + (heroes + henchmen x ${B.henchmanWeight} - 1) x ${B.extraPlayerHealth}; pace x${B.soloCooldownScale} solo, /${B.henchmanPace} with henchmen\n`
