@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 250, the Goblin Slinger (E1i, part three)
+
+**What changed**
+
+The Warrens' archer, the second goblin:
+- **Its brain and numbers:** the Skeleton Archer's brain (aim, lock, loose, back off), reading `tuning.slinger` through `archerNumbers`. Against the archer's numbers: 34 health (not 45), poise 3, 3 m/s, a 900 ms aim (800), a stone of 9 damage (the arrow's 8), and it backs off at 5 m.
+- **Its stone:** `fireEnemyArrow` lobs it. It crosses the ground at `arrowSpeed` (13 m/s) and is thrown up just enough to come down where the aim locked, under the arrows' gravity plus `slinger.lobGravity` (12). It travels as an enemy arrow with `stone: true`, falls under that gravity in `stepProjectiles`, and lands blunt. The panel has its health, speed, lob and damage.
+- **Where it fights:** `ROOM_KINDS` swaps it in for the Skeleton Archer in a Warrens room. No Bone Priest raises it.
+- **Its look:** the Cutter's goblin with a sling cord and stone for a weapon, and the archer's poses. The stone is drawn as a grey lump with no streak.
+
+`warrensSlinger.test.ts`: four seeds, every Crypt archer is a Warrens Slinger; a stone leaves rising and lands on a hero standing still, blunt, for the Slinger's damage. check 774/774, test:net green, parity hashes unchanged (the slice's arrows keep `life` 2 and their flight).
+
+**Learned**
+
+The telegraph's hue follows the damage type under B4, so a Slinger's aim, being blunt, draws red as a melee blow does, not yellow as an arrow's. If that reads wrong in play, the fix is in `telegraphTell` (a projectile of any type keeps yellow), not in the stone.
+
+**Next**
+
+- The Pot-lid Goblin (the shield role), then the War Pig. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 249, Pilfer, the Warrens' twist (E1i, part two)
 
 **What changed**

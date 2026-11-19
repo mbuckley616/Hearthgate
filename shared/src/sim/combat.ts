@@ -95,7 +95,7 @@ const ATTACKING = new Set(['windup', 'slash1', 'between', 'slash2', 'aim', 'shoo
 
 /** Light enemies flinch and get knocked out of their attacks; brutes and the Warden only stagger. */
 function isLight(e: EnemyState): boolean {
-  return e.kind === 'grunt' || e.kind === 'archer' || e.kind === 'cutter';
+  return e.kind === 'grunt' || e.kind === 'archer' || e.kind === 'cutter' || e.kind === 'slinger';
 }
 
 /**

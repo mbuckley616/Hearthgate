@@ -449,7 +449,7 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
 
 /** An archer's numbers: a Barrow Skirmisher (W1) is an archer with its own. */
 function archerNumbers(e: EnemyState): typeof tuning.archer {
-  return e.kind === 'skirmisher' ? tuning.skirmisher : tuning.archer;
+  return e.kind === 'skirmisher' ? tuning.skirmisher : e.kind === 'slinger' ? tuning.slinger : tuning.archer;
 }
 
 function archerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
@@ -537,6 +537,22 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
   const dy = to.y - from.y;
   const dz = to.z - from.z;
   const len = Math.hypot(dx, dy, dz) || 1;
+  let vx = (dx / len) * a.arrowSpeed;
+  let vy = (dy / len) * a.arrowSpeed;
+  let vz = (dz / len) * a.arrowSpeed;
+  let life = 2;
+  // A Goblin Slinger's stone (E1i) is lobbed: `arrowSpeed` across the ground, and thrown up enough to
+  // come down where the aim locked under the arrows' gravity and its own.
+  const stone = e.kind === 'slinger';
+  if (stone) {
+    const ground = Math.hypot(dx, dz) || 1;
+    const t = ground / a.arrowSpeed;
+    const g = tuning.rangedCombo.arrowGravity + tuning.slinger.lobGravity;
+    vx = (dx / ground) * a.arrowSpeed;
+    vz = (dz / ground) * a.arrowSpeed;
+    vy = dy / t + 0.5 * g * t;
+    life = t + 1;
+  }
   state.projectiles.push({
     id: state.nextId++,
     kind: 'arrow',
@@ -544,11 +560,11 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
     x: from.x,
     y: from.y,
     z: from.z,
-    vx: (dx / len) * a.arrowSpeed,
-    vy: (dy / len) * a.arrowSpeed,
-    vz: (dz / len) * a.arrowSpeed,
+    vx,
+    vy,
+    vz,
     age: 0,
-    life: 2,
+    life,
     stuck: false,
     charged: false,
     radius: 0,
@@ -568,6 +584,7 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
     chained: false,
     marks: false,
     comboed: false,
+    ...(stone ? { stone: true as const } : {}),
   });
 }
 
@@ -2119,6 +2136,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.skirmisher.cooldownMs / 1000;
     case 'cutter':
       return tuning.cutter.attackCooldownMs / 1000;
+    case 'slinger':
+      return tuning.slinger.cooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':
@@ -2168,7 +2187,7 @@ export function raisable(state: SimState, e: EnemyState): boolean {
   const role = roleOf(e.kind);
   if (role !== 'fodder' && role !== 'archer' && role !== 'shield') return false;
   // A Bone Priest raises bones: a goblin (E1i) stays down.
-  if (e.kind === 'cutter') return false;
+  if (e.kind === 'cutter' || e.kind === 'slinger') return false;
   return state.enemies.some((o) => roleOf(o.kind) === 'leader' && o.ai !== 'dead');
 }
 

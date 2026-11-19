@@ -396,6 +396,8 @@ export interface ProjectileState {
   embers?: boolean;
   /** The Gravehand's shatter flick (H3): a shard that splits in two where it lands, unless it hits a hero. */
   shatters?: true;
+  /** A Goblin Slinger's stone (E1i): an enemy arrow that falls under `slinger.lobGravity` too, and lands blunt. */
+  stone?: true;
   /** Seconds before it flies: until then it stands still where it was loosed, unseen, hitting nothing. */
   waits?: number;
   /** Burst only: slow applied to enemies caught in it (seconds). */

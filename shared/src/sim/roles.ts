@@ -59,6 +59,7 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   skirmisher: 'archer',
   // The Goblin Warrens' (E1i): a Skeleton Warrior's brain, a goblin's numbers.
   cutter: 'fodder',
+  slinger: 'archer',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -114,6 +115,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':
     case 'mortarGuard':
+    case 'slinger':
       return 'blunt';
     case 'chanter':
     case 'crownbearer':
@@ -194,6 +196,7 @@ const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
   cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
   skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
   cutter: { name: 'Goblin Cutter', plural: 'Goblin Cutters' },
+  slinger: { name: 'Goblin Slinger', plural: 'Goblin Slingers' },
 };
 
 /**
@@ -212,7 +215,7 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
  * the room it always was, and a Warrens room keeps its shape as goblins replace skeletons.
  */
 export const ROOM_KINDS: Partial<Record<DungeonType, Partial<Record<EnemyKind, EnemyKind>>>> = {
-  goblinWarrens: { grunt: 'cutter' },
+  goblinWarrens: { grunt: 'cutter', archer: 'slinger' },
 };
 
 /** What a room of `type` spawns for the composer's `kind`. */
