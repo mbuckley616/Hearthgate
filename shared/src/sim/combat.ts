@@ -95,7 +95,7 @@ const ATTACKING = new Set(['windup', 'slash1', 'between', 'slash2', 'aim', 'shoo
 
 /** Light enemies flinch and get knocked out of their attacks; brutes and the Warden only stagger. */
 function isLight(e: EnemyState): boolean {
-  return e.kind === 'grunt' || e.kind === 'archer' || e.kind === 'cutter' || e.kind === 'slinger';
+  return e.kind === 'grunt' || e.kind === 'archer' || e.kind === 'cutter' || e.kind === 'slinger' || e.kind === 'nestSlinger';
 }
 
 /**
@@ -112,7 +112,7 @@ function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerS
   const rushing = role === 'elite' && (e.ai === 'charge' || e.ai === 'chargeWindup');
   if (hit.style === 'staff' && !rushing) return false;
   if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (!rushing && (e.guardDownUntil ?? -1) > state.time)) return false;
-  const sb = e.kind === 'chieftain' ? tuning.chieftain : role === 'elite' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
+  const sb = e.kind === 'chieftain' ? tuning.chieftain : role === 'elite' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : e.kind === 'potlidCrew' ? tuning.potlidCrew : tuning.shieldbearer;
   // The hit's push points from the attacker through the enemy: against its facing means from the front.
   const len = Math.hypot(hit.dirX, hit.dirZ);
   if (len < 1e-6) return false;

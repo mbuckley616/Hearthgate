@@ -2,6 +2,52 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 259, Grubnose's horn: the Nests and the Crew (G2b, part two)
+
+**What changed**
+
+The horn now brings adds, by weakness (`docs/bosses.md` 1.3). They are two new kinds, each a goblin of the roster with numbers of its own:
+- **Nest Slinger.** A Goblin Slinger, warded: arrows land harder and spells are turned aside, so it is the archer's job.
+- **Pot-lid Crew.** A Pot-lid Goblin, armoured: a blade does little and a staff does full damage, so it is the mage's job. It rushes the mage while one stands (`nearestTarget`), past a nearer blade.
+
+As the horn ends, `hornAdds` raises as many as the heroes, round him at `grubnose.addRadius` (8 m):
+- one hero: a Nest;
+- two heroes: a Nest and the Crew;
+- three heroes: a second Nest.
+
+Henchmen and summons do not count. The Crew comes in opposite the first Nest.
+
+Both kinds are dressed as goblins: the Nest as a Slinger, the Crew with the pot-lid. They pose as their parents do and count in the Pack Leader's war cry. They have their own panel ranges for health and the Nest's damage.
+
+`grubnose.test.ts` adds two cases:
+- the horn raises one Nest for a hero alone, and the count grows with the party; each kind has its weakness;
+- the Crew picks the mage past a nearer sword, and the sword once the mage is down, while a Nest takes the nearest.
+
+check 800/800, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds, phases 1 and 2:
+
+| party | kills | median time to kill | damage taken | potions |
+|---|---|---|---|---|
+| solo | 3 of 5 (2 timeouts at 36% left) | 83 s | 129 | 1.2 |
+| duo | 5 of 5 | 54 s (0.65 of solo) | | |
+| trio | 5 of 5 | 33 s | | |
+
+So the adds make the solo hero bleed: damage taken rose from 18 to 129. But the boss is still far short of 1.2's 180 to 300 s for a solo kill.
+
+The two solo timeouts both stop at 36% left, after the horn. The scripted hero does not finish him on foot. It may be the bench's hero, not the boss; the next session looks at that before tuning.
+
+**Next**
+
+G2b part three:
+- the loot pile at the hall's centre that refills a Nest every 10 s, a prop the party can smash;
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound in place of the Warden's roar.
+
+Then G3b.
+
 ## 2026-11-19: Session 258, Grubnose unhorsed (G2b, part one)
 
 **What changed**

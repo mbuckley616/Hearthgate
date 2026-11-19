@@ -183,10 +183,13 @@ export function nearestTarget(state: SimState, e: EnemyState): PlayerState | nul
   }
   // The Bone Ring (H2) is the skirmisher: it darts past the blade for the archer and the mage.
   const backline = e.kind === 'boneRing' && state.players.some((p) => p.mode !== 'down' && !isHidden(state, p) && p.style !== 'sword');
+  // Grubnose's Pot-lid Crew (G2b) rush the mage while one stands.
+  const mage = e.kind === 'potlidCrew' && state.players.some((p) => p.mode !== 'down' && !isHidden(state, p) && p.style === 'staff');
   let best: PlayerState | null = null;
   let bestD = Infinity;
   for (const p of state.players) {
     if (backline && p.style === 'sword') continue;
+    if (mage && p.style !== 'staff') continue;
     // An Assassin in their Smoke Bomb's cloud is lost to every enemy (the builds pass).
     if (p.mode === 'down' || isHidden(state, p)) continue;
     const d = Math.hypot(p.x - e.x, p.z - e.z);
@@ -471,7 +474,7 @@ function archerNumbers(e: EnemyState): typeof tuning.archer {
     const g = tuning.grubnose;
     return { ...tuning.archer, turnRateDeg: g.turnRateDeg, aimMs: g.aimMs, aimTrackFrac: g.aimTrackFrac, shootRecoverMs: g.shootRecoverMs, arrowSpeed: g.arrowSpeed, damage: g.damage };
   }
-  return e.kind === 'skirmisher' ? tuning.skirmisher : e.kind === 'slinger' ? tuning.slinger : tuning.archer;
+  return e.kind === 'skirmisher' ? tuning.skirmisher : e.kind === 'slinger' ? tuning.slinger : e.kind === 'nestSlinger' ? tuning.nestSlinger : tuning.archer;
 }
 
 function archerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
@@ -565,7 +568,7 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
   let life = 2;
   // A Goblin Slinger's stone (E1i) is lobbed: `arrowSpeed` across the ground, and thrown up enough to
   // come down where the aim locked under the arrows' gravity and its own.
-  const stone = e.kind === 'slinger';
+  const stone = e.kind === 'slinger' || e.kind === 'nestSlinger';
   if (stone) {
     const ground = Math.hypot(dx, dz) || 1;
     const t = ground / a.arrowSpeed;
@@ -677,7 +680,7 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
  */
 /** A shield's numbers: the Knight's, a Pot-lid Goblin's (E1i), or the Shieldbearer's. */
 export function shieldNumbers(e: { kind: EnemyKind }): typeof tuning.shieldbearer {
-  return e.kind === 'knight' ? tuning.knight : e.kind === 'chieftain' ? tuning.chieftain : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
+  return e.kind === 'knight' ? tuning.knight : e.kind === 'chieftain' ? tuning.chieftain : e.kind === 'potlid' ? tuning.potlid : e.kind === 'potlidCrew' ? tuning.potlidCrew : tuning.shieldbearer;
 }
 
 function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
@@ -1850,6 +1853,15 @@ function setMaulTele(e: EnemyState): void {
   else e.tele = { shape: 'cone', x: e.x, z: e.z, radius: m.stringReach, yaw: e.yaw, arcDeg: m.stringArcDeg };
 }
 
+/**
+ * Grubnose's horn (G2b; docs/bosses.md 1.3 and 2.5): a Nest Slinger for a hero alone, a Pot-lid Crew
+ * with a second hero, a second Nest with a third. Henchmen and summons do not count.
+ */
+export function hornAdds(state: SimState): EnemyKind[] {
+  const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
+  return (['nestSlinger', 'potlidCrew', 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
+}
+
 /** The hero Grubnose slings at (G1b): the farthest standing one at `slingMinRange` or more, in sight. */
 function slingTarget(state: SimState, world: World, e: EnemyState): PlayerState | null {
   let best: PlayerState | null = null;
@@ -1876,6 +1888,8 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   const g = tuning.grubnose;
   if (e.ai === 'roar') {
     if (e.aiTime >= g.roarMs / 1000) {
+      // The horn (G2b): his adds by weakness, as many as the heroes (1.3), the Crew opposite a Nest.
+      if (e.phase === 1) hornAdds(state).forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.addRadius, [0, Math.PI, Math.PI / 2][i] ?? 0));
       e.phase = Math.min(3, e.phase + 1);
       e.summoned = true;
       setAi(e, 'recover');
@@ -2373,6 +2387,10 @@ function attackCooldown(e: EnemyState): number {
       return tuning.slinger.cooldownMs / 1000;
     case 'potlid':
       return tuning.potlid.attackCooldownMs / 1000;
+    case 'nestSlinger':
+      return tuning.nestSlinger.cooldownMs / 1000;
+    case 'potlidCrew':
+      return tuning.potlidCrew.attackCooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'ogre':

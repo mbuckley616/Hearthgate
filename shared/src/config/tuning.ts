@@ -1758,6 +1758,59 @@ export const tuning = {
   },
 
   /**
+   * Chief Grubnose's horn (G2b): a Nest Slinger, a Goblin Slinger on the hall's piles behind its sacks,
+   * warded (arrows harder, spells turned aside: the archer's job); a Slinger's numbers of its own.
+   */
+  nestSlinger: {
+    maxHp: 34,
+    maxPoise: 3,
+    radius: 0.36,
+    height: 1.2,
+    moveSpeed: 3,
+    turnRateDeg: 420,
+    aimMs: 900,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 450,
+    cooldownMs: 2400,
+    arrowSpeed: 13,
+    damage: 9,
+    fleeDistance: 5,
+    floorRange: 14,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1.3,
+    lobGravity: 12,
+  },
+
+  /**
+   * And the Pot-lid Crew: Pot-lid Goblins, armoured (a blade does little, a staff full: the mage's job),
+   * that rush the mage first; a Pot-lid's numbers of their own.
+   */
+  potlidCrew: {
+    maxHp: 55,
+    maxPoise: 7,
+    radius: 0.4,
+    height: 1.25,
+    moveSpeed: 3.2,
+    turnRateDeg: 200,
+    windupTurnRateDeg: 70,
+    attackRange: 1.7,
+    telegraphMs: 600,
+    bashReach: 2.2,
+    bashArcDeg: 40,
+    bashDamage: 9,
+    bashPush: 1.8,
+    bashActiveMs: 150,
+    recoveryMs: 800,
+    attackCooldownMs: 1300,
+    guardArcDeg: 100,
+    guardBreakMs: 3000,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 0.8,
+  },
+
+  /**
    * Chief Grubnose and his Pig (G1b; `docs/bosses.md` 2.5): the Saltmarsh Warrens' boss, a goblin chief
    * riding the War Pig. Phase 1, mounted: the Pig's charge, a red line with no rim, which a guard
    * that covers it stops dead (a stagger, the punish window), and the Chief's sling from the saddle at
@@ -1792,6 +1845,8 @@ export const tuning = {
     /** Unhorsed (G2b): at this share of health the Pig goes down and the Chief blows his horn. */
     phase2At: 0.6,
     roarMs: 1400,
+    /** How far round him his horn's adds come in (G2b). */
+    addRadius: 8,
     /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
     stringTelegraphMs: 700,
     stringActiveMs: 160,
@@ -4268,6 +4323,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'grubnose.aimMs': [200, 2000, 25],
   'grubnose.damage': [0, 60, 1],
   'grubnose.phase2At': [0, 1, 0.05],
+  'nestSlinger.maxHp': [10, 500, 2],
+  'nestSlinger.damage': [0, 60, 1],
+  'potlidCrew.maxHp': [10, 600, 5],
   'grubnose.stringTelegraphMs': [200, 2000, 25],
   'grubnose.stringRecoveryMs': [100, 3000, 25],
   'grubnose.stringCooldownMs': [0, 5000, 50],
@@ -4871,7 +4929,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose' | 'nestSlinger' | 'potlidCrew';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

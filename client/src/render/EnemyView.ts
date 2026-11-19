@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7, nestSlinger: 0.78, potlidCrew: 0.82 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -171,6 +171,9 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   slinger: {},
   // A Pot-lid Goblin (E1i) holds and bashes as a Shieldbearer does; filled in below.
   potlid: {},
+  // Grubnose's horn (G2b): a Slinger and a Pot-lid by weakness; filled in below.
+  nestSlinger: {},
+  potlidCrew: {},
   // A Goblin Shaman (E1i) channels as a Wraith does, staff held up; filled in below.
   shaman: {},
   // A Cave Ogre (E1i) raises and brings down its club as a Bone Brute does; filled in below.
@@ -183,6 +186,8 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
 POSES.potlid = POSES.shieldbearer;
+POSES.potlidCrew = POSES.shieldbearer;
+POSES.nestSlinger = POSES.archer;
 POSES.shaman = POSES.wraith;
 POSES.ogre = POSES.brute;
 POSES.packLeader = POSES.priest;
@@ -277,7 +282,7 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
-    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman' || kind === 'packLeader' || kind === 'chieftain') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'nestSlinger' || kind === 'potlid' || kind === 'potlidCrew' || kind === 'shaman' || kind === 'packLeader' || kind === 'chieftain') this.dressGoblin(mat, mesh, kind === 'slinger' || kind === 'nestSlinger', kind === 'shaman');
     if (kind === 'packLeader') {
       // The Pack Leader: a cap with two curling horns and a red war-paint band, so it is the one to find in a pack.
       const horn = mat(0xd8ccb0, { roughness: 0.7 });
@@ -304,7 +309,7 @@ export class EnemyView {
         this.head.add(mesh(new THREE.ConeGeometry(0.022, 0.09, 4), tooth, Math.cos(a) * 0.15, 0.14, Math.sin(a) * 0.15));
       }
     }
-    if (kind === 'potlid' && this.shield) {
+    if ((kind === 'potlid' || kind === 'potlidCrew') && this.shield) {
       // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
       this.shield.visible = true;
       this.shield.scale.set(1.25, 1.25, 1);
@@ -977,7 +982,7 @@ export class EnemyView {
     // Hit reaction: white flash, and a flinch on light enemies (a small rock on big ones).
     if (curr.lastHitAt !== this.lastHitAt) {
       this.lastHitAt = curr.lastHitAt;
-      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' || curr.kind === 'slinger' || curr.kind === 'shaman' ? 1 : 0.25;
+      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' || curr.kind === 'slinger' || curr.kind === 'nestSlinger' || curr.kind === 'shaman' ? 1 : 0.25;
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
@@ -1219,6 +1224,7 @@ export class EnemyView {
       case 'shieldbearer':
       case 'mortarGuard':
       case 'potlid':
+      case 'potlidCrew':
       case 'chieftain':
       case 'knight': {
         const sb = shieldNumbers(e);
@@ -1241,6 +1247,7 @@ export class EnemyView {
       case 'archer':
       case 'skirmisher':
       case 'slinger':
+      case 'nestSlinger':
         switch (e.ai) {
           case 'aim':
             return into(this.from, P.aim, t / 0.3);
@@ -1343,9 +1350,9 @@ export function windupProgress(e: EnemyState): number {
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' || e.kind === 'chieftain' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' || e.kind === 'potlidCrew' || e.kind === 'chieftain' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
-      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : e.kind === 'grubnose' ? tuning.grubnose.aimMs : tuning.archer.aimMs) / 1000));
+      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : e.kind === 'nestSlinger' ? tuning.nestSlinger.aimMs : e.kind === 'grubnose' ? tuning.grubnose.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
       return e.kind === 'brute' || e.kind === 'ogre' ? clamp01(t / (heavyNumbers(e).telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':

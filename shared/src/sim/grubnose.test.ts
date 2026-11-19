@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer, type Loadout } from './coop';
-import { createEnemy, stepEnemies } from './enemies';
+import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
-import { attackType, roleOf, telegraphColour } from './roles';
+import { ADD_WEAKNESS, attackType, roleOf, telegraphColour, weakTo } from './roles';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -131,5 +131,35 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     until(s, p, () => boss.ai === 'chargeWindup' || boss.ai === 'aim', 300);
     expect(boss.ai).not.toBe('chargeWindup');
     expect(boss.ai).not.toBe('aim');
+  });
+  it('his horn brings adds by weakness, as many as the heroes: Nests warded, the Crew armoured', () => {
+    const { s, p, boss } = scene();
+    expect(hornAdds(s)).toEqual(['nestSlinger']);
+    boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
+    stepEnemies(s, DT, world);
+    until(s, p, () => boss.ai !== 'roar');
+    expect(s.enemies.filter((e) => e !== boss).map((e) => e.kind)).toEqual(['nestSlinger']);
+    expect(ADD_WEAKNESS.nestSlinger).toBe('warded');
+    expect(weakTo('nestSlinger')).toBe('bow');
+    expect(ADD_WEAKNESS.potlidCrew).toBe('armoured');
+    expect(weakTo('potlidCrew')).toBe('staff');
+    const two = scene();
+    addPlayer(two.s, world, 'p2', loadout, false);
+    expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew']);
+    addPlayer(two.s, world, 'p3', loadout, false);
+    expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew', 'nestSlinger']);
+  });
+
+  it('the Pot-lid Crew rush the mage past a nearer blade', () => {
+    const { s, p } = scene();
+    const mage = addPlayer(s, world, 'p2', loadout, false);
+    Object.assign(mage, { x: 0, z: -10, style: 'staff' });
+    Object.assign(p, { style: 'sword' });
+    const crew = createEnemy(s, world, 'potlidCrew', 0, EDGE - 5, 0);
+    expect(nearestTarget(s, crew)).toBe(mage);
+    const slinger = createEnemy(s, world, 'nestSlinger', 0, EDGE - 5, 0);
+    expect(nearestTarget(s, slinger)).toBe(p);
+    mage.mode = 'down';
+    expect(nearestTarget(s, crew)).toBe(p);
   });
 });

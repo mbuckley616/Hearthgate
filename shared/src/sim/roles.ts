@@ -68,6 +68,9 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   chieftain: 'elite',
   // The Warrens' boss (G1b): Chief Grubnose on his War Pig.
   grubnose: 'boss',
+  // His horn's adds (G2b): a Slinger and a Pot-lid, by weakness.
+  nestSlinger: 'archer',
+  potlidCrew: 'shield',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -131,7 +134,9 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'wardstone':
     case 'mortarGuard':
     case 'slinger':
+    case 'nestSlinger':
     case 'potlid':
+    case 'potlidCrew':
     case 'warPig':
       return 'blunt';
     case 'chanter':
@@ -175,7 +180,7 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
  */
 export type AddWeakness = 'armoured' | 'warded';
 
-export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded', cantor: 'warded' };
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded', cantor: 'warded', nestSlinger: 'warded', potlidCrew: 'armoured' };
 
 const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
 
@@ -223,6 +228,8 @@ const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
   packLeader: { name: 'Pack Leader', plural: 'Pack Leaders' },
   chieftain: { name: 'Goblin Chieftain', plural: 'Goblin Chieftains' },
   grubnose: { name: 'Chief Grubnose', plural: 'Chief Grubnose' },
+  nestSlinger: { name: 'Nest Slinger', plural: 'Nest Slingers' },
+  potlidCrew: { name: 'Pot-lid Crew', plural: 'Pot-lid Crew' },
 };
 
 /**
@@ -245,7 +252,7 @@ export const ROOM_KINDS: Partial<Record<DungeonType, Partial<Record<EnemyKind, E
 };
 
 /** The Warrens' goblins and their pig (E1i): not bones, so no Bone Priest raises one. */
-export const GOBLINS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['cutter', 'slinger', 'potlid', 'warPig', 'shaman', 'ogre', 'packLeader', 'chieftain']);
+export const GOBLINS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['cutter', 'slinger', 'potlid', 'warPig', 'shaman', 'ogre', 'packLeader', 'chieftain', 'nestSlinger', 'potlidCrew']);
 
 /** What a room of `type` spawns for the composer's `kind`. */
 export function roomKindIn(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): EnemyKind {
