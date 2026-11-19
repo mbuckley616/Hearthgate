@@ -1839,6 +1839,11 @@ export const tuning = {
     turnRateDeg: 200,
     chargeRange: 13,
     chargeMinRange: 3.5,
+    /**
+     * A hero inside `chargeMinRange` this long (he backs off, but a wall can stop him) is charged
+     * point-blank: cornered, the Pig never had a close attack, and stood still under free hits.
+     */
+    cornerMs: 1200,
     telegraphMs: 1000,
     trackFrac: 0.6,
     chargeSpeed: 13,
@@ -4348,6 +4353,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'grubnose.wallStunMs': [0, 5000, 50],
   'grubnose.cooldownMs': [0, 6000, 50],
   'grubnose.slingMinRange': [0, 20, 0.5],
+  'grubnose.cornerMs': [200, 5000, 50],
   'grubnose.aimMs': [200, 2000, 25],
   'grubnose.damage': [0, 60, 1],
   'grubnose.phase2At': [0, 1, 0.05],

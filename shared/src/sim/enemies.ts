@@ -2006,7 +2006,10 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
     want.z = -dz / Math.max(dist, 1e-3);
   }
   e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : Math.atan2(dx, dz), g.turnRateDeg * DEG * edt);
-  const inRange = sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange;
+  // Cornered (critic, 19 Nov): a hero who stays inside the charge's minimum, as at a wall he cannot
+  // back away from, is charged point-blank once `cornerMs` of the chase has passed.
+  const cornered = sameLevel && !routed && dist < g.chargeMinRange && e.aiTime >= g.cornerMs / 1000;
+  const inRange = cornered || (sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange);
   if (inRange && e.cooldown <= 0 && lineOfSight(world, e, target)) {
     setAi(e, 'chargeWindup');
     e.attack = e.phase >= 3 ? 'rush1' : 'charge';

@@ -16,6 +16,29 @@ The map is drawn from the `FloorLayout` alone, which does not know the run's sto
 
 G3b waits on the two Grubnose answers in `decisions.md` Pending.
 
+## 2026-11-19: Session 269, Grubnose cornered charges point-blank
+
+**What changed**
+
+Mounted Chief Grubnose backs away from a hero inside his charge's minimum (`chargeMinRange`, 3.5 m) and had no close attack, so a sword hero who walked him into a wall and stood there got free hits for as long as they liked (critic, 19 Nov: 27 s in `chase` at cooldown 0, 770 damage). Now a hero who stays inside the minimum for `grubnose.cornerMs` (1200 ms, on the panel) of his chase is charged point-blank: the same red line and 1 s wind-up, the guard still stopping it; remounted, it opens a run of three as any phase 3 charge does. The design's phase 1 is charges and slings, so the answer is the charge rather than a new attack. Two unit tests in `grubnose.test.ts` put his back to the arena's wall with a hero 2 m off; both fail without the change.
+
+**Learned**
+
+Bench, Saltmarsh, 5 seeds, level 8:
+
+| party | boss health | kills | median time to kill | damage taken | potions used |
+|---|---|---|---|---|---|
+| solo | 1900 | 5 of 5 | 99 s | 182 | 1.4 |
+| duo | 2565 | 5 of 5 | 67 s (0.67) | 172 | 0.6 |
+| trio | 3230 | 5 of 5 | 37 s | 24 | 0 |
+| solo with three henchmen | 2898 | 5 of 5 | 22 s | 10 | 0 |
+
+The bench's sword already fought him close; the solo is a little quicker (104 s in Session 263) and takes more, as the cornered stretches now cost it a charge. Every fight still reaches phase 3 but one henchmen fight. Parity unchanged (the arena never rolls him).
+
+**Next**
+
+G3b's health to the bar waits on the Pot-lid Crew answer in `decisions.md` Pending, and the Horn on its own.
+
 ## 2026-11-19: Session 268, the Warden's gate checked, W1 and K1 closed
 
 **What changed**

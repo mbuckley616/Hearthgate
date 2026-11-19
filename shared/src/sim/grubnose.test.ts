@@ -110,6 +110,29 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     stepEnemies(s, DT, world);
     expect(boss.ai).toBe('chargeWindup');
   });
+  it('cornered at a wall by a hero inside its charge minimum, it charges point-blank (critic, 19 Nov)', () => {
+    const { s, p, boss } = scene();
+    // The Pig's back to the wall, the hero 2 m off and staying there, swinging.
+    Object.assign(boss, { x: 0, z: EDGE - 1.2, yaw: Math.PI });
+    Object.assign(p, { x: 0, z: EDGE - 3.2 });
+    const ticks = until(s, p, () => boss.ai === 'chargeWindup', 600);
+    expect(ticks).toBeGreaterThan(0);
+    expect(ticks * DT * 1000).toBeGreaterThanOrEqual(tuning.grubnose.cornerMs - 20);
+    expect(ticks * DT * 1000).toBeLessThan(tuning.grubnose.cornerMs + 500);
+    expect(boss.attack).toBe('charge');
+    const hp = p.hp;
+    until(s, p, () => boss.ai !== 'chargeWindup' && boss.ai !== 'charge');
+    expect(p.hp).toBeLessThan(hp);
+  });
+
+  it('remounted and cornered, the point-blank charge opens a run of three', () => {
+    const { s, p, boss } = scene();
+    Object.assign(boss, { x: 0, z: EDGE - 1.2, yaw: Math.PI, phase: 3 });
+    Object.assign(p, { x: 0, z: EDGE - 3.2 });
+    expect(until(s, p, () => boss.ai === 'chargeWindup', 600)).toBeGreaterThan(0);
+    expect(boss.attack).toBe('rush1');
+  });
+
   it('unhorsed at 60% (G2b): it blows its horn, then fights on foot with a red string of edge', () => {
     const { s, p, boss } = scene();
     boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
