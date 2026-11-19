@@ -214,6 +214,9 @@ export class EnemyView {
   private eyes: THREE.MeshBasicMaterial;
   private materials: THREE.MeshStandardMaterial[] = [];
   private stars = new THREE.Group();
+  /** Chief Grubnose (G1b, G2b): his rider and the Pig's parts, so the Chief can stand down off it. */
+  private rider: THREE.Group | null = null;
+  private mount: THREE.Object3D[] = [];
   /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
   private crown = new THREE.Group();
   private crowned = false;
@@ -374,7 +377,10 @@ export class EnemyView {
     this.stars.visible = false;
     this.head.add(this.stars);
     if (kind === 'warPig' || kind === 'grubnose') this.dressPig(mat, mesh);
-    if (kind === 'grubnose') this.buildRider(mat, mesh);
+    if (kind === 'grubnose') {
+      this.mount = this.body.children.filter((o) => o !== this.rig);
+      this.buildRider(mat, mesh);
+    }
     if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') {
       // Its skull is low and in front, not on the rig's neck.
       this.body.add(this.stars);
@@ -832,6 +838,7 @@ export class EnemyView {
     arm.rotation.x = -0.6;
     rider.add(arm, mesh(new THREE.BoxGeometry(0.02, 0.2, 0.02), leather, 0.22, 0.4, 0.24));
     this.body.add(rider);
+    this.rider = rider;
   }
 
   /** Grey ogre with a studded club. */
@@ -1073,6 +1080,12 @@ export class EnemyView {
     this.head.rotation.set(-lean * 0.45 * DEG + roarTilt, -twist * 0.4 * DEG, curr.ai === 'stagger' ? Math.sin(this.time * 6) * 0.25 : 0);
 
     this.stars.visible = curr.ai === 'stagger';
+    if (this.rider) {
+      // Unhorsed (G2b): the Pig is gone from under him and the Chief stands on the floor.
+      const onFoot = curr.phase === 2;
+      for (const o of this.mount) o.visible = !onFoot;
+      this.rider.position.y = onFoot ? 0.3 : 0.86;
+    }
     this.stars.rotation.y = this.time * 5;
 
     const { hand, offHand } = poseArms(p, DIMS, this.arms);

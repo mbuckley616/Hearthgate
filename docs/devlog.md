@@ -2,6 +2,41 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 258, Grubnose unhorsed (G2b, part one)
+
+**What changed**
+
+Phase 2 of Chief Grubnose begins. At `grubnose.phase2At` (60%), between attacks, the Pig goes down and the Chief blows his horn: a 1.4 s `roar` (phase 2 on the event), then phase 2.
+
+On foot he fights with his looted string. That is the Skeleton Warrior's two cuts on his own numbers (`gruntNumbers` reads `tuning.grubnose`):
+- a 700 ms wind-up on a red strike;
+- two cuts of 18 edge, 2.4 m reach over 120°;
+- 900 ms recovery and a 1.1 s cooldown.
+
+He never waits for an attack token. He no longer charges or slings while on foot.
+
+`attackType` gives the string edge, so the tank's job and a damage-type resist read it right. The figure drops the Pig from under him and stands the Chief on the floor. The horn plays the Warden's roar until the adds come.
+
+`grubnose.test.ts` adds one case. Below 60% he roars into phase 2, then winds up the string, red and edge, and lands two cuts for exactly twice the damage. With a hero 9 m off he neither charges nor slings.
+
+check 798/798, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The War Pig's frame was already built for the Chief to leave. The rider is a group on the body, and the Pig's parts are the body's other children. So unhorsing is just visibility, and nothing new on the wire beyond the `phase` the snapshot already carries.
+
+The Pig lying stunned in the hall is not drawn yet. In phase 2 it is simply gone. That waits for part two, along with what makes phase 2 a fight for three.
+
+**Next**
+
+G2b part two, the horn's adds and the pile:
+- **Slinger nests:** warded by sacks, weak to ranged.
+- **A Pot-lid crew:** armoured, weak to magic, rushing the mage.
+- **The loot pile** at the hall's centre: refills a nest every 10 s, a prop the party can smash.
+- **The Pig** drawn lying stunned where it fell.
+
+Then G3b.
+
 ## 2026-11-19: Session 257, Chief Grubnose and his Pig, mounted (G1b)
 
 **What changed**

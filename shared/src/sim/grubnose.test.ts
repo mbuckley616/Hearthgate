@@ -107,4 +107,29 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     stepEnemies(s, DT, world);
     expect(boss.ai).toBe('chargeWindup');
   });
+  it('unhorsed at 60% (G2b): it blows its horn, then fights on foot with a red string of edge', () => {
+    const { s, p, boss } = scene();
+    boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
+    stepEnemies(s, DT, world);
+    expect(boss.ai).toBe('roar');
+    expect(s.events.some((e) => e.kind === 'roar' && e.phase === 2)).toBe(true);
+    until(s, p, () => boss.ai !== 'roar');
+    expect(boss.phase).toBe(2);
+    // Close by, on foot: the looted string's wind-up, a strike, then two cuts.
+    Object.assign(boss, { x: 0, z: p.z - 1.6, yaw: 0, cooldown: 0 });
+    until(s, p, () => boss.ai === 'windup');
+    expect(boss.attack).toBe('string');
+    expect(telegraphColour(boss)).toBe('strike');
+    expect(attackType(boss)).toBe('edge');
+    const hp = p.hp;
+    s.events.length = 0;
+    until(s, p, () => boss.ai === 'recover');
+    expect(hp - p.hp).toBeCloseTo(tuning.grubnose.stringDamage * 2, 5);
+    expect(s.events.filter((e) => e.kind === 'heroHurt' && e.type === 'edge').length).toBe(2);
+    // Never back to the Pig's charge or the sling while it is on foot.
+    Object.assign(boss, { z: p.z - 9 });
+    until(s, p, () => boss.ai === 'chargeWindup' || boss.ai === 'aim', 300);
+    expect(boss.ai).not.toBe('chargeWindup');
+    expect(boss.ai).not.toBe('aim');
+  });
 });

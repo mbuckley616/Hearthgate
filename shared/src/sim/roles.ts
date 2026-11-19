@@ -85,7 +85,8 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
   if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' || e.attack === 'knuckles' ? 'heavy' : 'strike';
   // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
-  // Chief Grubnose (G1b): the Pig's charge a red line (a guard stops it), the Chief's sling yellow.
+  // Chief Grubnose (G1b): the Pig's charge a red line (a guard stops it), the Chief's sling yellow,
+  // his looted string on foot (G2b) a strike.
   if (e.kind === 'grubnose') return e.attack === 'sling' ? 'projectile' : 'strike';
   if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : e.attack === 'grout' ? 'magic' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
@@ -124,7 +125,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'boneRing':
       return 'edge';
     case 'grubnose':
-      return e.attack === 'sling' ? 'pierce' : 'blunt';
+      return e.attack === 'sling' ? 'pierce' : e.attack === 'string' ? 'edge' : 'blunt';
     case 'mason':
       return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':

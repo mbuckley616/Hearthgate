@@ -335,6 +335,23 @@ function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: nu
 
 /** A fodder brain's numbers: a Goblin Cutter (E1i) is a Skeleton Warrior with its own. */
 function gruntNumbers(e: EnemyState): typeof tuning.grunt {
+  // Chief Grubnose on foot (G2b): his looted string is a Skeleton Warrior's two cuts on his numbers.
+  if (e.kind === 'grubnose') {
+    const g = tuning.grubnose;
+    return {
+      ...tuning.grunt,
+      turnRateDeg: g.turnRateDeg,
+      telegraphMs: g.stringTelegraphMs,
+      slashActiveMs: g.stringActiveMs,
+      betweenSlashesMs: g.stringBetweenMs,
+      recoveryMs: g.stringRecoveryMs,
+      attackCooldownMs: g.stringCooldownMs,
+      damage: g.stringDamage,
+      reach: g.stringReach,
+      arcDeg: g.stringArcDeg,
+      attackRange: g.stringRange,
+    };
+  }
   return e.kind === 'cutter' ? tuning.cutter : tuning.grunt;
 }
 
@@ -1857,6 +1874,28 @@ function slingTarget(state: SimState, world: World, e: EnemyState): PlayerState 
  */
 function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const g = tuning.grubnose;
+  if (e.ai === 'roar') {
+    if (e.aiTime >= g.roarMs / 1000) {
+      e.phase = Math.min(3, e.phase + 1);
+      e.summoned = true;
+      setAi(e, 'recover');
+      e.recoverTime = 0.4;
+    }
+    return { x: 0, z: 0 };
+  }
+  // Unhorsed (G2b): at `phase2At` the Pig goes down and the Chief blows his horn between attacks.
+  if (e.phase === 1 && e.ai === 'chase' && e.hp <= e.maxHp * g.phase2At) {
+    setAi(e, 'roar');
+    e.tele.shape = 'none';
+    state.events.push({ kind: 'roar', enemyId: e.id, phase: 2 });
+    return { x: 0, z: 0 };
+  }
+  if (e.phase >= 2) {
+    // On foot he fights with his looted string, and as the boss never waits for a turn.
+    e.attack = 'string';
+    if (e.ai === 'chase' && e.cooldown <= 0) e.hasToken = true;
+    return gruntBrain(state, world, e, target, edt);
+  }
   if (e.ai === 'aim' || e.ai === 'shoot') return archerBrain(state, world, e, slingTarget(state, world, e) ?? target, edt);
   if (e.ai !== 'chase') return chargerBrain(state, world, e, target, edt);
   const want: Intent = { x: 0, z: 0 };
@@ -2365,6 +2404,7 @@ function attackCooldown(e: EnemyState): number {
     case 'gravehand':
       return tuning.gravehand.cooldownMs / 1000;
     case 'grubnose':
+      if (e.phase >= 2) return tuning.grubnose.stringCooldownMs / 1000;
       return e.attack === 'sling' ? tuning.grubnose.cooldownMs / 2000 : tuning.grubnose.cooldownMs / 1000;
     case 'ironRing':
       return tuning.ironRing.cooldownMs / 1000;
