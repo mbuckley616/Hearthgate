@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
-import { kingPace } from '@hearthgate/shared/sim/enemies';
+import { kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
 import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -166,9 +166,12 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   cutter: {},
   // A Goblin Slinger (E1i) winds up and lets fly as a Skeleton Archer does; filled in below.
   slinger: {},
+  // A Pot-lid Goblin (E1i) holds and bashes as a Shieldbearer does; filled in below.
+  potlid: {},
 };
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
+POSES.potlid = POSES.shieldbearer;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -256,7 +259,15 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
-    if (kind === 'cutter' || kind === 'slinger') this.dressGoblin(mat, mesh, kind === 'slinger');
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid') this.dressGoblin(mat, mesh, kind === 'slinger');
+    if (kind === 'potlid' && this.shield) {
+      // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
+      this.shield.visible = true;
+      this.shield.scale.set(1.25, 1.25, 1);
+      this.shield.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material = mat(0x8a8a80, { metalness: 0.55, roughness: 0.5 });
+      });
+    }
     if (kind === 'skirmisher') {
       // The blade's (B5's colour for melee): a red rag knotted round the brow, light and quick.
       this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.03, 6, 16).rotateX(Math.PI / 2), mat(0xb02a22, { roughness: 1 }), 0, 0.05, 0));
@@ -1065,8 +1076,9 @@ export class EnemyView {
       }
       case 'shieldbearer':
       case 'mortarGuard':
+      case 'potlid':
       case 'knight': {
-        const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
+        const sb = shieldNumbers(e);
         switch (e.ai) {
           case 'chargeWindup':
           case 'charge':
@@ -1184,7 +1196,7 @@ export function windupProgress(e: EnemyState): number {
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':

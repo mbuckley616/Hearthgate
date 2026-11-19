@@ -10,7 +10,7 @@ import { chillHero } from './chill';
 import { masonBinds, raiseRidge } from './mason';
 import { gravehandLift, handAloft, letGo, releaseGrip, restSeconds } from './gravehand';
 import type { DamageType, EnemyAi, EnemyState, PlayerState, SimState } from './types';
-import { roleOf, type EnemyRole } from './roles';
+import { GOBLINS, roleOf, type EnemyRole } from './roles';
 import { isHidden, isRooted, stepVenom, tauntedBy } from './specs';
 import { bossAttackDone, bossTarget } from './attention';
 import { difficultyMult } from '../game/portalChoice';
@@ -648,8 +648,13 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
  * The Skeleton Shieldbearer (E1b, the shield role): walks in behind its shield, turning slowly, and
  * bashes a short line in front, a heavy that staggers whoever it meets. Its block is in damageEnemy.
  */
+/** A shield's numbers: the Knight's, a Pot-lid Goblin's (E1i), or the Shieldbearer's. */
+export function shieldNumbers(e: { kind: EnemyKind }): typeof tuning.shieldbearer {
+  return e.kind === 'knight' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
+}
+
 function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
+  const sb = shieldNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -2138,6 +2143,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.cutter.attackCooldownMs / 1000;
     case 'slinger':
       return tuning.slinger.cooldownMs / 1000;
+    case 'potlid':
+      return tuning.potlid.attackCooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':
@@ -2187,7 +2194,7 @@ export function raisable(state: SimState, e: EnemyState): boolean {
   const role = roleOf(e.kind);
   if (role !== 'fodder' && role !== 'archer' && role !== 'shield') return false;
   // A Bone Priest raises bones: a goblin (E1i) stays down.
-  if (e.kind === 'cutter' || e.kind === 'slinger') return false;
+  if (GOBLINS.has(e.kind)) return false;
   return state.enemies.some((o) => roleOf(o.kind) === 'leader' && o.ai !== 'dead');
 }
 

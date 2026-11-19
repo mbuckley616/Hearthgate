@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 251, the Pot-lid Goblin (E1i, part four)
+
+**What changed**
+
+The Warrens' shield, the third goblin:
+- **Its brain:** the Skeleton Shieldbearer's brain and block, reading `shieldNumbers(e)` (the brain, the block in `shieldTakes`, and the views).
+- **Its numbers (`tuning.potlid`), against the Shieldbearer's:**
+
+| | Pot-lid Goblin | Shieldbearer |
+|---|---|---|
+| health | 55 | 80 |
+| guard | 100° | 130° |
+| turn | 200°/s | 140°/s |
+| heavy dents the lid for | 3 s | 2.5 s |
+| bash | 9, push 1.8 | 12, push 2.2 |
+
+  So a blow 60° off its front gets past the lid, and the goblin turns to cover its side sooner. The panel has its health, turn, guard and dent time.
+- **Where it fights:** a Warrens room spawns it in the Shieldbearer's place.
+- **Its look:** the goblin with its round shield back on its arm as a dull tin pot-lid.
+- **`GOBLINS`** in `roles.ts` now keeps every goblin from a Bone Priest's raise.
+
+`warrensPotlid.test.ts`: a front blow is blocked; a blow 60° off lands on the lid but not on the tower shield; turning to a hero at its side, it is over 1.3x quicker than the Shieldbearer. check 777/777, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Three of the eight goblins came in as dressings of existing brains, in roughly a third of a session each. The rest will not: the War Pig, Shaman and Cave Ogre are brains already, but the Pack Leader's war cry and the Chieftain's cry behind a pot-lid are new behaviour.
+
+**Next**
+
+- The War Pig (charger), then the Shaman (caster). The Pack Leader replaces the Priest's raise, so it needs its own brain. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 250, the Goblin Slinger (E1i, part three)
 
 **What changed**

@@ -1151,6 +1151,35 @@ export const tuning = {
   },
 
   /**
+   * A Pot-lid Goblin (E1i, the Warrens' shield): a Skeleton Shieldbearer's brain with a goblin's
+   * numbers. Its pot-lid covers less than a tower shield and dents for longer under a heavy, but it
+   * turns quicker, so its side is harder to reach and quicker to open.
+   */
+  potlid: {
+    maxHp: 55,
+    maxPoise: 7,
+    radius: 0.4,
+    height: 1.25,
+    moveSpeed: 3.2,
+    turnRateDeg: 200,
+    windupTurnRateDeg: 70,
+    attackRange: 1.7,
+    telegraphMs: 600,
+    bashReach: 2.2,
+    bashArcDeg: 40,
+    bashDamage: 9,
+    bashPush: 1.8,
+    bashActiveMs: 150,
+    recoveryMs: 800,
+    attackCooldownMs: 1300,
+    guardArcDeg: 100,
+    guardBreakMs: 3000,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 0.8,
+  },
+
+  /**
    * Pilfer (E1i, the Warrens' twist; Michael's A, 19 Nov): a Goblin Cutter's cut that lands snatches
    * `share` of the party's found coin on this floor (at least `min`, never more than there is), and
    * the thief stops fighting and runs from the party with the sack until it dies, when the coin
@@ -4031,6 +4060,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
+  'potlid.maxHp': [10, 500, 2],
+  'potlid.turnRateDeg': [30, 720, 10],
+  'potlid.guardArcDeg': [0, 360, 5],
+  'potlid.guardBreakMs': [0, 8000, 100],
   'slinger.maxHp': [10, 500, 2],
   'slinger.arrowSpeed': [4, 40, 0.5],
   'slinger.lobGravity': [0, 40, 0.5],
@@ -4600,7 +4633,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {
