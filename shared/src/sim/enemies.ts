@@ -1930,7 +1930,7 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   if (e.phase === 1 && e.ai === 'chase' && e.hp <= e.maxHp * g.phase2At) {
     setAi(e, 'roar');
     e.tele.shape = 'none';
-    state.events.push({ kind: 'roar', enemyId: e.id, phase: 2 });
+    state.events.push({ kind: 'roar', enemyId: e.id, phase: 2, chief: true });
     return { x: 0, z: 0 };
   }
   if (e.phase >= 2) {

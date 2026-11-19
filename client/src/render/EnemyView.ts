@@ -223,6 +223,14 @@ export class EnemyView {
   /** Chief Grubnose (G1b, G2b): his rider and the Pig's parts, so the Chief can stand down off it. */
   private rider: THREE.Group | null = null;
   private mount: THREE.Object3D[] = [];
+  /**
+   * The Pig lying stunned where it threw him (G2b): a copy of the mount on its side with stars over
+   * it, held in the world at the spot this view first saw phase 2. The sim keeps no Pig of its own, so
+   * a browser that joins mid-phase lays it where the Chief stands then.
+   */
+  private downPig: THREE.Group | null = null;
+  private downStars = new THREE.Group();
+  private fall: { x: number; z: number; yaw: number } | null = null;
   /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
   private crown = new THREE.Group();
   private crowned = false;
@@ -386,6 +394,7 @@ export class EnemyView {
     if (kind === 'warPig' || kind === 'grubnose') this.dressPig(mat, mesh);
     if (kind === 'grubnose') {
       this.mount = this.body.children.filter((o) => o !== this.rig);
+      this.buildDownPig(mesh);
       this.buildRider(mat, mesh);
     }
     if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') {
@@ -864,6 +873,32 @@ export class EnemyView {
     this.rider = rider;
   }
 
+  /** The unhorsed Pig (G2b): the mount's meshes shared, rolled onto its side, stars turning over it. */
+  private buildDownPig(mesh: Mesh): void {
+    const scale = SCALE.grubnose;
+    const inner = new THREE.Group();
+    for (const o of this.mount) inner.add(o.clone(true));
+    // Its barrel's centre is the pivot it rolls over on.
+    inner.position.y = -0.58;
+    const side = new THREE.Group();
+    side.add(inner);
+    side.rotation.z = Math.PI / 2 - 0.12;
+    side.position.y = 0.3 * scale;
+    side.scale.setScalar(scale);
+    const pig = new THREE.Group();
+    pig.add(side);
+    const glow = glowMaterial(0xffe27a, 0.9);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      this.downStars.add(mesh(new THREE.OctahedronGeometry(0.05), glow, Math.cos(a) * 0.25, 0, Math.sin(a) * 0.25));
+    }
+    this.downStars.position.set(0, 0.95 * scale, 0.55 * scale);
+    pig.add(this.downStars);
+    pig.visible = false;
+    this.root.add(pig);
+    this.downPig = pig;
+  }
+
   /** Grey ogre with a studded club. */
   private buildBrute(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, cave = false): void {
     // The Cave Ogre (E1i): the same body in a damp moss-grey hide, its club a rock lashed to a log.
@@ -1108,6 +1143,22 @@ export class EnemyView {
       const onFoot = curr.phase === 2;
       for (const o of this.mount) o.visible = !onFoot;
       this.rider.position.y = onFoot ? 0.3 : 0.86;
+      if (onFoot && !this.fall) this.fall = { x: curr.x, z: curr.z, yaw: curr.yaw };
+      if (!onFoot) this.fall = null;
+    }
+    if (this.downPig) {
+      // The root turns and moves with the Chief, so the Pig is placed back at its spot in the root's frame.
+      const f = curr.hp > 0 ? this.fall : null;
+      this.downPig.visible = !!f;
+      if (f) {
+        const dx = f.x - this.root.position.x;
+        const dz = f.z - this.root.position.z;
+        const c = Math.cos(-yaw);
+        const sn = Math.sin(-yaw);
+        this.downPig.position.set(dx * c + dz * sn, -this.root.position.y, -dx * sn + dz * c);
+        this.downPig.rotation.y = f.yaw - yaw;
+        this.downStars.rotation.y = this.time * 4;
+      }
     }
     this.stars.rotation.y = this.time * 5;
 

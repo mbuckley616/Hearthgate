@@ -113,7 +113,7 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
     stepEnemies(s, DT, world);
     expect(boss.ai).toBe('roar');
-    expect(s.events.some((e) => e.kind === 'roar' && e.phase === 2)).toBe(true);
+    expect(s.events.find((e) => e.kind === 'roar')).toEqual({ kind: 'roar', enemyId: boss.id, phase: 2, chief: true });
     until(s, p, () => boss.ai !== 'roar');
     expect(boss.phase).toBe(2);
     // Close by, on foot: the looted string's wind-up, a strike, then two cuts.

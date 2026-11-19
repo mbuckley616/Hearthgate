@@ -184,7 +184,10 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
   const bound = masonBound(st);
   const chanting = bound ? fit.filter((e) => e.kind === 'chanter' && e.ai === 'chant') : [];
   const stones = bound ? fit.filter((e) => e.kind === 'wardstone') : [];
-  const target = nearest(chanting.length ? chanting : stones.length ? stones : fit.length ? fit : alive);
+  // Grubnose's horn says "his loot pile pays them: smash it" (G2b), and a player reads that too: while
+  // the pile stands every Nest it refills is another to fell, so the heroes break it first.
+  const pile = fit.filter((e) => e.kind === 'lootPile');
+  const target = nearest(chanting.length ? chanting : stones.length ? stones : pile.length ? pile : fit.length ? fit : alive);
   const t = toward(target.x, target.z);
   cmd.aimX = t.x;
   cmd.aimZ = t.z;

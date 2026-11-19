@@ -2,6 +2,47 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 262, the Pig lies stunned, the horn sounds, and a throw stops at the wall (G2b, part five)
+
+**What changed**
+
+- **The Pig lies where it fell.** When Grubnose is unhorsed, the Pig no longer vanishes. It is drawn on its side where he came off, with stars turning over it (`EnemyView.buildDownPig`: the mount's meshes shared, rolled over its barrel). The sim keeps no Pig of its own, so the view lays it at the spot it first saw phase 2. A browser that joins mid-phase lays it where the Chief stands then.
+- **The horn is a horn.** His phase-2 roar now carries `chief: true`. It used to show the Warden's banner ("The Warden calls the dead") and play the Warden's roar. Now:
+  - the banner reads "Grubnose blows his horn: his goblins come, and his loot pile pays them: smash it";
+  - `Sfx` plays two cracked blasts that sag flat.
+- **A hero thrown at a wall stays in the hall.** A heavy hit's shove (`mode: 'hurt'`) now stops at the first wall, under the existing `combat.sweepFastMoves`, as enemy launches and lunges already did. The parity test turns that switch off, so the hashes are unchanged.
+- **The bench's hero goes for the pile** while it stands, as it does the Mason's Wardstones.
+
+`sweptMoves.test.ts` adds a case: a hero thrown with the War Pig's 4.2 m at a thin wall stays on its side, and with the switch off goes through. The horn case checks the event is the Chief's.
+
+check 802/802, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The solo stall at 36% (Sessions 260 and 261) was not the pile. On both stalled seeds, the Pig's charge pinned the hero against the hall's back wall. Its 4.2 m throw (about 0.6 m in its first tick) carried the hero through the wall. They dropped 2.4 m to the ground outside and swung up at a boss they could never reach, until the bench timed out. A player would have been stuck there too.
+
+The hurt slide was the one fast move `sweepFastMoves` never covered.
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill | damage taken |
+|---|---|---|---|
+| solo | 5 of 5 (was 3 of 5) | 97 s | 99 |
+| duo | 5 of 5 | 57 s (0.59 of solo) | 171 |
+| trio | 5 of 5 | 36 s | 35 |
+| solo + 3 henchmen | 5 of 5 | 22 s | 10 |
+
+Phase 3 is not built yet, so no fight reaches it. The solo kill is still far under the 180 to 300 s bar, so tuning waits for G3b.
+
+**Next**
+
+G2b is whole. Then G3b:
+- phase 3: the Pig gets up enraged, the Chief remounts, charges in threes;
+- his drops;
+- the Saltmarsh turned to the Warrens' type.
+
+Then the Warrens open on Wren's tab.
+
 ## 2026-11-19: Session 261, the loot pile spills its coin (G2b, part four)
 
 **What changed**
