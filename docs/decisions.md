@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-19: Pilfer and the lumber and stone in the bags (builder, Session 249)
+Pilfer (your A, 19 Nov) is built for coin: a Cutter's cut takes a quarter of the party's found coin on the floor, it runs, and killing it spills the coin back. Lumber and stone are the open part. They go into each hero's bag as they are picked up, and the bag lives in the browser until Phase 3's item ledger, so the server knows how much the party found but not whose bag holds it.
+- **A.** Coin only until Phase 3, when the ledger can take materials out of a bag properly. *(recommended: no way to duplicate materials, and coin is what every run finds)*
+- **B.** Materials too, now: the server takes a quarter of the party's found lumber and stone, tells the hit hero's browser to remove that much from its bag, and spills the same amount when the thief dies. If that hero held less than the share, the party gets back more than it lost.
+- **C.** Materials too, from the coin's side: the thief takes coin worth the materials' share as well, so the stake is bigger without touching the bags.
+
 ## Answered
 
 ### 2026-11-17: E1i, the Goblin Warrens' roster and its twist (builder, Session 246)

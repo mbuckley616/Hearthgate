@@ -10,6 +10,7 @@ import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } fr
 import { ADD_WEAKNESS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
 import { focusBonus } from './focus';
+import { pilferOn, spillSack } from './pilfer';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, inStance, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -524,6 +525,7 @@ export function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: numbe
   e.hasToken = false;
   e.bleedTicks = 0;
   clearTelegraph(e);
+  spillSack(state, e);
   // Drops appear where the last enemy fell; the Warden's spot wins once it's down.
   const r = state.run;
   const boss = roleOf(e.kind) === 'boss';
@@ -827,6 +829,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     p.kbx = dirX * v;
     p.kbz = dirZ * v;
   }
+  // The Warrens' twist (E1i): a Goblin Cutter's cut that lands takes a share of the party's coin.
+  pilferOn(state, p, hit.enemyId);
   return 'hit';
 }
 

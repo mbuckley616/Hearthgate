@@ -187,6 +187,8 @@ export class EnemyView {
   private bow: Bow | null = null;
   /** Skeleton grunts' round shield, worn on the off arm. */
   private shield: THREE.Group | null = null;
+  /** A Goblin Cutter's sack (Pilfer, E1i), slung over its head while it runs with the party's coin. */
+  private sack: THREE.Mesh | null = null;
   private glint: THREE.Mesh;
   private eyes: THREE.MeshBasicMaterial;
   private materials: THREE.MeshStandardMaterial[] = [];
@@ -511,6 +513,11 @@ export class EnemyView {
       mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 6), mat(0x3a2418), 0, 0.02, 0),
       mesh(new THREE.BoxGeometry(0.12, 0.34, 0.014), iron, 0.03, 0.27, 0),
     );
+    const sack = mesh(new THREE.SphereGeometry(0.17, 10, 8), mat(0x9a8458, { roughness: 1 }), 0, 0.26, -0.08);
+    sack.scale.set(1, 0.85, 1.1);
+    sack.visible = false;
+    this.head.add(sack);
+    this.sack = sack;
   }
 
   /** The Bone Priest (E1e): a Skeleton Warrior's bones in a long robe and hood, a staff topped with a skull for its sword and shield. */
@@ -817,6 +824,7 @@ export class EnemyView {
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
+    if (this.sack) this.sack.visible = !!curr.sack;
     const flash = curr.lastHitAt >= 0 && simTime - curr.lastHitAt < tuning.hitFeel.flashMs / 1000;
     const frozen = curr.frozen > 0;
     for (const m of this.materials) {

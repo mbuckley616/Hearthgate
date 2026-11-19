@@ -1124,6 +1124,20 @@ export const tuning = {
   },
 
   /**
+   * Pilfer (E1i, the Warrens' twist; Michael's A, 19 Nov): a Goblin Cutter's cut that lands snatches
+   * `share` of the party's found coin on this floor (at least `min`, never more than there is), and
+   * the thief stops fighting and runs from the party with the sack until it dies, when the coin
+   * spills back onto the floor where it fell. Nothing is lost if the room is cleared.
+   */
+  pilfer: {
+    enabled: true,
+    share: 0.25,
+    min: 1,
+    /** How far from the party a thief tries to keep, running. */
+    fleeDistance: 30,
+  },
+
+  /**
    * A Goblin Cutter (E1i, the Goblin Warrens' fodder; Michael's A, 19 Nov): a Skeleton Warrior's
    * dressing for the Warrens, on the same brain with its own numbers. Lighter and quicker than a
    * skeleton: less health and poise, a shorter wind-up and a lighter cut, so it comes in packs.
@@ -3990,6 +4004,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
+  'pilfer.share': [0, 1, 0.05],
   'cutter.moveSpeed': [0, 8, 0.1],
   'cutter.telegraphMs': [100, 1500, 10],
   'cutter.damage': [0, 60, 1],

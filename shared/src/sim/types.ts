@@ -293,6 +293,8 @@ export interface EnemyState {
   risen?: true;
   /** A mini-boss (G4): its name, over the boss bar and under its crown. Absent on every other enemy. */
   named?: string;
+  /** Pilfer (E1i): the coin a Goblin Cutter has snatched and is running with; spilled where it dies. */
+  sack?: number;
   /** A treasure room's guard (G5's C): that room's id. It holds no fight room from clearing. */
   guard?: number;
   /** Launched corpse (K1): who killed it, what it deals, and the enemies it has already met. */
@@ -554,6 +556,8 @@ export type SimEvent =
   | { kind: 'smashed'; playerId: string; prop: number; propKind: PropKind; x: number; y: number; z: number; lumber: number; stone: number; coin: number; potion: boolean }
   /** A player picked up a piece of a smashed prop's spray (Michael, 29 Oct): it is the party's, carried until the floor banks. */
   | { kind: 'lootTaken'; playerId: string; loot: 'lumber' | 'stone' | 'coin'; amount: number; x: number; y: number; z: number }
+  /** Pilfer (E1i): a Goblin Cutter's cut snatched this much of the party's found coin. */
+  | { kind: 'pilfered'; playerId: string; enemyId: number; coin: number }
   /** A hero picked up a potion (D4); potions is how many they now carry. */
   | { kind: 'potionTaken'; playerId: string; potions: number }
   /** A hero drank a potion (D4). */

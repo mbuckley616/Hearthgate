@@ -369,6 +369,19 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
   const toTarget = Math.atan2(dx, dz);
   switch (e.ai) {
     case 'chase': {
+      if (e.sack) {
+        // A thief with a sack (Pilfer, E1i) fights no more: it runs from the hero, sliding along a
+        // wall rather than standing into it, until it is far enough off.
+        e.hasToken = false;
+        if (dist < tuning.pilfer.fleeDistance) {
+          const ux = dx / Math.max(dist, 1e-3);
+          const uz = dz / Math.max(dist, 1e-3);
+          want.x = -ux - uz * e.strafeDir * 0.5;
+          want.z = -uz + ux * e.strafeDir * 0.5;
+          e.yaw = turnToward(e.yaw, Math.atan2(want.x, want.z), g.turnRateDeg * DEG * edt);
+        }
+        break;
+      }
       const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
       if (!e.hasToken && e.cooldown <= 0 && dist < 8 && sameLevel && tokenHolders(state) < tokenCap(state)) e.hasToken = true;
       const goal = navGoal(world, e, target);

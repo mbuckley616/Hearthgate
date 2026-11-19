@@ -1290,6 +1290,8 @@ export class Game {
         this.profile.addMaterial(ev.loot, ev.amount);
         dirty = true;
       }
+      // Pilfer (E1i): a Goblin Cutter ran off with some of the party's coin; killing it spills it back.
+      if (ev.kind === 'pilfered') this.hud.toast(`<b>A Goblin Cutter snatched ${ev.coin} coin</b><span>${ev.playerId === localId ? 'From you' : 'From your party'}: catch it to get it back</span>`, 'common');
       if (ev.kind === 'levelUp' && ev.playerId === localId) dirty = true;
       // The belt is the server's; it is saved as it changes so the next room starts with it (D4).
       if ((ev.kind === 'potionTaken' || ev.kind === 'drank') && ev.playerId === localId) dirty = true;

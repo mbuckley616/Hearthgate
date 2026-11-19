@@ -2,6 +2,28 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 249, Pilfer, the Warrens' twist (E1i, part two)
+
+**What changed**
+
+Michael's A on the Warrens' twist. `sim/pilfer.ts`, behind `pilfer.enabled`:
+- **The snatch:** a Goblin Cutter's cut that lands on a hero (in `hurtHero`, so after the lag grace, and never through a dodge, parry or block) takes `pilfer.share` (0.25, on the panel) of the party's found coin on the floor, at least 1 and never more than there is. A `pilfered` event carries it.
+- **The run:** a Cutter with a sack fights no more. It gives up its attack token and runs from its hero, sliding along a wall rather than standing into it. Its figure wears the sack over its head (`EnemyView`).
+- **The return:** `killEnemy` spills the sack as a coin pile where the thief fell, picked up as any coin is. A fight room stays shut until its last enemy dies, so a cleared room loses nothing.
+- **The toast:** "A Goblin Cutter snatched N coin", for the hero robbed and the rest of the party.
+
+Coin only. Lumber and stone are in the heroes' bags, which are the browsers' until Phase 3, and the server cannot tell whose bag holds them. Asked in `decisions.md` Pending (A recommended: coin only until Phase 3).
+
+`pilfer.test.ts`: with 40 coin found, the cut takes 10 and the thief ends more than 2 m further off within 3 s, cutting at most once more; killed, it spills 10 where it fell, and walking over the pile banks 40 again; no coin found, or the switch off, and nothing is taken. check 771/771, test:net green, parity hashes unchanged (no Cutter ever stands in the arena).
+
+**Learned**
+
+`hurtHero`'s `'hit'` return is the one place every enemy blow that truly lands passes through, pending or not. A hit's other effect ("on landing, do X") belongs there, keyed by `hit.enemyId`, rather than in each brain's strike.
+
+**Next**
+
+- The Goblin Slinger (archer, a lobbed stone). The materials question waits on Michael.
+
 ## 2026-11-19: Session 248, the Goblin Cutter (E1i, part one)
 
 **What changed**
