@@ -112,7 +112,7 @@ function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerS
   const rushing = role === 'elite' && (e.ai === 'charge' || e.ai === 'chargeWindup');
   if (hit.style === 'staff' && !rushing) return false;
   if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (!rushing && (e.guardDownUntil ?? -1) > state.time)) return false;
-  const sb = role === 'elite' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
+  const sb = e.kind === 'chieftain' ? tuning.chieftain : role === 'elite' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
   // The hit's push points from the attacker through the enemy: against its facing means from the front.
   const len = Math.hypot(hit.dirX, hit.dirZ);
   if (len < 1e-6) return false;
@@ -190,11 +190,11 @@ export function breakChannel(e: EnemyState, hit?: HitSpec, hero?: PlayerState): 
     return;
   }
   // A Pack Leader's war cry (E1i) is broken by any hit, as a caster's channel is.
-  if (e.kind === 'packLeader' && e.ai === 'chant') {
+  if ((e.kind === 'packLeader' || e.kind === 'chieftain') && e.ai === 'chant') {
     e.tele.shape = 'none';
     e.ai = 'recover';
     e.aiTime = 0;
-    e.recoverTime = tuning.packLeader.brokenMs / 1000;
+    e.recoverTime = tuning[e.kind].brokenMs / 1000;
     return;
   }
   if (roleOf(e.kind) !== 'caster' || e.ai !== 'chant') return;

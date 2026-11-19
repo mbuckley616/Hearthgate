@@ -2,6 +2,48 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 256, the Goblin Chieftain (E1i, part nine)
+
+**What changed**
+
+The Warrens' elite, in the Barrow Knight's place: a pot-lid behind a war cry. It fights as a Shieldbearer does (`shieldNumbers`, `shieldTakes` and the views read `tuning.chieftain`). It has no rush. Instead, when a goblin stands within 10 m and its cry is ready, it stops behind its lid and draws breath for 1 s, still turning to keep the lid to the front. Then it cries the Pack Leader's war cry, quickening the goblins in reach, itself included, 1.25x for 5 s.
+
+The cry and its pieces are now shared: `inCryRing`, `packInReach`, `drawBreath` and `warCry`.
+
+The lid stays up through the breath, so a blow from the front is blocked and the cry goes on. Only a blow from the side or back, a held heavy or magic breaks it. It waits 12 s between cries, broken or not (`EnemyState.cryAt`).
+
+| | Goblin Chieftain | Barrow Knight |
+|---|---|---|
+| health | 190 | 160 |
+| guard | 120° | 130° |
+| bash | 15, push 2.4 | the Shieldbearer's line |
+| from afar | a war cry | a rush behind its shield |
+
+The panel has its health, guard, bash, breath and the wait between cries.
+
+Where it fights: a Warrens room spawns it where the composer puts a Knight. So do a Warrens floor's mini-boss and treasure guard from the Knight's tier, through Session 254's `roomKindIn`.
+
+Its look: the goblin behind a big dented pot-lid, with a fur cap ringed with seven teeth. It holds the lid up in front as it draws breath.
+
+`warrensChieftain.test.ts`:
+- with a goblin in reach it cries at once, and a front blow neither hurts it nor stops the cry;
+- the cry quickens the Cutter and itself;
+- it then closes and bashes without crying again;
+- a blow from behind breaks the cry and sets the wait;
+- alone it never cries.
+
+`warrensCutter.test.ts`'s undressed-kind check now asks the Warden, since all eight room kinds are dressed. check 791/791, test:net green, parity hashes unchanged.
+
+**Learned**
+
+All eight of E1i's roster stand: a Warrens room is goblins from end to end, mini-boss included. Two things remain before a party can meet them:
+- **Opening the Warrens on Wren's tab.** It is shut today. Its story dungeons are not written, and its boss is G1b to G3b (Grubnose and his Pig).
+- **A playtest of the roster.** Its numbers are from the bench of my head, not from play.
+
+**Next**
+
+- G1b to G3b, Grubnose and his Pig (`docs/bosses.md` 2.5). After them, the Warrens opening on Wren's tab. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 255, the Pack Leader's war cry (E1i, part eight)
 
 **What changed**

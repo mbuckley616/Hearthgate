@@ -655,7 +655,7 @@ function bruteBrain(state: SimState, world: World, e: EnemyState, target: Player
  */
 /** A shield's numbers: the Knight's, a Pot-lid Goblin's (E1i), or the Shieldbearer's. */
 export function shieldNumbers(e: { kind: EnemyKind }): typeof tuning.shieldbearer {
-  return e.kind === 'knight' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
+  return e.kind === 'knight' ? tuning.knight : e.kind === 'chieftain' ? tuning.chieftain : e.kind === 'potlid' ? tuning.potlid : tuning.shieldbearer;
 }
 
 function shieldBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
@@ -828,6 +828,60 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
  * every `raiseEveryMs` chants over the nearest fallen skeleton in reach, a violet circle on the remains
  * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
  */
+/** A goblin in a war cry's ring (E1i): standing, of the pack, within `range` of the crier. */
+function inCryRing(e: EnemyState, o: EnemyState, range: number): boolean {
+  return o.ai !== 'dead' && GOBLINS.has(o.kind) && Math.hypot(o.x - e.x, o.z - e.z) <= range;
+}
+
+function packInReach(state: SimState, e: EnemyState, range: number): boolean {
+  return state.enemies.some((o) => o !== e && inCryRing(e, o, range));
+}
+
+/** The breath before a war cry: a ring at the crier's feet out to its reach. */
+function drawBreath(state: SimState, e: EnemyState, range: number): void {
+  setAi(e, 'chant');
+  e.tele = { shape: 'circle', x: e.x, z: e.z, radius: range, yaw: 0, arcDeg: 360 };
+  state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+}
+
+/** The cry: every goblin in the ring, the crier included, quickened for `packLeader.quickMs`. */
+function warCry(state: SimState, e: EnemyState, range: number): void {
+  let quickened = 0;
+  for (const o of state.enemies) {
+    if (!inCryRing(e, o, range)) continue;
+    o.quickUntil = state.time + tuning.packLeader.quickMs / 1000;
+    quickened++;
+  }
+  state.events.push({ kind: 'warCry', enemyId: e.id, x: e.x, z: e.z, radius: range, quickened });
+  e.tele.shape = 'none';
+}
+
+/**
+ * The Goblin Chieftain (E1i): a Shieldbearer that, with a goblin in reach and its cry ready, stops
+ * behind its lid, still turning to keep it to the front, and cries the Pack Leader's war cry.
+ */
+function chieftainBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const c = tuning.chieftain;
+  if (e.ai === 'chant') {
+    e.tele.x = e.x;
+    e.tele.z = e.z;
+    if (target) e.yaw = turnToward(e.yaw, Math.atan2(target.x - e.x, target.z - e.z), c.windupTurnRateDeg * DEG * edt);
+    if (e.aiTime >= c.cryMs / 1000) {
+      warCry(state, e, c.cryRange);
+      setAi(e, 'recover');
+      e.recoverTime = c.cryRecoveryMs / 1000;
+    }
+    return { x: 0, z: 0 };
+  }
+  if (e.ai === 'chase' && target && (e.cryAt ?? -1) <= state.time && packInReach(state, e, c.cryRange)) {
+    // A broken cry waits as long as one that landed.
+    e.cryAt = state.time + c.cryEveryMs / 1000;
+    drawBreath(state, e, c.cryRange);
+    return { x: 0, z: 0 };
+  }
+  return shieldBrain(state, world, e, target, edt);
+}
+
 /**
  * The Goblin Pack Leader (E1i): keeps behind its pack as the Priest does, and with a packmate in reach
  * draws breath (a ring at its feet, `cryRange` wide) and cries, quickening every goblin in the ring.
@@ -839,7 +893,6 @@ function packLeaderBrain(state: SimState, world: World, e: EnemyState, target: P
   const dx = target.x - e.x;
   const dz = target.z - e.z;
   const dist = Math.hypot(dx, dz);
-  const inRing = (o: EnemyState) => o.ai !== 'dead' && GOBLINS.has(o.kind) && Math.hypot(o.x - e.x, o.z - e.z) <= pl.cryRange;
   switch (e.ai) {
     case 'chase': {
       const goal = navGoal(world, e, target);
@@ -855,10 +908,8 @@ function packLeaderBrain(state: SimState, world: World, e: EnemyState, target: P
         want.z = -dz / Math.max(dist, 1e-3);
       }
       e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pl.turnRateDeg * DEG * edt);
-      if (e.cooldown > 0 || !state.enemies.some((o) => o !== e && inRing(o))) break;
-      setAi(e, 'chant');
-      e.tele = { shape: 'circle', x: e.x, z: e.z, radius: pl.cryRange, yaw: 0, arcDeg: 360 };
-      state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      if (e.cooldown > 0 || !packInReach(state, e, pl.cryRange)) break;
+      drawBreath(state, e, pl.cryRange);
       break;
     }
     case 'chant': {
@@ -866,14 +917,7 @@ function packLeaderBrain(state: SimState, world: World, e: EnemyState, target: P
       e.tele.z = e.z;
       e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pl.turnRateDeg * DEG * edt);
       if (e.aiTime >= pl.cryMs / 1000) {
-        let quickened = 0;
-        for (const o of state.enemies) {
-          if (!inRing(o)) continue;
-          o.quickUntil = state.time + pl.quickMs / 1000;
-          quickened++;
-        }
-        state.events.push({ kind: 'warCry', enemyId: e.id, x: e.x, z: e.z, radius: pl.cryRange, quickened });
-        e.tele.shape = 'none';
+        warCry(state, e, pl.cryRange);
         setAi(e, 'recover');
         e.recoverTime = pl.recoveryMs / 1000;
       }
@@ -958,6 +1002,7 @@ function leaderBrain(state: SimState, world: World, e: EnemyState, target: Playe
  * in it fights as a Shieldbearer, bash and all.
  */
 function eliteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  if (e.kind === 'chieftain') return chieftainBrain(state, world, e, target, edt);
   if (e.ai === 'chargeWindup' || e.ai === 'charge') return chargerBrain(state, world, e, target, edt);
   if (e.ai === 'chase' && target) {
     const k = tuning.knight;
@@ -2225,6 +2270,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.priest.raiseEveryMs / 1000;
     case 'packLeader':
       return tuning.packLeader.cryEveryMs / 1000;
+    case 'chieftain':
+      return tuning.chieftain.attackCooldownMs / 1000;
     case 'cantor':
       return tuning.cantor.raiseEveryMs / 1000;
     case 'knight':

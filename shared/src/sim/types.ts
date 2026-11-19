@@ -342,6 +342,8 @@ export interface EnemyState {
   rootUntil?: number;
   /** A Pack Leader's war cry (E1i) quickens it until this sim time: its whole step runs `packLeader.quickMult` faster. */
   quickUntil?: number;
+  /** A Goblin Chieftain (E1i) may cry its war cry again from this sim time. Absent: whenever a goblin is in reach. */
+  cryAt?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
   scoutMark?: { by: string; until: number };
   /** An Assassin's Venom Volley poison (the builds pass): `stacks` each tick for `specs.venomDamage` at `next`, until `until`. The server's alone. */

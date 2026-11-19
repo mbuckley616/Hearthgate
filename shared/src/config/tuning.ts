@@ -1208,6 +1208,44 @@ export const tuning = {
   },
 
   /**
+   * The Goblin Chieftain (E1i, the Warrens' elite, in the Barrow Knight's place): a pot-lid behind a war
+   * cry. It fights as a Shieldbearer does, with a wider lid than a Pot-lid Goblin's and a harder bash,
+   * and when a goblin stands within `cryRange` it stops behind the lid and cries the Pack Leader's war
+   * cry (`packLeader.quickMult` for `packLeader.quickMs`). Its lid stays up while it cries, so the cry
+   * is broken from the side, by a heavy, or by magic.
+   */
+  chieftain: {
+    maxHp: 190,
+    maxPoise: 20,
+    radius: 0.5,
+    height: 1.5,
+    moveSpeed: 3,
+    turnRateDeg: 170,
+    windupTurnRateDeg: 60,
+    attackRange: 1.9,
+    telegraphMs: 650,
+    bashReach: 2.5,
+    bashArcDeg: 50,
+    bashDamage: 15,
+    bashPush: 2.4,
+    bashActiveMs: 160,
+    recoveryMs: 850,
+    attackCooldownMs: 1400,
+    guardArcDeg: 120,
+    guardBreakMs: 2500,
+    cryRange: 10,
+    /** From raising the lid to the cry. */
+    cryMs: 1000,
+    /** Between one cry, or a broken one, and the next. */
+    cryEveryMs: 12000,
+    cryRecoveryMs: 500,
+    brokenMs: 900,
+    spawnMs: 800,
+    deathMs: 1800,
+    knockbackTaken: 0.5,
+  },
+
+  /**
    * The Goblin Pack Leader (E1i, the Warrens' leader, in the Priest's place): keeps behind its pack and
    * cries its war cry, which quickens every goblin within `cryRange` (itself included) by `quickMult`
    * for `quickMs`: they walk, wind up and recover that much faster. A hit during the cry breaks it.
@@ -4169,6 +4207,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
   'warPig.maxHp': [10, 600, 5],
+  'chieftain.maxHp': [20, 1500, 10],
+  'chieftain.guardArcDeg': [0, 360, 5],
+  'chieftain.bashDamage': [0, 60, 1],
+  'chieftain.cryMs': [100, 3000, 50],
+  'chieftain.cryEveryMs': [1000, 30000, 250],
   'packLeader.maxHp': [10, 500, 5],
   'packLeader.cryRange': [1, 25, 0.5],
   'packLeader.cryMs': [100, 3000, 50],
@@ -4761,7 +4804,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

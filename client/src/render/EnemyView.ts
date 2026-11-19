@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -175,6 +175,8 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   ogre: {},
   // A Goblin Pack Leader (E1i) throws its arms up to cry as a Bone Priest raises; filled in below.
   packLeader: {},
+  // A Goblin Chieftain (E1i) holds and bashes as a Shieldbearer does, its lid up as it cries; filled in below.
+  chieftain: {},
 };
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
@@ -182,6 +184,7 @@ POSES.potlid = POSES.shieldbearer;
 POSES.shaman = POSES.wraith;
 POSES.ogre = POSES.brute;
 POSES.packLeader = POSES.priest;
+POSES.chieftain = POSES.shieldbearer;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -269,7 +272,7 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
-    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman' || kind === 'packLeader') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman' || kind === 'packLeader' || kind === 'chieftain') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
     if (kind === 'packLeader') {
       // The Pack Leader: a cap with two curling horns and a red war-paint band, so it is the one to find in a pack.
       const horn = mat(0xd8ccb0, { roughness: 0.7 });
@@ -280,6 +283,21 @@ export class EnemyView {
         this.head.add(h);
       }
       this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 16).rotateX(Math.PI / 2), mat(0xa0281e, { roughness: 1 }), 0, -0.01, 0));
+    }
+    if (kind === 'chieftain' && this.shield) {
+      // The Chieftain: a big dented pot-lid, a crown of teeth on a fur cap and a bone in its topknot,
+      // so the one behind the lid is plainly the chief.
+      this.shield.visible = true;
+      this.shield.scale.set(1.55, 1.55, 1);
+      this.shield.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material = mat(0x7a7468, { metalness: 0.6, roughness: 0.45 });
+      });
+      this.head.add(mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.08, 12), mat(0x5a3e2a, { roughness: 1 }), 0, 0.07, 0));
+      const tooth = mat(0xe8dcc0, { roughness: 0.6 });
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        this.head.add(mesh(new THREE.ConeGeometry(0.022, 0.09, 4), tooth, Math.cos(a) * 0.15, 0.14, Math.sin(a) * 0.15));
+      }
     }
     if (kind === 'potlid' && this.shield) {
       // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
@@ -1147,9 +1165,13 @@ export class EnemyView {
       case 'shieldbearer':
       case 'mortarGuard':
       case 'potlid':
+      case 'chieftain':
       case 'knight': {
         const sb = shieldNumbers(e);
         switch (e.ai) {
+          case 'chant':
+            // The Chieftain's cry (E1i): the lid held up in front as it draws breath.
+            return into(this.from, P.windup, t / 0.3);
           case 'chargeWindup':
           case 'charge':
             return into(this.from, P.rush, t / 0.3);
@@ -1267,7 +1289,7 @@ export function windupProgress(e: EnemyState): number {
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' || e.kind === 'chieftain' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
@@ -1282,6 +1304,7 @@ export function windupProgress(e: EnemyState): number {
       if (e.kind === 'cantor') return clamp01(t / (tuning.cantor.chantMs / 1000));
       if (e.kind === 'shaman') return clamp01(t / (tuning.shaman.channelMs / 1000));
       if (e.kind === 'packLeader') return clamp01(t / (tuning.packLeader.cryMs / 1000));
+      if (e.kind === 'chieftain') return clamp01(t / (tuning.chieftain.cryMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;
