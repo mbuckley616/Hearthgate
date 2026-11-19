@@ -100,9 +100,10 @@ export const STORY: readonly StoryDungeon[] = [
     id: 'saltmarsh',
     name: 'The Saltmarsh Warrens',
     levels: [4, 8],
-    blurb: 'Tunnels under the marsh where a drowned chief still thinks himself a king. His court is large, and does not lie still.',
-    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'brute', 'grubnose'],
-    type: 'hauntedCrypt',
+    blurb: 'Tunnels under the marsh where a goblin chief rides a war pig and thinks himself a king. His court is large, loud and light-fingered.',
+    // The Warrens' (G3b): its rooms dressed in E1i's goblins, Grubnose and his Pig at the end.
+    enemies: ['cutter', 'slinger', 'potlid', 'warPig', 'ogre', 'grubnose'],
+    type: 'goblinWarrens',
     rewards: ['weapon', 'legs', 'hands'],
     run: { seed: 5202, floors: 3, size: 'medium', difficulty: 1 },
   },

@@ -2,6 +2,39 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 265, the Saltmarsh Warrens are the Warrens (G3b, part three)
+
+**What changed**
+
+The second story dungeon, the Saltmarsh Warrens, now has the type `goblinWarrens`. Its run plan and every floor's spec carry it, so its rooms spawn E1i's goblins in the skeletons' places, as `ROOM_KINDS` gives them:
+- Cutters, Slingers and Pot-lids;
+- War Pigs;
+- the Cave Ogre as its mini-boss.
+
+Grubnose and his Pig still end it.
+
+Wren's story card lists the Warrens' roster under their own names (Goblin Cutter, Goblin Slinger, Pot-lid Goblin, War Pig, Cave Ogre, Chief Grubnose), where it listed skeletons. The blurb now speaks of a goblin chief on a war pig.
+
+The floors themselves are unchanged: a type never changes what a seed builds. The Warrens' type stays shut on Wren's Random tab.
+
+`grubnose.test.ts` adds a case: the story's type, its menu roster all goblins, and the plan and each floor's spec in the Warrens' type.
+
+check 809/809, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh's boss hall gives the same numbers as Session 263 (solo 5 of 5 in 104 s). It starts in the hall, so the floors' new goblins do not reach it.
+
+Michael's answer of 3 Nov (all five story dungeons the Crypt) was for E1a, before any second roster stood. The boss document he approved on 16 Nov names this change as G3b's.
+
+**Next**
+
+Left of G3b:
+- the tuning to the bar (solo 104 s against 180 to 300);
+- the Horn, once answered.
+
+Then the Warrens open on Wren's Random tab. A random Warrens run still ends on the Warden until a Warrens type has a boss of its own; that is worth a question first.
+
 ## 2026-11-19: Session 264, Grubnose's drops (G3b, part two)
 
 **What changed**

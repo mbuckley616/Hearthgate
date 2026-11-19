@@ -6,7 +6,9 @@ import { killEnemy } from './combat';
 import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
-import { ADD_WEAKNESS, attackType, roleOf, telegraphColour, weakTo } from './roles';
+import { ADD_WEAKNESS, GOBLINS, attackType, roleOf, roomKindIn, telegraphColour, weakTo } from './roles';
+import { STORY } from '../game/portalChoice';
+import { floorSpecFor, planChoice } from '../game/runPlan';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
 import { createSimState } from './world';
@@ -247,5 +249,14 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     const third = run('rush3');
     expect(third.boss).not.toBe('stagger');
     expect(third.broke).toBe(true);
+  });
+
+  it('the Saltmarsh Warrens are the Warrens (G3b): goblins on the menu and in every room of the run', () => {
+    const story = STORY.find((d) => d.id === 'saltmarsh')!;
+    expect(story.type).toBe('goblinWarrens');
+    expect(story.enemies.every((k) => roomKindIn(k, 'hauntedCrypt') === k && (GOBLINS.has(k) || k === 'grubnose'))).toBe(true);
+    const plan = planChoice([], 1, { kind: 'story', id: 'saltmarsh' });
+    expect(plan.type).toBe('goblinWarrens');
+    for (let f = 1; f <= plan.floors; f++) expect(floorSpecFor(plan, f).type).toBe('goblinWarrens');
   });
 });
