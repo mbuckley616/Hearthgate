@@ -64,6 +64,7 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   warPig: 'charger',
   shaman: 'caster',
   ogre: 'heavy',
+  packLeader: 'leader',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -128,6 +129,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'crownbearer':
       return 'magic';
     case 'priest':
+    case 'packLeader':
     case 'cantor':
     case 'wraith':
     case 'shaman':
@@ -209,6 +211,7 @@ const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
   warPig: { name: 'War Pig', plural: 'War Pigs' },
   shaman: { name: 'Goblin Shaman', plural: 'Goblin Shamans' },
   ogre: { name: 'Cave Ogre', plural: 'Cave Ogres' },
+  packLeader: { name: 'Pack Leader', plural: 'Pack Leaders' },
 };
 
 /**
@@ -227,11 +230,11 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
  * the room it always was, and a Warrens room keeps its shape as goblins replace skeletons.
  */
 export const ROOM_KINDS: Partial<Record<DungeonType, Partial<Record<EnemyKind, EnemyKind>>>> = {
-  goblinWarrens: { grunt: 'cutter', archer: 'slinger', shieldbearer: 'potlid', hound: 'warPig', wraith: 'shaman', brute: 'ogre' },
+  goblinWarrens: { grunt: 'cutter', archer: 'slinger', shieldbearer: 'potlid', hound: 'warPig', wraith: 'shaman', brute: 'ogre', priest: 'packLeader' },
 };
 
 /** The Warrens' goblins and their pig (E1i): not bones, so no Bone Priest raises one. */
-export const GOBLINS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['cutter', 'slinger', 'potlid', 'warPig', 'shaman', 'ogre']);
+export const GOBLINS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['cutter', 'slinger', 'potlid', 'warPig', 'shaman', 'ogre', 'packLeader']);
 
 /** What a room of `type` spawns for the composer's `kind`. */
 export function roomKindIn(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): EnemyKind {

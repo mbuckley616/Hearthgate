@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 255, the Pack Leader's war cry (E1i, part eight)
+
+**What changed**
+
+The Warrens' leader, in the Bone Priest's place. It is the first goblin with behaviour of its own (`packLeaderBrain`, reached through the leader role's brain).
+- **How it moves:** it keeps 7 m behind its pack as the Priest does.
+- **The cry:** when a goblin stands within `cryRange` (10 m) and its cooldown is spent, it draws breath for 900 ms, with a ring at its feet out to its reach. Then it cries, and every goblin in the ring, itself included, is quickened for 5 s (`EnemyState.quickUntil`).
+- **What quickening does:** the enemy's whole step runs 1.25 times as fast, so it walks, winds up, attacks and recovers faster. It is one factor on the step's `edt` and speed, beside the burst's slow, and absent means 1, so the arena's hashes do not move.
+- **What it leaves alone:** skeletons in reach are not of the pack.
+- **Breaking it:** a hit during the breath breaks the cry, as a caster's channel breaks (`breakChannel`), and it reels 0.9 s. After a cry or a break it waits 9 s.
+
+The panel has its health, reach, breath, quickening's length and factor, and the time between cries.
+
+Its look: a goblin with a leather cap, two curling horns and a red war-paint band. It cries in the Priest's arms-up pose. The cry plays a short horn and a shout, with a red ring out to its reach and a spark over each goblin it quickened (`warCry` event). A room composes it where it would a Priest, which needs two raisable kinds there, so it always has a pack.
+
+`warrensPackLeader.test.ts`:
+- it quickens the Cutter in reach and itself (2), not the Skeleton Warrior beside them;
+- a quickened step advances 1.25x and runs out;
+- it does not cry alone;
+- a hit during the breath stops the cry.
+
+check 788/788, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The breath's ring is the leader role's colour, violet with damage types on, and 10 m wide. It says "hit me now", not "step out", but it looks like a caster's circle. Whether it reads right is one for a playtest of the Warrens. A quickened goblin shows only the spark as the cry lands, so a lasting mark (a red glint in the eyes while it lasts) may be wanted.
+
+**Next**
+
+- The Goblin Chieftain (the elite, the Knight's slot: a pot-lid behind a war cry), the last of the roster. Then the Warrens can open on Wren's tab, and G1b to G3b follow. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 254, the Cave Ogre (E1i, part seven)
 
 **What changed**

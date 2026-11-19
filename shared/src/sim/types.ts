@@ -340,6 +340,8 @@ export interface EnemyState {
   attn?: { hitAt: Record<string, number>; focus?: string; runs: number; pick: boolean };
   /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
   rootUntil?: number;
+  /** A Pack Leader's war cry (E1i) quickens it until this sim time: its whole step runs `packLeader.quickMult` faster. */
+  quickUntil?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
   scoutMark?: { by: string; until: number };
   /** An Assassin's Venom Volley poison (the builds pass): `stacks` each tick for `specs.venomDamage` at `next`, until `until`. The server's alone. */
@@ -501,6 +503,8 @@ export type SimEvent =
   | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
+  /** A Pack Leader's war cry (E1i): `quickened` enemies within `radius` of it, itself included. */
+  | { kind: 'warCry'; enemyId: number; x: number; z: number; radius: number; quickened: number }
   | { kind: 'ridgeRaised'; enemyId: number; x: number; z: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
   | { kind: 'tileCracked'; x: number; z: number }

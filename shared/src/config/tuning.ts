@@ -1208,6 +1208,33 @@ export const tuning = {
   },
 
   /**
+   * The Goblin Pack Leader (E1i, the Warrens' leader, in the Priest's place): keeps behind its pack and
+   * cries its war cry, which quickens every goblin within `cryRange` (itself included) by `quickMult`
+   * for `quickMs`: they walk, wind up and recover that much faster. A hit during the cry breaks it.
+   */
+  packLeader: {
+    maxHp: 60,
+    maxPoise: 5,
+    radius: 0.4,
+    height: 1.35,
+    moveSpeed: 3,
+    turnRateDeg: 300,
+    keepDistance: 7,
+    cryRange: 10,
+    /** From drawing breath (the ring at its feet) to the cry. */
+    cryMs: 900,
+    quickMs: 5000,
+    quickMult: 1.25,
+    /** Between one cry and the next (its cooldown). */
+    cryEveryMs: 9000,
+    recoveryMs: 600,
+    brokenMs: 900,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1,
+  },
+
+  /**
    * The Cave Ogre (E1i, the Warrens' heavy): the Bone Brute's brain with an ogre's numbers. Slower to
    * raise its club and wider where it lands, so it is more to roll out of, but it stands longer
    * after, so a hero who did gets a longer turn at it.
@@ -4142,6 +4169,12 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
   'warPig.maxHp': [10, 600, 5],
+  'packLeader.maxHp': [10, 500, 5],
+  'packLeader.cryRange': [1, 25, 0.5],
+  'packLeader.cryMs': [100, 3000, 50],
+  'packLeader.quickMs': [0, 15000, 250],
+  'packLeader.quickMult': [1, 2, 0.05],
+  'packLeader.cryEveryMs': [1000, 30000, 250],
   'ogre.maxHp': [20, 1500, 10],
   'ogre.telegraphMs': [200, 3000, 25],
   'ogre.slamRadius': [0.5, 6, 0.1],
@@ -4728,7 +4761,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

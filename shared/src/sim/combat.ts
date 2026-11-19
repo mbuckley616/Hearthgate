@@ -189,6 +189,14 @@ export function breakChannel(e: EnemyState, hit?: HitSpec, hero?: PlayerState): 
     e.recoverTime = tuning.wraith.brokenMs / 1000;
     return;
   }
+  // A Pack Leader's war cry (E1i) is broken by any hit, as a caster's channel is.
+  if (e.kind === 'packLeader' && e.ai === 'chant') {
+    e.tele.shape = 'none';
+    e.ai = 'recover';
+    e.aiTime = 0;
+    e.recoverTime = tuning.packLeader.brokenMs / 1000;
+    return;
+  }
   if (roleOf(e.kind) !== 'caster' || e.ai !== 'chant') return;
   e.tele.shape = 'none';
   e.ai = 'recover';

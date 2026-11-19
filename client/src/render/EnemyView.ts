@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -173,12 +173,15 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   shaman: {},
   // A Cave Ogre (E1i) raises and brings down its club as a Bone Brute does; filled in below.
   ogre: {},
+  // A Goblin Pack Leader (E1i) throws its arms up to cry as a Bone Priest raises; filled in below.
+  packLeader: {},
 };
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
 POSES.potlid = POSES.shieldbearer;
 POSES.shaman = POSES.wraith;
 POSES.ogre = POSES.brute;
+POSES.packLeader = POSES.priest;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -266,7 +269,18 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
-    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman' || kind === 'packLeader') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
+    if (kind === 'packLeader') {
+      // The Pack Leader: a cap with two curling horns and a red war-paint band, so it is the one to find in a pack.
+      const horn = mat(0xd8ccb0, { roughness: 0.7 });
+      this.head.add(mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x4a3424, { roughness: 1 }), 0, 0.04, 0));
+      for (const side of [-1, 1]) {
+        const h = mesh(new THREE.ConeGeometry(0.035, 0.2, 6), horn, side * 0.14, 0.12, 0);
+        h.rotation.z = -side * 0.7;
+        this.head.add(h);
+      }
+      this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 16).rotateX(Math.PI / 2), mat(0xa0281e, { roughness: 1 }), 0, -0.01, 0));
+    }
     if (kind === 'potlid' && this.shield) {
       // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
       this.shield.visible = true;
@@ -1098,6 +1112,7 @@ export class EnemyView {
         }
         break;
       case 'priest':
+      case 'packLeader':
       case 'cantor':
       case 'wraith':
       case 'shaman':
@@ -1266,6 +1281,7 @@ export function windupProgress(e: EnemyState): number {
       if (e.kind === 'crownbearer') return clamp01(t / (tuning.crownbearer.channelMs / 1000));
       if (e.kind === 'cantor') return clamp01(t / (tuning.cantor.chantMs / 1000));
       if (e.kind === 'shaman') return clamp01(t / (tuning.shaman.channelMs / 1000));
+      if (e.kind === 'packLeader') return clamp01(t / (tuning.packLeader.cryMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;

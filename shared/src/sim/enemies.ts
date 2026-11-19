@@ -828,7 +828,63 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
  * every `raiseEveryMs` chants over the nearest fallen skeleton in reach, a violet circle on the remains
  * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
  */
+/**
+ * The Goblin Pack Leader (E1i): keeps behind its pack as the Priest does, and with a packmate in reach
+ * draws breath (a ring at its feet, `cryRange` wide) and cries, quickening every goblin in the ring.
+ */
+function packLeaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const pl = tuning.packLeader;
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const inRing = (o: EnemyState) => o.ai !== 'dead' && GOBLINS.has(o.kind) && Math.hypot(o.x - e.x, o.z - e.z) <= pl.cryRange;
+  switch (e.ai) {
+    case 'chase': {
+      const goal = navGoal(world, e, target);
+      const gx = goal.x - e.x;
+      const gz = goal.z - e.z;
+      const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+      const routed = goal.x !== target.x || goal.z !== target.z;
+      if (routed || dist > pl.keepDistance + 2) {
+        want.x = gx / gd;
+        want.z = gz / gd;
+      } else if (dist < pl.keepDistance) {
+        want.x = -dx / Math.max(dist, 1e-3);
+        want.z = -dz / Math.max(dist, 1e-3);
+      }
+      e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pl.turnRateDeg * DEG * edt);
+      if (e.cooldown > 0 || !state.enemies.some((o) => o !== e && inRing(o))) break;
+      setAi(e, 'chant');
+      e.tele = { shape: 'circle', x: e.x, z: e.z, radius: pl.cryRange, yaw: 0, arcDeg: 360 };
+      state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+      break;
+    }
+    case 'chant': {
+      e.tele.x = e.x;
+      e.tele.z = e.z;
+      e.yaw = turnToward(e.yaw, Math.atan2(dx, dz), pl.turnRateDeg * DEG * edt);
+      if (e.aiTime >= pl.cryMs / 1000) {
+        let quickened = 0;
+        for (const o of state.enemies) {
+          if (!inRing(o)) continue;
+          o.quickUntil = state.time + pl.quickMs / 1000;
+          quickened++;
+        }
+        state.events.push({ kind: 'warCry', enemyId: e.id, x: e.x, z: e.z, radius: pl.cryRange, quickened });
+        e.tele.shape = 'none';
+        setAi(e, 'recover');
+        e.recoverTime = pl.recoveryMs / 1000;
+      }
+      break;
+    }
+  }
+  return want;
+}
+
 function leaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  if (e.kind === 'packLeader') return packLeaderBrain(state, world, e, target, edt);
   // A Grave Cantor (W1) is a Priest with its own numbers.
   const pr = e.kind === 'cantor' ? tuning.cantor : tuning.priest;
   const want: Intent = { x: 0, z: 0 };
@@ -2167,6 +2223,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.warPig.cooldownMs / 1000;
     case 'priest':
       return tuning.priest.raiseEveryMs / 1000;
+    case 'packLeader':
+      return tuning.packLeader.cryEveryMs / 1000;
     case 'cantor':
       return tuning.cantor.raiseEveryMs / 1000;
     case 'knight':
@@ -2277,7 +2335,12 @@ export function stepEnemies(state: SimState, dt: number, world: World): void {
       if (e.armour <= 0) delete e.armour;
     }
 
-    const slow = e.slowTime > 0 ? 1 - tuning.magicCombo.burstSlowFrac : 1;
+    let slow = e.slowTime > 0 ? 1 - tuning.magicCombo.burstSlowFrac : 1;
+    // A Pack Leader's war cry (E1i): the whole step quickens, wind-ups, recoveries and walking alike.
+    if (e.quickUntil !== undefined) {
+      if (e.quickUntil > state.time) slow *= tuning.packLeader.quickMult;
+      else delete e.quickUntil;
+    }
     e.slowTime = Math.max(0, e.slowTime - dt);
     const edt = dt * slow;
     e.cooldown = Math.max(0, e.cooldown - edt);

@@ -280,6 +280,11 @@ export class Sfx {
         case 'waveStart':
           this.horn(ev.boss);
           break;
+        case 'warCry':
+          // A Pack Leader's war cry (E1i): a short horn and a rough shout under it.
+          this.horn(false);
+          this.noiseBurst('bandpass', 700, 400, 2, 0.5, 0.18);
+          break;
         case 'combo':
           // Each combo has its own sound (brief).
           if (ev.combo === 'shatter') {
