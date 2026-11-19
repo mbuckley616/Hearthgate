@@ -711,9 +711,10 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
 }
 
 /** The Hound's line: from it, along where it faces, as far as the rush will run. */
-/** A rush's numbers: the Hound's, or the Barrow Knight's (E1f). */
+/** A rush's numbers: the Hound's, the War Pig's (E1i), or the Barrow Knight's (E1f). */
 function rushOf(e: EnemyState) {
   const k = tuning.knight;
+  if (e.kind === 'warPig') return tuning.warPig;
   if (e.kind === 'ironRing') return { ...tuning.hound, ...tuning.ironRing };
   return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
 }
@@ -2151,6 +2152,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.shieldbearer.attackCooldownMs / 1000;
     case 'hound':
       return tuning.hound.cooldownMs / 1000;
+    case 'warPig':
+      return tuning.warPig.cooldownMs / 1000;
     case 'priest':
       return tuning.priest.raiseEveryMs / 1000;
     case 'cantor':

@@ -1180,6 +1180,34 @@ export const tuning = {
   },
 
   /**
+   * The War Pig (E1i, the Warrens' charger): the Crypt Hound's brain with a goblin pig's numbers.
+   * Slower to wind up and to turn, so its line is easier to read, but it runs further, hits harder,
+   * throws a hero further, and stands longer stunned against a wall.
+   */
+  warPig: {
+    maxHp: 80,
+    maxPoise: 9,
+    radius: 0.55,
+    height: 1.1,
+    moveSpeed: 3.8,
+    turnRateDeg: 240,
+    chargeRange: 10,
+    chargeMinRange: 3,
+    telegraphMs: 950,
+    trackFrac: 0.6,
+    chargeSpeed: 12,
+    chargeLength: 12,
+    chargeDamage: 16,
+    chargePush: 4.2,
+    wallStunMs: 2600,
+    recoveryMs: 800,
+    cooldownMs: 2600,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0.6,
+  },
+
+  /**
    * Pilfer (E1i, the Warrens' twist; Michael's A, 19 Nov): a Goblin Cutter's cut that lands snatches
    * `share` of the party's found coin on this floor (at least `min`, never more than there is), and
    * the thief stops fighting and runs from the party with the sack until it dies, when the coin
@@ -4060,6 +4088,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
+  'warPig.maxHp': [10, 600, 5],
+  'warPig.telegraphMs': [200, 2500, 25],
+  'warPig.chargeDamage': [0, 80, 1],
+  'warPig.chargePush': [0, 10, 0.1],
   'potlid.maxHp': [10, 500, 2],
   'potlid.turnRateDeg': [30, 720, 10],
   'potlid.guardArcDeg': [0, 360, 5],
@@ -4633,7 +4665,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

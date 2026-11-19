@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -100,6 +100,7 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   },
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
+  warPig: { guard: BASE },
   // The Wraith (E1d) channels with the Priest's raised hands.
   // The Gravehand's rig is hidden (H1): its hand is posed in update(), so only a guard is needed here.
   gravehand: {
@@ -252,7 +253,7 @@ export class EnemyView {
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
     else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
-    else if (kind === 'hound') this.buildHound(mat, mesh);
+    else if (kind === 'hound' || kind === 'warPig') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer' || kind === 'skirmisher', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'mason') this.dressMason(mat, mesh);
@@ -332,7 +333,8 @@ export class EnemyView {
     }
     this.stars.visible = false;
     this.head.add(this.stars);
-    if (kind === 'hound') {
+    if (kind === 'warPig') this.dressPig(mat, mesh);
+    if (kind === 'hound' || kind === 'warPig') {
       // Its skull is low and in front, not on the rig's neck.
       this.body.add(this.stars);
       this.stars.position.set(0, 1.0, 0.55);
@@ -714,6 +716,28 @@ export class EnemyView {
     // A tail of three bones.
     for (let i = 0; i < 3; i++) dog.add(mesh(new THREE.SphereGeometry(0.025 - i * 0.005, 6, 4), boneDark, 0, 0.62 - i * 0.03, -0.52 - i * 0.07));
     this.body.add(dog);
+  }
+
+  /**
+   * The War Pig (E1i): the Hound's frame in a bristly brown hide, a barrel of a body over the spine,
+   * and two tusks, so it reads as heavier than the dog it runs like.
+   */
+  private dressPig(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const hide: Record<number, number> = { 0xd6c9a8: 0x6a4a38, 0x8f8266: 0x4a3226 };
+    for (const m of this.materials) {
+      const to = hide[m.color.getHex()];
+      if (to !== undefined) m.color.setHex(to);
+    }
+    const skin = mat(0x7a5642, { roughness: 1 });
+    const barrel = mesh(new THREE.SphereGeometry(0.3, 14, 10), skin, 0, 0.58, -0.05);
+    barrel.scale.set(0.95, 0.85, 1.6);
+    const tusk = mat(0xe8dcc0, { roughness: 0.6 });
+    this.body.add(barrel);
+    for (const side of [-1, 1]) {
+      const t = mesh(new THREE.ConeGeometry(0.018, 0.12, 5), tusk, side * 0.05, 0.74, 0.86);
+      t.rotation.x = -0.9;
+      this.body.add(t);
+    }
   }
 
   /** Grey ogre with a studded club. */
@@ -1203,7 +1227,7 @@ export function windupProgress(e: EnemyState): number {
       return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));

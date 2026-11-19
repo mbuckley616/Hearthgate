@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 252, the War Pig (E1i, part five)
+
+**What changed**
+
+The Warrens' charger. It runs on the Crypt Hound's brain and line, reading `tuning.warPig` through `rushOf`. Against the Hound's numbers:
+
+| | War Pig | Hound |
+|---|---|---|
+| health | 80 | 45 |
+| poise | 9 | 5 |
+| wind-up | 950 ms | 800 ms |
+| rush length | 12 m | 11 m |
+| rush damage | 16 blunt | 14 edge |
+| throw | 4.2 m | 3.5 m |
+| stunned on a wall | 2.6 s | 2.2 s |
+
+It is easier to read and worse to stand in front of. The panel has its health, wind-up, damage and throw. A Warrens room spawns it in the Hound's place, and no Bone Priest raises it (`GOBLINS`).
+
+Its look: the Hound's frame in a brown hide, with a barrel of a body over the spine and two tusks, at 1.15 scale.
+
+`warrensPig.test.ts`: standing in its line takes 16 and a knock-down, after a longer wind-up than a Hound's. check 779/779, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The Warrens now dress four of the Crypt's eight room kinds: fodder, archer, shield and charger. What is left is the Shaman, the Pack Leader (the Priest's slot), the Cave Ogre (the Brute's) and the Chieftain (the Knight's). A Warrens room that rolls a Priest, Wraith, Brute or Knight still fields that skeleton until those land.
+
+**Next**
+
+- The Goblin Shaman (caster, the Wraith's slot), the Cave Ogre, then the Pack Leader's war cry and the Chieftain. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 251, the Pot-lid Goblin (E1i, part four)
 
 **What changed**
