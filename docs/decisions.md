@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-19: Grubnose's Pot-lid Crew against a party with no mage (builder, Session 266)
+To bring Chief Grubnose to the solo bar (3 to 5 minutes with a potion left), his health has to roughly double: at 3800 a lone sword kills him 4 of 5 times in 175 s. But the duo on the bench (a sword and a bow) then does far worse than the solo. At 3400 health it wipes or times out 2 of 5, takes 412 damage against the solo's 126, and drinks 2.6 potions. The largest share, 157, is the Pot-lid Crew. His horn raises the Crew for any party of two or more, and they are armoured: only a staff breaks them properly, so a sword and a bow chip at them while Grubnose fights on.
+- **A.** The Crew come only when a staff hero is in the party; without one, the horn raises a second Nest (warded, the archer's) in their place. *(recommended: an add is weak to one style so a party has a job for it, and a party with nobody for the job only gets a longer fight)*
+- **B.** Keep the Crew for any party and judge it in a playtest, as with the Warden's duo (your A, 19 Nov).
+- **C.** Keep the Crew, but with two heroes they come with less health (about half), so a sword and a bow can still clear them.
+
 ### 2026-11-19: Grubnose's Horn, his third drop (builder, Session 264)
 The boss document gives Chief Grubnose three drops. Two are in: the Pot-lid Shield (20% less blunt) for the tank and the Slingshot Bracer (arrows 1.25x against goblins) for the archer. The third, for the hero who fought him most, is **Grubnose's Horn**: "a consumable slot item: a hero's next three charges against them are taken without a stagger". There is no consumable slot: a hero has ten worn slots and a belt of potions. Until it exists, the hero who fought him most is offered the Pot-lid Shield.
 - **A.** A worn piece: the horn hung in the neck slot, an amulet's place. Each floor, the first three charges that would stagger its wearer land without the stagger. No new slot, and it refreshes on its own. *(recommended: it keeps the design's three charges, and fits the gear we have)*

@@ -2,6 +2,49 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 266, Grubnose against the bar, measured (G3b, part four)
+
+**What changed**
+
+No tuning change. The bench was run against 1.2's bar at two health values. The duo's trouble is asked in `decisions.md` Pending (A recommended: the Pot-lid Crew only for a party with a staff, a second Nest otherwise).
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds a value:
+
+| health | party | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| 1900 (today) | solo | 5 of 5 | 104 s | 110 | 0.8 | 0 |
+| 1900 (today) | duo | 5 of 5 | 61 s (0.59) | 200 | 0.6 | 0 |
+| 3400 | solo | 4 of 5 | 159 s | 126 | 1.0 | 0.2 |
+| 3400 | duo | 3 of 5 | 101 s (0.64) | 412 | 2.6 | 0.8 |
+| 3400 | trio | 5 of 5 | 61 s | 76 | 0 | 0 |
+| 3800 | solo | 4 of 5 | 175 s | 177 | 1.2 | 0.2 |
+| 3800 | duo | 3 of 5 | 113 s (0.65) | 401 | 2.4 | 1.0 |
+| 3800 | trio | 5 of 5 | 65 s | 70 | 0 | 0 |
+
+The solo bar is about 4000 health away.
+
+The duo is the problem. With `--sources` at 3400, the duo's 412 damage taken splits:
+
+| source | damage |
+|---|---|
+| the Pot-lid Crew | 157 |
+| the Nests | 98 |
+| Grubnose himself | about 140 |
+
+The solo, alone with one Nest, takes 126 in all. The Crew are armoured, and the bench's duo is a sword and a bow: neither has the staff the Crew are weak to.
+
+The trio, with a mage, takes 76 and never sees a Crew blow land. So the Crew decide the duo, not the boss's health. Raising health before that is answered would set a number the answer then moves.
+
+**Next**
+
+Left of G3b, both waiting on answers in `decisions.md` Pending:
+- the Crew's question, then the health to the bar (about 4000 for the solo);
+- the Horn.
+
+Then the Warrens open on Wren's Random tab.
+
 ## 2026-11-19: Session 265, the Saltmarsh Warrens are the Warrens (G3b, part three)
 
 **What changed**
