@@ -1758,6 +1758,43 @@ export const tuning = {
   },
 
   /**
+   * Chief Grubnose and his Pig (G1b; `docs/bosses.md` 2.5): the Saltmarsh Warrens' boss, a goblin chief
+   * riding the War Pig. Phase 1, mounted: the Pig's charge, a red line with no rim, which a guard
+   * that covers it stops dead (a stagger, the punish window), and the Chief's sling from the saddle at
+   * the far hero after each charge. Off, the Warrens end on the Warden as before.
+   */
+  grubnose: {
+    enabled: true,
+    maxHp: 1900,
+    maxPoise: 34,
+    radius: 0.9,
+    height: 2.1,
+    moveSpeed: 4,
+    turnRateDeg: 200,
+    chargeRange: 13,
+    chargeMinRange: 3.5,
+    telegraphMs: 1000,
+    trackFrac: 0.6,
+    chargeSpeed: 13,
+    chargeLength: 14,
+    chargeDamage: 24,
+    chargePush: 4.5,
+    wallStunMs: 2400,
+    recoveryMs: 900,
+    cooldownMs: 1600,
+    /** After a charge it slings at the farthest hero standing at least this far off. */
+    slingMinRange: 6,
+    aimMs: 800,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 400,
+    arrowSpeed: 20,
+    damage: 12,
+    spawnMs: 900,
+    deathMs: 2200,
+    knockbackTaken: 0.2,
+  },
+
+  /**
    * The Gravehand (H1; `docs/bosses.md` 2.1): a floating bone hand that ends Mossgate Barrow. It
    * hangs `hoverM` up, out of a blade's reach (only arrows and spells touch it there), and drifts
    * after a hero. Phase 1's gestures: the palm slam (a circle with the orange rim: a jump does not
@@ -4206,6 +4243,17 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
+  'grubnose.maxHp': [100, 6000, 50],
+  'grubnose.telegraphMs': [300, 2500, 25],
+  'grubnose.chargeDamage': [0, 80, 1],
+  'grubnose.chargePush': [0, 10, 0.1],
+  'grubnose.chargeLength': [4, 24, 0.5],
+  'grubnose.chargeSpeed': [4, 24, 0.5],
+  'grubnose.wallStunMs': [0, 5000, 50],
+  'grubnose.cooldownMs': [0, 6000, 50],
+  'grubnose.slingMinRange': [0, 20, 0.5],
+  'grubnose.aimMs': [200, 2000, 25],
+  'grubnose.damage': [0, 60, 1],
   'warPig.maxHp': [10, 600, 5],
   'chieftain.maxHp': [20, 1500, 10],
   'chieftain.guardArcDeg': [0, 360, 5],
@@ -4804,7 +4852,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

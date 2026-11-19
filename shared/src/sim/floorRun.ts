@@ -403,6 +403,7 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
  */
 export function bossOf(story: string | undefined): EnemyKind {
   if (story === 'mossgate' && tuning.gravehand.enabled) return 'gravehand';
+  if (story === 'saltmarsh' && tuning.grubnose.enabled) return 'grubnose';
   if (story === 'emberhall' && tuning.mason.enabled) return 'mason';
   return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
 }

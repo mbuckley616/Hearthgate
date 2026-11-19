@@ -66,6 +66,8 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   ogre: 'heavy',
   packLeader: 'leader',
   chieftain: 'elite',
+  // The Warrens' boss (G1b): Chief Grubnose on his War Pig.
+  grubnose: 'boss',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -83,6 +85,8 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
   if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' || e.attack === 'knuckles' ? 'heavy' : 'strike';
   // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
+  // Chief Grubnose (G1b): the Pig's charge a red line (a guard stops it), the Chief's sling yellow.
+  if (e.kind === 'grubnose') return e.attack === 'sling' ? 'projectile' : 'strike';
   if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : e.attack === 'grout' ? 'magic' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
@@ -119,6 +123,8 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return 'magic';
     case 'boneRing':
       return 'edge';
+    case 'grubnose':
+      return e.attack === 'sling' ? 'pierce' : 'blunt';
     case 'mason':
       return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':
@@ -215,6 +221,7 @@ const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
   ogre: { name: 'Cave Ogre', plural: 'Cave Ogres' },
   packLeader: { name: 'Pack Leader', plural: 'Pack Leaders' },
   chieftain: { name: 'Goblin Chieftain', plural: 'Goblin Chieftains' },
+  grubnose: { name: 'Chief Grubnose', plural: 'Chief Grubnose' },
 };
 
 /**

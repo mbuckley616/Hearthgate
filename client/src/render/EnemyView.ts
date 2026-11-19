@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -101,6 +101,8 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
   warPig: { guard: BASE },
+  // Chief Grubnose on his Pig (G1b): the Pig's frame, the rider built on its back.
+  grubnose: { guard: BASE },
   // The Wraith (E1d) channels with the Priest's raised hands.
   // The Gravehand's rig is hidden (H1): its hand is posed in update(), so only a guard is needed here.
   gravehand: {
@@ -265,7 +267,7 @@ export class EnemyView {
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
     else if (kind === 'brute' || kind === 'mason' || kind === 'ogre') this.buildBrute(mat, mesh, kind === 'ogre');
-    else if (kind === 'hound' || kind === 'warPig') this.buildHound(mat, mesh);
+    else if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer' || kind === 'skirmisher', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'mason') this.dressMason(mat, mesh);
@@ -371,8 +373,9 @@ export class EnemyView {
     }
     this.stars.visible = false;
     this.head.add(this.stars);
-    if (kind === 'warPig') this.dressPig(mat, mesh);
-    if (kind === 'hound' || kind === 'warPig') {
+    if (kind === 'warPig' || kind === 'grubnose') this.dressPig(mat, mesh);
+    if (kind === 'grubnose') this.buildRider(mat, mesh);
+    if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') {
       // Its skull is low and in front, not on the rig's neck.
       this.body.add(this.stars);
       this.stars.position.set(0, 1.0, 0.55);
@@ -791,6 +794,44 @@ export class EnemyView {
       t.rotation.x = -0.9;
       this.body.add(t);
     }
+  }
+
+  /**
+   * Chief Grubnose (G1b): a goblin in the saddle, a fat green body under a fur cloak, a big hooked nose,
+   * a crown of teeth on a fur cap and a sling in his right hand, placeholder boxes for the boss figure.
+   */
+  private buildRider(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const skin = mat(0x6f8a3a, { roughness: 0.9 });
+    const fur = mat(0x5a4632, { roughness: 1 });
+    const leather = mat(0x3e2c1e, { roughness: 1 });
+    const tooth = mat(0xe8dcc0, { roughness: 0.6 });
+    const rider = new THREE.Group();
+    rider.position.set(0, 0.86, -0.05);
+    rider.add(mesh(new THREE.BoxGeometry(0.44, 0.06, 0.34), leather, 0, -0.04, 0));
+    const torso = mesh(new THREE.SphereGeometry(0.17, 12, 8), skin, 0, 0.16, 0);
+    torso.scale.set(1.1, 1.15, 0.95);
+    rider.add(torso, mesh(new THREE.BoxGeometry(0.4, 0.12, 0.3), fur, 0, 0.3, -0.03));
+    rider.add(mesh(new THREE.SphereGeometry(0.11, 10, 8), skin, 0, 0.45, 0.02));
+    const nose = mesh(new THREE.ConeGeometry(0.035, 0.12, 6), skin, 0, 0.43, 0.15);
+    nose.rotation.x = Math.PI / 2 + 0.4;
+    rider.add(nose);
+    for (const side of [-1, 1]) {
+      rider.add(mesh(new THREE.SphereGeometry(0.018, 6, 4), this.eyes, side * 0.04, 0.47, 0.1));
+      const ear = mesh(new THREE.ConeGeometry(0.03, 0.14, 4), skin, side * 0.13, 0.48, 0);
+      ear.rotation.z = -side * 1.2;
+      rider.add(ear);
+      // Legs astride the Pig's barrel.
+      rider.add(mesh(new THREE.BoxGeometry(0.07, 0.22, 0.09), leather, side * 0.24, -0.1, 0.04));
+    }
+    rider.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 10), fur, 0, 0.55, 0.01));
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      rider.add(mesh(new THREE.ConeGeometry(0.014, 0.06, 4), tooth, Math.sin(a) * 0.11, 0.61, Math.cos(a) * 0.11));
+    }
+    const arm = mesh(new THREE.BoxGeometry(0.06, 0.06, 0.26), skin, 0.2, 0.28, 0.12);
+    arm.rotation.x = -0.6;
+    rider.add(arm, mesh(new THREE.BoxGeometry(0.02, 0.2, 0.02), leather, 0.22, 0.4, 0.24));
+    this.body.add(rider);
   }
 
   /** Grey ogre with a studded club. */
@@ -1291,12 +1332,12 @@ export function windupProgress(e: EnemyState): number {
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' || e.kind === 'chieftain' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
-      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : tuning.archer.aimMs) / 1000));
+      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : e.kind === 'grubnose' ? tuning.grubnose.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
       return e.kind === 'brute' || e.kind === 'ogre' ? clamp01(t / (heavyNumbers(e).telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : tuning.hound.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : e.kind === 'grubnose' ? tuning.grubnose.telegraphMs : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));

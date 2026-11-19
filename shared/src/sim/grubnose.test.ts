@@ -1,0 +1,110 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { tuning } from '../config/tuning';
+import { arena, buildWorld } from '../level/arena';
+import { addPlayer, type Loadout } from './coop';
+import { createEnemy, stepEnemies } from './enemies';
+import { bossOf } from './floorRun';
+import { emptyMods } from './gear';
+import { attackType, roleOf, telegraphColour } from './roles';
+import { emptyTalents } from './talents';
+import type { EnemyState, PlayerState, SimState } from './types';
+import { createSimState } from './world';
+
+// G1b: Chief Grubnose and his Pig, mounted (docs/bosses.md 2.5, phase 1).
+
+const world = buildWorld(arena);
+const DT = 1 / 60;
+const loadout: Loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
+const EDGE = arena.floorSize / 2;
+
+function scene(): { s: SimState; p: PlayerState; boss: EnemyState } {
+  const s = createSimState(arena, [], world);
+  const p = addPlayer(s, world, 'p1', loadout, false);
+  Object.assign(p, { x: 0, z: EDGE - 3, yaw: Math.PI, invulnerable: false, invulnTime: 0, lagGrace: 0, hp: 1e4, maxHp: 1e4 });
+  const boss = createEnemy(s, world, 'grubnose', 0, EDGE - 11, 0);
+  Object.assign(boss, { x: 0, z: EDGE - 11, yaw: 0, ai: 'chase', aiTime: 0, cooldown: 0 });
+  return { s, p, boss };
+}
+
+/** Steps until `done` or `max` ticks, keeping the hero where it stands. */
+function until(s: SimState, p: PlayerState, done: () => boolean, max = 600): number {
+  const at = { x: p.x, z: p.z };
+  for (let i = 0; i < max; i++) {
+    if (done()) return i;
+    stepEnemies(s, DT, world);
+    Object.assign(p, at);
+  }
+  return -1;
+}
+
+const chargeAt = (s: SimState, p: PlayerState, boss: EnemyState) => until(s, p, () => boss.ai === 'charge' || boss.ai === 'recover' || boss.ai === 'stagger');
+
+afterEach(() => {
+  tuning.grubnose.enabled = true;
+});
+
+describe('Chief Grubnose and his Pig (G1b)', () => {
+  it('is a boss that ends the Saltmarsh Warrens, and only with its switch on', () => {
+    expect(roleOf('grubnose')).toBe('boss');
+    expect(bossOf('saltmarsh')).toBe('grubnose');
+    tuning.grubnose.enabled = false;
+    expect(bossOf('saltmarsh')).toBe('warden');
+  });
+
+  it('the charge is a red line of blunt, the sling a yellow line of pierce', () => {
+    expect(telegraphColour({ kind: 'grubnose', attack: 'charge' })).toBe('strike');
+    expect(telegraphColour({ kind: 'grubnose', attack: 'sling' })).toBe('projectile');
+    expect(attackType({ kind: 'grubnose', attack: 'charge' })).toBe('blunt');
+    expect(attackType({ kind: 'grubnose', attack: 'sling' })).toBe('pierce');
+  });
+
+  it('winds up the charge for its telegraph, then rushes and throws an unguarded hero', () => {
+    const { s, p, boss } = scene();
+    stepEnemies(s, DT, world);
+    expect(boss.ai).toBe('chargeWindup');
+    expect(boss.attack).toBe('charge');
+    expect(boss.tele.shape).toBe('line');
+    const ticks = until(s, p, () => boss.ai === 'charge');
+    expect(ticks * DT * 1000).toBeGreaterThanOrEqual(tuning.grubnose.telegraphMs - 20);
+    const hp = p.hp;
+    until(s, p, () => boss.ai !== 'charge');
+    expect(p.hp).toBeLessThan(hp);
+    expect(p.mode).toBe('hurt');
+    expect(boss.ai).toBe('recover');
+  });
+
+  it('a guard that covers the charge stops the Pig dead: staggered, the hero standing', () => {
+    const { s, p, boss } = scene();
+    Object.assign(p, { mode: 'guard', guardTime: 2, parryOpen: false });
+    stepEnemies(s, DT, world);
+    chargeAt(s, p, boss);
+    until(s, p, () => boss.ai !== 'charge');
+    expect(boss.ai).toBe('stagger');
+    expect(p.mode).toBe('guard');
+    expect(s.events.some((e) => e.kind === 'block' && !e.broke)).toBe(true);
+  });
+
+  it('after a charge it slings from the saddle at the farthest hero, and the shot flies', () => {
+    const { s, p, boss } = scene();
+    stepEnemies(s, DT, world);
+    until(s, p, () => boss.ai === 'recover');
+    // The hero thrown, set far off; once its cooldown is out it slings instead of charging.
+    Object.assign(p, { x: 0, z: EDGE - 2, kbx: 0, kbz: 0 });
+    Object.assign(boss, { x: 0, z: EDGE - 11 });
+    until(s, p, () => boss.ai === 'aim');
+    expect(boss.attack).toBe('sling');
+    expect(boss.tele.shape).toBe('line');
+    expect(until(s, p, () => s.projectiles.some((pr) => pr.hostile && pr.owner === `e${boss.id}`))).toBeGreaterThan(0);
+    // Then the Pig again: a charge comes next.
+    until(s, p, () => boss.ai === 'chargeWindup');
+    expect(boss.attack).toBe('charge');
+  });
+
+  it('a hero close by is charged, not slung at', () => {
+    const { s, p, boss } = scene();
+    Object.assign(boss, { attack: 'charge' });
+    Object.assign(p, { z: boss.z + tuning.grubnose.slingMinRange - 1.5 });
+    stepEnemies(s, DT, world);
+    expect(boss.ai).toBe('chargeWindup');
+  });
+});

@@ -101,7 +101,7 @@ export const STORY: readonly StoryDungeon[] = [
     name: 'The Saltmarsh Warrens',
     levels: [4, 8],
     blurb: 'Tunnels under the marsh where a drowned chief still thinks himself a king. His court is large, and does not lie still.',
-    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'brute'],
+    enemies: ['grunt', 'archer', 'shieldbearer', 'hound', 'brute', 'grubnose'],
     type: 'hauntedCrypt',
     rewards: ['weapon', 'legs', 'hands'],
     run: { seed: 5202, floors: 3, size: 'medium', difficulty: 1 },

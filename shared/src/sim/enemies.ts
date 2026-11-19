@@ -449,6 +449,11 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
 
 /** An archer's numbers: a Barrow Skirmisher (W1) is an archer with its own. */
 function archerNumbers(e: EnemyState): typeof tuning.archer {
+  // Chief Grubnose's sling from the saddle (G1b): an archer's shot on his own numbers.
+  if (e.kind === 'grubnose') {
+    const g = tuning.grubnose;
+    return { ...tuning.archer, turnRateDeg: g.turnRateDeg, aimMs: g.aimMs, aimTrackFrac: g.aimTrackFrac, shootRecoverMs: g.shootRecoverMs, arrowSpeed: g.arrowSpeed, damage: g.damage };
+  }
   return e.kind === 'skirmisher' ? tuning.skirmisher : e.kind === 'slinger' ? tuning.slinger : tuning.archer;
 }
 
@@ -720,6 +725,7 @@ function shieldBrain(state: SimState, world: World, e: EnemyState, target: Playe
 function rushOf(e: EnemyState) {
   const k = tuning.knight;
   if (e.kind === 'warPig') return tuning.warPig;
+  if (e.kind === 'grubnose') return tuning.grubnose;
   if (e.kind === 'ironRing') return { ...tuning.hound, ...tuning.ironRing };
   return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
 }
@@ -800,10 +806,13 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         ? undefined
         : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
       if (hit) {
-        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt') });
-        e.tele.shape = 'none';
-        setAi(e, 'recover');
-        e.recoverTime = h.recoveryMs / 1000;
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' ? { stopsOnGuard: true } : {}) });
+        // Stopped dead on a guard (G1b), it stands staggered; otherwise it shakes off the blow.
+        if ((e.ai as EnemyState['ai']) !== 'stagger') {
+          e.tele.shape = 'none';
+          setAi(e, 'recover');
+          e.recoverTime = h.recoveryMs / 1000;
+        }
       } else if (moved < step * 0.5) {
         // A wall: stunned, the stagger's window cut to wallStunMs.
         e.tele.shape = 'none';
@@ -1824,6 +1833,74 @@ function setMaulTele(e: EnemyState): void {
   else e.tele = { shape: 'cone', x: e.x, z: e.z, radius: m.stringReach, yaw: e.yaw, arcDeg: m.stringArcDeg };
 }
 
+/** The hero Grubnose slings at (G1b): the farthest standing one at `slingMinRange` or more, in sight. */
+function slingTarget(state: SimState, world: World, e: EnemyState): PlayerState | null {
+  let best: PlayerState | null = null;
+  let bestD = tuning.grubnose.slingMinRange;
+  for (const p of state.players) {
+    if (p.mode === 'down' || p.hp <= 0 || Math.abs(p.y - e.y) >= LEVEL_GAP) continue;
+    const d = Math.hypot(p.x - e.x, p.z - e.z);
+    if (d >= bestD && lineOfSight(world, e, p)) {
+      best = p;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Chief Grubnose and his Pig, mounted (G1b; `docs/bosses.md` 2.5, phase 1): the Pig charges as a War
+ * Pig does, along a red line a guard stops dead (`HeroHit.stopsOnGuard`: the tank's stop, the Pig
+ * staggered, the punish window), and after each charge the Chief slings from the saddle at the
+ * farthest hero, the archer's aim and shot on his numbers. Nothing new on the wire: what it does next
+ * is read from `attack`, which the last attack left.
+ */
+function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
+  const g = tuning.grubnose;
+  if (e.ai === 'aim' || e.ai === 'shoot') return archerBrain(state, world, e, slingTarget(state, world, e) ?? target, edt);
+  if (e.ai !== 'chase') return chargerBrain(state, world, e, target, edt);
+  const want: Intent = { x: 0, z: 0 };
+  if (!target) return want;
+  const far = e.attack === 'charge' && e.cooldown <= 0 ? slingTarget(state, world, e) : null;
+  if (far) {
+    const dx = far.x - e.x;
+    const dz = far.z - e.z;
+    const toFar = Math.atan2(dx, dz);
+    e.yaw = toFar;
+    e.attack = 'sling';
+    setAi(e, 'aim');
+    e.tele = { shape: 'line', x: far.x, z: far.z, radius: Math.hypot(dx, dz), yaw: toFar, arcDeg: 0 };
+    state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+    return want;
+  }
+  // The War Pig's approach, without the token a pack shares: the boss always has its turn.
+  const dx = target.x - e.x;
+  const dz = target.z - e.z;
+  const dist = Math.hypot(dx, dz);
+  const sameLevel = Math.abs(target.y - e.y) < LEVEL_GAP;
+  const goal = navGoal(world, e, target);
+  const gx = goal.x - e.x;
+  const gz = goal.z - e.z;
+  const gd = Math.max(Math.hypot(gx, gz), 1e-3);
+  const routed = goal.x !== target.x || goal.z !== target.z;
+  if (!sameLevel || routed || dist > g.chargeRange * 0.8) {
+    want.x = gx / gd;
+    want.z = gz / gd;
+  } else if (dist < g.chargeMinRange) {
+    want.x = -dx / Math.max(dist, 1e-3);
+    want.z = -dz / Math.max(dist, 1e-3);
+  }
+  e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : Math.atan2(dx, dz), g.turnRateDeg * DEG * edt);
+  const inRange = sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange;
+  if (inRange && e.cooldown <= 0 && lineOfSight(world, e, target)) {
+    setAi(e, 'chargeWindup');
+    e.attack = 'charge';
+    setChargeTele(e);
+    state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+  }
+  return want;
+}
+
 /**
  * The Ossuary Mason (M1; `docs/bosses.md` 2.2), phase 1. As it wakes it raises its Wardstones round the
  * hall. It walks at its front hero and swings the maul string (two blockable blunt cones and an
@@ -2238,6 +2315,7 @@ export function brainFor(kind: EnemyKind): Brain | undefined {
   if (kind === 'king') return kingBrain;
   if (kind === 'gravehand') return gravehandBrain;
   if (kind === 'mason') return masonBrain;
+  if (kind === 'grubnose') return grubnoseBrain;
   return ROLE_BRAINS[roleOf(kind)];
 }
 
@@ -2286,6 +2364,8 @@ function attackCooldown(e: EnemyState): number {
       return kingPace(e).cooldownMs / 1000;
     case 'gravehand':
       return tuning.gravehand.cooldownMs / 1000;
+    case 'grubnose':
+      return e.attack === 'sling' ? tuning.grubnose.cooldownMs / 2000 : tuning.grubnose.cooldownMs / 1000;
     case 'ironRing':
       return tuning.ironRing.cooldownMs / 1000;
     case 'silverRing':

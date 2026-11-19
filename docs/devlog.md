@@ -2,6 +2,46 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 257, Chief Grubnose and his Pig, mounted (G1b)
+
+**What changed**
+
+The Saltmarsh Warrens end on Chief Grubnose and his Pig (`grubnose.enabled`; off, the Warden as before). This is phase 1 of `docs/bosses.md` 2.5: the Chief riding the War Pig. It is one new `EnemyKind`, `grubnose`, in the boss role, with a brain of its own (`grubnoseBrain`):
+- **The Pig's charge.** A 1000 ms wind-up on a red line with no rim, then a 14 m rush of 24 blunt that throws an unguarded hero 4.5 m. A wall stuns it 2.4 s, as the War Pig is stunned. It needs no attack token: the boss always gets its turn.
+- **A guard stops it dead.** A guard that covers the charge holds as a stance holds a heavy: the heavy's chip and a block's shove, no break. The Pig is staggered, which is the punish window. This is a new optional `HeroHit.stopsOnGuard`, read only in `hurtHero`'s guard branch, so the arena's hashes do not move. Any guard counts, not only a shield's; the design says "on a shield", and that is for the playtest to judge. A Pig armoured after a stagger (G1) is not stopped.
+- **The sling from the saddle.** After each charge, if a hero in sight stands at least 6 m off, the Chief slings at the farthest one instead. That is the archer's aim and shot on his own numbers: an 800 ms aim on a yellow line, then 12 pierce at 20 m/s. The cooldown after a sling is half a charge's. Then the Pig charges again. A hero close by is only ever charged. Nothing new rides the wire: the next attack is read from `attack`, which the last one left.
+
+Its figure is a placeholder: the War Pig's frame at 1.7x with a goblin in the saddle. The goblin has a fur cloak, a hooked nose, a cap ringed with seven teeth, and a sling. The boss bar reads "Chief Grubnose and his Pig". The panel has its health, the charge's wind-up, damage, push, length, speed and wall stun, the cooldown, the sling's reach, aim and damage.
+
+`grubnose.test.ts`:
+- it ends the Saltmarsh Warrens only with its switch on;
+- the charge's and the sling's colours and types;
+- the charge's wind-up runs its telegraph, then it rushes and throws a hero;
+- a covering guard stops the Pig staggered, with the hero still guarding;
+- after a charge it slings at a far hero, the shot flies, and the next attack is a charge again;
+- a near hero is charged.
+
+check 797/797, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench (`npm run bench:bosses -- --story saltmarsh --seeds 5`), phase 1 alone at today's 1900 health:
+
+| party | kills | median time to kill |
+|---|---|---|
+| solo | 3 of 5 (2 timed out at 36% left) | 79 s |
+| duo | 5 of 5 | 54 s (0.69 of solo) |
+| trio | 5 of 5 | 31 s |
+| one hero and three henchmen | 5 of 5 | 21 s |
+
+Mounted alone it is far too soft for the bar (solo in 180 to 300 s). Phases 2 and 3 (G2b, G3b) add the horn's adds, the loot pile and the remount, so it is tuned after them, not now. The solo timeouts look like the scripted hero failing to close on a boss that keeps backing off to a charge's length. The Saltmarsh Warrens still play the Crypt's roster and type until G3b turns them.
+
+**Next**
+
+- G2b: phase 2 at 60%. The Pig down to a stun, the horn, Slinger nests and a Pot-lid crew, the Chief's looted string on foot, and the loot pile that pays the goblins.
+- Then G3b: the remount and the charges in threes, the signature drops, and the Saltmarsh Warrens turned to the Warrens' type. Then tune on the bench.
+- The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 256, the Goblin Chieftain (E1i, part nine)
 
 **What changed**

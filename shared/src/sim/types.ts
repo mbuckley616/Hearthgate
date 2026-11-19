@@ -631,6 +631,11 @@ export interface HeroHit {
    * feet as it swung; a hero whose feet are `jump.clearHeight` above it when the hit lands clears it.
    */
   low?: number;
+  /**
+   * Chief Grubnose's Pig (G1b): a charge a covering guard stops dead, held as a stance holds a heavy,
+   * and the charger staggered (unless armoured after a stagger, G1).
+   */
+  stopsOnGuard?: boolean;
 }
 
 /** A hit on a remote player, waiting out their lag grace. */

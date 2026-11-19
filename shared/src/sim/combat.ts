@@ -782,7 +782,18 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
     const stance = inStance(p);
-    if (heavy && (guardHoldsHeavy(p) || stance)) {
+    const charger = hit.stopsOnGuard && from && !from.armour && isTargetable(from) ? from : undefined;
+    if (heavy && charger) {
+      // Grubnose's Pig (G1b) runs into a guard: it holds as a stance does, and the Pig is stopped dead.
+      damage *= g.heavyBlockDamageFrac;
+      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
+      staggerEnemy(state, charger);
+      p.hp = Math.max(0, p.hp - damage);
+      if (p.hp > 0) return 'blocked';
+      heavy = false;
+    } else if (heavy && (guardHoldsHeavy(p) || stance)) {
       // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
       // A shield's stance (B8) holds too, but the heavy drives the tank back a step.
       damage *= stance ? g.stanceHeavyDamageFrac : g.heavyBlockDamageFrac;
