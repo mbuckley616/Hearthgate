@@ -57,6 +57,8 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   cantor: 'leader',
   // And a Skeleton Archer that the blade staggers in one blow.
   skirmisher: 'archer',
+  // The Goblin Warrens' (E1i): a Skeleton Warrior's brain, a goblin's numbers.
+  cutter: 'fodder',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -87,6 +89,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
   switch (e.kind) {
     case 'grunt':
     case 'hound':
+    case 'cutter':
       return 'edge';
     case 'archer':
     case 'skirmisher':
@@ -167,35 +170,55 @@ export interface Dressing {
   plural: string;
 }
 
+/** The Crypt's names, every kind: a type's roster starts from it and renames its own. */
+const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
+  grunt: { name: 'Skeleton Warrior', plural: 'Skeleton Warriors' },
+  archer: { name: 'Skeleton Archer', plural: 'Skeleton Archers' },
+  brute: { name: 'Bone Brute', plural: 'Bone Brutes' },
+  warden: { name: 'The Warden', plural: 'The Warden' },
+  shieldbearer: { name: 'Skeleton Shieldbearer', plural: 'Skeleton Shieldbearers' },
+  hound: { name: 'Crypt Hound', plural: 'Crypt Hounds' },
+  priest: { name: 'Bone Priest', plural: 'Bone Priests' },
+  knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
+  wraith: { name: 'Wraith', plural: 'Wraiths' },
+  king: { name: 'The Hollow King', plural: 'The Hollow King' },
+  gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
+  ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
+  silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
+  boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
+  mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
+  wardstone: { name: 'Wardstone', plural: 'Wardstones' },
+  mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
+  chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
+  crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
+  cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
+  skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
+  cutter: { name: 'Goblin Cutter', plural: 'Goblin Cutters' },
+};
+
 /**
  * Rosters by dungeon type. The Crypt's is today's four, renamed (E1a: no change to the fight); a type
- * without its own roster borrows the Crypt's until it has one (the Warrens are E1i).
+ * without its own roster borrows the Crypt's until it has one. The Warrens' kinds (E1i) are kinds of
+ * their own, named here, and take a Crypt kind's place in a Warrens room (`ROOM_KINDS`).
  */
 export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> = {
-  hauntedCrypt: {
-    grunt: { name: 'Skeleton Warrior', plural: 'Skeleton Warriors' },
-    archer: { name: 'Skeleton Archer', plural: 'Skeleton Archers' },
-    brute: { name: 'Bone Brute', plural: 'Bone Brutes' },
-    warden: { name: 'The Warden', plural: 'The Warden' },
-    shieldbearer: { name: 'Skeleton Shieldbearer', plural: 'Skeleton Shieldbearers' },
-    hound: { name: 'Crypt Hound', plural: 'Crypt Hounds' },
-    priest: { name: 'Bone Priest', plural: 'Bone Priests' },
-    knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
-    wraith: { name: 'Wraith', plural: 'Wraiths' },
-    king: { name: 'The Hollow King', plural: 'The Hollow King' },
-    gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
-    ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
-    silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
-    boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
-    mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
-    wardstone: { name: 'Wardstone', plural: 'Wardstones' },
-    mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
-    chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
-    crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
-    cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
-    skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
-  },
+  hauntedCrypt: CRYPT_NAMES,
 };
+
+/**
+ * The kind a generated room's group spawns in place of a Crypt kind, by dungeon type (E1i): the
+ * composer (`roomMix.ts`) still spends its budget on the Crypt's kinds, with the same draws from the
+ * seeded stream, and a type swaps in its own dressing of each role it has built. So a Crypt room is
+ * the room it always was, and a Warrens room keeps its shape as goblins replace skeletons.
+ */
+export const ROOM_KINDS: Partial<Record<DungeonType, Partial<Record<EnemyKind, EnemyKind>>>> = {
+  goblinWarrens: { grunt: 'cutter' },
+};
+
+/** What a room of `type` spawns for the composer's `kind`. */
+export function roomKindIn(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): EnemyKind {
+  return ROOM_KINDS[type]?.[kind] ?? kind;
+}
 
 export function dressing(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): Dressing {
   return (ROSTERS[type] ?? ROSTERS[DEFAULT_DUNGEON_TYPE]!)[kind];

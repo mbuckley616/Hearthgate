@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -162,7 +162,10 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     smash: pose(BASE, { handYaw: -5, handHeight: -0.1, handReach: 0.48, bladeYaw: 0, bladePitch: -45, offYaw: 12, offHeight: -0.06, offReach: 0.42, lean: 36, crouch: 0.28 }),
     roar: pose(BASE, { handYaw: -100, handHeight: 0.4, handReach: 0.5, bladeYaw: -100, bladePitch: 40, offYaw: 100, offHeight: 0.4, offReach: 0.5, lean: -22, crouch: 0.1 }),
   },
+  // A Goblin Cutter (E1i) swings as a Skeleton Warrior does, on a smaller body; filled in below.
+  cutter: {},
 };
+POSES.cutter = POSES.grunt;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -248,6 +251,7 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
+    if (kind === 'cutter') this.dressGoblin(mat, mesh);
     if (kind === 'skirmisher') {
       // The blade's (B5's colour for melee): a red rag knotted round the brow, light and quick.
       this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.03, 6, 16).rotateX(Math.PI / 2), mat(0xb02a22, { roughness: 1 }), 0, 0.05, 0));
@@ -479,6 +483,34 @@ export class EnemyView {
       this.shield = shield;
       this.chest.add(shield);
     }
+  }
+
+  /**
+   * A Goblin Cutter (E1i): a Skeleton Warrior's frame in green skin, with long ears, a hooked nose and
+   * a notched cleaver for its sword, no shield. Its bone and rag are recoloured where the skeleton made them.
+   */
+  private dressGoblin(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const skin: Record<number, number> = { 0xd6c9a8: 0x6f8a3a, 0x8f8266: 0x4e6428, 0x5a2620: 0x5a4a2a };
+    for (const m of this.materials) {
+      const to = skin[m.color.getHex()];
+      if (to !== undefined) m.color.setHex(to);
+    }
+    if (this.shield) this.shield.visible = false;
+    const green = mat(0x6f8a3a, { roughness: 0.85 });
+    for (const side of [-1, 1]) {
+      const ear = mesh(new THREE.ConeGeometry(0.04, 0.2, 5), green, side * 0.13, 0.03, -0.01);
+      ear.rotation.z = -side * 1.2;
+      this.head.add(ear);
+    }
+    const nose = mesh(new THREE.ConeGeometry(0.025, 0.09, 5), green, 0, -0.03, 0.14);
+    nose.rotation.x = Math.PI / 2 + 0.3;
+    this.head.add(nose);
+    for (const c of [...this.weapon.children]) if (c !== this.glint) this.weapon.remove(c);
+    const iron = mat(0x5a5650, { metalness: 0.5, roughness: 0.6 });
+    this.weapon.add(
+      mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 6), mat(0x3a2418), 0, 0.02, 0),
+      mesh(new THREE.BoxGeometry(0.12, 0.34, 0.014), iron, 0.03, 0.27, 0),
+    );
   }
 
   /** The Bone Priest (E1e): a Skeleton Warrior's bones in a long robe and hood, a staff topped with a skull for its sword and shield. */
@@ -781,7 +813,7 @@ export class EnemyView {
     // Hit reaction: white flash, and a flinch on light enemies (a small rock on big ones).
     if (curr.lastHitAt !== this.lastHitAt) {
       this.lastHitAt = curr.lastHitAt;
-      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' ? 1 : 0.25;
+      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' ? 1 : 0.25;
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
@@ -952,7 +984,7 @@ export class EnemyView {
       lean: guard.lean + run * 8,
     });
     const out = { ...guard };
-    const g = tuning.grunt;
+    const g = e.kind === 'cutter' ? tuning.cutter : tuning.grunt;
     const into = (a: UpperPose, b: UpperPose, u: number, ease = easeInOut) => lerpPose(a, b, ease(clamp01(u)), out);
     switch (e.ai) {
       case 'stagger':
@@ -964,6 +996,7 @@ export class EnemyView {
     }
     switch (e.kind) {
       case 'grunt':
+      case 'cutter':
         switch (e.ai) {
           case 'windup': {
             // Rise into the raised pose over the first 60%, then hold with a tremble.
@@ -1130,7 +1163,7 @@ export function windupProgress(e: EnemyState): number {
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
       return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':

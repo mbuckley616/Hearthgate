@@ -1124,6 +1124,38 @@ export const tuning = {
   },
 
   /**
+   * A Goblin Cutter (E1i, the Goblin Warrens' fodder; Michael's A, 19 Nov): a Skeleton Warrior's
+   * dressing for the Warrens, on the same brain with its own numbers. Lighter and quicker than a
+   * skeleton: less health and poise, a shorter wind-up and a lighter cut, so it comes in packs.
+   */
+  cutter: {
+    maxHp: 40,
+    maxPoise: 4,
+    radius: 0.36,
+    height: 1.2,
+    moveSpeed: 4.2,
+    turnRateDeg: 480,
+    windupTurnRateDeg: 130,
+    holdDistance: 3.8,
+    attackRange: 1.5,
+    maxAttackers: 2,
+    telegraphMs: 480,
+    slashActiveMs: 120,
+    betweenSlashesMs: 260,
+    recoveryMs: 600,
+    attackCooldownMs: 800,
+    damage: 7,
+    reach: 1.75,
+    arcDeg: 100,
+    spawnMs: 600,
+    deathMs: 1400,
+    groupMin: 3,
+    groupMax: 5,
+    respawnDelayMs: 2500,
+    knockbackTaken: 1.3,
+  },
+
+  /**
    * A Barrow Skirmisher (W1, Michael's A, 17 Nov): a Skeleton Archer's dressing for the Warden's hall,
    * the blade's job (1.3's skirmisher): quick, light, keeping farther off than an archer, and any melee
    * blow that lands staggers it. Same brain as the archer, its own numbers.
@@ -3957,6 +3989,10 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.maxHp': [10, 500, 2],
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
+  'cutter.maxHp': [10, 500, 2],
+  'cutter.moveSpeed': [0, 8, 0.1],
+  'cutter.telegraphMs': [100, 1500, 10],
+  'cutter.damage': [0, 60, 1],
   'cantor.chantMs': [500, 10000, 100],
   'cantor.raiseEveryMs': [500, 15000, 100],
   'warden.adds': [0, 3, 1],
@@ -4518,7 +4554,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

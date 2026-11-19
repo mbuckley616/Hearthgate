@@ -2,6 +2,26 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 248, the Goblin Cutter (E1i, part one)
+
+**What changed**
+
+Michael's A on E1i (19 Nov). The first Warrens kind is the Goblin Cutter, the fodder:
+- **Its numbers:** `tuning.cutter`, the Skeleton Warrior's shape, lighter and quicker: 40 health (not 60), poise 4, 4.2 m/s, a 480 ms wind-up (600), cuts of 7 (10) with a little less reach, and it is thrown further. Health, speed, wind-up and damage are on the panel.
+- **Its brain:** the fodder role's, the grunt's, reading `gruntNumbers(e)`; it flinches as a light enemy does, cuts edge, and no Bone Priest raises it (a priest raises bones).
+- **Where it fights:** `ROOM_KINDS` in `roles.ts`. A Warrens room's composer spends its budget on the Crypt's kinds with the same draws, and `spawnRoomGroup` (and the mini-boss's pack) spawns the type's kind for each role it has built. So a Crypt room is unchanged, and a Warrens room has the Crypt's shape with Cutters for the Skeleton Warriors, on the same spots.
+- **Its look:** the skeleton's frame recoloured green, long ears, a hooked nose and a notched cleaver, no shield, at 0.78 scale (1.2 m).
+
+The Warrens stay shut on Wren's tab (`open: false`) until enough of the roster stands. `warrensCutter.test.ts`: three seeds, every Warrens room matches its Crypt twin kind for kind (Skeleton Warriors as Cutters) and spot for spot; the Cutter's wind-up runs 480 ms and its cut lands. check 768/768, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Swapping kinds after the composer, rather than giving the Warrens a composer of their own, keeps every Warrens room the same shape as the Crypt's from the same seed, so each new goblin lands without moving anything else. A goblin with a brain of its own (the Pack Leader's cry in place of the Priest's raise) will need the swap to carry its placement too.
+
+**Next**
+
+- Pilfer on the Cutter: its hit snatches a share of the party's carried finds, it runs for the far door with a sack, and killing it drops the share. Then the Slinger.
+
 ## 2026-11-17: Session 247, a heavy hit's throw eases instead of snapping
 
 **What changed**

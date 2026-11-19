@@ -8,7 +8,7 @@ import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
 import { composeRoom, roomTier, type Place } from './roomMix';
-import { minibossNames, roleOf } from './roles';
+import { minibossNames, roleOf, roomKindIn } from './roles';
 import { earnFocus } from './focus';
 import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
 import { dungeonTypeOf } from '../level/dungeonTypes';
@@ -481,7 +481,8 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
       const ring = n === 0 ? 0 : 1.2;
       const x = pt.x + Math.cos(a) * ring;
       const z = pt.z + Math.sin(a) * ring;
-      createEnemy(state, world, g.kind, x, z, Math.atan2(avgX - x, avgZ - z));
+      // A Warrens room (E1i) spawns its goblin for each role it has built, from the same draws.
+      createEnemy(state, world, roomKindIn(g.kind, dungeonTypeOf(spec)), x, z, Math.atan2(avgX - x, avgZ - z));
     }
   }
   return group.length;
@@ -577,7 +578,7 @@ function wakeTreasureGuards(state: SimState, world: World, f: FloorRunState): vo
     const mz = (ez + t.z) / 2;
     for (let k = 0; k < n; k++) {
       const off = n === 1 ? 0 : (k / (n - 1) - 0.5) * 3;
-      const e = createEnemy(state, world, 'grunt', mx + dir.z * off, mz - dir.x * off, yaw);
+      const e = createEnemy(state, world, roomKindIn('grunt', dungeonTypeOf(spec)), mx + dir.z * off, mz - dir.x * off, yaw);
       e.guard = t.id;
     }
   }

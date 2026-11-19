@@ -333,9 +333,14 @@ function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: nu
   for (const p of victims) hurtHero(state, p, { damage: hitDamage(e, damage), heavy: true, push, fromX, fromZ, enemyId: e.id, ...low, ...typed(type) });
 }
 
+/** A fodder brain's numbers: a Goblin Cutter (E1i) is a Skeleton Warrior with its own. */
+function gruntNumbers(e: EnemyState): typeof tuning.grunt {
+  return e.kind === 'cutter' ? tuning.cutter : tuning.grunt;
+}
+
 /** Grunt slash: light, in front. */
 function gruntStrike(state: SimState, e: EnemyState, target: PlayerState | null): void {
-  const g = tuning.grunt;
+  const g = gruntNumbers(e);
   state.events.push({ kind: 'enemySwing', enemyId: e.id });
   if (!target || tuning.debug.passiveEnemies || heroInvulnerable(target)) return;
   if (Math.abs(target.y - e.y) > REACH_HEIGHT) return;
@@ -355,7 +360,7 @@ export interface Intent {
 // --- Brains: one per kind. Each sets e.ai/e.yaw/e.tele and returns where it wants to move. ---
 
 function gruntBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const g = tuning.grunt;
+  const g = gruntNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -2099,6 +2104,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.archer.cooldownMs / 1000;
     case 'skirmisher':
       return tuning.skirmisher.cooldownMs / 1000;
+    case 'cutter':
+      return tuning.cutter.attackCooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':
@@ -2147,6 +2154,8 @@ export function raisable(state: SimState, e: EnemyState): boolean {
   if (e.ai !== 'dead' || willRise(state, e)) return false;
   const role = roleOf(e.kind);
   if (role !== 'fodder' && role !== 'archer' && role !== 'shield') return false;
+  // A Bone Priest raises bones: a goblin (E1i) stays down.
+  if (e.kind === 'cutter') return false;
   return state.enemies.some((o) => roleOf(o.kind) === 'leader' && o.ai !== 'dead');
 }
 
