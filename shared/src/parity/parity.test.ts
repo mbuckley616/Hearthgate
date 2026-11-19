@@ -24,7 +24,7 @@ const api: SimApi = {
 describe("Hearthgate's copy of the slice's fight matches the slice", () => {
   // Hearthgate's downs and its item catalogue (T5) are its own rules; with them off the rest of the
   // fight is the slice's, to the bit.
-  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true, states: true, mastery: true, selfOnly: true, regen: 0, bossScaling: true, attention: true, damageTypes: true, addWeakness: true, signatureDrops: true, focus: true, kingRules: true };
+  const kept = { bleedOut: true, catalogue: true, level4: 0, maxLevel: 50, healthPerLevel: 0, meleeGuard: true, heavies: true, flow: true, swap: false, cancelAfter: 0, keepIframes: true, launch: true, clearsLow: true, sweep: true, armour: true, threePhases: true, states: true, mastery: true, selfOnly: true, regen: 0, bossScaling: true, attention: true, damageTypes: true, addWeakness: true, signatureDrops: true, focus: true, kingRules: true, shieldStance: true, wardenRules: true };
   beforeAll(() => {
     kept.bleedOut = tuning.coop.bleedOut;
     kept.catalogue = tuning.gear.catalogue;
@@ -52,6 +52,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     kept.addWeakness = tuning.bosses.addWeakness;
     kept.signatureDrops = tuning.bosses.signatureDrops;
     kept.kingRules = tuning.king.underRules;
+    kept.shieldStance = tuning.guard.shieldStance;
+    kept.wardenRules = tuning.warden.underRules;
     kept.focus = tuning.bosses.focus;
     tuning.coop.bleedOut = false;
     // The slice's roll tail and its i-frames ending with it (D9 shortened one and kept the other).
@@ -97,6 +99,9 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.bosses.addWeakness = false;
     tuning.bosses.signatureDrops = false;
     tuning.king.underRules = false;
+    // The slice's guard is the same with or without a shield (B8).
+    tuning.guard.shieldStance = false;
+    tuning.warden.underRules = false;
     tuning.bosses.focus = false;
   });
   afterAll(() => {
@@ -126,6 +131,8 @@ describe("Hearthgate's copy of the slice's fight matches the slice", () => {
     tuning.bosses.addWeakness = kept.addWeakness;
     tuning.bosses.signatureDrops = kept.signatureDrops;
     tuning.king.underRules = kept.kingRules;
+    tuning.guard.shieldStance = kept.shieldStance;
+    tuning.warden.underRules = kept.wardenRules;
     tuning.bosses.focus = kept.focus;
   });
 

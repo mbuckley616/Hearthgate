@@ -102,6 +102,30 @@ export function swingEaseM(): number {
   return SNAP_M + longestLungeM() + tuning.targeting.lungeMagnetM;
 }
 
+/**
+ * Was this player's hero thrown by a heavy hit this snapshot? A slam's knockback (the Warden's 2.8 m,
+ * 21 to 25 m/s) is the server's alone: prediction kept walking the other way for a round trip, so the
+ * whole throw comes back as one correction, 3 to 4.6 m at 0 ms (critic, 17 Nov), past the snap limit.
+ */
+export function thrownBy(events: readonly SimEvent[], id: string): boolean {
+  return events.some((ev) => ev.kind === 'heroHurt' && ev.playerId === id && ev.heavy);
+}
+
+/** The longest throw any enemy deals (m): every tuning group's `knockbackDealt`, so a panel edit moves it too. */
+export function longestKnockbackM(): number {
+  let most = 0;
+  for (const group of Object.values(tuning) as unknown[]) {
+    const kb = group && typeof group === 'object' ? (group as { knockbackDealt?: unknown }).knockbackDealt : undefined;
+    if (typeof kb === 'number' && kb > most) most = kb;
+  }
+  return most;
+}
+
+/** The furthest a throw's correction eases rather than snaps: the snap limit, the longest throw and half a second of sprinting. */
+export function thrownEaseM(): number {
+  return SNAP_M + longestKnockbackM() + tuning.movement.sprintSpeed * PLACED_EASE_S;
+}
+
 /** The furthest a placement's correction eases rather than snaps: the snap limit and half a second of sprinting. */
 export function placedEaseM(): number {
   return SNAP_M + tuning.movement.sprintSpeed * PLACED_EASE_S;

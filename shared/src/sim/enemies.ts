@@ -109,7 +109,9 @@ export function createEnemy(state: SimState, world: World, kind: EnemyKind, x: n
   }
   resolveCircle(pos, s.radius, (onLedge ? world.level.ledge.height : 0) + 0.3, s.height, world.colliders);
   const hard = difficultyScale(world);
-  const maxHp = s.maxHp * healthScale(state, kind) * hard;
+  // W1: the Warden under the rules is tuned to 1.2's bar apart from the slice's own.
+  const rules = kind === 'warden' && tuning.warden.underRules ? tuning.warden.rulesHpMult : 1;
+  const maxHp = s.maxHp * healthScale(state, kind) * hard * rules;
   const e: EnemyState = {
     id: state.nextId++,
     kind,
@@ -427,8 +429,13 @@ function gruntBrain(state: SimState, world: World, e: EnemyState, target: Player
   return want;
 }
 
+/** An archer's numbers: a Barrow Skirmisher (W1) is an archer with its own. */
+function archerNumbers(e: EnemyState): typeof tuning.archer {
+  return e.kind === 'skirmisher' ? tuning.skirmisher : tuning.archer;
+}
+
 function archerBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -484,7 +491,7 @@ function archerBrain(state: SimState, world: World, e: EnemyState, target: Playe
  * doorways; too close it backs straight away; otherwise it holds, drifting a little across the line.
  */
 function floorArcher(world: World, e: EnemyState, target: PlayerState, dist: number, want: Intent): void {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const dx = target.x - e.x;
   const dz = target.z - e.z;
   const d = Math.max(dist, 1e-3);
@@ -505,7 +512,7 @@ function floorArcher(world: World, e: EnemyState, target: PlayerState, dist: num
 }
 
 function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): void {
-  const a = tuning.archer;
+  const a = archerNumbers(e);
   const from = { x: e.x + Math.sin(e.yaw) * 0.4, y: e.y + 1.3, z: e.z + Math.cos(e.yaw) * 0.4 };
   const to = { x: e.tele.x, y: target.y + 1.1, z: e.tele.z };
   const dx = to.x - from.x;
@@ -776,7 +783,8 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
  * for `chantMs`, after which they stand at `raiseHp`. A stagger breaks the chant.
  */
 function leaderBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
-  const pr = tuning.priest;
+  // A Grave Cantor (W1) is a Priest with its own numbers.
+  const pr = e.kind === 'cantor' ? tuning.cantor : tuning.priest;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -906,6 +914,22 @@ function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number,
   }
 }
 
+/**
+ * W1's phase 2 (Michael's A, 17 Nov): adds weak to a style instead of the raised dead, one fewer than
+ * the heroes and at least one (`masonAdds`'s count): the Guard first, the Cantor at the back, then a
+ * Skirmisher off to the side.
+ */
+export const WARDEN_ADDS: readonly EnemyKind[] = ['mortarGuard', 'cantor', 'skirmisher'];
+
+function raiseWardenAdds(state: SimState, world: World, e: EnemyState): void {
+  const n = Math.min(masonAdds(state, tuning.warden.adds), WARDEN_ADDS.length);
+  for (let i = 0; i < n; i++) {
+    const kind = WARDEN_ADDS[i];
+    // The Guard rises near the Warden; the Cantor across the hall from it; the Skirmisher to one side.
+    raiseFromEdges(state, world, e, 1, kind, kind === 'mortarGuard' ? Math.min(4, tuning.warden.raiseRadius) : tuning.warden.raiseRadius, [0, Math.PI, Math.PI / 2][i] ?? 0);
+  }
+}
+
 function wardenBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   const w = tuning.warden;
   const want: Intent = { x: 0, z: 0 };
@@ -915,7 +939,10 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       const n = Math.round(w.summonCount) + Math.max(0, state.players.length - 1);
       if (w.threePhases) {
         // E1g: the first roar raises the dead round the hall; the second only quickens it.
-        if (e.phase === 1) raiseFromEdges(state, world, e, n);
+        if (e.phase === 1) {
+          if (w.underRules) raiseWardenAdds(state, world, e);
+          else raiseFromEdges(state, world, e, n);
+        }
         e.phase = Math.min(3, e.phase + 1);
       } else {
         // Summon at the end of the roar, then the fight gets faster.
@@ -1023,7 +1050,7 @@ function wardenBrain(state: SimState, world: World, e: EnemyState, target: Playe
       // A rolling slam's later circles are locked to the first's line and come quicker.
       if (e.aiTime >= (e.chain ? w.chainTelegraphMs : w.slamTelegraphMs * teleScale) / 1000) {
         setAi(e, 'slam');
-        slamLands(state, e, w.slamDamage, w.knockbackDealt, true);
+        slamLands(state, e, w.underRules ? w.rulesSlamDamage : w.slamDamage, w.knockbackDealt, true);
       }
       break;
     case 'slam':
@@ -2070,6 +2097,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.grunt.attackCooldownMs / 1000;
     case 'archer':
       return tuning.archer.cooldownMs / 1000;
+    case 'skirmisher':
+      return tuning.skirmisher.cooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
     case 'shieldbearer':
@@ -2078,6 +2107,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.hound.cooldownMs / 1000;
     case 'priest':
       return tuning.priest.raiseEveryMs / 1000;
+    case 'cantor':
+      return tuning.cantor.raiseEveryMs / 1000;
     case 'knight':
       return tuning.knight.attackCooldownMs / 1000;
     case 'wraith':

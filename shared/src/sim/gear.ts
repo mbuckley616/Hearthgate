@@ -89,6 +89,8 @@ export interface Mods {
   lowClear?: boolean;
   /** An off-hand that sends the Hollow King's crown back on a parry (K1, the Crown-catcher Buckler). */
   crownCatch?: boolean;
+  /** A bow whose arrow, breaking a Bone Chanter's rebuild, stuns it (the Mason's Gallery Longbow). */
+  channelStun?: boolean;
 }
 
 export function emptyMods(): Mods {

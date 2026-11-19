@@ -2,6 +2,165 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-17: Session 247, a heavy hit's throw eases instead of snapping
+
+**What changed**
+
+The critic's bug: a Warden slam that lands on a hero showed on that hero's screen as a 3 to 4.6 m teleport, even at 0 ms, and counted as a snap. It happened 7 times in 2 fights.
+
+The cause: the server throws the hero (the slice's `knockbackDealt` 2.8 m, at 21 to 25 m/s). Prediction only learns of the throw a snapshot later, so the whole throw arrives as one correction, past `SNAP_M`.
+
+The fix follows the tile's fall (Session 115) and the mispredicted swing (Session 171):
+- **Detecting it:** `thrownBy(events, id)` in `game/Session.ts` is true when the snapshot carries a heavy `heroHurt` for our hero.
+- **Easing it:** for half a second of server time after one, `ClientSession` eases a correction up to `thrownEaseM()` instead of snapping. That is the snap limit, plus the longest throw any enemy deals (`longestKnockbackM()`, read from every tuning group's `knockbackDealt`, so a panel edit moves it too), plus half a second of sprinting: 9.3 m today.
+- **Unchanged:** a light hit never widens the limit. Browser only; the fight and the parity hashes are unchanged.
+
+`thrownEase.test.ts`: the server throws a sprinting hero back against the sprint with the Warden's push, the browser sprints on for 300 ms, and they part by 2.81 m. That is past the 2.5 m snap limit and inside the 9.3 m eased one. check 765/765, test:net green.
+
+**Learned**
+
+Every server-only move of our own hero (a fall, a throw, a swing decided differently) wants the same treatment: an event names it, and the limit widens briefly. Anything the server moves that prediction cannot step is a candidate.
+
+**Next**
+
+- The critic's rerun should show 0 snaps on the Warden's slam. Nothing else in E1 is open to the builder: the Warrens' twist and the Warden's duo wait on Michael, and the graphics cost and the crowd need a real machine.
+
+## 2026-11-17: Session 246, E1i's roster asked
+
+**What changed**
+
+Docs only. Every Crypt boss line of the boss pass's cut is built (W1 waits only on the duo question), so E1i, the Goblin Warrens' roster, is next, and it is a (design) line. Asked in `decisions.md` Pending:
+- **The roster**, the same in every option: Cutter, Slinger, Pot-lid Goblin, War Pig, Shaman, Pack Leader (a war cry that quickens its pack), Cave Ogre and a Goblin Chieftain, each a new kind on today's brains, so the Crypt's rooms are untouched.
+- **The twist:** A, Pilfer (a Cutter's hit snatches carried finds, the thief runs, killing it drops them back; recommended); B, Poison from the Shaman; C, the Pack Leader's cry alone.
+
+**Learned**
+
+Chill is still the only state a hero can carry (`sim/chill.ts`). Whatever the Warrens' twist is, it is the second, so a corner line and an icon come with it.
+
+**Next**
+
+- On Michael's answer: the Warrens' kinds one a session, then G1b to G3b (Grubnose and his Pig). W1 waits on the duo answer; the graphics item and the crowd need a real machine.
+
+## 2026-11-17: Session 245, the Warden tuned to the solo bar (W1)
+
+**What changed**
+
+Under `warden.underRules` (off in the parity test, so the slice's Warden is untouched):
+- **Health:** the Warden has `rulesHpMult` (2.1) of `maxHp`, applied in `createEnemy`. That is 4200 for a lone hero.
+- **Slams:** a slam deals `rulesSlamDamage` (20, not 32). This covers the near, far and rolling slams, which share `slamLands`.
+- Both numbers are on the panel.
+
+Saltmarsh, 20 seeds, level 8:
+
+| party | Session 242 | now |
+|---|---|---|
+| solo | 115 s, 1.1 potions | 18 of 20 in 207 s, 2.2 of 3 potions, 244 damage (slam 150) |
+| duo | 0.52 | 0.59, 0.3 potions, nobody downed |
+| trio | 33 s | 64 s |
+| solo with three henchmen | | 48 s |
+
+Probes on 10 seeds, health and slam: 3000/32 gave solo 156 s; 3600/32 gave 174 s with 2.6 potions (the slam 203 of 265 damage); 4600/16 gave 225 s but 8 of 10 kills.
+
+check 762/762 (1 new in `wardenAdds.test.ts`), parity hashes unchanged.
+
+**Learned**
+
+The solo bar wanted health and a lighter slam together. Health alone runs the lone hero out of potions before the fight is long enough.
+
+The duo ratio sits at 0.57 to 0.64 whatever the health. The duo's boss is 1.35x, but the pair deals only about 2.3x the lone hero's damage, because the lone hero is attacked half as often and so swings more. Asked in `decisions.md` Pending (A recommended: judge it in a playtest).
+
+**Next**
+
+- The duo question waits on Michael. Otherwise W1 and K1 are built. What is left for the builder in E1 needs a real machine (graphics cost, the crowd) or Michael (B8's feel, the Gravehand's playtest).
+
+## 2026-11-17: Session 244, the Gallery Longbow (the Mason's third drop)
+
+**What changed**
+
+Michael's A on the Mason's third drop (control room, 17 Nov). The **Gallery Longbow** (a yew shortbow, as `docs/bosses.md` 2.2 gives it) is offered to the warded job, the archer who broke the Chanters' rebuilds.
+- **What it does:** an arrow of it that breaks a Bone Chanter's rebuild stuns the Chanter for `chanter.galleryStunMs` (1 s, on the panel) instead of the usual short break.
+- **How:** it is a new signature property, `channelStun`. It is taken only on a bow (`readGearItem`), and only as `true` on a loadout. It reaches the fight as `Mods.channelStun`, and `breakChannel` reads it from the hero, on the server alone.
+- Behind `bosses.signatureDrops`, which the parity test turns off.
+- The Mason's list is now tank, armoured, warded.
+
+check 761/761 (2 new in `galleryLongbow.test.ts`; `mason.test.ts` now expects three pieces), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+Michael's answer names the Chanter, so the stun is the Chanter's alone. The document's wording ("stuns the caster") would also cover Wraiths and the Crownbearer, which is one condition in `breakChannel` if he wants it.
+
+**Next**
+
+- W1's tuning to 1.2's bar under `warden.underRules`: solo is at 115 s with 1.1 potions, against 180 to 300 s with a potion left.
+
+## 2026-11-17: Session 243, the Barrow Skirmisher (W1's phase 2 adds, part two)
+
+**What changed**
+
+The second of Michael's two Warden-only kinds, and the third place in the Warden's add order (`WARDEN_ADDS`: Guard, Cantor, Skirmisher).
+- **The Barrow Skirmisher** (`skirmisher`): a Skeleton Archer's dressing on the archer's brain with its own numbers (`tuning.skirmisher`). It is light (32 health) and quick (3.6 m/s against 2.4). It backs off from 6.5 m, not 4.5, and aims and looses a little faster. A red rag round its brow marks it as the blade's job.
+- **Its rule:** any melee blow from a hero that lands staggers it (`damageEnemy`), so a blade that closes on it ends its shooting. Arrows and spells hurt it but do not stagger it unless they break its poise.
+- **When it rises:** one fewer add than the heroes, so the Skirmisher only rises for a party of four. A trio still meets the Guard and the Cantor, as Michael's A gave the count.
+
+check 759/759 (2 new in `wardenAdds.test.ts`), parity hashes unchanged. Not yet seen in a browser. The bench runs at most three heroes, so its numbers don't change.
+
+**Learned**
+
+`bosses.md` 2.3 asks for one of each at trio size. Michael's count gives the trio two. If a trio should meet the Skirmisher too, the count is one line in `raiseWardenAdds`. The playtest of the Warden will show whether it is missed.
+
+**Next**
+
+- W1's tuning to 1.2's bar under `warden.underRules`: solo is at 115 s with 1.1 potions, against 180 to 300 s with a potion left. Lever: health together with the lone hero's slam.
+- The Gallery Longbow (Michael's A, 17 Nov): a channel-breaking arrow stuns a Bone Chanter 1 s.
+
+## 2026-11-17: Session 242, the Grave Cantor (W1's phase 2 adds, part one)
+
+**What changed**
+
+Michael's A on the Warden's phase 2 adds (control room, 17 Nov). Behind a new `warden.underRules`, which the parity test turns off.
+- **The roar:** under the rules, the Warden's 60% roar raises adds weak to a style instead of the raised dead. Count: one fewer than the heroes, at least one (the Mason's count, `masonAdds`), at most `warden.adds` (3). Order: a Mortar Guard (magic's job), then a Grave Cantor (the archer's). The Barrow Skirmisher comes next session and fills the third place.
+- **The Grave Cantor** (`cantor`): a Bone Priest's dressing on the Priest's brain, with its own numbers (`tuning.cantor`: 80 health, keeps 10 m off, a 2.5 s chant every 5 s). It is warded (arrows 1.5x, spells turned aside) and wears a pale ward-ring behind its hood. It raises the fallen as the Priest does, so a downed Guard stands again unless the Cantor is dealt with. An arrow or bolt breaks the chant; a blade's light blow does not, only a stagger.
+- `wardenPhases.test.ts` now tests E1g's raised dead with the rules off.
+
+Saltmarsh, 10 seeds, level 8:
+
+| party | before (Session 240) | now |
+|---|---|---|
+| solo | 86 s, 0.8 potions | 115 s, 1.1 potions, 148 damage |
+| duo | 0.61 of solo | 0.52 |
+| trio | 37 s | 33 s |
+
+check 757/757 (3 new in `wardenAdds.test.ts`), parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The adds already move the bench toward 1.2's bar before any health change. A lone hero now meets one armoured Guard, not three quick skeletons, so the fight is longer for the right reason.
+
+**Next**
+
+- W1's adds, part two: the Barrow Skirmisher (an archer dressing, low health, a melee blow staggers it), third in the order. Then the tuning to the bar.
+
+## 2026-11-17: Session 241, the tank's stance (B8)
+
+**What changed**
+
+Michael's A on B8 (control room, 17 Nov; `docs/bosses.md` 1.6): with a shield in the off-hand, today's guard is the tank's stance. No new key.
+- **The walk:** a guard behind a shield or a buckler walks at `guard.stanceMoveFrac` (0.5) of run speed, against 0.45 without one. Prediction reads the same off-hand from the hero's mods, so it walks the server's speed.
+- **The heavy:** a heavy that meets the stance no longer breaks it. Half gets through (`guard.stanceHeavyDamageFrac`) and the tank is driven back (`guard.stancePushM`, 1.2), guard still up. Without a shield, a heavy breaks the guard as before.
+- **The Paladin:** Bulwark's pulse (a perfect parry) now also gives the Paladin 30% less damage taken for 3 s (`specs.bulwarkReduction`, `bulwarkReductionMs`; `PlayerState.bulwarkUntil`, optional).
+- Behind `guard.shieldStance`, which the parity test turns off. All numbers are on the panel.
+- **Why the buckler counts:** the tank's signature drops include the Ringward and Crown-catcher Bucklers, so a tank carrying one should have the stance.
+
+check 754/754 (4 new in `stance.test.ts`), test:net green, parity hashes unchanged. Not yet seen in a browser.
+
+**Learned**
+
+The guard already walked, at 0.45 of run speed; the decision's "cannot move" was wrong. So the stance's walk is a small change, and the heavy is what makes it a different tool.
+
+**Next**
+
+- The Warden's phase 2 adds (Michael's A, 17 Nov): the Barrow Skirmisher and the Grave Cantor, about two sessions. Then the Gallery Longbow (his A).
+
 ## 2026-11-17: Session 240, the Warden on the bench (W1's gate, measured)
 
 **What changed**

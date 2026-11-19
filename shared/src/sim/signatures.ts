@@ -50,10 +50,13 @@ export const SIGNATURES: Partial<Record<EnemyKind, readonly SignaturePiece[]>> =
   ],
   // The Ossuary Mason (M3; 2.2): the tank's shield against its maul, hod and shockwave, and for the
   // mage who broke its Mortar Guards' plate, a staff that casts faster. The document's bone staff is
-  // elm here: the catalogue has no bone. The Gallery Longbow, the warded job's, is Michael's to keep.
+  // elm here: the catalogue has no bone. For the archer who broke the Chanters' rebuilds, the Gallery
+  // Longbow (Michael kept it, A, 17 Nov), a yew shortbow as the document gives it, whose arrow that
+  // breaks a rebuild stuns the Chanter.
   mason: [
     { job: 'tank', id: 'iron-kiteshield', name: 'Mortarward Shield', signature: { resist: 'blunt' } },
     { job: 'armoured', id: 'elm-staff', name: "Chanter's Staff", signature: { castSpeed: true } },
+    { job: 'warded', id: 'yew-shortbow', name: 'Gallery Longbow', signature: { channelStun: true } },
   ],
 };
 

@@ -11,7 +11,7 @@ import { ADD_WEAKNESS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
 import { focusBonus } from './focus';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
-import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
+import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, inStance, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
 /** Seconds a combo setup stays open: Long fuse (T6c) stretches the setter's. */
 export function comboWindow(hero: PlayerState | undefined): number {
@@ -178,12 +178,25 @@ function clearTelegraph(e: EnemyState): void {
  * knockback or flinch, hitstop and the hit event. Returns false if it couldn't be hit.
  */
 /** A hit on a channelling Wraith breaks the channel (E1d: ranged beats magic). */
-export function breakChannel(e: EnemyState): void {
+export function breakChannel(e: EnemyState, hit?: HitSpec, hero?: PlayerState): void {
+  // A Grave Cantor's raise (W1) is the archer's to break: an arrow or a spell's bolt, not a blade.
+  if (e.kind === 'cantor' && e.ai === 'chant' && hit?.projectile) {
+    e.tele.shape = 'none';
+    e.raiseId = undefined;
+    e.ai = 'recover';
+    e.aiTime = 0;
+    e.recoverTime = tuning.wraith.brokenMs / 1000;
+    return;
+  }
   if (roleOf(e.kind) !== 'caster' || e.ai !== 'chant') return;
   e.tele.shape = 'none';
   e.ai = 'recover';
   e.aiTime = 0;
   e.recoverTime = tuning.wraith.brokenMs / 1000;
+  // The Gallery Longbow (the Mason's signature bow): its arrow that breaks a rebuild stuns the Chanter.
+  if (e.kind === 'chanter' && hit?.projectile && hit.style === 'bow' && hero?.mods.channelStun && tuning.bosses.signatureDrops) {
+    e.recoverTime = Math.max(e.recoverTime, tuning.chanter.galleryStunMs / 1000);
+  }
 }
 
 export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boolean {
@@ -216,7 +229,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   // Riposte (the parrying dagger): the first blow after a parried hit crits, if it comes in time.
   const riposte = hero ? riposteStrike(state, hero, hit) : 1;
   // Any hit that lands breaks a Wraith's channel, a bleed's tick included.
-  breakChannel(e);
+  breakChannel(e, hit, hero);
   // Marked (the Scout's signature): a party hit on a Scout's mark lands harder and feeds their Flow.
   const marked = markedMult(state, e, hero, hit.dot);
   // Hex (the Warlock's signature): everyone's hits on a hexed enemy land harder.
@@ -304,6 +317,8 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
     push = 0;
   } else if (!staggered) {
     e.poise -= hit.poise * (1 + poiseBonus);
+    // A Barrow Skirmisher (W1) is the blade's job: any melee blow that lands staggers it.
+    if (e.kind === 'skirmisher' && hero && !hit.projectile && !hit.dot) e.poise = 0;
     // A roar is a commitment: it can't be staggered out of (poise still drains).
     if (e.poise <= 0 && e.ai !== 'roar') {
       staggerEnemy(state, e);
@@ -736,6 +751,11 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   const dirZ = d > 1e-3 ? dz / d : -Math.cos(p.yaw);
   // A Paladin's consecrated ground (the builds pass) takes its share off before the guard does.
   let damage = hit.damage * damageTakenMult(p) * consecratedMult(state, p);
+  // Bulwark's reduction (B8): a Paladin's few seconds after a perfect parry.
+  if (p.bulwarkUntil !== undefined) {
+    if (p.bulwarkUntil > state.time) damage *= 1 - tuning.specs.bulwarkReduction;
+    else delete p.bulwarkUntil;
+  }
   let heavy = !!hit.heavy;
   let push = hit.push ?? 0;
   let hurtMs = tuning.combat.heroHurtMs;
@@ -751,11 +771,14 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fx = Math.sin(p.yaw);
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
-    if (heavy && guardHoldsHeavy(p)) {
+    const stance = inStance(p);
+    if (heavy && (guardHoldsHeavy(p) || stance)) {
       // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
-      damage *= g.heavyBlockDamageFrac;
-      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
-      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      // A shield's stance (B8) holds too, but the heavy drives the tank back a step.
+      damage *= stance ? g.stanceHeavyDamageFrac : g.heavyBlockDamageFrac;
+      const pushM = stance ? Math.max(g.stancePushM, g.blockPushM) : g.blockPushM;
+      p.vx = dirX * pushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * pushM * tuning.combat.knockbackFriction;
       state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
       p.hp = Math.max(0, p.hp - damage);
       if (p.hp > 0) return 'blocked';

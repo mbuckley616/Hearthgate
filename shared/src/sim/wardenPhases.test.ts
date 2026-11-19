@@ -11,8 +11,9 @@ import { createSimState } from './world';
 const world = buildWorld(arena);
 const DT = 1 / 60;
 const loadout: Loadout = { name: 'p', xp: { sword: 0, bow: 0, staff: 0 }, talents: emptyTalents(), mods: emptyMods(), maxHp: 100 };
-const kept = { three: tuning.warden.threePhases, chance: tuning.warden.chainChance, passive: tuning.debug.passiveEnemies };
+const kept = { rules: tuning.warden.underRules, three: tuning.warden.threePhases, chance: tuning.warden.chainChance, passive: tuning.debug.passiveEnemies };
 afterEach(() => {
+  tuning.warden.underRules = kept.rules;
   tuning.warden.threePhases = kept.three;
   tuning.warden.chainChance = kept.chance;
   tuning.debug.passiveEnemies = kept.passive;
@@ -36,6 +37,8 @@ function throughRoar(s: SimState, w: EnemyState, max = 4): void {
 
 describe("the Warden's three phases (E1g)", () => {
   it('at 60% it roars and the dead rise round the hall; at 30% it roars again and quickens; each roar names its phase', () => {
+    // E1g's raised dead; under the rules (W1) the roar raises adds weak to a style instead (wardenAdds.test.ts).
+    tuning.warden.underRules = false;
     const { s, w } = scene();
     w.hp = w.maxHp * 0.65;
     for (let i = 0; i < 60; i++) stepEnemies(s, DT, world);

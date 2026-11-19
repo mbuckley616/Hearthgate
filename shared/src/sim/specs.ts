@@ -645,13 +645,25 @@ export function guardHoldsHeavy(p: PlayerState): boolean {
 }
 
 /**
+ * The tank's stance (B8, Michael's A, 17 Nov): a guard with a shield or a buckler in the off-hand walks
+ * at `guard.stanceMoveFrac` and is pushed back by a heavy instead of broken. Read from the hero's own
+ * mods, so prediction walks the same speed the server does.
+ */
+export function inStance(p: PlayerState): boolean {
+  return tuning.guard.shieldStance && (p.mods.offhand === 'shield' || p.mods.offhand === 'buckler');
+}
+
+/**
  * Bulwark's pulse: a Paladin's perfect parry heals every standing hero within `specs.bulwarkRadius`,
  * the Paladin too, by `specs.bulwarkHeal` of their health. Parries are judged as a hit lands, which
  * is the server's alone, so this never runs in prediction.
  */
 export function holyPulse(state: SimState, p: PlayerState): void {
   const s = tuning.specs;
-  if (specOf(p) !== 'paladin' || s.bulwarkHeal <= 0) return;
+  if (specOf(p) !== 'paladin') return;
+  // B8: the pulse also gives the Paladin a short reduction, the tank's breath after a perfect parry.
+  if (s.bulwarkReduction > 0) p.bulwarkUntil = state.time + s.bulwarkReductionMs / 1000;
+  if (s.bulwarkHeal <= 0) return;
   let healed = 0;
   const reach = hasNode(p, 'rallying-light') ? s.treeRallyingRadius : s.bulwarkRadius;
   const heal = s.bulwarkHeal * (hasNode(p, 'oath-of-mercy') ? s.treeMercyMult : 1);

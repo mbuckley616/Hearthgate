@@ -218,6 +218,8 @@ export interface Signature {
   lowClear?: true;
   /** The Hollow King's Crown-catcher Buckler (K1), on an off-hand: a parry of his thrown crown sends it back. */
   crownCatch?: true;
+  /** The Ossuary Mason's Gallery Longbow, on a bow: an arrow that breaks a Bone Chanter's rebuild stuns it `chanter.galleryStunMs`. */
+  channelStun?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -336,6 +338,7 @@ export function wornMods(worn: Worn): Mods {
     if (slot === 'hands' && sig?.looseGrip) m.looseGrip = true;
     if (slot === 'feet' && sig?.lowClear) m.lowClear = true;
     if (slot === 'shield' && sig?.crownCatch) m.crownCatch = true;
+    if (slot === 'weapon' && sig?.channelStun && entryOf(item).shape.style === 'bow') m.channelStun = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

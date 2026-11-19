@@ -103,6 +103,16 @@ export const tuning = {
     reflectDamageMult: 2,
     /** Guard can be raised in the middle of an attack (like the dodge). */
     cancelsAttacks: true,
+    /**
+     * B8, the tank's stance (Michael, 17 Nov, A; `docs/bosses.md` 1.6): with a shield or a buckler in
+     * the off-hand the guard is the stance. It walks at `stanceMoveFrac` of run speed, and a heavy it
+     * meets is not a break: `stanceHeavyDamageFrac` gets through and it pushes the hero back
+     * `stancePushM`, guard still up. No new key. Off in the parity test.
+     */
+    shieldStance: true,
+    stanceMoveFrac: 0.5,
+    stanceHeavyDamageFrac: 0.5,
+    stancePushM: 1.2,
   },
 
   /** Not in the brief's control table; added at Michael's request after M0. */
@@ -1113,6 +1123,31 @@ export const tuning = {
     knockbackTaken: 1,
   },
 
+  /**
+   * A Barrow Skirmisher (W1, Michael's A, 17 Nov): a Skeleton Archer's dressing for the Warden's hall,
+   * the blade's job (1.3's skirmisher): quick, light, keeping farther off than an archer, and any melee
+   * blow that lands staggers it. Same brain as the archer, its own numbers.
+   */
+  skirmisher: {
+    maxHp: 32,
+    maxPoise: 4,
+    radius: 0.4,
+    height: 1.55,
+    moveSpeed: 3.6,
+    turnRateDeg: 420,
+    aimMs: 700,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 400,
+    cooldownMs: 2200,
+    arrowSpeed: 24,
+    damage: 7,
+    fleeDistance: 6.5,
+    floorRange: 16,
+    spawnMs: 700,
+    deathMs: 1600,
+    knockbackTaken: 1.2,
+  },
+
   /** Brute: tanky, high poise; telegraphed overhead slam (brief: 1,000 ms ground circle). */
   /**
    * The Skeleton Shieldbearer (E1b, the shield role): a front arc that blocks swings and arrows, a
@@ -1351,6 +1386,21 @@ export const tuning = {
     phase2SpeedScale: 1.25,
     roarMs: 1600,
     summonCount: 3,
+    /**
+     * W1 (`docs/bosses.md` 2.3; Michael, 17 Nov, A on its adds): phase 2's roar raises adds weak to a
+     * style instead of the raised dead, one fewer than the heroes and at least one, in the order a Mortar
+     * Guard (magic's), a Grave Cantor (the archer's), then a Barrow Skirmisher (the blade's). `adds` is
+     * the most it raises. Off in the parity test.
+     */
+    underRules: true,
+    adds: 3,
+    /**
+     * W1's tuning to 1.2's bar (Session 245, Saltmarsh's bench): under the rules its health is
+     * `rulesHpMult` of `maxHp` and a slam (the far and rolling ones too) deals `rulesSlamDamage`, so a
+     * lone hero's fight is longer without the slam deciding it.
+     */
+    rulesHpMult: 2.1,
+    rulesSlamDamage: 20,
     /**
      * E1g, three phases: at `phase2At` of its health it roars and raises the dead from the hall's edges;
      * at `phase3At` it roars again and fights faster, with a rolling slam of `chainSlams` circles.
@@ -1764,6 +1814,8 @@ export const tuning = {
     rebuildMs: 5000,
     rebuildHpFrac: 1,
     cooldownMs: 1500,
+    /** The Gallery Longbow (the Mason's signature bow, Michael's A, 17 Nov): an arrow of it that breaks a rebuild stuns the Chanter this long. */
+    galleryStunMs: 1000,
     spawnMs: 900,
     deathMs: 1400,
     knockbackTaken: 0.6,
@@ -1788,6 +1840,29 @@ export const tuning = {
     spawnMs: 900,
     deathMs: 1400,
     knockbackTaken: 0.6,
+  },
+
+  /**
+   * A Grave Cantor (W1, Michael's A, 17 Nov): a Bone Priest's dressing for the Warden's hall, warded
+   * (arrows 1.5x, spells turned aside): the archer's job. It raises the fallen as the Priest does, on
+   * the Priest's brain with its own numbers, and an arrow or a stagger breaks the chant.
+   */
+  cantor: {
+    maxHp: 80,
+    maxPoise: 6,
+    radius: 0.4,
+    height: 1.75,
+    moveSpeed: 2.5,
+    turnRateDeg: 300,
+    keepDistance: 10,
+    raiseRange: 14,
+    raiseEveryMs: 5000,
+    chantMs: 2500,
+    raiseHp: 0.5,
+    recoveryMs: 500,
+    spawnMs: 900,
+    deathMs: 1600,
+    knockbackTaken: 0.8,
   },
 
   /** A Wardstone (M1): a pillar of bound bone that holds the Mason Bound. Any style breaks it; it never moves or strikes. */
@@ -2568,6 +2643,9 @@ export const tuning = {
     bulwarkHolds: true,
     bulwarkRadius: 4,
     bulwarkHeal: 0.06,
+    /** B8 (Michael, 17 Nov, A): after Bulwark's pulse fires, the Paladin takes this much less damage for `bulwarkReductionMs`. */
+    bulwarkReduction: 0.3,
+    bulwarkReductionMs: 3000,
     /** The Paladin's tree (Michael's A, 8 Nov): Long Grudge's taunt, Hallowed Ground's ring width, Sanctuary's ring time, Rallying Light's pulse reach, Oath of Mercy's heal multiple, Wide Rush's reach about the enemy hit. */
     treeTauntSeconds: 5,
     treeHallowedRadiusMult: 1.5,
@@ -3255,6 +3333,9 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'guard.guardBreakMs': [0, 2000, 10],
   'guard.blockPushM': [0, 3, 0.05],
   'guard.parryHitstopMs': [0, 400, 5],
+  'guard.stanceMoveFrac': [0, 1, 0.05],
+  'guard.stanceHeavyDamageFrac': [0, 1, 0.05],
+  'guard.stancePushM': [0, 4, 0.05],
   'guard.parryWardenPoise': [0, 30, 0.5],
   'guard.reflectDamageMult': [0, 5, 0.1],
 
@@ -3562,6 +3643,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'specs.consecrateDamageTaken': [0, 1, 0.05],
   'specs.bulwarkRadius': [0, 10, 0.5],
   'specs.bulwarkHeal': [0, 0.5, 0.01],
+  'specs.bulwarkReduction': [0, 1, 0.05],
+  'specs.bulwarkReductionMs': [0, 10000, 100],
   'specs.bladeStormRadius': [0, 12, 0.5],
   'specs.bladeStormPull': [0, 12, 0.5],
   'specs.bladeStormHold': [0, 4, 0.1],
@@ -3870,11 +3953,21 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'mason.chanters': [0, 4, 1],
   'mortarGuard.maxHp': [20, 1000, 10],
   'chanter.maxHp': [20, 1000, 10],
+  'cantor.maxHp': [20, 1000, 10],
+  'skirmisher.maxHp': [10, 500, 2],
+  'skirmisher.moveSpeed': [0, 8, 0.1],
+  'skirmisher.fleeDistance': [0, 15, 0.5],
+  'cantor.chantMs': [500, 10000, 100],
+  'cantor.raiseEveryMs': [500, 15000, 100],
+  'warden.adds': [0, 3, 1],
+  'warden.rulesHpMult': [0.5, 4, 0.05],
+  'warden.rulesSlamDamage': [0, 80, 1],
   'crownbearer.maxHp': [20, 1000, 10],
   'crownbearer.channelMs': [500, 15000, 100],
   'crownbearer.cooldownMs': [0, 10000, 100],
   'king.crownbearers': [0, 3, 1],
   'chanter.rebuildMs': [500, 15000, 100],
+  'chanter.galleryStunMs': [0, 5000, 50],
   'chanter.rebuildHpFrac': [0.1, 1, 0.05],
   'gravehand.phase2At': [0, 1, 0.05],
   'gravehand.wardTaken': [0, 1, 0.05],
@@ -4425,7 +4518,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

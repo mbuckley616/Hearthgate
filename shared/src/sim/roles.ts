@@ -53,6 +53,10 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   chanter: 'caster',
   // The King's (K1): a Wraith that brings his crown back.
   crownbearer: 'caster',
+  // The Warden's (W1): a Bone Priest for its hall, warded.
+  cantor: 'leader',
+  // And a Skeleton Archer that the blade staggers in one blow.
+  skirmisher: 'archer',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -85,6 +89,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'hound':
       return 'edge';
     case 'archer':
+    case 'skirmisher':
       return 'pierce';
     case 'brute':
     case 'shieldbearer':
@@ -111,6 +116,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'crownbearer':
       return 'magic';
     case 'priest':
+    case 'cantor':
     case 'wraith':
       return 'magic';
   }
@@ -145,7 +151,7 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
  */
 export type AddWeakness = 'armoured' | 'warded';
 
-export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded' };
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded', cantor: 'warded' };
 
 const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
 
@@ -186,6 +192,8 @@ export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> 
     mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
     chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
     crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
+    cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
+    skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
   },
 };
 
