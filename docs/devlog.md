@@ -2,6 +2,36 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 254, the Cave Ogre (E1i, part seven)
+
+**What changed**
+
+The Warrens' heavy. It runs on the Bone Brute's brain, reading `heavyNumbers(e)` (`tuning.ogre`), in both the brain and the view. Against the Brute's numbers:
+
+| | Cave Ogre | Bone Brute |
+|---|---|---|
+| health | 360 | 320 |
+| poise | 26 | 22 |
+| wind-up | 1150 ms | 1000 ms |
+| slam | 2.7 m ring, 32 blunt, throws 3 m | 2.2 m, 28, 2.2 m |
+| stands after | 1.8 s | 1.4 s |
+
+It has more ring to roll out of and gives a longer turn at it after. The panel has its health, wind-up, ring, damage and recovery.
+
+Where it fights: a Warrens room spawns it in the Brute's place. So do a Warrens floor's mini-boss and a treasure room's guard below the Knight's tier (`roomKindIn` there too, same draws and spots), which were Bone Brutes in goblin rooms. No Bone Priest raises it.
+
+Its look: the Brute's body in a damp moss-grey hide at 1.6 scale, its club a rock lashed to a log.
+
+`warrensOgre.test.ts`: standing in front of it takes 32 after a longer wind-up than a Brute's. `warrensCutter.test.ts`'s "a kind not yet dressed stays a skeleton" now asks the Knight. check 784/784, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The mini-boss and the treasure guard picked their kind directly, not through `roomKindIn`, so a Warrens floor would have kept a crowned skeleton among goblins. Both go through it now. Once the Chieftain lands, the Knight's tier swaps the same way.
+
+**Next**
+
+- The Pack Leader (its war cry, a new brain in the Priest's slot), then the Chieftain. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 253, the Goblin Shaman (E1i, part six)
 
 **What changed**

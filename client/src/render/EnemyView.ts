@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
-import { kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
+import { heavyNumbers, kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
 import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -171,11 +171,14 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   potlid: {},
   // A Goblin Shaman (E1i) channels as a Wraith does, staff held up; filled in below.
   shaman: {},
+  // A Cave Ogre (E1i) raises and brings down its club as a Bone Brute does; filled in below.
+  ogre: {},
 };
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
 POSES.potlid = POSES.shieldbearer;
 POSES.shaman = POSES.wraith;
+POSES.ogre = POSES.brute;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -255,7 +258,7 @@ export class EnemyView {
     this.body.scale.setScalar(SCALE[kind]);
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
-    else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
+    else if (kind === 'brute' || kind === 'mason' || kind === 'ogre') this.buildBrute(mat, mesh, kind === 'ogre');
     else if (kind === 'hound' || kind === 'warPig') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer' || kind === 'skirmisher', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
@@ -309,7 +312,7 @@ export class EnemyView {
       const a = (i / 5) * Math.PI * 2;
       this.crown.add(mesh(new THREE.ConeGeometry(0.03, 0.1, 4), gold, Math.cos(a) * 0.14, 0.07, Math.sin(a) * 0.14));
     }
-    this.crown.position.y = kind === 'brute' ? 0.12 : 0.22;
+    this.crown.position.y = kind === 'brute' || kind === 'ogre' ? 0.12 : 0.22;
     this.crown.visible = false;
     this.head.add(this.crown);
     if (kind === 'king') {
@@ -759,9 +762,12 @@ export class EnemyView {
   }
 
   /** Grey ogre with a studded club. */
-  private buildBrute(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
-    const skin = mat(0xa09584);
-    const dark = mat(0x7d7366);
+  private buildBrute(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, cave = false): void {
+    // The Cave Ogre (E1i): the same body in a damp moss-grey hide, its club a rock lashed to a log.
+    const skinHex = cave ? 0x7c876a : 0xa09584;
+    const darkHex = cave ? 0x58614a : 0x7d7366;
+    const skin = mat(skinHex);
+    const dark = mat(darkHex);
     const fur = mat(0x4a3626, { roughness: 1 });
     const iron = mat(0x4a4a4e, { metalness: 0.7, roughness: 0.45 });
     const wood = mat(0x5a3a22);
@@ -789,10 +795,16 @@ export class EnemyView {
       const eye = mesh(new THREE.SphereGeometry(0.016, 6, 4), this.eyes, side * 0.045, 0.02, 0.14);
       this.head.add(t, eye);
     }
-    this.limbs(mat, mesh, 0xa09584, 0x7d7366, 0x4a3626, 1.35);
+    this.limbs(mat, mesh, skinHex, darkHex, 0x4a3626, 1.35);
     // Club: a thick tapered log with iron studs.
     const club = mesh(segmentGeo(0.12, 0.05, 0.95, 10).translate(0, -0.15, 0), wood);
     this.weapon.add(club);
+    if (cave) {
+      const rock = mesh(new THREE.DodecahedronGeometry(0.2, 0), mat(0x6c685f, { roughness: 1 }), 0, 0.62, 0);
+      rock.scale.set(1, 1.2, 0.9);
+      this.weapon.add(rock);
+      return;
+    }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
       const stud = mesh(new THREE.ConeGeometry(0.03, 0.07, 5), iron, Math.cos(a) * 0.11, 0.55 + (i % 2) * 0.12, Math.sin(a) * 0.11);
@@ -1146,14 +1158,15 @@ export class EnemyView {
         }
         break;
       case 'brute':
+      case 'ogre':
         switch (e.ai) {
           case 'slamWindup': {
-            into(this.from, P.raise, t / ((tuning.brute.telegraphMs / 1000) * 0.6));
+            into(this.from, P.raise, t / ((heavyNumbers(e).telegraphMs / 1000) * 0.6));
             out.handHeight += Math.sin(this.time * 35) * 0.01;
             return out;
           }
           case 'slam':
-            return into(P.raise, P.smash, t / (tuning.brute.slamActiveMs / 1000), easeOut);
+            return into(P.raise, P.smash, t / (heavyNumbers(e).slamActiveMs / 1000), easeOut);
         }
         break;
       case 'mason': {
@@ -1243,7 +1256,7 @@ export function windupProgress(e: EnemyState): number {
     case 'aim':
       return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
-      return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
+      return e.kind === 'brute' || e.kind === 'ogre' ? clamp01(t / (heavyNumbers(e).telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
       return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : tuning.hound.telegraphMs) / 1000));

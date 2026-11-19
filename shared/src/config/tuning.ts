@@ -1208,6 +1208,33 @@ export const tuning = {
   },
 
   /**
+   * The Cave Ogre (E1i, the Warrens' heavy): the Bone Brute's brain with an ogre's numbers. Slower to
+   * raise its club and wider where it lands, so it is more to roll out of, but it stands longer
+   * after, so a hero who did gets a longer turn at it.
+   */
+  ogre: {
+    maxHp: 360,
+    maxPoise: 26,
+    radius: 0.8,
+    height: 2.5,
+    moveSpeed: 2.4,
+    turnRateDeg: 170,
+    slamRange: 3,
+    slamOffset: 1.9,
+    slamRadius: 2.7,
+    telegraphMs: 1150,
+    trackFrac: 0.4,
+    slamActiveMs: 180,
+    recoveryMs: 1800,
+    cooldownMs: 1700,
+    damage: 32,
+    knockbackDealt: 3,
+    spawnMs: 1000,
+    deathMs: 2200,
+    knockbackTaken: 0.2,
+  },
+
+  /**
    * The Goblin Shaman (E1i, the Warrens' caster): the Wraith's brain and violet circle with a goblin's
    * numbers. Its circle is a hex that bursts for damage rather than Chill (the Crypt's twist; the
    * Warrens' is Pilfer), on a shorter channel, so it asks for a quicker step out. Any hit breaks it.
@@ -4115,6 +4142,11 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.fleeDistance': [0, 15, 0.5],
   'cutter.maxHp': [10, 500, 2],
   'warPig.maxHp': [10, 600, 5],
+  'ogre.maxHp': [20, 1500, 10],
+  'ogre.telegraphMs': [200, 3000, 25],
+  'ogre.slamRadius': [0.5, 6, 0.1],
+  'ogre.damage': [0, 100, 1],
+  'ogre.recoveryMs': [0, 4000, 50],
   'shaman.maxHp': [5, 500, 2],
   'shaman.channelMs': [200, 5000, 50],
   'shaman.circleRadius': [0.5, 5, 0.1],
@@ -4696,7 +4728,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

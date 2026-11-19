@@ -37,7 +37,7 @@ describe('the Goblin Cutter (E1i)', () => {
     expect(dressing('cutter', 'goblinWarrens').name).toBe('Goblin Cutter');
     expect(roomKindIn('grunt', 'goblinWarrens')).toBe('cutter');
     expect(roomKindIn('grunt', 'hauntedCrypt')).toBe('grunt');
-    expect(roomKindIn('brute', 'goblinWarrens')).toBe('brute');
+    expect(roomKindIn('knight', 'goblinWarrens')).toBe('knight');
     // Lighter and quicker than the skeleton it stands in for.
     expect(tuning.cutter.maxHp).toBeLessThan(tuning.grunt.maxHp);
     expect(tuning.cutter.moveSpeed).toBeGreaterThan(tuning.grunt.moveSpeed);

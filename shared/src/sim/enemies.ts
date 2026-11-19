@@ -588,10 +588,15 @@ function fireEnemyArrow(state: SimState, e: EnemyState, target: PlayerState): vo
   });
 }
 
+/** A heavy's numbers: the Cave Ogre's (E1i) or the Bone Brute's. */
+export function heavyNumbers(e: { kind: EnemyKind }): typeof tuning.brute {
+  return e.kind === 'ogre' ? tuning.ogre : tuning.brute;
+}
+
 function bruteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   // A Wardstone (M1) is a heavy that only stands.
   if (e.kind === 'wardstone') return wardstoneBrain(state, world, e);
-  const b = tuning.brute;
+  const b = heavyNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -2152,6 +2157,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.potlid.attackCooldownMs / 1000;
     case 'brute':
       return tuning.brute.cooldownMs / 1000;
+    case 'ogre':
+      return tuning.ogre.cooldownMs / 1000;
     case 'shieldbearer':
       return tuning.shieldbearer.attackCooldownMs / 1000;
     case 'hound':

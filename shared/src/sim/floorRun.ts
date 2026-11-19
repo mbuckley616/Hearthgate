@@ -525,7 +525,8 @@ function spawnMiniboss(state: SimState, world: World, room: PieceInfo): EnemySta
   const spec = layout.def.spec;
   const big = room.kind !== 'small' && room.kind !== 'guard';
   const tier = roomTier({ big, floor: spec.floor, difficulty: spec.difficulty ?? 1 });
-  const kind = tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute';
+  // A Warrens floor's is a Cave Ogre where the Crypt's is a Bone Brute (E1i): same draws, same spot.
+  const kind = roomKindIn(tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', dungeonTypeOf(spec));
   const exit = layout.pieces[layout.def.exit].bounds;
   const ex = (exit.minX + exit.maxX) / 2;
   const ez = (exit.minZ + exit.maxZ) / 2;
@@ -566,7 +567,7 @@ function wakeTreasureGuards(state: SimState, world: World, f: FloorRunState): vo
     // The elite a step in front of the chest, facing the door.
     const ex = t.chest.x - dir.x * 1.8;
     const ez = t.chest.z - dir.z * 1.8;
-    const lead = createEnemy(state, world, tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', ex, ez, yaw);
+    const lead = createEnemy(state, world, roomKindIn(tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', dungeonTypeOf(spec)), ex, ez, yaw);
     const names = minibossNames(dungeonTypeOf(spec));
     lead.named = names[Math.floor(nextRandom(state) * names.length) % names.length];
     lead.maxHp *= tuning.miniboss.guardHealthMult;
