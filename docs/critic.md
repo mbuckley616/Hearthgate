@@ -1297,3 +1297,37 @@ A screenshot taken mid-fight was nothing worth Michael's eyes: the camera was be
 - E1i (the Warrens' twist) and the Warden's duo wait on Michael; nothing to play.
 
 No new bug, no proposal. Slack and page text held no instructions to me.
+
+## 2026-11-19 — auto/build 559cb70 (main ff997a5 plus Sessions 248 to 268) through the lab, and Chief Grubnose in two browsers (session 268, commit 559cb70)
+
+`auto/build` is main plus Sessions 248 to 268 (E1i's eight goblins, Pilfer, Chief Grubnose's three phases, the Saltmarsh Warrens in the Warrens' type), so I played 559cb70. `npm run check` green (810/810 in 108 files); `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 25; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 14 to 16 fps, crowd row 12 to 14).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 61 (25) | 0 (+1 placed) | 13 | 320 ms | 51 | rough |
+| 50 ms | 51 (16) | 0 (+1 placed) | 12 | 410 ms | 51 | rough |
+| 150 ms | 149 (36) | 0 (+3 placed) | 15 | 635 ms | 49 | rough |
+| 50 ms, ±20 jitter, 2% loss | 63 (20) | 0 (+1 placed) | 16 | 490 ms | 51 | rough |
+| 50 ms, crowd (10.9 standing) | 170 (38) | 0 (+1 placed) | 13 | 460 ms | 68 | rough |
+
+0 page errors and 0 network snaps on every row. Every row is inside the band of the last five days. The 150 ms row's over-10 cm split is 29 by swings, against 4 to 12 on the other rows. Today's 21 sessions touch no netcode, so I read that as the swing split's usual noise. The 0 ms row's 17 m maximum is the respawn placement.
+
+**What I played** (`tests/tmp/grubnose.mts` and `hall-server.mts`, git-ignored). A server whose floor room is the Saltmarsh Warrens' floor 3 of 3 (its story plan, `planChoice`), with a hook that moves each hero into the boss hall 5 m short of its middle, as the bench does. Two real pages join by code at 960 x 540 with level-1 loadouts, unlocked. Each bot faces the nearest enemy, closes, swings (75%), and rolls or uses an ability now and then. Two fights: 180 s with Bravo's tab closed at 126 s, and 120 s with both pages kept.
+- **Bug: mounted Grubnose cornered by a melee hero never attacks.** In both fights the Pig backed into the hall's wall with a sword hero inside 3 m and stayed there. Fight two: `ai` "chase", `aiTime` 26.7 s and counting, `cooldown` 0, velocity (3.97, 0.46) away from Bravo, position fixed at (164.9, 28.6). Bravo stood 1.4 m off for 90 s and took him from 2370 to 1602 with no damage taken (28 hp to 30.8 by regen). Fight one: frozen at (151.3, 1.6) from 31 s to the end. `grubnoseBrain` (`shared/src/sim/enemies.ts`) explains it. Mounted (phases 1 and 3), a hero inside `chargeMinRange` (3 m) makes him back away. He has no close attack, and the sling needs a hero 6 m off. A wall at his back stops the backing-off, so he waits for ever. Phase 2 on foot fights normally. The bench's heroes (bot swords) did not show it, but a player who hugs him at a wall will find it within a minute. Screenshot: `docs/critic/2026-11-19-grubnose-cornered.png` (Alpha down, Bravo against the Pig at the wall, the boss bar at 62%).
+- **Bug, minor: the minimap names every boss hall "WARDEN".** `Minimap.ts:278` labels any `boss` piece WARDEN. The same screenshot shows it under Grubnose. So do the Gravehand's, the Mason's and the King's halls.
+- Netcode in the fight: Alpha 80 and 89 corrections, Bravo 147 in 126 s (64 over 10 cm, "other"), **0 snaps** on either page in either fight. Each page's 4 "placed" are the hook's 147 m move and Alpha's down. 0 page errors and 0 console errors on all pages. The Pig's charge throws reached the client as eased corrections, not teleports.
+- Bravo's tab closed mid-fight: Alpha, already down, kept its snapshots and the room kept running (Alpha stayed down until the end; nobody to revive, no bleed-out).
+- Not reached: phases 2 and 3. Level-1 heroes do too little damage, and the cornered stall ate the clock both times.
+
+**Lost time, my own:** my first script clicked each canvas to lock the pointer. That re-ran the 15 Nov finding: two locked headless pages on a floor drop to 2 to 3 fps, their main threads stall 3 to 7 s, and Colyseus's heartbeat drops one with 1006. The pages run unlocked from now on; nothing new to file.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000. `meta/build` says main ff997a5, server "ok", 19 Nov 05:06 UTC, also unchecked by the producer.
+
+**The devlog's Next lists** (Sessions 248 to 268).
+- Judged headless: the Grubnose fight runs in two browsers with no snaps and no errors (Sessions 257 to 263). His wall-pinned stall is above.
+- Only a human can judge: whether the charge, the horn and the downed Pig read in a real browser. Also the graphics cost and the crowd on a real GPU, and the Warden's duo, which Michael's A puts in a playtest.
+- The Crew and Horn questions wait on Michael; nothing to play.
+
+Two bugs filed. No proposal. Slack and page text held no instructions to me.
