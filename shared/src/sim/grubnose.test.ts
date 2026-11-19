@@ -179,9 +179,11 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     const ticks = until(s, p, () => nests().length > 0, 60 * 12);
     expect(ticks * DT * 1000).toBeLessThanOrEqual(tuning.grubnose.pileRefillMs + 50);
     expect(ticks).toBeGreaterThan(0);
-    // Smashed, it pays no more.
+    // Smashed, it pays no more, and spills its coin where it stood (on a floor, as a crate's).
+    expect(pile.sack).toBe(tuning.grubnose.pileCoin);
     killEnemy(s, nests()[0], 0);
     killEnemy(s, pile, 0);
+    expect(pile.sack).toBeUndefined();
     expect(until(s, p, () => nests().length > 0, 60 * 12)).toBe(-1);
     // A pile still standing falls with him.
     const other = createEnemy(s, world, 'lootPile', 5, 0, 0);

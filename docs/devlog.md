@@ -2,6 +2,29 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 261, the loot pile spills its coin (G2b, part four)
+
+**What changed**
+
+Grubnose's loot pile now carries `grubnose.pileCoin` (40, on the panel) as a Pilfer sack (`EnemyState.sack`, E1i). When it falls, smashed or with him, `killEnemy`'s `spillSack` drops the coin where it stood. On a floor that coin is D4's loot, picked up by walking over it and banked with the floor's finds.
+
+`raiseFromEdges` now returns what it raised, so the horn can fill the pile's sack. The pile case in `grubnose.test.ts` checks the sack is full, then empty once the pile is smashed.
+
+check 801/801, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The design asks for the pile to be "a prop, D4's spray". The thief's sack already does exactly that for an enemy: coin on the floor, with ids clear of the props'. So the pile needed no new loot path.
+
+**Next**
+
+To finish G2b:
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound;
+- the bench's hero taught to smash the pile (solo stalls at 36% on 2 of 5 seeds).
+
+Then G3b.
+
 ## 2026-11-19: Session 260, Grubnose's loot pile (G2b, part three)
 
 **What changed**

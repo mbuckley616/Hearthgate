@@ -1864,6 +1864,8 @@ export const tuning = {
     pileRadius: 3,
     /** Each this long the pile stands while he is on foot, a fallen Nest is filled again. */
     pileRefillMs: 10000,
+    /** Coin the pile spills when it falls, smashed or with him. */
+    pileCoin: 40,
     /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
     stringTelegraphMs: 700,
     stringActiveMs: 160,
@@ -4345,6 +4347,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'potlidCrew.maxHp': [10, 600, 5],
   'lootPile.maxHp': [20, 2000, 10],
   'grubnose.pileRefillMs': [1000, 30000, 500],
+  'grubnose.pileCoin': [0, 300, 5],
   'grubnose.stringTelegraphMs': [200, 2000, 25],
   'grubnose.stringRecoveryMs': [100, 3000, 25],
   'grubnose.stringCooldownMs': [0, 5000, 50],

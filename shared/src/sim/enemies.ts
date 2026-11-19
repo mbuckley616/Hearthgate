@@ -1074,8 +1074,9 @@ export function wardenPace(e: EnemyState): { teleScale: number; speed: number; c
  * E1g's second phase: skeletons rise from the hall's edges, evenly round the Warden, each as far out
  * as `raiseRadius` allows before a wall (and in sight of the Warden, so never in the next room).
  */
-function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number, kind: EnemyKind = 'grunt', radius = tuning.warden.raiseRadius, turn = 0): void {
+function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number, kind: EnemyKind = 'grunt', radius = tuning.warden.raiseRadius, turn = 0): EnemyState[] {
   const r = enemyStats(kind).radius;
+  const raised: EnemyState[] = [];
   const start = Math.atan2(-e.x, -e.z) + turn;
   for (let i = 0; i < n; i++) {
     const a = start + (i / Math.max(1, n)) * Math.PI * 2;
@@ -1088,7 +1089,9 @@ function raiseFromEdges(state: SimState, world: World, e: EnemyState, n: number,
     if (d <= 2.5) d = 3.2;
     const g = createEnemy(state, world, kind, e.x + ux * d, e.z + uz * d, a + Math.PI);
     state.events.push({ kind: 'enemyRose', enemyId: g.id, x: g.x, z: g.z });
+    raised.push(g);
   }
+  return raised;
 }
 
 /**
@@ -1913,7 +1916,8 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   if (e.ai === 'roar') {
     if (e.aiTime >= g.roarMs / 1000) {
       // The horn (G2b): his adds by weakness, as many as the heroes (1.3), the Crew opposite a Nest.
-      if (e.phase === 1) raiseFromEdges(state, world, e, 1, 'lootPile', g.pileRadius);
+      // The pile's coin is a Pilfer sack (E1i): it spills where the pile falls, D4's loot on the floor.
+      if (e.phase === 1) for (const pile of raiseFromEdges(state, world, e, 1, 'lootPile', g.pileRadius)) pile.sack = Math.round(g.pileCoin);
       if (e.phase === 1) hornAdds(state).forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.addRadius, [0, Math.PI, Math.PI / 2][i] ?? 0));
       e.phase = Math.min(3, e.phase + 1);
       e.summoned = true;
