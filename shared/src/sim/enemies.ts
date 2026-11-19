@@ -2051,7 +2051,9 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
   // The Bone Chanter (M2) channels on a fallen Wardstone instead.
   if (e.kind === 'chanter') return chanterBrain(state, world, e, target, edt);
   if (e.kind === 'crownbearer') return crownbearerBrain(state, e, target, edt);
-  const w = tuning.wraith;
+  // The Goblin Shaman (E1i) is a Wraith in its numbers, its circle a hex that bursts instead of Chilling.
+  const shaman = e.kind === 'shaman';
+  const w = shaman ? tuning.shaman : tuning.wraith;
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
   const dx = target.x - e.x;
@@ -2089,7 +2091,9 @@ function casterBrain(state: SimState, world: World, e: EnemyState, target: Playe
           if (heroInvulnerable(p)) continue;
           // It lands on the floor: a hero high enough in the air is over it, by the jump's rule.
           if (clearsLow(p, e.y)) continue;
-          chillHero(state, p);
+          // The lag grace is already waited out above, so the burst lands now.
+          if (shaman) hurtHero(state, p, { damage: hitDamage(e, tuning.shaman.circleDamage), fromX: e.tele.x, fromZ: e.tele.z, enemyId: e.id, late: true, ...typed('magic') });
+          else chillHero(state, p);
           caught++;
         }
         state.events.push({ kind: 'circleLanded', enemyId: e.id, x: e.tele.x, z: e.tele.z, caught });
@@ -2162,6 +2166,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.knight.attackCooldownMs / 1000;
     case 'wraith':
       return tuning.wraith.cooldownMs / 1000;
+    case 'shaman':
+      return tuning.shaman.cooldownMs / 1000;
     case 'warden':
       return wardenPace(e).cooldownMs / 1000;
     case 'king':

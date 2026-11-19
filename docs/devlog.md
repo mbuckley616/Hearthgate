@@ -2,6 +2,34 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 253, the Goblin Shaman (E1i, part six)
+
+**What changed**
+
+The Warrens' caster. It runs on the Wraith's brain (`casterBrain`), reading `tuning.shaman`: it keeps its distance, channels a violet circle at a hero's feet, and any hit breaks the channel. Its circle is a hex that bursts for 12 magic damage as it lands instead of Chilling, since Chill is the Crypt's twist and Pilfer the Warrens'. The burst lands after the lag grace has been waited out, so a step out that was on time on the player's screen still counts. Against the Wraith's numbers:
+
+| | Goblin Shaman | Wraith |
+|---|---|---|
+| health | 36 | 45 |
+| channel | 1250 ms | 1600 ms |
+| circle | 1.7 m, 12 magic damage | 2 m, Chill |
+| keeps off | 8 m | 9 m |
+| cooldown | 3.8 s | 3.5 s |
+
+The panel has its health, channel, circle radius, damage and cooldown. A Warrens room spawns it in the Wraith's place, and no Bone Priest raises it (`GOBLINS`).
+
+Its look: the goblin on its feet (it does not float), a crooked stick topped with a small skull glowing violet, and a crest of three purple feathers so it stands out in a pack of Cutters. It channels in the Wraith's pose.
+
+`warrensShaman.test.ts`: a hero standing in the circle takes 12 and no Chill, where the Wraith's chills and deals nothing; its channel is shorter; a hero who steps out takes nothing; a hit breaks the channel. check 782/782, parity hashes unchanged.
+
+**Learned**
+
+What the Shaman's circle does was not spelled out: Poison (option B) was turned down for Pilfer, and Chill belongs to the Crypt. A plain damage burst keeps the role's lesson (step out, or break it with an arrow) without adding a third hero state. If Michael wants something else here, the circle's landing is one line in `casterBrain`.
+
+**Next**
+
+- The Cave Ogre (the Brute's slot), then the Pack Leader's war cry and the Chieftain. The Pilfer materials question waits on Michael.
+
 ## 2026-11-19: Session 252, the War Pig (E1i, part five)
 
 **What changed**

@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -169,10 +169,13 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   slinger: {},
   // A Pot-lid Goblin (E1i) holds and bashes as a Shieldbearer does; filled in below.
   potlid: {},
+  // A Goblin Shaman (E1i) channels as a Wraith does, staff held up; filled in below.
+  shaman: {},
 };
 POSES.cutter = POSES.grunt;
 POSES.slinger = POSES.archer;
 POSES.potlid = POSES.shieldbearer;
+POSES.shaman = POSES.wraith;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -260,7 +263,7 @@ export class EnemyView {
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
-    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid') this.dressGoblin(mat, mesh, kind === 'slinger');
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'potlid' || kind === 'shaman') this.dressGoblin(mat, mesh, kind === 'slinger', kind === 'shaman');
     if (kind === 'potlid' && this.shield) {
       // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
       this.shield.visible = true;
@@ -507,7 +510,7 @@ export class EnemyView {
    * A Goblin Cutter (E1i): a Skeleton Warrior's frame in green skin, with long ears, a hooked nose and
    * a notched cleaver for its sword, no shield. Its bone and rag are recoloured where the skeleton made them.
    */
-  private dressGoblin(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, sling = false): void {
+  private dressGoblin(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, sling = false, staff = false): void {
     const skin: Record<number, number> = { 0xd6c9a8: 0x6f8a3a, 0x8f8266: 0x4e6428, 0x5a2620: 0x5a4a2a };
     for (const m of this.materials) {
       const to = skin[m.color.getHex()];
@@ -524,6 +527,21 @@ export class EnemyView {
     nose.rotation.x = Math.PI / 2 + 0.3;
     this.head.add(nose);
     for (const c of [...this.weapon.children]) if (c !== this.glint) this.weapon.remove(c);
+    if (staff) {
+      // A Goblin Shaman: a crooked stick topped with a small skull in a violet glow (magic's hue, B4),
+      // and a crest of three feathers so it reads apart from the Cutters in a crowd.
+      this.weapon.add(
+        mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.75, 5), mat(0x4a3220, { roughness: 1 }), 0, 0.2, 0),
+        mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0xd6c9a8, { roughness: 0.8, emissive: 0x3a1858 }), 0, 0.6, 0),
+      );
+      const feather = mat(0x8a3a9a, { roughness: 1 });
+      for (const a of [-0.35, 0, 0.35]) {
+        const f = mesh(new THREE.ConeGeometry(0.025, 0.2, 4), feather, Math.sin(a) * 0.08, 0.16, -0.04);
+        f.rotation.z = -a;
+        this.head.add(f);
+      }
+      return;
+    }
     if (sling) {
       // A Goblin Slinger: a cord hanging from the fist with a stone in its pouch.
       const cord = mat(0x6a5032, { roughness: 1 });
@@ -867,7 +885,7 @@ export class EnemyView {
     // Hit reaction: white flash, and a flinch on light enemies (a small rock on big ones).
     if (curr.lastHitAt !== this.lastHitAt) {
       this.lastHitAt = curr.lastHitAt;
-      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' || curr.kind === 'slinger' ? 1 : 0.25;
+      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' || curr.kind === 'slinger' || curr.kind === 'shaman' ? 1 : 0.25;
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
@@ -1070,6 +1088,7 @@ export class EnemyView {
       case 'priest':
       case 'cantor':
       case 'wraith':
+      case 'shaman':
       case 'chanter':
       case 'crownbearer':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
@@ -1233,6 +1252,7 @@ export function windupProgress(e: EnemyState): number {
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));
       if (e.kind === 'crownbearer') return clamp01(t / (tuning.crownbearer.channelMs / 1000));
       if (e.kind === 'cantor') return clamp01(t / (tuning.cantor.chantMs / 1000));
+      if (e.kind === 'shaman') return clamp01(t / (tuning.shaman.channelMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;
