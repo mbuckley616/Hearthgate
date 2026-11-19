@@ -2,6 +2,20 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 270, the boss hall reads BOSS on the map
+
+**What changed**
+
+The minimap's word for a boss hall was WARDEN for every boss, so the Gravehand's, Grubnose's, the Mason's and the King's halls said it too (critic, 19 Nov). It now reads BOSS (`pieceLabel` in `client/src/ui/Minimap.ts`), checked by `tests/minimap-labels.ts` in `npm run check`.
+
+**Learned**
+
+The map is drawn from the `FloorLayout` alone, which does not know the run's story or type, so naming the boss would mean passing the spec down; one word that is true for every hall is enough for a map.
+
+**Next**
+
+G3b waits on the two Grubnose answers in `decisions.md` Pending.
+
 ## 2026-11-19: Session 268, the Warden's gate checked, W1 and K1 closed
 
 **What changed**
