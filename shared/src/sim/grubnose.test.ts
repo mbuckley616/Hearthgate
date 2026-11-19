@@ -192,4 +192,60 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     stepEnemies(s, DT, world);
     expect(other.ai).toBe('dead');
   });
+
+  it('remounted at 30% (G3b): the Pig gets up enraged and its charges come in runs of three', () => {
+    const { s, p, boss } = scene();
+    boss.phase = 2;
+    boss.hp = boss.maxHp * tuning.grubnose.phase3At - 1;
+    stepEnemies(s, DT, world);
+    expect(boss.ai).toBe('roar');
+    expect(s.events.find((e) => e.kind === 'roar')).toEqual({ kind: 'roar', enemyId: boss.id, phase: 3, chief: true });
+    until(s, p, () => boss.ai !== 'roar');
+    expect(boss.phase).toBe(3);
+    until(s, p, () => boss.ai === 'chase');
+    Object.assign(boss, { x: 0, z: p.z - 8, yaw: 0, cooldown: 0 });
+    // Each charge of the run winds up again at once, the second and third on the shorter turn.
+    const seen: string[] = [];
+    let longest = 0;
+    let windup = 0;
+    for (let i = 0; i < 900 && !(boss.ai === 'recover' || boss.ai === 'stagger' || boss.ai === 'aim'); i++) {
+      if (boss.ai === 'chargeWindup' && seen.at(-1) !== boss.attack) seen.push(boss.attack);
+      windup = boss.ai === 'chargeWindup' ? windup + 1 : 0;
+      if (boss.attack !== 'rush1') longest = Math.max(longest, windup);
+      stepEnemies(s, DT, world);
+      Object.assign(p, { x: 0, z: EDGE - 3 });
+    }
+    expect(seen).toEqual(['rush1', 'rush2', 'rush3']);
+    expect(longest).toBeLessThanOrEqual(Math.ceil((tuning.grubnose.rushTelegraphMs / 1000) * 60) + 1);
+    expect(telegraphColour({ kind: 'grubnose', attack: 'rush1' })).toBe('strike');
+    expect(telegraphColour({ kind: 'grubnose', attack: 'rush3' })).toBe('heavy');
+    expect(attackType({ kind: 'grubnose', attack: 'rush3' })).toBe('blunt');
+  });
+
+  it('a wall turns the first two charges of a run; the third it meets stuns him', () => {
+    const { s, p, boss } = scene();
+    Object.assign(boss, { phase: 3, attack: 'rush1', ai: 'charge', aiTime: 0, x: 0, z: EDGE - 4, yaw: 0 });
+    // The hero aside and untouchable, so nothing but the wall ends the rush.
+    Object.assign(p, { x: 6, z: EDGE - 8, invulnerable: true });
+    until(s, p, () => boss.ai !== 'charge', 120);
+    expect(boss.ai).toBe('chargeWindup');
+    expect(boss.attack).toBe('rush2');
+    Object.assign(boss, { attack: 'rush3', ai: 'charge', aiTime: 0, x: 0, z: EDGE - 4, yaw: 0 });
+    until(s, p, () => boss.ai !== 'charge', 120);
+    expect(boss.ai).toBe('stagger');
+  });
+
+  it("a guard stops the run's first charge dead, but the rimmed third breaks it", () => {
+    const run = (attack: string) => {
+      const { s, p, boss } = scene();
+      Object.assign(boss, { phase: 3, attack, ai: 'charge', aiTime: 0, x: 0, z: p.z - 4, yaw: 0 });
+      Object.assign(p, { mode: 'guard', guardTime: 1, parryOpen: false });
+      until(s, p, () => boss.ai !== 'charge', 120);
+      return { boss: boss.ai, broke: s.events.some((e) => e.kind === 'block' && e.broke) };
+    };
+    expect(run('rush1')).toEqual({ boss: 'stagger', broke: false });
+    const third = run('rush3');
+    expect(third.boss).not.toBe('stagger');
+    expect(third.broke).toBe(true);
+  });
 });

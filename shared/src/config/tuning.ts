@@ -1858,6 +1858,13 @@ export const tuning = {
     /** Unhorsed (G2b): at this share of health the Pig goes down and the Chief blows his horn. */
     phase2At: 0.6,
     roarMs: 1400,
+    /**
+     * Remounted (G3b): at this share of health the Pig gets up enraged and he climbs back on. Its
+     * charges then come in runs of three, each turning at a wall or the end of its line after
+     * `rushTelegraphMs`; the third has the orange rim (no guard stops it) and a wall stuns it.
+     */
+    phase3At: 0.3,
+    rushTelegraphMs: 550,
     /** How far round him his horn's adds come in (G2b). */
     addRadius: 8,
     /** His loot pile (G2b), raised this far from him as he blows the horn: it pays the goblins. */
@@ -4342,6 +4349,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'grubnose.aimMs': [200, 2000, 25],
   'grubnose.damage': [0, 60, 1],
   'grubnose.phase2At': [0, 1, 0.05],
+  'grubnose.phase3At': [0, 1, 0.05],
+  'grubnose.rushTelegraphMs': [200, 2000, 25],
   'nestSlinger.maxHp': [10, 500, 2],
   'nestSlinger.damage': [0, 60, 1],
   'potlidCrew.maxHp': [10, 600, 5],

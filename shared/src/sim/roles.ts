@@ -92,7 +92,8 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
   // Chief Grubnose (G1b): the Pig's charge a red line (a guard stops it), the Chief's sling yellow,
   // his looted string on foot (G2b) a strike.
-  if (e.kind === 'grubnose') return e.attack === 'sling' ? 'projectile' : 'strike';
+  // Remounted (G3b), the third charge of a run has the orange rim: no guard stops it.
+  if (e.kind === 'grubnose') return e.attack === 'sling' ? 'projectile' : e.attack === 'rush3' ? 'heavy' : 'strike';
   if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : e.attack === 'grout' ? 'magic' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;

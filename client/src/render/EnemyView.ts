@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
-import { heavyNumbers, kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
+import { chargeWindupMs, heavyNumbers, kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
 import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
@@ -1426,7 +1426,7 @@ export function windupProgress(e: EnemyState): number {
       return e.kind === 'brute' || e.kind === 'ogre' ? clamp01(t / (heavyNumbers(e).telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : e.kind === 'grubnose' ? tuning.grubnose.telegraphMs : tuning.hound.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : e.kind === 'grubnose' ? chargeWindupMs(e) : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));

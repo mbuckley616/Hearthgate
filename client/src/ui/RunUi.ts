@@ -222,6 +222,7 @@ export class RunUi {
 /** Each roar names what the Warden's next phase brings (E1g); the slice's one roar calls for help. */
 function roarBanner(phase: number | undefined, king?: true, hand?: true, mason?: true, chief?: true): [string, string] {
   // Chief Grubnose's horn (G2b): the Pig is down, his Nests and Crew come, his loot pile pays them.
+  if (chief && phase === 3) return ['The Pig gets up enraged', 'Grubnose remounts: charges in threes, and the rimmed third breaks a guard'];
   if (chief) return ['Grubnose blows his horn', 'His goblins come, and his loot pile pays them: smash it'];
   // The Ossuary Mason's (M3).
   if (mason && phase === 3) return ['The Mason enrages', 'The stones go out; its last swing rolls a shockwave: jump it'];

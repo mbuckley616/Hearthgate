@@ -751,6 +751,27 @@ function rushOf(e: EnemyState) {
   return e.kind === 'knight' ? { ...k, telegraphMs: k.chargeTelegraphMs } : tuning.hound;
 }
 
+/** A rush's wind-up: the turn between Grubnose's remounted charges (G3b) is shorter than the first. */
+export function chargeWindupMs(e: EnemyState): number {
+  if (e.kind === 'grubnose' && (e.attack === 'rush2' || e.attack === 'rush3')) return tuning.grubnose.rushTelegraphMs;
+  return rushOf(e).telegraphMs;
+}
+
+/**
+ * Remounted (G3b), the Pig's charges come in runs of three: the first and second, ended by a wall, a
+ * hero or their line's end, turn at once onto the hero and wind up the next. The third ends as a War
+ * Pig's charge does, a wall stunning it. False for anything else, which ends its rush as before.
+ */
+function nextRush(state: SimState, e: EnemyState, target: PlayerState): boolean {
+  if (e.kind !== 'grubnose' || (e.attack !== 'rush1' && e.attack !== 'rush2')) return false;
+  e.attack = e.attack === 'rush1' ? 'rush2' : 'rush3';
+  e.yaw = Math.atan2(target.x - e.x, target.z - e.z);
+  setAi(e, 'chargeWindup');
+  setChargeTele(e);
+  state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
+  return true;
+}
+
 function setChargeTele(e: EnemyState): void {
   const l = rushOf(e).chargeLength;
   e.tele = { shape: 'line', x: e.x + Math.sin(e.yaw) * l, z: e.z + Math.cos(e.yaw) * l, radius: l, yaw: e.yaw, arcDeg: 0 };
@@ -800,14 +821,16 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
       }
       break;
     }
-    case 'chargeWindup':
-      if (e.aiTime < (h.telegraphMs / 1000) * h.trackFrac) e.yaw = turnToward(e.yaw, toTarget, h.turnRateDeg * DEG * edt);
+    case 'chargeWindup': {
+      const windupS = chargeWindupMs(e) / 1000;
+      if (e.aiTime < windupS * h.trackFrac) e.yaw = turnToward(e.yaw, toTarget, h.turnRateDeg * DEG * edt);
       setChargeTele(e);
-      if (e.aiTime >= h.telegraphMs / 1000) {
+      if (e.aiTime >= windupS) {
         setAi(e, 'charge');
         state.events.push({ kind: 'enemySwing', enemyId: e.id });
       }
       break;
+    }
     case 'charge': {
       // The rush moves the body itself, faster than steering allows, and stops at what it meets.
       const step = h.chargeSpeed * edt;
@@ -827,14 +850,15 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         ? undefined
         : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
       if (hit) {
-        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' ? { stopsOnGuard: true } : {}) });
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' && e.attack !== 'rush3' ? { stopsOnGuard: true } : {}) });
         // Stopped dead on a guard (G1b), it stands staggered; otherwise it shakes off the blow.
-        if ((e.ai as EnemyState['ai']) !== 'stagger') {
+        if ((e.ai as EnemyState['ai']) !== 'stagger' && !nextRush(state, e, target)) {
           e.tele.shape = 'none';
           setAi(e, 'recover');
           e.recoverTime = h.recoveryMs / 1000;
         }
       } else if (moved < step * 0.5) {
+        if (nextRush(state, e, target)) break;
         // A wall: stunned, the stagger's window cut to wallStunMs.
         e.tele.shape = 'none';
         e.hasToken = false;
@@ -843,6 +867,7 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         e.aiTime = (tuning.combat.staggerMs - h.wallStunMs) / 1000;
         state.events.push({ kind: 'stagger', enemyId: e.id, x: e.x, z: e.z });
       } else if (e.aiTime * h.chargeSpeed >= h.chargeLength) {
+        if (nextRush(state, e, target)) break;
         e.tele.shape = 'none';
         setAi(e, 'recover');
         e.recoverTime = h.recoveryMs / 1000;
@@ -1933,7 +1958,14 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
     state.events.push({ kind: 'roar', enemyId: e.id, phase: 2, chief: true });
     return { x: 0, z: 0 };
   }
-  if (e.phase >= 2) {
+  // Remounted (G3b): at `phase3At` the Pig gets up enraged under him, and its charges come in threes.
+  if (e.phase === 2 && e.ai === 'chase' && e.hp <= e.maxHp * g.phase3At) {
+    setAi(e, 'roar');
+    e.tele.shape = 'none';
+    state.events.push({ kind: 'roar', enemyId: e.id, phase: 3, chief: true });
+    return { x: 0, z: 0 };
+  }
+  if (e.phase === 2) {
     // On foot he fights with his looted string, and as the boss never waits for a turn.
     e.attack = 'string';
     if (e.ai === 'chase' && e.cooldown <= 0) e.hasToken = true;
@@ -1943,7 +1975,8 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   if (e.ai !== 'chase') return chargerBrain(state, world, e, target, edt);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
-  const far = e.attack === 'charge' && e.cooldown <= 0 ? slingTarget(state, world, e) : null;
+  // After a charge, or the last of a remounted run, the Chief slings from the saddle.
+  const far = (e.attack === 'charge' || e.attack === 'rush3') && e.cooldown <= 0 ? slingTarget(state, world, e) : null;
   if (far) {
     const dx = far.x - e.x;
     const dz = far.z - e.z;
@@ -1976,7 +2009,7 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   const inRange = sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange;
   if (inRange && e.cooldown <= 0 && lineOfSight(world, e, target)) {
     setAi(e, 'chargeWindup');
-    e.attack = 'charge';
+    e.attack = e.phase >= 3 ? 'rush1' : 'charge';
     setChargeTele(e);
     state.events.push({ kind: 'enemyTelegraph', enemyId: e.id });
   }
@@ -2453,7 +2486,7 @@ function attackCooldown(e: EnemyState): number {
     case 'gravehand':
       return tuning.gravehand.cooldownMs / 1000;
     case 'grubnose':
-      if (e.phase >= 2) return tuning.grubnose.stringCooldownMs / 1000;
+      if (e.phase === 2) return tuning.grubnose.stringCooldownMs / 1000;
       return e.attack === 'sling' ? tuning.grubnose.cooldownMs / 2000 : tuning.grubnose.cooldownMs / 1000;
     case 'ironRing':
       return tuning.ironRing.cooldownMs / 1000;

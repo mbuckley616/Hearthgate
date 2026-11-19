@@ -273,6 +273,13 @@ export class Sfx {
           if (ev.boss) this.tone('sine', 70, 30, 0.6, 0.9, 0.01);
           break;
         case 'roar':
+          if (ev.chief && ev.phase === 3) {
+            // The Pig gets up enraged (G3b): a squeal climbing over a low snort.
+            this.tone('sawtooth', 520, 980, 0.5, 0.22, 0.03);
+            this.tone('square', 780, 1300, 0.45, 0.07, 0.03);
+            this.noiseBurst('lowpass', 600, 150, 0.7, 0.8, 0.3);
+            break;
+          }
           if (ev.chief) {
             // Chief Grubnose's horn (G2b): a goblin's cracked horn, two blasts that sag flat, not a roar.
             this.tone('sawtooth', 196, 174, 0.7, 0.22, 0.04);

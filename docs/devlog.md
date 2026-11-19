@@ -2,6 +2,49 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 263, Grubnose remounts (G3b, part one)
+
+**What changed**
+
+Phase 3 of Chief Grubnose. At `grubnose.phase3At` (30%, on the panel), while he fights on foot, a second roar (`phase: 3, chief: true`): the Pig gets up enraged and he climbs back on. The view draws him mounted again and the downed Pig goes.
+
+Remounted, the Pig's charges come in runs of three (`rush1` to `rush3` in `EnemyState.attack`, so nothing new rides the wire):
+- The first and second charges, ended by a wall, a hero or the end of their line, turn at once onto the hero and wind up the next. That turn is `grubnose.rushTelegraphMs` (550, on the panel), against the first charge's 1000 (`chargeWindupMs`, also read by `EnemyView` for the wind-up's glow).
+- A guard still stops the first two dead, as in phase 1.
+- The third has the orange rim (`telegraphColour` heavy): no guard stops it, a guard is broken, and a wall it meets stuns him, the punish window.
+- After the third, the Chief slings from the saddle at the farthest hero, as after a phase 1 charge.
+
+The banner reads "The Pig gets up enraged: Grubnose remounts: charges in threes, and the rimmed third breaks a guard", and `Sfx` plays a squeal over a snort.
+
+`grubnose.test.ts` adds three cases:
+- the roar at 30% and a run of three, the second and third wind-ups no longer than the turn;
+- a wall turns a first charge, and stuns a third;
+- a guard stops a first charge dead, and breaks on a third.
+
+check 805/805, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill | damage taken | reached phase 3 |
+|---|---|---|---|---|
+| solo | 5 of 5 | 104 s | 110 | 5 of 5 |
+| duo | 5 of 5 | 61 s (0.59 of solo) | 200 | 5 of 5 |
+| trio | 5 of 5 | 37 s | 24 | 5 of 5 |
+| solo + 3 henchmen | 5 of 5 | 22 s | 10 | 4 of 5 |
+
+Every fight now shows all three phases. Health is still short of the 180 to 300 s solo bar. That tuning comes with G3b's last part, as the Gravehand's and the Warden's did.
+
+**Next**
+
+G3b, what is left:
+- his signature drops (the Pot-lid Shield, the Slingshot Bracer, Grubnose's Horn);
+- the Saltmarsh Warrens turned to the Warrens' type;
+- the tuning to the bar.
+
+Then the Warrens open on Wren's tab.
+
 ## 2026-11-19: Session 262, the Pig lies stunned, the horn sounds, and a throw stops at the wall (G2b, part five)
 
 **What changed**
