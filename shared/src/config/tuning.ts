@@ -1810,6 +1810,19 @@ export const tuning = {
     knockbackTaken: 0.8,
   },
 
+  /** Grubnose's loot pile (G2b): it stands, refilling his Nests, until the party smashes it. */
+  lootPile: {
+    maxHp: 220,
+    maxPoise: 9999,
+    radius: 0.9,
+    height: 1.4,
+    moveSpeed: 0,
+    turnRateDeg: 0,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0,
+  },
+
   /**
    * Chief Grubnose and his Pig (G1b; `docs/bosses.md` 2.5): the Saltmarsh Warrens' boss, a goblin chief
    * riding the War Pig. Phase 1, mounted: the Pig's charge, a red line with no rim, which a guard
@@ -1847,6 +1860,10 @@ export const tuning = {
     roarMs: 1400,
     /** How far round him his horn's adds come in (G2b). */
     addRadius: 8,
+    /** His loot pile (G2b), raised this far from him as he blows the horn: it pays the goblins. */
+    pileRadius: 3,
+    /** Each this long the pile stands while he is on foot, a fallen Nest is filled again. */
+    pileRefillMs: 10000,
     /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
     stringTelegraphMs: 700,
     stringActiveMs: 160,
@@ -4326,6 +4343,8 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'nestSlinger.maxHp': [10, 500, 2],
   'nestSlinger.damage': [0, 60, 1],
   'potlidCrew.maxHp': [10, 600, 5],
+  'lootPile.maxHp': [20, 2000, 10],
+  'grubnose.pileRefillMs': [1000, 30000, 500],
   'grubnose.stringTelegraphMs': [200, 2000, 25],
   'grubnose.stringRecoveryMs': [100, 3000, 25],
   'grubnose.stringCooldownMs': [0, 5000, 50],
@@ -4929,7 +4948,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose' | 'nestSlinger' | 'potlidCrew';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose' | 'nestSlinger' | 'potlidCrew' | 'lootPile';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

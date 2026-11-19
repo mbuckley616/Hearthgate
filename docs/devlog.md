@@ -2,6 +2,48 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 260, Grubnose's loot pile (G2b, part three)
+
+**What changed**
+
+As he blows the horn, Grubnose raises his loot pile 3 m from him (`grubnose.pileRadius`). It is a new kind, `lootPile`, a heavy that only stands, as the Mason's Wardstones do: 220 health, no poise to break, no knockback.
+
+While he fights on foot, the pile pays the goblins. Every `grubnose.pileRefillMs` (10 s) it stands, a Nest the horn raised and the party has felled is filled again: a fresh Nest Slinger 8 m from the pile. It never raises more Nests than the horn did. The timer is the pile's own `cooldown`, so nothing new rides the wire.
+
+Smashing it stops the refills, and it falls with him. Its look is a heap of four sacks under a cone of coin, a pot-lid on top. The panel has its health and the refill time.
+
+`grubnose.test.ts` adds a case:
+- the horn raises the pile beside the Nest;
+- a felled Nest is back within 10 s;
+- once the pile is smashed, none comes back in 12 s;
+- a standing pile falls when he does.
+
+The horn case now expects the pile among the adds. check 801/801, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill |
+|---|---|---|
+| solo | 3 of 5 | 90 s |
+| duo | 5 of 5 | 54 s (0.59 of solo) |
+| trio | 5 of 5 | 35 s |
+
+The solo hero still stalls at 36% twice, the same two seeds as before the pile. So the pile is not what stalls it. The scripted hero never smashes the pile and does not chase the Nests, which a player would. The bench's solo number means little until its hero is taught the pile.
+
+The design's pile is "a prop, D4's spray": smashed, it should spray coin as a crate does. That is not in yet. Today it falls like any enemy, with no loot of its own.
+
+**Next**
+
+To finish G2b:
+- the pile's coin spray when smashed;
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound;
+- the bench's hero taught to smash the pile.
+
+Then G3b: the remount at 30%, charges in threes, its drops, the Saltmarsh turned to the Warrens' type.
+
 ## 2026-11-19: Session 259, Grubnose's horn: the Nests and the Crew (G2b, part two)
 
 **What changed**

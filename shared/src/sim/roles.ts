@@ -71,6 +71,8 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   // His horn's adds (G2b): a Slinger and a Pot-lid, by weakness.
   nestSlinger: 'archer',
   potlidCrew: 'shield',
+  // His loot pile: a heavy that only stands, as a Wardstone does.
+  lootPile: 'heavy',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -132,6 +134,7 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
     case 'mason':
       return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':
+    case 'lootPile':
     case 'mortarGuard':
     case 'slinger':
     case 'nestSlinger':
@@ -230,6 +233,7 @@ const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
   grubnose: { name: 'Chief Grubnose', plural: 'Chief Grubnose' },
   nestSlinger: { name: 'Nest Slinger', plural: 'Nest Slingers' },
   potlidCrew: { name: 'Pot-lid Crew', plural: 'Pot-lid Crew' },
+  lootPile: { name: 'Loot Pile', plural: 'Loot Piles' },
 };
 
 /**

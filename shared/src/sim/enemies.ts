@@ -621,6 +621,7 @@ export function heavyNumbers(e: { kind: EnemyKind }): typeof tuning.brute {
 function bruteBrain(state: SimState, world: World, e: EnemyState, target: PlayerState | null, edt: number): Intent {
   // A Wardstone (M1) is a heavy that only stands.
   if (e.kind === 'wardstone') return wardstoneBrain(state, world, e);
+  if (e.kind === 'lootPile') return lootPileBrain(state, world, e);
   const b = heavyNumbers(e);
   const want: Intent = { x: 0, z: 0 };
   if (!target) return want;
@@ -1862,6 +1863,29 @@ export function hornAdds(state: SimState): EnemyKind[] {
   return (['nestSlinger', 'potlidCrew', 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
 }
 
+/**
+ * Grubnose's loot pile (G2b): it stands and pays the goblins. While he fights on foot, each
+ * `pileRefillMs` it stands, a Nest the horn raised and the party has felled is filled again, next to
+ * the pile. It falls with him. Its timer is `cooldown`, so nothing new rides the wire.
+ */
+function lootPileBrain(state: SimState, world: World, e: EnemyState): Intent {
+  e.vx = 0;
+  e.vz = 0;
+  const chief = state.enemies.find((o) => o.kind === 'grubnose' && o.ai !== 'dead');
+  if (!chief) {
+    killEnemy(state, e, 0);
+    return { x: 0, z: 0 };
+  }
+  if (chief.phase !== 2) return { x: 0, z: 0 };
+  if (e.cooldown <= 0) {
+    e.cooldown = tuning.grubnose.pileRefillMs / 1000;
+    const wanted = hornAdds(state).filter((k) => k === 'nestSlinger').length;
+    const standing = state.enemies.filter((o) => o.kind === 'nestSlinger' && o.ai !== 'dead').length;
+    if (standing < wanted) raiseFromEdges(state, world, e, 1, 'nestSlinger', tuning.grubnose.addRadius);
+  }
+  return { x: 0, z: 0 };
+}
+
 /** The hero Grubnose slings at (G1b): the farthest standing one at `slingMinRange` or more, in sight. */
 function slingTarget(state: SimState, world: World, e: EnemyState): PlayerState | null {
   let best: PlayerState | null = null;
@@ -1889,6 +1913,7 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   if (e.ai === 'roar') {
     if (e.aiTime >= g.roarMs / 1000) {
       // The horn (G2b): his adds by weakness, as many as the heroes (1.3), the Crew opposite a Nest.
+      if (e.phase === 1) raiseFromEdges(state, world, e, 1, 'lootPile', g.pileRadius);
       if (e.phase === 1) hornAdds(state).forEach((kind, i) => raiseFromEdges(state, world, e, 1, kind, g.addRadius, [0, Math.PI, Math.PI / 2][i] ?? 0));
       e.phase = Math.min(3, e.phase + 1);
       e.summoned = true;
@@ -2389,6 +2414,8 @@ function attackCooldown(e: EnemyState): number {
       return tuning.potlid.attackCooldownMs / 1000;
     case 'nestSlinger':
       return tuning.nestSlinger.cooldownMs / 1000;
+    case 'lootPile':
+      return tuning.grubnose.pileRefillMs / 1000;
     case 'potlidCrew':
       return tuning.potlidCrew.attackCooldownMs / 1000;
     case 'brute':

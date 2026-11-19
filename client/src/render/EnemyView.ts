@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7, nestSlinger: 0.78, potlidCrew: 0.82 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7, nestSlinger: 0.78, potlidCrew: 0.82, lootPile: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -120,6 +120,7 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     hodThrow: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: -10, offHeight: 0.35, offReach: 0.5, twist: -30, lean: 24 }),
   },
   wardstone: { guard: pose(BASE, {}) },
+  lootPile: { guard: pose(BASE, {}) },
   // The Mason's adds (M2): a plated Shieldbearer and a Wraith's chant.
   mortarGuard: {
     guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
@@ -280,6 +281,7 @@ export class EnemyView {
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'mason') this.dressMason(mat, mesh);
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
+    if (kind === 'lootPile') this.buildLootPile(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
     if (kind === 'cutter' || kind === 'slinger' || kind === 'nestSlinger' || kind === 'potlid' || kind === 'potlidCrew' || kind === 'shaman' || kind === 'packLeader' || kind === 'chieftain') this.dressGoblin(mat, mesh, kind === 'slinger' || kind === 'nestSlinger', kind === 'shaman');
@@ -740,6 +742,22 @@ export class EnemyView {
     for (const y of [0.5, 1.4]) pillar.add(mesh(new THREE.TorusGeometry(0.58, 0.06, 6, 16).rotateX(Math.PI / 2), bone, 0, y, 0));
     pillar.add(mesh(new THREE.OctahedronGeometry(0.22), glowMaterial(0xa070ff, 0.8), 0, 2.5, 0));
     this.body.add(pillar);
+  }
+
+  /** Grubnose's loot pile (G2b): a heap of sacks and coin with a pot-lid and a bone on top. */
+  private buildLootPile(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const sack = mat(0x8a7350, { roughness: 1 });
+    const coin = mat(0xd8b040, { metalness: 0.7, roughness: 0.35 });
+    const heap = new THREE.Group();
+    for (const [x, z, r] of [[0, 0, 0.55], [0.5, 0.2, 0.38], [-0.45, 0.25, 0.4], [0.1, -0.5, 0.36]] as const) {
+      const s = mesh(new THREE.SphereGeometry(r, 10, 8), sack, x, r * 0.7, z);
+      s.scale.y = 0.8;
+      heap.add(s);
+    }
+    heap.add(mesh(new THREE.ConeGeometry(0.5, 0.5, 10), coin, 0.05, 0.95, 0.05));
+    heap.add(mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 14), mat(0x8a8a80, { metalness: 0.55, roughness: 0.5 }), -0.2, 1.05, 0.1));
+    this.body.add(heap);
   }
 
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {

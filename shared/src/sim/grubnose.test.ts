@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
 import { addPlayer, type Loadout } from './coop';
+import { killEnemy } from './combat';
 import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
@@ -138,7 +139,7 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
     stepEnemies(s, DT, world);
     until(s, p, () => boss.ai !== 'roar');
-    expect(s.enemies.filter((e) => e !== boss).map((e) => e.kind)).toEqual(['nestSlinger']);
+    expect(s.enemies.filter((e) => e !== boss).map((e) => e.kind).sort()).toEqual(['lootPile', 'nestSlinger']);
     expect(ADD_WEAKNESS.nestSlinger).toBe('warded');
     expect(weakTo('nestSlinger')).toBe('bow');
     expect(ADD_WEAKNESS.potlidCrew).toBe('armoured');
@@ -161,5 +162,32 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(nearestTarget(s, slinger)).toBe(p);
     mage.mode = 'down';
     expect(nearestTarget(s, crew)).toBe(p);
+  });
+  it('his loot pile refills a felled Nest every 10 s while it stands, and falls with him', () => {
+    const { s, p, boss } = scene();
+    boss.hp = boss.maxHp * tuning.grubnose.phase2At - 1;
+    stepEnemies(s, DT, world);
+    until(s, p, () => boss.ai !== 'roar');
+    const pile = s.enemies.find((e) => e.kind === 'lootPile')!;
+    expect(pile).toBeDefined();
+    const nests = () => s.enemies.filter((e) => e.kind === 'nestSlinger' && e.ai !== 'dead');
+    expect(nests().length).toBe(1);
+    killEnemy(s, nests()[0], 0);
+    expect(nests().length).toBe(0);
+    // Keep the Chief from the fight so only the pile acts.
+    boss.hp = boss.maxHp;
+    const ticks = until(s, p, () => nests().length > 0, 60 * 12);
+    expect(ticks * DT * 1000).toBeLessThanOrEqual(tuning.grubnose.pileRefillMs + 50);
+    expect(ticks).toBeGreaterThan(0);
+    // Smashed, it pays no more.
+    killEnemy(s, nests()[0], 0);
+    killEnemy(s, pile, 0);
+    expect(until(s, p, () => nests().length > 0, 60 * 12)).toBe(-1);
+    // A pile still standing falls with him.
+    const other = createEnemy(s, world, 'lootPile', 5, 0, 0);
+    until(s, p, () => other.ai !== 'spawn');
+    killEnemy(s, boss, 0);
+    stepEnemies(s, DT, world);
+    expect(other.ai).toBe('dead');
   });
 });
