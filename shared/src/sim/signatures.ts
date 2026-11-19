@@ -58,6 +58,13 @@ export const SIGNATURES: Partial<Record<EnemyKind, readonly SignaturePiece[]>> =
     { job: 'armoured', id: 'elm-staff', name: "Chanter's Staff", signature: { castSpeed: true } },
     { job: 'warded', id: 'yew-shortbow', name: 'Gallery Longbow', signature: { channelStun: true } },
   ],
+  // Chief Grubnose (G3b; 2.5): for the tank who took the Pig's charges, a pot-lid against blunt (a
+  // buckler: the catalogue has no pot-lid shape); for the archer who broke the Nests' sacks, the
+  // Slingshot Bracer, the bane for the Warrens' type. His Horn (the boss job's) waits on a question.
+  grubnose: [
+    { job: 'tank', id: 'studded-buckler', name: 'Pot-lid Shield', signature: { resist: 'blunt' } },
+    { job: 'warded', id: 'wool-gloves', name: 'Slingshot Bracer', signature: { goblinArrows: true } },
+  ],
 };
 
 /** What a hero did in a boss fight, by job: damage blocked for `tank`, damage dealt for the rest. */

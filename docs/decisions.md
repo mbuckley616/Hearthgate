@@ -7,6 +7,12 @@ answer here. Answered entries override the backlog.
 
 ## Pending
 
+### 2026-11-19: Grubnose's Horn, his third drop (builder, Session 264)
+The boss document gives Chief Grubnose three drops. Two are in: the Pot-lid Shield (20% less blunt) for the tank and the Slingshot Bracer (arrows 1.25x against goblins) for the archer. The third, for the hero who fought him most, is **Grubnose's Horn**: "a consumable slot item: a hero's next three charges against them are taken without a stagger". There is no consumable slot: a hero has ten worn slots and a belt of potions. Until it exists, the hero who fought him most is offered the Pot-lid Shield.
+- **A.** A worn piece: the horn hung in the neck slot, an amulet's place. Each floor, the first three charges that would stagger its wearer land without the stagger. No new slot, and it refreshes on its own. *(recommended: it keeps the design's three charges, and fits the gear we have)*
+- **B.** A real consumable: a belt item like a potion, drunk with its own key, that gives the next three charges without a stagger. A new item kind, a new key and pad button, and a new line in the save.
+- **C.** Swap it for a weapon bane: a goblin-cleaver axe or mace, a bane to Grubnose, as the other bosses' boss-job drops are.
+
 ### 2026-11-19: Pilfer and the lumber and stone in the bags (builder, Session 249)
 Pilfer (your A, 19 Nov) is built for coin: a Cutter's cut takes a quarter of the party's found coin on the floor, it runs, and killing it spills the coin back. Lumber and stone are the open part. They go into each hero's bag as they are picked up, and the bag lives in the browser until Phase 3's item ledger, so the server knows how much the party found but not whose bag holds it.
 - **A.** Coin only until Phase 3, when the ledger can take materials out of a bag properly. *(recommended: no way to duplicate materials, and coin is what every run finds)*

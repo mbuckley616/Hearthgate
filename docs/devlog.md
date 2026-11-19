@@ -2,6 +2,46 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 264, Grubnose's drops (G3b, part two)
+
+**What changed**
+
+Chief Grubnose now has a signature list (`SIGNATURES.grubnose`), offered by job when he falls, as the other bosses' are:
+
+| piece | job | made as | what it does |
+|---|---|---|---|
+| Pot-lid Shield | tank (the Pig's charges taken on a guard) | studded buckler (the catalogue has no pot-lid shape) | 20% less blunt |
+| Slingshot Bracer | warded (the archer who broke the Nests' sacks) | wool gloves | the bane for the Warrens' type, below |
+
+The Slingshot Bracer is a new signature, `goblinArrows`, read by `wornMods` from the hands slot and checked by `readGearItem` and `readLoadout`. Its wearer's arrows take `grubnose.bracerArrowMult` (1.25, on the panel) from:
+- every goblin;
+- the Chief;
+- his loot pile.
+
+It does nothing for a blade, against a skeleton, or with `bosses.signatureDrops` off.
+
+The third drop, Grubnose's Horn, is asked in `decisions.md` Pending (A recommended: the horn in the neck slot, its three charges without a stagger refreshed each floor). The document calls it a consumable, and there is no consumable slot. Until it is answered, a hero who only fought him is offered the Pot-lid Shield (`offerFor`'s fallback).
+
+`grubnoseDrops.test.ts` covers:
+- the offer by job;
+- the bracer read back by the server and worn only on the hands;
+- its 1.25x on arrows against a Cutter and the Chief, and not on a blade, on a skeleton, or with drops off.
+
+check 808/808, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The catalogue already has a neck slot, so the Horn as a worn piece needs no new slot.
+
+**Next**
+
+G3b, what is left:
+- the Saltmarsh Warrens turned to the Warrens' type;
+- the tuning to the bar;
+- the Horn, once answered.
+
+Then the Warrens open on Wren's tab.
+
 ## 2026-11-19: Session 263, Grubnose remounts (G3b, part one)
 
 **What changed**

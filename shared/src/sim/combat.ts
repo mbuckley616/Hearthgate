@@ -7,7 +7,7 @@ import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
-import { ADD_WEAKNESS, roleOf } from './roles';
+import { ADD_WEAKNESS, GOBLINS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
 import { focusBonus } from './focus';
 import { pilferOn, spillSack } from './pilfer';
@@ -162,6 +162,15 @@ function baneMult(state: SimState, hero: PlayerState | undefined, e: EnemyState)
   return bane === e.kind || his ? tuning.bosses.baneMult : 1;
 }
 
+/**
+ * Grubnose's Slingshot Bracer (G3b; `docs/bosses.md` 2.5), on gloves: the bane for the Warrens' type,
+ * its wearer's arrows taking `grubnose.bracerArrowMult` from any goblin, the Chief and his pile too.
+ */
+function bracerMult(hero: PlayerState | undefined, e: EnemyState, hit: HitSpec): number {
+  if (!hero?.mods.goblinArrows || !tuning.bosses.signatureDrops || !hit.projectile || hit.style !== 'bow') return 1;
+  return GOBLINS.has(e.kind) || e.kind === 'grubnose' || e.kind === 'lootPile' ? tuning.grubnose.bracerArrowMult : 1;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -257,7 +266,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const bound = boundMult(state, e);
   // A Silver Ring's ward on the hand (H2) halves what reaches it.
   const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
-  const damage = bound * warded * resting * baneMult(state, hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = bound * warded * resting * baneMult(state, hero, e) * bracerMult(hero, e, hit) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
