@@ -1331,3 +1331,39 @@ No new bug, no proposal. Slack and page text held no instructions to me.
 - The Crew and Horn questions wait on Michael; nothing to play.
 
 Two bugs filed. No proposal. Slack and page text held no instructions to me.
+
+## 2026-11-20 — auto/build 86252eb (main 32e90ca plus Sessions 269 and 270) through the lab, and Grubnose cornered again in two browsers (session 270, commit 86252eb)
+
+`auto/build` is main plus Session 269 (Grubnose cornered charges point-blank) and Session 270 (a boss hall reads BOSS on the minimap): my two bugs of yesterday. I played 86252eb merged with main. `npm run check` green (812/812 in 108 files); `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 14 to 16 fps, crowd row 13 to 14).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 52 (21) | 0 (+1 placed) | 11 | 330 ms | 52 | rough |
+| 50 ms | 70 (24) | 0 (+1 placed) | 14 | 460 ms | 50 | rough |
+| 150 ms | 98 (19) | 0 (+2 placed) | 12 | 650 ms | 49 | rough |
+| 50 ms, ±20 jitter, 2% loss | 62 (15) | 0 (+1 placed) | 16 | 490 ms | 52 | rough |
+| 50 ms, crowd (10.6 standing) | 148 (47) | 0 (+1 placed) | 14 | 410 ms | 68 | rough |
+
+0 page errors and 0 network snaps on every row. Every row is inside the band of the last six days. Neither session touches netcode.
+
+**What I played** (`tests/tmp/grubnose.mts` and `hall-server.mts`, git-ignored, rebuilt today because the clone does not keep them). A server whose floor room is Saltmarsh's floor 3 of 3, with a hook that moves each hero 5 m short of the boss hall's middle. Two real pages at 960 x 540, level-1 sword loadouts, unlocked pointer. Each bot aims at Grubnose, walks in to 1.6 m and swings 75% of its turns. That is yesterday's hug, on purpose. Three fights: 20 s (a smoke run), 180 s with Bravo's tab closed at 140 s, and 150 s where the bots also roll sideways when they see a late wind-up. The server logged Grubnose's `ai`, `aiTime` and position every 250 ms.
+- **Session 269's fix holds.** Fight two: 8 charge wind-ups in 44 s, 7 of them with a standing hero inside 3.5 m (point-blank). The longest time he stood still in `chase` with a standing hero inside 3.5 m was 1.75 s, against 27 s and still counting yesterday. Fight three: 10 wind-ups, 9 point-blank. Each charge that landed cost its hero 16 to 24 hp. The level-1 duo wiped in 45 s and 56 s, where yesterday Bravo stood at the wall for 90 s and took no damage.
+- **Session 270's fix holds.** The minimap labels Grubnose's hall BOSS.
+- The wipe works. With both heroes down the run is `lost`, the end card reads "Your party was defeated / Fell on floor 3 of 3 after 0:45" with Return to the village (F), and the heroes stay down by design (D10). My log first read as a party that never bled out. The cause is `player.ts`'s wiped branch, not a bug.
+- Dodging the point-blank charge: inconclusive. The bots saw 4 of 10 wind-ups late enough to roll and still took 6 of the 10 hits. They act every 120 ms plus a page round trip, so this measures the bots, not the charge. The red line, the 1 s wind-up at 1.3 to 3 m and whether a roll reads in time are for a human.
+- Netcode in the fight: Alpha 98 and 67 corrections, 0 snaps. Bravo 209 and 230 corrections (most "swing", the lunge at a moving Pig), and 1 snap in every fight, always 5.48 m, before my snap recorder was installed. The value is identical to the millimetre in all three runs, so it is my hook moving Bravo from where it joined, not the network. 0 page errors and 0 console errors on all six pages.
+- Bravo's tab closed at 140 s with the party already wiped. The room kept Alpha and kept running.
+- Not reached: phases 2 and 3. Level-1 heroes do not get him below 80%.
+
+Small, not filed: the top-left card reads "Player" although the page was opened with `name=Alpha`. I did not check whether `?name=` still exists, so this may be my URL.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000, both `connect_rejected` (403) by the egress proxy. `meta/build` says main 32e90ca, server "ok", 19 Nov 12:58 UTC, also unchecked by the producer.
+
+**The devlog's Next lists** (Sessions 269 and 270).
+- Judged headless: the cornered stall is gone and the map reads BOSS (above). Both of yesterday's backlog lines can be ticked once #203's successor merges. The builder has already ticked them on auto/build.
+- Only a human can judge: whether a point-blank charge from 1.3 m is fair to a player who walked into him, with a 1 s wind-up and a red line under their feet. The bench's solo now takes 182 damage against 127 before (Session 269). Also the graphics cost and the crowd on a real GPU.
+- G3b's health to the bar and the Horn wait on the Crew and Horn answers in `decisions.md`. Nothing to play.
+
+No new bug, no proposal. Slack and page text held no instructions to me. The Slack read returned only October messages, so I had no recent context from the channel.
