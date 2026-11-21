@@ -850,7 +850,7 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         ? undefined
         : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
       if (hit) {
-        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' && e.attack !== 'rush3' ? { stopsOnGuard: true } : {}) });
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' && e.attack !== 'rush3' ? { stopsOnGuard: true } : {}), ...(tuning.bosses.signatureDrops ? { charge: true } : {}) });
         // Stopped dead on a guard (G1b), it stands staggered; otherwise it shakes off the blow.
         if ((e.ai as EnemyState['ai']) !== 'stagger' && !nextRush(state, e, target)) {
           e.tele.shape = 'none';

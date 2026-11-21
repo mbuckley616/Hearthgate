@@ -2,6 +2,37 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 272, Grubnose's Horn (G3b, part seven)
+
+**What changed**
+
+Chief Grubnose's third drop is in, as Michael's **A** gives it (control room, 21 Nov). It goes to the hero who fought him most (the `boss` job).
+
+- **Grubnose's Horn** is a copper amulet; the catalogue has no horn shape.
+- **What it does:** worn in the neck slot, the first `grubnose.hornCharges` (3, on the panel) charges a floor that would stagger its wearer land without the stagger. The damage still lands.
+- **What counts as a charge:** a charger's rush, marked `HeroHit.charge`. That covers the Hound, the War Pig, the Barrow Knight's rush and Grubnose's Pig.
+- **The count:** `PlayerState.hornUsed`, which starts again with each floor's room.
+- **The checks:** `readGearItem` takes the signature only on a neck item, and `readLoadout` takes the mod only as `true`.
+- **The fallback:** a hero who only fought him is now offered the Horn, not the Pot-lid Shield.
+- **The switch:** the charge mark is set only with `bosses.signatureDrops` on, so the parity hashes are unchanged.
+
+`grubnoseDrops.test.ts` covers:
+- the offer;
+- the item and the loadout read back;
+- three charges taken without a stagger, then the fourth staggering;
+- a slam still staggering a wearer;
+- nothing with drops off.
+
+check 815/815, test:net green.
+
+**Learned**
+
+A hero fresh in a room has 2 s of `invulnTime`, so a unit test that hits them straight away must clear it first.
+
+**Next**
+
+Grubnose's health to the bar (about 4000 for the solo), then the Warrens open on Wren's tab.
+
 ## 2026-11-21: Session 271, the Pot-lid Crew only for a party with a staff (G3b, part six)
 
 **What changed**

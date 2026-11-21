@@ -196,6 +196,8 @@ export interface PlayerState {
   riposteUntil?: number;
   /** Bulwark's pulse fired (B8): the Paladin takes `specs.bulwarkReduction` less damage until this sim time. Absent otherwise. */
   bulwarkUntil?: number;
+  /** Charges Grubnose's Horn has taken without a stagger on this floor (G3b). Absent until the first. */
+  hornUsed?: number;
   /** The focus orb's Focus: seconds left of faster, harder casts. Absent otherwise. */
   focusTime?: number;
   /** Gale Step (the Scout's Disengage): a second press before this sim time rolls, free. Absent otherwise. */
@@ -636,6 +638,11 @@ export interface HeroHit {
    * and the charger staggered (unless armoured after a stagger, G1).
    */
   stopsOnGuard?: boolean;
+  /**
+   * A charger's rush (a Hound, a War Pig, a Knight, Grubnose's Pig): Grubnose's Horn takes three a floor
+   * without the stagger. Set only with `bosses.signatureDrops` on, so a pending hit's state stays as it was.
+   */
+  charge?: boolean;
 }
 
 /** A hit on a remote player, waiting out their lag grace. */

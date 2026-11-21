@@ -713,6 +713,19 @@ export function typed(type: DamageType): { type?: DamageType } {
   return tuning.bosses.damageTypes ? { type } : {};
 }
 
+/**
+ * Grubnose's Horn (G3b, Michael's A, 21 Nov), in the neck slot: the first `grubnose.hornCharges` charges
+ * a floor that would stagger its wearer land without the stagger (the damage still lands). A floor is
+ * its own room, so the count starts again with each.
+ */
+function hornTakes(p: PlayerState): boolean {
+  if (!p.mods.hornCharges || !tuning.bosses.signatureDrops) return false;
+  const used = p.hornUsed ?? 0;
+  if (used >= tuning.grubnose.hornCharges) return false;
+  p.hornUsed = used + 1;
+  return true;
+}
+
 export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHitResult {
   if (heroInvulnerable(p)) {
     // A dodge that slips a hit is a perfect one (C2), paid once per dodge.
@@ -841,6 +854,7 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
   }
   // Flow III (C2): a heavy hit lands but does not interrupt; any hit taken costs a tier.
   if (p.flow && heavy && flowArmoured(p)) heavy = false;
+  if (heavy && hit.charge && hornTakes(p)) heavy = false;
   if (p.flow) loseFlowTier(p);
   if (p.hp > 0) p.hp = Math.max(0, p.hp - damage);
   state.events.push({ kind: 'heroHurt', playerId: p.id, damage, x: p.x, z: p.z, heavy, ...(hit.type ? { type: hit.type } : {}) });

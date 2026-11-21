@@ -93,6 +93,8 @@ export interface Mods {
   channelStun?: boolean;
   /** Gloves whose wearer's arrows bite goblins harder (G3b, Grubnose's Slingshot Bracer). */
   goblinArrows?: boolean;
+  /** An amulet that takes charges without a stagger (G3b, Grubnose's Horn): `grubnose.hornCharges` a floor. */
+  hornCharges?: boolean;
 }
 
 export function emptyMods(): Mods {

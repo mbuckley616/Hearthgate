@@ -1882,6 +1882,8 @@ export const tuning = {
     pileCoin: 40,
     /** His Slingshot Bracer (G3b, the warded job's drop): its wearer's arrows against goblins. */
     bracerArrowMult: 1.25,
+    /** His Horn (G3b, the boss job's drop), in the neck slot: charges a floor its wearer takes without a stagger. */
+    hornCharges: 3,
     /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
     stringTelegraphMs: 700,
     stringActiveMs: 160,
@@ -4368,6 +4370,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'grubnose.pileRefillMs': [1000, 30000, 500],
   'grubnose.pileCoin': [0, 300, 5],
   'grubnose.bracerArrowMult': [1, 3, 0.05],
+  'grubnose.hornCharges': [0, 10, 1],
   'grubnose.stringTelegraphMs': [200, 2000, 25],
   'grubnose.stringRecoveryMs': [100, 3000, 25],
   'grubnose.stringCooldownMs': [0, 5000, 50],
