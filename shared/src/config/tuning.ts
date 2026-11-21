@@ -1872,6 +1872,8 @@ export const tuning = {
     rushTelegraphMs: 550,
     /** How far round him his horn's adds come in (G2b). */
     addRadius: 8,
+    /** The horn's Pot-lid Crew (armoured, the staff's job) come only with a staff hero; else a Nest. */
+    crewNeedsStaff: true,
     /** His loot pile (G2b), raised this far from him as he blows the horn: it pays the goblins. */
     pileRadius: 3,
     /** Each this long the pile stands while he is on foot, a fallen Nest is filled again. */

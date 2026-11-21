@@ -1884,11 +1884,14 @@ function setMaulTele(e: EnemyState): void {
 
 /**
  * Grubnose's horn (G2b; docs/bosses.md 1.3 and 2.5): a Nest Slinger for a hero alone, a Pot-lid Crew
- * with a second hero, a second Nest with a third. Henchmen and summons do not count.
+ * with a second hero, a second Nest with a third. Henchmen and summons do not count. The Crew are
+ * armoured, the staff's job; with no staff hero in the party (`crewNeedsStaff`, Michael's A, 21 Nov)
+ * a second Nest comes in their place, since a party with nobody for the job only got a longer fight.
  */
 export function hornAdds(state: SimState): EnemyKind[] {
-  const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
-  return (['nestSlinger', 'potlidCrew', 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
+  const heroes = state.players.filter((p) => !p.henchman && !p.summon);
+  const crew = !tuning.grubnose.crewNeedsStaff || heroes.some((p) => p.style === 'staff') ? 'potlidCrew' : 'nestSlinger';
+  return (['nestSlinger', crew, 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes.length)));
 }
 
 /**

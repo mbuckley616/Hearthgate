@@ -2,6 +2,40 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 271, the Pot-lid Crew only for a party with a staff (G3b, part six)
+
+**What changed**
+
+Michael answered the three questions on the control room (21 Nov), all **A**. They are filed in `decisions.md` Answered.
+
+The Crew's answer is built. Grubnose's horn raises the Pot-lid Crew only when a staff hero is in the party (`grubnose.crewNeedsStaff`, in `hornAdds`). Without one, a second Nest Slinger (warded, the archer's job) comes in their place. A staff henchman does not count. His loot pile refills Nests up to the number the horn wants, so it refills both Nests too. A unit test in `grubnose.test.ts` covers it.
+
+Pilfer stays coin only until Phase 3, as built.
+
+**Learned**
+
+The bench on Saltmarsh at 3800 health, 5 seeds, with the sword and bow duo:
+
+| | before (Session 266) | now |
+|---|---|---|
+| kills | 3 of 5 | 5 of 5 |
+| median time to kill | 113 s | 105 s |
+| damage taken | 401 | 246 |
+| potions used | 2.4 | 1.2 |
+| downs | 1.0 | 0 |
+
+The duo's largest damage source is now the Pig's third rush (94).
+
+The solo is unchanged by this rule, since a lone hero gets one Nest either way. It killed 3 of 5 in 143 s; the other 2 timed out with 22% of his health left on average.
+
+The duo's time is 0.73 of the solo, not under half. The Warden's duo was left for a playtest on the same kind of number (Michael's A, 19 Nov).
+
+**Next**
+
+- the Horn as a neck piece (Michael's A);
+- then health to the bar;
+- then the Warrens open on Wren's tab.
+
 ## 2026-11-19: Session 270, the boss hall reads BOSS on the map
 
 **What changed**

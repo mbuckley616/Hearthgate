@@ -170,10 +170,31 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(ADD_WEAKNESS.potlidCrew).toBe('armoured');
     expect(weakTo('potlidCrew')).toBe('staff');
     const two = scene();
-    addPlayer(two.s, world, 'p2', loadout, false);
+    const mage = addPlayer(two.s, world, 'p2', loadout, false);
+    mage.style = 'staff';
     expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew']);
     addPlayer(two.s, world, 'p3', loadout, false);
     expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew', 'nestSlinger']);
+  });
+
+  it('with no staff hero the horn raises a second Nest in the Crew\'s place', () => {
+    const { s, p } = scene();
+    p.style = 'sword';
+    const archer = addPlayer(s, world, 'p2', loadout, false);
+    archer.style = 'bow';
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger']);
+    addPlayer(s, world, 'p3', loadout, false).style = 'sword';
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger', 'nestSlinger']);
+    // A staff henchman is not a staff hero.
+    const hench = addPlayer(s, world, 'h1', loadout, false);
+    Object.assign(hench, { style: 'staff', henchman: true });
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger', 'nestSlinger']);
+    tuning.grubnose.crewNeedsStaff = false;
+    try {
+      expect(hornAdds(s)).toEqual(['nestSlinger', 'potlidCrew', 'nestSlinger']);
+    } finally {
+      tuning.grubnose.crewNeedsStaff = true;
+    }
   });
 
   it('the Pot-lid Crew rush the mage past a nearer blade', () => {
