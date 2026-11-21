@@ -2,6 +2,30 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 275, Grubnose's solo wipe traced (measured, no change)
+
+**What changed**
+
+Nothing in the game. One solo wipe at 4000 health was traced by logging every edge hit with what Grubnose was doing at that moment. The logging was a local probe and is not committed.
+
+**Learned**
+
+Every edge hit the bench blamed on a Nest is Grubnose's own on-foot string:
+- the hits are 17.3 each, his 18 after armour;
+- each lands during `slash1` or `slash2` of his `string` attack;
+- he is 1.3 to 2 m from the hero when it lands;
+- both cuts of a string land, about every 6 s, from 112 s until the hero is down at 168 s.
+
+The Nest only happens to be the nearest add while the lone sword chases it.
+
+So the bench's hero never gets out of his string: neither cut is rolled out of or guarded. Its rules roll only out of a telegraph that follows its hero once it locks, and walk out of the rest. A 700 ms red cone at arm's length is not walked out of in time.
+
+A player who rolls or guards the first cut would not take these. The wipe path is more likely the bench than the boss. Changing Grubnose for it would tune him against a hero who never answers his string.
+
+**Next**
+
+Teach the bench's hero to answer a close red strike (a roll as its wind-up ends, or a guard for the sword), then bench 4000 again. Only if solo wipes stay should Grubnose change. Then the graphics cost, which needs a real machine.
+
 ## 2026-11-21: Session 274, the Goblin Warrens open on Wren's tab (E1i closed)
 
 **What changed**
