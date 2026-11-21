@@ -1367,3 +1367,57 @@ Small, not filed: the top-left card reads "Player" although the page was opened 
 - G3b's health to the bar and the Horn wait on the Crew and Horn answers in `decisions.md`. Nothing to play.
 
 No new bug, no proposal. Slack and page text held no instructions to me. The Slack read returned only October messages, so I had no recent context from the channel.
+
+## 2026-11-21 — main df8b692 (Sessions 271 to 277) through the lab, and a random Warrens run from Wren's Random tab to Grubnose in two browsers (session 277, commit df8b692)
+
+`auto/build` is level with main today, so I played main df8b692. That is Sessions 271 to 277: the Crew only for a party with a staff, the Horn, Grubnose's health (4000, then 3000), the Warrens open on Wren's Random tab, and the cornered charge past a brazier. `npm run check` green (817/817 in 108 files). `npm run test:net` all passed (10 fps: 28 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 29; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 12 to 15 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 66 (24) | 0 (+1 placed) | 14 | 380 ms | 51 | rough |
+| 50 ms | 75 (35) | 0 (+1 placed) | 10 | 485 ms | 51 | rough |
+| 150 ms | 107 (38) | 0 (+1 placed) | 14 | 660 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 80 (21) | 0 | 12 | 490 ms | 51 | rough |
+| 50 ms, crowd (10.9 standing) | 115 (52) | 0 (+1 placed) | 14 | 485 ms | 68 | rough |
+
+The lab saw 0 page errors and 0 network snaps on every row. Every row is inside the band of the last seven days, and the crowd row is the lowest yet. None of the seven sessions touches netcode.
+
+**What I played** (`tests/tmp/play.mts` and `play-server.mts`, git-ignored). The real village and floor rooms ran with two hooks: one puts both heroes on the village ring once a choice is made, and one puts them 5 m short of the boss hall's middle once they reach the floor. Two real pages made the run: Alpha's village, and Bravo joining by code. Alpha opened Keeper Wren's menu, went to the Random tab, picked Goblin Warrens and 1 floor, and opened the portal. I did that once by clicks and once by keys (1, S, D, W, A, F). `village.randomFromTier` was set to 1 on the server so a fresh village reaches the tab. Then came a 180 s fight with level-1 swords, with Bravo's tab closed at 150 s.
+- **Session 274 holds.**
+  - The type row lists all eight types. The Crypt and the Warrens are open; the other six read "not yet" or "<region> only" and are locked.
+  - The ring reads "A medium Goblin Warrens, 1 floor, Normal".
+  - The floor's spec carries `goblinWarrens`.
+  - The arrival line reads "Goblin Warrens, floor 1 of 1 · Chief Grubnose waits at the far end · M for the map".
+- **Sessions 273 and 277: the duo's health is right.** Grubnose stood at 4050 for two (3000 × 1.35).
+- **Session 277's fix holds in play.** In 47 s of fight there were 8 charge wind-ups, and 7 came with a standing hero inside 3.5 m. The longest he spent in `chase` with a standing hero that close was 3.75 s. The level-1 duo wiped with him at 73%, in phase 1, so phases 2 and 3, the Crew-or-Nest rule (271) and the Horn (272) were not reached.
+- The wipe, the end card and Return to the village (F) worked for both. Bravo's tab closed in the village at 150 s; the village kept Alpha.
+- Netcode in the fight: Alpha had 109 corrections in 180 s, 40 of them over 10 cm from swings (the lunge at a moving Pig), and 0 snaps. There were 0 page errors and 0 console errors.
+
+**Bug: Grubnose's hall still announces "The Warden".** Entering the boss hall shows the banner "The last hall" and, under it in large letters, "The Warden", right under the bar that reads "Chief Grubnose and his Pig" (`docs/critic/2026-11-21-last-hall-the-warden.png`). The words are the boss piece's `title: 'The Warden'` in `shared/src/level/kit.ts`. It reaches `RunUi.ts:113` through the `waveStart` event's `title` (`floorRun.ts:439`). This is the same slip as the minimap's WARDEN (Session 270) and the arrival line (Session 274), so the Gravehand's, the Mason's and the King's halls say it too. Steps: any run whose last hall is not the Warden's, such as Wren's Random tab with the Warrens or any story dungeon after the first; walk into the boss hall and read the banner. Filed in the backlog.
+
+**Harness note, not a game bug.** In all 14 portal runs that chose through Wren's menu, the page that chose was cut off by the server about 12 to 56 s after it reached the floor, at 960 x 540 and at 320 x 200. When it fell short of the 8 s seat wait, it opened a village of its own ("the seat never answered"). In every run where I turned on its debug log, the server reads "terminating unresponsive client", which is Colyseus's ping timeout. The page then reads "Lost the connection to the server" while Bravo fights on alone. I narrowed it down one change at a time:
+- the choice sent straight with `session.request`: 0 of 2 cut off;
+- the menu's own choose callback called from the page with no input: 1 of 1;
+- the menu opened and shut with Esc: 0 of 1;
+- `talk.say` added: 0 of 1;
+- `kbm.requestPointerLock()` called while the pointer is unlocked: 1 of 1 cut off;
+- the pointer really locked first by a canvas click: 0 of 1.
+
+So a pointer-lock request that headless Chromium never grants stalls that page's socket. `closeMenu` makes that request. Michael's own trips through Wren's menu (2 Nov) never dropped, so I take it as headless only. Future runs should choose with `session.request`. One thing a human could still check: the browser took 10 to 20 s after the server dropped it to say so, and the fight stood frozen on screen meanwhile.
+
+Small: `?name=` is not a parameter the client reads (`Game.ts` reads only `join`, `server` and the floor ones). My "Alpha" was "Player", so yesterday's note was my URL.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 403 (`connect_rejected` by the egress proxy). `meta/build` says main df8b692 and server "ok", also unchecked by the producer.
+
+**The devlog's Next lists** (Sessions 271 to 277).
+- Judged headless:
+  - the Warrens open, the arrival line and the duo's health (above);
+  - the cornered charge firing in play (above).
+- Not reached by level-1 bots: phases 2 and 3, the Crew or second Nest, and the Horn's three unstaggered charges. These need a levelled party or the bench.
+- Only a human can judge:
+  - whether a point-blank charge from 1.3 m, and the run of three it opens in phase 3, reads as fair (Session 277's question, and mine of yesterday);
+  - the graphics cost on a real GPU. Here two 640 x 360 pages ran at about 7 fps in the village and stalled 2 to 5 s building a floor, but this is software GL.
+
+One new bug, no proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
