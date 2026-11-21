@@ -57,6 +57,22 @@ export const KIND_ROLE: Record<EnemyKind, EnemyRole> = {
   cantor: 'leader',
   // And a Skeleton Archer that the blade staggers in one blow.
   skirmisher: 'archer',
+  // The Goblin Warrens' (E1i): a Skeleton Warrior's brain, a goblin's numbers.
+  cutter: 'fodder',
+  slinger: 'archer',
+  potlid: 'shield',
+  warPig: 'charger',
+  shaman: 'caster',
+  ogre: 'heavy',
+  packLeader: 'leader',
+  chieftain: 'elite',
+  // The Warrens' boss (G1b): Chief Grubnose on his War Pig.
+  grubnose: 'boss',
+  // His horn's adds (G2b): a Slinger and a Pot-lid, by weakness.
+  nestSlinger: 'archer',
+  potlidCrew: 'shield',
+  // His loot pile: a heavy that only stands, as a Wardstone does.
+  lootPile: 'heavy',
 };
 
 export const roleOf = (kind: EnemyKind): EnemyRole => KIND_ROLE[kind];
@@ -74,6 +90,10 @@ export function telegraphColour(e: { kind: EnemyKind; attack: string; armour?: n
   // The Gravehand (H1): its sweep a strike (blockable), its palm slam heavy, its flick yellow.
   if (e.kind === 'gravehand') return e.attack === 'flick' ? 'projectile' : e.attack === 'slam' || e.attack === 'grab' || e.attack === 'knuckles' ? 'heavy' : 'strike';
   // The Ossuary Mason (M1): its maul string a strike (blockable), its hod's landing heavy.
+  // Chief Grubnose (G1b): the Pig's charge a red line (a guard stops it), the Chief's sling yellow,
+  // his looted string on foot (G2b) a strike.
+  // Remounted (G3b), the third charge of a run has the orange rim: no guard stops it.
+  if (e.kind === 'grubnose') return e.attack === 'sling' ? 'projectile' : e.attack === 'rush3' ? 'heavy' : 'strike';
   if (e.kind === 'mason') return e.attack === 'hod' ? 'heavy' : e.attack === 'grout' ? 'magic' : 'strike';
   if (role === 'boss') return e.attack === 'sweep' ? 'strike' : 'heavy';
   return ROLES[role].tell;
@@ -87,11 +107,14 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
   switch (e.kind) {
     case 'grunt':
     case 'hound':
+    case 'cutter':
       return 'edge';
     case 'archer':
     case 'skirmisher':
       return 'pierce';
     case 'brute':
+    case 'ogre':
+    case 'chieftain':
     case 'shieldbearer':
     case 'knight':
       return 'blunt';
@@ -107,17 +130,27 @@ export function attackType(e: { kind: EnemyKind; attack: string }): DamageType {
       return 'magic';
     case 'boneRing':
       return 'edge';
+    case 'grubnose':
+      return e.attack === 'sling' ? 'pierce' : e.attack === 'string' ? 'edge' : 'blunt';
     case 'mason':
       return e.attack === 'grout' ? 'magic' : 'blunt';
     case 'wardstone':
+    case 'lootPile':
     case 'mortarGuard':
+    case 'slinger':
+    case 'nestSlinger':
+    case 'potlid':
+    case 'potlidCrew':
+    case 'warPig':
       return 'blunt';
     case 'chanter':
     case 'crownbearer':
       return 'magic';
     case 'priest':
+    case 'packLeader':
     case 'cantor':
     case 'wraith':
+    case 'shaman':
       return 'magic';
   }
 }
@@ -151,7 +184,7 @@ export function telegraphTell(e: { kind: EnemyKind; attack: string; armour?: num
  */
 export type AddWeakness = 'armoured' | 'warded';
 
-export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded', cantor: 'warded' };
+export const ADD_WEAKNESS: Partial<Record<EnemyKind, AddWeakness>> = { ironRing: 'armoured', silverRing: 'warded', mortarGuard: 'armoured', chanter: 'warded', crownbearer: 'warded', cantor: 'warded', nestSlinger: 'warded', potlidCrew: 'armoured' };
 
 const WEAK_STYLE: Record<AddWeakness, Style> = { armoured: 'staff', warded: 'bow' };
 
@@ -167,35 +200,69 @@ export interface Dressing {
   plural: string;
 }
 
+/** The Crypt's names, every kind: a type's roster starts from it and renames its own. */
+const CRYPT_NAMES: Record<EnemyKind, Dressing> = {
+  grunt: { name: 'Skeleton Warrior', plural: 'Skeleton Warriors' },
+  archer: { name: 'Skeleton Archer', plural: 'Skeleton Archers' },
+  brute: { name: 'Bone Brute', plural: 'Bone Brutes' },
+  warden: { name: 'The Warden', plural: 'The Warden' },
+  shieldbearer: { name: 'Skeleton Shieldbearer', plural: 'Skeleton Shieldbearers' },
+  hound: { name: 'Crypt Hound', plural: 'Crypt Hounds' },
+  priest: { name: 'Bone Priest', plural: 'Bone Priests' },
+  knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
+  wraith: { name: 'Wraith', plural: 'Wraiths' },
+  king: { name: 'The Hollow King', plural: 'The Hollow King' },
+  gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
+  ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
+  silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
+  boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
+  mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
+  wardstone: { name: 'Wardstone', plural: 'Wardstones' },
+  mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
+  chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
+  crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
+  cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
+  skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
+  cutter: { name: 'Goblin Cutter', plural: 'Goblin Cutters' },
+  slinger: { name: 'Goblin Slinger', plural: 'Goblin Slingers' },
+  potlid: { name: 'Pot-lid Goblin', plural: 'Pot-lid Goblins' },
+  warPig: { name: 'War Pig', plural: 'War Pigs' },
+  shaman: { name: 'Goblin Shaman', plural: 'Goblin Shamans' },
+  ogre: { name: 'Cave Ogre', plural: 'Cave Ogres' },
+  packLeader: { name: 'Pack Leader', plural: 'Pack Leaders' },
+  chieftain: { name: 'Goblin Chieftain', plural: 'Goblin Chieftains' },
+  grubnose: { name: 'Chief Grubnose', plural: 'Chief Grubnose' },
+  nestSlinger: { name: 'Nest Slinger', plural: 'Nest Slingers' },
+  potlidCrew: { name: 'Pot-lid Crew', plural: 'Pot-lid Crew' },
+  lootPile: { name: 'Loot Pile', plural: 'Loot Piles' },
+};
+
 /**
  * Rosters by dungeon type. The Crypt's is today's four, renamed (E1a: no change to the fight); a type
- * without its own roster borrows the Crypt's until it has one (the Warrens are E1i).
+ * without its own roster borrows the Crypt's until it has one. The Warrens' kinds (E1i) are kinds of
+ * their own, named here, and take a Crypt kind's place in a Warrens room (`ROOM_KINDS`).
  */
 export const ROSTERS: Partial<Record<DungeonType, Record<EnemyKind, Dressing>>> = {
-  hauntedCrypt: {
-    grunt: { name: 'Skeleton Warrior', plural: 'Skeleton Warriors' },
-    archer: { name: 'Skeleton Archer', plural: 'Skeleton Archers' },
-    brute: { name: 'Bone Brute', plural: 'Bone Brutes' },
-    warden: { name: 'The Warden', plural: 'The Warden' },
-    shieldbearer: { name: 'Skeleton Shieldbearer', plural: 'Skeleton Shieldbearers' },
-    hound: { name: 'Crypt Hound', plural: 'Crypt Hounds' },
-    priest: { name: 'Bone Priest', plural: 'Bone Priests' },
-    knight: { name: 'Barrow Knight', plural: 'Barrow Knights' },
-    wraith: { name: 'Wraith', plural: 'Wraiths' },
-    king: { name: 'The Hollow King', plural: 'The Hollow King' },
-    gravehand: { name: 'The Gravehand', plural: 'The Gravehand' },
-    ironRing: { name: 'Iron Ring', plural: 'Iron Rings' },
-    silverRing: { name: 'Silver Ring', plural: 'Silver Rings' },
-    boneRing: { name: 'Bone Ring', plural: 'Bone Rings' },
-    mason: { name: 'The Ossuary Mason', plural: 'The Ossuary Mason' },
-    wardstone: { name: 'Wardstone', plural: 'Wardstones' },
-    mortarGuard: { name: 'Mortar Guard', plural: 'Mortar Guards' },
-    chanter: { name: 'Bone Chanter', plural: 'Bone Chanters' },
-    crownbearer: { name: 'Crownbearer', plural: 'Crownbearers' },
-    cantor: { name: 'Grave Cantor', plural: 'Grave Cantors' },
-    skirmisher: { name: 'Barrow Skirmisher', plural: 'Barrow Skirmishers' },
-  },
+  hauntedCrypt: CRYPT_NAMES,
 };
+
+/**
+ * The kind a generated room's group spawns in place of a Crypt kind, by dungeon type (E1i): the
+ * composer (`roomMix.ts`) still spends its budget on the Crypt's kinds, with the same draws from the
+ * seeded stream, and a type swaps in its own dressing of each role it has built. So a Crypt room is
+ * the room it always was, and a Warrens room keeps its shape as goblins replace skeletons.
+ */
+export const ROOM_KINDS: Partial<Record<DungeonType, Partial<Record<EnemyKind, EnemyKind>>>> = {
+  goblinWarrens: { grunt: 'cutter', archer: 'slinger', shieldbearer: 'potlid', hound: 'warPig', wraith: 'shaman', brute: 'ogre', priest: 'packLeader', knight: 'chieftain' },
+};
+
+/** The Warrens' goblins and their pig (E1i): not bones, so no Bone Priest raises one. */
+export const GOBLINS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['cutter', 'slinger', 'potlid', 'warPig', 'shaman', 'ogre', 'packLeader', 'chieftain', 'nestSlinger', 'potlidCrew']);
+
+/** What a room of `type` spawns for the composer's `kind`. */
+export function roomKindIn(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): EnemyKind {
+  return ROOM_KINDS[type]?.[kind] ?? kind;
+}
 
 export function dressing(kind: EnemyKind, type: DungeonType = DEFAULT_DUNGEON_TYPE): Dressing {
   return (ROSTERS[type] ?? ROSTERS[DEFAULT_DUNGEON_TYPE]!)[kind];

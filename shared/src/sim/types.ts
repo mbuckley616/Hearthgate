@@ -293,6 +293,8 @@ export interface EnemyState {
   risen?: true;
   /** A mini-boss (G4): its name, over the boss bar and under its crown. Absent on every other enemy. */
   named?: string;
+  /** Pilfer (E1i): the coin a Goblin Cutter has snatched and is running with; spilled where it dies. */
+  sack?: number;
   /** A treasure room's guard (G5's C): that room's id. It holds no fight room from clearing. */
   guard?: number;
   /** Launched corpse (K1): who killed it, what it deals, and the enemies it has already met. */
@@ -338,6 +340,10 @@ export interface EnemyState {
   attn?: { hitAt: Record<string, number>; focus?: string; runs: number; pick: boolean };
   /** A Ranger's Thornshot holds it to the spot until this sim time (the builds pass): it turns and strikes but does not walk. */
   rootUntil?: number;
+  /** A Pack Leader's war cry (E1i) quickens it until this sim time: its whole step runs `packLeader.quickMult` faster. */
+  quickUntil?: number;
+  /** A Goblin Chieftain (E1i) may cry its war cry again from this sim time. Absent: whenever a goblin is in reach. */
+  cryAt?: number;
   /** A Scout's mark (the builds pass): party hits on it deal more and fill the Scout's Flow until `until`. */
   scoutMark?: { by: string; until: number };
   /** An Assassin's Venom Volley poison (the builds pass): `stacks` each tick for `specs.venomDamage` at `next`, until `until`. The server's alone. */
@@ -394,6 +400,8 @@ export interface ProjectileState {
   embers?: boolean;
   /** The Gravehand's shatter flick (H3): a shard that splits in two where it lands, unless it hits a hero. */
   shatters?: true;
+  /** A Goblin Slinger's stone (E1i): an enemy arrow that falls under `slinger.lobGravity` too, and lands blunt. */
+  stone?: true;
   /** Seconds before it flies: until then it stands still where it was loosed, unseen, hitting nothing. */
   waits?: number;
   /** Burst only: slow applied to enemies caught in it (seconds). */
@@ -497,6 +505,8 @@ export type SimEvent =
   | { kind: 'holyPulse'; playerId: string; x: number; y: number; z: number; healed: number }
   /** A Wraith's circle landed (E1d), whoever it caught: for its sound, heard as it lands rather than as the channel's tell. */
   | { kind: 'circleLanded'; enemyId: number; x: number; z: number; caught: number }
+  /** A Pack Leader's war cry (E1i): `quickened` enemies within `radius` of it, itself included. */
+  | { kind: 'warCry'; enemyId: number; x: number; z: number; radius: number; quickened: number }
   | { kind: 'ridgeRaised'; enemyId: number; x: number; z: number }
   /** A collapsing tile (G5): a hero stepped on it and it starts to shake; then it falls, taking `caught` with it. */
   | { kind: 'tileCracked'; x: number; z: number }
@@ -527,7 +537,7 @@ export type SimEvent =
   | { kind: 'guarded'; enemyId: number; x: number; y: number; z: number }
   /** A heavy broke a Shieldbearer's guard (E1b). */
   | { kind: 'guardBroken'; enemyId: number }
-  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true; /** The Gravehand's (H2). */ hand?: true; /** The Ossuary Mason's (M3). */ mason?: true }
+  | { kind: 'roar'; enemyId: number; /** E1g: the phase this roar begins (absent in the slice's two). */ phase?: number; /** The Hollow King's (G4b), not the Warden's. */ king?: true; /** The Gravehand's (H2). */ hand?: true; /** The Ossuary Mason's (M3). */ mason?: true; /** Chief Grubnose's horn (G2b). */ chief?: true }
   | { kind: 'runStart' }
   /** A generated floor's party reached its rest room together: their drops are banked (T4). */
   | { kind: 'rested' }
@@ -554,6 +564,8 @@ export type SimEvent =
   | { kind: 'smashed'; playerId: string; prop: number; propKind: PropKind; x: number; y: number; z: number; lumber: number; stone: number; coin: number; potion: boolean }
   /** A player picked up a piece of a smashed prop's spray (Michael, 29 Oct): it is the party's, carried until the floor banks. */
   | { kind: 'lootTaken'; playerId: string; loot: 'lumber' | 'stone' | 'coin'; amount: number; x: number; y: number; z: number }
+  /** Pilfer (E1i): a Goblin Cutter's cut snatched this much of the party's found coin. */
+  | { kind: 'pilfered'; playerId: string; enemyId: number; coin: number }
   /** A hero picked up a potion (D4); potions is how many they now carry. */
   | { kind: 'potionTaken'; playerId: string; potions: number }
   /** A hero drank a potion (D4). */
@@ -619,6 +631,11 @@ export interface HeroHit {
    * feet as it swung; a hero whose feet are `jump.clearHeight` above it when the hit lands clears it.
    */
   low?: number;
+  /**
+   * Chief Grubnose's Pig (G1b): a charge a covering guard stops dead, held as a stance holds a heavy,
+   * and the charger staggered (unless armoured after a stagger, G1).
+   */
+  stopsOnGuard?: boolean;
 }
 
 /** A hit on a remote player, waiting out their lag grace. */

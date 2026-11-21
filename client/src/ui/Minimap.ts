@@ -273,9 +273,16 @@ function drawPlan(layout: FloorLayout, cleared: readonly number[], opened: reado
   return c;
 }
 
-/** The entrance, the rest room and the Warden's hall get a word on the map. */
+/**
+ * The entrance, the rest room and the boss's hall get a word on the map. The hall says BOSS: since the
+ * Gravehand a story's last hall is often not the Warden's (critic, 19 Nov).
+ */
+export function pieceLabel(kind: PieceInfo['kind']): string {
+  return kind === 'entrance' ? 'IN' : kind === 'rest' ? 'REST' : kind === 'boss' ? 'BOSS' : '';
+}
+
 function label(g: CanvasRenderingContext2D, p: PieceInfo, X: (x: number) => number, Y: (z: number) => number): void {
-  const text = p.kind === 'entrance' ? 'IN' : p.kind === 'rest' ? 'REST' : p.kind === 'boss' ? 'WARDEN' : '';
+  const text = pieceLabel(p.kind);
   if (!text) return;
   g.font = `bold ${PX * 2.6}px monospace`;
   g.textAlign = 'center';

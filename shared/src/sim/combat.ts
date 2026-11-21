@@ -7,9 +7,10 @@ import { flowArmoured, gainFlow, harmonyBonus, loseFlowTier } from './flow';
 import { levelFor, xpForLevel } from './gear';
 import { damageTakenMult, familyOf, focused, parryWindowMs, talentDamage, talentFinisher, talentPoise } from './talents';
 import type { Combo, DamageType, EnemyState, HeroHit, PlayerState, SimState } from './types';
-import { ADD_WEAKNESS, roleOf } from './roles';
+import { ADD_WEAKNESS, GOBLINS, roleOf } from './roles';
 import { jobFor, noteJob } from './signatures';
 import { focusBonus } from './focus';
+import { pilferOn, spillSack } from './pilfer';
 import { countPayoff, masteryPayoffMult, masteryTwists } from './mastery';
 import { consecratedMult, elementFor, guardHoldsHeavy, hexedMult, inStance, holyPulse, isRooted, markedMult, masteryTwist, shadowStrike, warlockHex } from './specs';
 
@@ -94,7 +95,7 @@ const ATTACKING = new Set(['windup', 'slash1', 'between', 'slash2', 'aim', 'shoo
 
 /** Light enemies flinch and get knocked out of their attacks; brutes and the Warden only stagger. */
 function isLight(e: EnemyState): boolean {
-  return e.kind === 'grunt' || e.kind === 'archer';
+  return e.kind === 'grunt' || e.kind === 'archer' || e.kind === 'cutter' || e.kind === 'slinger' || e.kind === 'nestSlinger';
 }
 
 /**
@@ -111,7 +112,7 @@ function shieldTakes(state: SimState, e: EnemyState, hit: HitSpec, hero: PlayerS
   const rushing = role === 'elite' && (e.ai === 'charge' || e.ai === 'chargeWindup');
   if (hit.style === 'staff' && !rushing) return false;
   if (e.ai === 'stagger' || e.ai === 'spawn' || e.frozen > 0 || (!rushing && (e.guardDownUntil ?? -1) > state.time)) return false;
-  const sb = role === 'elite' ? tuning.knight : tuning.shieldbearer;
+  const sb = e.kind === 'chieftain' ? tuning.chieftain : role === 'elite' ? tuning.knight : e.kind === 'potlid' ? tuning.potlid : e.kind === 'potlidCrew' ? tuning.potlidCrew : tuning.shieldbearer;
   // The hit's push points from the attacker through the enemy: against its facing means from the front.
   const len = Math.hypot(hit.dirX, hit.dirZ);
   if (len < 1e-6) return false;
@@ -161,6 +162,15 @@ function baneMult(state: SimState, hero: PlayerState | undefined, e: EnemyState)
   return bane === e.kind || his ? tuning.bosses.baneMult : 1;
 }
 
+/**
+ * Grubnose's Slingshot Bracer (G3b; `docs/bosses.md` 2.5), on gloves: the bane for the Warrens' type,
+ * its wearer's arrows taking `grubnose.bracerArrowMult` from any goblin, the Chief and his pile too.
+ */
+function bracerMult(hero: PlayerState | undefined, e: EnemyState, hit: HitSpec): number {
+  if (!hero?.mods.goblinArrows || !tuning.bosses.signatureDrops || !hit.projectile || hit.style !== 'bow') return 1;
+  return GOBLINS.has(e.kind) || e.kind === 'grubnose' || e.kind === 'lootPile' ? tuning.grubnose.bracerArrowMult : 1;
+}
+
 export function isTargetable(e: EnemyState): boolean {
   return e.ai !== 'dead' && e.ai !== 'spawn';
 }
@@ -186,6 +196,14 @@ export function breakChannel(e: EnemyState, hit?: HitSpec, hero?: PlayerState): 
     e.ai = 'recover';
     e.aiTime = 0;
     e.recoverTime = tuning.wraith.brokenMs / 1000;
+    return;
+  }
+  // A Pack Leader's war cry (E1i) is broken by any hit, as a caster's channel is.
+  if ((e.kind === 'packLeader' || e.kind === 'chieftain') && e.ai === 'chant') {
+    e.tele.shape = 'none';
+    e.ai = 'recover';
+    e.aiTime = 0;
+    e.recoverTime = tuning[e.kind].brokenMs / 1000;
     return;
   }
   if (roleOf(e.kind) !== 'caster' || e.ai !== 'chant') return;
@@ -248,7 +266,7 @@ export function damageEnemy(state: SimState, e: EnemyState, hit: HitSpec): boole
   const bound = boundMult(state, e);
   // A Silver Ring's ward on the hand (H2) halves what reaches it.
   const warded = e.kind === 'gravehand' && state.enemies.some((o) => o.kind === 'silverRing' && o.ai === 'chant') ? tuning.gravehand.wardTaken : 1;
-  const damage = bound * warded * resting * baneMult(state, hero, e) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
+  const damage = bound * warded * resting * baneMult(state, hero, e) * bracerMult(hero, e, hit) * weakness * focus * riposte * backstab * hexed * marked * shadow * hit.damage * (1 + bonus) * (staggered ? 1 + c.staggerDamageBonus : 1) * (shatter ? 1 + cb.shatterDamageBonus : 1) * (uproot ? 1 + cb.rootedAreaBonus : 1) * (1 + finisher) * mastery;
   // The job this hit did (B6), as far as it went: what a boss's signature drop is offered by.
   noteJob(state, hero, jobFor(e), Math.min(damage, Math.max(0, e.hp)));
   e.hp -= damage;
@@ -524,6 +542,7 @@ export function killEnemy(state: SimState, e: EnemyState, _knockbackTaken: numbe
   e.hasToken = false;
   e.bleedTicks = 0;
   clearTelegraph(e);
+  spillSack(state, e);
   // Drops appear where the last enemy fell; the Warden's spot wins once it's down.
   const r = state.run;
   const boss = roleOf(e.kind) === 'boss';
@@ -772,7 +791,18 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     const fz = Math.cos(p.yaw);
     const at = { x: p.x + fx * 0.5, y: p.y + 1.1, z: p.z + fz * 0.5 };
     const stance = inStance(p);
-    if (heavy && (guardHoldsHeavy(p) || stance)) {
+    const charger = hit.stopsOnGuard && from && !from.armour && isTargetable(from) ? from : undefined;
+    if (heavy && charger) {
+      // Grubnose's Pig (G1b) runs into a guard: it holds as a stance does, and the Pig is stopped dead.
+      damage *= g.heavyBlockDamageFrac;
+      p.vx = dirX * g.blockPushM * tuning.combat.knockbackFriction;
+      p.vz = dirZ * g.blockPushM * tuning.combat.knockbackFriction;
+      state.events.push({ kind: 'block', playerId: p.id, ...at, broke: false });
+      staggerEnemy(state, charger);
+      p.hp = Math.max(0, p.hp - damage);
+      if (p.hp > 0) return 'blocked';
+      heavy = false;
+    } else if (heavy && (guardHoldsHeavy(p) || stance)) {
       // A Paladin's guard holds against a heavy (Bulwark): the heavy's chip, no break, no stumble.
       // A shield's stance (B8) holds too, but the heavy drives the tank back a step.
       damage *= stance ? g.stanceHeavyDamageFrac : g.heavyBlockDamageFrac;
@@ -827,6 +857,8 @@ export function hurtHero(state: SimState, p: PlayerState, hit: HeroHit): HeroHit
     p.kbx = dirX * v;
     p.kbz = dirZ * v;
   }
+  // The Warrens' twist (E1i): a Goblin Cutter's cut that lands takes a share of the party's coin.
+  pilferOn(state, p, hit.enemyId);
   return 'hit';
 }
 

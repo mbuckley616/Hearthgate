@@ -273,12 +273,35 @@ export class Sfx {
           if (ev.boss) this.tone('sine', 70, 30, 0.6, 0.9, 0.01);
           break;
         case 'roar':
+          if (ev.chief && ev.phase === 3) {
+            // The Pig gets up enraged (G3b): a squeal climbing over a low snort.
+            this.tone('sawtooth', 520, 980, 0.5, 0.22, 0.03);
+            this.tone('square', 780, 1300, 0.45, 0.07, 0.03);
+            this.noiseBurst('lowpass', 600, 150, 0.7, 0.8, 0.3);
+            break;
+          }
+          if (ev.chief) {
+            // Chief Grubnose's horn (G2b): a goblin's cracked horn, two blasts that sag flat, not a roar.
+            this.tone('sawtooth', 196, 174, 0.7, 0.22, 0.04);
+            this.tone('square', 294, 262, 0.6, 0.08, 0.06);
+            setTimeout(() => {
+              this.tone('sawtooth', 220, 165, 1.1, 0.24, 0.04);
+              this.tone('square', 330, 247, 1.0, 0.08, 0.06);
+              this.noiseBurst('bandpass', 900, 500, 3, 0.6, 0.08);
+            }, 650);
+            break;
+          }
           this.tone('sawtooth', 90, 60, 1.4, 0.35, 0.15);
           this.tone('sawtooth', 135, 80, 1.3, 0.2, 0.2);
           this.noiseBurst('lowpass', 800, 200, 0.5, 1.2, 0.3);
           break;
         case 'waveStart':
           this.horn(ev.boss);
+          break;
+        case 'warCry':
+          // A Pack Leader's war cry (E1i): a short horn and a rough shout under it.
+          this.horn(false);
+          this.noiseBurst('bandpass', 700, 400, 2, 0.5, 0.18);
           break;
         case 'combo':
           // Each combo has its own sound (brief).

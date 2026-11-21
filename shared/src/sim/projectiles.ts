@@ -485,7 +485,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
     }
     if (pr.stuck) continue;
 
-    if (pr.kind === 'arrow') pr.vy -= tuning.rangedCombo.arrowGravity * dt;
+    if (pr.kind === 'arrow') pr.vy -= (tuning.rangedCombo.arrowGravity + (pr.stone ? tuning.slinger.lobGravity : 0)) * dt;
     if (pr.kind === 'bolt' && pr.homingLeft > 0) steerBolt(state, pr, dt);
     const speed = Math.hypot(pr.vx, pr.vy, pr.vz);
     let dist = speed * dt;
@@ -503,7 +503,7 @@ export function stepProjectiles(state: SimState, dt: number, colliders: readonly
         if (t < Infinity) {
           struck = true;
           const shooter = Number(pr.owner.slice(1));
-          const result = hurtHero(state, p, { damage: pr.damage, fromX: pr.x - dir.x * 3, fromZ: pr.z - dir.z * 3, enemyId: shooter, arrow: true, ...typed(pr.kind === 'bolt' ? 'magic' : 'pierce') });
+          const result = hurtHero(state, p, { damage: pr.damage, fromX: pr.x - dir.x * 3, fromZ: pr.z - dir.z * 3, enemyId: shooter, arrow: true, ...typed(pr.kind === 'bolt' ? 'magic' : pr.stone ? 'blunt' : 'pierce') });
           if (result === 'parried') reflectArrow(state, pr, p, shooter);
           else pr.life = 0;
           break;

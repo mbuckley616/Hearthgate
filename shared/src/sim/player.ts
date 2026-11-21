@@ -478,8 +478,22 @@ export function stepPlayer(
     p.hurtTime -= dt;
     const startX = p.x;
     const startZ = p.z;
-    p.x += p.kbx * dt;
-    p.z += p.kbz * dt;
+    let kx = p.kbx * dt;
+    let kz = p.kbz * dt;
+    if (tuning.combat.sweepFastMoves) {
+      // A heavy hit's shove runs over half a metre a tick at first (the War Pig's 4.2 m throw): one
+      // taken at a wall stops there, or it resolved out of the wall's far side and off the floor.
+      const len = Math.hypot(kx, kz);
+      const free = sweptDistance(p.x, p.y, p.z, kx, kz, mv.radius, colliders);
+      if (free < len) {
+        kx *= free / len;
+        kz *= free / len;
+        p.kbx = 0;
+        p.kbz = 0;
+      }
+    }
+    p.x += kx;
+    p.z += kz;
     const friction = Math.exp(-tuning.combat.knockbackFriction * dt);
     p.kbx *= friction;
     p.kbz *= friction;

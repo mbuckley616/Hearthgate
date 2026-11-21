@@ -166,6 +166,10 @@ export function readLoadout(v: unknown): Loadout | null {
     if (m.channelStun !== true) return null;
     mods.channelStun = true;
   }
+  if (m.goblinArrows !== undefined) {
+    if (m.goblinArrows !== true) return null;
+    mods.goblinArrows = true;
+  }
   const loadout: Loadout = { name: v.name.replace(/[^\w \-']/g, '').trim().slice(0, 16), xp, talents, mods, maxHp: v.maxHp };
   // Champion points (T6b): the banked XP must have bought every rank.
   if (v.champion !== undefined) {
@@ -296,6 +300,7 @@ export function readGearItem(v: unknown): GearItem | null {
     else if (s.lowClear === true && CATALOGUE.get(item.id)!.slot === 'feet') item.signature = { lowClear: true };
     else if (s.crownCatch === true && CATALOGUE.get(item.id)!.slot === 'shield') item.signature = { crownCatch: true };
     else if (s.channelStun === true && weapon && CATALOGUE.get(item.id)!.shape.style === 'bow') item.signature = { channelStun: true };
+    else if (s.goblinArrows === true && CATALOGUE.get(item.id)!.slot === 'hands') item.signature = { goblinArrows: true };
     else return null;
   }
   return item;

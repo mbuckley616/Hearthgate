@@ -101,7 +101,7 @@ export class RunUi {
     for (const ev of events) {
       if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'Final wave' : `Wave ${ev.wave} of ${FINAL_WAVE}`, ev.title);
       else if (ev.kind === 'waveCleared' && ev.wave < FINAL_WAVE) this.showBanner('Wave cleared', `Catch your breath  +${Math.round(tuning.run.healOnWaveClear * 100)}% health`);
-      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand, ev.mason));
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand, ev.mason, ev.chief));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -120,7 +120,7 @@ export class RunUi {
         const head = tuning.loop.bankAtRest ? 'Your finds are banked' : heal > 0 ? `+${heal}% health  ·  nothing is banked yet` : 'A way out  ·  nothing is banked yet';
         this.showBanner(head, `Gold ring home banks the run  ·  violet ring deeper, for ${Math.round(tuning.loop.depthBonus * 100)}% more, all of it at stake`);
       }
-      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand, ev.mason));
+      else if (ev.kind === 'roar') this.showBanner(...roarBanner(ev.phase, ev.king, ev.hand, ev.mason, ev.chief));
       else if (ev.kind === 'reinforcements') this.showBanner('More are coming', 'Reinforcements');
     }
   }
@@ -173,7 +173,7 @@ export class RunUi {
     if (boss) {
       this.bossFill.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
       this.bossFill.classList.toggle('staggered', boss.ai === 'stagger');
-      this.bossName.textContent = boss.named ?? (boss.kind === 'king' ? 'The Hollow King' : boss.kind === 'gravehand' ? 'The Gravehand' : boss.kind === 'mason' ? (masonBound(sim) ? 'The Ossuary Mason — Bound: break the Wardstones' : 'The Ossuary Mason') : boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden');
+      this.bossName.textContent = boss.named ?? (boss.kind === 'king' ? 'The Hollow King' : boss.kind === 'gravehand' ? 'The Gravehand' : boss.kind === 'grubnose' ? 'Chief Grubnose and his Pig' : boss.kind === 'mason' ? (masonBound(sim) ? 'The Ossuary Mason — Bound: break the Wardstones' : 'The Ossuary Mason') : boss.phase >= 2 ? 'The Warden — enraged' : 'The Warden');
     }
     const where = `floor ${spec.floor} of ${spec.floors}${spec.modifier ? `  ·  ${MODIFIERS[spec.modifier].name}` : ''}`;
     this.timer.style.display = 'block';
@@ -220,7 +220,10 @@ export class RunUi {
 }
 
 /** Each roar names what the Warden's next phase brings (E1g); the slice's one roar calls for help. */
-function roarBanner(phase: number | undefined, king?: true, hand?: true, mason?: true): [string, string] {
+function roarBanner(phase: number | undefined, king?: true, hand?: true, mason?: true, chief?: true): [string, string] {
+  // Chief Grubnose's horn (G2b): the Pig is down, his Nests and Crew come, his loot pile pays them.
+  if (chief && phase === 3) return ['The Pig gets up enraged', 'Grubnose remounts: charges in threes, and the rimmed third breaks a guard'];
+  if (chief) return ['Grubnose blows his horn', 'His goblins come, and his loot pile pays them: smash it'];
   // The Ossuary Mason's (M3).
   if (mason && phase === 3) return ['The Mason enrages', 'The stones go out; its last swing rolls a shockwave: jump it'];
   if (mason) return ['The Mason calls its Guards', 'Grout pools under every hero: step out of the violet'];
