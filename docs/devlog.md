@@ -2,6 +2,23 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 278, a boss hall's banner names its own boss
+
+**What changed**
+
+- **The banner.** Walking into a boss hall showed "The last hall" over "The Warden", whoever waited there. That line came from the boss piece's title in `kit.ts` (the critic, 21 Nov). Now `RunUi` writes the floor's own boss on the banner through `bossTitle(spec)`, the same lookup the arrival line uses. The fight and its events are unchanged, so the parity hashes stay the same.
+- The five story halls now read the Warden (Old Cellar), the Gravehand (Mossgate), Chief Grubnose (Saltmarsh), the Ossuary Mason (Emberhall) and the Hollow King (Hollow Crown). A random Warrens run reads Grubnose. `tests/boss-words.ts` checks this.
+
+check green.
+
+**Learned**
+
+The piece's `title` still rides `waveStart` for the arena and every non-boss room. Changing the sim's event would have meant knowing the boss in `kit.ts`, which builds pieces with no spec. The client already knows the spec, so the fix lives there.
+
+**Next**
+
+The E1 items left need a real machine (the graphics cost, the crowd) or Michael's playtest of the Gravehand and Grubnose.
+
 ## 2026-11-21: Session 277, Grubnose no longer stalls by a brazier; his health to 3000
 
 **What changed**
