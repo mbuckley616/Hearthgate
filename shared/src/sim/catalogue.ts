@@ -220,6 +220,8 @@ export interface Signature {
   crownCatch?: true;
   /** The Ossuary Mason's Gallery Longbow, on a bow: an arrow that breaks a Bone Chanter's rebuild stuns it `chanter.galleryStunMs`. */
   channelStun?: true;
+  /** Chief Grubnose's Slingshot Bracer (G3b), on gloves: arrows take `grubnose.bracerArrowMult` from goblins. */
+  goblinArrows?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -339,6 +341,7 @@ export function wornMods(worn: Worn): Mods {
     if (slot === 'feet' && sig?.lowClear) m.lowClear = true;
     if (slot === 'shield' && sig?.crownCatch) m.crownCatch = true;
     if (slot === 'weapon' && sig?.channelStun && entryOf(item).shape.style === 'bow') m.channelStun = true;
+    if (slot === 'hands' && sig?.goblinArrows) m.goblinArrows = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

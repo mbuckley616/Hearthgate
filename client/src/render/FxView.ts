@@ -176,6 +176,15 @@ export class FxView {
         case 'lootTaken':
           this.spawnLabel(ev.x, ev.y + 0.9, ev.z, `+${ev.amount} ${ev.loot}`, 'loot');
           break;
+        case 'warCry': {
+          // A Pack Leader's war cry (E1i): a red ring out to its reach, and a spark over each goblin it quickened.
+          const y = sim.enemies.find((e) => e.id === ev.enemyId)?.y ?? 0;
+          this.ring(ev.x, ev.z, ev.radius, 0xff5a3a, 0.8, 0.6, y);
+          for (const e of sim.enemies) {
+            if (e.quickUntil !== undefined && e.ai !== 'dead') this.spawnSparks(new THREE.Vector3(e.x, e.y + 1.4, e.z), new THREE.Vector3(0, 1.4, 0), 8, new THREE.Color(0xff7a4a));
+          }
+          break;
+        }
         case 'enemyRose': {
           // Haunted (P8): a fallen enemy gets up in a cold green breath.
           const y = sim.enemies.find((e) => e.id === ev.enemyId)?.y ?? 0;

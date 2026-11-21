@@ -80,4 +80,18 @@ describe('fast moves stop at walls (bodies outside the walls, 2 Nov)', () => {
     expect(locked.target).toBe(locked.enemy);
     expect(locked.maxX).toBeLessThan(-6.1);
   });
+
+  it("a hero thrown at a wall stays on its side (the War Pig's 4.2 m throw, G2b)", () => {
+    const throwAtWall = () => {
+      const s = createSimState(arena, [], world);
+      const p = addPlayer(s, world, 'p1', loadout, false);
+      const v = tuning.warPig.chargePush * tuning.combat.knockbackFriction;
+      Object.assign(p, { x: -6.6, z: 3, mode: 'hurt', hurtTime: 0.45, kbx: v, kbz: 0 });
+      for (let i = 0; i < 40; i++) stepPlayer(p, idleCommand(), DT, world, s);
+      return p.x;
+    };
+    expect(throwAtWall()).toBeLessThan(-6.1);
+    tuning.combat.sweepFastMoves = false;
+    expect(throwAtWall()).toBeGreaterThan(-5.9);
+  });
 });

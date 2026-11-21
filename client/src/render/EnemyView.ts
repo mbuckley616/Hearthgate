@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { enemyStats, tuning, type EnemyKind } from '@hearthgate/shared/config/tuning';
 import type { EnemyState } from '@hearthgate/shared/sim/types';
-import { kingPace } from '@hearthgate/shared/sim/enemies';
+import { chargeWindupMs, heavyNumbers, kingPace, shieldNumbers } from '@hearthgate/shared/sim/enemies';
 import { gravehandLift } from '@hearthgate/shared/sim/gravehand';
 import { Bow, Palette, UP, buildQuiver, glowMaterial, segmentGeo } from './props';
 import {
@@ -37,7 +37,7 @@ const DIMS: Dims = {
 };
 
 /** Model scale per kind: the rig is goblin-sized, so heights match the sim's body heights. */
-const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95 };
+const SCALE: Record<EnemyKind, number> = { grunt: 1, archer: 1, brute: 1.45, warden: 1.95, shieldbearer: 1.05, hound: 1, priest: 1.05, knight: 1.2, wraith: 1.05, king: 1.6, gravehand: 1.5, ironRing: 1, silverRing: 1, boneRing: 1, mason: 2.15, wardstone: 1, mortarGuard: 1.15, chanter: 1.05, crownbearer: 1.05, cantor: 1.1, skirmisher: 0.95, cutter: 0.78, slinger: 0.78, potlid: 0.82, warPig: 1.15, shaman: 0.8, ogre: 1.6, packLeader: 0.86, chieftain: 1, grubnose: 1.7, nestSlinger: 0.78, potlidCrew: 0.82, lootPile: 1 };
 
 const BASE: UpperPose = {
   handYaw: -35,
@@ -100,6 +100,9 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
   },
   // Four-legged (E1c): its body is its own mesh, so the rig's arms are hidden and the poses idle.
   hound: { guard: BASE },
+  warPig: { guard: BASE },
+  // Chief Grubnose on his Pig (G1b): the Pig's frame, the rider built on its back.
+  grubnose: { guard: BASE },
   // The Wraith (E1d) channels with the Priest's raised hands.
   // The Gravehand's rig is hidden (H1): its hand is posed in update(), so only a guard is needed here.
   gravehand: {
@@ -117,6 +120,7 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     hodThrow: pose(BASE, { handYaw: -45, handHeight: 0.3, handReach: 0.2, bladeYaw: -160, bladePitch: 60, offYaw: -10, offHeight: 0.35, offReach: 0.5, twist: -30, lean: 24 }),
   },
   wardstone: { guard: pose(BASE, {}) },
+  lootPile: { guard: pose(BASE, {}) },
   // The Mason's adds (M2): a plated Shieldbearer and a Wraith's chant.
   mortarGuard: {
     guard: pose(BASE, { handYaw: -50, handHeight: 0.05, handReach: 0.22, bladeYaw: 20, bladePitch: 50, offYaw: 5, offHeight: 0.12, offReach: 0.42, twist: 10, lean: 14, crouch: 0.1 }),
@@ -162,7 +166,33 @@ const POSES: Record<EnemyKind, Record<string, UpperPose>> = {
     smash: pose(BASE, { handYaw: -5, handHeight: -0.1, handReach: 0.48, bladeYaw: 0, bladePitch: -45, offYaw: 12, offHeight: -0.06, offReach: 0.42, lean: 36, crouch: 0.28 }),
     roar: pose(BASE, { handYaw: -100, handHeight: 0.4, handReach: 0.5, bladeYaw: -100, bladePitch: 40, offYaw: 100, offHeight: 0.4, offReach: 0.5, lean: -22, crouch: 0.1 }),
   },
+  // A Goblin Cutter (E1i) swings as a Skeleton Warrior does, on a smaller body; filled in below.
+  cutter: {},
+  // A Goblin Slinger (E1i) winds up and lets fly as a Skeleton Archer does; filled in below.
+  slinger: {},
+  // A Pot-lid Goblin (E1i) holds and bashes as a Shieldbearer does; filled in below.
+  potlid: {},
+  // Grubnose's horn (G2b): a Slinger and a Pot-lid by weakness; filled in below.
+  nestSlinger: {},
+  potlidCrew: {},
+  // A Goblin Shaman (E1i) channels as a Wraith does, staff held up; filled in below.
+  shaman: {},
+  // A Cave Ogre (E1i) raises and brings down its club as a Bone Brute does; filled in below.
+  ogre: {},
+  // A Goblin Pack Leader (E1i) throws its arms up to cry as a Bone Priest raises; filled in below.
+  packLeader: {},
+  // A Goblin Chieftain (E1i) holds and bashes as a Shieldbearer does, its lid up as it cries; filled in below.
+  chieftain: {},
 };
+POSES.cutter = POSES.grunt;
+POSES.slinger = POSES.archer;
+POSES.potlid = POSES.shieldbearer;
+POSES.potlidCrew = POSES.shieldbearer;
+POSES.nestSlinger = POSES.archer;
+POSES.shaman = POSES.wraith;
+POSES.ogre = POSES.brute;
+POSES.packLeader = POSES.priest;
+POSES.chieftain = POSES.shieldbearer;
 
 const STAGGER = pose(BASE, { handYaw: -25, handHeight: -0.22, handReach: 0.22, bladeYaw: 0, bladePitch: -70, offYaw: 30, offHeight: -0.22, offReach: 0.2, lean: 38, crouch: 0.18 });
 const HEALTH_BAR_WIDTH = 0.7;
@@ -184,10 +214,23 @@ export class EnemyView {
   private bow: Bow | null = null;
   /** Skeleton grunts' round shield, worn on the off arm. */
   private shield: THREE.Group | null = null;
+  /** A Goblin Cutter's sack (Pilfer, E1i), slung over its head while it runs with the party's coin. */
+  private sack: THREE.Mesh | null = null;
   private glint: THREE.Mesh;
   private eyes: THREE.MeshBasicMaterial;
   private materials: THREE.MeshStandardMaterial[] = [];
   private stars = new THREE.Group();
+  /** Chief Grubnose (G1b, G2b): his rider and the Pig's parts, so the Chief can stand down off it. */
+  private rider: THREE.Group | null = null;
+  private mount: THREE.Object3D[] = [];
+  /**
+   * The Pig lying stunned where it threw him (G2b): a copy of the mount on its side with stars over
+   * it, held in the world at the spot this view first saw phase 2. The sim keeps no Pig of its own, so
+   * a browser that joins mid-phase lays it where the Chief stands then.
+   */
+  private downPig: THREE.Group | null = null;
+  private downStars = new THREE.Group();
+  private fall: { x: number; z: number; yaw: number } | null = null;
   /** A mini-boss's gold crown (G4), built for every figure and shown on a named one. */
   private crown = new THREE.Group();
   private crowned = false;
@@ -240,14 +283,50 @@ export class EnemyView {
     this.body.scale.setScalar(SCALE[kind]);
 
     if (kind === 'warden') this.buildWarden(mat, mesh);
-    else if (kind === 'brute' || kind === 'mason') this.buildBrute(mat, mesh);
-    else if (kind === 'hound') this.buildHound(mat, mesh);
+    else if (kind === 'brute' || kind === 'mason' || kind === 'ogre') this.buildBrute(mat, mesh, kind === 'ogre');
+    else if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') this.buildHound(mat, mesh);
     else this.buildSkeleton(mat, mesh, kind === 'archer' || kind === 'skirmisher', palette);
     if (kind === 'gravehand') this.buildGravehand(mat, mesh);
     if (kind === 'mason') this.dressMason(mat, mesh);
     if (kind === 'wardstone') this.buildWardstone(mat, mesh);
+    if (kind === 'lootPile') this.buildLootPile(mat, mesh);
     if (kind === 'ironRing' || kind === 'silverRing' || kind === 'boneRing') this.buildRing(kind, mat, mesh);
     if (kind === 'priest' || kind === 'wraith' || kind === 'chanter' || kind === 'crownbearer' || kind === 'cantor') this.dressPriest(mat, mesh);
+    if (kind === 'cutter' || kind === 'slinger' || kind === 'nestSlinger' || kind === 'potlid' || kind === 'potlidCrew' || kind === 'shaman' || kind === 'packLeader' || kind === 'chieftain') this.dressGoblin(mat, mesh, kind === 'slinger' || kind === 'nestSlinger', kind === 'shaman');
+    if (kind === 'packLeader') {
+      // The Pack Leader: a cap with two curling horns and a red war-paint band, so it is the one to find in a pack.
+      const horn = mat(0xd8ccb0, { roughness: 0.7 });
+      this.head.add(mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x4a3424, { roughness: 1 }), 0, 0.04, 0));
+      for (const side of [-1, 1]) {
+        const h = mesh(new THREE.ConeGeometry(0.035, 0.2, 6), horn, side * 0.14, 0.12, 0);
+        h.rotation.z = -side * 0.7;
+        this.head.add(h);
+      }
+      this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 16).rotateX(Math.PI / 2), mat(0xa0281e, { roughness: 1 }), 0, -0.01, 0));
+    }
+    if (kind === 'chieftain' && this.shield) {
+      // The Chieftain: a big dented pot-lid, a crown of teeth on a fur cap and a bone in its topknot,
+      // so the one behind the lid is plainly the chief.
+      this.shield.visible = true;
+      this.shield.scale.set(1.55, 1.55, 1);
+      this.shield.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material = mat(0x7a7468, { metalness: 0.6, roughness: 0.45 });
+      });
+      this.head.add(mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.08, 12), mat(0x5a3e2a, { roughness: 1 }), 0, 0.07, 0));
+      const tooth = mat(0xe8dcc0, { roughness: 0.6 });
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        this.head.add(mesh(new THREE.ConeGeometry(0.022, 0.09, 4), tooth, Math.cos(a) * 0.15, 0.14, Math.sin(a) * 0.15));
+      }
+    }
+    if ((kind === 'potlid' || kind === 'potlidCrew') && this.shield) {
+      // Its pot-lid: the round shield back on its arm, a little wider, dull tin with a knob for a boss.
+      this.shield.visible = true;
+      this.shield.scale.set(1.25, 1.25, 1);
+      this.shield.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material = mat(0x8a8a80, { metalness: 0.55, roughness: 0.5 });
+      });
+    }
     if (kind === 'skirmisher') {
       // The blade's (B5's colour for melee): a red rag knotted round the brow, light and quick.
       this.head.add(mesh(new THREE.TorusGeometry(0.13, 0.03, 6, 16).rotateX(Math.PI / 2), mat(0xb02a22, { roughness: 1 }), 0, 0.05, 0));
@@ -285,7 +364,7 @@ export class EnemyView {
       const a = (i / 5) * Math.PI * 2;
       this.crown.add(mesh(new THREE.ConeGeometry(0.03, 0.1, 4), gold, Math.cos(a) * 0.14, 0.07, Math.sin(a) * 0.14));
     }
-    this.crown.position.y = kind === 'brute' ? 0.12 : 0.22;
+    this.crown.position.y = kind === 'brute' || kind === 'ogre' ? 0.12 : 0.22;
     this.crown.visible = false;
     this.head.add(this.crown);
     if (kind === 'king') {
@@ -312,7 +391,13 @@ export class EnemyView {
     }
     this.stars.visible = false;
     this.head.add(this.stars);
-    if (kind === 'hound') {
+    if (kind === 'warPig' || kind === 'grubnose') this.dressPig(mat, mesh);
+    if (kind === 'grubnose') {
+      this.mount = this.body.children.filter((o) => o !== this.rig);
+      this.buildDownPig(mesh);
+      this.buildRider(mat, mesh);
+    }
+    if (kind === 'hound' || kind === 'warPig' || kind === 'grubnose') {
       // Its skull is low and in front, not on the rig's neck.
       this.body.add(this.stars);
       this.stars.position.set(0, 1.0, 0.55);
@@ -481,6 +566,63 @@ export class EnemyView {
     }
   }
 
+  /**
+   * A Goblin Cutter (E1i): a Skeleton Warrior's frame in green skin, with long ears, a hooked nose and
+   * a notched cleaver for its sword, no shield. Its bone and rag are recoloured where the skeleton made them.
+   */
+  private dressGoblin(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, sling = false, staff = false): void {
+    const skin: Record<number, number> = { 0xd6c9a8: 0x6f8a3a, 0x8f8266: 0x4e6428, 0x5a2620: 0x5a4a2a };
+    for (const m of this.materials) {
+      const to = skin[m.color.getHex()];
+      if (to !== undefined) m.color.setHex(to);
+    }
+    if (this.shield) this.shield.visible = false;
+    const green = mat(0x6f8a3a, { roughness: 0.85 });
+    for (const side of [-1, 1]) {
+      const ear = mesh(new THREE.ConeGeometry(0.04, 0.2, 5), green, side * 0.13, 0.03, -0.01);
+      ear.rotation.z = -side * 1.2;
+      this.head.add(ear);
+    }
+    const nose = mesh(new THREE.ConeGeometry(0.025, 0.09, 5), green, 0, -0.03, 0.14);
+    nose.rotation.x = Math.PI / 2 + 0.3;
+    this.head.add(nose);
+    for (const c of [...this.weapon.children]) if (c !== this.glint) this.weapon.remove(c);
+    if (staff) {
+      // A Goblin Shaman: a crooked stick topped with a small skull in a violet glow (magic's hue, B4),
+      // and a crest of three feathers so it reads apart from the Cutters in a crowd.
+      this.weapon.add(
+        mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.75, 5), mat(0x4a3220, { roughness: 1 }), 0, 0.2, 0),
+        mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0xd6c9a8, { roughness: 0.8, emissive: 0x3a1858 }), 0, 0.6, 0),
+      );
+      const feather = mat(0x8a3a9a, { roughness: 1 });
+      for (const a of [-0.35, 0, 0.35]) {
+        const f = mesh(new THREE.ConeGeometry(0.025, 0.2, 4), feather, Math.sin(a) * 0.08, 0.16, -0.04);
+        f.rotation.z = -a;
+        this.head.add(f);
+      }
+      return;
+    }
+    if (sling) {
+      // A Goblin Slinger: a cord hanging from the fist with a stone in its pouch.
+      const cord = mat(0x6a5032, { roughness: 1 });
+      this.weapon.add(
+        mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.4, 4), cord, 0, -0.2, 0),
+        mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(0x7a756c, { roughness: 0.9 }), 0, -0.42, 0),
+      );
+      return;
+    }
+    const iron = mat(0x5a5650, { metalness: 0.5, roughness: 0.6 });
+    this.weapon.add(
+      mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.16, 6), mat(0x3a2418), 0, 0.02, 0),
+      mesh(new THREE.BoxGeometry(0.12, 0.34, 0.014), iron, 0.03, 0.27, 0),
+    );
+    const sack = mesh(new THREE.SphereGeometry(0.17, 10, 8), mat(0x9a8458, { roughness: 1 }), 0, 0.26, -0.08);
+    sack.scale.set(1, 0.85, 1.1);
+    sack.visible = false;
+    this.head.add(sack);
+    this.sack = sack;
+  }
+
   /** The Bone Priest (E1e): a Skeleton Warrior's bones in a long robe and hood, a staff topped with a skull for its sword and shield. */
   private dressPriest(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
     if (this.shield) this.shield.visible = false;
@@ -611,6 +753,22 @@ export class EnemyView {
     this.body.add(pillar);
   }
 
+  /** Grubnose's loot pile (G2b): a heap of sacks and coin with a pot-lid and a bone on top. */
+  private buildLootPile(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    this.rig.visible = false;
+    const sack = mat(0x8a7350, { roughness: 1 });
+    const coin = mat(0xd8b040, { metalness: 0.7, roughness: 0.35 });
+    const heap = new THREE.Group();
+    for (const [x, z, r] of [[0, 0, 0.55], [0.5, 0.2, 0.38], [-0.45, 0.25, 0.4], [0.1, -0.5, 0.36]] as const) {
+      const s = mesh(new THREE.SphereGeometry(r, 10, 8), sack, x, r * 0.7, z);
+      s.scale.y = 0.8;
+      heap.add(s);
+    }
+    heap.add(mesh(new THREE.ConeGeometry(0.5, 0.5, 10), coin, 0.05, 0.95, 0.05));
+    heap.add(mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 14), mat(0x8a8a80, { metalness: 0.55, roughness: 0.5 }), -0.2, 1.05, 0.1));
+    this.body.add(heap);
+  }
+
   private buildHound(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
     const bone = mat(0xd6c9a8, { roughness: 0.75 });
     const boneDark = mat(0x8f8266, { roughness: 0.8 });
@@ -654,10 +812,100 @@ export class EnemyView {
     this.body.add(dog);
   }
 
+  /**
+   * The War Pig (E1i): the Hound's frame in a bristly brown hide, a barrel of a body over the spine,
+   * and two tusks, so it reads as heavier than the dog it runs like.
+   */
+  private dressPig(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const hide: Record<number, number> = { 0xd6c9a8: 0x6a4a38, 0x8f8266: 0x4a3226 };
+    for (const m of this.materials) {
+      const to = hide[m.color.getHex()];
+      if (to !== undefined) m.color.setHex(to);
+    }
+    const skin = mat(0x7a5642, { roughness: 1 });
+    const barrel = mesh(new THREE.SphereGeometry(0.3, 14, 10), skin, 0, 0.58, -0.05);
+    barrel.scale.set(0.95, 0.85, 1.6);
+    const tusk = mat(0xe8dcc0, { roughness: 0.6 });
+    this.body.add(barrel);
+    for (const side of [-1, 1]) {
+      const t = mesh(new THREE.ConeGeometry(0.018, 0.12, 5), tusk, side * 0.05, 0.74, 0.86);
+      t.rotation.x = -0.9;
+      this.body.add(t);
+    }
+  }
+
+  /**
+   * Chief Grubnose (G1b): a goblin in the saddle, a fat green body under a fur cloak, a big hooked nose,
+   * a crown of teeth on a fur cap and a sling in his right hand, placeholder boxes for the boss figure.
+   */
+  private buildRider(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
+    const skin = mat(0x6f8a3a, { roughness: 0.9 });
+    const fur = mat(0x5a4632, { roughness: 1 });
+    const leather = mat(0x3e2c1e, { roughness: 1 });
+    const tooth = mat(0xe8dcc0, { roughness: 0.6 });
+    const rider = new THREE.Group();
+    rider.position.set(0, 0.86, -0.05);
+    rider.add(mesh(new THREE.BoxGeometry(0.44, 0.06, 0.34), leather, 0, -0.04, 0));
+    const torso = mesh(new THREE.SphereGeometry(0.17, 12, 8), skin, 0, 0.16, 0);
+    torso.scale.set(1.1, 1.15, 0.95);
+    rider.add(torso, mesh(new THREE.BoxGeometry(0.4, 0.12, 0.3), fur, 0, 0.3, -0.03));
+    rider.add(mesh(new THREE.SphereGeometry(0.11, 10, 8), skin, 0, 0.45, 0.02));
+    const nose = mesh(new THREE.ConeGeometry(0.035, 0.12, 6), skin, 0, 0.43, 0.15);
+    nose.rotation.x = Math.PI / 2 + 0.4;
+    rider.add(nose);
+    for (const side of [-1, 1]) {
+      rider.add(mesh(new THREE.SphereGeometry(0.018, 6, 4), this.eyes, side * 0.04, 0.47, 0.1));
+      const ear = mesh(new THREE.ConeGeometry(0.03, 0.14, 4), skin, side * 0.13, 0.48, 0);
+      ear.rotation.z = -side * 1.2;
+      rider.add(ear);
+      // Legs astride the Pig's barrel.
+      rider.add(mesh(new THREE.BoxGeometry(0.07, 0.22, 0.09), leather, side * 0.24, -0.1, 0.04));
+    }
+    rider.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 10), fur, 0, 0.55, 0.01));
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      rider.add(mesh(new THREE.ConeGeometry(0.014, 0.06, 4), tooth, Math.sin(a) * 0.11, 0.61, Math.cos(a) * 0.11));
+    }
+    const arm = mesh(new THREE.BoxGeometry(0.06, 0.06, 0.26), skin, 0.2, 0.28, 0.12);
+    arm.rotation.x = -0.6;
+    rider.add(arm, mesh(new THREE.BoxGeometry(0.02, 0.2, 0.02), leather, 0.22, 0.4, 0.24));
+    this.body.add(rider);
+    this.rider = rider;
+  }
+
+  /** The unhorsed Pig (G2b): the mount's meshes shared, rolled onto its side, stars turning over it. */
+  private buildDownPig(mesh: Mesh): void {
+    const scale = SCALE.grubnose;
+    const inner = new THREE.Group();
+    for (const o of this.mount) inner.add(o.clone(true));
+    // Its barrel's centre is the pivot it rolls over on.
+    inner.position.y = -0.58;
+    const side = new THREE.Group();
+    side.add(inner);
+    side.rotation.z = Math.PI / 2 - 0.12;
+    side.position.y = 0.3 * scale;
+    side.scale.setScalar(scale);
+    const pig = new THREE.Group();
+    pig.add(side);
+    const glow = glowMaterial(0xffe27a, 0.9);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      this.downStars.add(mesh(new THREE.OctahedronGeometry(0.05), glow, Math.cos(a) * 0.25, 0, Math.sin(a) * 0.25));
+    }
+    this.downStars.position.set(0, 0.95 * scale, 0.55 * scale);
+    pig.add(this.downStars);
+    pig.visible = false;
+    this.root.add(pig);
+    this.downPig = pig;
+  }
+
   /** Grey ogre with a studded club. */
-  private buildBrute(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh): void {
-    const skin = mat(0xa09584);
-    const dark = mat(0x7d7366);
+  private buildBrute(mat: (c: number, p?: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial, mesh: Mesh, cave = false): void {
+    // The Cave Ogre (E1i): the same body in a damp moss-grey hide, its club a rock lashed to a log.
+    const skinHex = cave ? 0x7c876a : 0xa09584;
+    const darkHex = cave ? 0x58614a : 0x7d7366;
+    const skin = mat(skinHex);
+    const dark = mat(darkHex);
     const fur = mat(0x4a3626, { roughness: 1 });
     const iron = mat(0x4a4a4e, { metalness: 0.7, roughness: 0.45 });
     const wood = mat(0x5a3a22);
@@ -685,10 +933,16 @@ export class EnemyView {
       const eye = mesh(new THREE.SphereGeometry(0.016, 6, 4), this.eyes, side * 0.045, 0.02, 0.14);
       this.head.add(t, eye);
     }
-    this.limbs(mat, mesh, 0xa09584, 0x7d7366, 0x4a3626, 1.35);
+    this.limbs(mat, mesh, skinHex, darkHex, 0x4a3626, 1.35);
     // Club: a thick tapered log with iron studs.
     const club = mesh(segmentGeo(0.12, 0.05, 0.95, 10).translate(0, -0.15, 0), wood);
     this.weapon.add(club);
+    if (cave) {
+      const rock = mesh(new THREE.DodecahedronGeometry(0.2, 0), mat(0x6c685f, { roughness: 1 }), 0, 0.62, 0);
+      rock.scale.set(1, 1.2, 0.9);
+      this.weapon.add(rock);
+      return;
+    }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
       const stud = mesh(new THREE.ConeGeometry(0.03, 0.07, 5), iron, Math.cos(a) * 0.11, 0.55 + (i % 2) * 0.12, Math.sin(a) * 0.11);
@@ -781,10 +1035,11 @@ export class EnemyView {
     // Hit reaction: white flash, and a flinch on light enemies (a small rock on big ones).
     if (curr.lastHitAt !== this.lastHitAt) {
       this.lastHitAt = curr.lastHitAt;
-      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' ? 1 : 0.25;
+      this.flinch = curr.kind === 'grunt' || curr.kind === 'archer' || curr.kind === 'skirmisher' || curr.kind === 'cutter' || curr.kind === 'slinger' || curr.kind === 'nestSlinger' || curr.kind === 'shaman' ? 1 : 0.25;
       this.flinchSide = Math.random() < 0.5 ? -1 : 1;
     }
     this.flinch *= Math.exp(-9 * dt);
+    if (this.sack) this.sack.visible = !!curr.sack;
     const flash = curr.lastHitAt >= 0 && simTime - curr.lastHitAt < tuning.hitFeel.flashMs / 1000;
     const frozen = curr.frozen > 0;
     for (const m of this.materials) {
@@ -883,6 +1138,28 @@ export class EnemyView {
     this.head.rotation.set(-lean * 0.45 * DEG + roarTilt, -twist * 0.4 * DEG, curr.ai === 'stagger' ? Math.sin(this.time * 6) * 0.25 : 0);
 
     this.stars.visible = curr.ai === 'stagger';
+    if (this.rider) {
+      // Unhorsed (G2b): the Pig is gone from under him and the Chief stands on the floor.
+      const onFoot = curr.phase === 2;
+      for (const o of this.mount) o.visible = !onFoot;
+      this.rider.position.y = onFoot ? 0.3 : 0.86;
+      if (onFoot && !this.fall) this.fall = { x: curr.x, z: curr.z, yaw: curr.yaw };
+      if (!onFoot) this.fall = null;
+    }
+    if (this.downPig) {
+      // The root turns and moves with the Chief, so the Pig is placed back at its spot in the root's frame.
+      const f = curr.hp > 0 ? this.fall : null;
+      this.downPig.visible = !!f;
+      if (f) {
+        const dx = f.x - this.root.position.x;
+        const dz = f.z - this.root.position.z;
+        const c = Math.cos(-yaw);
+        const sn = Math.sin(-yaw);
+        this.downPig.position.set(dx * c + dz * sn, -this.root.position.y, -dx * sn + dz * c);
+        this.downPig.rotation.y = f.yaw - yaw;
+        this.downStars.rotation.y = this.time * 4;
+      }
+    }
     this.stars.rotation.y = this.time * 5;
 
     const { hand, offHand } = poseArms(p, DIMS, this.arms);
@@ -952,7 +1229,7 @@ export class EnemyView {
       lean: guard.lean + run * 8,
     });
     const out = { ...guard };
-    const g = tuning.grunt;
+    const g = e.kind === 'cutter' ? tuning.cutter : tuning.grunt;
     const into = (a: UpperPose, b: UpperPose, u: number, ease = easeInOut) => lerpPose(a, b, ease(clamp01(u)), out);
     switch (e.ai) {
       case 'stagger':
@@ -964,6 +1241,7 @@ export class EnemyView {
     }
     switch (e.kind) {
       case 'grunt':
+      case 'cutter':
         switch (e.ai) {
           case 'windup': {
             // Rise into the raised pose over the first 60%, then hold with a tremble.
@@ -980,8 +1258,10 @@ export class EnemyView {
         }
         break;
       case 'priest':
+      case 'packLeader':
       case 'cantor':
       case 'wraith':
+      case 'shaman':
       case 'chanter':
       case 'crownbearer':
         if (e.ai === 'chant') return into(this.from, P.chant, t / 0.4);
@@ -1012,9 +1292,15 @@ export class EnemyView {
       }
       case 'shieldbearer':
       case 'mortarGuard':
+      case 'potlid':
+      case 'potlidCrew':
+      case 'chieftain':
       case 'knight': {
-        const sb = e.kind === 'knight' ? tuning.knight : tuning.shieldbearer;
+        const sb = shieldNumbers(e);
         switch (e.ai) {
+          case 'chant':
+            // The Chieftain's cry (E1i): the lid held up in front as it draws breath.
+            return into(this.from, P.windup, t / 0.3);
           case 'chargeWindup':
           case 'charge':
             return into(this.from, P.rush, t / 0.3);
@@ -1029,6 +1315,8 @@ export class EnemyView {
       }
       case 'archer':
       case 'skirmisher':
+      case 'slinger':
+      case 'nestSlinger':
         switch (e.ai) {
           case 'aim':
             return into(this.from, P.aim, t / 0.3);
@@ -1037,14 +1325,15 @@ export class EnemyView {
         }
         break;
       case 'brute':
+      case 'ogre':
         switch (e.ai) {
           case 'slamWindup': {
-            into(this.from, P.raise, t / ((tuning.brute.telegraphMs / 1000) * 0.6));
+            into(this.from, P.raise, t / ((heavyNumbers(e).telegraphMs / 1000) * 0.6));
             out.handHeight += Math.sin(this.time * 35) * 0.01;
             return out;
           }
           case 'slam':
-            return into(P.raise, P.smash, t / (tuning.brute.slamActiveMs / 1000), easeOut);
+            return into(P.raise, P.smash, t / (heavyNumbers(e).slamActiveMs / 1000), easeOut);
         }
         break;
       case 'mason': {
@@ -1130,19 +1419,22 @@ export function windupProgress(e: EnemyState): number {
   switch (e.ai) {
     case 'windup':
       if (e.kind === 'king') return clamp01(t / (((e.chain ? tuning.king.stringNextMs : tuning.king.stringTelegraphMs) * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' ? tuning.shieldbearer.telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : tuning.grunt.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'shieldbearer' || e.kind === 'mortarGuard' || e.kind === 'potlid' || e.kind === 'potlidCrew' || e.kind === 'chieftain' ? shieldNumbers(e).telegraphMs : e.kind === 'knight' ? tuning.knight.telegraphMs : e.kind === 'cutter' ? tuning.cutter.telegraphMs : tuning.grunt.telegraphMs) / 1000));
     case 'aim':
-      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : tuning.archer.aimMs) / 1000));
+      return clamp01(t / ((e.kind === 'skirmisher' ? tuning.skirmisher.aimMs : e.kind === 'slinger' ? tuning.slinger.aimMs : e.kind === 'nestSlinger' ? tuning.nestSlinger.aimMs : e.kind === 'grubnose' ? tuning.grubnose.aimMs : tuning.archer.aimMs) / 1000));
     case 'slamWindup':
-      return e.kind === 'brute' ? clamp01(t / (tuning.brute.telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
+      return e.kind === 'brute' || e.kind === 'ogre' ? clamp01(t / (heavyNumbers(e).telegraphMs / 1000)) : clamp01(t / ((tuning.warden.slamTelegraphMs / 1000) * wardenScale(e)));
     case 'chargeWindup':
       if (e.kind === 'king') return clamp01(t / ((tuning.king.crownTelegraphMs * kingPace(e).teleScale) / 1000));
-      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : tuning.hound.telegraphMs) / 1000));
+      return clamp01(t / ((e.kind === 'knight' ? tuning.knight.chargeTelegraphMs : e.kind === 'warPig' ? tuning.warPig.telegraphMs : e.kind === 'grubnose' ? chargeWindupMs(e) : tuning.hound.telegraphMs) / 1000));
     case 'chant':
       if (e.kind === 'king') return clamp01(t / (tuning.king.circlesChannelMs / 1000));
       if (e.kind === 'chanter') return clamp01(t / (tuning.chanter.rebuildMs / 1000));
       if (e.kind === 'crownbearer') return clamp01(t / (tuning.crownbearer.channelMs / 1000));
       if (e.kind === 'cantor') return clamp01(t / (tuning.cantor.chantMs / 1000));
+      if (e.kind === 'shaman') return clamp01(t / (tuning.shaman.channelMs / 1000));
+      if (e.kind === 'packLeader') return clamp01(t / (tuning.packLeader.cryMs / 1000));
+      if (e.kind === 'chieftain') return clamp01(t / (tuning.chieftain.cryMs / 1000));
       return clamp01(t / (tuning.priest.chantMs / 1000));
     case 'charge':
       return 1;

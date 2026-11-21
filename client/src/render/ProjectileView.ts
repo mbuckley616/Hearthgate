@@ -33,6 +33,9 @@ export class ProjectileView {
   private bladeGeo = new THREE.BoxGeometry(0.1, 0.03, 0.9).translate(0, 0, 0.1);
   private bladeGuardGeo = new THREE.BoxGeometry(0.34, 0.05, 0.07).translate(0, 0, -0.35);
 
+  private stoneGeo = new THREE.DodecahedronGeometry(0.09);
+  private stoneMat = new THREE.MeshStandardMaterial({ color: 0x7a756c, roughness: 0.95 });
+
   constructor(private palette: Palette) {}
 
   update(prev: SimState, curr: SimState, alpha: number, dt: number): void {
@@ -110,6 +113,12 @@ export class ProjectileView {
 
   private create(pr: ProjectileState): Visual {
     const base = { kind: pr.kind, history: [], last: new THREE.Vector3(pr.x, pr.y, pr.z), stuck: pr.stuck };
+    if (pr.kind === 'arrow' && pr.stone) {
+      // A Goblin Slinger's stone (E1i): a grey lump, no streak.
+      const obj = new THREE.Group();
+      obj.add(new THREE.Mesh(this.stoneGeo, this.stoneMat));
+      return { ...base, obj };
+    }
     if (pr.kind === 'arrow') {
       const obj = buildArrow(this.palette);
       // A Rune of Echoes ghost: the same arrow, pale and see-through.

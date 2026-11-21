@@ -1124,6 +1124,254 @@ export const tuning = {
   },
 
   /**
+   * A Goblin Slinger (E1i, the Warrens' archer): a Skeleton Archer's brain with a goblin's numbers and
+   * a lobbed stone in place of an arrow. The stone flies `arrowSpeed` across the ground and falls
+   * under `lobGravity` on top of the arrows' own, aimed to come down where the aim locked, so it
+   * arcs over a front line and a late side-step still beats it. Blunt.
+   */
+  slinger: {
+    maxHp: 34,
+    maxPoise: 3,
+    radius: 0.36,
+    height: 1.2,
+    moveSpeed: 3,
+    turnRateDeg: 420,
+    aimMs: 900,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 450,
+    cooldownMs: 2400,
+    arrowSpeed: 13,
+    damage: 9,
+    fleeDistance: 5,
+    floorRange: 14,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1.3,
+    lobGravity: 12,
+  },
+
+  /**
+   * A Pot-lid Goblin (E1i, the Warrens' shield): a Skeleton Shieldbearer's brain with a goblin's
+   * numbers. Its pot-lid covers less than a tower shield and dents for longer under a heavy, but it
+   * turns quicker, so its side is harder to reach and quicker to open.
+   */
+  potlid: {
+    maxHp: 55,
+    maxPoise: 7,
+    radius: 0.4,
+    height: 1.25,
+    moveSpeed: 3.2,
+    turnRateDeg: 200,
+    windupTurnRateDeg: 70,
+    attackRange: 1.7,
+    telegraphMs: 600,
+    bashReach: 2.2,
+    bashArcDeg: 40,
+    bashDamage: 9,
+    bashPush: 1.8,
+    bashActiveMs: 150,
+    recoveryMs: 800,
+    attackCooldownMs: 1300,
+    guardArcDeg: 100,
+    guardBreakMs: 3000,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 0.8,
+  },
+
+  /**
+   * The War Pig (E1i, the Warrens' charger): the Crypt Hound's brain with a goblin pig's numbers.
+   * Slower to wind up and to turn, so its line is easier to read, but it runs further, hits harder,
+   * throws a hero further, and stands longer stunned against a wall.
+   */
+  warPig: {
+    maxHp: 80,
+    maxPoise: 9,
+    radius: 0.55,
+    height: 1.1,
+    moveSpeed: 3.8,
+    turnRateDeg: 240,
+    chargeRange: 10,
+    chargeMinRange: 3,
+    telegraphMs: 950,
+    trackFrac: 0.6,
+    chargeSpeed: 12,
+    chargeLength: 12,
+    chargeDamage: 16,
+    chargePush: 4.2,
+    wallStunMs: 2600,
+    recoveryMs: 800,
+    cooldownMs: 2600,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0.6,
+  },
+
+  /**
+   * The Goblin Chieftain (E1i, the Warrens' elite, in the Barrow Knight's place): a pot-lid behind a war
+   * cry. It fights as a Shieldbearer does, with a wider lid than a Pot-lid Goblin's and a harder bash,
+   * and when a goblin stands within `cryRange` it stops behind the lid and cries the Pack Leader's war
+   * cry (`packLeader.quickMult` for `packLeader.quickMs`). Its lid stays up while it cries, so the cry
+   * is broken from the side, by a heavy, or by magic.
+   */
+  chieftain: {
+    maxHp: 190,
+    maxPoise: 20,
+    radius: 0.5,
+    height: 1.5,
+    moveSpeed: 3,
+    turnRateDeg: 170,
+    windupTurnRateDeg: 60,
+    attackRange: 1.9,
+    telegraphMs: 650,
+    bashReach: 2.5,
+    bashArcDeg: 50,
+    bashDamage: 15,
+    bashPush: 2.4,
+    bashActiveMs: 160,
+    recoveryMs: 850,
+    attackCooldownMs: 1400,
+    guardArcDeg: 120,
+    guardBreakMs: 2500,
+    cryRange: 10,
+    /** From raising the lid to the cry. */
+    cryMs: 1000,
+    /** Between one cry, or a broken one, and the next. */
+    cryEveryMs: 12000,
+    cryRecoveryMs: 500,
+    brokenMs: 900,
+    spawnMs: 800,
+    deathMs: 1800,
+    knockbackTaken: 0.5,
+  },
+
+  /**
+   * The Goblin Pack Leader (E1i, the Warrens' leader, in the Priest's place): keeps behind its pack and
+   * cries its war cry, which quickens every goblin within `cryRange` (itself included) by `quickMult`
+   * for `quickMs`: they walk, wind up and recover that much faster. A hit during the cry breaks it.
+   */
+  packLeader: {
+    maxHp: 60,
+    maxPoise: 5,
+    radius: 0.4,
+    height: 1.35,
+    moveSpeed: 3,
+    turnRateDeg: 300,
+    keepDistance: 7,
+    cryRange: 10,
+    /** From drawing breath (the ring at its feet) to the cry. */
+    cryMs: 900,
+    quickMs: 5000,
+    quickMult: 1.25,
+    /** Between one cry and the next (its cooldown). */
+    cryEveryMs: 9000,
+    recoveryMs: 600,
+    brokenMs: 900,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1,
+  },
+
+  /**
+   * The Cave Ogre (E1i, the Warrens' heavy): the Bone Brute's brain with an ogre's numbers. Slower to
+   * raise its club and wider where it lands, so it is more to roll out of, but it stands longer
+   * after, so a hero who did gets a longer turn at it.
+   */
+  ogre: {
+    maxHp: 360,
+    maxPoise: 26,
+    radius: 0.8,
+    height: 2.5,
+    moveSpeed: 2.4,
+    turnRateDeg: 170,
+    slamRange: 3,
+    slamOffset: 1.9,
+    slamRadius: 2.7,
+    telegraphMs: 1150,
+    trackFrac: 0.4,
+    slamActiveMs: 180,
+    recoveryMs: 1800,
+    cooldownMs: 1700,
+    damage: 32,
+    knockbackDealt: 3,
+    spawnMs: 1000,
+    deathMs: 2200,
+    knockbackTaken: 0.2,
+  },
+
+  /**
+   * The Goblin Shaman (E1i, the Warrens' caster): the Wraith's brain and violet circle with a goblin's
+   * numbers. Its circle is a hex that bursts for damage rather than Chill (the Crypt's twist; the
+   * Warrens' is Pilfer), on a shorter channel, so it asks for a quicker step out. Any hit breaks it.
+   */
+  shaman: {
+    maxHp: 36,
+    maxPoise: 3,
+    radius: 0.36,
+    height: 1.25,
+    moveSpeed: 3,
+    turnRateDeg: 320,
+    keepDistance: 8,
+    castRange: 13,
+    circleRadius: 1.7,
+    /** The channel, from the circle appearing to its landing (the lag grace is added on top). */
+    channelMs: 1250,
+    /** What the circle's burst deals to each hero in it, as it lands. */
+    circleDamage: 12,
+    cooldownMs: 3800,
+    recoveryMs: 600,
+    spawnMs: 600,
+    deathMs: 1300,
+    knockbackTaken: 1.3,
+  },
+
+  /**
+   * Pilfer (E1i, the Warrens' twist; Michael's A, 19 Nov): a Goblin Cutter's cut that lands snatches
+   * `share` of the party's found coin on this floor (at least `min`, never more than there is), and
+   * the thief stops fighting and runs from the party with the sack until it dies, when the coin
+   * spills back onto the floor where it fell. Nothing is lost if the room is cleared.
+   */
+  pilfer: {
+    enabled: true,
+    share: 0.25,
+    min: 1,
+    /** How far from the party a thief tries to keep, running. */
+    fleeDistance: 30,
+  },
+
+  /**
+   * A Goblin Cutter (E1i, the Goblin Warrens' fodder; Michael's A, 19 Nov): a Skeleton Warrior's
+   * dressing for the Warrens, on the same brain with its own numbers. Lighter and quicker than a
+   * skeleton: less health and poise, a shorter wind-up and a lighter cut, so it comes in packs.
+   */
+  cutter: {
+    maxHp: 40,
+    maxPoise: 4,
+    radius: 0.36,
+    height: 1.2,
+    moveSpeed: 4.2,
+    turnRateDeg: 480,
+    windupTurnRateDeg: 130,
+    holdDistance: 3.8,
+    attackRange: 1.5,
+    maxAttackers: 2,
+    telegraphMs: 480,
+    slashActiveMs: 120,
+    betweenSlashesMs: 260,
+    recoveryMs: 600,
+    attackCooldownMs: 800,
+    damage: 7,
+    reach: 1.75,
+    arcDeg: 100,
+    spawnMs: 600,
+    deathMs: 1400,
+    groupMin: 3,
+    groupMax: 5,
+    respawnDelayMs: 2500,
+    knockbackTaken: 1.3,
+  },
+
+  /**
    * A Barrow Skirmisher (W1, Michael's A, 17 Nov): a Skeleton Archer's dressing for the Warden's hall,
    * the blade's job (1.3's skirmisher): quick, light, keeping farther off than an archer, and any melee
    * blow that lands staggers it. Same brain as the archer, its own numbers.
@@ -1507,6 +1755,144 @@ export const tuning = {
     spawnMs: 1500,
     deathMs: 3000,
     knockbackTaken: 0.15,
+  },
+
+  /**
+   * Chief Grubnose's horn (G2b): a Nest Slinger, a Goblin Slinger on the hall's piles behind its sacks,
+   * warded (arrows harder, spells turned aside: the archer's job); a Slinger's numbers of its own.
+   */
+  nestSlinger: {
+    maxHp: 34,
+    maxPoise: 3,
+    radius: 0.36,
+    height: 1.2,
+    moveSpeed: 3,
+    turnRateDeg: 420,
+    aimMs: 900,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 450,
+    cooldownMs: 2400,
+    arrowSpeed: 13,
+    damage: 9,
+    fleeDistance: 5,
+    floorRange: 14,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 1.3,
+    lobGravity: 12,
+  },
+
+  /**
+   * And the Pot-lid Crew: Pot-lid Goblins, armoured (a blade does little, a staff full: the mage's job),
+   * that rush the mage first; a Pot-lid's numbers of their own.
+   */
+  potlidCrew: {
+    maxHp: 55,
+    maxPoise: 7,
+    radius: 0.4,
+    height: 1.25,
+    moveSpeed: 3.2,
+    turnRateDeg: 200,
+    windupTurnRateDeg: 70,
+    attackRange: 1.7,
+    telegraphMs: 600,
+    bashReach: 2.2,
+    bashArcDeg: 40,
+    bashDamage: 9,
+    bashPush: 1.8,
+    bashActiveMs: 150,
+    recoveryMs: 800,
+    attackCooldownMs: 1300,
+    guardArcDeg: 100,
+    guardBreakMs: 3000,
+    spawnMs: 600,
+    deathMs: 1400,
+    knockbackTaken: 0.8,
+  },
+
+  /** Grubnose's loot pile (G2b): it stands, refilling his Nests, until the party smashes it. */
+  lootPile: {
+    maxHp: 220,
+    maxPoise: 9999,
+    radius: 0.9,
+    height: 1.4,
+    moveSpeed: 0,
+    turnRateDeg: 0,
+    spawnMs: 600,
+    deathMs: 1500,
+    knockbackTaken: 0,
+  },
+
+  /**
+   * Chief Grubnose and his Pig (G1b; `docs/bosses.md` 2.5): the Saltmarsh Warrens' boss, a goblin chief
+   * riding the War Pig. Phase 1, mounted: the Pig's charge, a red line with no rim, which a guard
+   * that covers it stops dead (a stagger, the punish window), and the Chief's sling from the saddle at
+   * the far hero after each charge. Off, the Warrens end on the Warden as before.
+   */
+  grubnose: {
+    enabled: true,
+    maxHp: 1900,
+    maxPoise: 34,
+    radius: 0.9,
+    height: 2.1,
+    moveSpeed: 4,
+    turnRateDeg: 200,
+    chargeRange: 13,
+    chargeMinRange: 3.5,
+    /**
+     * A hero inside `chargeMinRange` this long (he backs off, but a wall can stop him) is charged
+     * point-blank: cornered, the Pig never had a close attack, and stood still under free hits.
+     */
+    cornerMs: 1200,
+    telegraphMs: 1000,
+    trackFrac: 0.6,
+    chargeSpeed: 13,
+    chargeLength: 14,
+    chargeDamage: 24,
+    chargePush: 4.5,
+    wallStunMs: 2400,
+    recoveryMs: 900,
+    cooldownMs: 1600,
+    /** After a charge it slings at the farthest hero standing at least this far off. */
+    slingMinRange: 6,
+    aimMs: 800,
+    aimTrackFrac: 0.7,
+    shootRecoverMs: 400,
+    arrowSpeed: 20,
+    damage: 12,
+    /** Unhorsed (G2b): at this share of health the Pig goes down and the Chief blows his horn. */
+    phase2At: 0.6,
+    roarMs: 1400,
+    /**
+     * Remounted (G3b): at this share of health the Pig gets up enraged and he climbs back on. Its
+     * charges then come in runs of three, each turning at a wall or the end of its line after
+     * `rushTelegraphMs`; the third has the orange rim (no guard stops it) and a wall stuns it.
+     */
+    phase3At: 0.3,
+    rushTelegraphMs: 550,
+    /** How far round him his horn's adds come in (G2b). */
+    addRadius: 8,
+    /** His loot pile (G2b), raised this far from him as he blows the horn: it pays the goblins. */
+    pileRadius: 3,
+    /** Each this long the pile stands while he is on foot, a fallen Nest is filled again. */
+    pileRefillMs: 10000,
+    /** Coin the pile spills when it falls, smashed or with him. */
+    pileCoin: 40,
+    /** His Slingshot Bracer (G3b, the warded job's drop): its wearer's arrows against goblins. */
+    bracerArrowMult: 1.25,
+    /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
+    stringTelegraphMs: 700,
+    stringActiveMs: 160,
+    stringBetweenMs: 380,
+    stringRecoveryMs: 900,
+    stringCooldownMs: 1100,
+    stringDamage: 18,
+    stringReach: 2.4,
+    stringArcDeg: 120,
+    stringRange: 2,
+    spawnMs: 900,
+    deathMs: 2200,
+    knockbackTaken: 0.2,
   },
 
   /**
@@ -3957,6 +4343,71 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'skirmisher.maxHp': [10, 500, 2],
   'skirmisher.moveSpeed': [0, 8, 0.1],
   'skirmisher.fleeDistance': [0, 15, 0.5],
+  'cutter.maxHp': [10, 500, 2],
+  'grubnose.maxHp': [100, 6000, 50],
+  'grubnose.telegraphMs': [300, 2500, 25],
+  'grubnose.chargeDamage': [0, 80, 1],
+  'grubnose.chargePush': [0, 10, 0.1],
+  'grubnose.chargeLength': [4, 24, 0.5],
+  'grubnose.chargeSpeed': [4, 24, 0.5],
+  'grubnose.wallStunMs': [0, 5000, 50],
+  'grubnose.cooldownMs': [0, 6000, 50],
+  'grubnose.slingMinRange': [0, 20, 0.5],
+  'grubnose.cornerMs': [200, 5000, 50],
+  'grubnose.aimMs': [200, 2000, 25],
+  'grubnose.damage': [0, 60, 1],
+  'grubnose.phase2At': [0, 1, 0.05],
+  'grubnose.phase3At': [0, 1, 0.05],
+  'grubnose.rushTelegraphMs': [200, 2000, 25],
+  'nestSlinger.maxHp': [10, 500, 2],
+  'nestSlinger.damage': [0, 60, 1],
+  'potlidCrew.maxHp': [10, 600, 5],
+  'lootPile.maxHp': [20, 2000, 10],
+  'grubnose.pileRefillMs': [1000, 30000, 500],
+  'grubnose.pileCoin': [0, 300, 5],
+  'grubnose.bracerArrowMult': [1, 3, 0.05],
+  'grubnose.stringTelegraphMs': [200, 2000, 25],
+  'grubnose.stringRecoveryMs': [100, 3000, 25],
+  'grubnose.stringCooldownMs': [0, 5000, 50],
+  'grubnose.stringDamage': [0, 80, 1],
+  'grubnose.stringReach': [1, 5, 0.1],
+  'warPig.maxHp': [10, 600, 5],
+  'chieftain.maxHp': [20, 1500, 10],
+  'chieftain.guardArcDeg': [0, 360, 5],
+  'chieftain.bashDamage': [0, 60, 1],
+  'chieftain.cryMs': [100, 3000, 50],
+  'chieftain.cryEveryMs': [1000, 30000, 250],
+  'packLeader.maxHp': [10, 500, 5],
+  'packLeader.cryRange': [1, 25, 0.5],
+  'packLeader.cryMs': [100, 3000, 50],
+  'packLeader.quickMs': [0, 15000, 250],
+  'packLeader.quickMult': [1, 2, 0.05],
+  'packLeader.cryEveryMs': [1000, 30000, 250],
+  'ogre.maxHp': [20, 1500, 10],
+  'ogre.telegraphMs': [200, 3000, 25],
+  'ogre.slamRadius': [0.5, 6, 0.1],
+  'ogre.damage': [0, 100, 1],
+  'ogre.recoveryMs': [0, 4000, 50],
+  'shaman.maxHp': [5, 500, 2],
+  'shaman.channelMs': [200, 5000, 50],
+  'shaman.circleRadius': [0.5, 5, 0.1],
+  'shaman.circleDamage': [0, 60, 1],
+  'shaman.cooldownMs': [0, 10000, 100],
+  'warPig.telegraphMs': [200, 2500, 25],
+  'warPig.chargeDamage': [0, 80, 1],
+  'warPig.chargePush': [0, 10, 0.1],
+  'potlid.maxHp': [10, 500, 2],
+  'potlid.turnRateDeg': [30, 720, 10],
+  'potlid.guardArcDeg': [0, 360, 5],
+  'potlid.guardBreakMs': [0, 8000, 100],
+  'slinger.maxHp': [10, 500, 2],
+  'slinger.arrowSpeed': [4, 40, 0.5],
+  'slinger.lobGravity': [0, 40, 0.5],
+  'slinger.damage': [0, 60, 1],
+  'pilfer.share': [0, 1, 0.05],
+  'cutter.moveSpeed': [0, 8, 0.1],
+  'cutter.telegraphMs': [100, 1500, 10],
+  'cutter.damage': [0, 60, 1],
   'cantor.chantMs': [500, 10000, 100],
   'cantor.raiseEveryMs': [500, 15000, 100],
   'warden.adds': [0, 3, 1],
@@ -4518,7 +4969,7 @@ export function abilityTiming(kind: AbilityKind): { windup: number; active: numb
   return { windup: ms('WindupMs'), active, recovery: ms('RecoveryMs'), cooldown: ms('CooldownMs') };
 }
 
-export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher';
+export type EnemyKind = 'grunt' | 'archer' | 'brute' | 'warden' | 'shieldbearer' | 'hound' | 'priest' | 'knight' | 'wraith' | 'king' | 'gravehand' | 'ironRing' | 'silverRing' | 'boneRing' | 'mason' | 'wardstone' | 'mortarGuard' | 'chanter' | 'crownbearer' | 'cantor' | 'skirmisher' | 'cutter' | 'slinger' | 'potlid' | 'warPig' | 'shaman' | 'ogre' | 'packLeader' | 'chieftain' | 'grubnose' | 'nestSlinger' | 'potlidCrew' | 'lootPile';
 
 /** Stats every enemy kind has, read from its tuning section. */
 export interface EnemyStats {

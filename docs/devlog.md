@@ -2,6 +2,744 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-19: Session 270, the boss hall reads BOSS on the map
+
+**What changed**
+
+The minimap's word for a boss hall was WARDEN for every boss, so the Gravehand's, Grubnose's, the Mason's and the King's halls said it too (critic, 19 Nov). It now reads BOSS (`pieceLabel` in `client/src/ui/Minimap.ts`), checked by `tests/minimap-labels.ts` in `npm run check`.
+
+**Learned**
+
+The map is drawn from the `FloorLayout` alone, which does not know the run's story or type, so naming the boss would mean passing the spec down; one word that is true for every hall is enough for a map.
+
+**Next**
+
+G3b waits on the two Grubnose answers in `decisions.md` Pending.
+
+## 2026-11-19: Session 269, Grubnose cornered charges point-blank
+
+**What changed**
+
+Mounted Chief Grubnose backs away from a hero inside his charge's minimum (`chargeMinRange`, 3.5 m) and had no close attack, so a sword hero who walked him into a wall and stood there got free hits for as long as they liked (critic, 19 Nov: 27 s in `chase` at cooldown 0, 770 damage). Now a hero who stays inside the minimum for `grubnose.cornerMs` (1200 ms, on the panel) of his chase is charged point-blank: the same red line and 1 s wind-up, the guard still stopping it; remounted, it opens a run of three as any phase 3 charge does. The design's phase 1 is charges and slings, so the answer is the charge rather than a new attack. Two unit tests in `grubnose.test.ts` put his back to the arena's wall with a hero 2 m off; both fail without the change.
+
+**Learned**
+
+Bench, Saltmarsh, 5 seeds, level 8:
+
+| party | boss health | kills | median time to kill | damage taken | potions used |
+|---|---|---|---|---|---|
+| solo | 1900 | 5 of 5 | 99 s | 182 | 1.4 |
+| duo | 2565 | 5 of 5 | 67 s (0.67) | 172 | 0.6 |
+| trio | 3230 | 5 of 5 | 37 s | 24 | 0 |
+| solo with three henchmen | 2898 | 5 of 5 | 22 s | 10 | 0 |
+
+The bench's sword already fought him close; the solo is a little quicker (104 s in Session 263) and takes more, as the cornered stretches now cost it a charge. Every fight still reaches phase 3 but one henchmen fight. Parity unchanged (the arena never rolls him).
+
+**Next**
+
+G3b's health to the bar waits on the Pot-lid Crew answer in `decisions.md` Pending, and the Horn on its own.
+
+## 2026-11-19: Session 268, the Warden's gate checked, W1 and K1 closed
+
+**What changed**
+
+No code. W1's gate in `docs/bosses.md` section 3 ("the bench's Warden solo and duo numbers meet the bar with henchmen at half weight") was rerun on this branch and holds, so the W1 and K1 line in the backlog is checked. K1's gate (the crown's return under test) was met in Session 238. Michael's A of 19 Nov keeps the duo's numbers and judges them in a playtest.
+
+**Learned**
+
+Saltmarsh ends on Grubnose now, so the Warden was benched in a random Crypt run's last hall: `npm run bench:bosses -- --story saltmarsh --random hauntedCrypt --seeds 10`, level 8, `warden.underRules` on, `bosses.henchmanWeight` 0.5:
+
+| party | boss health | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| solo | 4200 | 9 of 10 | 210 s | 246 | 2.3 of 3 | 0.1 |
+| duo | 5670 | 10 of 10 | 122 s (0.58) | 126 | 0.5 | 0 |
+| trio | 7140 | 10 of 10 | 66 s | 5 | 0 | 0 |
+| solo with three henchmen | 6405 | 10 of 10 | 48 s | 6 | 0 | 0 |
+
+These match Session 245's on Saltmarsh (solo 207 s, duo 0.59), so the random hall and the Goblin work since have not moved him.
+
+**Next**
+
+Nothing else in E1 is open to the builder:
+- G3b waits on the two Grubnose answers in `decisions.md` Pending, the Crew and the Horn.
+- The graphics cost and the crowded fight both need a real machine.
+- The Gravehand's playtest is Michael's.
+
+## 2026-11-19: Session 267, a random Warrens run ends on Grubnose (G3b, part five)
+
+**What changed**
+
+`bossOf` now takes the floor's dungeon type as well as its story. A random run of the Goblin Warrens' type ends on Chief Grubnose and his Pig, as `docs/bosses.md` (approved 16 Nov) says: "Random runs end on the Warden until a type's roster has a boss, then on that type's." A random Crypt run, and a run from a browser that sends no type, still ends on the Warden. A story dungeon keeps the boss written for it, whatever its type. With `grubnose.enabled` off, a random Warrens run ends on the Warden again.
+
+Nobody can choose a random Warrens run yet: the type stays shut on Wren's Random tab until G3b's tuning is done.
+
+`npm run bench:bosses -- --story saltmarsh --random goblinWarrens` benches the boss in the last hall of a random run of that type (three medium floors at the story's difficulty, seed 1) instead of the story's own hall.
+
+`grubnose.test.ts` adds a case: random Warrens to Grubnose, random Crypt and untyped to the Warden, a story keeping its boss under another type, and the switch.
+
+check 810/810, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Grubnose has nothing tied to Saltmarsh's hall. His Pig's charges, the horn's adds and the loot pile all take their places from the boss room he wakes in. In a random Warrens hall, 5 seeds at level 8:
+
+| party | kills | median time to kill | damage taken | phase 3 |
+|---|---|---|---|---|
+| solo | 4 of 5 | 86 s | 127 | 5 of 5 |
+| duo | 5 of 5 | 62 s (0.72) | 181 | 5 of 5 |
+| trio | 5 of 5 | 37 s | 38 | 5 of 5 |
+| solo with three henchmen | 5 of 5 | 22 s | 6 | 5 of 5 |
+
+These sit close to Saltmarsh's (solo 104 s, duo 0.59), so tuning him on Saltmarsh will carry to random runs.
+
+**Next**
+
+Left of G3b, both waiting on answers in `decisions.md` Pending:
+- the Crew's question, then the health to the bar (about 4000 for the solo);
+- the Horn.
+
+Then the Warrens open on Wren's Random tab, where a run now ends on Grubnose.
+
+## 2026-11-19: Session 266, Grubnose against the bar, measured (G3b, part four)
+
+**What changed**
+
+No tuning change. The bench was run against 1.2's bar at two health values. The duo's trouble is asked in `decisions.md` Pending (A recommended: the Pot-lid Crew only for a party with a staff, a second Nest otherwise).
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds a value:
+
+| health | party | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| 1900 (today) | solo | 5 of 5 | 104 s | 110 | 0.8 | 0 |
+| 1900 (today) | duo | 5 of 5 | 61 s (0.59) | 200 | 0.6 | 0 |
+| 3400 | solo | 4 of 5 | 159 s | 126 | 1.0 | 0.2 |
+| 3400 | duo | 3 of 5 | 101 s (0.64) | 412 | 2.6 | 0.8 |
+| 3400 | trio | 5 of 5 | 61 s | 76 | 0 | 0 |
+| 3800 | solo | 4 of 5 | 175 s | 177 | 1.2 | 0.2 |
+| 3800 | duo | 3 of 5 | 113 s (0.65) | 401 | 2.4 | 1.0 |
+| 3800 | trio | 5 of 5 | 65 s | 70 | 0 | 0 |
+
+The solo bar is about 4000 health away.
+
+The duo is the problem. With `--sources` at 3400, the duo's 412 damage taken splits:
+
+| source | damage |
+|---|---|
+| the Pot-lid Crew | 157 |
+| the Nests | 98 |
+| Grubnose himself | about 140 |
+
+The solo, alone with one Nest, takes 126 in all. The Crew are armoured, and the bench's duo is a sword and a bow: neither has the staff the Crew are weak to.
+
+The trio, with a mage, takes 76 and never sees a Crew blow land. So the Crew decide the duo, not the boss's health. Raising health before that is answered would set a number the answer then moves.
+
+**Next**
+
+Left of G3b, both waiting on answers in `decisions.md` Pending:
+- the Crew's question, then the health to the bar (about 4000 for the solo);
+- the Horn.
+
+Then the Warrens open on Wren's Random tab.
+
+## 2026-11-19: Session 265, the Saltmarsh Warrens are the Warrens (G3b, part three)
+
+**What changed**
+
+The second story dungeon, the Saltmarsh Warrens, now has the type `goblinWarrens`. Its run plan and every floor's spec carry it, so its rooms spawn E1i's goblins in the skeletons' places, as `ROOM_KINDS` gives them:
+- Cutters, Slingers and Pot-lids;
+- War Pigs;
+- the Cave Ogre as its mini-boss.
+
+Grubnose and his Pig still end it.
+
+Wren's story card lists the Warrens' roster under their own names (Goblin Cutter, Goblin Slinger, Pot-lid Goblin, War Pig, Cave Ogre, Chief Grubnose), where it listed skeletons. The blurb now speaks of a goblin chief on a war pig.
+
+The floors themselves are unchanged: a type never changes what a seed builds. The Warrens' type stays shut on Wren's Random tab.
+
+`grubnose.test.ts` adds a case: the story's type, its menu roster all goblins, and the plan and each floor's spec in the Warrens' type.
+
+check 809/809, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh's boss hall gives the same numbers as Session 263 (solo 5 of 5 in 104 s). It starts in the hall, so the floors' new goblins do not reach it.
+
+Michael's answer of 3 Nov (all five story dungeons the Crypt) was for E1a, before any second roster stood. The boss document he approved on 16 Nov names this change as G3b's.
+
+**Next**
+
+Left of G3b:
+- the tuning to the bar (solo 104 s against 180 to 300);
+- the Horn, once answered.
+
+Then the Warrens open on Wren's Random tab. A random Warrens run still ends on the Warden until a Warrens type has a boss of its own; that is worth a question first.
+
+## 2026-11-19: Session 264, Grubnose's drops (G3b, part two)
+
+**What changed**
+
+Chief Grubnose now has a signature list (`SIGNATURES.grubnose`), offered by job when he falls, as the other bosses' are:
+
+| piece | job | made as | what it does |
+|---|---|---|---|
+| Pot-lid Shield | tank (the Pig's charges taken on a guard) | studded buckler (the catalogue has no pot-lid shape) | 20% less blunt |
+| Slingshot Bracer | warded (the archer who broke the Nests' sacks) | wool gloves | the bane for the Warrens' type, below |
+
+The Slingshot Bracer is a new signature, `goblinArrows`, read by `wornMods` from the hands slot and checked by `readGearItem` and `readLoadout`. Its wearer's arrows take `grubnose.bracerArrowMult` (1.25, on the panel) from:
+- every goblin;
+- the Chief;
+- his loot pile.
+
+It does nothing for a blade, against a skeleton, or with `bosses.signatureDrops` off.
+
+The third drop, Grubnose's Horn, is asked in `decisions.md` Pending (A recommended: the horn in the neck slot, its three charges without a stagger refreshed each floor). The document calls it a consumable, and there is no consumable slot. Until it is answered, a hero who only fought him is offered the Pot-lid Shield (`offerFor`'s fallback).
+
+`grubnoseDrops.test.ts` covers:
+- the offer by job;
+- the bracer read back by the server and worn only on the hands;
+- its 1.25x on arrows against a Cutter and the Chief, and not on a blade, on a skeleton, or with drops off.
+
+check 808/808, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The catalogue already has a neck slot, so the Horn as a worn piece needs no new slot.
+
+**Next**
+
+G3b, what is left:
+- the Saltmarsh Warrens turned to the Warrens' type;
+- the tuning to the bar;
+- the Horn, once answered.
+
+Then the Warrens open on Wren's tab.
+
+## 2026-11-19: Session 263, Grubnose remounts (G3b, part one)
+
+**What changed**
+
+Phase 3 of Chief Grubnose. At `grubnose.phase3At` (30%, on the panel), while he fights on foot, a second roar (`phase: 3, chief: true`): the Pig gets up enraged and he climbs back on. The view draws him mounted again and the downed Pig goes.
+
+Remounted, the Pig's charges come in runs of three (`rush1` to `rush3` in `EnemyState.attack`, so nothing new rides the wire):
+- The first and second charges, ended by a wall, a hero or the end of their line, turn at once onto the hero and wind up the next. That turn is `grubnose.rushTelegraphMs` (550, on the panel), against the first charge's 1000 (`chargeWindupMs`, also read by `EnemyView` for the wind-up's glow).
+- A guard still stops the first two dead, as in phase 1.
+- The third has the orange rim (`telegraphColour` heavy): no guard stops it, a guard is broken, and a wall it meets stuns him, the punish window.
+- After the third, the Chief slings from the saddle at the farthest hero, as after a phase 1 charge.
+
+The banner reads "The Pig gets up enraged: Grubnose remounts: charges in threes, and the rimmed third breaks a guard", and `Sfx` plays a squeal over a snort.
+
+`grubnose.test.ts` adds three cases:
+- the roar at 30% and a run of three, the second and third wind-ups no longer than the turn;
+- a wall turns a first charge, and stuns a third;
+- a guard stops a first charge dead, and breaks on a third.
+
+check 805/805, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill | damage taken | reached phase 3 |
+|---|---|---|---|---|
+| solo | 5 of 5 | 104 s | 110 | 5 of 5 |
+| duo | 5 of 5 | 61 s (0.59 of solo) | 200 | 5 of 5 |
+| trio | 5 of 5 | 37 s | 24 | 5 of 5 |
+| solo + 3 henchmen | 5 of 5 | 22 s | 10 | 4 of 5 |
+
+Every fight now shows all three phases. Health is still short of the 180 to 300 s solo bar. That tuning comes with G3b's last part, as the Gravehand's and the Warden's did.
+
+**Next**
+
+G3b, what is left:
+- his signature drops (the Pot-lid Shield, the Slingshot Bracer, Grubnose's Horn);
+- the Saltmarsh Warrens turned to the Warrens' type;
+- the tuning to the bar.
+
+Then the Warrens open on Wren's tab.
+
+## 2026-11-19: Session 262, the Pig lies stunned, the horn sounds, and a throw stops at the wall (G2b, part five)
+
+**What changed**
+
+- **The Pig lies where it fell.** When Grubnose is unhorsed, the Pig no longer vanishes. It is drawn on its side where he came off, with stars turning over it (`EnemyView.buildDownPig`: the mount's meshes shared, rolled over its barrel). The sim keeps no Pig of its own, so the view lays it at the spot it first saw phase 2. A browser that joins mid-phase lays it where the Chief stands then.
+- **The horn is a horn.** His phase-2 roar now carries `chief: true`. It used to show the Warden's banner ("The Warden calls the dead") and play the Warden's roar. Now:
+  - the banner reads "Grubnose blows his horn: his goblins come, and his loot pile pays them: smash it";
+  - `Sfx` plays two cracked blasts that sag flat.
+- **A hero thrown at a wall stays in the hall.** A heavy hit's shove (`mode: 'hurt'`) now stops at the first wall, under the existing `combat.sweepFastMoves`, as enemy launches and lunges already did. The parity test turns that switch off, so the hashes are unchanged.
+- **The bench's hero goes for the pile** while it stands, as it does the Mason's Wardstones.
+
+`sweptMoves.test.ts` adds a case: a hero thrown with the War Pig's 4.2 m at a thin wall stays on its side, and with the switch off goes through. The horn case checks the event is the Chief's.
+
+check 802/802, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The solo stall at 36% (Sessions 260 and 261) was not the pile. On both stalled seeds, the Pig's charge pinned the hero against the hall's back wall. Its 4.2 m throw (about 0.6 m in its first tick) carried the hero through the wall. They dropped 2.4 m to the ground outside and swung up at a boss they could never reach, until the bench timed out. A player would have been stuck there too.
+
+The hurt slide was the one fast move `sweepFastMoves` never covered.
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill | damage taken |
+|---|---|---|---|
+| solo | 5 of 5 (was 3 of 5) | 97 s | 99 |
+| duo | 5 of 5 | 57 s (0.59 of solo) | 171 |
+| trio | 5 of 5 | 36 s | 35 |
+| solo + 3 henchmen | 5 of 5 | 22 s | 10 |
+
+Phase 3 is not built yet, so no fight reaches it. The solo kill is still far under the 180 to 300 s bar, so tuning waits for G3b.
+
+**Next**
+
+G2b is whole. Then G3b:
+- phase 3: the Pig gets up enraged, the Chief remounts, charges in threes;
+- his drops;
+- the Saltmarsh turned to the Warrens' type.
+
+Then the Warrens open on Wren's tab.
+
+## 2026-11-19: Session 261, the loot pile spills its coin (G2b, part four)
+
+**What changed**
+
+Grubnose's loot pile now carries `grubnose.pileCoin` (40, on the panel) as a Pilfer sack (`EnemyState.sack`, E1i). When it falls, smashed or with him, `killEnemy`'s `spillSack` drops the coin where it stood. On a floor that coin is D4's loot, picked up by walking over it and banked with the floor's finds.
+
+`raiseFromEdges` now returns what it raised, so the horn can fill the pile's sack. The pile case in `grubnose.test.ts` checks the sack is full, then empty once the pile is smashed.
+
+check 801/801, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The design asks for the pile to be "a prop, D4's spray". The thief's sack already does exactly that for an enemy: coin on the floor, with ids clear of the props'. So the pile needed no new loot path.
+
+**Next**
+
+To finish G2b:
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound;
+- the bench's hero taught to smash the pile (solo stalls at 36% on 2 of 5 seeds).
+
+Then G3b.
+
+## 2026-11-19: Session 260, Grubnose's loot pile (G2b, part three)
+
+**What changed**
+
+As he blows the horn, Grubnose raises his loot pile 3 m from him (`grubnose.pileRadius`). It is a new kind, `lootPile`, a heavy that only stands, as the Mason's Wardstones do: 220 health, no poise to break, no knockback.
+
+While he fights on foot, the pile pays the goblins. Every `grubnose.pileRefillMs` (10 s) it stands, a Nest the horn raised and the party has felled is filled again: a fresh Nest Slinger 8 m from the pile. It never raises more Nests than the horn did. The timer is the pile's own `cooldown`, so nothing new rides the wire.
+
+Smashing it stops the refills, and it falls with him. Its look is a heap of four sacks under a cone of coin, a pot-lid on top. The panel has its health and the refill time.
+
+`grubnose.test.ts` adds a case:
+- the horn raises the pile beside the Nest;
+- a felled Nest is back within 10 s;
+- once the pile is smashed, none comes back in 12 s;
+- a standing pile falls when he does.
+
+The horn case now expects the pile among the adds. check 801/801, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds:
+
+| party | kills | median time to kill |
+|---|---|---|
+| solo | 3 of 5 | 90 s |
+| duo | 5 of 5 | 54 s (0.59 of solo) |
+| trio | 5 of 5 | 35 s |
+
+The solo hero still stalls at 36% twice, the same two seeds as before the pile. So the pile is not what stalls it. The scripted hero never smashes the pile and does not chase the Nests, which a player would. The bench's solo number means little until its hero is taught the pile.
+
+The design's pile is "a prop, D4's spray": smashed, it should spray coin as a crate does. That is not in yet. Today it falls like any enemy, with no loot of its own.
+
+**Next**
+
+To finish G2b:
+- the pile's coin spray when smashed;
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound;
+- the bench's hero taught to smash the pile.
+
+Then G3b: the remount at 30%, charges in threes, its drops, the Saltmarsh turned to the Warrens' type.
+
+## 2026-11-19: Session 259, Grubnose's horn: the Nests and the Crew (G2b, part two)
+
+**What changed**
+
+The horn now brings adds, by weakness (`docs/bosses.md` 1.3). They are two new kinds, each a goblin of the roster with numbers of its own:
+- **Nest Slinger.** A Goblin Slinger, warded: arrows land harder and spells are turned aside, so it is the archer's job.
+- **Pot-lid Crew.** A Pot-lid Goblin, armoured: a blade does little and a staff does full damage, so it is the mage's job. It rushes the mage while one stands (`nearestTarget`), past a nearer blade.
+
+As the horn ends, `hornAdds` raises as many as the heroes, round him at `grubnose.addRadius` (8 m):
+- one hero: a Nest;
+- two heroes: a Nest and the Crew;
+- three heroes: a second Nest.
+
+Henchmen and summons do not count. The Crew comes in opposite the first Nest.
+
+Both kinds are dressed as goblins: the Nest as a Slinger, the Crew with the pot-lid. They pose as their parents do and count in the Pack Leader's war cry. They have their own panel ranges for health and the Nest's damage.
+
+`grubnose.test.ts` adds two cases:
+- the horn raises one Nest for a hero alone, and the count grows with the party; each kind has its weakness;
+- the Crew picks the mage past a nearer sword, and the sword once the mage is down, while a Nest takes the nearest.
+
+check 800/800, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench on Saltmarsh, 5 seeds, phases 1 and 2:
+
+| party | kills | median time to kill | damage taken | potions |
+|---|---|---|---|---|
+| solo | 3 of 5 (2 timeouts at 36% left) | 83 s | 129 | 1.2 |
+| duo | 5 of 5 | 54 s (0.65 of solo) | | |
+| trio | 5 of 5 | 33 s | | |
+
+So the adds make the solo hero bleed: damage taken rose from 18 to 129. But the boss is still far short of 1.2's 180 to 300 s for a solo kill.
+
+The two solo timeouts both stop at 36% left, after the horn. The scripted hero does not finish him on foot. It may be the bench's hero, not the boss; the next session looks at that before tuning.
+
+**Next**
+
+G2b part three:
+- the loot pile at the hall's centre that refills a Nest every 10 s, a prop the party can smash;
+- the Pig drawn lying stunned where it fell;
+- a horn's own sound in place of the Warden's roar.
+
+Then G3b.
+
+## 2026-11-19: Session 258, Grubnose unhorsed (G2b, part one)
+
+**What changed**
+
+Phase 2 of Chief Grubnose begins. At `grubnose.phase2At` (60%), between attacks, the Pig goes down and the Chief blows his horn: a 1.4 s `roar` (phase 2 on the event), then phase 2.
+
+On foot he fights with his looted string. That is the Skeleton Warrior's two cuts on his own numbers (`gruntNumbers` reads `tuning.grubnose`):
+- a 700 ms wind-up on a red strike;
+- two cuts of 18 edge, 2.4 m reach over 120°;
+- 900 ms recovery and a 1.1 s cooldown.
+
+He never waits for an attack token. He no longer charges or slings while on foot.
+
+`attackType` gives the string edge, so the tank's job and a damage-type resist read it right. The figure drops the Pig from under him and stands the Chief on the floor. The horn plays the Warden's roar until the adds come.
+
+`grubnose.test.ts` adds one case. Below 60% he roars into phase 2, then winds up the string, red and edge, and lands two cuts for exactly twice the damage. With a hero 9 m off he neither charges nor slings.
+
+check 798/798, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The War Pig's frame was already built for the Chief to leave. The rider is a group on the body, and the Pig's parts are the body's other children. So unhorsing is just visibility, and nothing new on the wire beyond the `phase` the snapshot already carries.
+
+The Pig lying stunned in the hall is not drawn yet. In phase 2 it is simply gone. That waits for part two, along with what makes phase 2 a fight for three.
+
+**Next**
+
+G2b part two, the horn's adds and the pile:
+- **Slinger nests:** warded by sacks, weak to ranged.
+- **A Pot-lid crew:** armoured, weak to magic, rushing the mage.
+- **The loot pile** at the hall's centre: refills a nest every 10 s, a prop the party can smash.
+- **The Pig** drawn lying stunned where it fell.
+
+Then G3b.
+
+## 2026-11-19: Session 257, Chief Grubnose and his Pig, mounted (G1b)
+
+**What changed**
+
+The Saltmarsh Warrens end on Chief Grubnose and his Pig (`grubnose.enabled`; off, the Warden as before). This is phase 1 of `docs/bosses.md` 2.5: the Chief riding the War Pig. It is one new `EnemyKind`, `grubnose`, in the boss role, with a brain of its own (`grubnoseBrain`):
+- **The Pig's charge.** A 1000 ms wind-up on a red line with no rim, then a 14 m rush of 24 blunt that throws an unguarded hero 4.5 m. A wall stuns it 2.4 s, as the War Pig is stunned. It needs no attack token: the boss always gets its turn.
+- **A guard stops it dead.** A guard that covers the charge holds as a stance holds a heavy: the heavy's chip and a block's shove, no break. The Pig is staggered, which is the punish window. This is a new optional `HeroHit.stopsOnGuard`, read only in `hurtHero`'s guard branch, so the arena's hashes do not move. Any guard counts, not only a shield's; the design says "on a shield", and that is for the playtest to judge. A Pig armoured after a stagger (G1) is not stopped.
+- **The sling from the saddle.** After each charge, if a hero in sight stands at least 6 m off, the Chief slings at the farthest one instead. That is the archer's aim and shot on his own numbers: an 800 ms aim on a yellow line, then 12 pierce at 20 m/s. The cooldown after a sling is half a charge's. Then the Pig charges again. A hero close by is only ever charged. Nothing new rides the wire: the next attack is read from `attack`, which the last one left.
+
+Its figure is a placeholder: the War Pig's frame at 1.7x with a goblin in the saddle. The goblin has a fur cloak, a hooked nose, a cap ringed with seven teeth, and a sling. The boss bar reads "Chief Grubnose and his Pig". The panel has its health, the charge's wind-up, damage, push, length, speed and wall stun, the cooldown, the sling's reach, aim and damage.
+
+`grubnose.test.ts`:
+- it ends the Saltmarsh Warrens only with its switch on;
+- the charge's and the sling's colours and types;
+- the charge's wind-up runs its telegraph, then it rushes and throws a hero;
+- a covering guard stops the Pig staggered, with the hero still guarding;
+- after a charge it slings at a far hero, the shot flies, and the next attack is a charge again;
+- a near hero is charged.
+
+check 797/797, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The bench (`npm run bench:bosses -- --story saltmarsh --seeds 5`), phase 1 alone at today's 1900 health:
+
+| party | kills | median time to kill |
+|---|---|---|
+| solo | 3 of 5 (2 timed out at 36% left) | 79 s |
+| duo | 5 of 5 | 54 s (0.69 of solo) |
+| trio | 5 of 5 | 31 s |
+| one hero and three henchmen | 5 of 5 | 21 s |
+
+Mounted alone it is far too soft for the bar (solo in 180 to 300 s). Phases 2 and 3 (G2b, G3b) add the horn's adds, the loot pile and the remount, so it is tuned after them, not now. The solo timeouts look like the scripted hero failing to close on a boss that keeps backing off to a charge's length. The Saltmarsh Warrens still play the Crypt's roster and type until G3b turns them.
+
+**Next**
+
+- G2b: phase 2 at 60%. The Pig down to a stun, the horn, Slinger nests and a Pot-lid crew, the Chief's looted string on foot, and the loot pile that pays the goblins.
+- Then G3b: the remount and the charges in threes, the signature drops, and the Saltmarsh Warrens turned to the Warrens' type. Then tune on the bench.
+- The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 256, the Goblin Chieftain (E1i, part nine)
+
+**What changed**
+
+The Warrens' elite, in the Barrow Knight's place: a pot-lid behind a war cry. It fights as a Shieldbearer does (`shieldNumbers`, `shieldTakes` and the views read `tuning.chieftain`). It has no rush. Instead, when a goblin stands within 10 m and its cry is ready, it stops behind its lid and draws breath for 1 s, still turning to keep the lid to the front. Then it cries the Pack Leader's war cry, quickening the goblins in reach, itself included, 1.25x for 5 s.
+
+The cry and its pieces are now shared: `inCryRing`, `packInReach`, `drawBreath` and `warCry`.
+
+The lid stays up through the breath, so a blow from the front is blocked and the cry goes on. Only a blow from the side or back, a held heavy or magic breaks it. It waits 12 s between cries, broken or not (`EnemyState.cryAt`).
+
+| | Goblin Chieftain | Barrow Knight |
+|---|---|---|
+| health | 190 | 160 |
+| guard | 120° | 130° |
+| bash | 15, push 2.4 | the Shieldbearer's line |
+| from afar | a war cry | a rush behind its shield |
+
+The panel has its health, guard, bash, breath and the wait between cries.
+
+Where it fights: a Warrens room spawns it where the composer puts a Knight. So do a Warrens floor's mini-boss and treasure guard from the Knight's tier, through Session 254's `roomKindIn`.
+
+Its look: the goblin behind a big dented pot-lid, with a fur cap ringed with seven teeth. It holds the lid up in front as it draws breath.
+
+`warrensChieftain.test.ts`:
+- with a goblin in reach it cries at once, and a front blow neither hurts it nor stops the cry;
+- the cry quickens the Cutter and itself;
+- it then closes and bashes without crying again;
+- a blow from behind breaks the cry and sets the wait;
+- alone it never cries.
+
+`warrensCutter.test.ts`'s undressed-kind check now asks the Warden, since all eight room kinds are dressed. check 791/791, test:net green, parity hashes unchanged.
+
+**Learned**
+
+All eight of E1i's roster stand: a Warrens room is goblins from end to end, mini-boss included. Two things remain before a party can meet them:
+- **Opening the Warrens on Wren's tab.** It is shut today. Its story dungeons are not written, and its boss is G1b to G3b (Grubnose and his Pig).
+- **A playtest of the roster.** Its numbers are from the bench of my head, not from play.
+
+**Next**
+
+- G1b to G3b, Grubnose and his Pig (`docs/bosses.md` 2.5). After them, the Warrens opening on Wren's tab. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 255, the Pack Leader's war cry (E1i, part eight)
+
+**What changed**
+
+The Warrens' leader, in the Bone Priest's place. It is the first goblin with behaviour of its own (`packLeaderBrain`, reached through the leader role's brain).
+- **How it moves:** it keeps 7 m behind its pack as the Priest does.
+- **The cry:** when a goblin stands within `cryRange` (10 m) and its cooldown is spent, it draws breath for 900 ms, with a ring at its feet out to its reach. Then it cries, and every goblin in the ring, itself included, is quickened for 5 s (`EnemyState.quickUntil`).
+- **What quickening does:** the enemy's whole step runs 1.25 times as fast, so it walks, winds up, attacks and recovers faster. It is one factor on the step's `edt` and speed, beside the burst's slow, and absent means 1, so the arena's hashes do not move.
+- **What it leaves alone:** skeletons in reach are not of the pack.
+- **Breaking it:** a hit during the breath breaks the cry, as a caster's channel breaks (`breakChannel`), and it reels 0.9 s. After a cry or a break it waits 9 s.
+
+The panel has its health, reach, breath, quickening's length and factor, and the time between cries.
+
+Its look: a goblin with a leather cap, two curling horns and a red war-paint band. It cries in the Priest's arms-up pose. The cry plays a short horn and a shout, with a red ring out to its reach and a spark over each goblin it quickened (`warCry` event). A room composes it where it would a Priest, which needs two raisable kinds there, so it always has a pack.
+
+`warrensPackLeader.test.ts`:
+- it quickens the Cutter in reach and itself (2), not the Skeleton Warrior beside them;
+- a quickened step advances 1.25x and runs out;
+- it does not cry alone;
+- a hit during the breath stops the cry.
+
+check 788/788, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The breath's ring is the leader role's colour, violet with damage types on, and 10 m wide. It says "hit me now", not "step out", but it looks like a caster's circle. Whether it reads right is one for a playtest of the Warrens. A quickened goblin shows only the spark as the cry lands, so a lasting mark (a red glint in the eyes while it lasts) may be wanted.
+
+**Next**
+
+- The Goblin Chieftain (the elite, the Knight's slot: a pot-lid behind a war cry), the last of the roster. Then the Warrens can open on Wren's tab, and G1b to G3b follow. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 254, the Cave Ogre (E1i, part seven)
+
+**What changed**
+
+The Warrens' heavy. It runs on the Bone Brute's brain, reading `heavyNumbers(e)` (`tuning.ogre`), in both the brain and the view. Against the Brute's numbers:
+
+| | Cave Ogre | Bone Brute |
+|---|---|---|
+| health | 360 | 320 |
+| poise | 26 | 22 |
+| wind-up | 1150 ms | 1000 ms |
+| slam | 2.7 m ring, 32 blunt, throws 3 m | 2.2 m, 28, 2.2 m |
+| stands after | 1.8 s | 1.4 s |
+
+It has more ring to roll out of and gives a longer turn at it after. The panel has its health, wind-up, ring, damage and recovery.
+
+Where it fights: a Warrens room spawns it in the Brute's place. So do a Warrens floor's mini-boss and a treasure room's guard below the Knight's tier (`roomKindIn` there too, same draws and spots), which were Bone Brutes in goblin rooms. No Bone Priest raises it.
+
+Its look: the Brute's body in a damp moss-grey hide at 1.6 scale, its club a rock lashed to a log.
+
+`warrensOgre.test.ts`: standing in front of it takes 32 after a longer wind-up than a Brute's. `warrensCutter.test.ts`'s "a kind not yet dressed stays a skeleton" now asks the Knight. check 784/784, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The mini-boss and the treasure guard picked their kind directly, not through `roomKindIn`, so a Warrens floor would have kept a crowned skeleton among goblins. Both go through it now. Once the Chieftain lands, the Knight's tier swaps the same way.
+
+**Next**
+
+- The Pack Leader (its war cry, a new brain in the Priest's slot), then the Chieftain. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 253, the Goblin Shaman (E1i, part six)
+
+**What changed**
+
+The Warrens' caster. It runs on the Wraith's brain (`casterBrain`), reading `tuning.shaman`: it keeps its distance, channels a violet circle at a hero's feet, and any hit breaks the channel. Its circle is a hex that bursts for 12 magic damage as it lands instead of Chilling, since Chill is the Crypt's twist and Pilfer the Warrens'. The burst lands after the lag grace has been waited out, so a step out that was on time on the player's screen still counts. Against the Wraith's numbers:
+
+| | Goblin Shaman | Wraith |
+|---|---|---|
+| health | 36 | 45 |
+| channel | 1250 ms | 1600 ms |
+| circle | 1.7 m, 12 magic damage | 2 m, Chill |
+| keeps off | 8 m | 9 m |
+| cooldown | 3.8 s | 3.5 s |
+
+The panel has its health, channel, circle radius, damage and cooldown. A Warrens room spawns it in the Wraith's place, and no Bone Priest raises it (`GOBLINS`).
+
+Its look: the goblin on its feet (it does not float), a crooked stick topped with a small skull glowing violet, and a crest of three purple feathers so it stands out in a pack of Cutters. It channels in the Wraith's pose.
+
+`warrensShaman.test.ts`: a hero standing in the circle takes 12 and no Chill, where the Wraith's chills and deals nothing; its channel is shorter; a hero who steps out takes nothing; a hit breaks the channel. check 782/782, parity hashes unchanged.
+
+**Learned**
+
+What the Shaman's circle does was not spelled out: Poison (option B) was turned down for Pilfer, and Chill belongs to the Crypt. A plain damage burst keeps the role's lesson (step out, or break it with an arrow) without adding a third hero state. If Michael wants something else here, the circle's landing is one line in `casterBrain`.
+
+**Next**
+
+- The Cave Ogre (the Brute's slot), then the Pack Leader's war cry and the Chieftain. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 252, the War Pig (E1i, part five)
+
+**What changed**
+
+The Warrens' charger. It runs on the Crypt Hound's brain and line, reading `tuning.warPig` through `rushOf`. Against the Hound's numbers:
+
+| | War Pig | Hound |
+|---|---|---|
+| health | 80 | 45 |
+| poise | 9 | 5 |
+| wind-up | 950 ms | 800 ms |
+| rush length | 12 m | 11 m |
+| rush damage | 16 blunt | 14 edge |
+| throw | 4.2 m | 3.5 m |
+| stunned on a wall | 2.6 s | 2.2 s |
+
+It is easier to read and worse to stand in front of. The panel has its health, wind-up, damage and throw. A Warrens room spawns it in the Hound's place, and no Bone Priest raises it (`GOBLINS`).
+
+Its look: the Hound's frame in a brown hide, with a barrel of a body over the spine and two tusks, at 1.15 scale.
+
+`warrensPig.test.ts`: standing in its line takes 16 and a knock-down, after a longer wind-up than a Hound's. check 779/779, test:net green, parity hashes unchanged.
+
+**Learned**
+
+The Warrens now dress four of the Crypt's eight room kinds: fodder, archer, shield and charger. What is left is the Shaman, the Pack Leader (the Priest's slot), the Cave Ogre (the Brute's) and the Chieftain (the Knight's). A Warrens room that rolls a Priest, Wraith, Brute or Knight still fields that skeleton until those land.
+
+**Next**
+
+- The Goblin Shaman (caster, the Wraith's slot), the Cave Ogre, then the Pack Leader's war cry and the Chieftain. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 251, the Pot-lid Goblin (E1i, part four)
+
+**What changed**
+
+The Warrens' shield, the third goblin:
+- **Its brain:** the Skeleton Shieldbearer's brain and block, reading `shieldNumbers(e)` (the brain, the block in `shieldTakes`, and the views).
+- **Its numbers (`tuning.potlid`), against the Shieldbearer's:**
+
+| | Pot-lid Goblin | Shieldbearer |
+|---|---|---|
+| health | 55 | 80 |
+| guard | 100° | 130° |
+| turn | 200°/s | 140°/s |
+| heavy dents the lid for | 3 s | 2.5 s |
+| bash | 9, push 1.8 | 12, push 2.2 |
+
+  So a blow 60° off its front gets past the lid, and the goblin turns to cover its side sooner. The panel has its health, turn, guard and dent time.
+- **Where it fights:** a Warrens room spawns it in the Shieldbearer's place.
+- **Its look:** the goblin with its round shield back on its arm as a dull tin pot-lid.
+- **`GOBLINS`** in `roles.ts` now keeps every goblin from a Bone Priest's raise.
+
+`warrensPotlid.test.ts`: a front blow is blocked; a blow 60° off lands on the lid but not on the tower shield; turning to a hero at its side, it is over 1.3x quicker than the Shieldbearer. check 777/777, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Three of the eight goblins came in as dressings of existing brains, in roughly a third of a session each. The rest will not: the War Pig, Shaman and Cave Ogre are brains already, but the Pack Leader's war cry and the Chieftain's cry behind a pot-lid are new behaviour.
+
+**Next**
+
+- The War Pig (charger), then the Shaman (caster). The Pack Leader replaces the Priest's raise, so it needs its own brain. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 250, the Goblin Slinger (E1i, part three)
+
+**What changed**
+
+The Warrens' archer, the second goblin:
+- **Its brain and numbers:** the Skeleton Archer's brain (aim, lock, loose, back off), reading `tuning.slinger` through `archerNumbers`. Against the archer's numbers: 34 health (not 45), poise 3, 3 m/s, a 900 ms aim (800), a stone of 9 damage (the arrow's 8), and it backs off at 5 m.
+- **Its stone:** `fireEnemyArrow` lobs it. It crosses the ground at `arrowSpeed` (13 m/s) and is thrown up just enough to come down where the aim locked, under the arrows' gravity plus `slinger.lobGravity` (12). It travels as an enemy arrow with `stone: true`, falls under that gravity in `stepProjectiles`, and lands blunt. The panel has its health, speed, lob and damage.
+- **Where it fights:** `ROOM_KINDS` swaps it in for the Skeleton Archer in a Warrens room. No Bone Priest raises it.
+- **Its look:** the Cutter's goblin with a sling cord and stone for a weapon, and the archer's poses. The stone is drawn as a grey lump with no streak.
+
+`warrensSlinger.test.ts`: four seeds, every Crypt archer is a Warrens Slinger; a stone leaves rising and lands on a hero standing still, blunt, for the Slinger's damage. check 774/774, test:net green, parity hashes unchanged (the slice's arrows keep `life` 2 and their flight).
+
+**Learned**
+
+The telegraph's hue follows the damage type under B4, so a Slinger's aim, being blunt, draws red as a melee blow does, not yellow as an arrow's. If that reads wrong in play, the fix is in `telegraphTell` (a projectile of any type keeps yellow), not in the stone.
+
+**Next**
+
+- The Pot-lid Goblin (the shield role), then the War Pig. The Pilfer materials question waits on Michael.
+
+## 2026-11-19: Session 249, Pilfer, the Warrens' twist (E1i, part two)
+
+**What changed**
+
+Michael's A on the Warrens' twist. `sim/pilfer.ts`, behind `pilfer.enabled`:
+- **The snatch:** a Goblin Cutter's cut that lands on a hero (in `hurtHero`, so after the lag grace, and never through a dodge, parry or block) takes `pilfer.share` (0.25, on the panel) of the party's found coin on the floor, at least 1 and never more than there is. A `pilfered` event carries it.
+- **The run:** a Cutter with a sack fights no more. It gives up its attack token and runs from its hero, sliding along a wall rather than standing into it. Its figure wears the sack over its head (`EnemyView`).
+- **The return:** `killEnemy` spills the sack as a coin pile where the thief fell, picked up as any coin is. A fight room stays shut until its last enemy dies, so a cleared room loses nothing.
+- **The toast:** "A Goblin Cutter snatched N coin", for the hero robbed and the rest of the party.
+
+Coin only. Lumber and stone are in the heroes' bags, which are the browsers' until Phase 3, and the server cannot tell whose bag holds them. Asked in `decisions.md` Pending (A recommended: coin only until Phase 3).
+
+`pilfer.test.ts`: with 40 coin found, the cut takes 10 and the thief ends more than 2 m further off within 3 s, cutting at most once more; killed, it spills 10 where it fell, and walking over the pile banks 40 again; no coin found, or the switch off, and nothing is taken. check 771/771, test:net green, parity hashes unchanged (no Cutter ever stands in the arena).
+
+**Learned**
+
+`hurtHero`'s `'hit'` return is the one place every enemy blow that truly lands passes through, pending or not. A hit's other effect ("on landing, do X") belongs there, keyed by `hit.enemyId`, rather than in each brain's strike.
+
+**Next**
+
+- The Goblin Slinger (archer, a lobbed stone). The materials question waits on Michael.
+
+## 2026-11-19: Session 248, the Goblin Cutter (E1i, part one)
+
+**What changed**
+
+Michael's A on E1i (19 Nov). The first Warrens kind is the Goblin Cutter, the fodder:
+- **Its numbers:** `tuning.cutter`, the Skeleton Warrior's shape, lighter and quicker: 40 health (not 60), poise 4, 4.2 m/s, a 480 ms wind-up (600), cuts of 7 (10) with a little less reach, and it is thrown further. Health, speed, wind-up and damage are on the panel.
+- **Its brain:** the fodder role's, the grunt's, reading `gruntNumbers(e)`; it flinches as a light enemy does, cuts edge, and no Bone Priest raises it (a priest raises bones).
+- **Where it fights:** `ROOM_KINDS` in `roles.ts`. A Warrens room's composer spends its budget on the Crypt's kinds with the same draws, and `spawnRoomGroup` (and the mini-boss's pack) spawns the type's kind for each role it has built. So a Crypt room is unchanged, and a Warrens room has the Crypt's shape with Cutters for the Skeleton Warriors, on the same spots.
+- **Its look:** the skeleton's frame recoloured green, long ears, a hooked nose and a notched cleaver, no shield, at 0.78 scale (1.2 m).
+
+The Warrens stay shut on Wren's tab (`open: false`) until enough of the roster stands. `warrensCutter.test.ts`: three seeds, every Warrens room matches its Crypt twin kind for kind (Skeleton Warriors as Cutters) and spot for spot; the Cutter's wind-up runs 480 ms and its cut lands. check 768/768, test:net green, parity hashes unchanged.
+
+**Learned**
+
+Swapping kinds after the composer, rather than giving the Warrens a composer of their own, keeps every Warrens room the same shape as the Crypt's from the same seed, so each new goblin lands without moving anything else. A goblin with a brain of its own (the Pack Leader's cry in place of the Priest's raise) will need the swap to carry its placement too.
+
+**Next**
+
+- Pilfer on the Cutter: its hit snatches a share of the party's carried finds, it runs for the far door with a sack, and killing it drops the share. Then the Slinger.
+
 ## 2026-11-17: Session 247, a heavy hit's throw eases instead of snapping
 
 **What changed**

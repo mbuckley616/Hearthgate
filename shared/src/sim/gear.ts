@@ -91,6 +91,8 @@ export interface Mods {
   crownCatch?: boolean;
   /** A bow whose arrow, breaking a Bone Chanter's rebuild, stuns it (the Mason's Gallery Longbow). */
   channelStun?: boolean;
+  /** Gloves whose wearer's arrows bite goblins harder (G3b, Grubnose's Slingshot Bracer). */
+  goblinArrows?: boolean;
 }
 
 export function emptyMods(): Mods {

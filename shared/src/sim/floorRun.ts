@@ -8,10 +8,10 @@ import { spawnDrop, unbanked } from './drops';
 import { createEnemy, willRise } from './enemies';
 import { stepLoot, stepPotions } from './smash';
 import { composeRoom, roomTier, type Place } from './roomMix';
-import { minibossNames, roleOf } from './roles';
+import { minibossNames, roleOf, roomKindIn } from './roles';
 import { earnFocus } from './focus';
 import { SIGNATURES, offerFor, signatureItem, type JobScores } from './signatures';
-import { dungeonTypeOf } from '../level/dungeonTypes';
+import { dungeonTypeOf, type DungeonType } from '../level/dungeonTypes';
 import type { EnemyState } from './types';
 import { difficultyMult } from '../game/portalChoice';
 import type { GearItem } from './catalogue';
@@ -399,12 +399,17 @@ function bringStragglersIn(state: SimState, world: World, room: PieceInfo): void
 
 /**
  * The boss at a run's end (G4b; Michael's A, 4 Nov): the Hollow Crown's own King, Mossgate Barrow's
- * Gravehand (H1), Emberhall's Ossuary Mason (M1), the Warden for every other dungeon until its type's roster brings one.
+ * Gravehand (H1), Emberhall's Ossuary Mason (M1). Any other run ends on its type's boss once that
+ * roster has one (docs/bosses.md 3: the Warrens' Grubnose), and on the Warden until then.
  */
-export function bossOf(story: string | undefined): EnemyKind {
+export function bossOf(story: string | undefined, type?: DungeonType): EnemyKind {
   if (story === 'mossgate' && tuning.gravehand.enabled) return 'gravehand';
+  if (story === 'saltmarsh' && tuning.grubnose.enabled) return 'grubnose';
   if (story === 'emberhall' && tuning.mason.enabled) return 'mason';
-  return story === 'hollow-crown' && tuning.king.hollowCrown ? 'king' : 'warden';
+  if (story === 'hollow-crown' && tuning.king.hollowCrown) return 'king';
+  // A story dungeon keeps the boss written for it: only a random run takes its type's.
+  if (story === undefined && type === 'goblinWarrens' && tuning.grubnose.enabled) return 'grubnose';
+  return 'warden';
 }
 
 function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
@@ -419,7 +424,7 @@ function startRoomFight(state: SimState, world: World, room: PieceInfo): void {
   const boss = room.kind === 'boss';
   if (boss) {
     const c = { x: (room.inner.minX + room.inner.maxX) / 2, z: (room.inner.minZ + room.inner.maxZ) / 2 };
-    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story), c.x, c.z, 0);
+    const e = createEnemy(state, world, bossOf(world.level.dungeon!.def.spec.story, world.level.dungeon!.def.spec.type), c.x, c.z, 0);
     r.bossId = e.id;
     r.waveSize = 1;
   } else {
@@ -481,7 +486,8 @@ function spawnRoomGroup(state: SimState, world: World, room: PieceInfo, part: 'f
       const ring = n === 0 ? 0 : 1.2;
       const x = pt.x + Math.cos(a) * ring;
       const z = pt.z + Math.sin(a) * ring;
-      createEnemy(state, world, g.kind, x, z, Math.atan2(avgX - x, avgZ - z));
+      // A Warrens room (E1i) spawns its goblin for each role it has built, from the same draws.
+      createEnemy(state, world, roomKindIn(g.kind, dungeonTypeOf(spec)), x, z, Math.atan2(avgX - x, avgZ - z));
     }
   }
   return group.length;
@@ -524,7 +530,8 @@ function spawnMiniboss(state: SimState, world: World, room: PieceInfo): EnemySta
   const spec = layout.def.spec;
   const big = room.kind !== 'small' && room.kind !== 'guard';
   const tier = roomTier({ big, floor: spec.floor, difficulty: spec.difficulty ?? 1 });
-  const kind = tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute';
+  // A Warrens floor's is a Cave Ogre where the Crypt's is a Bone Brute (E1i): same draws, same spot.
+  const kind = roomKindIn(tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', dungeonTypeOf(spec));
   const exit = layout.pieces[layout.def.exit].bounds;
   const ex = (exit.minX + exit.maxX) / 2;
   const ez = (exit.minZ + exit.maxZ) / 2;
@@ -565,7 +572,7 @@ function wakeTreasureGuards(state: SimState, world: World, f: FloorRunState): vo
     // The elite a step in front of the chest, facing the door.
     const ex = t.chest.x - dir.x * 1.8;
     const ez = t.chest.z - dir.z * 1.8;
-    const lead = createEnemy(state, world, tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', ex, ez, yaw);
+    const lead = createEnemy(state, world, roomKindIn(tier >= tuning.miniboss.knightFromTier ? 'knight' : 'brute', dungeonTypeOf(spec)), ex, ez, yaw);
     const names = minibossNames(dungeonTypeOf(spec));
     lead.named = names[Math.floor(nextRandom(state) * names.length) % names.length];
     lead.maxHp *= tuning.miniboss.guardHealthMult;
@@ -577,7 +584,7 @@ function wakeTreasureGuards(state: SimState, world: World, f: FloorRunState): vo
     const mz = (ez + t.z) / 2;
     for (let k = 0; k < n; k++) {
       const off = n === 1 ? 0 : (k / (n - 1) - 0.5) * 3;
-      const e = createEnemy(state, world, 'grunt', mx + dir.z * off, mz - dir.x * off, yaw);
+      const e = createEnemy(state, world, roomKindIn('grunt', dungeonTypeOf(spec)), mx + dir.z * off, mz - dir.x * off, yaw);
       e.guard = t.id;
     }
   }
