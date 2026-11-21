@@ -27,7 +27,8 @@ export interface DungeonTypeInfo {
 
 export const DUNGEON_TYPES: Record<DungeonType, DungeonTypeInfo> = {
   hauntedCrypt: { name: 'Haunted Crypt', flavour: 'stone halls, candlelight', region: 'any', open: true },
-  goblinWarrens: { name: 'Goblin Warrens', flavour: 'mud tunnels, loot piles, traps', region: 'any', open: false },
+  // Open since Session 274: E1i's roster stands and a random Warrens run ends on Chief Grubnose.
+  goblinWarrens: { name: 'Goblin Warrens', flavour: 'mud tunnels, loot piles, traps', region: 'any', open: true },
   wizardTower: { name: 'Ruined Wizard Tower', flavour: 'vertical, puzzle rooms', region: 'any', open: false },
   banditFort: { name: 'Bandit Fort', flavour: 'palisades, courtyards', region: 'any', open: false },
   druidRuins: { name: 'Overgrown Druid Ruins', flavour: 'vines, standing stones', region: 'Verdant Vale', open: false },
@@ -36,7 +37,7 @@ export const DUNGEON_TYPES: Record<DungeonType, DungeonTypeInfo> = {
   frozenBarrows: { name: 'Frozen Barrows', flavour: 'ice tombs, wind', region: 'Frostmere', open: false },
 };
 
-/** Wren's Random tab's order: the open one first, then the shared four, then the regional four. */
+/** Wren's Random tab's order: the Crypt, then the shared four (the Warrens open too), then the regional four. */
 export const DUNGEON_TYPE_IDS: readonly DungeonType[] = [
   'hauntedCrypt',
   'goblinWarrens',

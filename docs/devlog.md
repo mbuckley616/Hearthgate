@@ -2,6 +2,31 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 274, the Goblin Warrens open on Wren's tab (E1i closed)
+
+**What changed**
+
+The Goblin Warrens are open on Wren's Random tab (`DUNGEON_TYPES.goblinWarrens.open`). A party can now pick a random Warrens run there. It is dressed in E1i's goblins and ends on Chief Grubnose. The server's `readPortalChoice` and a room's create options take the type now. The other six types stay shut.
+
+The line shown on arriving on a floor said "the Warden waits at the far end" on every last floor, whoever waited there. It now names the floor's boss (`bossName` in `RunUi.ts`, by `bossOf` and the type's dressing): "Chief Grubnose waits at the far end" in a Warrens run, "the Gravehand" in Mossgate Barrow.
+
+Tests:
+- `grubnose.test.ts` and `roles.test.ts`: the Warrens are taken from a browser, and a shut type is still refused.
+- `tests/boss-words.ts`, now in `npm run check`: the arrival line names the right boss.
+
+check 816/816, test:net green.
+
+**Learned**
+
+Two tests had pinned the Warrens as shut since E1a. The Crypt's own tests were the guard against a type opening by accident, so they now list both open types by name.
+
+**Next**
+
+E1i is whole. Left in the section:
+- the solo's phase 2 wipe path on Grubnose (Session 273, measure first);
+- the graphics cost, which needs a real machine;
+- the Gravehand's playtest, which is Michael's.
+
 ## 2026-11-21: Session 273, Grubnose's health to the bar (G3b, part eight)
 
 **What changed**

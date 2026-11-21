@@ -49,9 +49,9 @@ describe('enemy roles (E1a)', () => {
 });
 
 describe('dungeon types (E1a)', () => {
-  it('lists the design doc’s eight, with only the Haunted Crypt open', () => {
+  it('lists the design doc’s eight, with the Haunted Crypt and the Goblin Warrens open (Session 274)', () => {
     expect(DUNGEON_TYPE_IDS).toHaveLength(8);
-    expect(DUNGEON_TYPE_IDS.filter((t) => DUNGEON_TYPES[t].open)).toEqual(['hauntedCrypt']);
+    expect(DUNGEON_TYPE_IDS.filter((t) => DUNGEON_TYPES[t].open)).toEqual(['hauntedCrypt', 'goblinWarrens']);
     expect(dungeonTypeOf({})).toBe('hauntedCrypt');
   });
 
@@ -79,7 +79,8 @@ describe('dungeon types (E1a)', () => {
     const base = { kind: 'random', floors: 2, size: 'small', difficulty: 1, modifier: null };
     expect(readPortalChoice({ ...base, type: 'hauntedCrypt' })).toMatchObject({ type: 'hauntedCrypt' });
     expect(readPortalChoice(base)).toMatchObject({ type: 'hauntedCrypt' });
-    expect(readPortalChoice({ ...base, type: 'goblinWarrens' })).toBeNull();
+    expect(readPortalChoice({ ...base, type: 'goblinWarrens' })).toMatchObject({ type: 'goblinWarrens' });
+    expect(readPortalChoice({ ...base, type: 'banditFort' })).toBeNull();
     expect(readPortalChoice({ ...base, type: 'lava' })).toBeNull();
     expect(readToHost({ k: 'portal', choice: { ...base, type: 'forgeDepths' } })).toBeNull();
     const plan = planChoice([], 9, readPortalChoice(base)!);

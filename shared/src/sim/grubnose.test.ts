@@ -7,7 +7,8 @@ import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { ADD_WEAKNESS, GOBLINS, attackType, roleOf, roomKindIn, telegraphColour, weakTo } from './roles';
-import { STORY } from '../game/portalChoice';
+import { STORY, readPortalChoice } from '../game/portalChoice';
+import { DUNGEON_TYPES } from '../level/dungeonTypes';
 import { floorSpecFor, planChoice } from '../game/runPlan';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
@@ -319,5 +320,14 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(bossOf('mossgate', 'goblinWarrens')).toBe('gravehand');
     tuning.grubnose.enabled = false;
     expect(bossOf(warrens.story, warrens.type)).toBe('warden');
+  });
+
+  it("the Warrens are open on Wren's Random tab; the six without a roster stay shut", () => {
+    const choice = (type: string) => readPortalChoice({ kind: 'random', floors: 3, size: 'small', difficulty: 1, modifier: null, type });
+    expect(DUNGEON_TYPES.goblinWarrens.open).toBe(true);
+    expect(choice('goblinWarrens')).toMatchObject({ kind: 'random', type: 'goblinWarrens' });
+    expect(choice('hauntedCrypt')).toMatchObject({ type: 'hauntedCrypt' });
+    expect(choice('wizardTower')).toBeNull();
+    expect(choice('frozenBarrows')).toBeNull();
   });
 });
