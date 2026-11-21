@@ -2010,8 +2010,10 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   }
   e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : Math.atan2(dx, dz), g.turnRateDeg * DEG * edt);
   // Cornered (critic, 19 Nov): a hero who stays inside the charge's minimum, as at a wall he cannot
-  // back away from, is charged point-blank once `cornerMs` of the chase has passed.
-  const cornered = sameLevel && !routed && dist < g.chargeMinRange && e.aiTime >= g.cornerMs / 1000;
+  // back away from, is charged point-blank once `cornerMs` of the chase has passed. Not only when the way
+  // is straight: a brazier or pillar beside the line bends it (`around`), and a hero pinned in a corner
+  // behind a brazier held him in the chase for minutes (Session 277). The sight line below still decides.
+  const cornered = sameLevel && dist < g.chargeMinRange && e.aiTime >= g.cornerMs / 1000;
   const inRange = cornered || (sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange);
   if (inRange && e.cooldown <= 0 && lineOfSight(world, e, target)) {
     setAi(e, 'chargeWindup');

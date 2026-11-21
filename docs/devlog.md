@@ -2,6 +2,38 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 277, Grubnose no longer stalls by a brazier; his health to 3000
+
+**What changed**
+
+- **The stall.** Grubnose's cornered charge no longer needs a straight way to the hero. Before, a brazier or pillar beside the line bent his path (`around`), which set `routed`, which kept him in `chase`. Line of sight still decides. A new test in `grubnose.test.ts` reproduces the bench's stall: Saltmarsh's hall corner, the hero pinned behind the brazier at (140.6, 27.4), and the Pig 1.3 m off. Before the fix he never charged in 600 ticks; now he charges once `cornerMs` has passed.
+- **His health.** `grubnose.maxHp` goes from 4000 to 3000.
+- **The bench.** Its hero keeps clear of a charge's body, not only the drawn line. The line is drawn 0.92 m each side; the Pig hits anyone within 1.47 m of his middle, behind his nose too.
+
+check 817/817.
+
+**Learned**
+
+The brazier was not only a stall. With it gone, a sword hero who stays inside 3.5 m of him is charged point-blank as Session 269 meant. The solo bench at 4000 fell from 10 of 16 kills to 1 of 16. Teaching the bench the body's width raised that to 2 of 16. Most of the damage is phase 3's run of three remounted charges, opened by the point-blank charge (`rush3`: 199 a fight). A longer `cornerMs` (2500) gave 3 of 16.
+
+Saltmarsh, 16 seeds:
+
+| health | party | kills | median time to kill | damage | potions | downs |
+|---|---|---|---|---|---|---|
+| 4000 | solo | 2 of 16 | 236 s | 393 | 3.0 | 0.9 |
+| 4000 | duo | 16 of 16 | 110 s (0.47) | 172 | 0.6 | 0 |
+| **3000** | solo | 10 of 16 | 178 s | 340 | 2.9 | 0.4 |
+| **3000** | duo | 16 of 16 | 88 s (0.49) | 149 | 0.2 | 0 |
+| **3000** | trio | 16 of 16 | 56 s | 32 | 0 | 0 |
+
+- The duo now meets 1.2's bar: under half the solo time, nobody downed.
+- The solo is at the bottom of its 180 to 300 s, but uses nearly all three potions, not "a potion left".
+- No timeouts are left. 6 solo wipes remain, all in phase 3, to `rush3` and `charge`.
+
+**Next**
+
+Phase 3's run of three on a lone hero is what costs the solo its potions. That is Michael's to judge in play with the Gravehand's playtest: whether a point-blank charge from 1.3 m reads as fair (the critic asked the same), and whether a cornered charge in phase 3 should open a run of three. Then the graphics cost, which needs a real machine.
+
 ## 2026-11-21: Session 276, the bench's hero sees a fodder cut
 
 **What changed**

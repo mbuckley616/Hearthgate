@@ -1831,8 +1831,11 @@ export const tuning = {
    */
   grubnose: {
     enabled: true,
-    /** To 1.2's solo bar (Session 273): a lone sword kills in about 170 s; 1900 took about 100. */
-    maxHp: 4000,
+    /**
+     * To 1.2's bar (Session 277, once a brazier no longer kept him from the cornered charge): a lone
+     * sword kills 10 of 16 in about 180 s, a duo in under half that. At 4000 the solo killed 2 of 16.
+     */
+    maxHp: 3000,
     maxPoise: 34,
     radius: 0.9,
     height: 2.1,

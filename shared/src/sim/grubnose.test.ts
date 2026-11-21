@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
+import { floorLevel } from '../level/floor';
 import { addPlayer, type Loadout } from './coop';
 import { killEnemy } from './combat';
 import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
@@ -124,6 +125,31 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     const hp = p.hp;
     until(s, p, () => boss.ai !== 'chargeWindup' && boss.ai !== 'charge');
     expect(p.hp).toBeLessThan(hp);
+  });
+
+  it('cornered past a brazier, with the hero in sight, it still charges (Session 277)', () => {
+    // Saltmarsh's boss hall, its north-west corner: the hero pinned between the walls and a brazier at
+    // (140.6, 27.4), and the Pig 1.3 m off. The way to them bends round the brazier, which once counted
+    // as being routed elsewhere and held him in `chase` for six minutes on the bench (seeds 2 and 4).
+    const plan = planChoice([], 1, { kind: 'story', id: 'saltmarsh' });
+    const level = floorLevel(floorSpecFor(plan, plan.floors));
+    const w = buildWorld(level);
+    const hall = level.dungeon!.pieces[level.dungeon!.def.exit];
+    const s = createSimState(level, [], w);
+    const p = addPlayer(s, w, 'p1', loadout, false);
+    Object.assign(p, { x: 138.9, z: 27.9, y: hall.y, invulnerable: false, invulnTime: 0, lagGrace: 0, hp: 1e4, maxHp: 1e4 });
+    const boss = createEnemy(s, w, 'grubnose', 139.4, 26.7, 0);
+    Object.assign(boss, { x: 139.4, z: 26.7, y: hall.y, yaw: 0, ai: 'chase', aiTime: 0, cooldown: 0, phase: 3 });
+    const at = { x: p.x, z: p.z };
+    let ticks = -1;
+    for (let i = 0; i < 600 && ticks < 0; i++) {
+      stepEnemies(s, DT, w);
+      Object.assign(p, at);
+      if (boss.ai === 'chargeWindup') ticks = i;
+    }
+    expect(ticks).toBeGreaterThan(0);
+    expect(ticks * DT * 1000).toBeLessThan(tuning.grubnose.cornerMs + 500);
+    expect(boss.attack).toBe('rush1');
   });
 
   it('remounted and cornered, the point-blank charge opens a run of three', () => {

@@ -34,7 +34,7 @@ import { bossOf } from '@hearthgate/shared/sim/floorRun';
 import { isDungeonType } from '@hearthgate/shared/level/dungeonTypes';
 import { gruntNumbers, wardenPace } from '@hearthgate/shared/sim/enemies';
 import { masonBound } from '@hearthgate/shared/sim/mason';
-import { inTelegraph } from '@hearthgate/shared/sim/henchman';
+import { inTelegraph as inDrawn } from '@hearthgate/shared/sim/henchman';
 import { KIND_ROLE, weakTo } from '@hearthgate/shared/sim/roles';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import { emptyTalents } from '@hearthgate/shared/sim/talents';
@@ -383,6 +383,21 @@ function fight(party: Party, seed: number): Result {
     phaseAt,
     boundS: boundTicks / tuning.sim.tickRate,
   };
+}
+
+/**
+ * In a telegraph as its hit is judged. A charge's line is drawn a hero's width and a half-metre each
+ * side, but the body that rushes along it hits anyone within its own radius, a hero's and 0.15 m, from
+ * its middle (behind its nose too), so a player keeps clear of the body's width, not the line's.
+ */
+function inTelegraph(e: EnemyState, x: number, z: number): boolean {
+  if (inDrawn(e, x, z)) return true;
+  if (e.ai !== 'chargeWindup' || e.tele.shape !== 'line') return false;
+  const half = enemyStats(e.kind).radius + tuning.movement.radius + 0.15 + 0.5;
+  const fx = Math.sin(e.tele.yaw);
+  const fz = Math.cos(e.tele.yaw);
+  const along = (x - e.x) * fx + (z - e.z) * fz;
+  return along >= -half && along <= e.tele.radius + half && Math.abs((x - e.x) * fz - (z - e.z) * fx) <= half;
 }
 
 /** A fodder brain's cut as its red cone, while it winds up or pauses between its two cuts; else null. */
