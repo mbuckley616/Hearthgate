@@ -337,7 +337,7 @@ function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: nu
 }
 
 /** A fodder brain's numbers: a Goblin Cutter (E1i) is a Skeleton Warrior with its own. */
-function gruntNumbers(e: EnemyState): typeof tuning.grunt {
+export function gruntNumbers(e: EnemyState): typeof tuning.grunt {
   // Chief Grubnose on foot (G2b): his looted string is a Skeleton Warrior's two cuts on his numbers.
   if (e.kind === 'grubnose') {
     const g = tuning.grubnose;

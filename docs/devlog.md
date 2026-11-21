@@ -2,6 +2,32 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 276, the bench's hero sees a fodder cut
+
+**What changed**
+
+The boss bench's hero now answers a fodder brain's red cone (a Skeleton Warrior's, a Cutter's, Grubnose's on-foot string). It rolls out a reaction into the wind-up, or into the pause before the second cut. No game code changed. `gruntNumbers` in `enemies.ts` is exported so the bench reads the cut's true reach and arc.
+
+**Learned**
+
+Why Session 275's roll never fired: the fodder brain never sets `e.tele`. The browser draws its cone from the wind-up alone, so the bench's `inTelegraph` saw nothing to roll out of. Henchmen read `inTelegraph` too, so they cannot see these cuts either.
+
+The bench on Saltmarsh, 16 seeds, Grubnose at 4000:
+
+| party | kills | median time to kill | damage taken | potions | downs |
+|---|---|---|---|---|---|
+| solo | 10 of 16 | 162 s | 209 | 1.5 | 0.3 |
+| duo | 16 of 16 | 112 s (0.69) | 206 | 1.1 | 0 |
+| trio | 16 of 16 | 74 s | 45 | 0 | 0 |
+
+- His string's edge damage on the solo is now 7 a fight on average. It was 240 to 310 in each of Session 273's wipes.
+- No solo wipe is left in phase 2. The 4 wipes are all in phase 3, at 13 to 25% of his health, to the remounted charges (`rush3` and `charge`).
+- The 2 timeouts are a stalemate, not a hard fight. From 250 s on he stands in `chase` 1.3 m from the hero for six minutes and never charges. `around()` steers him round a pillar between them, so `routed` is true, and the cornered charge (Session 269) requires `!routed`.
+
+**Next**
+
+Grubnose's cornered charge when a pillar is on the line (Session 277), then bench again.
+
 ## 2026-11-21: Session 275, Grubnose's solo wipe traced (measured, no change)
 
 **What changed**
