@@ -2,6 +2,42 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 273, Grubnose's health to the bar (G3b, part eight)
+
+**What changed**
+
+`grubnose.maxHp` goes from 1900 to 4000, the solo's number before party scaling. A party of two gets 5400 and a party of three 6800.
+
+**Learned**
+
+The bench on Saltmarsh, 16 seeds, after Session 271's Crew rule:
+
+| health | party | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| 1900 | solo | 14 of 16 | 102 s | 227 | 1.8 | 0.1 |
+| 1900 | duo | 16 of 16 | 61 s (0.60) | 156 | 0.4 | 0 |
+| 3000 | solo | 7 of 16 | 118 s | 237 | 1.8 | 0.6 |
+| 3000 | duo | 16 of 16 | 87 s (0.73) | 220 | 0.9 | 0 |
+| **4000** | solo | 11 of 16 | 172 s | 196 | 1.4 | 0.3 |
+| **4000** | duo | 16 of 16 | 114 s (0.66) | 251 | 1.5 | 0 |
+| **4000** | trio | 16 of 16 | 70 s | 62 | 0 | 0 |
+
+The solo's 5 wipes at 4000 are one deterministic path, the same in each:
+- phase 2 starts at 105.0 s;
+- the hero wipes with 40 to 45% of Grubnose's health left;
+- they take 240 to 310 edge damage while standing next to a Nest, then the Pig's charge finishes them.
+
+The bench names the nearest add as the source. The edge damage is most likely his on-foot string landing while the lone sword chases a fleeing Nest: alone, the bench's hero takes whatever is nearest. Health does not cause it: 2 wipes at 1900, 9 at 3000, 5 at 4000. Two other changes moved nothing:
+- string damage 14 instead of 18;
+- the pile refilling every 15 s instead of 10.
+
+The 11 solo kills take 148 to 252 s. 8 of the 11 end with all three potions, so the bar's "potion left" holds for the kills. The duo is 0.66 of the solo with nobody downed, not under half. The Warden's duo was left for a playtest on the same kind of number.
+
+**Next**
+
+- The Warrens open on Wren's Random tab; that ends E1i.
+- Then the solo's phase 2 wipe path: whether a player would chase a Nest under his string as the bench does, and if so what answers it (the Nest staying nearer the pile, or a lone hero's Nest fleeing less). Measure before changing.
+
 ## 2026-11-21: Session 272, Grubnose's Horn (G3b, part seven)
 
 **What changed**

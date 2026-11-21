@@ -1831,7 +1831,8 @@ export const tuning = {
    */
   grubnose: {
     enabled: true,
-    maxHp: 1900,
+    /** To 1.2's solo bar (Session 273): a lone sword kills in about 170 s; 1900 took about 100. */
+    maxHp: 4000,
     maxPoise: 34,
     radius: 0.9,
     height: 2.1,
