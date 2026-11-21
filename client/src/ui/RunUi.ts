@@ -2,6 +2,8 @@ import { masonBound } from '@hearthgate/shared/sim/mason';
 import { MODIFIERS } from '@hearthgate/shared/game/portalChoice';
 import { tuning } from '@hearthgate/shared/config/tuning';
 import { DUNGEON_TYPES, dungeonTypeOf } from '@hearthgate/shared/level/dungeonTypes';
+import { bossOf } from '@hearthgate/shared/sim/floorRun';
+import { dressing } from '@hearthgate/shared/sim/roles';
 import type { FloorSpec } from '@hearthgate/shared/level/generate';
 import { FINAL_WAVE } from '@hearthgate/shared/sim/run';
 import type { SimEvent, SimState } from '@hearthgate/shared/sim/types';
@@ -191,7 +193,7 @@ export class RunUi {
     // Standing on lumber or stone a full bag cannot take (Michael's A on materials in the bag).
     if (bagFull) this.prompt.textContent = `Your bag is full: the ${bagFull} stays on the floor  ·  I to drop a stack or a find`;
     else if (waiting) this.prompt.textContent = `Waiting for the party  ·  the doors close in ${Math.max(0, Math.ceil(tuning.run.gateWaitMs / 1000 - r.gateWait))}`;
-    else if (arriving) this.prompt.textContent = `${DUNGEON_TYPES[dungeonTypeOf(spec)].name}, ${where}  ·  ${spec.floor >= spec.floors ? 'the Warden waits at the far end' : 'a place to rest at the far end'}  ·  M for the map`;
+    else if (arriving) this.prompt.textContent = `${DUNGEON_TYPES[dungeonTypeOf(spec)].name}, ${where}  ·  ${spec.floor >= spec.floors ? `${bossName(spec)} waits at the far end` : 'a place to rest at the far end'}  ·  M for the map`;
     // A win is a line in the corner, not a card over the hall (Michael, 31 Oct): the drops are there
     // to pick up, the gold ring opens after a count, and the run's summary waits for the village.
     const won = r.phase === 'won';
@@ -236,4 +238,9 @@ function roarBanner(phase: number | undefined, king?: true, hand?: true, mason?:
   if (phase === 2) return ['The Warden calls the dead', 'They rise from the edges of the hall'];
   if (phase === 3) return ['The Warden rages', 'Faster sweeps, and slams that roll toward you'];
   return ['The Warden roars', 'It calls for help'];
+}
+
+/** Who waits in a floor's boss hall, by its story and type (a Warrens run's is Chief Grubnose, not the Warden). */
+export function bossName(spec: FloorSpec): string {
+  return dressing(bossOf(spec.story, spec.type), dungeonTypeOf(spec)).name.replace(/^The /, 'the ');
 }

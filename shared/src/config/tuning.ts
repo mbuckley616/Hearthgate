@@ -1831,7 +1831,11 @@ export const tuning = {
    */
   grubnose: {
     enabled: true,
-    maxHp: 1900,
+    /**
+     * To 1.2's bar (Session 277, once a brazier no longer kept him from the cornered charge): a lone
+     * sword kills 10 of 16 in about 180 s, a duo in under half that. At 4000 the solo killed 2 of 16.
+     */
+    maxHp: 3000,
     maxPoise: 34,
     radius: 0.9,
     height: 2.1,
@@ -1872,6 +1876,8 @@ export const tuning = {
     rushTelegraphMs: 550,
     /** How far round him his horn's adds come in (G2b). */
     addRadius: 8,
+    /** The horn's Pot-lid Crew (armoured, the staff's job) come only with a staff hero; else a Nest. */
+    crewNeedsStaff: true,
     /** His loot pile (G2b), raised this far from him as he blows the horn: it pays the goblins. */
     pileRadius: 3,
     /** Each this long the pile stands while he is on foot, a fallen Nest is filled again. */
@@ -1880,6 +1886,8 @@ export const tuning = {
     pileCoin: 40,
     /** His Slingshot Bracer (G3b, the warded job's drop): its wearer's arrows against goblins. */
     bracerArrowMult: 1.25,
+    /** His Horn (G3b, the boss job's drop), in the neck slot: charges a floor its wearer takes without a stagger. */
+    hornCharges: 3,
     /** On foot, his looted string: two cuts of edge, a red telegraph, the tank's to take. */
     stringTelegraphMs: 700,
     stringActiveMs: 160,
@@ -4366,6 +4374,7 @@ export const tuningRanges: Record<string, [number, number, number]> = {
   'grubnose.pileRefillMs': [1000, 30000, 500],
   'grubnose.pileCoin': [0, 300, 5],
   'grubnose.bracerArrowMult': [1, 3, 0.05],
+  'grubnose.hornCharges': [0, 10, 1],
   'grubnose.stringTelegraphMs': [200, 2000, 25],
   'grubnose.stringRecoveryMs': [100, 3000, 25],
   'grubnose.stringCooldownMs': [0, 5000, 50],

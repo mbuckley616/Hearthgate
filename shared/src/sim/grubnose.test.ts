@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tuning } from '../config/tuning';
 import { arena, buildWorld } from '../level/arena';
+import { floorLevel } from '../level/floor';
 import { addPlayer, type Loadout } from './coop';
 import { killEnemy } from './combat';
 import { createEnemy, hornAdds, nearestTarget, stepEnemies } from './enemies';
 import { bossOf } from './floorRun';
 import { emptyMods } from './gear';
 import { ADD_WEAKNESS, GOBLINS, attackType, roleOf, roomKindIn, telegraphColour, weakTo } from './roles';
-import { STORY } from '../game/portalChoice';
+import { STORY, readPortalChoice } from '../game/portalChoice';
+import { DUNGEON_TYPES } from '../level/dungeonTypes';
 import { floorSpecFor, planChoice } from '../game/runPlan';
 import { emptyTalents } from './talents';
 import type { EnemyState, PlayerState, SimState } from './types';
@@ -125,6 +127,31 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(p.hp).toBeLessThan(hp);
   });
 
+  it('cornered past a brazier, with the hero in sight, it still charges (Session 277)', () => {
+    // Saltmarsh's boss hall, its north-west corner: the hero pinned between the walls and a brazier at
+    // (140.6, 27.4), and the Pig 1.3 m off. The way to them bends round the brazier, which once counted
+    // as being routed elsewhere and held him in `chase` for six minutes on the bench (seeds 2 and 4).
+    const plan = planChoice([], 1, { kind: 'story', id: 'saltmarsh' });
+    const level = floorLevel(floorSpecFor(plan, plan.floors));
+    const w = buildWorld(level);
+    const hall = level.dungeon!.pieces[level.dungeon!.def.exit];
+    const s = createSimState(level, [], w);
+    const p = addPlayer(s, w, 'p1', loadout, false);
+    Object.assign(p, { x: 138.9, z: 27.9, y: hall.y, invulnerable: false, invulnTime: 0, lagGrace: 0, hp: 1e4, maxHp: 1e4 });
+    const boss = createEnemy(s, w, 'grubnose', 139.4, 26.7, 0);
+    Object.assign(boss, { x: 139.4, z: 26.7, y: hall.y, yaw: 0, ai: 'chase', aiTime: 0, cooldown: 0, phase: 3 });
+    const at = { x: p.x, z: p.z };
+    let ticks = -1;
+    for (let i = 0; i < 600 && ticks < 0; i++) {
+      stepEnemies(s, DT, w);
+      Object.assign(p, at);
+      if (boss.ai === 'chargeWindup') ticks = i;
+    }
+    expect(ticks).toBeGreaterThan(0);
+    expect(ticks * DT * 1000).toBeLessThan(tuning.grubnose.cornerMs + 500);
+    expect(boss.attack).toBe('rush1');
+  });
+
   it('remounted and cornered, the point-blank charge opens a run of three', () => {
     const { s, p, boss } = scene();
     Object.assign(boss, { x: 0, z: EDGE - 1.2, yaw: Math.PI, phase: 3 });
@@ -170,10 +197,31 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(ADD_WEAKNESS.potlidCrew).toBe('armoured');
     expect(weakTo('potlidCrew')).toBe('staff');
     const two = scene();
-    addPlayer(two.s, world, 'p2', loadout, false);
+    const mage = addPlayer(two.s, world, 'p2', loadout, false);
+    mage.style = 'staff';
     expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew']);
     addPlayer(two.s, world, 'p3', loadout, false);
     expect(hornAdds(two.s)).toEqual(['nestSlinger', 'potlidCrew', 'nestSlinger']);
+  });
+
+  it('with no staff hero the horn raises a second Nest in the Crew\'s place', () => {
+    const { s, p } = scene();
+    p.style = 'sword';
+    const archer = addPlayer(s, world, 'p2', loadout, false);
+    archer.style = 'bow';
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger']);
+    addPlayer(s, world, 'p3', loadout, false).style = 'sword';
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger', 'nestSlinger']);
+    // A staff henchman is not a staff hero.
+    const hench = addPlayer(s, world, 'h1', loadout, false);
+    Object.assign(hench, { style: 'staff', henchman: true });
+    expect(hornAdds(s)).toEqual(['nestSlinger', 'nestSlinger', 'nestSlinger']);
+    tuning.grubnose.crewNeedsStaff = false;
+    try {
+      expect(hornAdds(s)).toEqual(['nestSlinger', 'potlidCrew', 'nestSlinger']);
+    } finally {
+      tuning.grubnose.crewNeedsStaff = true;
+    }
   });
 
   it('the Pot-lid Crew rush the mage past a nearer blade', () => {
@@ -298,5 +346,14 @@ describe('Chief Grubnose and his Pig (G1b)', () => {
     expect(bossOf('mossgate', 'goblinWarrens')).toBe('gravehand');
     tuning.grubnose.enabled = false;
     expect(bossOf(warrens.story, warrens.type)).toBe('warden');
+  });
+
+  it("the Warrens are open on Wren's Random tab; the six without a roster stay shut", () => {
+    const choice = (type: string) => readPortalChoice({ kind: 'random', floors: 3, size: 'small', difficulty: 1, modifier: null, type });
+    expect(DUNGEON_TYPES.goblinWarrens.open).toBe(true);
+    expect(choice('goblinWarrens')).toMatchObject({ kind: 'random', type: 'goblinWarrens' });
+    expect(choice('hauntedCrypt')).toMatchObject({ type: 'hauntedCrypt' });
+    expect(choice('wizardTower')).toBeNull();
+    expect(choice('frozenBarrows')).toBeNull();
   });
 });

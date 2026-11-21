@@ -222,6 +222,8 @@ export interface Signature {
   channelStun?: true;
   /** Chief Grubnose's Slingshot Bracer (G3b), on gloves: arrows take `grubnose.bracerArrowMult` from goblins. */
   goblinArrows?: true;
+  /** Chief Grubnose's Horn (G3b), on an amulet: `grubnose.hornCharges` charges a floor land without a stagger. */
+  hornCharges?: true;
 }
 
 /** How many sockets this item has (only weapons have any): by rarity, a common by its tier. */
@@ -342,6 +344,7 @@ export function wornMods(worn: Worn): Mods {
     if (slot === 'shield' && sig?.crownCatch) m.crownCatch = true;
     if (slot === 'weapon' && sig?.channelStun && entryOf(item).shape.style === 'bow') m.channelStun = true;
     if (slot === 'hands' && sig?.goblinArrows) m.goblinArrows = true;
+    if (slot === 'neck' && sig?.hornCharges) m.hornCharges = true;
   }
   for (const s of ['sword', 'bow', 'staff'] as Style[]) {
     const wrong = kinds.filter((k) => k !== STYLE_KIND[s]).length;

@@ -32,10 +32,10 @@ import type { Loadout } from '@hearthgate/shared/sim/coop';
 import { isTargetable } from '@hearthgate/shared/sim/combat';
 import { bossOf } from '@hearthgate/shared/sim/floorRun';
 import { isDungeonType } from '@hearthgate/shared/level/dungeonTypes';
-import { wardenPace } from '@hearthgate/shared/sim/enemies';
+import { gruntNumbers, wardenPace } from '@hearthgate/shared/sim/enemies';
 import { masonBound } from '@hearthgate/shared/sim/mason';
-import { inTelegraph } from '@hearthgate/shared/sim/henchman';
-import { weakTo } from '@hearthgate/shared/sim/roles';
+import { inTelegraph as inDrawn } from '@hearthgate/shared/sim/henchman';
+import { KIND_ROLE, weakTo } from '@hearthgate/shared/sim/roles';
 import { levelFor } from '@hearthgate/shared/sim/gear';
 import { emptyTalents } from '@hearthgate/shared/sim/talents';
 import { idleCommand, type EnemyState, type PlayerCommand, type PlayerState, type SimEvent } from '@hearthgate/shared/sim/types';
@@ -205,7 +205,13 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
   // A telegraph it stands in, seen for a player's reaction time: roll out of it (out of a circle's
   // middle, across a line or cone), or walk out when no roll is left. Answered once a wind-up.
   // Every live telegraph a metre wider than drawn: a player keeps clear of its edge, not on it.
-  const live = alive.filter((e) => e.tele.shape !== 'none').map((e) => ({ ...e, tele: { ...e.tele, radius: e.tele.radius + 1, arcDeg: Math.min(360, e.tele.arcDeg + 20) } }));
+  // A fodder brain's two cuts (a Skeleton Warrior, a Cutter, Grubnose on foot) leave `tele` empty: the
+  // browser draws their red cone from the wind-up alone. A player sees it, so the bench reads it as the
+  // cone the cut is judged in (Session 276: Grubnose's string landed on a hero who never saw it).
+  const live = alive
+    .map((e) => (strikeCone(e) ? { ...e, tele: strikeCone(e)! } : e))
+    .filter((e) => e.tele.shape !== 'none')
+    .map((e) => ({ ...e, tele: { ...e.tele, radius: e.tele.radius + 1, arcDeg: Math.min(360, e.tele.arcDeg + 20) } }));
   const range = RANGE[m.style];
   const threat = live.find((e) => inTelegraph(e, me.x, me.z));
   if (threat) {
@@ -238,9 +244,13 @@ function brain(host: HostSession, m: Mind, tick: number): PlayerCommand {
     // A telegraph that follows its hero (the Gravehand's slam circle and grab, a charger's line) is
     // rolled out of once it locks, a reaction after: a player learns to wait, and rolled sooner the
     // circle follows them out (every slam caught the bench's lone sword until Session 226).
+    // A cut's cone turns with its hero to the end, so there is no lock to wait for: it is rolled out of a
+    // reaction into its wind-up, or into the pause before the second cut, which sends no telegraph.
     const at = m.windups.get(threat.id);
-    const locked = threat.aiTime >= lockS(threat) + REACT_TICKS / tuning.sim.tickRate;
-    if (at !== undefined && tick - at >= REACT_TICKS && locked && me.dodgeCharges > 0) {
+    const cut = strikeCone(alive.find((e) => e.id === threat.id)!) !== null;
+    const seen = cut ? threat.aiTime >= REACT_TICKS / tuning.sim.tickRate : at !== undefined && tick - at >= REACT_TICKS;
+    const locked = cut || threat.aiTime >= lockS(threat) + REACT_TICKS / tuning.sim.tickRate;
+    if (seen && locked && me.dodgeCharges > 0) {
       m.windups.delete(threat.id);
       cmd.dodge = true;
     }
@@ -373,6 +383,29 @@ function fight(party: Party, seed: number): Result {
     phaseAt,
     boundS: boundTicks / tuning.sim.tickRate,
   };
+}
+
+/**
+ * In a telegraph as its hit is judged. A charge's line is drawn a hero's width and a half-metre each
+ * side, but the body that rushes along it hits anyone within its own radius, a hero's and 0.15 m, from
+ * its middle (behind its nose too), so a player keeps clear of the body's width, not the line's.
+ */
+function inTelegraph(e: EnemyState, x: number, z: number): boolean {
+  if (inDrawn(e, x, z)) return true;
+  if (e.ai !== 'chargeWindup' || e.tele.shape !== 'line') return false;
+  const half = enemyStats(e.kind).radius + tuning.movement.radius + 0.15 + 0.5;
+  const fx = Math.sin(e.tele.yaw);
+  const fz = Math.cos(e.tele.yaw);
+  const along = (x - e.x) * fx + (z - e.z) * fz;
+  return along >= -half && along <= e.tele.radius + half && Math.abs((x - e.x) * fz - (z - e.z) * fx) <= half;
+}
+
+/** A fodder brain's cut as its red cone, while it winds up or pauses between its two cuts; else null. */
+function strikeCone(e: EnemyState): EnemyState['tele'] | null {
+  if (e.tele.shape !== 'none' || (e.ai !== 'windup' && e.ai !== 'between')) return null;
+  if (e.kind === 'grubnose' ? e.phase !== 2 : KIND_ROLE[e.kind] !== 'fodder') return null;
+  const g = gruntNumbers(e);
+  return { shape: 'cone', x: e.x, z: e.z, radius: g.reach, yaw: e.yaw, arcDeg: g.arcDeg };
 }
 
 /** Seconds into its wind-up that an enemy's telegraph stops following its hero (0 for one that never follows). */

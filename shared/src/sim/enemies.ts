@@ -337,7 +337,7 @@ function shove(state: SimState, e: EnemyState, victims: PlayerState[], fromX: nu
 }
 
 /** A fodder brain's numbers: a Goblin Cutter (E1i) is a Skeleton Warrior with its own. */
-function gruntNumbers(e: EnemyState): typeof tuning.grunt {
+export function gruntNumbers(e: EnemyState): typeof tuning.grunt {
   // Chief Grubnose on foot (G2b): his looted string is a Skeleton Warrior's two cuts on his numbers.
   if (e.kind === 'grubnose') {
     const g = tuning.grubnose;
@@ -850,7 +850,7 @@ function chargerBrain(state: SimState, world: World, e: EnemyState, target: Play
         ? undefined
         : state.players.find((p) => Math.hypot(p.x - e.x, p.z - e.z) <= h.radius + tuning.movement.radius + 0.15 && Math.abs(p.y - e.y) < REACH_HEIGHT && !heroInvulnerable(p));
       if (hit) {
-        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' && e.attack !== 'rush3' ? { stopsOnGuard: true } : {}) });
+        hurtHero(state, hit, { damage: hitDamage(e, h.chargeDamage), heavy: true, push: h.chargePush, fromX: e.x - ux, fromZ: e.z - uz, enemyId: e.id, ...typed(e.kind === 'hound' ? 'edge' : 'blunt'), ...(e.kind === 'grubnose' && e.attack !== 'rush3' ? { stopsOnGuard: true } : {}), ...(tuning.bosses.signatureDrops ? { charge: true } : {}) });
         // Stopped dead on a guard (G1b), it stands staggered; otherwise it shakes off the blow.
         if ((e.ai as EnemyState['ai']) !== 'stagger' && !nextRush(state, e, target)) {
           e.tele.shape = 'none';
@@ -1884,11 +1884,14 @@ function setMaulTele(e: EnemyState): void {
 
 /**
  * Grubnose's horn (G2b; docs/bosses.md 1.3 and 2.5): a Nest Slinger for a hero alone, a Pot-lid Crew
- * with a second hero, a second Nest with a third. Henchmen and summons do not count.
+ * with a second hero, a second Nest with a third. Henchmen and summons do not count. The Crew are
+ * armoured, the staff's job; with no staff hero in the party (`crewNeedsStaff`, Michael's A, 21 Nov)
+ * a second Nest comes in their place, since a party with nobody for the job only got a longer fight.
  */
 export function hornAdds(state: SimState): EnemyKind[] {
-  const heroes = state.players.filter((p) => !p.henchman && !p.summon).length;
-  return (['nestSlinger', 'potlidCrew', 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes)));
+  const heroes = state.players.filter((p) => !p.henchman && !p.summon);
+  const crew = !tuning.grubnose.crewNeedsStaff || heroes.some((p) => p.style === 'staff') ? 'potlidCrew' : 'nestSlinger';
+  return (['nestSlinger', crew, 'nestSlinger'] as const).slice(0, Math.max(1, Math.min(3, heroes.length)));
 }
 
 /**
@@ -2007,8 +2010,10 @@ function grubnoseBrain(state: SimState, world: World, e: EnemyState, target: Pla
   }
   e.yaw = turnToward(e.yaw, routed || !sameLevel ? Math.atan2(gx, gz) : Math.atan2(dx, dz), g.turnRateDeg * DEG * edt);
   // Cornered (critic, 19 Nov): a hero who stays inside the charge's minimum, as at a wall he cannot
-  // back away from, is charged point-blank once `cornerMs` of the chase has passed.
-  const cornered = sameLevel && !routed && dist < g.chargeMinRange && e.aiTime >= g.cornerMs / 1000;
+  // back away from, is charged point-blank once `cornerMs` of the chase has passed. Not only when the way
+  // is straight: a brazier or pillar beside the line bends it (`around`), and a hero pinned in a corner
+  // behind a brazier held him in the chase for minutes (Session 277). The sight line below still decides.
+  const cornered = sameLevel && dist < g.chargeMinRange && e.aiTime >= g.cornerMs / 1000;
   const inRange = cornered || (sameLevel && !routed && dist <= g.chargeRange && dist >= g.chargeMinRange);
   if (inRange && e.cooldown <= 0 && lineOfSight(world, e, target)) {
     setAi(e, 'chargeWindup');

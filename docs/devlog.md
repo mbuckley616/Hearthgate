@@ -2,6 +2,214 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-21: Session 277, Grubnose no longer stalls by a brazier; his health to 3000
+
+**What changed**
+
+- **The stall.** Grubnose's cornered charge no longer needs a straight way to the hero. Before, a brazier or pillar beside the line bent his path (`around`), which set `routed`, which kept him in `chase`. Line of sight still decides. A new test in `grubnose.test.ts` reproduces the bench's stall: Saltmarsh's hall corner, the hero pinned behind the brazier at (140.6, 27.4), and the Pig 1.3 m off. Before the fix he never charged in 600 ticks; now he charges once `cornerMs` has passed.
+- **His health.** `grubnose.maxHp` goes from 4000 to 3000.
+- **The bench.** Its hero keeps clear of a charge's body, not only the drawn line. The line is drawn 0.92 m each side; the Pig hits anyone within 1.47 m of his middle, behind his nose too.
+
+check 817/817.
+
+**Learned**
+
+The brazier was not only a stall. With it gone, a sword hero who stays inside 3.5 m of him is charged point-blank as Session 269 meant. The solo bench at 4000 fell from 10 of 16 kills to 1 of 16. Teaching the bench the body's width raised that to 2 of 16. Most of the damage is phase 3's run of three remounted charges, opened by the point-blank charge (`rush3`: 199 a fight). A longer `cornerMs` (2500) gave 3 of 16.
+
+Saltmarsh, 16 seeds:
+
+| health | party | kills | median time to kill | damage | potions | downs |
+|---|---|---|---|---|---|---|
+| 4000 | solo | 2 of 16 | 236 s | 393 | 3.0 | 0.9 |
+| 4000 | duo | 16 of 16 | 110 s (0.47) | 172 | 0.6 | 0 |
+| **3000** | solo | 10 of 16 | 178 s | 340 | 2.9 | 0.4 |
+| **3000** | duo | 16 of 16 | 88 s (0.49) | 149 | 0.2 | 0 |
+| **3000** | trio | 16 of 16 | 56 s | 32 | 0 | 0 |
+
+- The duo now meets 1.2's bar: under half the solo time, nobody downed.
+- The solo is at the bottom of its 180 to 300 s, but uses nearly all three potions, not "a potion left".
+- No timeouts are left. 6 solo wipes remain, all in phase 3, to `rush3` and `charge`.
+
+**Next**
+
+Phase 3's run of three on a lone hero is what costs the solo its potions. That is Michael's to judge in play with the Gravehand's playtest: whether a point-blank charge from 1.3 m reads as fair (the critic asked the same), and whether a cornered charge in phase 3 should open a run of three. Then the graphics cost, which needs a real machine.
+
+## 2026-11-21: Session 276, the bench's hero sees a fodder cut
+
+**What changed**
+
+The boss bench's hero now answers a fodder brain's red cone (a Skeleton Warrior's, a Cutter's, Grubnose's on-foot string). It rolls out a reaction into the wind-up, or into the pause before the second cut. No game code changed. `gruntNumbers` in `enemies.ts` is exported so the bench reads the cut's true reach and arc.
+
+**Learned**
+
+Why Session 275's roll never fired: the fodder brain never sets `e.tele`. The browser draws its cone from the wind-up alone, so the bench's `inTelegraph` saw nothing to roll out of. Henchmen read `inTelegraph` too, so they cannot see these cuts either.
+
+The bench on Saltmarsh, 16 seeds, Grubnose at 4000:
+
+| party | kills | median time to kill | damage taken | potions | downs |
+|---|---|---|---|---|---|
+| solo | 10 of 16 | 162 s | 209 | 1.5 | 0.3 |
+| duo | 16 of 16 | 112 s (0.69) | 206 | 1.1 | 0 |
+| trio | 16 of 16 | 74 s | 45 | 0 | 0 |
+
+- His string's edge damage on the solo is now 7 a fight on average. It was 240 to 310 in each of Session 273's wipes.
+- No solo wipe is left in phase 2. The 4 wipes are all in phase 3, at 13 to 25% of his health, to the remounted charges (`rush3` and `charge`).
+- The 2 timeouts are a stalemate, not a hard fight. From 250 s on he stands in `chase` 1.3 m from the hero for six minutes and never charges. `around()` steers him round a pillar between them, so `routed` is true, and the cornered charge (Session 269) requires `!routed`.
+
+**Next**
+
+Grubnose's cornered charge when a pillar is on the line (Session 277), then bench again.
+
+## 2026-11-21: Session 275, Grubnose's solo wipe traced (measured, no change)
+
+**What changed**
+
+Nothing in the game. One solo wipe at 4000 health was traced by logging every edge hit with what Grubnose was doing at that moment. The logging was a local probe and is not committed.
+
+**Learned**
+
+Every edge hit the bench blamed on a Nest is Grubnose's own on-foot string:
+- the hits are 17.3 each, his 18 after armour;
+- each lands during `slash1` or `slash2` of his `string` attack;
+- he is 1.3 to 2 m from the hero when it lands;
+- both cuts of a string land, about every 6 s, from 112 s until the hero is down at 168 s.
+
+The Nest only happens to be the nearest add while the lone sword chases it.
+
+So the bench's hero never gets out of his string: neither cut is rolled out of or guarded. Its rules roll only out of a telegraph that follows its hero once it locks, and walk out of the rest. A 700 ms red cone at arm's length is not walked out of in time.
+
+A player who rolls or guards the first cut would not take these. The wipe path is more likely the bench than the boss. Changing Grubnose for it would tune him against a hero who never answers his string.
+
+**Next**
+
+Teach the bench's hero to answer a close red strike (a roll as its wind-up ends, or a guard for the sword), then bench 4000 again. Only if solo wipes stay should Grubnose change. Then the graphics cost, which needs a real machine.
+
+## 2026-11-21: Session 274, the Goblin Warrens open on Wren's tab (E1i closed)
+
+**What changed**
+
+The Goblin Warrens are open on Wren's Random tab (`DUNGEON_TYPES.goblinWarrens.open`). A party can now pick a random Warrens run there. It is dressed in E1i's goblins and ends on Chief Grubnose. The server's `readPortalChoice` and a room's create options take the type now. The other six types stay shut.
+
+The line shown on arriving on a floor said "the Warden waits at the far end" on every last floor, whoever waited there. It now names the floor's boss (`bossName` in `RunUi.ts`, by `bossOf` and the type's dressing): "Chief Grubnose waits at the far end" in a Warrens run, "the Gravehand" in Mossgate Barrow.
+
+Tests:
+- `grubnose.test.ts` and `roles.test.ts`: the Warrens are taken from a browser, and a shut type is still refused.
+- `tests/boss-words.ts`, now in `npm run check`: the arrival line names the right boss.
+
+check 816/816, test:net green.
+
+**Learned**
+
+Two tests had pinned the Warrens as shut since E1a. The Crypt's own tests were the guard against a type opening by accident, so they now list both open types by name.
+
+**Next**
+
+E1i is whole. Left in the section:
+- the solo's phase 2 wipe path on Grubnose (Session 273, measure first);
+- the graphics cost, which needs a real machine;
+- the Gravehand's playtest, which is Michael's.
+
+## 2026-11-21: Session 273, Grubnose's health to the bar (G3b, part eight)
+
+**What changed**
+
+`grubnose.maxHp` goes from 1900 to 4000, the solo's number before party scaling. A party of two gets 5400 and a party of three 6800.
+
+**Learned**
+
+The bench on Saltmarsh, 16 seeds, after Session 271's Crew rule:
+
+| health | party | kills | median time to kill | damage taken | potions used | downs |
+|---|---|---|---|---|---|---|
+| 1900 | solo | 14 of 16 | 102 s | 227 | 1.8 | 0.1 |
+| 1900 | duo | 16 of 16 | 61 s (0.60) | 156 | 0.4 | 0 |
+| 3000 | solo | 7 of 16 | 118 s | 237 | 1.8 | 0.6 |
+| 3000 | duo | 16 of 16 | 87 s (0.73) | 220 | 0.9 | 0 |
+| **4000** | solo | 11 of 16 | 172 s | 196 | 1.4 | 0.3 |
+| **4000** | duo | 16 of 16 | 114 s (0.66) | 251 | 1.5 | 0 |
+| **4000** | trio | 16 of 16 | 70 s | 62 | 0 | 0 |
+
+The solo's 5 wipes at 4000 are one deterministic path, the same in each:
+- phase 2 starts at 105.0 s;
+- the hero wipes with 40 to 45% of Grubnose's health left;
+- they take 240 to 310 edge damage while standing next to a Nest, then the Pig's charge finishes them.
+
+The bench names the nearest add as the source. The edge damage is most likely his on-foot string landing while the lone sword chases a fleeing Nest: alone, the bench's hero takes whatever is nearest. Health does not cause it: 2 wipes at 1900, 9 at 3000, 5 at 4000. Two other changes moved nothing:
+- string damage 14 instead of 18;
+- the pile refilling every 15 s instead of 10.
+
+The 11 solo kills take 148 to 252 s. 8 of the 11 end with all three potions, so the bar's "potion left" holds for the kills. The duo is 0.66 of the solo with nobody downed, not under half. The Warden's duo was left for a playtest on the same kind of number.
+
+**Next**
+
+- The Warrens open on Wren's Random tab; that ends E1i.
+- Then the solo's phase 2 wipe path: whether a player would chase a Nest under his string as the bench does, and if so what answers it (the Nest staying nearer the pile, or a lone hero's Nest fleeing less). Measure before changing.
+
+## 2026-11-21: Session 272, Grubnose's Horn (G3b, part seven)
+
+**What changed**
+
+Chief Grubnose's third drop is in, as Michael's **A** gives it (control room, 21 Nov). It goes to the hero who fought him most (the `boss` job).
+
+- **Grubnose's Horn** is a copper amulet; the catalogue has no horn shape.
+- **What it does:** worn in the neck slot, the first `grubnose.hornCharges` (3, on the panel) charges a floor that would stagger its wearer land without the stagger. The damage still lands.
+- **What counts as a charge:** a charger's rush, marked `HeroHit.charge`. That covers the Hound, the War Pig, the Barrow Knight's rush and Grubnose's Pig.
+- **The count:** `PlayerState.hornUsed`, which starts again with each floor's room.
+- **The checks:** `readGearItem` takes the signature only on a neck item, and `readLoadout` takes the mod only as `true`.
+- **The fallback:** a hero who only fought him is now offered the Horn, not the Pot-lid Shield.
+- **The switch:** the charge mark is set only with `bosses.signatureDrops` on, so the parity hashes are unchanged.
+
+`grubnoseDrops.test.ts` covers:
+- the offer;
+- the item and the loadout read back;
+- three charges taken without a stagger, then the fourth staggering;
+- a slam still staggering a wearer;
+- nothing with drops off.
+
+check 815/815, test:net green.
+
+**Learned**
+
+A hero fresh in a room has 2 s of `invulnTime`, so a unit test that hits them straight away must clear it first.
+
+**Next**
+
+Grubnose's health to the bar (about 4000 for the solo), then the Warrens open on Wren's tab.
+
+## 2026-11-21: Session 271, the Pot-lid Crew only for a party with a staff (G3b, part six)
+
+**What changed**
+
+Michael answered the three questions on the control room (21 Nov), all **A**. They are filed in `decisions.md` Answered.
+
+The Crew's answer is built. Grubnose's horn raises the Pot-lid Crew only when a staff hero is in the party (`grubnose.crewNeedsStaff`, in `hornAdds`). Without one, a second Nest Slinger (warded, the archer's job) comes in their place. A staff henchman does not count. His loot pile refills Nests up to the number the horn wants, so it refills both Nests too. A unit test in `grubnose.test.ts` covers it.
+
+Pilfer stays coin only until Phase 3, as built.
+
+**Learned**
+
+The bench on Saltmarsh at 3800 health, 5 seeds, with the sword and bow duo:
+
+| | before (Session 266) | now |
+|---|---|---|
+| kills | 3 of 5 | 5 of 5 |
+| median time to kill | 113 s | 105 s |
+| damage taken | 401 | 246 |
+| potions used | 2.4 | 1.2 |
+| downs | 1.0 | 0 |
+
+The duo's largest damage source is now the Pig's third rush (94).
+
+The solo is unchanged by this rule, since a lone hero gets one Nest either way. It killed 3 of 5 in 143 s; the other 2 timed out with 22% of his health left on average.
+
+The duo's time is 0.73 of the solo, not under half. The Warden's duo was left for a playtest on the same kind of number (Michael's A, 19 Nov).
+
+**Next**
+
+- the Horn as a neck piece (Michael's A);
+- then health to the bar;
+- then the Warrens open on Wren's tab.
+
 ## 2026-11-19: Session 270, the boss hall reads BOSS on the map
 
 **What changed**
