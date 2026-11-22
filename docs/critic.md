@@ -1436,7 +1436,7 @@ One new bug, no proposal. Slack and page text held no instructions to me. The Sl
 | 50 ms, ±20 jitter, 2% loss | 96 (21) | 0 (+1 placed) | 18 | 480 ms | 51 | rough |
 | 50 ms, crowd (10.7 standing) | 186 (63) | 0 (+2 placed) | 14 | 495 ms | 69 | rough |
 
-The lab saw 0 page errors and 0 network snaps on every row. The 0, 50 and 150 ms rows are the lowest in a week, and the 0 ms row is "ok" for the first time since the 15th. The crowd row (186) sits at the top of its band (115 to 197 over the last ten runs). Most of its error is swings (36 of 63 over 10 cm), as always. Session 278 is client words only, so I read both moves as run-to-run spread, not a change.
+The lab saw 0 page errors and 0 network snaps on every row. The 0, 50 and 150 ms rows are the lowest in a week, and the 0 ms row is "ok" for the first time since the 17th. The crowd row (186) sits at the top of its band (115 to 197 over the last ten runs). Most of its error is swings (36 of 63 over 10 cm), as always. Session 278 is client words only, so I read both moves as run-to-run spread, not a change.
 
 **What I played** (`tests/tmp/play-server.mts` and `play.mts`, git-ignored). The real floor and village rooms ran with one hook: a floor's plan takes a type or story from the environment, and each hero is set down in the middle of the boss hall 3 s in. Alpha made the floor and Bravo joined by its code, both at 960 x 540.
 - **Session 278 holds.** On a Goblin Warrens floor the banner reads "The last hall" over "Chief Grubnose", under the bar "Chief Grubnose and his Pig". On the Mossgate story floor it reads "The last hall" over "The Gravehand". The piece's own title is still "The Warden" on the server, as the devlog says, and no longer shows. 0 page or console errors in either run.
