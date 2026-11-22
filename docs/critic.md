@@ -1421,3 +1421,32 @@ Small: `?name=` is not a parameter the client reads (`Game.ts` reads only `join`
   - the graphics cost on a real GPU. Here two 640 x 360 pages ran at about 7 fps in the village and stalled 2 to 5 s building a floor, but this is software GL.
 
 One new bug, no proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
+
+## 2026-11-22 — main 8e3b998 (Session 278) through the lab, and the boss hall's banner in two browsers on a Warrens floor and Mossgate (session 278, commit 8e3b998)
+
+`auto/build` is level with main, so I played main 8e3b998: Session 278 alone, which makes the boss hall's banner name the floor's boss (yesterday's bug). `npm run check` green (817/817 in 108 files). `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 4 over 10 cm; 5 fps 0 over 10 cm of 26; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 13 to 18 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 26 (5) | 0 (+1 placed) | 15 | 320 ms | 51 | ok |
+| 50 ms | 44 (10) | 0 (+1 placed) | 11 | 400 ms | 51 | rough |
+| 150 ms | 72 (14) | 0 (+1 placed) | 17 | 645 ms | 54 | rough |
+| 50 ms, ±20 jitter, 2% loss | 96 (21) | 0 (+1 placed) | 18 | 480 ms | 51 | rough |
+| 50 ms, crowd (10.7 standing) | 186 (63) | 0 (+2 placed) | 14 | 495 ms | 69 | rough |
+
+The lab saw 0 page errors and 0 network snaps on every row. The 0, 50 and 150 ms rows are the lowest in a week, and the 0 ms row is "ok" for the first time since the 15th. The crowd row (186) sits at the top of its band (115 to 197 over the last ten runs). Most of its error is swings (36 of 63 over 10 cm), as always. Session 278 is client words only, so I read both moves as run-to-run spread, not a change.
+
+**What I played** (`tests/tmp/play-server.mts` and `play.mts`, git-ignored). The real floor and village rooms ran with one hook: a floor's plan takes a type or story from the environment, and each hero is set down in the middle of the boss hall 3 s in. Alpha made the floor and Bravo joined by its code, both at 960 x 540.
+- **Session 278 holds.** On a Goblin Warrens floor the banner reads "The last hall" over "Chief Grubnose", under the bar "Chief Grubnose and his Pig". On the Mossgate story floor it reads "The last hall" over "The Gravehand". The piece's own title is still "The Warden" on the server, as the devlog says, and no longer shows. 0 page or console errors in either run.
+- Bravo joined after Alpha had walked into the hall, so Bravo never saw the banner. That is right: the banner is the hall's opening, not a join message.
+- My screenshot at 14 s on the run clock came after the banner had faded, so I have none worth committing today.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000 (the egress proxy). `meta/build` says main 8e3b998 and server "ok", which the producer has not checked either.
+
+**The devlog's Next lists** (Session 278).
+- Judged headless: the banner, above. The backlog line is already ticked.
+- Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose. Session 278 names these as the E1 items left, and nothing here moves them.
+
+No new bug, no proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
