@@ -2,7 +2,7 @@
 // tab, a random Warrens run ends on Chief Grubnose, and the line said "the Warden" for every run.
 // Run by `npm run check`.
 import assert from 'node:assert/strict';
-import { bossName } from '../client/src/ui/RunUi';
+import { bossName, bossTitle } from '../client/src/ui/RunUi';
 import type { FloorSpec } from '@hearthgate/shared/level/generate';
 
 const spec = (o: Partial<FloorSpec>) => ({ seed: 1, floor: 3, floors: 3, pieces: 20, ...o }) as FloorSpec;
@@ -11,3 +11,9 @@ assert.equal(bossName(spec({ type: 'hauntedCrypt' })), 'the Warden');
 assert.equal(bossName(spec({ type: 'goblinWarrens' })), 'Chief Grubnose');
 assert.equal(bossName(spec({ story: 'mossgate' })), 'the Gravehand');
 console.log('ok    a floor says who waits at the far end: Chief Grubnose in a random Warrens run, the Warden in the Crypt');
+
+// And the boss hall's banner (the critic, 21 Nov): the boss piece's title read "The Warden" over Grubnose's bar.
+assert.equal(bossTitle(spec({})), 'The Warden');
+assert.equal(bossTitle(spec({ type: 'goblinWarrens' })), 'Chief Grubnose');
+assert.equal(bossTitle(spec({ story: 'mossgate' })), 'The Gravehand');
+console.log('ok    a boss hall\'s banner names its own boss, not the Warden');

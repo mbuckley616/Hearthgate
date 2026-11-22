@@ -110,7 +110,8 @@ export class RunUi {
 
   private handleFloor(events: SimEvent[]): void {
     for (const ev of events) {
-      if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : tuning.dungeon.shutDoors ? `Room ${ev.wave}  ·  the doors are shut` : `Room ${ev.wave}`, ev.title);
+      // The boss piece's own title is the Warden's whoever waits there, so the hall names the floor's boss.
+      if (ev.kind === 'waveStart') this.showBanner(ev.boss ? 'The last hall' : tuning.dungeon.shutDoors ? `Room ${ev.wave}  ·  the doors are shut` : `Room ${ev.wave}`, ev.boss && this.floor ? bossTitle(this.floor) : ev.title);
       else if (ev.kind === 'waveCleared') {
         // No heal after a room since D7, so the banner names none unless the panel turns it back on.
         const heal = Math.round(tuning.dungeon.healOnClear * 100);
@@ -242,5 +243,10 @@ function roarBanner(phase: number | undefined, king?: true, hand?: true, mason?:
 
 /** Who waits in a floor's boss hall, by its story and type (a Warrens run's is Chief Grubnose, not the Warden). */
 export function bossName(spec: FloorSpec): string {
-  return dressing(bossOf(spec.story, spec.type), dungeonTypeOf(spec)).name.replace(/^The /, 'the ');
+  return bossTitle(spec).replace(/^The /, 'the ');
+}
+
+/** The same name as a banner's heading: "The Warden", "Chief Grubnose". */
+export function bossTitle(spec: FloorSpec): string {
+  return dressing(bossOf(spec.story, spec.type), dungeonTypeOf(spec)).name;
 }
