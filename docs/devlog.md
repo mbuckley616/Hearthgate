@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-23: Session 279, the smoke suite's Wren case expects the label the ring shows
+
+**What changed**
+
+- `smoke.e2e.ts:404` waited for the ring's label to read "The Old Cellar". Since the dungeon types (E1a), `choiceLabel` names a story dungeon with its type, "The Old Cellar, a Haunted Crypt", and the game was right (the critic, 23 Nov). The test now expects that label. No game code changed.
+
+check green, test:net all passed, `smoke.e2e.ts:391` passes.
+
+**Learned**
+
+The talk line and the hall's `spec.hand.name` still read the bare name, so the case's other two checks were never stale; only the ring's label carries the type.
+
+**Next**
+
+The bag's frame drop (`HeroPreview`'s second WebGL canvas), the other smoke failure.
+
 ## 2026-11-21: Session 278, a boss hall's banner names its own boss
 
 **What changed**

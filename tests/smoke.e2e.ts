@@ -401,7 +401,7 @@ test("Keeper Wren's menu turns the village's ring to the first story dungeon, a 
   await page.keyboard.press("KeyF");
   await expect(page.locator(".portal-menu")).toBeHidden();
   await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
-  await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
+  await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar, a Haunted Crypt");
   await outOfShrine(page);
   await intoRing(page);
   await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
