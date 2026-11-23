@@ -2,6 +2,33 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-23: Session 280, the bag's frame drop is headless pointer lock, not the bag
+
+**What changed**
+
+- `smoke.e2e`'s controls case keeps the page unlocked before it opens and closes the bag. It stubs `requestPointerLock` and checks no lock was taken. No game code changed.
+
+check green, test:net all passed. `smoke.e2e.ts:532` passes alone 3 of 3. The whole smoke suite, twice: 14 of 15 each time, the controls case failing once and the Wren case's keeper line once.
+
+**Learned**
+
+- The critic's drop (23 Nov) is the pointer lock. Closing the hero screen asks for it (`kbm.requestPointerLock`), and headless play never had it before. Measured with a rAF counter over 4 s:
+
+| page | unlocked | locked |
+|---|---|---|
+| `/?play`, B then B | 4.7 | 2.0 to 2.2 |
+| `/?play`, B then B, no `HeroPreview` | 4.8 | 2.1 to 2.4 |
+| `/?play`, a click locks it, no bag | 4.5 | 2.0 |
+| a blank page, one canvas | 15.8 | 12.1 |
+
+- Freeing `HeroPreview`'s WebGL context on close (`forceContextLoss`) changed nothing, so it was reverted.
+- The jump is not lost under the lock. The press reaches the command, and prediction has the hero at 0.66 m after the press's frame. At 2 fps the 0.58 s jump lands within the next frame, so six quick reads of the drawn hero all miss it. The walk to Wren's door fails at that rate too.
+- Many 0-tick `advance` calls run between frames under the lock; harmless, noted.
+
+**Next**
+
+On a desktop, the frame rate with the pointer locked against unlocked (the critic's ask) settles whether a real GPU pays anything. The suite's remaining one-in-fifteen failures on this box look like its 5 fps, and the critic's tomorrow will say whether they repeat. Then the graphics cost and the crowd, both on a real machine.
+
 ## 2026-11-23: Session 279, the smoke suite's Wren case expects the label the ring shows
 
 **What changed**

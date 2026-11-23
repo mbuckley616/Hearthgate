@@ -542,10 +542,15 @@ test("the controls (Michael, 15 Nov, A): X takes the next weapon, B opens the ba
   await expect.poll(async () => (await me()).style).toBe("bow");
   await page.keyboard.press("KeyX");
   await expect.poll(async () => (await me()).style).toBe("staff");
+  // Closing the bag asks for the pointer lock, as it should on a desktop. Headless software GL runs a
+  // locked page at half its frame rate (a blank page too, 23 Nov), and at 2 to 3 fps the jump and the
+  // walk to Wren's door below fail on frames, not the game: the page stays unlocked, as it was before B.
+  await page.evaluate(() => { HTMLCanvasElement.prototype.requestPointerLock = () => Promise.resolve(); });
   await page.keyboard.press("KeyB");
   await expect(page.locator(".gear-grid")).toBeVisible();
   await page.keyboard.press("KeyB");
   await expect(page.locator(".gear-grid")).toBeHidden();
+  expect(await page.evaluate(() => !!document.pointerLockElement)).toBe(false);
   // On the open square Space jumps.
   let top = 0;
   await expect
