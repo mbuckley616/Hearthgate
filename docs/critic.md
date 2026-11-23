@@ -1450,3 +1450,34 @@ The lab saw 0 page errors and 0 network snaps on every row. The 0, 50 and 150 ms
 - Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose. Session 278 names these as the E1 items left, and nothing here moves them.
 
 No new bug, no proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
+
+## 2026-11-23 — main 6171cbb (code unchanged since Session 278) through the lab, and the browser smoke suite (session 278, commit 6171cbb)
+
+Nothing landed in code since yesterday: main 6171cbb is yesterday's report on top of 8e3b998, and `auto/build` is level with it. `npm run check` green (817/817 in 108 files). `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; 5 fps 0 over 10 cm of 25; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 13 to 17 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 47 (16) | 0 (+1 placed) | 16 | 295 ms | 53 | rough |
+| 50 ms | 53 (18) | 0 (+1 placed) | 12 | 495 ms | 53 | rough |
+| 150 ms | 102 (33) | 0 (+1 placed) | 18 | 625 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 98 (19) | 0 (+1 placed) | 10 | 475 ms | 54 | rough |
+| 50 ms, crowd (10.5 standing) | 132 (32) | 0 (+1 placed) | 12 | 420 ms | 67 | rough |
+
+0 page errors and 0 network snaps on every row. The same code as yesterday read 26/44/72/96/186, so the spread between two runs of one build is about 20 a minute at 0 ms and 30 at 150 ms. Every row sits inside its last ten runs' band (0 ms 26 to 77, 150 ms 72 to 149). Yesterday's "ok" at 0 ms was the low end of that band, not a step.
+
+**What I played.** The code had not moved, so instead of repeating yesterday's boss-hall script I ran the browser suites the builder relies on: `smoke`, `necromancer` and `padmenus` e2e, 15 cases. 13 passed and 2 failed, and both fail every time (4 of 4 with `--workers 1 --repeat-each 2`).
+
+1. **The bag leaves the page at half its frame rate, and `smoke.e2e`'s controls case fails on it** (filed). Steps: `/?play`, wait 2 s, B, B (open and close the hero screen), then Space taps. On this box (software GL, pages at 5.5 to 6.5 fps) the page runs at 2.5 to 3.5 fps after the bag has been open once, over 3 runs. X alone (6 → 5.5) does not do it. A second open and close makes it no worse. With the page at 2.5 fps, five Space taps leave the hero at y 0. A held Space jumps 0 to 0.27 m, against 0.85 m before the bag. So the test's "Space jumps" step sees 0 and fails at `smoke.e2e.ts:557`. Without the bag, the same taps jump 0.77 to 0.92 m. What I ruled out: the pause card (not up, pointer locked), a prompt (`promptShowing` false), focus (on `body`), the camera (same position, 1 draw call, render size 426 x 240 at pixel ratio 0.33 before and after), and the JavaScript (a CPU profile shows the same cost per second before and after; the extra time is native, the rasteriser's). What changes: a fourth `<canvas>` (`HeroPreview`'s own WebGLRenderer, "kept for the session") stays in the page. Disposing it and forcing its context lost from the console did not bring the frames back (3 fps). So I can show the drop and where it is not, but not its cause. Whether a real GPU feels it at all only a desktop can say: open the bag once, then read the frame rate with the debug panel.
+2. **`smoke.e2e`'s Wren case expects a ring label the game no longer shows** (filed, test code). `smoke.e2e.ts:404` waits for the ring's label to be `"The Old Cellar"`. The game says `"The Old Cellar, a Haunted Crypt"`: `choiceLabel` names the dungeon type after a story dungeon's name (`portalChoice.ts:163`). The menu, the talk line and the hand-off all worked. Only the assertion is stale. Steps: `npx playwright test smoke.e2e.ts:391`.
+
+The two failures matter together: the smoke suite is red on main for a reason other than this box's speed, so a real regression would hide behind it.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000 (the egress proxy refuses both hosts with 403). `meta/build` says main 6171cbb and server "ok", unchecked by the producer too.
+
+**The devlog's Next lists** (Session 278, the latest).
+- Judged headless: nothing new. The banner was judged yesterday.
+- Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose. The bag's frame drop above now belongs to that same graphics reading.
+
+No proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
