@@ -2,6 +2,65 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-24: Session 281, the village-ring case judges a tap where the hero comes to rest
+
+**What changed**
+
+- `smoke.e2e`'s `intoRing` no longer stops when a snapshot shows the hero within 1.2 m of the ring's middle. A new helper, `settled`, waits until the prediction has stopped moving and the snapshot has caught up with it (up to 3 s), and each tap is judged there. Before, the snapshot said "inside" while the predicted hero had coasted on 2.5 to 3.4 m out of a 2.4 m ring (the critic, 24 Nov). No game code changed.
+
+check green, test:net all passed (before the change; test code only since). `smoke.e2e.ts:263 --repeat-each 8`: 7 of 8 pass, and all 8 reach the ring step without a miss. The one failure came earlier, at the shrine: F did not open Keeper Wren's card.
+
+**Learned**
+
+The hero stops near the edge but does not stop there. On a 5 fps page one 60 ms tap is a whole 200 ms frame of walking, about 1.2 m, and the snapshot that judged it was a round trip behind. Judging the resting position lets the next tap walk back toward the middle, so the walk converges.
+
+**Next**
+
+The keeper-card miss in the same case (Session 280 saw it once too) is likely `intoShrine` stopping short of her reach on a slow page; it goes to the critic's next smoke run. Then the graphics cost and the crowd, both on a real machine.
+
+## 2026-11-23: Session 280, the bag's frame drop is headless pointer lock, not the bag
+
+**What changed**
+
+- `smoke.e2e`'s controls case keeps the page unlocked before it opens and closes the bag. It stubs `requestPointerLock` and checks no lock was taken. No game code changed.
+
+check green, test:net all passed. `smoke.e2e.ts:532` passes alone 3 of 3. The whole smoke suite, twice: 14 of 15 each time, the controls case failing once and the Wren case's keeper line once.
+
+**Learned**
+
+- The critic's drop (23 Nov) is the pointer lock. Closing the hero screen asks for it (`kbm.requestPointerLock`), and headless play never had it before. Measured with a rAF counter over 4 s:
+
+| page | unlocked | locked |
+|---|---|---|
+| `/?play`, B then B | 4.7 | 2.0 to 2.2 |
+| `/?play`, B then B, no `HeroPreview` | 4.8 | 2.1 to 2.4 |
+| `/?play`, a click locks it, no bag | 4.5 | 2.0 |
+| a blank page, one canvas | 15.8 | 12.1 |
+
+- Freeing `HeroPreview`'s WebGL context on close (`forceContextLoss`) changed nothing, so it was reverted.
+- The jump is not lost under the lock. The press reaches the command, and prediction has the hero at 0.66 m after the press's frame. At 2 fps the 0.58 s jump lands within the next frame, so six quick reads of the drawn hero all miss it. The walk to Wren's door fails at that rate too.
+- Many 0-tick `advance` calls run between frames under the lock; harmless, noted.
+
+**Next**
+
+On a desktop, the frame rate with the pointer locked against unlocked (the critic's ask) settles whether a real GPU pays anything. The suite's remaining one-in-fifteen failures on this box look like its 5 fps, and the critic's tomorrow will say whether they repeat. Then the graphics cost and the crowd, both on a real machine.
+
+## 2026-11-23: Session 279, the smoke suite's Wren case expects the label the ring shows
+
+**What changed**
+
+- `smoke.e2e.ts:404` waited for the ring's label to read "The Old Cellar". Since the dungeon types (E1a), `choiceLabel` names a story dungeon with its type, "The Old Cellar, a Haunted Crypt", and the game was right (the critic, 23 Nov). The test now expects that label. No game code changed.
+
+check green, test:net all passed, `smoke.e2e.ts:391` passes.
+
+**Learned**
+
+The talk line and the hall's `spec.hand.name` still read the bare name, so the case's other two checks were never stale; only the ring's label carries the type.
+
+**Next**
+
+The bag's frame drop (`HeroPreview`'s second WebGL canvas), the other smoke failure.
+
 ## 2026-11-21: Session 278, a boss hall's banner names its own boss
 
 **What changed**

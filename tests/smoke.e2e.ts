@@ -106,7 +106,7 @@ async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
 async function intoRing(page: Page) {
   await walkTo(page, 0, -10.5, 3);
   for (let taps = 0; taps < 40; taps++) {
-    const p = mine(await seen(page));
+    const p = await settled(page);
     if (!p || Math.hypot(p.x, p.z + 10.5) < 1.2) return;
     await page.evaluate(([px, pz]) => {
       (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(0 - px), -(-10.5 - pz));
@@ -116,6 +116,28 @@ async function intoRing(page: Page) {
     await page.keyboard.up("KeyW");
     await page.waitForTimeout(250);
   }
+}
+
+/**
+ * Where the hero comes to rest: waits until the snapshot has caught up with the prediction and the
+ * prediction has stopped moving. Judging a tap by the snapshot alone let the predicted hero coast on
+ * past the far edge of the ring after the snapshot said "inside" (critic, 24 Nov: 2.5 to 3.4 m out).
+ * Null mid hand-off, as `predicted`.
+ */
+async function settled(page: Page): Promise<{ x: number; z: number } | null> {
+  let last = await predicted(page);
+  const start = Date.now();
+  while (last && Date.now() - start < 3_000) {
+    await page.waitForTimeout(150);
+    const now = await predicted(page);
+    if (!now) return null;
+    const snap = mine(await seen(page));
+    const still = Math.hypot(now.x - last.x, now.z - last.z) < 0.05;
+    const caughtUp = !!snap && Math.hypot(now.x - snap.x, now.z - snap.z) < 0.15;
+    last = now;
+    if (still && caughtUp) break;
+  }
+  return last;
 }
 
 /**
@@ -401,7 +423,7 @@ test("Keeper Wren's menu turns the village's ring to the first story dungeon, a 
   await page.keyboard.press("KeyF");
   await expect(page.locator(".portal-menu")).toBeHidden();
   await expect(page.locator(".talk-line")).toContainText("The Old Cellar");
-  await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar");
+  await expect.poll(async () => page.evaluate(() => (window as unknown as { game: any }).game.session.portals[0]?.label), { timeout: 3_000 }).toBe("The Old Cellar, a Haunted Crypt");
   await outOfShrine(page);
   await intoRing(page);
   await expect.poll(async () => (await seen(page)).kind, { timeout: 10_000 }).toBe("floor");
@@ -542,10 +564,15 @@ test("the controls (Michael, 15 Nov, A): X takes the next weapon, B opens the ba
   await expect.poll(async () => (await me()).style).toBe("bow");
   await page.keyboard.press("KeyX");
   await expect.poll(async () => (await me()).style).toBe("staff");
+  // Closing the bag asks for the pointer lock, as it should on a desktop. Headless software GL runs a
+  // locked page at half its frame rate (a blank page too, 23 Nov), and at 2 to 3 fps the jump and the
+  // walk to Wren's door below fail on frames, not the game: the page stays unlocked, as it was before B.
+  await page.evaluate(() => { HTMLCanvasElement.prototype.requestPointerLock = () => Promise.resolve(); });
   await page.keyboard.press("KeyB");
   await expect(page.locator(".gear-grid")).toBeVisible();
   await page.keyboard.press("KeyB");
   await expect(page.locator(".gear-grid")).toBeHidden();
+  expect(await page.evaluate(() => !!document.pointerLockElement)).toBe(false);
   // On the open square Space jumps.
   let top = 0;
   await expect
