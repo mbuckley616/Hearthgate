@@ -106,7 +106,7 @@ async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
 async function intoRing(page: Page) {
   await walkTo(page, 0, -10.5, 3);
   for (let taps = 0; taps < 40; taps++) {
-    const p = mine(await seen(page));
+    const p = await settled(page);
     if (!p || Math.hypot(p.x, p.z + 10.5) < 1.2) return;
     await page.evaluate(([px, pz]) => {
       (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(0 - px), -(-10.5 - pz));
@@ -116,6 +116,28 @@ async function intoRing(page: Page) {
     await page.keyboard.up("KeyW");
     await page.waitForTimeout(250);
   }
+}
+
+/**
+ * Where the hero comes to rest: waits until the snapshot has caught up with the prediction and the
+ * prediction has stopped moving. Judging a tap by the snapshot alone let the predicted hero coast on
+ * past the far edge of the ring after the snapshot said "inside" (critic, 24 Nov: 2.5 to 3.4 m out).
+ * Null mid hand-off, as `predicted`.
+ */
+async function settled(page: Page): Promise<{ x: number; z: number } | null> {
+  let last = await predicted(page);
+  const start = Date.now();
+  while (last && Date.now() - start < 3_000) {
+    await page.waitForTimeout(150);
+    const now = await predicted(page);
+    if (!now) return null;
+    const snap = mine(await seen(page));
+    const still = Math.hypot(now.x - last.x, now.z - last.z) < 0.05;
+    const caughtUp = !!snap && Math.hypot(now.x - snap.x, now.z - snap.z) < 0.15;
+    last = now;
+    if (still && caughtUp) break;
+  }
+  return last;
 }
 
 /**

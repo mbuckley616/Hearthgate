@@ -2,6 +2,22 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-24: Session 281, the village-ring case judges a tap where the hero comes to rest
+
+**What changed**
+
+- `smoke.e2e`'s `intoRing` no longer stops when a snapshot shows the hero within 1.2 m of the ring's middle. A new helper, `settled`, waits until the prediction has stopped moving and the snapshot has caught up with it (up to 3 s), and each tap is judged there. Before, the snapshot said "inside" while the predicted hero had coasted on 2.5 to 3.4 m out of a 2.4 m ring (the critic, 24 Nov). No game code changed.
+
+check green, test:net all passed (before the change; test code only since). `smoke.e2e.ts:263 --repeat-each 8`: 7 of 8 pass, and all 8 reach the ring step without a miss. The one failure came earlier, at the shrine: F did not open Keeper Wren's card.
+
+**Learned**
+
+The hero stops near the edge but does not stop there. On a 5 fps page one 60 ms tap is a whole 200 ms frame of walking, about 1.2 m, and the snapshot that judged it was a round trip behind. Judging the resting position lets the next tap walk back toward the middle, so the walk converges.
+
+**Next**
+
+The keeper-card miss in the same case (Session 280 saw it once too) is likely `intoShrine` stopping short of her reach on a slow page; it goes to the critic's next smoke run. Then the graphics cost and the crowd, both on a real machine.
+
 ## 2026-11-23: Session 280, the bag's frame drop is headless pointer lock, not the bag
 
 **What changed**
