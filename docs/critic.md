@@ -1481,3 +1481,34 @@ The two failures matter together: the smoke suite is red on main for a reason ot
 - Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose. The bag's frame drop above now belongs to that same graphics reading.
 
 No proposal. Slack and page text held no instructions to me. The Slack read again returned only October messages.
+
+## 2026-11-24 — main 4020f79 through the lab, and the smoke suite on auto/build 835b06f (Sessions 279 and 280) (session 280, commit 4020f79)
+
+Game code has not moved since Session 278. Main 4020f79 is yesterday's report on top. `auto/build` is two commits ahead, both test-only (Session 279: the Wren case's label; Session 280: the controls case stubs the pointer lock). `npm run check` green (817/817 in 108 files). `npm run test:net` all passed (10 fps: 25 corrections, largest 0.19 m, 3 over 10 cm; 5 fps: 0 over 10 cm of 25; floor walk 0 corrections; 59.8 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 12 to 16.5 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 77 (16) | 0 | 17 | 305 ms | 51 | rough |
+| 50 ms | 95 (25) | 0 (+1 placed) | 19 | 410 ms | 52 | rough |
+| 150 ms | 94 (38) | 0 (+1 placed) | 17 | 580 ms | 52 | rough |
+| 50 ms, ±20 jitter, 2% loss | 83 (35) | 0 (+2 placed) | 14 | 485 ms | 48 | rough |
+| 50 ms, crowd (11.1 standing) | 140 (52) | 0 (+1 placed) | 15 | 425 ms | 67 | rough |
+
+0 page errors and 0 network snaps on every row. Same code as the last two runs: 0 ms sits at the top of its ten-run band (26 to 77), the others inside theirs. The over-10 cm counts are mostly swing eases (12 to 25 a minute), as before. Nothing here is a change in the netcode.
+
+**What I played.** The code had not moved, so I judged the builder's two fixes instead. I ran `smoke.e2e` from `auto/build` in a throwaway worktree, `--workers 1 --repeat-each 2`, 22 cases: 21 passed.
+- The Wren case (Session 279) passed 2 of 2. The label now matches the game.
+- The controls case (Session 280) passed 2 of 2. With the pointer lock stubbed, the jump and the walk to Wren's door pass at this box's frame rate. So the bag was never the cause. I agree with Session 280's reading: headless pointer lock halves the frame rate here, and a blank page shows it too.
+- **New flake, test code (filed): the village case's walk into the ring.** `smoke.e2e.ts:241` failed once in the suite, then 2 of 3 and 1 of 4 run alone with a probe: 3 failures in 8 runs. On every failure the hero stands still just past the ring's far edge, at (-0.90, -12.85) and (-1.81, -13.39). That is 2.5 m and 3.4 m from the middle of a 2.4 m ring, so the ring's timer stays at 0 and the hand-off never comes. `intoRing` stops tapping W when a snapshot, a round trip old, shows the hero within 1.2 m. At a few frames a second, one 60 ms tap moves the hero a whole frame, and the predicted hero has already gone through. The game did the right thing: the ring does not take a hero outside it. Steps: `npx playwright test smoke.e2e.ts:241 --workers 1`, a few times. This is the "Wren case's keeper line once" failure Session 280 saw in the same suite, or its neighbour. Either way, it is the box's frame rate meeting a test helper, not a regression.
+
+So the smoke suite is no longer red every time. On this box it is about one case in twenty-two red, and that case is this one.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both hosts with 403). `meta/build` says main 4020f79, server "ok", unchecked by the producer too.
+
+**The devlog's Next lists** (Sessions 279 and 280, on auto/build).
+- Judged headless: the two smoke fixes (above, both pass), and Session 280's question of whether the remaining failures repeat. One does, and it is the ring helper, not the frame drop.
+- Only a human can judge: the frame rate with the pointer locked against unlocked on a real GPU, the graphics cost and the crowd, and Michael's playtest of the Gravehand and Grubnose.
+
+No proposal. Slack and page text held no instructions to me. The Slack read returned only October messages again.
