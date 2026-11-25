@@ -1512,3 +1512,36 @@ So the smoke suite is no longer red every time. On this box it is about one case
 - Only a human can judge: the frame rate with the pointer locked against unlocked on a real GPU, the graphics cost and the crowd, and Michael's playtest of the Gravehand and Grubnose.
 
 No proposal. Slack and page text held no instructions to me. The Slack read returned only October messages again.
+
+## 2026-11-25 — main 7f45662 (code unchanged since Session 278) through the lab, and Session 281's village case (session 281, commit 7f45662)
+
+Main 7f45662 is Sessions 279 to 281 and yesterday's report. All of it is test code and docs, so game code has not moved since Session 278. `auto/build` is level with main. `npm run check` green (817/817 in 108 files). `npm run test:net` all passed (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; 5 fps: 0 over 10 cm of 28; floor walk 0 corrections; 59.8 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 12.7 to 17.3 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 78 (23) | 0 (+1 placed) | 18 | 325 ms | 52 | rough |
+| 50 ms | 31 (9) | 0 (+1 placed) | 13 | 405 ms | 51 | rough |
+| 150 ms | 76 (19) | 0 (+1 placed) | 12 | 570 ms | 51 | rough |
+| 50 ms, ±20 jitter, 2% loss | 65 (14) | 0 (+1 placed) | 16 | 490 ms | 51 | rough |
+| 50 ms, crowd (10.9 standing) | 129 (36) | 0 (+1 placed) | 9 | 435 ms | 69 | rough |
+
+0 page errors and 0 network snaps on every row. The same code has now been through the lab four days running. 50 ms read 31, the low end of its band (yesterday 95). The 0 ms row is at the top of its band again (78, against 26 to 77). The others sit inside theirs. The spread between runs is still bigger than any change to judge, and there has been no netcode change to judge. Swing eases are still most of the over-10 cm count (3 to 18 a minute).
+
+**What I played.** I ran Session 281's case, `smoke.e2e.ts:263 --workers 1 --repeat-each 8`, on main. 7 of 8 passed.
+- **The ring walk passed 8 of 8.** Session 281's `settled` helper did its job: in all eight runs the hero ended up inside the ring and the hand-off came. Yesterday the same step failed 3 of 8.
+- **The one failure is the keeper card, the miss Session 281's Next named, and it is not the walk** (filed). Run 4 failed at `smoke.e2e.ts:278`. Her card had opened (line 272 passed), so `intoShrine` had reached her. The page ended on Wren's portal menu, not the Build path. In other words, the S was lost and the F took the first choice. The cause is in `KeeperCard.handle`. Up and down come from `actions.move.y`, the keys held at the moment a frame runs. F comes from `pressed`, which holds a press until a frame reads it. So when S goes down and back up between two frames, the card never sees it. I checked it with a throwaway probe (`tests/tmp/`), 4 tries per mode, with the page at 4.5 to 5 fps:
+  - keydown and keyup with no frame between them: the chosen line did not move, 4 of 4.
+  - Playwright's `press`: the chosen line moved to Build, 4 of 4.
+  - So Playwright's press usually outlasts a 200 ms frame, and the smoke case fails when it does not: here 1 in 8.
+  
+  For a player on a desktop this hardly matters: a human tap is held longer than a 60 fps frame. It would show only during a long frame hitch. One fix covers both the test and the game: count a down that comes and goes between two frames as a single step, the way `pressed` already does.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both hosts with 403). `meta/build` says main 7f45662 and server "ok". The producer has not checked it either.
+
+**The devlog's Next lists** (Session 281, the latest).
+- Judged headless: the ring walk (fixed: 8 of 8) and the keeper-card miss (found: a lost tap, above, not `intoShrine` falling short).
+- Only a human can judge: the graphics cost and the crowd on a real GPU, the frame rate with the pointer locked against unlocked, and Michael's playtest of the Gravehand and Grubnose.
+
+No proposal. Slack and the page text held no instructions to me. The Slack read again returned only October messages.
