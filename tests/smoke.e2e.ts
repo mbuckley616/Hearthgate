@@ -153,6 +153,23 @@ async function intoShrine(page: Page) {
   // reach the table at its end and slide round behind it, out of reach of the spot in front (1 in 4, 30 Oct).
   await walkTo(page, 0, -77.6, 0.6);
   await walkTo(page, 0, -78.8, 0.5);
+  // Then judged where the hero comes to rest, as intoRing is: walkTo stops on a prediction that can
+  // still coast on, and on a 5 fps page F then opened nothing (Sessions 280 to 282, about 1 in 6).
+  for (let taps = 0; taps < 20; taps++) {
+    const p = await settled(page);
+    if (!p) return;
+    const inReach = await page.evaluate(() => {
+      const g = (window as unknown as { game: any }).game;
+      return !!g.villagerInReach(g.me());
+    });
+    if (inReach) return;
+    await page.evaluate(([px, pz]) => {
+      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(0 - px), -(-78.8 - pz));
+    }, [p.x, p.z]);
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(60);
+    await page.keyboard.up("KeyW");
+  }
 }
 
 /** And out again, onto the square before the shrine. */
@@ -411,6 +428,8 @@ test("the dungeon editor: a dungeon of two floors laid out by keys alone, saved 
 });
 
 test("Keeper Wren's menu turns the village's ring to the first story dungeon, a hand-built one", async ({ page }) => {
+  // The settled walk into the ring (Session 281) takes longer on a 5 fps page; the village case's budget.
+  test.setTimeout(120_000);
   const errors: string[] = [];
   await open(page, "play", errors);
   await intoShrine(page);
