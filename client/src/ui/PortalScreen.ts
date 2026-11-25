@@ -105,7 +105,7 @@ export class PortalScreen {
     }
     const x = actions.move.x + (Math.abs(actions.look.x) > 0.001 ? Math.sign(actions.look.x) : 0);
     const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
-    const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : '';
+    const dir = Math.abs(x) > 0.5 ? (x > 0 ? 'right' : 'left') : Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : actions.tapY ? (actions.tapY > 0 ? 'up' : 'down') : '';
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
       this.step(dir);
       this.render();

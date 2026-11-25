@@ -1,5 +1,16 @@
 import type { ActionFrame } from '../input/actions';
 
+/**
+ * Up, down or neither for a menu this frame: a held stick or key first, then a tap that came and went
+ * since the last frame (as `interact`'s press is kept), then the zoom keys and d-pad.
+ */
+export function menuDir(actions: ActionFrame): 'up' | 'down' | '' {
+  const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
+  if (Math.abs(y) > 0.5) return y > 0 ? 'up' : 'down';
+  if (actions.tapY) return actions.tapY > 0 ? 'up' : 'down';
+  return actions.pressed.has('zoomIn') ? 'up' : actions.pressed.has('zoomOut') ? 'down' : '';
+}
+
 /** One of a keeper's buttons: what it does, and why it cannot be pressed now, if it cannot. */
 export interface KeeperChoice {
   id: string;
@@ -120,8 +131,7 @@ export class KeeperCard {
 
   handle(actions: ActionFrame, dt: number): void {
     if (!this.visible) return;
-    const y = actions.move.y + (Math.abs(actions.look.y) > 0.001 ? Math.sign(actions.look.y) : 0);
-    const dir = Math.abs(y) > 0.5 ? (y > 0 ? 'up' : 'down') : actions.pressed.has('zoomIn') ? 'up' : actions.pressed.has('zoomOut') ? 'down' : '';
+    const dir = menuDir(actions);
     if (dir && (dir !== this.lastDir || this.repeat <= 0)) {
       const n = this.choices.length;
       this.at = (this.at + (dir === 'down' ? 1 : n - 1)) % n;

@@ -62,6 +62,12 @@ export interface ActionFrame {
   held: Set<ButtonAction>;
   /** Buttons that went down this frame. */
   pressed: Set<ButtonAction>;
+  /**
+   * Up (+1) or down (-1) keys (W, S, the up and down arrows) that went down this frame, even if they
+   * came up again before it: `move` and `look` are the keys held at the frame, so a tap between two
+   * frames is not in them, and a menu reading only those lost it (the critic, 25 Nov). Absent is none.
+   */
+  tapY?: number;
 }
 
 /** A device that contributes to the action frame. Touch will be another one. */
