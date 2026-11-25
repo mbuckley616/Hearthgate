@@ -63,6 +63,9 @@ export class KeyboardMouseSource implements InputSource {
       if (codes.some((c) => this.held.has(c))) frame.held.add(action);
       if (codes.some((c) => this.pressed.has(c))) frame.pressed.add(action);
     }
+    const tapped = (codes: string[]) => codes.some((c) => this.pressed.has(c));
+    const tap = (tapped(keyboardMove.forward) || tapped(keyboardLook.up) ? 1 : 0) - (tapped(keyboardMove.back) || tapped(keyboardLook.down) ? 1 : 0);
+    if (tap) frame.tapY = (frame.tapY ?? 0) + tap;
     const toggled = keyboardBindings.sprintToggle.some((c) => this.pressed.has(c));
     if (this.sprint.step(toggled, len > 0, dt * 1000)) frame.held.add('sprint');
   }

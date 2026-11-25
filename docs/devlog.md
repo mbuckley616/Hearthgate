@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-25: Session 282, a menu's up or down tap between two frames is no longer lost
+
+**What changed**
+
+- `ActionFrame.tapY` (optional): +1 or -1 when W, S or the up or down arrow went down since the last frame, even if it came up again before it. `KeyboardMouseSource` sets it from its kept presses, as `interact`'s F already was.
+- `KeeperCard`'s direction is now `menuDir(actions)`: a held stick or key first, then the tap, then the zoom keys. Wren's, Aldous's, Marta's and Fenn's cards no longer drop an S that comes and goes between frames, so F no longer takes the portal menu instead of Build (the critic, 25 Nov, 7f45662). The portal screen, the store and the bank take the tap the same way.
+- `tests/menu-taps.ts`, in `npm run check`: W, S and both arrows tapped between frames each move a menu once; a held key reads as before. It fails on the old source ("KeyS tapped between frames").
+
+check green (817 shared tests). Client only, so no `test:net`. `smoke.e2e.ts:263 --repeat-each 4`: 3 of 4 pass and all three that reached the card's S tap took Build. The fourth failed earlier, at line 272: F at the shrine did not open Keeper Wren's card.
+
+**Learned**
+
+The kept press was already there for every key; only the menus read movement from the held set. The hero screen and the village map read the pad's d-pad presses and were left alone.
+
+**Next**
+
+The other half of the village case's flake: F at the shrine sometimes opens nothing on a 5 fps page (Sessions 280, 281 and 282 each saw it once), likely `intoShrine` stopping short of Wren's reach. Then the graphics cost and the crowd, both on a real machine.
+
 ## 2026-11-24: Session 281, the village-ring case judges a tap where the hero comes to rest
 
 **What changed**
