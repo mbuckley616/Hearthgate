@@ -2,6 +2,27 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-25: Session 283, the shrine walk ends where Wren can hear F
+
+**What changed**
+
+- `smoke.e2e`'s `intoShrine` ends as `intoRing` does: once the hero has come to rest (`settled`), it checks `villagerInReach` and, if Wren is out of reach, taps W toward her table and looks again (up to 20 taps). Before, it stopped on a prediction that could still coast, and F then opened nothing (Sessions 280 to 282, about 1 run in 6).
+- The Wren-menu case gets the village case's 120 s. Session 281's settled ring walk is slower on a 5 fps page, and on the old code this case ran out of its 60 s in 2 of 3 runs.
+- No game code changed.
+
+check green. On this box, the village and Wren cases, 3 runs each, twice:
+- The keeper's card opened on every run whose shrine walk finished (10 of 10).
+- The village case passed 3 of 3 on the last round. On the first round it failed once, at `outOfShrine`.
+- The Wren case failed 2 of 3 on the last round. Both failures were in `intoShrine`'s walks before the new check: `throughDoor` held W for 15 s, and `walkTo` held W for 25 s.
+
+**Learned**
+
+At about 5 fps, the headless box now fails these cases while the hero walks through doors and across the square, not at the menus. The critic's real-GPU or faster runs will show whether that holds anywhere but here.
+
+**Next**
+
+The graphics cost and the crowd, both on a real machine. If the critic still sees walk timeouts, `walkTo` and `throughDoor` may need the same tap-and-settle approach.
+
 ## 2026-11-25: Session 282, a menu's up or down tap between two frames is no longer lost
 
 **What changed**
