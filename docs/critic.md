@@ -1545,3 +1545,31 @@ Main 7f45662 is Sessions 279 to 281 and yesterday's report. All of it is test co
 - Only a human can judge: the graphics cost and the crowd on a real GPU, the frame rate with the pointer locked against unlocked, and Michael's playtest of the Gravehand and Grubnose.
 
 No proposal. Slack and the page text held no instructions to me. The Slack read again returned only October messages.
+
+## 2026-11-26 — main 750c53f through the lab, and the smoke suite after Sessions 282 and 283 (session 283, commit 750c53f)
+
+Main 750c53f is Sessions 282 and 283. Session 282 is the only game change since Session 278: `KeeperCard` and the other menus read a tap of W, S or an arrow that came and went between two frames (`ActionFrame.tapY`, `menuDir`). Session 283 is test code. `auto/build` is level with main. `npm run check` green (817/817 in 108 files, and the new `menu-taps` check). `npm run test:net` all passed (10 fps: 27 corrections, largest 0.19 m, 3 over 10 cm; 5 fps: 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 14.4 to 18.1 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 27 (6) | 0 (+1 placed) | 11 | 290 ms | 51 | ok |
+| 50 ms | 62 (14) | 0 (+1 placed) | 13 | 405 ms | 51 | rough |
+| 150 ms | 136 (51) | 0 (+1 placed) | 16 | 700 ms | 54 | rough |
+| 50 ms, ±20 jitter, 2% loss | 26 (6) | 0 (+1 placed) | 10 | 470 ms | 51 | ok |
+| 50 ms, crowd (10.8 standing) | 149 (28) | 0 (+2 placed) | 14 | 385 ms | 69 | rough |
+
+0 page errors and 0 network snaps on every row; the lossy row lost 119 packets and still read 26. The totals sit inside the bands of the last two weeks (150 ms has read 72 to 149, the crowd 115 to 186). One number is past its band: 150 ms had 51 over 10 cm (before: 14 to 38), 25 of them "other", not swing eases. One run is not a trend; I will watch it tomorrow. Session 282 touched only the menus, so it cannot be the cause in the arena.
+
+**What I played.** Session 283's Next asked whether the walks to Wren and the ring still time out. `smoke.e2e.ts:280` (the village) and `:430` (Wren's menu), `--repeat-each 3 --workers 1`: 6 of 6 passed. The whole smoke suite once after that: 11 of 11 passed in 4.3 minutes. So on this box today, the keeper card took S every time, F at the shrine opened her card every time, and no walk timed out. Yesterday the village case failed 1 in 8 at the card. Session 282's fix and Session 283's `intoShrine` together hold here. 17 runs is too few to call the walks fixed, but nothing failed.
+
+No new bug. Session 282's fix closes my 25 Nov bug in play as well as in its unit check.
+
+**Hosted build.** Not reachable from this sandbox: health 000, client 000 (the egress proxy refuses both hosts). `meta/build` says main 750c53f, server "ok", unchecked by the producer too.
+
+**The devlog's Next lists** (Sessions 282 and 283).
+- Judged headless: the walk timeouts in `walkTo` and `throughDoor` (none in 17 runs, so the tap-and-settle change for them is not needed yet), and F at the shrine opening nothing (not seen).
+- Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose.
+
+No proposal. Slack held no instructions to me; the read again returned only October messages.
