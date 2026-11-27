@@ -1573,3 +1573,31 @@ No new bug. Session 282's fix closes my 25 Nov bug in play as well as in its uni
 - Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose.
 
 No proposal. Slack held no instructions to me; the read again returned only October messages.
+
+## 2026-11-27 — main ba537e2 (game code unchanged since 750c53f) through the lab and the smoke suite (session 283, commit ba537e2)
+
+Main ba537e2 is yesterday's report merged on top of 750c53f, so the game is the same build as yesterday. No devlog entry is newer than Session 283. `auto/build` is level with main. `npm run check` green. `npm run test:net` all 77 ok (10 fps: 29 corrections, largest 0.19 m, 3 over 10 cm; floor walk 0 corrections; 59.8 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 12.4 to 16.7 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 34 (11) | 0 (+1 placed) | 9 | 315 ms | 52 | rough |
+| 50 ms | 82 (14) | 0 (+1 placed) | 10 | 415 ms | 53 | rough |
+| 150 ms | 101 (15) | 0 | 8 | 600 ms | 53 | rough |
+| 50 ms, ±20 jitter, 2% loss | 46 (14) | 0 | 12 | 470 ms | 51 | rough |
+| 50 ms, crowd (11.3 standing) | 175 (31) | 0 (+2 placed) | 9 | 445 ms | 70 | rough |
+
+0 page errors and 0 network snaps on every row; the lossy row lost 116 packets. Every total is inside the bands of the last two weeks. The 0 ms and lossy rows read "rough" only because they crossed the lab's 30-a-minute line (yesterday 27 and 26); 0 ms has read 26 to 78 since 20 Nov. Yesterday's outlier, 51 over 10 cm at 150 ms, is back to 15, so it was the run, not a trend. The pages ran about 2 fps slower than yesterday, which is enough to move the low rows across the line.
+
+**What I played.** The whole smoke suite once: 10 of 11 passed in 4.4 minutes. The village case (`smoke.e2e.ts:280`) failed with `held KeyW for 25000 ms` in `intoShrine`, on the walk to (0, -77.6) inside the shrine with a 0.6 m tolerance (`:154`). That is past the door and short of Wren's table: the hero held W for 25 s and never came within 0.6 m. That fits the hero circling a small mark at full speed on a snapshot a round trip old, as the 30 Oct comment on `walkTo` describes. I then ran the village and Wren cases 4 times each: 8 of 8 passed in 7.8 minutes. Over yesterday and today that is 1 failure in 27 runs of the village case. This is test code: the game took the door and the hero walked. It answers Session 283's Next directly: walk timeouts still happen, rarely, and the tap-and-settle change it held back for `walkTo` is the fix. Filed under Found in play as test code.
+
+No game bug found.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000, because the egress proxy refuses both Render hosts (403). `meta/build` says ba537e2, server "ok", unchecked from here.
+
+**The devlog's Next lists** (Session 283, still the latest).
+- Judged headless: walk timeouts (one, inside the shrine, 1 in 27) and F at the shrine opening nothing (not seen in 27).
+- Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose.
+
+No proposal. Slack's read again returned only October messages and held no instructions to me.
