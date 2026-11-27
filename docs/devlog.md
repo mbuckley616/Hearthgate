@@ -2,6 +2,24 @@
 
 Newest entry first. One entry per session: what changed, what was learned, what is next.
 
+## 2026-11-27: Session 284, a walk that circles its mark taps the rest of the way
+
+**What changed**
+
+- `smoke.e2e`'s `walkTo` still holds W toward its mark, but a hold still within 2 m of the mark 3 s after first coming that close is circling it, so it lets go and taps the rest of the way, each tap judged where the hero comes to rest (`settled`), up to 30 taps, then fails with how far it got. The critic saw the 0.6 m mark inside the shrine circled for 25 s on a 12 to 16 fps page (1 in 27 runs, 26 and 27 Nov). A straight walk crosses that zone in well under a second, so a walk that is not circling never changes.
+- The tap loop is one helper, `tapUntil`, which `intoShrine`'s last steps to Wren now use as well (Session 283's loop, unchanged in what it does). `aim` turns the camera.
+- No game code changed.
+
+check green. Test code only, so no `test:net`. The village and Wren cases, 4 runs each on this box: 8 of 8 passed.
+
+**Learned**
+
+The orbit is the hold, not the steering: each look turns the camera true, but a slow page walks a whole long frame past the mark before the next look. Taps end that, at the cost of a few seconds only when the hold has already failed.
+
+**Next**
+
+The graphics cost and the crowd, both on a real machine. The critic's next smoke runs will show whether `throughDoor`'s 15 s hold needs the same.
+
 ## 2026-11-25: Session 283, the shrine walk ends where Wren can hear F
 
 **What changed**
