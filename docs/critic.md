@@ -1601,3 +1601,31 @@ No game bug found.
 - Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose.
 
 No proposal. Slack's read again returned only October messages and held no instructions to me.
+
+## 2026-11-28 — main d6ad194 (game code unchanged since 750c53f) through the lab, and Session 284's smoke walk on auto/build f3520dd (session 284, commit d6ad194)
+
+Main d6ad194 is yesterday's report merged, so the game is the build of the last three days. `auto/build` is one commit ahead (f3520dd, Session 284): `walkTo` in `smoke.e2e.ts` lets go and taps when a hold is still within 2 m of its mark 3 s after first reaching it. Test code only; I played it on a throwaway branch. `npm run check` green (817/817 in 108 files). `npm run test:net` all 77 ok (10 fps: 27 corrections, largest 0.193 m, 3 over 10 cm; 5 fps: 0 over 10 cm of 28; floor walk 0 corrections; 60.2 ticks a second; four-player snapshot 6.1 KB).
+
+**The lag lab** (`npm run lab -- --crowd`, arena, 60 s a condition after a 10 s warm-up, pages at 12.6 to 15.8 fps).
+
+| link (one-way) | corr/min (over 10 cm) | snaps | holds/min | view lag | KB/s | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 ms | 58 (24) | 0 (+1 placed) | 12 | 300 ms | 51 | rough |
+| 50 ms | 78 (14) | 0 (+2 placed) | 16 | 375 ms | 51 | rough |
+| 150 ms | 54 (8) | 0 (+1 placed) | 9 | 635 ms | 54 | rough |
+| 50 ms, ±20 jitter, 2% loss | 72 (11) | 0 (+1 placed) | 15 | 480 ms | 51 | rough |
+| 50 ms, crowd (10.8 standing) | 176 (43) | 0 (+2 placed) | 12 | 475 ms | 67 | rough |
+
+0 page errors and 0 network snaps on every row; the lossy row lost 119 packets. Every total is inside the bands of the last two weeks (0 ms 26 to 78, lossy 26 to 157, crowd 115 to 186). 150 ms at 54 is the lowest it has read since the bands were kept, which is the run: the code has not changed. The 0 ms row's 24 over 10 cm is at the top of its band (11 of them "other"); with 150 ms reading 8 the same morning, it is noise in a 60 s sample, not a regression.
+
+**What I played.** Session 284's Next asked whether the shrine walk still circles its mark. On f3520dd: the whole smoke suite once, 11 of 11 in 4.9 minutes; then the village case (`smoke.e2e.ts:309`) and Wren's menu (`:459`) three times each, 6 of 6 in 7.5 minutes. No walk timed out and no hold circled. With yesterday's 1 failure in 27 runs on the old helper, 17 clean runs neither prove nor disprove the fix, but nothing has gone wrong with it. The run is slower than before (4.9 against 4.3 to 4.4 minutes for the suite), about what tapping the last metre would cost; worth watching, not filing.
+
+No new bug, game or test.
+
+**Hosted build.** Not reachable from this sandbox: health 000 and client 000, both refused by the egress proxy (403). `meta/build` says d6ad194, server "ok", unchecked from here.
+
+**The devlog's Next lists** (Session 284).
+- Judged headless: the shrine walk on a slow page (17 of 17 clean on f3520dd), and the suite's length after the change (+0.5 minute).
+- Only a human can judge: the graphics cost and the crowd on a real GPU, and Michael's playtest of the Gravehand and Grubnose.
+
+No proposal. Slack's read again returned only October messages and held no instructions to me.
