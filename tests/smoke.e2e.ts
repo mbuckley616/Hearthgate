@@ -82,19 +82,59 @@ async function predicted(page: Page): Promise<{ x: number; z: number } | null> {
 /**
  * Face the camera at (x, z) and hold W until the hero is within `tol` of it: W walks where the camera looks.
  * Steered by the predicted hero: a snapshot is a round trip old, and since a slow page steps a long
- * frame whole, the hero covers that much more between looks and circled a small mark (30 Oct).
+ * frame whole, the hero covers that much more between looks and circled a small mark (30 Oct). A hold
+ * still within 2 m of the mark 3 s after first reaching it is circling it (the critic, 27 Nov: 25 s
+ * round a 0.6 m mark in the shrine on a 12 to 16 fps page), so it lets go and taps the rest of the way.
  */
 async function walkTo(page: Page, x: number, z: number, tol = 1.2) {
+  let nearSince = 0;
+  let circling = false;
   const near = async () => {
     const p = await predicted(page);
     // Mid hand-off (a ring taken) the snapshot has no hero of ours yet: the walk is over.
     if (!p) return true;
-    await page.evaluate(([tx, tz, px, pz]) => {
-      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
-    }, [x, z, p.x, p.z]);
-    return Math.hypot(p.x - x, p.z - z) <= tol;
+    await aim(page, x, z, p);
+    const d = Math.hypot(p.x - x, p.z - z);
+    if (d <= tol) return true;
+    // Never reset: a circling hero leaves the zone and comes back, and a straight walk crosses it in well under a second.
+    if (d <= tol + 2 && !nearSince) nearSince = Date.now();
+    circling = nearSince > 0 && Date.now() - nearSince > 3_000;
+    return circling;
   };
   await holdUntil(page, "KeyW", near, 25_000);
+  if (!circling) return;
+  const reached = await tapUntil(page, x, z, async (p) => Math.hypot(p.x - x, p.z - z) <= tol, 30);
+  if (!reached) throw new Error(`circled (${x}, ${z}) and 30 taps did not bring the hero within ${tol} m`);
+}
+
+/** Turn the camera from the hero at `p` toward (x, z). */
+async function aim(page: Page, x: number, z: number, p: { x: number; z: number }) {
+  await page.evaluate(([tx, tz, px, pz]) => {
+    (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(tx - px), -(tz - pz));
+  }, [x, z, p.x, p.z]);
+}
+
+/**
+ * Short taps of W toward (x, z), each judged where the hero comes to rest (`settled`), until `done`.
+ * True when done (or mid hand-off, as `predicted`); false when the taps run out.
+ */
+async function tapUntil(
+  page: Page,
+  x: number,
+  z: number,
+  done: (p: { x: number; z: number }) => Promise<boolean>,
+  taps: number,
+): Promise<boolean> {
+  for (let i = 0; i < taps; i++) {
+    const p = await settled(page);
+    if (!p || (await done(p))) return true;
+    await aim(page, x, z, p);
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(60);
+    await page.keyboard.up("KeyW");
+  }
+  const p = await settled(page);
+  return !p || (await done(p));
 }
 
 /**
@@ -155,21 +195,10 @@ async function intoShrine(page: Page) {
   await walkTo(page, 0, -78.8, 0.5);
   // Then judged where the hero comes to rest, as intoRing is: walkTo stops on a prediction that can
   // still coast on, and on a 5 fps page F then opened nothing (Sessions 280 to 282, about 1 in 6).
-  for (let taps = 0; taps < 20; taps++) {
-    const p = await settled(page);
-    if (!p) return;
-    const inReach = await page.evaluate(() => {
-      const g = (window as unknown as { game: any }).game;
-      return !!g.villagerInReach(g.me());
-    });
-    if (inReach) return;
-    await page.evaluate(([px, pz]) => {
-      (window as unknown as { game: any }).game.cam.yaw = Math.atan2(-(0 - px), -(-78.8 - pz));
-    }, [p.x, p.z]);
-    await page.keyboard.down("KeyW");
-    await page.waitForTimeout(60);
-    await page.keyboard.up("KeyW");
-  }
+  await tapUntil(page, 0, -78.8, () => page.evaluate(() => {
+    const g = (window as unknown as { game: any }).game;
+    return !!g.villagerInReach(g.me());
+  }), 20);
 }
 
 /** And out again, onto the square before the shrine. */
